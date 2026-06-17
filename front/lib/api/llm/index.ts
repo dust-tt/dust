@@ -34,6 +34,7 @@ import type {
   Where,
   WorkspaceFilter,
 } from "@app/lib/llms/stream/types/filter";
+import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
 import { isModelId } from "@app/lib/model_constructors/types/model_ids";
 import {
   isProviderId,
@@ -51,7 +52,6 @@ import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import intersection from "lodash/intersection";
-import sortBy from "lodash/sortBy";
 
 // EAP (Early Access Program) models are served through a dedicated Anthropic
 // workspace key (ANTHROPIC_EAP_API_KEY) rather than the workspace's
@@ -248,6 +248,7 @@ export async function getLLM(
 
 function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   const dustRegion = multiRegionsConfig.getCurrentRegion();
+
   const regionalModelsOnly = auth.getNonNullableWorkspace().regionalModelsOnly;
   if (dustRegion === "us-central1" || !regionalModelsOnly) {
     return undefined;
@@ -310,9 +311,9 @@ function getStreamEndpointLLM(
 
   const preferredRegion = REGION_MAPPING[multiRegionsConfig.getCurrentRegion()];
 
-  const sortedEndpoints = sortBy(
+  const sortedEndpoints = sortEndpointsByPreferredRegion(
     endpoints,
-    (endpoint) => endpoint.region === preferredRegion
+    preferredRegion
   );
 
   const endpoint = sortedEndpoints[0];
