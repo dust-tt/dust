@@ -6,6 +6,7 @@ import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyAdminsUpgradeRequested } from "@app/lib/notifications/workflows/upgrade-request-created";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
@@ -106,7 +107,11 @@ export async function createUpgradeRequest(
   auth: Authenticator,
   { auditContext }: { auditContext?: AuditLogContext } = {}
 ): Promise<Result<MembershipUpgradeRequestType, UpgradeRequestError>> {
-  if (!auth.getNonNullableSubscriptionResource().isMetronomeOnlyBilled) {
+  const subscription = auth.getNonNullableSubscriptionResource();
+  if (
+    !subscription.isMetronomeOnlyBilled ||
+    !isCreditPricedPlanPrefix(subscription.getPlan().code)
+  ) {
     return new Err(
       new UpgradeRequestError(
         "workspace_not_metronome_billed",

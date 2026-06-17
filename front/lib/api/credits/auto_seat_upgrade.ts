@@ -11,7 +11,10 @@ import {
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { notifyAdminsSeatAutoUpgraded } from "@app/lib/notifications/workflows/seat-auto-upgraded";
-import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedFreePlan,
+  isCreditPricedPlanPrefix,
+} from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -45,7 +48,11 @@ function passesBillingGate(subscription: SubscriptionResource): boolean {
   if (!subscription.isMetronomeOnlyBilled) {
     return false;
   }
-  return !isCreditPricedFreePlan(subscription.getPlan().code);
+  const planCode = subscription.getPlan().code;
+  if (!isCreditPricedPlanPrefix(planCode)) {
+    return false;
+  }
+  return !isCreditPricedFreePlan(planCode);
 }
 
 /**
@@ -158,7 +165,9 @@ export async function maybeAutoUpgradeSeat({
   workspaceId: string;
   userId: string;
 }): Promise<Result<{ upgraded: boolean }, Error>> {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  // The caller's auth can't mutate seats (member, or no user at all). This only
+  // reads workspace data, we can take a builder only.
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
