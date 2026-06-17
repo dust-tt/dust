@@ -10,6 +10,10 @@ import {
 } from "@app/lib/metronome/contracts";
 import { BUSINESS_USD_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { PlanModel } from "@app/lib/models/plan";
+import {
+  getBillingCurrencyForCountry,
+  resolvePackageAliasForCurrency,
+} from "@app/lib/plans/billing_currency";
 import { CREDIT_PRICED_FREE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -68,11 +72,23 @@ export async function isMetronomeBillingEnabled(
  * - Re-enables all triggers that point to non-archived agents
  */
 export async function activateCreditPricedFreePlan(
-  auth: Authenticator
+  auth: Authenticator,
+  countryCode?: string
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const lightWorkspace = renderLightWorkspaceType({ workspace: owner });
   const now = new Date(floorToHourISO(new Date()));
+
+  const currency = getBillingCurrencyForCountry(countryCode ?? "US", true);
+  const packageAlias = resolvePackageAliasForCurrency(
+    BUSINESS_USD_PACKAGE_ALIAS,
+    currency
+  );
+
+  logger.info(
+    { workspaceId: owner.sId, countryCode, currency, packageAlias },
+    "Activating credit-priced free plan"
+  );
 
   const customerResult = await ensureMetronomeCustomerForWorkspace({
     workspace: lightWorkspace,
@@ -100,9 +116,9 @@ export async function activateCreditPricedFreePlan(
   const contractResult = await provisionMetronomeContract({
     metronomeCustomerId,
     workspace: lightWorkspace,
-    // For Free plan, we directly use the Business USD package
-    // to directly have access to all the seats in the contract for upgrades
-    packageAlias: BUSINESS_USD_PACKAGE_ALIAS,
+    // For Free plan, we directly use the Business package (USD or EUR based on
+    // geo IP) so the workspace has access to all seats in the contract for upgrades.
+    packageAlias,
     uniquenessKey: `cp-business-for-free-plan-${owner.sId}}`,
     startingAt: now,
     swapAt: "current-hour",
