@@ -7683,6 +7683,12 @@
                         "items": {
                           "type": "string"
                         }
+                      },
+                      "selectedSpaceIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       }
                     }
                   },
@@ -8311,6 +8317,12 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "selectedSpaceIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           }
                         }
                       }
@@ -8325,6 +8337,12 @@
                   "metadata": {
                     "type": "object",
                     "nullable": true
+                  },
+                  "selectedSpaceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "skipToolsValidation": {
                     "type": "boolean"
@@ -12110,6 +12128,12 @@
               "zendesk",
               "onboarding_conversation"
             ]
+          },
+          "selectedSpaceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -13458,6 +13482,12 @@
             "type": "string",
             "description": "URL of the user's profile picture",
             "example": "https://example.com/profiles/johndoe123.jpg"
+          },
+          "selectedSpaceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "agenticMessageData": {
             "type": "object",

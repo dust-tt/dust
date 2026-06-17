@@ -89,13 +89,24 @@ export async function listSelectableSpaces(
 export async function validateSelectableSpaces(
   auth: Authenticator,
   {
+    podId,
     spaceIds,
     transaction,
   }: {
+    podId?: string | null;
     spaceIds: string[];
     transaction?: Transaction;
   }
 ): Promise<Result<SpaceResource[], SelectedConversationSpacesError>> {
+  if (podId) {
+    return new Err(
+      new SelectedConversationSpacesError(
+        "conversation_not_mutable",
+        "Spaces cannot be selected from the input bar in pod conversations."
+      )
+    );
+  }
+
   const featureFlags = await getFeatureFlags(auth);
   if (!featureFlags.includes("restricted_spaces_in_input_bar")) {
     return new Err(

@@ -167,6 +167,13 @@ describe("selected conversation Spaces", () => {
       }),
       "conversation_not_mutable"
     );
+    expectErrCode(
+      await validateSelectableSpaces(auth, {
+        podId: projectSpace.sId,
+        spaceIds: [restrictedSpace.sId],
+      }),
+      "conversation_not_mutable"
+    );
   });
 
   it("lists selectable regular Spaces and marks selected ones", async () => {
