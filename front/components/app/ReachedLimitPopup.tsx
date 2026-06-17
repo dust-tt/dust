@@ -294,12 +294,18 @@ function getLimitPromptForCode(
     case "no_seat": {
       return {
         title: "No seat assigned",
-        validateLabel: "Ok",
+        validateLabel: isAdmin ? "Go to usage page" : "Ok",
+        onValidate: isAdmin
+          ? () => {
+              void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
+            }
+          : undefined,
         children: (
           <>
             <Page.P>
-              You don&apos;t have a seat assigned in this workspace. Please
-              contact your administrator to assign you one.
+              {isAdmin
+                ? "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+                : "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."}
             </Page.P>
           </>
         ),
@@ -312,14 +318,14 @@ function getLimitPromptForCode(
         validateLabel: isAdmin ? "Go to Usage" : "Ok",
         onValidate: isAdmin
           ? () => {
-              void router.push(`/w/${owner.sId}/usage`);
+              void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
             }
           : undefined,
         children: (
           <>
             <Page.P>
               {isAdmin
-                ? "You have reached your personal usage cap. You can adjust user caps from the usage page."
+                ? "You have reached your personal usage cap. On the usage page you can change your seat or adjust user caps."
                 : "You have reached your personal usage cap. Please contact your administrator to increase it."}
             </Page.P>
           </>

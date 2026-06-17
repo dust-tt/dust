@@ -23,11 +23,12 @@ import {
   isFreePlan,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
   useCreditPurchaseInfo,
+  useMyUsage,
   useSeatPlan,
 } from "@app/lib/swr/credits";
 import {
@@ -53,6 +54,7 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isAdmin } from "@app/types/user";
 import {
   AlertCircle,
@@ -105,6 +107,30 @@ function memberFromUpgradeRequest(
 
 const DEFAULT_PAGE_SIZE = 25;
 
+function noOrFreeSeatTitle(seatType: "none" | "free"): string {
+  switch (seatType) {
+    case "none":
+      return "You don't have a seat";
+    case "free":
+      return "You're on the Free seat";
+    default:
+      assertNeverAndIgnore(seatType);
+      return "";
+  }
+}
+
+function noOrFreeSeatBody(seatType: "none" | "free"): string {
+  switch (seatType) {
+    case "none":
+      return "Assign yourself a seat to send messages.";
+    case "free":
+      return "The Free seat has limited usage. Upgrade your seat to get more credits.";
+    default:
+      assertNeverAndIgnore(seatType);
+      return "";
+  }
+}
+
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
@@ -156,6 +182,8 @@ export function UsagePage() {
   const membersOrderColumn = sort?.id === "email" ? "email" : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
+  const { myUsage } = useMyUsage({ workspaceId: owner.sId });
+  const openChangeMySeatParam = useSearchParam("openChangeMySeat");
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
     useState<MemberUsageType | null>(null);
@@ -340,6 +368,13 @@ export function UsagePage() {
       void router.push(`/w/${owner.sId}/members`);
     }
   }, [canViewUsage, router, owner.sId]);
+
+  // Auto-open the "change my seat" modal when arriving from a blocked-state
+  useEffect(() => {
+    if (openChangeMySeatParam !== null && myUsage !== null) {
+      setChangeSeatMember(myUsage);
+    }
+  }, [openChangeMySeatParam, myUsage]);
 
   const {
     totalRemainingCredits,
@@ -562,6 +597,25 @@ export function UsagePage() {
             />
           )}
         </div>
+
+        {!isReadOnly &&
+          (myUsage?.seatType === "free" || myUsage?.seatType === "none") && (
+            <ContentMessage
+              title={noOrFreeSeatTitle(myUsage.seatType)}
+              icon={AlertCircle}
+              variant="warning"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <span>{noOrFreeSeatBody(myUsage.seatType)}</span>
+                <Button
+                  label="Change my seat"
+                  variant="warning"
+                  size="xs"
+                  onClick={() => setChangeSeatMember(myUsage)}
+                />
+              </div>
+            </ContentMessage>
+          )}
 
         {showPoolSection && (
           <Page.Vertical gap="xs" align="stretch">
