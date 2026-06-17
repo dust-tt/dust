@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Required env vars (set by each workspace's package.json script):
+#   MIGRATION_DB_URI_VAR    — name of the env var holding the database URI
+#                             (e.g. FRONT_DATABASE_URI, CONNECTORS_DATABASE_URI)
+#   MIGRATION_SHADOW_PREFIX — prefix for the shadow database name
+#                             (e.g. dust_front_shadow_to, dust_connectors_shadow_to)
+#   MIGRATION_ADMIN_DB_PATH — path to admin/db.ts relative to the workspace root
+#                             (e.g. admin/db.ts, src/admin/db.ts, ../front/admin/db.ts)
+
+if [ -z "${MIGRATION_DB_URI_VAR:-}" ] || \
+   [ -z "${MIGRATION_SHADOW_PREFIX:-}" ] || \
+   [ -z "${MIGRATION_ADMIN_DB_PATH:-}" ]; then
+  echo "Error: MIGRATION_DB_URI_VAR, MIGRATION_SHADOW_PREFIX, and MIGRATION_ADMIN_DB_PATH must be set."
+  exit 1
+fi
+
 # Ensure NODE_ENV is not set to production.
 if [ "${NODE_ENV:-}" == "production" ]; then
   echo "Error: NODE_ENV is set to production. Aborting script."
@@ -23,8 +38,11 @@ if ! command -v psql >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ -z "${FRONT_DATABASE_URI:-}" ]; then
-  echo "Error: FRONT_DATABASE_URI must be set."
+# Read the actual DB URI via indirect expansion.
+DB_URI="${!MIGRATION_DB_URI_VAR}"
+
+if [ -z "${DB_URI:-}" ]; then
+  echo "Error: ${MIGRATION_DB_URI_VAR} must be set."
   exit 1
 fi
 
@@ -61,12 +79,12 @@ FILENAME="${OUT_DIR}/${TIMESTAMP}_${DESC}.sql"
 
 mkdir -p "${OUT_DIR}"
 
-# The current FRONT_DATABASE_URI is the baseline (already at production schema).
+# The current DB_URI is the baseline (already at production schema).
 # We only need one shadow DB to materialize the current branch's models.
-BASE_DSN="${FRONT_DATABASE_URI%/*}"
+BASE_DSN="${DB_URI%/*}"
 ADMIN_DSN="${BASE_DSN}/postgres"
 
-SHADOW_TO="dust_front_shadow_to_$$"
+SHADOW_TO="${MIGRATION_SHADOW_PREFIX}_$$"
 TO_DSN="${BASE_DSN}/${SHADOW_TO}"
 
 cleanup() {
@@ -77,11 +95,13 @@ trap cleanup EXIT INT TERM
 
 echo "Building target schema from current branch..."
 psql "${ADMIN_DSN}" -c "CREATE DATABASE \"${SHADOW_TO}\"" >/dev/null
-FRONT_DATABASE_URI="${TO_DSN}" npx tsx admin/db.ts
+# Export the shadow URI under the workspace-specific env var name so admin/db.ts picks it up.
+export "${MIGRATION_DB_URI_VAR}=${TO_DSN}"
+npx tsx "${MIGRATION_ADMIN_DB_PATH}"
 
 echo "Computing diff..."
 pg-schema-diff plan \
-  --from-dsn "${FRONT_DATABASE_URI}" \
+  --from-dsn "${DB_URI}" \
   --to-dsn "${TO_DSN}" \
   --disable-plan-validation \
   --output-format sql \

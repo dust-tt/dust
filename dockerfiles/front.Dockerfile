@@ -43,6 +43,9 @@ RUN npx tsx scripts/fetch-custom-models.ts
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
 
+# Copy shared migration tooling (scripts/migrate.ts imports ../../scripts/db/migration-runner)
+COPY /scripts/db /app/scripts/db
+
 # Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
 RUN npx esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap
 
