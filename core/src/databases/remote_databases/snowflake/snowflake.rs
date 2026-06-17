@@ -64,7 +64,7 @@ struct SnowflakeQueryPlanEntry {
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 
-pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
+pub const FORBIDDEN_OPERATIONS: [&str; 4] = ["UPDATE", "DELETE", "INSERT", "MERGE"];
 
 pub const GET_SESSION_MAX_TRIES: usize = 3;
 
@@ -185,6 +185,12 @@ impl TryFrom<QueryResult> for SnowflakeQueryPlanEntry {
 }
 
 impl SnowflakeRemoteDatabase {
+    fn is_forbidden_operation(operation: &str) -> bool {
+        FORBIDDEN_OPERATIONS.iter().any(|forbidden_operation| {
+            operation.trim().eq_ignore_ascii_case(forbidden_operation)
+        })
+    }
+
     pub fn new(
         credentials: serde_json::Map<String, serde_json::Value>,
     ) -> Result<Self, QueryDatabaseError> {
@@ -439,13 +445,7 @@ impl SnowflakeRemoteDatabase {
         let used_forbidden_operations = plan
             .into_iter()
             .filter_map(|entry| match entry.operation {
-                Some(op)
-                    if FORBIDDEN_OPERATIONS
-                        .iter()
-                        .any(|forbidden_op| op.to_lowercase() == *forbidden_op) =>
-                {
-                    Some(op)
-                }
+                Some(op) if Self::is_forbidden_operation(&op) => Some(op),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -461,6 +461,25 @@ impl SnowflakeRemoteDatabase {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SnowflakeRemoteDatabase;
+
+    #[test]
+    fn snowflake_write_operations_are_forbidden_case_insensitively() {
+        for operation in ["UPDATE", "Delete", "insert", " Merge "] {
+            assert!(SnowflakeRemoteDatabase::is_forbidden_operation(operation));
+        }
+    }
+
+    #[test]
+    fn snowflake_read_operations_are_not_forbidden() {
+        for operation in ["Result", "TableScan", "Filter", "Join", "Aggregate", "Sort"] {
+            assert!(!SnowflakeRemoteDatabase::is_forbidden_operation(operation));
+        }
     }
 }
 
