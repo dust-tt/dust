@@ -237,7 +237,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: dust-infra
 
-      - name: Trigger dust-infra workflow
+      - name: Trigger and wait for dust-infra workflow
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           OWNER: ${{ github.repository_owner }}
@@ -292,12 +292,70 @@ jobs:
               });
             }
 
+            // Record the time just before dispatch so we can identify the triggered run.
+            const beforeDispatch = new Date().toISOString();
+
             await github.rest.repos.createDispatchEvent({
               owner: process.env.OWNER,
               repo: 'dust-infra',
               event_type: 'trigger-component-deploy',
               client_payload: payload,
             });
+
+            core.info(`Dispatched to dust-infra at ${beforeDispatch}. Waiting for workflow run to appear...`);
+
+            // Poll until the workflow run appears in dust-infra (up to 5 minutes).
+            // Requires the INFRA_DISPATCH_APP to have actions:read on dust-infra.
+            let infraRunId = null;
+            for (let i = 0; i < 30; i++) {
+              await new Promise(r => setTimeout(r, 10000));
+
+              const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+                owner: process.env.OWNER,
+                repo: 'dust-infra',
+                event: 'repository_dispatch',
+                created: `>=${beforeDispatch}`,
+                per_page: 5,
+              });
+
+              if (data.workflow_runs.length > 0) {
+                infraRunId = data.workflow_runs[0].id;
+                core.info(`Found dust-infra workflow run #${infraRunId}: ${data.workflow_runs[0].html_url}`);
+                break;
+              }
+
+              core.info(`Waiting for workflow run to appear... (${(i + 1) * 10}s elapsed)`);
+            }
+
+            if (!infraRunId) {
+              core.setFailed('Could not find dust-infra workflow run after 5 minutes.');
+              return;
+            }
+
+            // Poll until the run completes (up to 90 minutes).
+            for (let i = 0; i < 540; i++) {
+              await new Promise(r => setTimeout(r, 10000));
+
+              const { data: run } = await github.rest.actions.getWorkflowRun({
+                owner: process.env.OWNER,
+                repo: 'dust-infra',
+                run_id: infraRunId,
+              });
+
+              if (run.status === 'completed') {
+                core.info(`dust-infra workflow completed with conclusion: ${run.conclusion}`);
+                if (run.conclusion !== 'success') {
+                  core.setFailed(`Deployment failed in dust-infra (conclusion: ${run.conclusion}). See: ${run.html_url}`);
+                }
+                return;
+              }
+
+              if (i % 6 === 0) {
+                core.info(`dust-infra workflow status: ${run.status} (${Math.floor((i + 1) * 10 / 60)}m elapsed)`);
+              }
+            }
+
+            core.setFailed('Timed out waiting for dust-infra workflow to complete (90 minutes).');
 
       - name: Notify Failure
         if: failure()

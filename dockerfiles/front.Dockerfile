@@ -99,6 +99,8 @@ WORKDIR /app/front
 
 # Copy worker assets from workers-specific build
 COPY --from=workers-build /app/front/dist ./dist
+# Ensure migrate.js is present (workers-build may clean dist before building)
+COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
 # Copy front's package.json and local node_modules (non-hoisted deps)
 COPY --from=base-deps /app/front/package.json ./package.json
 COPY --from=base-deps /app/front/node_modules ./node_modules
@@ -234,6 +236,8 @@ COPY --from=front-api-build /app/package.json ./package.json
 COPY --from=front-api-build /app/package-lock.json ./package-lock.json
 
 COPY --from=front-api-build /app/front ./front
+# Ensure migrate.js is present explicitly
+COPY --from=base-deps /app/front/dist/migrate.js ./front/dist/migrate.js
 
 # front-api workspace (server.ts, app.ts, routes/, middleware/).
 COPY --from=front-api-build /app/front-api ./front-api
