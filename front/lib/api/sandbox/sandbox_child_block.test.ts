@@ -157,29 +157,29 @@ describe("resolveSandboxChildBlock", () => {
 
   // Invokes the function under test against an already-resolved child. Mirrors
   // the callers, which transition the child out of `blocked_*` before calling.
-  async function resolveChild(childSId: string, parentSId: string) {
-    const child = await AgentMCPActionResource.fetchById(auth, childSId);
+  async function resolveChild(childId: string, parentId: string) {
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
     expect(child).not.toBeNull();
     await resolveSandboxChildBlock(auth, {
       action: child!,
-      sandboxChildActionInfo: { parentActionId: parentSId },
+      sandboxChildActionInfo: { parentActionId: parentId },
       agentLoopArgs: AGENT_LOOP_ARGS,
     });
   }
 
   it("relaunches the parent loop when it is blocked, has an execId, and no sibling is still blocked", async () => {
-    const { sId: parentSId } = await createAction({
+    const { sId: parentId } = await createAction({
       name: "bash",
       status: "blocked_child_action_input_required",
       resumeState: { execId: "0123456789abcdef" },
     });
-    const { sId: childSId } = await createAction({
+    const { sId: childId } = await createAction({
       name: "child_tool",
       status: "ready_allowed_explicitly",
-      sandboxChildActionInfo: { parentActionId: parentSId },
+      sandboxChildActionInfo: { parentActionId: parentId },
     });
 
-    await resolveChild(childSId, parentSId);
+    await resolveChild(childId, parentId);
 
     expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalledWith(
@@ -194,40 +194,40 @@ describe("resolveSandboxChildBlock", () => {
         }),
       })
     );
-    const parent = await AgentMCPActionResource.fetchById(auth, parentSId);
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
     expect(parent!.status).toBe("ready_allowed_explicitly");
   });
 
   it("skips relaunch when the parent is not in blocked_child_action_input_required", async () => {
-    const { sId: parentSId } = await createAction({
+    const { sId: parentId } = await createAction({
       name: "bash",
       status: "running",
       resumeState: { execId: "0123456789abcdef" },
     });
-    const { sId: childSId } = await createAction({
+    const { sId: childId } = await createAction({
       name: "child_tool",
       status: "ready_allowed_explicitly",
-      sandboxChildActionInfo: { parentActionId: parentSId },
+      sandboxChildActionInfo: { parentActionId: parentId },
     });
 
-    await resolveChild(childSId, parentSId);
+    await resolveChild(childId, parentId);
 
     expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
   });
 
   it("skips relaunch when the parent has no execId resumeState", async () => {
-    const { sId: parentSId } = await createAction({
+    const { sId: parentId } = await createAction({
       name: "bash",
       status: "blocked_child_action_input_required",
       resumeState: null,
     });
-    const { sId: childSId } = await createAction({
+    const { sId: childId } = await createAction({
       name: "child_tool",
       status: "ready_allowed_explicitly",
-      sandboxChildActionInfo: { parentActionId: parentSId },
+      sandboxChildActionInfo: { parentActionId: parentId },
     });
 
-    await resolveChild(childSId, parentSId);
+    await resolveChild(childId, parentId);
 
     expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
   });
@@ -236,17 +236,17 @@ describe("resolveSandboxChildBlock", () => {
     // Regression: filtering remaining blocked children across the whole agent
     // message (instead of by parentActionId) would let parent B's child
     // permanently strand parent A's relaunch.
-    const { sId: parentASId } = await createAction({
+    const { sId: parentAId } = await createAction({
       name: "bash",
       status: "blocked_child_action_input_required",
       resumeState: { execId: "aaaabbbbccccdddd" },
     });
-    const { sId: childASId } = await createAction({
+    const { sId: childAId } = await createAction({
       name: "child_tool",
       status: "ready_allowed_explicitly",
-      sandboxChildActionInfo: { parentActionId: parentASId },
+      sandboxChildActionInfo: { parentActionId: parentAId },
     });
-    const { sId: parentBSId } = await createAction({
+    const { sId: parentBId } = await createAction({
       name: "bash",
       status: "blocked_child_action_input_required",
       resumeState: { execId: "1111222233334444" },
@@ -254,10 +254,10 @@ describe("resolveSandboxChildBlock", () => {
     await createAction({
       name: "child_tool",
       status: "blocked_validation_required",
-      sandboxChildActionInfo: { parentActionId: parentBSId },
+      sandboxChildActionInfo: { parentActionId: parentBId },
     });
 
-    await resolveChild(childASId, parentASId);
+    await resolveChild(childAId, parentAId);
 
     expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalledTimes(1);
   });
@@ -266,27 +266,27 @@ describe("resolveSandboxChildBlock", () => {
     // Bash issued `dust call A & dust call B & wait`: two blocked children of
     // the same parent. Resolving A alone must not relaunch — only resolving
     // the last one does.
-    const { sId: parentSId } = await createAction({
+    const { sId: parentId } = await createAction({
       name: "bash",
       status: "blocked_child_action_input_required",
       resumeState: { execId: "aaaabbbbccccdddd" },
     });
-    const { sId: childASId } = await createAction({
+    const { sId: childAId } = await createAction({
       name: "child_tool",
       status: "ready_allowed_explicitly",
-      sandboxChildActionInfo: { parentActionId: parentSId },
+      sandboxChildActionInfo: { parentActionId: parentId },
     });
-    const { action: childB, sId: childBSId } = await createAction({
+    const { action: childB, sId: childBId } = await createAction({
       name: "child_tool",
       status: "blocked_validation_required",
-      sandboxChildActionInfo: { parentActionId: parentSId },
+      sandboxChildActionInfo: { parentActionId: parentId },
     });
 
-    await resolveChild(childASId, parentSId);
+    await resolveChild(childAId, parentId);
     expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
 
     await childB.update({ status: "ready_allowed_explicitly" });
-    await resolveChild(childBSId, parentSId);
+    await resolveChild(childBId, parentId);
     expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalledTimes(1);
   });
 });

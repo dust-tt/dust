@@ -2,11 +2,13 @@ import {
   activateCreditPricedFreePlan,
   isMetronomeBillingEnabled,
 } from "@app/lib/api/subscription";
+import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import {
   activatePhoneTrial,
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import { getClientIpFromContext } from "@front-api/lib/request";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -50,7 +52,14 @@ app.post(
     }
 
     if (await isMetronomeBillingEnabled(auth)) {
-      await activateCreditPricedFreePlan(auth);
+      const ip = getClientIpFromContext(ctx);
+      let countryCode: string | undefined;
+      try {
+        countryCode = await resolveCountryCode(ip);
+      } catch {
+        // Fall back to USD if geo-IP lookup fails.
+      }
+      await activateCreditPricedFreePlan(auth, countryCode);
     } else {
       await activatePhoneTrial(auth);
     }

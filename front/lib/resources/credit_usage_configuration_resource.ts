@@ -126,6 +126,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       upgradeRequestEmailEnabled: boolean;
       defaultPoolCapAwuCredits: number | null;
       programmaticMonthlyCapAwuCredits: number | null;
+      autoSeatUpgradeEnabled: boolean;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {

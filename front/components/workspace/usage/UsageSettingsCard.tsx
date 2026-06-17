@@ -40,6 +40,7 @@ export function UsageSettingsCard({
 
   const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
     useState(false);
+  const [isSavingAutoSeatUpgrade, setIsSavingAutoSeatUpgrade] = useState(false);
 
   const handleToggleAllowUpgradeRequest = async () => {
     setIsSavingAllowUpgradeRequest(true);
@@ -49,6 +50,17 @@ export function UsageSettingsCard({
       });
     } finally {
       setIsSavingAllowUpgradeRequest(false);
+    }
+  };
+
+  const handleToggleAutoSeatUpgrade = async () => {
+    setIsSavingAutoSeatUpgrade(true);
+    try {
+      await doUpdateUsageSettings({
+        autoSeatUpgradeEnabled: !usageSettings.autoSeatUpgradeEnabled,
+      });
+    } finally {
+      setIsSavingAutoSeatUpgrade(false);
     }
   };
 
@@ -109,6 +121,19 @@ export function UsageSettingsCard({
                 isUsageSettingsLoading
               }
               onClick={() => void handleToggleAllowUpgradeRequest()}
+            />
+          }
+        />
+        <SettingsList.Row
+          title="Auto-upgrade seats"
+          description="When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost."
+          action={
+            <SliderToggle
+              selected={usageSettings.autoSeatUpgradeEnabled}
+              disabled={
+                readOnly || isSavingAutoSeatUpgrade || isUsageSettingsLoading
+              }
+              onClick={() => void handleToggleAutoSeatUpgrade()}
             />
           }
         />

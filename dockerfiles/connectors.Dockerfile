@@ -1,4 +1,4 @@
-FROM node:24.14.0 as connectors
+FROM node:24.16.0 as connectors
 
 RUN npm install -g npm@11.11.0
 
@@ -23,6 +23,9 @@ COPY /connectors/ .
 # Remove test files
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
+
+# Copy shared migration tooling (scripts/migrate.ts imports ../../scripts/db/migration-runner)
+COPY /scripts/db /app/scripts/db
 
 # Build temporal workers
 RUN CONNECTORS_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles

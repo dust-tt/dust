@@ -35,6 +35,7 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     const { configuration } = await response.json();
     expect(configuration.allowMemberUpgradeRequests).toBe(true);
     expect(configuration.upgradeRequestEmailEnabled).toBe(true);
+    expect(configuration.autoSeatUpgradeEnabled).toBe(false);
   });
 
   it("PATCH persists the upgrade-request toggles and GET reflects them", async () => {
@@ -74,6 +75,40 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     const getBody = await getResponse.json();
     expect(getBody.configuration.allowMemberUpgradeRequests).toBe(false);
     expect(getBody.configuration.upgradeRequestEmailEnabled).toBe(false);
+  });
+
+  it("PATCH persists autoSeatUpgradeEnabled and GET reflects it", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    const patchResponse = await honoApp.request(
+      usageConfigurationUrl(workspace.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoSeatUpgradeEnabled: true }),
+      }
+    );
+
+    expect(patchResponse.status).toBe(200);
+    const { configuration } = await patchResponse.json();
+    expect(configuration.autoSeatUpgradeEnabled).toBe(true);
+    // Untouched toggles keep their defaults.
+    expect(configuration.allowMemberUpgradeRequests).toBe(true);
+
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      workspace,
+    });
+
+    const getResponse = await honoApp.request(
+      usageConfigurationUrl(workspace.sId)
+    );
+    const getBody = await getResponse.json();
+    expect(getBody.configuration.autoSeatUpgradeEnabled).toBe(true);
   });
 
   it("PATCH returns 403 when caller is not an admin", async () => {

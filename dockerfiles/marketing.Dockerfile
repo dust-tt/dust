@@ -1,5 +1,5 @@
 # Marketing image — Next.js standalone build out of the `marketing/` workspace.
-FROM node:24.14.0-slim AS base-deps
+FROM node:24.16.0-slim AS base-deps
 
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
@@ -66,7 +66,7 @@ RUN NODE_OPTIONS="--max-old-space-size=8192" \
   fi
 
 # Runtime image
-FROM node:24.14.0-slim AS marketing
+FROM node:24.16.0-slim AS marketing
 
 RUN apt-get update && \
   apt-get install -y libjemalloc2 curl && \
