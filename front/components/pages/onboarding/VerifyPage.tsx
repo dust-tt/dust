@@ -168,68 +168,103 @@ export function VerifyPage() {
       return;
     }
 
+    lastAutoSubmittedCodeRef.current = null;
+    setCode(Array(CODE_LENGTH).fill(""));
     setResendCooldown(RESEND_COOLDOWN_SECONDS);
     setStep("code");
   };
 
-  const handleVerifyCode = async () => {
-    const fullCode = code.join("");
-    if (fullCode.length !== CODE_LENGTH) {
-      setPhoneError("Please enter the full 6-digit code.");
+  const lastAutoSubmittedCodeRef = useRef<string | null>(null);
+
+  const verifyCode = useCallback(
+    async (fullCode: string) => {
+      if (fullCode.length !== CODE_LENGTH) {
+        setPhoneError("Please enter the full 6-digit code.");
+        return;
+      }
+
+      setIsLoading(true);
+      setPhoneError(null);
+      try {
+        const e164Phone = phoneNumber;
+
+        const verifyResponse = await clientFetch(
+          `/api/w/${workspace.sId}/verification/validate`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phoneNumber: e164Phone, code: fullCode }),
+          }
+        );
+
+        if (!verifyResponse.ok) {
+          const data = await verifyResponse.json();
+          setPhoneError(data.error?.message ?? "Invalid code");
+          return;
+        }
+
+        const trialResponse = await clientFetch(
+          `/api/w/${workspace.sId}/trial/start`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+
+        if (!trialResponse.ok) {
+          const data = await trialResponse.json();
+          setPhoneError(data.api_error?.message ?? "Failed to start trial");
+          return;
+        }
+
+        // Revalidate the auth context so the SPA picks up the new subscription
+        // (canUseProduct is now true) and doesn't redirect back to /trial.
+        await mutateAuthContext();
+
+        // With the credit-priced checkout flow we show a welcome screen before
+        // entering the workspace instead of redirecting there directly.
+        if (isMetronomeCheckout) {
+          setStep("done");
+        } else {
+          goToWorkspace();
+        }
+      } catch {
+        setPhoneError("Network error. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      phoneNumber,
+      workspace.sId,
+      mutateAuthContext,
+      isMetronomeCheckout,
+      goToWorkspace,
+    ]
+  );
+
+  const handleVerifyCode = useCallback(() => {
+    void verifyCode(code.join(""));
+  }, [code, verifyCode]);
+
+  useEffect(() => {
+    if (step !== "code" || isLoading) {
       return;
     }
 
-    setIsLoading(true);
-    setPhoneError(null);
-    try {
-      const e164Phone = phoneNumber;
+    const fullCode = code.join("");
 
-      const verifyResponse = await clientFetch(
-        `/api/w/${workspace.sId}/verification/validate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: e164Phone, code: fullCode }),
-        }
-      );
-
-      if (!verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        setPhoneError(data.error?.message ?? "Invalid code");
-        return;
-      }
-
-      const trialResponse = await clientFetch(
-        `/api/w/${workspace.sId}/trial/start`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-
-      if (!trialResponse.ok) {
-        const data = await trialResponse.json();
-        setPhoneError(data.api_error?.message ?? "Failed to start trial");
-        return;
-      }
-
-      // Revalidate the auth context so the SPA picks up the new subscription
-      // (canUseProduct is now true) and doesn't redirect back to /trial.
-      await mutateAuthContext();
-
-      // With the credit-priced checkout flow we show a welcome screen before
-      // entering the workspace instead of redirecting there directly.
-      if (isMetronomeCheckout) {
-        setStep("done");
-      } else {
-        goToWorkspace();
-      }
-    } catch {
-      setPhoneError("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
+    if (fullCode.length !== CODE_LENGTH) {
+      return;
     }
-  };
+
+    if (lastAutoSubmittedCodeRef.current === fullCode) {
+      return;
+    }
+
+    lastAutoSubmittedCodeRef.current = fullCode;
+    void verifyCode(fullCode);
+  }, [code, step, isLoading, verifyCode]);
 
   const handleCodeChange = useCallback((index: number, value: string) => {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -293,6 +328,7 @@ export function VerifyPage() {
   const handleBack = () => {
     setStep("phone");
     setCode(Array(CODE_LENGTH).fill(""));
+    lastAutoSubmittedCodeRef.current = null;
     setPhoneError(null);
   };
 
@@ -544,7 +580,7 @@ function CodeVerificationStep({
                     variant="primary"
                     label={isLoading ? "Verifying..." : "Verify now"}
                     onClick={onVerify}
-                    disabled={isLoading}
+                    disabled={isLoading || code.join("").length !== CODE_LENGTH}
                   />
                 </div>
               </div>
