@@ -297,7 +297,7 @@ SharingGrantModel.belongsTo(UserModel, {
 
 /**
  * Authorized file access: one row per file a shared Frame may load via useFile().
- * Only rows for the current frame version are kept; prior versions are deleted on update.
+ * Active rows have revokedAt = null.
  */
 
 export class AuthorizedFileAccessModel extends WorkspaceAwareModel<AuthorizedFileAccessModel> {
