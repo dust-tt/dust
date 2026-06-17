@@ -1,8 +1,7 @@
 import { queryTracker } from "@app/lib/api/query_tracker";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import { context as otelContext, trace } from "@opentelemetry/api";
-import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
+import { getRequestContext } from "@app/types/shared/utils/request_context";
 import type {
   ColumnsDescription,
   Model,
@@ -28,6 +27,7 @@ interface TxState {
   beginAtMs: number;
   busyMs: number;
   route: string | undefined;
+  method: string | undefined;
   lastQuerySql: string;
   queries: string[];
 }
@@ -52,25 +52,12 @@ function trackTx(
   const txId = transaction.id;
 
   if (isBegin) {
-    const span = trace.getSpan(otelContext.active());
-    let route: string | undefined;
-    if (span && span.isRecording()) {
-      const attrs = (span as unknown as ReadableSpan).attributes;
-      if (attrs?.["next.route"]) {
-        route = String(attrs["next.route"]);
-      } else if (attrs?.["next.span_name"]) {
-        const m = String(attrs["next.span_name"]).match(
-          /executing api route \(pages\) (.+)$/
-        );
-        if (m) {
-          route = m[1];
-        }
-      }
-    }
+    const reqCtx = getRequestContext();
     txStates.set(txId, {
       beginAtMs: performance.now(),
       busyMs: 0,
-      route,
+      route: reqCtx?.route,
+      method: reqCtx?.method,
       lastQuerySql: "",
       queries: [],
     });
@@ -97,6 +84,7 @@ function trackTx(
             busyMs: state.busyMs,
             outcome: isCommit ? "commit" : "rollback",
             route: state.route,
+            method: state.method,
             lastQuerySql: state.lastQuerySql,
             queries: state.queries,
           },
@@ -232,25 +220,15 @@ export class SequelizeWithComments<
 
       const comments: Record<string, string> = {};
 
-      // Get Next.js route from OpenTelemetry span.
-      const span = trace.getSpan(otelContext.active());
-      if (span && span.isRecording()) {
-        const readableSpan = span as unknown as ReadableSpan;
-        const attrs = readableSpan.attributes;
-
-        // Case 1: getServerSideProps/getStaticProps: has explicit `next.route`.
-        if (attrs?.["next.route"]) {
-          comments.route = attrs["next.route"] as string;
-        }
-        // Case 2: API routes: extract from next.span_name.
-        else if (attrs?.["next.span_name"]) {
-          const spanName = attrs["next.span_name"] as string;
-          // Extract route from: "executing api route (pages) /api/w/[wId]/feature-flags".
-          const match = spanName.match(/executing api route \(pages\) (.+)$/);
-          if (match) {
-            comments.route = match[1];
-          }
-        }
+      // Get the matched route and HTTP method from the request context,
+      // populated by the Hono request logger middleware
+      // (`runWithRequestContext`).
+      const reqCtx = getRequestContext();
+      if (reqCtx?.route) {
+        comments.route = reqCtx.route;
+      }
+      if (reqCtx?.method) {
+        comments.method = reqCtx.method;
       }
 
       // Build comment string following sqlcommenter format

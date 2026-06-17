@@ -2,6 +2,7 @@ import "./lib/tracer-config";
 
 import { Server } from "node:http";
 import { performance } from "node:perf_hooks";
+import { initializeOpenTelemetryInstrumentation } from "@app/lib/api/instrumentation/init";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
@@ -11,6 +12,8 @@ import { honoApp } from "./app";
 const KEEP_ALIVE_TIMEOUT_MS = 5000;
 
 setupGlobalErrorHandler(logger);
+
+initializeOpenTelemetryInstrumentation({ serviceName: "dust-front" });
 
 const dev = isDevelopment();
 const port = parseInt(process.env.PORT ?? "3000", 10);
