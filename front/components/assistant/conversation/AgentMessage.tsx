@@ -60,6 +60,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -1302,6 +1303,9 @@ function AgentMessageContent({
   );
   const matches = (agentMessage.content ?? "").matchAll(markdownImageRegex);
   const referencedFileIds = new Set([...matches].map((m) => m[1]));
+  const referencedFilePaths = getFilePreviewDirectivePaths(
+    agentMessage.content ?? ""
+  );
 
   // Get completed images that are not already referenced in the Markdown content.
   // Combine from actions (updated during streaming) and generatedFiles (available on reload).
@@ -1354,7 +1358,8 @@ function AgentMessageContent({
   const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
-      !isInteractiveContentType(file.contentType)
+      !isInteractiveContentType(file.contentType) &&
+      (file.filePath === undefined || !referencedFilePaths.has(file.filePath))
   );
 
   return (

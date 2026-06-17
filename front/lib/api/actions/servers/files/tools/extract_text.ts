@@ -10,6 +10,7 @@ import {
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import config from "@app/lib/api/config";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import {
@@ -138,7 +139,13 @@ export async function extractTextHandler(
   return new Ok([
     {
       type: "text",
-      text: `Extracted text from \`${path}\` to \`${outputPath}\` (${sizeKb} KB). The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
+      text:
+        `Extracted text from \`${path}\` to \`${outputPath}\` (${sizeKb} KB). ` +
+        getFilePreviewDirectiveInstruction({
+          contentType: "text/plain",
+          path: outputPath,
+          title: fileName,
+        }),
     },
     {
       type: "resource",

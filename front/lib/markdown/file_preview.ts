@@ -19,6 +19,13 @@ export type ParsedFilePreviewDirective = {
   title?: string;
 };
 
+const FILE_PREVIEW_DIRECTIVE_REGEX = new RegExp(
+  String.raw`:${FILE_PREVIEW_DIRECTIVE_NAME}(?:\[[^\]\n]*\])?\{([^}\n]*)\}`,
+  "g"
+);
+const FILE_PREVIEW_PATH_ATTRIBUTE_REGEX =
+  /\bpath\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s}]+))/;
+
 function fileExtensionLabel(fileName: string): string | null {
   const lastDot = fileName.lastIndexOf(".");
   if (lastDot <= 0 || lastDot === fileName.length - 1) {
@@ -186,6 +193,22 @@ export function getFilePreviewMarkdownDirective({
   return `:${FILE_PREVIEW_DIRECTIVE_NAME}{${attributes.join(" ")}}`;
 }
 
+export function getFilePreviewDirectivePaths(content: string): Set<string> {
+  const paths = new Set<string>();
+
+  for (const match of content.matchAll(FILE_PREVIEW_DIRECTIVE_REGEX)) {
+    const attributes = match[1];
+    const pathMatch = attributes.match(FILE_PREVIEW_PATH_ATTRIBUTE_REGEX);
+    const encodedPath = pathMatch?.[1] ?? pathMatch?.[2] ?? pathMatch?.[3];
+
+    if (encodedPath) {
+      paths.add(unescape(encodedPath));
+    }
+  }
+
+  return paths;
+}
+
 export function getFilePreviewDirectiveInstruction({
   contentType,
   path,
@@ -198,6 +221,7 @@ export function getFilePreviewDirectiveInstruction({
   return (
     "To show a previewable file citation in your response, output this markdown directive exactly on its own line:\n" +
     `${getFilePreviewMarkdownDirective({ contentType, path, title })}\n` +
+    "The rendered citation opens the file preview, where the user can download the file. " +
     "Do not invent a URL for this file."
   );
 }
