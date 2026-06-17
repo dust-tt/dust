@@ -1,5 +1,6 @@
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import {
+  consumeFrameOtpRequestRateLimit,
   generateFrameOtpChallenge,
   sendFrameOtpEmail,
   validateFrameOtpChallenge,
@@ -23,41 +24,25 @@ vi.mock("@app/lib/api/email", async (importOriginal) => {
 const EMAIL = "user@example.com";
 const SHARE_TOKEN = "share-token-abc";
 
-describe("generateFrameOtpChallenge", () => {
-  it("returns Ok with a 6-digit code string", async () => {
-    const result = await generateFrameOtpChallenge({
+describe("consumeFrameOtpRequestRateLimit", () => {
+  it("rate limits OTP requests by share token and email", async () => {
+    const result = await consumeFrameOtpRequestRateLimit({
       email: EMAIL,
       shareToken: SHARE_TOKEN,
     });
 
     expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.code).toMatch(/^\d{6}$/);
-    }
-  });
-
-  it("stores the challenge in Redis (verifiable via validate)", async () => {
-    const genResult = await generateFrameOtpChallenge({
-      email: EMAIL,
-      shareToken: SHARE_TOKEN,
-    });
-    expect(genResult.isOk()).toBe(true);
-    if (!genResult.isOk()) {
-      return;
-    }
-
-    const validateResult = await validateFrameOtpChallenge({
-      email: EMAIL,
-      shareToken: SHARE_TOKEN,
-      submittedCode: genResult.value.code,
-    });
-    expect(validateResult.isOk()).toBe(true);
+    expect(rateLimiter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `frame_otp:rate:${SHARE_TOKEN}:${EMAIL}`,
+      })
+    );
   });
 
   it("returns Err('rate_limited') when rateLimiter returns 0", async () => {
     vi.mocked(rateLimiter).mockResolvedValueOnce(0);
 
-    const result = await generateFrameOtpChallenge({
+    const result = await consumeFrameOtpRequestRateLimit({
       email: EMAIL,
       shareToken: SHARE_TOKEN,
     });
@@ -69,6 +54,33 @@ describe("generateFrameOtpChallenge", () => {
   });
 });
 
+describe("generateFrameOtpChallenge", () => {
+  it("returns Ok with a 6-digit code string", async () => {
+    const result = await generateFrameOtpChallenge({
+      email: EMAIL,
+      shareToken: SHARE_TOKEN,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(result.value.code).toMatch(/^\d{6}$/);
+  });
+
+  it("stores the challenge in Redis (verifiable via validate)", async () => {
+    const genResult = await generateFrameOtpChallenge({
+      email: EMAIL,
+      shareToken: SHARE_TOKEN,
+    });
+    expect(genResult.isOk()).toBe(true);
+
+    const validateResult = await validateFrameOtpChallenge({
+      email: EMAIL,
+      shareToken: SHARE_TOKEN,
+      submittedCode: genResult.value.code,
+    });
+    expect(validateResult.isOk()).toBe(true);
+  });
+});
+
 describe("validateFrameOtpChallenge", () => {
   it("returns Ok on correct code", async () => {
     const genResult = await generateFrameOtpChallenge({
@@ -76,9 +88,6 @@ describe("validateFrameOtpChallenge", () => {
       shareToken: SHARE_TOKEN,
     });
     expect(genResult.isOk()).toBe(true);
-    if (!genResult.isOk()) {
-      return;
-    }
 
     const result = await validateFrameOtpChallenge({
       email: EMAIL,
@@ -155,8 +164,7 @@ describe("validateFrameOtpChallenge", () => {
       shareToken: SHARE_TOKEN,
     });
 
-    // The rateLimiter is called by both generate and validate.
-    // Mock it to return 0 on the next call (which will be validate's rate limiter).
+    // Mock the next call to return 0 for validate's rate limiter.
     vi.mocked(rateLimiter).mockResolvedValueOnce(0);
 
     const result = await validateFrameOtpChallenge({

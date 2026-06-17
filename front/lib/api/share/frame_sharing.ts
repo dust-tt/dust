@@ -46,17 +46,18 @@ interface OtpChallengeData {
   code: string;
 }
 
-export async function generateFrameOtpChallenge({
+export async function consumeFrameOtpRequestRateLimit({
   email,
   shareToken,
 }: {
   email: string;
   shareToken: string;
-}): Promise<Result<{ code: string }, "rate_limited">> {
-  // Rate limit by email: max 5 OTP requests per hour.
-  // TODO(2026-03-19 FRAME SHARING): Should we consider limiting per IP/email.
+}): Promise<Result<void, "rate_limited">> {
+  // Rate limit by share token and email before checking whether the share token
+  // or grant exists. This keeps rate-limit responses independent from the
+  // authorization result and prevents using 429 vs 200 as an enumeration oracle.
   const remaining = await rateLimiter({
-    key: `frame_otp:rate:${email}`,
+    key: `frame_otp:rate:${shareToken}:${email}`,
     maxPerTimeframe: OTP_RATE_LIMIT_MAX_PER_HOUR,
     timeframeSeconds: OTP_RATE_LIMIT_TIMEFRAME_SECONDS,
     logger,
@@ -66,6 +67,16 @@ export async function generateFrameOtpChallenge({
     return new Err("rate_limited");
   }
 
+  return new Ok(undefined);
+}
+
+export async function generateFrameOtpChallenge({
+  email,
+  shareToken,
+}: {
+  email: string;
+  shareToken: string;
+}): Promise<Ok<{ code: string }>> {
   const code = crypto.randomInt(100000, 1000000).toString();
 
   await runOnRedis({ origin: "otp_challenge" }, async (redis) => {

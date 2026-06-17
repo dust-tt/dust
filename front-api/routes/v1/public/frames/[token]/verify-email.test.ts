@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { FileShareScope } from "@app/types/files";
@@ -7,6 +8,10 @@ import { frameContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/utils/rate_limiter", () => ({
+  rateLimiter: vi.fn().mockResolvedValue(1),
+}));
 
 vi.mock("@app/lib/api/email", async (importOriginal) => {
   const mod = await importOriginal<typeof import("@app/lib/api/email")>();
@@ -45,6 +50,8 @@ describe("verify-email endpoint", () => {
   let auth: Authenticator;
 
   beforeEach(async () => {
+    vi.mocked(rateLimiter).mockReset();
+    vi.mocked(rateLimiter).mockResolvedValue(1);
     vi.mocked(sendEmailWithTemplate).mockClear();
 
     const resources = await createResourceTest({ role: "admin" });
@@ -155,4 +162,39 @@ describe("verify-email endpoint", () => {
     expect(response.status).toBe(200);
     expect(vi.mocked(sendEmailWithTemplate)).toHaveBeenCalledOnce();
   });
+
+  it(
+    "returns 429 for invalid/unknown share token when the request rate limit is exhausted",
+    async () => {
+      vi.mocked(rateLimiter).mockResolvedValueOnce(0);
+
+      const response = await postVerifyEmail(
+        "00000000-0000-0000-0000-000000000000",
+        { email: "test@example.com" }
+      );
+
+      expect(response.status).toBe(429);
+      const body = await response.json();
+      expect(body.error.type).toBe("rate_limit_error");
+      expect(vi.mocked(sendEmailWithTemplate)).not.toHaveBeenCalled();
+    }
+  );
+
+  it(
+    "returns 429 for emails without grants when the request rate limit is exhausted",
+    async () => {
+      const { token } = await createFrameWithScope(auth, user, "emails_only");
+
+      vi.mocked(rateLimiter).mockResolvedValueOnce(0);
+
+      const response = await postVerifyEmail(token, {
+        email: "nogrant@example.com",
+      });
+
+      expect(response.status).toBe(429);
+      const body = await response.json();
+      expect(body.error.type).toBe("rate_limit_error");
+      expect(vi.mocked(sendEmailWithTemplate)).not.toHaveBeenCalled();
+    }
+  );
 });

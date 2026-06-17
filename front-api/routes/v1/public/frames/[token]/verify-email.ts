@@ -1,5 +1,6 @@
 /** @ignoreswagger */
 import {
+  consumeFrameOtpRequestRateLimit,
   generateFrameOtpChallenge,
   sendFrameOtpEmail,
 } from "@app/lib/api/share/frame_sharing";
@@ -35,6 +36,20 @@ app.post(
     const { email: rawEmail } = ctx.req.valid("json");
     const email = rawEmail.toLowerCase().trim();
 
+    const rateLimitResult = await consumeFrameOtpRequestRateLimit({
+      shareToken: token,
+      email,
+    });
+    if (rateLimitResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message: "Too many verification requests. Please try again later.",
+        },
+      });
+    }
+
     const result = await FileResource.fetchByShareToken(token);
     if (result.isErr()) {
       // Return 200 to prevent enumeration.
@@ -65,15 +80,6 @@ app.post(
       shareToken: token,
       email,
     });
-    if (otpResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 429,
-        api_error: {
-          type: "rate_limit_error",
-          message: "Too many verification requests. Please try again later.",
-        },
-      });
-    }
 
     await sendFrameOtpEmail({
       to: email,
