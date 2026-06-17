@@ -2486,11 +2486,18 @@ async function checkMessagesLimit(
         : null;
     if (blockedReason === "no_seat") {
       // If the workspace opted into auto-upgrades, try to assign a seat
-      // (none → workspace) so the member is unblocked on their next attempt.
-      // Fire-and-forget: it no-ops unless eligible, and we don't block this
-      // request on the Metronome seat sync.
+      // (none → workspace) so the member can proceed with this very message.
+      // We await the result (it no-ops unless eligible): on success the user
+      // is no longer seat-less, so we fall through instead of rejecting a
+      // message we just unblocked.
       if (user) {
-        void maybeAutoUpgradeSeat({ workspaceId: owner.sId, userId: user.sId });
+        const upgrade = await maybeAutoUpgradeSeat({
+          workspaceId: owner.sId,
+          userId: user.sId,
+        });
+        if (upgrade.isOk() && upgrade.value.upgraded) {
+          return new Ok(undefined);
+        }
       }
       return new Err({
         status_code: 403,
