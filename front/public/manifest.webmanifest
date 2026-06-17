@@ -1,7 +1,7 @@
 {
   "name": "Dust",
   "short_name": "Dust",
-  "description": "Build and operate AI agents for work.",
+  "description": "Multiplayer AI for human-agent collaboration",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
