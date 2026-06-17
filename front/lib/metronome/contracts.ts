@@ -328,7 +328,6 @@ export async function provisionMetronomeContract({
     // (which would leave them unbilled). For future-dated switches this schedules
     // the change at the contract start; the sync below then reconciles the new
     // contract against the (current or scheduled) membership seat types.
-    const remapStartMs = Date.now();
     const remapResult = await remapMembershipSeatTypesForContract({
       metronomeCustomerId,
       contractId: metronomeContractId,
@@ -336,10 +335,6 @@ export async function provisionMetronomeContract({
       swapAt,
       startingAt: alignedStart,
     });
-    logger.error(
-      { workspaceId: workspace.sId, durationMs: Date.now() - remapStartMs },
-      "[Metronome] remapMembershipSeatTypesForContract"
-    );
     if (remapResult.isErr()) {
       return new Err(remapResult.error);
     }
