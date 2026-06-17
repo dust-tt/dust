@@ -244,7 +244,7 @@ export async function syncConversation({
   markdown += `# ${convoTitle}\n\n`;
   markdown += `**TAGS: ${tagsAsString ?? "no tags"}**\n`;
   markdown += `**SOURCE: ${source || "unknown"}**\n`;
-  markdown += `**CUSTOM ATTRIBUTES: ${stripNullBytes(JSON.stringify(customAttributes))}**\n\n`;
+  markdown += `**CUSTOM ATTRIBUTES: ${JSON.stringify(customAttributes)}**\n\n`;
 
   if (firstMessageAuthor && firstMessageContent) {
     markdown += `**[Message] ${stripNullBytes(firstMessageAuthor.name)} (${firstMessageAuthor.type})**\n`;
