@@ -92,18 +92,7 @@ export type UserCreditEvent =
    * Only applies to pro/max seats (workspace seats have no individual seat
    * balance; free seats stay `capped`). Resets any state back to `user_seat`.
    */
-  | { type: "seat_balance_resolved" }
-  /**
-   * User hit the 80% warning threshold of their admin-configured per-user
-   * spend cap. Moves `on_pool` → `on_pool_low_balance` to surface the
-   * low-balance warning without blocking the user.
-   */
-  | { type: "per_user_cap_warning" }
-  /**
-   * The 80% warning was cleared (e.g. admin raised or removed the per-user cap).
-   * Moves `on_pool_low_balance` → `on_pool`; idempotent from `on_pool`.
-   */
-  | { type: "per_user_cap_warning_resolved" };
+  | { type: "seat_balance_resolved" };
 
 type UserCreditGuard = (
   ctx: UserCreditContext,
@@ -264,20 +253,6 @@ const TRANSITIONS: UserCreditTransition[] = [
     event: "seat_low_balance",
     guard: (ctx) => ctx.seatType === "free",
     to: "user_seat_low_balance",
-  },
-
-  // Per-user cap 80% warning: move on_pool → on_pool_low_balance.
-  {
-    from: ["on_pool", "on_pool_low_balance"],
-    event: "per_user_cap_warning",
-    to: "on_pool_low_balance",
-  },
-
-  // Per-user cap warning cleared (admin raised/removed cap): move on_pool_low_balance → on_pool.
-  {
-    from: ["on_pool", "on_pool_low_balance"],
-    event: "per_user_cap_warning_resolved",
-    to: "on_pool",
   },
 
   // Seat balance replenished — for pro/max a billing-period renewal, for free a

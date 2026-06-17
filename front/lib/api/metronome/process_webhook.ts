@@ -12,7 +12,6 @@ import {
   dispatchPaygCapReached,
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
-  dispatchPerUserCapWarning,
   dispatchPoolExhausted,
   dispatchProgrammaticCapReached,
   dispatchProgrammaticCapReset,
@@ -78,6 +77,7 @@ import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
+import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
@@ -810,22 +810,27 @@ async function handlePerUserSpendThresholdEvent({
         );
       }
     }
-  } else if (eventAlertId === warningAlertId && isReached) {
-    // Warning alert (80%) fired — notify but don't block.
-    void dispatchPerUserCapWarning({ workspace, userId });
-    const user = await UserResource.fetchById(userId);
-    if (user) {
-      const lightWorkspace = renderLightWorkspaceType({ workspace });
-      notifyUserAwuCapReached({
-        userSId: user.sId,
-        userEmail: user.email,
-        userFirstName: user.firstName,
-        userLastName: user.lastName,
-        workspaceId: workspace.sId,
-        workspaceName: lightWorkspace.name,
-        capAwuCredits: capThreshold,
-        isBlocked: false,
-      });
+  } else if (eventAlertId === warningAlertId) {
+    if (isReached) {
+      // Warning alert (80%) fired — set near-limit flag and notify, don't block.
+      void setUserNearLimit(workspace.sId, userId, true);
+      const user = await UserResource.fetchById(userId);
+      if (user) {
+        const lightWorkspace = renderLightWorkspaceType({ workspace });
+        notifyUserAwuCapReached({
+          userSId: user.sId,
+          userEmail: user.email,
+          userFirstName: user.firstName,
+          userLastName: user.lastName,
+          workspaceId: workspace.sId,
+          workspaceName: lightWorkspace.name,
+          capAwuCredits: capThreshold,
+          isBlocked: false,
+        });
+      }
+    } else {
+      // Warning alert resolved (cap raised/removed) — clear near-limit flag.
+      void setUserNearLimit(workspace.sId, userId, false);
     }
   } else {
     // Event is from an unrelated alert (e.g. a different seat type) — ignore.
@@ -1128,13 +1133,13 @@ export async function processMetronomeWebhook({
           "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit exhausted dispatched"
         );
       } else {
+        void setUserNearLimit(workspace.sId, userId, true);
         await dispatchSeatLowBalance({ workspace, userId, threshold });
         logger.info(
           {
             eventId: event.id,
             workspaceId: workspace.sId,
             userId,
-            remaining: threshold,
           },
           "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit low balance dispatched"
         );
@@ -1149,6 +1154,7 @@ export async function processMetronomeWebhook({
       if (!userId) {
         break;
       }
+      void setUserNearLimit(workspace.sId, userId, false);
       await dispatchSeatBalanceResolved({ workspace, userId });
       logger.info(
         { eventId: event.id, workspaceId: workspace.sId, userId },

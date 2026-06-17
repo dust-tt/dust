@@ -110,15 +110,60 @@ async function setFlag(key: string, value: string): Promise<void> {
   });
 }
 
-// Per-user AWU 80% warning — derived from the fine-grained credit state.
-// "*_low_balance" states mean the user is warned but not yet blocked.
+// Per-user "near limit" flag — stored independently of the credit state so
+// the warning signal can be decoupled from the seat↔pool dimension.
+//
+// Set to true by:
+//   - `spend_threshold_reached` (warningAlertId, isPerUser): consumption reached
+//     80% of the per-user cap (seat allowance + pool limit). Pro/max pool users.
+//   - `low_remaining_contract_credit_balance_reached` (threshold > 0): a free
+//     seat's lifetime credit balance crossed the low-balance threshold.
+// Set to false by:
+//   - `spend_threshold_reached` resolved (warningAlertId, isPerUser): cap raised/removed.
+//   - `low_remaining_contract_credit_balance_resolved`: free seat credit recovered.
+//   - Admin removes/raises per-user cap (spend_limit.ts).
+//   - Reconciliation: recomputed from live Metronome balance on each reconcile.
+//
+// Cache-miss fallback: infer from the credit state so that existing
+// `on_pool_low_balance` / `user_seat_low_balance` rows continue to show the
+// banner until they are migrated or reconciled.
+
+function buildUserNearLimitKey(workspaceId: string, userId: string): string {
+  return `metronome:user_near_limit:${workspaceId}:${userId}`;
+}
+
+export async function setUserNearLimit(
+  workspaceId: string,
+  userId: string,
+  nearLimit: boolean
+): Promise<void> {
+  await setFlag(
+    buildUserNearLimitKey(workspaceId, userId),
+    nearLimit ? "1" : "0"
+  );
+}
+
+async function getUserNearLimit(
+  workspaceId: string,
+  userId: string
+): Promise<boolean> {
+  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildUserNearLimitKey(workspaceId, userId))
+  );
+  if (cached !== null) {
+    return cached === "1";
+  }
+  // Cache miss: fall back to credit state for existing rows that haven't been
+  // migrated yet (on_pool_low_balance / user_seat_low_balance).
+  const state = await getUserCreditState(workspaceId, userId);
+  return state === "on_pool_low_balance" || state === "user_seat_low_balance";
+}
 
 export async function isUserAwuWarned(
   workspaceId: string,
   userId: string
 ): Promise<boolean> {
-  const state = await getUserCreditState(workspaceId, userId);
-  return state === "on_pool_low_balance" || state === "user_seat_low_balance";
+  return getUserNearLimit(workspaceId, userId);
 }
 
 // Workspace credit-balance threshold reached (admin-configured early warning).

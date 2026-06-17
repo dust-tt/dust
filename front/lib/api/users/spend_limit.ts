@@ -5,7 +5,6 @@ import {
 import {
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
-  dispatchPerUserCapWarningResolved,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
@@ -18,6 +17,7 @@ import {
 } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -336,10 +336,7 @@ export async function setUserSpendLimit(
         workspace: workspaceResource,
         userId,
       });
-      void dispatchPerUserCapWarningResolved({
-        workspace: workspaceResource,
-        userId,
-      });
+      void setUserNearLimit(workspaceResource.sId, userId, false);
 
       // With the override cleared, the workspace default (pool-only value
       // persisted on the credit-usage configuration) applies for the user's
