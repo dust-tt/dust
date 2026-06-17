@@ -34,6 +34,7 @@ import {
   type SeatData,
 } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
+import { isUserAwuWarned } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -42,6 +43,7 @@ import {
   resolveEffectiveSpendLimitAwuCredits,
   resolveEffectiveSpendLimitSource,
 } from "@app/lib/spend_limits/effective";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   MembershipSeatType,
@@ -112,6 +114,9 @@ export type MemberUsageType = {
   // Per-user credit state machine state (personal-credits → pool → capped
   // progression) persisted on the membership. Surfaced for debugging.
   creditState: UserCreditState;
+  // Whether the user has consumed ≥ 80% of their effective limit. Driven by
+  // the nearLimit Redis flag (see user_block.ts). Poke-only.
+  nearLimit: boolean;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -744,6 +749,7 @@ export async function getMemberUsage({
       freeCreditLowAlert: null,
       freeCreditEmptyAlert: null,
       creditState: membership.creditState,
+      nearLimit: false,
     },
   };
 }
@@ -900,6 +906,19 @@ export async function getMembersUsage({
     });
 
   const membershipByUserId = new Map(memberships.map((m) => [m.userId, m]));
+
+  // Bulk-fetch near-limit flags from Redis (poke-only, gated on includeAlertLinks).
+  const nearLimitByUserId = includeAlertLinks
+    ? new Map(
+        await concurrentExecutor(
+          users,
+          async (u) =>
+            [u.sId, await isUserAwuWarned(workspace.sId, u.sId)] as const,
+          { concurrency: 8 }
+        )
+      )
+    : new Map<string, boolean>();
+
   const membersUsage: MemberUsageType[] = users.flatMap((u) => {
     const membership = membershipByUserId.get(u.id);
     if (!membership) {
@@ -1000,6 +1019,7 @@ export async function getMembersUsage({
         freeCreditLowAlert: freeCreditAlerts?.low ?? null,
         freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
         creditState: membership.creditState,
+        nearLimit: nearLimitByUserId.get(userId) ?? false,
       },
     ];
   });

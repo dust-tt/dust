@@ -218,7 +218,7 @@ function makeColumns({
       header: "Credit state",
       enableSorting: false,
       cell: ({ row }) => {
-        const { creditState, sId } = row.original;
+        const { creditState, nearLimit, sId } = row.original;
         return (
           <span className="inline-flex items-center gap-2">
             <Chip
@@ -226,6 +226,7 @@ function makeColumns({
               color={USER_CREDIT_STATE_CHIP_COLOR[creditState] ?? "info"}
               label={creditState}
             />
+            {nearLimit && <Chip size="xs" color="warning" label="near limit" />}
             <CreditStateLogsLink
               machine="user"
               workspaceId={owner.sId}

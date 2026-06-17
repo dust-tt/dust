@@ -102,6 +102,7 @@ function memberFromUpgradeRequest(
     freeCreditLowAlert: null,
     freeCreditEmptyAlert: null,
     creditState: "capped",
+    nearLimit: false,
   };
 }
 
