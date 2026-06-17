@@ -41,7 +41,7 @@ export const seatAutoUpgradedWorkflow = workflow(
       const digestKey = `${subscriber.subscriberId}-workspace-${payload.workspaceId}-seat-auto-upgrades`;
       return isDevelopment()
         ? { amount: 2, unit: "minutes", digestKey }
-        : { cron: "0 9 * * *", digestKey }; // Every day at 9:00 AM UTC.
+        : { cron: "0 */5 * * *", digestKey }; // Every 5 hours
     });
 
     await step.email(
