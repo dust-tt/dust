@@ -1,5 +1,6 @@
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import {
+  type InputConfig,
   inputConfigSchema,
   temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
@@ -41,7 +42,7 @@ export function WithAnthropicClaudeSonnetFourDotSixConfig<
   abstract class AnthropicClaudeSonnetFourDotSix extends Base {
     static readonly modelId = CLAUDE_SONNET_4_6_MODEL_ID;
 
-    static readonly configSchema = configSchema;
+    static readonly configSchema: z.ZodType<InputConfig> = configSchema;
 
     static readonly contextSize = CONTEXT_SIZE;
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
