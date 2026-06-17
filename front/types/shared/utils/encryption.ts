@@ -31,6 +31,32 @@ function saltedKey(key: string, useCase: EncryptionUseCase, size = 32): string {
     .substring(0, size);
 }
 
+const ENCRYPTION_V2_PREFIX = "v2";
+const AES_GCM_IV_LENGTH_BYTES = 12;
+
+function legacyIv(key: string): string {
+  return md5(key).substring(0, 16);
+}
+
+function legacyDecrypt({
+  encrypted,
+  key,
+  useCase,
+}: {
+  encrypted: string;
+  key: string;
+  useCase: EncryptionUseCase;
+}): string {
+  const decipher = crypto.createDecipheriv(
+    "aes-256-cbc",
+    saltedKey(key, useCase),
+    legacyIv(key)
+  );
+  let decrypted = decipher.update(encrypted, "hex", "utf8");
+  decrypted += decipher.final("utf8");
+  return decrypted;
+}
+
 export function encrypt({
   text,
   key,
@@ -40,15 +66,21 @@ export function encrypt({
   key: string;
   useCase: EncryptionUseCase;
 }): string {
-  const iv = md5(key).substring(0, 16);
+  const iv = crypto.randomBytes(AES_GCM_IV_LENGTH_BYTES);
   const cipher = crypto.createCipheriv(
-    "aes-256-cbc",
+    "aes-256-gcm",
     saltedKey(key, useCase),
     iv
   );
   let encrypted = cipher.update(text, "utf8", "hex");
   encrypted += cipher.final("hex");
-  return encrypted;
+
+  return [
+    ENCRYPTION_V2_PREFIX,
+    iv.toString("hex"),
+    cipher.getAuthTag().toString("hex"),
+    encrypted,
+  ].join(":");
 }
 
 export function decrypt({
@@ -60,13 +92,33 @@ export function decrypt({
   key: string;
   useCase: EncryptionUseCase;
 }): string {
-  const iv = md5(key).substring(0, 16);
+  if (!encrypted.startsWith(`${ENCRYPTION_V2_PREFIX}:`)) {
+    return legacyDecrypt({ encrypted, key, useCase });
+  }
+
+  const parts = encrypted.split(":");
+  if (parts.length !== 4) {
+    throw new Error("Invalid encrypted value format.");
+  }
+
+  const [, ivHex, authTagHex, encryptedText] = parts;
+  if (
+    !/^[0-9a-f]+$/i.test(ivHex) ||
+    !/^[0-9a-f]+$/i.test(authTagHex) ||
+    !/^[0-9a-f]*$/i.test(encryptedText) ||
+    Buffer.from(ivHex, "hex").length !== AES_GCM_IV_LENGTH_BYTES ||
+    Buffer.from(authTagHex, "hex").length !== 16
+  ) {
+    throw new Error("Invalid encrypted value format.");
+  }
+
   const decipher = crypto.createDecipheriv(
-    "aes-256-cbc",
+    "aes-256-gcm",
     saltedKey(key, useCase),
-    iv
+    Buffer.from(ivHex, "hex")
   );
-  let decrypted = decipher.update(encrypted, "hex", "utf8");
+  decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
+  let decrypted = decipher.update(encryptedText, "hex", "utf8");
   decrypted += decipher.final("utf8");
   return decrypted;
 }
