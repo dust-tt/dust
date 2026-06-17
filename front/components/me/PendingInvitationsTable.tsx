@@ -36,7 +36,7 @@ export function PendingInvitationsTable({
             return;
           }
           window.location.assign(
-            `${config.getApiBaseUrl()}/api/login?inviteToken=${encodeURIComponent(invitation.token)}`
+            `${config.getApiBaseUrl()}/w/${invitation.workspaceId}/join/#t=${encodeURIComponent(invitation.token)}`
           );
         },
       })),

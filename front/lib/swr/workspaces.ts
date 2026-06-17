@@ -1136,21 +1136,23 @@ export function useJoinData({
   token: string | null;
   conversationId: string | null;
 }) {
-  const { fetcher } = useFetcher();
+  const { fetcherWithBody } = useFetcher();
   const regionContext = useRegionContext();
-  const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
+  const joinFetcher: Fetcher<
+    GetJoinResponseBody,
+    [string, { t: string | null; cId: string | null }, "POST"]
+  > = fetcherWithBody;
 
-  const params = new URLSearchParams();
-  if (token) {
-    params.set("t", token);
-  }
-  if (conversationId) {
-    params.set("cId", conversationId);
-  }
-  const queryString = params.toString();
-  const url = `/api/w/${wId}/join${queryString ? `?${queryString}` : ""}`;
+  const url = `/api/w/${wId}/join`;
+  const requestBody = useMemo(
+    () => ({ t: token, cId: conversationId }),
+    [token, conversationId]
+  );
 
-  const { data, error, mutate } = useSWRWithDefaults(url, joinFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(
+    [url, requestBody, "POST"],
+    joinFetcher
+  );
 
   const isRegionRedirectResponse = error && isRegionRedirect(error.error);
   const regionRedirect = isRegionRedirectResponse

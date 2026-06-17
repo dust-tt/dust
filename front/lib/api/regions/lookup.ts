@@ -275,6 +275,7 @@ export async function handleLookupInvitations(
 
   const pendingInvitations: PendingInvitationOption[] = invitationResources.map(
     (invitation) => ({
+      workspaceId: invitation.workspace.sId,
       workspaceName: invitation.workspace.name,
       initialRole: invitation.initialRole,
       createdAt: invitation.createdAt.getTime(),

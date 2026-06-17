@@ -14,15 +14,50 @@ const VALIDATION_STATUSES = [
 
 type ValidationStatus = (typeof VALIDATION_STATUSES)[number];
 
+function getHashParam(name: string): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+
+  return new URLSearchParams(hash).get(name);
+}
+
+function stripValidationTokenFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("token");
+
+  const hashParams = new URLSearchParams(url.hash.slice(1));
+  hashParams.delete("token");
+  const hash = hashParams.toString();
+
+  window.history.replaceState(
+    null,
+    "",
+    `${url.pathname}${url.search}${hash ? `#${hash}` : ""}`
+  );
+}
+
 function isValidationStatus(value: string): value is ValidationStatus {
   return VALIDATION_STATUSES.includes(value as ValidationStatus);
 }
 
 export function ValidationPage() {
-  const token = useSearchParam("token");
+  const queryToken = useSearchParam("token");
+  const [hashToken] = useState(() => getHashParam("token"));
+  const token = hashToken ?? queryToken;
   const rawStatus = useSearchParam("status");
   const conversationId = useSearchParam("conversationId");
   const workspaceId = useSearchParam("workspaceId");
+
+  useEffect(() => {
+    if (token) {
+      stripValidationTokenFromUrl();
+    }
+  }, [token]);
 
   if (rawStatus) {
     const status: ValidationStatus = isValidationStatus(rawStatus)

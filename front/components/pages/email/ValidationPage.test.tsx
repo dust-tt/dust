@@ -58,7 +58,7 @@ describe("ValidationPage", () => {
     window.history.replaceState(
       null,
       "",
-      "/email/validation?token=approval-token&region=europe-west1"
+      "/email/validation?region=europe-west1#token=approval-token"
     );
     submitSpy = vi
       .spyOn(HTMLFormElement.prototype, "submit")
@@ -80,7 +80,8 @@ describe("ValidationPage", () => {
       "https://eu.dust.tt/api/email/validate-action"
     );
     expect(submitSpy).toHaveBeenCalledOnce();
-    expect(window.location.search).toBe("?token=approval-token");
+    expect(window.location.search).toBe("?region=europe-west1");
+    expect(window.location.hash).toBe("");
 
     const tokenInput = form.querySelector<HTMLInputElement>(
       'input[name="token"]'

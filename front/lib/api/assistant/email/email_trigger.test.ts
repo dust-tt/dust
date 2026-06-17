@@ -322,10 +322,12 @@ describe("sendToolValidationEmail", () => {
       expect(url.searchParams.has("regionUrl")).toBe(false);
 
       const token = url.searchParams.get("token");
-      if (!token) {
+      const hashToken = new URLSearchParams(url.hash.slice(1)).get("token");
+      if (!hashToken) {
         throw new Error("Expected validation token");
       }
-      const [payload] = token.split(".");
+      expect(token).toBeNull();
+      const [payload] = hashToken.split(".");
       return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
         .approvalState;
     });

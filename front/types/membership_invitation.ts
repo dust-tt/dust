@@ -25,6 +25,7 @@ export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
 
 export interface PendingInvitationOption {
   token: string;
+  workspaceId: string;
   workspaceName: string;
   initialRole: ActiveRoleType;
   createdAt: number;

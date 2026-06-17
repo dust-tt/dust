@@ -20,10 +20,10 @@ export function InviteChoosePage() {
     usePendingInvitations();
 
   const handleInvitationSelection = useCallback(
-    (token: string, region?: RegionType) => {
+    (workspaceId: string, token: string, region?: RegionType) => {
       const baseUrl = region ? getRegionUrl(region) : config.getApiBaseUrl();
       window.location.assign(
-        `${baseUrl}/api/login?inviteToken=${encodeURIComponent(token)}`
+        `${baseUrl}/w/${workspaceId}/join/#t=${encodeURIComponent(token)}`
       );
     },
     []
@@ -85,6 +85,7 @@ export function InviteChoosePage() {
                       size="sm"
                       onClick={() =>
                         handleInvitationSelection(
+                          invitation.workspaceId,
                           invitation.token,
                           invitation.region
                         )

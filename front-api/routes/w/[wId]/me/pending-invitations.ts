@@ -22,6 +22,7 @@ app.get("/", async (ctx): HandlerResult<GetPendingInvitationsResponseBody> => {
     (invitation) => {
       const workspace = invitation.workspace;
       return {
+        workspaceId: workspace.sId,
         workspaceName: workspace.name,
         initialRole: invitation.initialRole,
         createdAt: invitation.createdAt.getTime(),

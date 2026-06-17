@@ -12,11 +12,40 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+function getHashParam(name: string): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+
+  return new URLSearchParams(hash).get(name);
+}
+
+function stripInviteTokenFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("t");
+
+  const hashParams = new URLSearchParams(url.hash.slice(1));
+  hashParams.delete("t");
+  const hash = hashParams.toString();
+
+  window.history.replaceState(
+    null,
+    "",
+    `${url.pathname}${url.search}${hash ? `#${hash}` : ""}`
+  );
+}
 
 export function JoinPage() {
   const wId = useRequiredPathParam("wId");
-  const token = useSearchParam("t");
+  const queryToken = useSearchParam("t");
+  const [hashToken] = useState(() => getHashParam("t"));
+  const token = hashToken ?? queryToken;
   const conversationId = useSearchParam("cId");
 
   const {
@@ -30,6 +59,12 @@ export function JoinPage() {
     token,
     conversationId,
   });
+
+  useEffect(() => {
+    if (token) {
+      stripInviteTokenFromUrl();
+    }
+  }, [token]);
 
   // Redirect when the API returns a redirect URL (e.g. invalid/expired token).
   useEffect(() => {

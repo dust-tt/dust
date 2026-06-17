@@ -15,7 +15,10 @@ const app = createHono();
 
 /** @ignoreswagger */
 app.post("/", async (ctx) => {
-  const body = await ctx.req.json().catch(() => ({}));
+  const contentType = ctx.req.header("content-type") ?? "";
+  const body = contentType.includes("application/json")
+    ? await ctx.req.json().catch(() => ({}))
+    : await ctx.req.parseBody().catch(() => ({}));
   const { token } = body ?? {};
   if (!isString(token)) {
     return apiError(ctx, {

@@ -37,6 +37,7 @@ invitationsApp.get(
       (invitation) => {
         const workspace = invitation.workspace;
         return {
+          workspaceId: workspace.sId,
           workspaceName: workspace.name,
           initialRole: invitation.initialRole,
           createdAt: invitation.createdAt.getTime(),

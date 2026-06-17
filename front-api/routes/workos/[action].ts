@@ -22,6 +22,10 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
+import {
+  getClearMembershipInvitationTokenCookie,
+  MEMBERSHIP_INVITATION_TOKEN_COOKIE_NAME,
+} from "@app/lib/utils/invitation_token";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { RegionType } from "@app/types/region";
@@ -441,20 +445,26 @@ async function handleCallback(ctx: Context) {
     const sanitizedReturnTo = validatedReturnTo.valid
       ? validatedReturnTo.sanitizedPath
       : null;
+    const invitationTokenFromCookie = getCookie(
+      ctx,
+      MEMBERSHIP_INVITATION_TOKEN_COOKIE_NAME
+    );
 
     let invite: MembershipInvitationResource | null = null;
+    let inviteTokenFromReturnTo: string | null = null;
     if (
       sanitizedReturnTo &&
       sanitizedReturnTo.startsWith("/api/login?inviteToken=")
     ) {
       const inviteUrl = new URL(sanitizedReturnTo, config.getApiBaseUrl());
-      const inviteToken = inviteUrl.searchParams.get("inviteToken");
-      if (inviteToken) {
-        const inviteRes =
-          await MembershipInvitationResource.getPendingForToken(inviteToken);
-        if (inviteRes.isOk()) {
-          invite = inviteRes.value;
-        }
+      inviteTokenFromReturnTo = inviteUrl.searchParams.get("inviteToken");
+    }
+    const inviteToken = inviteTokenFromReturnTo ?? invitationTokenFromCookie;
+    if (inviteToken) {
+      const inviteRes =
+        await MembershipInvitationResource.getPendingForToken(inviteToken);
+      if (inviteRes.isOk()) {
+        invite = inviteRes.value;
       }
     }
 
@@ -566,9 +576,17 @@ async function handleCallback(ctx: Context) {
       authenticationMethod,
     };
 
+    const clearInvitationTokenCookie = () => {
+      if (invitationTokenFromCookie) {
+        ctx.header("Set-Cookie", getClearMembershipInvitationTokenCookie(), {
+          append: true,
+        });
+      }
+    };
+
     const loginOptions = (() => {
       const base = {
-        inviteToken: null as string | null,
+        inviteToken: invitationTokenFromCookie ?? null,
         wId: null as string | null,
         join: false,
         conversationId: null as string | null,
@@ -582,7 +600,10 @@ async function handleCallback(ctx: Context) {
       if (parsed.pathname === "/api/login") {
         return {
           ...base,
-          inviteToken: parsed.searchParams.get("inviteToken"),
+          inviteToken:
+            parsed.searchParams.get("inviteToken") ??
+            invitationTokenFromCookie ??
+            null,
           wId: parsed.searchParams.get("wId"),
           join: parsed.searchParams.get("join") === "true",
           conversationId: parsed.searchParams.get("cId"),
@@ -603,10 +624,13 @@ async function handleCallback(ctx: Context) {
 
     switch (outcome.kind) {
       case "redirect":
+        clearInvitationTokenCookie();
         return redirect(ctx, outcome.url);
       case "unauthorized":
+        clearInvitationTokenCookie();
         return ctx.body(null, 401);
       case "apiError":
+        clearInvitationTokenCookie();
         return apiError(ctx, outcome.error);
       default:
         assertNever(outcome);

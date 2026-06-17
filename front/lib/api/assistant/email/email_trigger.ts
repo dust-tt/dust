@@ -1106,12 +1106,12 @@ export async function sendToolValidationEmail({
     const rejectToken = generateValidationToken(action.actionId, "rejected");
 
     const approveUrl = new URL("/email/validation", baseUrl);
-    approveUrl.searchParams.set("token", approveToken);
     approveUrl.searchParams.set("region", currentRegion);
+    approveUrl.hash = new URLSearchParams({ token: approveToken }).toString();
 
     const rejectUrl = new URL("/email/validation", baseUrl);
-    rejectUrl.searchParams.set("token", rejectToken);
     rejectUrl.searchParams.set("region", currentRegion);
+    rejectUrl.hash = new URLSearchParams({ token: rejectToken }).toString();
 
     const inputsJson = JSON.stringify(action.inputs, null, 2)
       .replace(/</g, "&lt;")
