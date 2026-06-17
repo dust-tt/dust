@@ -15,6 +15,7 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
@@ -30,6 +31,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
+import { md5 } from "@app/types/shared/utils/encryption";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import assert from "assert";
@@ -84,6 +86,39 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     super(MembershipModel, blob);
 
     this.user = user;
+  }
+
+  /**
+   * Serializes workspace membership administration changes that can affect the
+   * last-admin invariant. The lock key intentionally matches
+   * `getWorkspaceAdministrationVersionLock()` so membership role/revocation
+   * updates serialize with other workspace admin mutations using that lock.
+   *
+   * Keep all SQL queries for the critical section inside `transaction` while the
+   * advisory lock is held. Otherwise a competing query can wait for another DB
+   * connection and deadlock under pool exhaustion.
+   */
+  private static async withWorkspaceMembershipAdministrationLock<T>({
+    workspace,
+    transaction,
+    fn,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+    fn: (transaction: Transaction) => Promise<T>;
+  }): Promise<T> {
+    return withTransaction(async (t) => {
+      const hash = md5(`workspace_administration_${workspace.id}`);
+      const lockKey = parseInt(hash, 16) % 9999999999;
+
+      // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+      await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+        transaction: t,
+        replacements: { key: lockKey },
+      });
+
+      return fn(t);
+    }, transaction);
   }
 
   get isBuilder(): boolean {
@@ -1176,50 +1211,78 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     >
   > {
-    const membership = await this.getLatestMembershipOfUserInWorkspace({
-      user,
+    const result = await this.withWorkspaceMembershipAdministrationLock({
       workspace,
       transaction,
-    });
-    if (!membership) {
-      return new Err({ type: "not_found" });
-    }
-    if (endAt < membership.startAt) {
-      return new Err({ type: "invalid_end_at" });
-    }
-    if (membership.endAt && membership.endAt < new Date()) {
-      return new Err({ type: "already_revoked" });
-    }
+      fn: async (t) => {
+        const membership = await this.getLatestMembershipOfUserInWorkspace({
+          user,
+          workspace,
+          transaction: t,
+        });
+        if (!membership) {
+          return new Err({ type: "not_found" });
+        }
+        if (endAt < membership.startAt) {
+          return new Err({ type: "invalid_end_at" });
+        }
+        if (membership.endAt && membership.endAt < new Date()) {
+          return new Err({ type: "already_revoked" });
+        }
 
-    // Prevent revoking the last admin of a workspace.
-    if (membership.role === "admin" && !allowLastAdminRevocation) {
-      const adminsCount = await this.getMembersCountForWorkspace({
-        workspace,
-        activeOnly: true,
-        rolesFilter: ["admin"],
-        transaction,
-      });
+        // Prevent revoking the last admin of a workspace.
+        if (membership.role === "admin" && !allowLastAdminRevocation) {
+          const adminsCount = await this.getMembersCountForWorkspace({
+            workspace,
+            activeOnly: true,
+            rolesFilter: ["admin"],
+            transaction: t,
+          });
 
-      if (adminsCount < 2) {
-        return new Err({ type: "last_admin" });
-      }
-    }
+          if (adminsCount < 2) {
+            return new Err({ type: "last_admin" });
+          }
+        }
 
-    await MembershipModel.update(
-      { endAt },
-      { where: { id: membership.id }, transaction }
-    );
+        await MembershipModel.update(
+          { endAt },
+          { where: { id: membership.id }, transaction: t }
+        );
 
-    // Drop any future-scheduled seat-change rows so they don't reactivate the
-    // user after the revoke date.
-    await MembershipModel.destroy({
-      where: {
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: { [Op.gt]: new Date() },
+        // Drop any future-scheduled seat-change rows so they don't reactivate the
+        // user after the revoke date.
+        await MembershipModel.destroy({
+          where: {
+            userId: user.id,
+            workspaceId: workspace.id,
+            startAt: { [Op.gt]: new Date() },
+          },
+          transaction: t,
+        });
+
+        // Invalidate the active seats cache for this workspace.
+        const workspaceId = workspace.sId;
+        const userModelId = user.id;
+        const workspaceModelId = workspace.id;
+        invalidateCacheAfterCommit(t, async () => {
+          await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+          await MembershipResource.invalidateRoleCache({
+            userModelId,
+            workspaceModelId,
+          });
+        });
+
+        return new Ok({
+          role: membership.role,
+          startAt: membership.startAt,
+          endAt,
+        });
       },
-      transaction,
     });
+
+    if (result.isErr()) {
+      return result;
+    }
 
     if (workspace.workOSOrganizationId && user.workOSUserId) {
       try {
@@ -1257,27 +1320,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       throw workflowResult.error;
     }
 
-    // Invalidate the active seats cache for this workspace.
-    const workspaceId = workspace.sId;
-    const userModelId = user.id;
-    const workspaceModelId = workspace.id;
-    invalidateCacheAfterCommit(transaction, async () => {
-      await MembershipResource.invalidateActiveSeatsCache(workspaceId);
-      await MembershipResource.invalidateRoleCache({
-        userModelId,
-        workspaceModelId,
-      });
-    });
-
     // We do not invalidate GroupMembership here
     // because WorkspaceMembership is tested before GroupMembership
     // in  lib/auth
 
-    return new Ok({
-      role: membership.role,
-      startAt: membership.startAt,
-      endAt,
-    });
+    return result;
   }
 
   /**
@@ -1312,86 +1359,105 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     >
   > {
-    const membership = await this.getLatestMembershipOfUserInWorkspace({
-      user,
+    let shouldUpdateWorkOSMembershipRole = false;
+
+    const result = await this.withWorkspaceMembershipAdministrationLock({
       workspace,
       transaction,
+      fn: async (t) => {
+        const membership = await this.getLatestMembershipOfUserInWorkspace({
+          user,
+          workspace,
+          transaction: t,
+        });
+
+        const isRevoked = !!(
+          membership?.endAt && membership.endAt < new Date()
+        );
+        if (isRevoked && !allowTerminated) {
+          return new Err({ type: "membership_already_terminated" });
+        }
+        if (!membership) {
+          return new Err({ type: "not_found" });
+        }
+
+        const previousRole = membership.role;
+
+        // If the membership is not terminated, we update the role in place.
+        // We do not historicize the roles.
+        if (!isRevoked) {
+          if (previousRole === newRole) {
+            return new Err({ type: "already_on_role" });
+          }
+
+          // If the previous role was admin, we need to check if there is another admin in the workspace.
+          if (previousRole == "admin") {
+            const adminsCount = await this.getMembersCountForWorkspace({
+              workspace,
+              activeOnly: true,
+              rolesFilter: ["admin"],
+              transaction: t,
+            });
+
+            if (adminsCount < 2) {
+              if (allowLastAdminRemoval) {
+                logger.warn(
+                  {
+                    panic: false,
+                    userId: user.id,
+                    workspaceId: workspace.id,
+                  },
+                  "Removing the last admin from the workspace, we are allowing it because canForceUserRole() returns true."
+                );
+              } else {
+                return new Err({ type: "last_admin" });
+              }
+            }
+          }
+
+          await MembershipModel.update(
+            { role: newRole },
+            { where: { id: membership.id }, transaction: t }
+          );
+          shouldUpdateWorkOSMembershipRole = true;
+
+          const workspaceId = workspace.sId;
+          const userModelId = user.id;
+          const workspaceModelId = workspace.id;
+          invalidateCacheAfterCommit(t, async () => {
+            await MembershipResource.invalidateActiveSeatsCache(workspaceId);
+            await MembershipResource.invalidateRoleCache({
+              userModelId,
+              workspaceModelId,
+            });
+          });
+        } else {
+          // If the last membership was terminated, we create a new membership with the new role.
+          // Preserve the origin and seatType from the previous membership.
+          await this.createMembership({
+            user,
+            workspace,
+            role: newRole,
+            origin: membership.origin,
+            seatType: membership.seatType,
+            startAt: new Date(),
+            transaction: t,
+          });
+        }
+
+        return new Ok({ previousRole, newRole });
+      },
     });
 
-    const isRevoked = !!(membership?.endAt && membership.endAt < new Date());
-    if (isRevoked && !allowTerminated) {
-      return new Err({ type: "membership_already_terminated" });
-    }
-    if (!membership) {
-      return new Err({ type: "not_found" });
+    if (result.isErr()) {
+      return result;
     }
 
-    const previousRole = membership.role;
-
-    // If the membership is not terminated, we update the role in place.
-    // We do not historicize the roles.
-    if (!isRevoked) {
-      if (previousRole === newRole) {
-        return new Err({ type: "already_on_role" });
-      }
-
-      // If the previous role was admin, we need to check if there is another admin in the workspace.
-      if (previousRole == "admin") {
-        const adminsCount = await this.getMembersCountForWorkspace({
-          workspace,
-          activeOnly: true,
-          rolesFilter: ["admin"],
-          transaction,
-        });
-
-        if (adminsCount < 2) {
-          if (allowLastAdminRemoval) {
-            logger.warn(
-              {
-                panic: false,
-                userId: user.id,
-                workspaceId: workspace.id,
-              },
-              "Removing the last admin from the workspace, we are allowing it because canForceUserRole() returns true."
-            );
-          } else {
-            return new Err({ type: "last_admin" });
-          }
-        }
-      }
-
-      await MembershipModel.update(
-        { role: newRole },
-        { where: { id: membership.id }, transaction }
-      );
-
-      const workspaceId = workspace.sId;
-      const userModelId = user.id;
-      const workspaceModelId = workspace.id;
-      invalidateCacheAfterCommit(transaction, async () => {
-        await MembershipResource.invalidateActiveSeatsCache(workspaceId);
-        await MembershipResource.invalidateRoleCache({
-          userModelId,
-          workspaceModelId,
-        });
-      });
-
+    if (shouldUpdateWorkOSMembershipRole) {
       await this.updateWorkOSMembershipRole({
         user,
         workspace,
         newRole,
-      });
-    } else {
-      // If the last membership was terminated, we create a new membership with the new role.
-      // Preserve the origin and seatType from the previous membership.
-      await this.createMembership({
-        user,
-        workspace,
-        role: newRole,
-        origin: membership.origin,
-        seatType: membership.seatType,
-        startAt: new Date(),
-        transaction,
       });
     }
 
@@ -1400,7 +1466,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         author,
         userId: user.id,
         workspaceId: workspace.id,
-        previousRole,
+        previousRole: result.value.previousRole,
         newRole,
       },
       "Membership role updated"
@@ -1415,7 +1481,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       throw workflowResult.error;
     }
 
-    return new Ok({ previousRole, newRole });
+    return result;
   }
 
   static async updateWorkOSMembershipRole({
