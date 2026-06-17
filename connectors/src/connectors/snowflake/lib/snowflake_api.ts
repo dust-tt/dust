@@ -42,11 +42,22 @@ import snowflake from "snowflake-sdk";
  * double quotes. These were necessarily created with quotes in Snowflake, so
  * SHOW commands return them in their original case.
  */
-function quoteSnowflakeIdentifier(identifier: string): string {
+export function quoteSnowflakeIdentifier(identifier: string): string {
   if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(identifier)) {
     return identifier;
   }
   return `"${identifier.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Quote a dot-qualified Snowflake identifier by quoting each path segment.
+ *
+ * Snowflake database roles are returned as qualified identifiers
+ * (`database.role`). The dot is structural, but each side is still an
+ * identifier and must be escaped independently before interpolation.
+ */
+export function quoteSnowflakeIdentifierPath(identifierPath: string): string {
+  return identifierPath.split(".").map(quoteSnowflakeIdentifier).join(".");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -597,9 +608,14 @@ async function _checkRoleGrants(
   // Check current grants
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
-    // Database role names from SHOW GRANTS are already qualified as "database.role"
-    // where the dot is a structural separator. They must stay unquoted.
-    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${isDbRole ? roleName : quoteSnowflakeIdentifier(roleName)}`,
+    // Database role names from SHOW GRANTS are already qualified as
+    // "database.role". Keep the dot as a structural separator while escaping
+    // each identifier segment independently.
+    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${
+      isDbRole
+        ? quoteSnowflakeIdentifierPath(roleName)
+        : quoteSnowflakeIdentifier(roleName)
+    }`,
     codec: snowflakeGrantCodec,
     connection,
   });
