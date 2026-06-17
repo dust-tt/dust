@@ -4,7 +4,7 @@ import type {
   LogicalFilters,
   ScalarValueFilter,
   Where,
-} from "@app/lib/llms/stream/types/filter";
+} from "@app/lib/llms/types/filter";
 import { isRecord } from "@app/types/shared/utils/general";
 import isObject from "lodash/isObject";
 

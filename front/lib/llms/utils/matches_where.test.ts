@@ -2,8 +2,8 @@ import type {
   EndpointFilter,
   Where,
   WorkspaceFilter,
-} from "@app/lib/llms/stream/types/filter";
-import { matchesWhere } from "@app/lib/llms/stream/utils/matches_where";
+} from "@app/lib/llms/types/filter";
+import { matchesWhere } from "@app/lib/llms/utils/matches_where";
 import { describe, expect, it } from "vitest";
 
 const enterpriseWorkspace: EndpointFilter = {

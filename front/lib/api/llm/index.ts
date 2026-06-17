@@ -33,7 +33,7 @@ import type {
   ValueFilter,
   Where,
   WorkspaceFilter,
-} from "@app/lib/llms/stream/types/filter";
+} from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
 import { isModelId } from "@app/lib/model_constructors/types/model_ids";
 import {
