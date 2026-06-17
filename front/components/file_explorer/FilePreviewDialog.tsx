@@ -1,6 +1,6 @@
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
-import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
+import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
 import { useFileContent } from "@app/hooks/useFileContent";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
