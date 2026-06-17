@@ -5,6 +5,7 @@ use axum::response::Response;
 use axum::Extension;
 use http::StatusCode;
 use lazy_static::lazy_static;
+use ring::constant_time::verify_slices_are_equal;
 use serde::Deserialize;
 use std::{collections::HashMap, env, sync::Arc};
 use tokio::{fs, sync::OnceCell};
@@ -18,6 +19,11 @@ lazy_static! {
 
 type ApiKeyMap = Arc<HashMap<String, Vec<String>>>;
 static API_KEYS: OnceCell<ApiKeyMap> = OnceCell::const_new();
+
+fn api_keys_are_equal(provided_key: &str, expected_key: &str) -> bool {
+    provided_key.len() == expected_key.len()
+        && verify_slices_are_equal(provided_key.as_bytes(), expected_key.as_bytes()).is_ok()
+}
 
 #[derive(Deserialize, Clone)]
 struct ApiKeyEntry {
@@ -75,12 +81,20 @@ pub async fn validate_api_key(
     if let Some(auth_header) = req.headers().get("Authorization") {
         let auth_header = auth_header.to_str().map_err(|_| StatusCode::UNAUTHORIZED)?;
         if let Some(provided_key) = auth_header.strip_prefix("Bearer ") {
+            let mut matched_client_name = None;
+
             for (client_name, keys) in api_keys.iter() {
-                if keys.contains(&provided_key.to_string()) {
-                    req.extensions_mut()
-                        .insert(Extension(Arc::new(client_name.clone())));
-                    return Ok(next.run(req).await);
+                for expected_key in keys {
+                    if api_keys_are_equal(provided_key, expected_key) {
+                        matched_client_name = Some(client_name.clone());
+                    }
                 }
+            }
+
+            if let Some(client_name) = matched_client_name {
+                req.extensions_mut()
+                    .insert(Extension(Arc::new(client_name)));
+                return Ok(next.run(req).await);
             }
         }
     }
