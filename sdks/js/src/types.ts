@@ -747,6 +747,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
+  | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "sandbox_dsbx_tools"
