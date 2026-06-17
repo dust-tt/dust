@@ -5,25 +5,22 @@ import {
   H2,
   P,
 } from "@app/components/home/ContentComponents";
-import { FinalCTASection } from "@app/components/home/content/Competitor/FinalCTASection";
+import { HomeEyebrow } from "@app/components/home/content/Product/HomeEyebrow";
 import {
   HomeReveal,
   HomeRevealStyles,
 } from "@app/components/home/content/Product/HomeReveal";
-import { DustDecoration } from "@app/components/home/DustDecoration";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
 import {
-  ActionSparklesIcon,
   BookOpen01,
   Button,
   Check,
   Code02,
   GcalLogo,
   GithubLogo,
-  Globe01,
   GmailLogo,
   HubspotLogo,
   Icon,
@@ -34,7 +31,6 @@ import {
   Rocket02,
   SalesforceLogo,
   SlackLogo,
-  ThumbsUp,
   VantaLogo,
 } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
@@ -48,91 +44,76 @@ const PARTNER_FORM_URL =
 const MCP_DOCS_URL = "https://docs.dust.tt/docs/remote-mcp-server";
 const GITHUB_URL = "https://github.com/dust-tt/dust";
 
-// Shared centered content column, matching /home/partner.
-const COL_CLASSES = classNames(
-  "col-span-12",
-  "lg:col-span-8 lg:col-start-2",
-  "xl:col-span-8 xl:col-start-2",
-  "2xl:col-start-3"
-);
+// Shared blue → golden → green accent language, applied by index, matching the
+// homepage CTA stats and the redesigned partner page.
+type Accent = "blue" | "golden" | "green";
 
-type ColorVariant = "blue" | "green" | "rose";
+const ACCENTS: Accent[] = ["blue", "golden", "green"];
 
-// Compact pastel card palette, mirroring dust.tt's marketing cards.
-const CARD_COLORS: Record<ColorVariant, { card: string; icon: string }> = {
-  blue: { card: "bg-blue-50", icon: "text-blue-400" },
-  green: { card: "bg-green-50", icon: "text-green-400" },
-  rose: { card: "bg-rose-50", icon: "text-rose-400" },
+const ACCENT_CHIP: Record<Accent, string> = {
+  blue: "bg-blue-100 text-blue-500",
+  golden: "bg-golden-100 text-golden-500",
+  green: "bg-green-100 text-green-500",
 };
 
-interface ValueCard {
-  title: string;
-  desc: string;
-  color: ColorVariant;
-  icon: ComponentType<{ className?: string }>;
-}
+const ACCENT_TEXT: Record<Accent, string> = {
+  blue: "text-blue-500",
+  golden: "text-golden-500",
+  green: "text-green-500",
+};
 
-const WHY_PARTNER: ValueCard[] = [
+const WHY_PARTNER: { title: string; description: string }[] = [
   {
     title: "Be discoverable",
-    desc: "Your logo lives inside the Dust app where users browse apps, and on the public marketplace.",
-    color: "blue",
-    icon: Globe01,
+    description:
+      "Your logo lives inside the Dust app where users browse apps, and on the public marketplace.",
   },
   {
     title: "Plug & play",
-    desc: "One MCP URL is all it takes to get started and let Dust call tools in your app.",
-    color: "green",
-    icon: ActionSparklesIcon,
+    description:
+      "One MCP URL is all it takes to get started and let Dust call tools in your app.",
   },
   {
     title: "Grow together",
-    desc: "From listed to Alliance, a clear graduation path with shared upside as traction proves out.",
-    color: "rose",
-    icon: ThumbsUp,
+    description:
+      "From listed to Alliance, a clear graduation path with shared upside as traction proves out.",
   },
 ];
 
-interface BuildCard extends ValueCard {
+interface BuildCard {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
   href: string;
   cta: string;
 }
 
 const BUILD_CARDS: BuildCard[] = [
   {
-    title: "MCP documentation",
-    desc: "Protocol fundamentals, OAuth and whitelisting flows, Dust-specific extensions.",
-    color: "blue",
     icon: BookOpen01,
+    title: "MCP documentation",
+    description:
+      "Protocol fundamentals, OAuth and whitelisting flows, Dust-specific extensions.",
     href: MCP_DOCS_URL,
     cta: "View docs",
   },
   {
-    title: "Build & test",
-    desc: "Quickstart templates, example integrations on GitHub, connect and test inside Dust.",
-    color: "green",
     icon: Code02,
+    title: "Build & test",
+    description:
+      "Quickstart templates, example integrations on GitHub, connect and test inside Dust.",
     href: GITHUB_URL,
     cta: "See examples",
   },
   {
-    title: "Get help",
-    desc: "A direct line to our partner team, quickstart guides, and co-build sessions to get you live.",
-    color: "rose",
     icon: MessageChatSquare,
+    title: "Get help",
+    description:
+      "A direct line to our partner team, quickstart guides, and co-build sessions to get you live.",
     href: PARTNER_FORM_URL,
     cta: "Get in touch",
   },
 ];
-
-type TierColor = "blue" | "green" | "golden";
-
-// Tier accent colors mapped to the Sparkle palette.
-const TIER_COLORS: Record<TierColor, { card: string; accent: string }> = {
-  blue: { card: "bg-blue-100", accent: "text-blue-500" },
-  green: { card: "bg-green-100", accent: "text-green-500" },
-  golden: { card: "bg-golden-100", accent: "text-golden-500" },
-};
 
 interface Tier {
   name: string;
@@ -141,7 +122,7 @@ interface Tier {
   /** Invitation-only tiers get a softer CTA label (still routes to the form). */
   isInvitationOnly?: boolean;
   tagline: string;
-  color: TierColor;
+  color: Accent;
   who: string;
   entry: string;
   partnerGets: string[];
@@ -205,22 +186,25 @@ const HOW_IT_WORKS = [
   {
     step: "01",
     title: "Get in touch",
-    desc: "Share your app's MCP server URL and a few details about your product.",
+    description:
+      "Share your app's MCP server URL and a few details about your product.",
   },
   {
     step: "02",
     title: "QA",
-    desc: "We test the integration end-to-end against real Dust agents.",
+    description: "We test the integration end-to-end against real Dust agents.",
   },
   {
     step: "03",
     title: "List",
-    desc: "Your logo goes live inside the Dust app and on the public marketplace.",
+    description:
+      "Your logo goes live inside the Dust app and on the public marketplace.",
   },
   {
     step: "04",
     title: "Grow",
-    desc: "Based on traction and customer overlap, we can mutually agree to invest in more co-selling!",
+    description:
+      "Based on traction and customer overlap, we can mutually agree to invest in more co-selling!",
   },
 ];
 
@@ -263,28 +247,6 @@ const MARKETPLACE_LOGOS: {
   { name: "Vanta", logo: VantaLogo },
 ];
 
-interface SectionHeaderProps {
-  title: string;
-  subtitle?: string;
-}
-
-// Section header matching the homepage rhythm: a sans-serif heading with tight
-// tracking and an optional lead, revealed on scroll.
-function SectionHeader({ title, subtitle }: SectionHeaderProps) {
-  return (
-    <HomeReveal className="mb-10 flex flex-col gap-4">
-      <H2 className="text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
-        {title}
-      </H2>
-      {subtitle ? (
-        <P size="md" className="max-w-2xl leading-[1.6] text-muted-foreground">
-          {subtitle}
-        </P>
-      ) : null}
-    </HomeReveal>
-  );
-}
-
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {
@@ -304,34 +266,26 @@ export default function TechnologyPartnersNextJS() {
         description="List your app on Dust and get discovered by thousands of AI agent users. Build on MCP, then grow into a deeper partnership as your traction proves out."
         pathname={router.asPath}
       />
+      <HomeRevealStyles />
 
-      <div className="flex w-full flex-col gap-16 pb-20 md:gap-24">
-        <HomeRevealStyles />
-        {/* ─────────── Hero (left-aligned, homepage-style) ─────────── */}
+      <div className="flex w-full flex-col gap-24 md:gap-32">
+        {/* ─────────── Hero (centered, homepage-style) ─────────── */}
         <Grid>
-          <div
-            className={classNames(
-              COL_CLASSES,
-              "flex flex-col items-start gap-6 pt-8 md:pt-12"
-            )}
-          >
+          <div className="col-span-12 flex flex-col items-center gap-5 pt-12 text-center md:pt-20">
             <HomeReveal>
-              <h1 className="m-0 max-w-[18ch] text-balance text-[clamp(40px,4.6vw,64px)] font-semibold leading-[0.98] tracking-[-0.04em] text-foreground">
+              <h1 className="heading-5xl md:heading-6xl lg:heading-7xl">
                 Become a Dust technology partner
               </h1>
             </HomeReveal>
-            <HomeReveal delay={80}>
-              <P
-                size="md"
-                className="max-w-[560px] leading-[1.6] text-muted-foreground"
-              >
+            <HomeReveal delay={80} className="max-w-2xl">
+              <P size="lg" className="text-balance text-muted-foreground">
                 List your app on Dust and get discovered by thousands of users
                 of our AI agents, or enable new agentic capabilities into your
                 platform.
               </P>
             </HomeReveal>
             <HomeReveal delay={160}>
-              <div className="flex flex-col gap-4 sm:flex-row">
+              <div className="mt-2 flex flex-col items-center gap-4 sm:flex-row">
                 <Button
                   href={PARTNER_FORM_URL}
                   target="_blank"
@@ -352,76 +306,78 @@ export default function TechnologyPartnersNextJS() {
           </div>
         </Grid>
 
-        {/* ─────────── Why partner with Dust ─────────── */}
-        <Grid>
-          <div className={COL_CLASSES}>
-            <SectionHeader title="Why partner with Dust" />
-            <div className="grid gap-4 sm:grid-cols-3 lg:gap-6">
-              {WHY_PARTNER.map((v) => {
-                const colors = CARD_COLORS[v.color];
-                return (
-                  <div
-                    key={v.title}
-                    className={classNames(
-                      "flex flex-col rounded-2xl p-6",
-                      colors.card
-                    )}
-                  >
-                    <Icon
-                      visual={v.icon}
-                      size="md"
-                      className={classNames("mb-4 h-8 w-8", colors.icon)}
-                    />
-                    <h4 className="text-lg font-semibold text-foreground">
-                      {v.title}
-                    </h4>
-                    <P size="sm" className="mt-1 text-muted-foreground">
-                      {v.desc}
-                    </P>
-                  </div>
-                );
-              })}
-            </div>
+        {/* ─────────── Why partner — heading left, numbered list right ─────────── */}
+        <Grid gap="gap-x-8 gap-y-10 md:gap-y-12">
+          <HomeReveal className="col-span-12 flex flex-col items-start gap-4 text-left lg:col-span-4">
+            <HomeEyebrow label="Why Dust" />
+            <H2 className="text-left">Why partner with Dust</H2>
+            <P size="md" className="text-muted-foreground">
+              List once, then grow into a deeper partnership as your traction
+              proves out.
+            </P>
+          </HomeReveal>
+          <div className="col-span-12 flex flex-col lg:col-span-7 lg:col-start-6">
+            {WHY_PARTNER.map((item, index) => (
+              <HomeReveal
+                key={item.title}
+                delay={index * 80}
+                className="flex flex-col gap-2 border-t border-border py-6 text-left first:border-t-0 first:pt-0"
+              >
+                <span
+                  className={classNames(
+                    "text-sm font-semibold tabular-nums",
+                    ACCENT_TEXT[ACCENTS[index % ACCENTS.length]]
+                  )}
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h4 className="text-lg font-semibold text-foreground">
+                  {item.title}
+                </h4>
+                <P size="sm" className="text-muted-foreground">
+                  {item.description}
+                </P>
+              </HomeReveal>
+            ))}
           </div>
         </Grid>
 
-        {/* ─────────── Build your app on Dust ─────────── */}
-        <Grid>
-          <div className={COL_CLASSES}>
-            <SectionHeader
-              title="Build your app on Dust"
-              subtitle="Everything you need to launch, from MCP basics to real examples and direct help."
-            />
-            <div className="grid gap-4 sm:grid-cols-3 lg:gap-6">
-              {BUILD_CARDS.map((d) => {
-                const colors = CARD_COLORS[d.color];
-                return (
-                  <a
-                    key={d.title}
-                    href={d.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+        {/* ─────────── Build your app — heading right, icon cards left ─────────── */}
+        <Grid gap="gap-x-8 gap-y-10 md:gap-y-12">
+          <HomeReveal className="col-span-12 flex flex-col items-start gap-4 text-left lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:items-end lg:text-right">
+            <HomeEyebrow label="Build" />
+            <H2 className="lg:text-right">Build your app on Dust</H2>
+            <P size="md" className="text-muted-foreground lg:text-right">
+              Everything you need to launch, from MCP basics to real examples
+              and direct help.
+            </P>
+          </HomeReveal>
+          <div className="col-span-12 flex flex-col gap-4 lg:col-span-7 lg:col-start-1 lg:row-start-1">
+            {BUILD_CARDS.map((card, index) => (
+              <HomeReveal key={card.title} delay={index * 80}>
+                <a
+                  href={card.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-start gap-4 rounded-2xl bg-muted p-6 text-left transition-all hover:shadow-sm"
+                >
+                  <div
                     className={classNames(
-                      "group flex flex-col rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:shadow-sm",
-                      colors.card
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                      ACCENT_CHIP[ACCENTS[index % ACCENTS.length]]
                     )}
                   >
-                    <Icon
-                      visual={d.icon}
-                      size="md"
-                      className={classNames("mb-4 h-8 w-8", colors.icon)}
-                    />
+                    <Icon visual={card.icon} className="h-5 w-5" size="sm" />
+                  </div>
+                  <div className="flex flex-col">
                     <h4 className="text-lg font-semibold text-foreground">
-                      {d.title}
+                      {card.title}
                     </h4>
-                    <P
-                      size="sm"
-                      className="mt-1 flex-grow text-muted-foreground"
-                    >
-                      {d.desc}
+                    <P size="sm" className="mt-1 text-muted-foreground">
+                      {card.description}
                     </P>
-                    <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-foreground">
-                      {d.cta}
+                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-foreground">
+                      {card.cta}
                       <span
                         aria-hidden="true"
                         className="transition-transform group-hover:translate-x-0.5"
@@ -429,250 +385,284 @@ export default function TechnologyPartnersNextJS() {
                         →
                       </span>
                     </span>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        </Grid>
-
-        {/* ─────────── The partner program (tiers + details table) ─────────── */}
-        <Grid>
-          <div className={COL_CLASSES}>
-            <SectionHeader
-              title="Our app partner program"
-              subtitle="From assistance to launch your app, all the way to a co-sell motion."
-            />
-
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {PUBLIC_TIERS.map((t) => {
-                const colors = TIER_COLORS[t.color];
-                return (
-                  <div
-                    key={t.name}
-                    className={classNames(
-                      "relative flex flex-col overflow-hidden rounded-2xl p-6 transition-shadow hover:shadow-md",
-                      colors.card
-                    )}
-                  >
-                    <DustDecoration position="top-right" size="sm" />
-
-                    <span
-                      className={classNames(
-                        "mb-3 inline-flex w-fit rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                        colors.accent
-                      )}
-                    >
-                      Tier {t.tierNumber}
-                    </span>
-
-                    <h4 className="text-lg font-semibold text-foreground">
-                      {t.name}
-                    </h4>
-                    <P size="sm" className="mt-1 text-muted-foreground">
-                      {t.tagline}
-                    </P>
-
-                    {/* Top 3 benefits only — full detail lives in the table below. */}
-                    <ul className="mt-4 flex-grow space-y-2">
-                      {t.partnerGets.slice(0, 3).map((g) => (
-                        <li
-                          key={g}
-                          className="flex gap-2 text-sm leading-snug text-foreground"
-                        >
-                          <Icon
-                            visual={Check}
-                            size="sm"
-                            className={classNames(
-                              "mt-0.5 h-4 w-4 shrink-0",
-                              colors.accent
-                            )}
-                          />
-                          <span>{g}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className="mt-5">
-                      <Button
-                        href={PARTNER_FORM_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        label={
-                          t.isInvitationOnly
-                            ? "Talk to the partner team"
-                            : "Get in touch"
-                        }
-                      />
-                    </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Expand for the full program comparison. */}
-            <details className="group mt-6 rounded-2xl border border-border bg-background">
-              <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4 text-sm font-medium text-foreground transition-colors hover:bg-muted">
-                <span>See the full program details</span>
-                <span className="text-xs text-muted-foreground transition-transform group-open:rotate-180">
-                  ▾
-                </span>
-              </summary>
-              <div className="border-t border-border p-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left">
-                        <th className="pb-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Tier
-                        </th>
-                        <th className="pb-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Who it&apos;s for
-                        </th>
-                        <th className="pb-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          How to qualify
-                        </th>
-                        <th className="pb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Cadence
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {PUBLIC_TIERS.map((t) => {
-                        const colors = TIER_COLORS[t.color];
-                        return (
-                          <tr
-                            key={t.name}
-                            className="border-b border-border last:border-0"
-                          >
-                            <td className="py-3 pr-4 align-top">
-                              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Tier {t.tierNumber}
-                              </div>
-                              <div
-                                className={classNames(
-                                  "mt-0.5 font-semibold",
-                                  colors.accent
-                                )}
-                              >
-                                {t.name}
-                              </div>
-                            </td>
-                            <td className="py-3 pr-4 align-top text-muted-foreground">
-                              {t.who}
-                            </td>
-                            <td className="py-3 pr-4 align-top text-muted-foreground">
-                              {t.entry}
-                            </td>
-                            <td className="py-3 align-top text-muted-foreground">
-                              {t.cadence}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </details>
+                </a>
+              </HomeReveal>
+            ))}
           </div>
         </Grid>
 
-        {/* ─────────── What app partners say (+ marketplace logos) ─────────── */}
-        <Grid>
-          <div className={COL_CLASSES}>
-            <SectionHeader
-              title="What app partners say"
-              subtitle="Join more than 50 apps already on the Dust marketplace."
-            />
-            <div className="grid gap-5 sm:grid-cols-3">
-              {TESTIMONIALS.map((t) => (
-                <figure
-                  key={t.name}
-                  className="flex flex-col rounded-2xl border border-border bg-background p-6"
-                >
-                  <blockquote className="copy-sm flex-grow text-foreground">
-                    &ldquo;{t.quote}&rdquo;
-                  </blockquote>
-                  <figcaption className="mt-5 border-t border-border pt-4">
-                    <div className="text-sm font-semibold text-foreground">
-                      {t.name}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {t.role}
-                    </div>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
+        {/* ─────────── The partner program — centered header + tier cards ─────────── */}
+        <div className="flex flex-col gap-10">
+          <HomeReveal className="flex flex-col items-center gap-4 text-center">
+            <HomeEyebrow label="Partner program" />
+            <H2 className="text-center">Our app partner program</H2>
+            <P size="md" className="max-w-2xl text-muted-foreground">
+              From helping you launch your app, all the way to a co-sell motion.
+            </P>
+          </HomeReveal>
 
-            {/* A few of the apps already listed, plus a nudge to add your own. */}
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              {MARKETPLACE_LOGOS.map((l) => (
-                <div
-                  key={l.name}
-                  title={l.name}
-                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-background"
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {PUBLIC_TIERS.map((tier, index) => (
+              <HomeReveal
+                key={tier.name}
+                delay={index * 80}
+                className="flex flex-col rounded-2xl border border-border bg-muted p-6"
+              >
+                <span
+                  className={classNames(
+                    "mb-3 inline-flex w-fit rounded-full bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                    ACCENT_TEXT[tier.color]
+                  )}
                 >
-                  <Icon visual={l.logo} size="lg" />
+                  Tier {tier.tierNumber}
+                </span>
+                <h3 className="text-lg font-semibold text-foreground">
+                  {tier.name}
+                </h3>
+                <P size="sm" className="mt-1 text-muted-foreground">
+                  {tier.tagline}
+                </P>
+                <ul className="mt-4 flex-grow space-y-2">
+                  {tier.partnerGets.slice(0, 3).map((benefit) => (
+                    <li
+                      key={benefit}
+                      className="flex gap-2 text-sm leading-snug text-foreground"
+                    >
+                      <Icon
+                        visual={Check}
+                        size="sm"
+                        className={classNames(
+                          "mt-0.5 h-4 w-4 shrink-0",
+                          ACCENT_TEXT[tier.color]
+                        )}
+                      />
+                      <span>{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-5">
+                  <Button
+                    href={PARTNER_FORM_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    label={
+                      tier.isInvitationOnly
+                        ? "Talk to the partner team"
+                        : "Get in touch"
+                    }
+                  />
                 </div>
-              ))}
+              </HomeReveal>
+            ))}
+          </div>
+
+          {/* Expand for the full program comparison. */}
+          <details className="group rounded-2xl border border-border bg-background">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+              <span>See the full program details</span>
+              <span className="text-xs text-muted-foreground transition-transform group-open:rotate-180">
+                ▾
+              </span>
+            </summary>
+            <div className="border-t border-border p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="pb-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Tier
+                      </th>
+                      <th className="pb-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Who it&apos;s for
+                      </th>
+                      <th className="pb-3 pr-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        How to qualify
+                      </th>
+                      <th className="pb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Cadence
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PUBLIC_TIERS.map((tier) => (
+                      <tr
+                        key={tier.name}
+                        className="border-b border-border last:border-0"
+                      >
+                        <td className="py-3 pr-4 align-top">
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Tier {tier.tierNumber}
+                          </div>
+                          <div
+                            className={classNames(
+                              "mt-0.5 font-semibold",
+                              ACCENT_TEXT[tier.color]
+                            )}
+                          >
+                            {tier.name}
+                          </div>
+                        </td>
+                        <td className="py-3 pr-4 align-top text-muted-foreground">
+                          {tier.who}
+                        </td>
+                        <td className="py-3 pr-4 align-top text-muted-foreground">
+                          {tier.entry}
+                        </td>
+                        <td className="py-3 align-top text-muted-foreground">
+                          {tier.cadence}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        {/* ─────────── How it works — centered header + steps ─────────── */}
+        <div id="how-it-works" className="flex flex-col gap-10">
+          <HomeReveal className="flex flex-col items-center gap-4 text-center">
+            <HomeEyebrow label="Getting started" />
+            <H2 className="text-center">How it works</H2>
+            <P size="md" className="max-w-2xl text-muted-foreground">
+              From a first conversation to a featured launch. Together, step by
+              step.
+            </P>
+          </HomeReveal>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {HOW_IT_WORKS.map((step, index) => (
+              <HomeReveal
+                key={step.step}
+                delay={index * 80}
+                className="rounded-2xl border border-border bg-muted p-6"
+              >
+                <span
+                  className={classNames(
+                    "text-sm font-semibold tabular-nums",
+                    ACCENT_TEXT[ACCENTS[index % ACCENTS.length]]
+                  )}
+                >
+                  {step.step}
+                </span>
+                <h3 className="mt-2 text-lg font-semibold text-foreground">
+                  {step.title}
+                </h3>
+                <P size="sm" className="mt-2 text-muted-foreground">
+                  {step.description}
+                </P>
+              </HomeReveal>
+            ))}
+          </div>
+        </div>
+
+        {/* ─────────── What app partners say + marketplace logos ─────────── */}
+        <div className="flex flex-col gap-10">
+          <HomeReveal className="flex flex-col items-center gap-4 text-center">
+            <HomeEyebrow label="Customers" />
+            <H2 className="text-center">What app partners say</H2>
+            <P size="md" className="max-w-2xl text-muted-foreground">
+              Join more than 50 apps already on the Dust marketplace.
+            </P>
+          </HomeReveal>
+          <div className="grid gap-5 sm:grid-cols-3">
+            {TESTIMONIALS.map((testimonial, index) => (
+              <HomeReveal
+                key={testimonial.name}
+                delay={index * 80}
+                as="figure"
+                className="m-0 flex flex-col rounded-2xl border border-border bg-background p-6"
+              >
+                <blockquote className="copy-sm flex-grow text-foreground">
+                  &ldquo;{testimonial.quote}&rdquo;
+                </blockquote>
+                <figcaption className="mt-5 border-t border-border pt-4 not-italic">
+                  <div className="text-sm font-semibold text-foreground">
+                    {testimonial.name}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {testimonial.role}
+                  </div>
+                </figcaption>
+              </HomeReveal>
+            ))}
+          </div>
+          <HomeReveal className="flex flex-wrap items-center justify-center gap-3">
+            {MARKETPLACE_LOGOS.map((item) => (
+              <div
+                key={item.name}
+                title={item.name}
+                className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-background"
+              >
+                <Icon visual={item.logo} size="lg" />
+              </div>
+            ))}
+            <a
+              href={PARTNER_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="List your app"
+              className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+            >
+              <Icon visual={Plus} size="md" />
+            </a>
+          </HomeReveal>
+        </div>
+      </div>
+
+      {/* ─────────── Final CTA — full-bleed dark band ─────────── */}
+      <FullWidthSection>
+        <section className="relative w-full overflow-hidden bg-slate-950 py-28 text-white md:py-32">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          />
+          <div className="mx-auto flex w-full max-w-[820px] flex-col items-center gap-8 px-6 text-center">
+            <HomeReveal>
+              <span className="inline-flex h-7 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 font-mono text-[11px] uppercase tracking-[0.12em] text-white/70 backdrop-blur-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                Become a partner
+              </span>
+            </HomeReveal>
+            <HomeReveal delay={80}>
+              <h2 className="m-0 max-w-[760px] text-balance text-center text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-white md:text-5xl">
+                Let&apos;s unlock multiplayer AI,{" "}
+                <span
+                  className="font-normal italic"
+                  style={{
+                    fontFamily:
+                      'ui-serif, Georgia, Cambria, "Times New Roman", serif',
+                  }}
+                >
+                  together
+                </span>
+                .
+              </h2>
+            </HomeReveal>
+            <HomeReveal delay={160} className="max-w-[620px]">
+              <p className="m-0 text-base leading-[1.6] text-white/70">
+                Our shared customers do their best work when their agents can
+                reach the apps they rely on, like yours. List your app and
+                let&apos;s unlock that, together.
+              </p>
+            </HomeReveal>
+            <HomeReveal delay={240} className="mt-2 flex flex-col items-center">
               <a
                 href={PARTNER_FORM_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="List your app"
-                className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+                className="active:scale-[0.97] inline-block transition-transform duration-100"
               >
-                <Icon visual={Plus} size="md" />
+                <Button variant="highlight" size="md" label="List your app" />
               </a>
-            </div>
+            </HomeReveal>
           </div>
-        </Grid>
-
-        {/* ─────────── How it works (full-bleed band) ─────────── */}
-        <FullWidthSection className="bg-muted">
-          <div
-            id="how-it-works"
-            className="mx-auto max-w-5xl px-6 py-12 md:py-16"
-          >
-            <SectionHeader
-              title="How it works"
-              subtitle="From a first conversation to a featured launch. Together, step by step."
-            />
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {HOW_IT_WORKS.map((s) => (
-                <div key={s.step} className="rounded-2xl bg-background p-6">
-                  <div className="font-mono text-xs text-muted-foreground">
-                    {s.step}
-                  </div>
-                  <h3 className="heading-base mt-2 text-foreground">
-                    {s.title}
-                  </h3>
-                  <P size="sm" className="mt-2 text-muted-foreground">
-                    {s.desc}
-                  </P>
-                </div>
-              ))}
-            </div>
-          </div>
-        </FullWidthSection>
-
-        {/* ─────────── Final CTA (shared component) ─────────── */}
-        <FinalCTASection
-          config={{
-            title: "Let's unlock multiplayer AI, together",
-            subtitle:
-              "Our shared customers do their best work when their agents can reach the apps they rely on, like yours.",
-            primaryCTA: { label: "List your app", href: PARTNER_FORM_URL },
-            secondaryCTA: { label: "Read the docs", href: MCP_DOCS_URL },
-          }}
-          trackingPrefix="technology_partner"
-        />
-      </div>
+        </section>
+      </FullWidthSection>
     </>
   );
 }
