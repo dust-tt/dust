@@ -1,5 +1,5 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { getLegacyLLM } from "@app/lib/api/llm";
+import { getBatchLLM } from "@app/lib/api/llm";
 import { writeBatchUserMessages } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -287,7 +287,7 @@ export async function getReinforcedSkillsLLM(
     },
   };
 
-  const batchLLM = await getLegacyLLM(auth, llmParameters);
+  const batchLLM = await getBatchLLM(auth, llmParameters);
 
   return batchLLM;
 }
