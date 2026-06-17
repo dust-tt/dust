@@ -125,6 +125,7 @@ export const AUDIT_ACTIONS = [
   "space.permissions_updated",
   // Conversations.
   "conversation.accessed",
+  "conversation.restricted_space_selected",
   // Data Sources.
   "datasource.created",
   "datasource.updated",

@@ -125,7 +125,8 @@ export function ConversationContainerVirtuoso({
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[]
+      selectedMCPServerViewIds?: string[],
+      selectedRestrictedSpaceIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -174,6 +175,7 @@ export function ConversationContainerVirtuoso({
           contentFragments,
           clientSideMCPServerIds,
           selectedMCPServerViewIds,
+          selectedRestrictedSpaceIds,
           richMentions: mentions,
         },
         // Navigate as soon as the conversation exists; the first message is posted

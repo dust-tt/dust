@@ -3,6 +3,7 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -23,9 +24,11 @@ export async function getSkillServers(
   auth: Authenticator,
   {
     agentConfiguration,
+    effectiveSpaceIds,
     skills,
   }: {
     agentConfiguration: LightAgentConfigurationType;
+    effectiveSpaceIds?: string[];
     skills: (SkillResource & { extendedSkill?: SkillResource | null })[];
   }
 ): Promise<MCPServerConfigurationType[]> {
@@ -33,7 +36,7 @@ export async function getSkillServers(
   if (skills.some((skill) => skill.inheritsAgentConfigurationDataSources)) {
     inheritedDataSourceViews = await DataSourceViewResource.listBySpaceIds(
       auth,
-      agentConfiguration.requestedSpaceIds,
+      effectiveSpaceIds ?? agentConfiguration.requestedSpaceIds,
       { includeGlobalSpace: true }
     );
   }
@@ -289,9 +292,14 @@ export async function resolveSkillMCPServers(
   if (activeSkills.length === 0) {
     return [];
   }
+  const effectiveSpaceIds = await getEffectiveSpaceIdsForAgentRun(auth, {
+    agentConfiguration,
+    conversation,
+  });
 
   return getSkillServers(auth, {
     agentConfiguration,
+    effectiveSpaceIds,
     skills: activeSkills,
   });
 }

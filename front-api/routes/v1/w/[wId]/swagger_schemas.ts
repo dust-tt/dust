@@ -123,6 +123,10 @@
  *           type: string
  *           description: URL of the user's profile picture
  *           example: "https://example.com/profiles/johndoe123.jpg"
+ *         selectedRestrictedSpaceIds:
+ *           type: array
+ *           items:
+ *             type: string
  *         agenticMessageData:
  *           type: object
  *           properties:

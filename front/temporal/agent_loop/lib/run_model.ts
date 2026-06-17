@@ -10,6 +10,7 @@ import { computeStepContexts } from "@app/lib/actions/utils";
 import { getActiveDustDesktopClientSideMCPServerId } from "@app/lib/api/actions/mcp/dust_desktop";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -265,9 +266,14 @@ export async function runModel(
 
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
+    const effectiveSpaceIds = await getEffectiveSpaceIdsForAgentRun(auth, {
+      agentConfiguration,
+      conversation,
+    });
 
     const skillServers = await getSkillServers(auth, {
       agentConfiguration,
+      effectiveSpaceIds,
       skills: [...systemSkills, ...enabledSkills],
     });
 

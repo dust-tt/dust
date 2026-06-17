@@ -37,6 +37,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -177,6 +178,7 @@ export function loadAllModels() {
     WebhookRequestModel,
     WebhookRequestTriggerModel,
     ConversationModel,
+    ConversationSelectedSpaceModel,
     ConversationParticipantModel,
     UserConversationReadsModel,
     WakeUpModel,

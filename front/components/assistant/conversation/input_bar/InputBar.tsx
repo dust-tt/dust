@@ -55,7 +55,8 @@ interface InputBarProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
+    selectedMCPServerViewIds?: string[],
+    selectedRestrictedSpaceIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
@@ -214,6 +215,9 @@ export const InputBar = React.memo(function InputBar({
   const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
     MCPServerViewType[]
   >([]);
+  const [selectedRestrictedSpaceIds, setSelectedRestrictedSpaceIds] = useState<
+    string[]
+  >([]);
 
   const { conversationTools } = useConversationTools({
     conversationId: conversation?.sId,
@@ -343,13 +347,15 @@ export const InputBar = React.memo(function InputBar({
           },
           // Only send the selectedMCPServerViewIds if we are creating a new conversation.
           // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId)
+          selectedMCPServerViews.map((sv) => sv.sId),
+          selectedRestrictedSpaceIds
         );
 
         if (r.isOk()) {
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
+          setSelectedRestrictedSpaceIds([]);
         }
       } finally {
         setLoading(false);
@@ -359,17 +365,23 @@ export const InputBar = React.memo(function InputBar({
       setIsLocalSubmitting(true);
 
       try {
-        const submitPromise = onSubmit(markdown, mentions, {
-          uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-            return {
-              title: cf.filename,
-              fileId: cf.fileId,
-              contentType: cf.contentType,
-              url: cf.sourceUrl,
-            };
-          }),
-          contentNodes: attachedNodes,
-        });
+        const submitPromise = onSubmit(
+          markdown,
+          mentions,
+          {
+            uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+              return {
+                title: cf.filename,
+                fileId: cf.fileId,
+                contentType: cf.contentType,
+                url: cf.sourceUrl,
+              };
+            }),
+            contentNodes: attachedNodes,
+          },
+          undefined,
+          selectedRestrictedSpaceIds
+        );
 
         // Execute these operations in parallel with the submission.
         resetEditorText();
@@ -508,6 +520,8 @@ export const InputBar = React.memo(function InputBar({
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}
+            selectedRestrictedSpaceIds={selectedRestrictedSpaceIds}
+            onSelectedRestrictedSpaceIdsChange={setSelectedRestrictedSpaceIds}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             onResetMCPServerViews={handleResetMCPServerViews}

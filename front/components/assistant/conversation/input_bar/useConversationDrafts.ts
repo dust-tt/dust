@@ -7,6 +7,7 @@ interface ConversationDraft {
   text: string;
   timestamp: number;
   agentMention?: RichAgentMention | null;
+  selectedRestrictedSpaceIds?: string[];
 }
 
 type KeyId = string;
@@ -95,6 +96,7 @@ export function useConversationDrafts({
             text: string;
             timestamp: number;
             agentMention?: RichAgentMention | null;
+            selectedRestrictedSpaceIds?: string[];
           }) => void
         >
       >
@@ -111,6 +113,7 @@ export function useConversationDrafts({
         text,
         timestamp,
         agentMention,
+        selectedRestrictedSpaceIds,
       }: {
         workspaceId: string;
         userId: string;
@@ -118,6 +121,7 @@ export function useConversationDrafts({
         text: string;
         timestamp: number;
         agentMention?: RichAgentMention | null;
+        selectedRestrictedSpaceIds?: string[];
       }) => {
         if (!userId) {
           return;
@@ -128,6 +132,7 @@ export function useConversationDrafts({
           text,
           timestamp,
           agentMention,
+          selectedRestrictedSpaceIds,
         };
         saveDraftsToStorage(drafts);
       },
@@ -156,12 +161,20 @@ export function useConversationDrafts({
   ]);
 
   const saveDraft = useCallback(
-    (text: string, agentMention?: RichAgentMention | null) => {
+    (
+      text: string,
+      agentMention?: RichAgentMention | null,
+      selectedRestrictedSpaceIds: string[] = []
+    ) => {
       if (!shouldUseDraft || !userId) {
         return;
       }
 
-      if (text.trim().length === 0) {
+      if (
+        text.trim().length === 0 &&
+        !agentMention &&
+        selectedRestrictedSpaceIds.length === 0
+      ) {
         clearDraft();
         return;
       }
@@ -173,6 +186,7 @@ export function useConversationDrafts({
         text,
         timestamp: Date.now(),
         agentMention,
+        selectedRestrictedSpaceIds,
       });
     },
     [workspaceId, userId, shouldUseDraft, draftKey, clearDraft]

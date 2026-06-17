@@ -30,6 +30,7 @@ export const MessageBaseSchema = z.object({
     profilePictureUrl: z.string().nullable(),
     clientSideMCPServerIds: z.array(z.string()).optional(),
     selectedMCPServerViewIds: z.array(z.string()).optional(),
+    selectedRestrictedSpaceIds: z.array(z.string()).optional(),
     originMessageId: z.string().optional(),
     origin: UserMessageOriginSchema.optional(),
   }),
@@ -192,6 +193,7 @@ export const InternalPostConversationsRequestBodySchema = z.object({
   message: MessageBaseSchema.nullable(),
   contentFragments: z.array(InternalPostContentFragmentRequestBodySchema),
   metadata: ConversationMetadataSchema.optional(),
+  selectedSpaceIds: z.array(z.string()).optional(),
   skipToolsValidation: z.boolean().optional(),
 });
 

@@ -4,6 +4,7 @@ import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { StepContext } from "@app/lib/actions/types";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
@@ -172,9 +173,14 @@ async function listAvailableTools(
     auth,
     runAgentData
   );
+  const effectiveSpaceIds = await getEffectiveSpaceIdsForAgentRun(auth, {
+    agentConfiguration,
+    conversation,
+  });
 
   const skillServers = await getSkillServers(auth, {
     agentConfiguration,
+    effectiveSpaceIds,
     skills: [...systemSkills, ...enabledSkills],
   });
 

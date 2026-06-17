@@ -11,6 +11,7 @@
   "audit_log.export_configured": 2,
   "audit_log.viewed": 2,
   "conversation.accessed": 3,
+  "conversation.restricted_space_selected": 1,
   "coupon.redeemed": 1,
   "coupon.revoked": 1,
   "credentials.created": 4,

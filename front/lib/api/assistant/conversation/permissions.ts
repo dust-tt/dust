@@ -5,6 +5,7 @@ import {
   type ConversationAccessType,
   ConversationResource,
 } from "@app/lib/resources/conversation_resource";
+import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -187,14 +188,33 @@ export async function updateConversationRequirements(
     if (spaceModelId === null) {
       throw new Error("Unexpected: invalid space sId in conversation.");
     }
+    const selectedSpaces =
+      await ConversationSelectedSpaceResource.listActiveSpacesByConversation(
+        auth,
+        {
+          conversation,
+          transaction: t,
+        }
+      );
+    const requestedSpaceModelIds = uniq([
+      spaceModelId,
+      ...selectedSpaces.map((space) => space.id),
+    ]);
     if (
-      conversation.requestedSpaceIds.length !== 1 ||
-      conversation.requestedSpaceIds[0] !== conversation.spaceId
+      conversation.requestedSpaceIds.length !== requestedSpaceModelIds.length ||
+      !requestedSpaceModelIds.every((requestedSpaceModelId) =>
+        conversation.requestedSpaceIds.includes(
+          SpaceResource.modelIdToSId({
+            id: requestedSpaceModelId,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          })
+        )
+      )
     ) {
       await ConversationResource.updateRequirements(
         auth,
         conversation.sId,
-        [spaceModelId],
+        requestedSpaceModelIds,
         t
       );
     }
