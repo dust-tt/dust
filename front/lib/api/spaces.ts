@@ -235,6 +235,23 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     const mcpServerViewIdSet = new Set(mcpServerViewIds);
     const dataSourceViewIdSet = new Set(dataSourceViewIds);
 
+    // Collect all agent IDs that currently reference this space BEFORE calling updateSkill.
+    // updateSkill creates its own independent transaction for each skill, so its agent
+    // updates commit before the outer transaction. By collecting upfront, we can update
+    // all affected agents (direct references and skill-driven references) atomically
+    // with the space soft-delete in the outer transaction below.
+    const agentsReferencingSpace = await AgentConfigurationModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+        requestedSpaceIds: {
+          [Op.contains]: [space.id],
+        },
+      },
+    });
+    const agentIdsToClean = agentsReferencingSpace.map((a) => a.id);
+
     // Update each skill to remove MCP server views and attached knowledge from the deleted space.
     // Note: updateSkill manages its own transaction, so we call it sequentially.
     for (const skill of skillsToUpdate) {
@@ -298,39 +315,44 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       });
     }
 
-    // Update agents that have this space in their requestedSpaceIds.
-    const agentsWithSpace = await AgentConfigurationModel.findAll({
-      attributes: ["id", "requestedSpaceIds"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        status: "active",
-        requestedSpaceIds: {
-          [Op.contains]: [space.id],
+    // Update requestedSpaceIds for all agents collected above, atomically with the
+    // space soft-delete. We do a fresh read here (inside the outer transaction) so
+    // we get the current state after updateSkill's inner transactions have committed.
+    // This covers both direct references and skill-driven references that updateSkill
+    // may have already cleaned up (no-op) or missed (still need cleanup).
+    if (agentIdsToClean.length > 0) {
+      const agentsToUpdate = await AgentConfigurationModel.findAll({
+        attributes: ["id", "requestedSpaceIds"],
+        where: {
+          id: { [Op.in]: agentIdsToClean },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "active",
         },
-      },
-    });
+        transaction: t,
+      });
 
-    await concurrentExecutor(
-      agentsWithSpace,
-      async (agent) => {
-        const newSpaceIds = agent.requestedSpaceIds.filter(
-          (id) => id !== space.id
-        );
-        const res = await updateAgentRequirements(
-          auth,
-          {
-            agentModelId: agent.id,
-            newSpaceIds,
-          },
-          { transaction: t }
-        );
+      await concurrentExecutor(
+        agentsToUpdate.filter((a) => a.requestedSpaceIds.includes(space.id)),
+        async (agent) => {
+          const newSpaceIds = agent.requestedSpaceIds.filter(
+            (id) => id !== space.id
+          );
+          const res = await updateAgentRequirements(
+            auth,
+            {
+              agentModelId: agent.id,
+              newSpaceIds,
+            },
+            { transaction: t }
+          );
 
-        if (res.isErr()) {
-          throw res.error;
-        }
-      },
-      { concurrency: 4 }
-    );
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 4 }
+      );
+    }
 
     // Finally, soft delete the space.
     const res = await space.delete(auth, { hardDelete: false, transaction: t });
