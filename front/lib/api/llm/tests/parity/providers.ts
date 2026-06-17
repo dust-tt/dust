@@ -5,7 +5,6 @@ import type { Authenticator } from "@app/lib/auth";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
 import type { Region } from "@app/lib/model_constructors/types/regions";
-import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { isModelId } from "@app/types/assistant/models/models";
 import type {
   ModelIdType,
@@ -52,11 +51,10 @@ export function readEndpointInfo(
  * Captured SDK `.stream()` arguments, populated by the mocked provider SDKs in
  * the test file. `ga` = the GA Messages API (`client.messages.stream`, used by
  * the new router); `beta` = the Beta Messages API (`client.beta.messages.stream`,
- * used by the legacy router).
+ * used by the legacy router). Keyed per provider so new providers add a bucket.
  */
 export interface SdkCaptures {
   anthropic: { ga: unknown[]; beta: unknown[] };
-  vertex: { ga: unknown[]; beta: unknown[] };
 }
 
 function last(arr: unknown[]): unknown {
@@ -90,7 +88,7 @@ const anthropicProvider: ParityProvider = {
     }
     return raw;
   },
-  buildLegacyLLM(auth, endpoint, params) {
+  buildLegacyLLM(auth, _endpoint, params) {
     if (
       !isModelId(params.modelId) ||
       !isAnthropicWhitelistedModelId(params.modelId)
@@ -99,11 +97,9 @@ const anthropicProvider: ParityProvider = {
         `${params.modelId} is not a whitelisted Anthropic model.`
       );
     }
-    // The endpoint's region tells us which physical legacy path it maps to:
-    // a non-global Anthropic endpoint is served through Vertex by the old router.
-    const useVertex = endpoint.region !== GLOBAL;
+    // Only global endpoints are exercised locally, so the legacy counterpart is
+    // always the direct Anthropic API (no Vertex).
     return new AnthropicLLM(auth, {
-      useVertex,
       credentials: PARITY_CREDENTIALS,
       modelId: params.modelId,
       temperature: params.temperature,
@@ -112,15 +108,11 @@ const anthropicProvider: ParityProvider = {
       bypassFeatureFlag: true,
     });
   },
-  selectOldRequest(endpoint, captures) {
-    return endpoint.region === GLOBAL
-      ? last(captures.anthropic.beta)
-      : last(captures.vertex.beta);
+  selectOldRequest(_endpoint, captures) {
+    return last(captures.anthropic.beta);
   },
-  selectNewRequest(endpoint, captures) {
-    return endpoint.region === GLOBAL
-      ? last(captures.anthropic.ga)
-      : last(captures.vertex.ga);
+  selectNewRequest(_endpoint, captures) {
+    return last(captures.anthropic.ga);
   },
 };
 

@@ -16,14 +16,11 @@
 // Local-only (gated on RUN_LLM_TEST, like the other LLM suites) — it does not
 // hit the network, but it currently documents known legacy<->new divergences
 // and so is kept out of CI. Run with:
-//   NODE_ENV=test RUN_LLM_TEST=true npx vitest \
-//     --config lib/api/llm/tests/vite.config.js \
-//     lib/api/llm/tests/router_parity.test.ts --run
+//   NODE_ENV=test RUN_LLM_TEST=true npx vitest --config lib/api/llm/tests/vite.config.js lib/api/llm/tests/router_parity.test.ts --run
 
 import { createMockAuthenticator } from "@app/lib/api/llm/tests/conversations";
 import { normalizeRequest } from "@app/lib/api/llm/tests/parity/allowlist";
 import { buildParityMatrix } from "@app/lib/api/llm/tests/parity/matrix";
-import type { SdkCaptures } from "@app/lib/api/llm/tests/parity/providers";
 import {
   getParityProvider,
   PARITY_CREDENTIALS,
@@ -32,55 +29,45 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
+import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-// Hoisted SDK capture kit. The mocked Anthropic / Vertex clients record the
-// argument passed to `.messages.stream` (GA, used by the new router) and
-// `.beta.messages.stream` (Beta, used by the legacy router) into `captures`.
+// Hoisted SDK capture kit. The mocked Anthropic client records the argument
+// passed to `.messages.stream` (GA, used by the new router) and
+// `.beta.messages.stream` (Beta, used by the legacy router). `state.captures`
+// is swapped for a fresh object before each case (no in-place mutation,
+// [GEN5]); the mocked client reads it live on every call.
 const kit = vi.hoisted(() => {
-  const captures = {
-    anthropic: { ga: [] as unknown[], beta: [] as unknown[] },
-    vertex: { ga: [] as unknown[], beta: [] as unknown[] },
-  };
   const emptyStream = () => (async function* () {})();
-  const makeClient = (bucket: "anthropic" | "vertex") =>
+  const freshCaptures = () => ({
+    anthropic: { ga: [] as unknown[], beta: [] as unknown[] },
+  });
+  const state = { captures: freshCaptures() };
+  const makeClient = () =>
     class {
       messages = {
         stream: (input: unknown) => {
-          captures[bucket].ga.push(input);
+          state.captures.anthropic.ga.push(input);
           return emptyStream();
         },
       };
       beta = {
         messages: {
           stream: (input: unknown) => {
-            captures[bucket].beta.push(input);
+            state.captures.anthropic.beta.push(input);
             return emptyStream();
           },
         },
       };
     };
-  return { captures, makeClient };
+  return { state, makeClient, freshCaptures };
 });
 
 vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@anthropic-ai/sdk")>();
-  return { ...actual, default: kit.makeClient("anthropic") };
+  return { ...actual, default: kit.makeClient() };
 });
-
-vi.mock("@anthropic-ai/vertex-sdk", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@anthropic-ai/vertex-sdk")>();
-  return { ...actual, default: kit.makeClient("vertex") };
-});
-
-function resetCaptures(c: SdkCaptures): void {
-  c.anthropic.ga.length = 0;
-  c.anthropic.beta.length = 0;
-  c.vertex.ga.length = 0;
-  c.vertex.beta.length = 0;
-}
 
 async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
   try {
@@ -93,20 +80,16 @@ async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
   }
 }
 
-const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS).map(readEndpointInfo);
+// Local parity only exercises global endpoints — the eu/Vertex path is not run
+// locally. Global agent-platform coverage can be added here once it exists.
+const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
+  .map(readEndpointInfo)
+  .filter((endpoint) => endpoint.region === GLOBAL);
 const MATRIX = buildParityMatrix();
 
 describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
   "LLM router request parity (legacy vs new)",
   () => {
-    beforeAll(() => {
-      // The legacy Vertex path reads the project id from config at construction.
-      vi.stubEnv("VERTEX_AI_PROJECT_ID", "test-project");
-    });
-    afterAll(() => {
-      vi.unstubAllEnvs();
-    });
-
     for (const endpoint of ENDPOINTS) {
       const provider = getParityProvider(endpoint.providerId);
       const modelId = provider.toModelId(endpoint.modelId);
@@ -114,7 +97,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
       describe(endpoint.id, () => {
         for (const testCase of MATRIX) {
           it(testCase.label, async () => {
-            resetCaptures(kit.captures);
+            kit.state.captures = kit.freshCaptures();
             const auth = createMockAuthenticator();
 
             const params: LLMParameters = {
@@ -145,8 +128,14 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
               newLLM.stream(testCase.streamParameters)
             );
 
-            const oldReq = provider.selectOldRequest(endpoint, kit.captures);
-            const newReq = provider.selectNewRequest(endpoint, kit.captures);
+            const oldReq = provider.selectOldRequest(
+              endpoint,
+              kit.state.captures
+            );
+            const newReq = provider.selectNewRequest(
+              endpoint,
+              kit.state.captures
+            );
 
             expect(oldErr, `legacy stream threw: ${oldErr?.message}`).toBe(
               undefined

@@ -47,11 +47,6 @@ const anthropicNormalizer: Normalizer = (request) => {
   delete r.betas;
   delete r.fallbacks;
 
-  // The legacy client sets a top-level `cache_control: { type: "ephemeral" }`
-  // (automatic caching) on the direct-API path. The new router relies on
-  // per-block cache breakpoints instead, so the top-level field is dropped.
-  delete r.cache_control;
-
   return r;
 };
 
