@@ -9,4 +9,5 @@ export interface PodMetadataType {
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
   defaultAgentId: string | null;
+  defaultSkills: string[] | null;
 }
