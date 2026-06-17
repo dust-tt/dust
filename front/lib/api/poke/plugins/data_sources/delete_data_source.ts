@@ -24,7 +24,7 @@ export const deleteDataSourcePlugin = createPlugin({
           "WARNING: This will immediately and permanently delete ALL files and bypass safety checks. The data will be unrecoverable. Only use if you are absolutely certain.",
       },
     },
-    requiredRoles: ["engineering"],
+    requiredRoles: ["engineering", "support"],
   },
   execute: async (auth, dataSource, args) => {
     if (!dataSource) {
