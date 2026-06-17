@@ -1208,7 +1208,18 @@ export async function editUserMessage(
     });
   }
 
-  if (auth.user()?.id !== message.user?.id) {
+  const authUserId = user?.id ?? null;
+  const messageUserId = message.user?.id ?? null;
+  const authApiKeyId = auth.attributionKeyModelId() ?? auth.key()?.id ?? null;
+  const messageApiKeyId = message.context.apiKeyId ?? null;
+
+  if (
+    messageUserId !== null
+      ? authUserId !== messageUserId
+      : authApiKeyId === null ||
+        messageApiKeyId === null ||
+        authApiKeyId !== messageApiKeyId
+  ) {
     return new Err({
       status_code: 403,
       api_error: {
