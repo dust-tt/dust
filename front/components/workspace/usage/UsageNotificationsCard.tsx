@@ -72,7 +72,13 @@ export function UsageNotificationsCard({
       <SettingsList>
         <SettingsList.Row
           title="Workspace credit pool threshold"
-          description="Email all workspace admins when your remaining workspace credit pool balance drops below this amount (in credits). Set to 0 to disable."
+          description={
+            <>
+              Email all workspace admins when your remaining workspace credit
+              pool balance drops below this amount.{" "}
+              <strong>Set to 0 to disable.</strong>
+            </>
+          }
           action={
             <div className="w-52">
               <InputWithSave
