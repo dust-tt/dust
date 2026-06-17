@@ -3322,6 +3322,7 @@ describe("compactConversation", () => {
 describe("editUserMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let globalGroup: Awaited<ReturnType<typeof createResourceTest>>["globalGroup"];
   let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
   let agentConfig2: LightAgentConfigurationType;
@@ -3331,6 +3332,7 @@ describe("editUserMessage", () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+    globalGroup = setup.globalGroup;
 
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
@@ -3641,6 +3643,102 @@ describe("editUserMessage", () => {
 
       // Verify launchAgentLoopWorkflow was NOT called (no agent mentions)
       expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
+    }
+  });
+
+  it("should allow the same API key to edit a message it created without a user", async () => {
+    const apiKey = await KeyFactory.regular(globalGroup);
+    const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+      apiKey,
+      workspace.sId
+    );
+
+    const result = await postUserMessage(apiKeyAuth, {
+      conversation,
+      content: "Original API key message",
+      mentions: [],
+      context: {
+        username: "api-key",
+        timezone: "UTC",
+        fullName: null,
+        email: null,
+        profilePictureUrl: null,
+        origin: "api",
+      },
+      doNotAssociateUser: true,
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    expect(result.value.userMessage.user).toBeNull();
+    expect(result.value.userMessage.context.apiKeyId).toBe(apiKey.id);
+
+    const editResult = await editUserMessage(apiKeyAuth, {
+      conversation,
+      message: result.value.userMessage,
+      content: "Edited API key message",
+      mentions: [],
+      skipToolsValidation: false,
+    });
+
+    expect(editResult.isOk()).toBe(true);
+    if (editResult.isOk()) {
+      expect(editResult.value.userMessage.content).toBe(
+        "Edited API key message"
+      );
+      expect(editResult.value.userMessage.user).toBeNull();
+    }
+  });
+
+  it("should reject a different API key editing a message created without a user", async () => {
+    const apiKey = await KeyFactory.regular(globalGroup);
+    const otherApiKey = await KeyFactory.regular(globalGroup);
+    const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+      apiKey,
+      workspace.sId
+    );
+    const { workspaceAuth: otherApiKeyAuth } = await Authenticator.fromKey(
+      otherApiKey,
+      workspace.sId
+    );
+
+    const result = await postUserMessage(apiKeyAuth, {
+      conversation,
+      content: "Original API key message",
+      mentions: [],
+      context: {
+        username: "api-key",
+        timezone: "UTC",
+        fullName: null,
+        email: null,
+        profilePictureUrl: null,
+        origin: "api",
+      },
+      doNotAssociateUser: true,
+      skipToolsValidation: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    const editResult = await editUserMessage(otherApiKeyAuth, {
+      conversation,
+      message: result.value.userMessage,
+      content: "Edited API key message",
+      mentions: [],
+      skipToolsValidation: false,
+    });
+
+    expect(editResult.isErr()).toBe(true);
+    if (editResult.isErr()) {
+      expect(editResult.error.status_code).toBe(403);
+      expect(editResult.error.api_error.type).toBe("workspace_auth_error");
     }
   });
 });
