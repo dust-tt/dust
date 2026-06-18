@@ -302,7 +302,10 @@ function getProviderIdFilter(auth: Authenticator): ValueFilter<ProviderId> {
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = byok
     ? intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS)
-    : whitelistedProviderIds;
+    : whitelistedProviderIds.filter(
+        // We route all non-byok gemini requests to agent platform
+        (providerId) => providerId !== "google_ai_studio"
+      );
 
   return { in: providerIds };
 }
