@@ -1,4 +1,5 @@
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
+import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import {
   isMetronomeBillingEnabled,
   restoreWorkspaceAfterSubscription,
@@ -527,6 +528,23 @@ export async function handleSubscriptionActivationSuccess({
         },
         "[Business Activation] Target user seat updated"
       );
+
+      // Immediately sync seats so the user lands in the correct credit state
+      // without waiting for the debounced Temporal workflow (15 s delay).
+      const syncResult = await syncMetronomeSeatCountForWorkspace({
+        workspace: lightWorkspace,
+      });
+      if (syncResult.isErr()) {
+        logger.warn(
+          { workspaceId: workspace.sId, err: syncResult.error.message },
+          "[Business Activation] Immediate seat sync failed; debounced workflow will retry"
+        );
+      } else {
+        logger.info(
+          { workspaceId: workspace.sId, status: syncResult.value.status },
+          "[Business Activation] Immediate seat sync completed"
+        );
+      }
     }
   }
 
