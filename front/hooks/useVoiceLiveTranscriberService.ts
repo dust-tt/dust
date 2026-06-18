@@ -57,10 +57,17 @@ export function useVoiceLiveTranscriberService({
   // Keep latest callbacks in refs so the stable SDK closures always see fresh values.
   const onTranscribeDeltaRef = useRef(onTranscribeDelta);
   onTranscribeDeltaRef.current = onTranscribeDelta;
+  const onTranscribeCompleteRef = useRef(onTranscribeComplete);
+  onTranscribeCompleteRef.current = onTranscribeComplete;
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
 
   const sendNotification = useSendNotification();
+
+  // Tracks whether we are in the process of shutting down after a user-initiated stop.
+  // When true, the next committed_transcript triggers disconnect + onTranscribeComplete.
+  const isShuttingDownRef = useRef(false);
+  const shutdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const cleanup = useCallback(() => {
     if (levelIntervalRef.current !== null) {
@@ -86,11 +93,30 @@ export function useVoiceLiveTranscriberService({
     setLevel(0);
   }, []);
 
+  // Finalizes shutdown after the committed_transcript from a user stop is received,
+  // or on the safety timeout if the server never responds.
+  const finishShutdown = useCallback(() => {
+    if (!isShuttingDownRef.current) {
+      return;
+    }
+    if (shutdownTimeoutRef.current !== null) {
+      clearTimeout(shutdownTimeoutRef.current);
+      shutdownTimeoutRef.current = null;
+    }
+    isShuttingDownRef.current = false;
+    scribeRef.current.disconnect();
+    setStatus("idle");
+    onTranscribeCompleteRef.current?.();
+  }, []);
+
   const handleCommittedTranscript = useCallback(
     ({ text }: { text: string }) => {
       onTranscribeDeltaRef.current?.(text);
+      // If we committed as part of a user-initiated stop, disconnect now that
+      // the server has delivered the final transcript.
+      finishShutdown();
     },
-    []
+    [finishShutdown]
   );
 
   const handleError = useCallback(
@@ -98,6 +124,11 @@ export function useVoiceLiveTranscriberService({
       const error =
         err instanceof Error ? err : new Error("Transcription error.");
       onErrorRef.current?.(error);
+      if (shutdownTimeoutRef.current !== null) {
+        clearTimeout(shutdownTimeoutRef.current);
+        shutdownTimeoutRef.current = null;
+      }
+      isShuttingDownRef.current = false;
       cleanup();
       setStatus("idle");
     },
@@ -213,12 +244,23 @@ export function useVoiceLiveTranscriberService({
       return;
     }
 
-    scribeRef.current.disconnect();
+    // 1. Stop audio capture so no more audio is sent to the WebSocket.
     cleanup();
-    setStatus("idle");
 
-    onTranscribeComplete?.();
-  }, [status, onTranscribeComplete, cleanup]);
+    // 2. Force-commit buffered audio so the server flushes any pending transcript.
+    //    Guard against a second invocation while a shutdown is already in progress
+    //    (isShuttingDownRef is a ref so it updates synchronously, unlike React state).
+    if (!isShuttingDownRef.current) {
+      scribeRef.current.commit();
+    }
+
+    // 3. Mark shutdown pending — handleCommittedTranscript will disconnect once the
+    //    server delivers the committed_transcript response to the commit above.
+    isShuttingDownRef.current = true;
+
+    // 4. Safety timeout: force-close if the server never delivers a committed_transcript.
+    shutdownTimeoutRef.current = setTimeout(finishShutdown, 2000);
+  }, [status, cleanup, finishShutdown]);
 
   return owner.metadata?.allowVoiceTranscription !== false
     ? { status, level, elapsedSeconds, startRecording, stopRecording }
