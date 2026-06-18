@@ -17,15 +17,17 @@ const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 export function cleanUtf8Content(content: string): string {
   // Strip null bytes (invalid in PostgreSQL text columns and JSON strings per RFC4627)
-  content = content.replace(/\0/g, "");
+  const withoutNullBytes = content.replace(/\0/g, "");
 
-  // Early exit if no \uD sequences found.
-  if (!/[\uD800-\uDFFF]/.test(content)) {
-    return content;
+  // This runs on JSON-serialized text, where surrogates appear as escaped `\uXXXX`
+  // sequences (not as actual surrogate code units). Early exit only when there is no
+  // escaped surrogate (\uD800-\uDFFF) to clean.
+  if (!/\\uD[89A-F][0-9A-F]{2}/i.test(withoutNullBytes)) {
+    return withoutNullBytes;
   }
   // Replace invalid high surrogates not followed by a low surrogate with a valid JSON string
   // Replace invalid low surrogates not preceded by a high surrogate with a valid JSON string
-  return content
+  return withoutNullBytes
     .replace(/\\uD[89AB][0-9A-F]{2}(?!\\uD[CDEF][0-9A-F]{2})/gi, "\\u003F")
     .replace(/(?<!\\uD[89AB][0-9A-F]{2})\\uD[CDEF][0-9A-F]{2}/gi, "\\u003F");
 }
