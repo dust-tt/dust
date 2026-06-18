@@ -379,7 +379,7 @@ export function InviteEmailButtonWithModal({
           disabled={disabled}
         />
       </DialogTrigger>
-      <DialogContent size="md" height={hasSeatSelection ? "xl" : undefined}>
+      <DialogContent size="md">
         <DialogHeader>
           <div className="flex flex-col gap-1">
             <DialogTitle>Invite new users</DialogTitle>
