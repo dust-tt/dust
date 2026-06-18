@@ -6,7 +6,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
-import { fromZodError } from "zod-validation-error";
+import { fromError } from "zod-validation-error";
 
 const TriggerFreeGrantArgsSchema = z.object({
   metronomeCreditId: z.string().min(1, "Metronome credit ID is required"),
@@ -44,7 +44,7 @@ export const triggerFreeCreditSegmentGrantPlugin = createPlugin({
 
     const parseResult = TriggerFreeGrantArgsSchema.safeParse(args);
     if (!parseResult.success) {
-      return new Err(new Error(fromZodError(parseResult.error).message));
+      return new Err(new Error(fromError(parseResult.error).toString()));
     }
     const { metronomeCreditId } = parseResult.data;
 
