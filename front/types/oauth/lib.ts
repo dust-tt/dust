@@ -291,7 +291,9 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Workday Tenant URL",
             value: undefined,
             helpMessage:
-              "Your Workday Tenant URL (e.g., https://wd2.myworkday.com/your-company).",
+              "Your Workday OAuth tenant URL, including the /ccx/oauth2/{tenant} path " +
+              "(e.g., https://wd2.myworkday.com/ccx/oauth2/your-tenant). " +
+              "Dust appends /authorize and /token to this URL.",
             validator: isValidUrl,
           },
           client_id: {

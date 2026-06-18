@@ -109,8 +109,10 @@ impl Provider for WorkdayConnectionProvider {
             },
             _ => Err(anyhow!("Missing `expires_in` in response from Workday"))?,
         };
-        // TODO: confirm Workday returns a refresh_token on initial authorization without
-        // requiring an explicit offline_access scope.
+        // TODO: confirm against a real tenant. Workday emits a refresh_token based on the
+        // "Non-Expiring Refresh Tokens" option set on the API client (not via an offline_access
+        // scope, which Workday does not use). If that option is off, no refresh_token is returned
+        // and this hard error would break finalize — consider making it optional.
         let refresh_token = match raw_json["refresh_token"].as_str() {
             Some(token) => token,
             None => Err(anyhow!("Missing `refresh_token` in response from Workday"))?,
