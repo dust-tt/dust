@@ -1,0 +1,77 @@
+// @vitest-environment node
+
+import { GoogleAiStudioGlobalGemini31FlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
+import {
+  INPUT_CONFIGURATION_ERROR,
+  SUCCESS,
+} from "@app/lib/model_constructors/test/cases";
+import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
+import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
+
+const setup: StreamSetup = {
+  createInstance: () =>
+    new GoogleAiStudioGlobalGemini31FlashLiteStream({
+      GOOGLE_AI_STUDIO_API_KEY:
+        process.env.DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY ?? "",
+    }),
+  // `null` runs the case with its default checkers; a checker array overrides
+  // them. Every case always runs.
+  tests: {
+    // Gemini 3 supports none/low/medium/high (+ maximal → high). The `minimal`
+    // effort is unsupported and rejected by the config schema.
+    "simple/no-tools/t-default/r-minimal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-0/r-minimal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-0.1/r-minimal": [INPUT_CONFIGURATION_ERROR],
+    "simple/no-tools/t-1/r-minimal": [INPUT_CONFIGURATION_ERROR],
+
+    "simple/no-tools/t-default/r-default": null,
+    "simple/no-tools/t-default/r-none": null,
+    "simple/no-tools/t-default/r-low": null,
+    "simple/no-tools/t-default/r-medium": null,
+    "simple/no-tools/t-default/r-high": null,
+    "simple/no-tools/t-default/r-maximal": null,
+    "simple/no-tools/t-0/r-default": null,
+    "simple/no-tools/t-0/r-none": null,
+    "simple/no-tools/t-0/r-low": null,
+    "simple/no-tools/t-0/r-medium": null,
+    "simple/no-tools/t-0/r-high": null,
+    "simple/no-tools/t-0/r-maximal": null,
+    "simple/no-tools/t-0.1/r-default": null,
+    "simple/no-tools/t-0.1/r-none": null,
+    "simple/no-tools/t-0.1/r-low": null,
+    "simple/no-tools/t-0.1/r-medium": null,
+    "simple/no-tools/t-0.1/r-high": null,
+    "simple/no-tools/t-0.1/r-maximal": null,
+    "simple/no-tools/t-1/r-default": null,
+    "simple/no-tools/t-1/r-none": null,
+    "simple/no-tools/t-1/r-low": null,
+    "simple/no-tools/t-1/r-medium": null,
+    "simple/no-tools/t-1/r-high": null,
+    "simple/no-tools/t-1/r-maximal": null,
+
+    // Gemini ignores the Anthropic-style cache markers (it uses implicit
+    // caching), so this behaves like a plain "say Hi" prompt.
+    "cache/no-tools/t-default/r-default": null,
+
+    "calc/calc/t-default/r-medium": null,
+    "calc/calc/t-0.1/r-default": null,
+    "calc/calc/t-0.1/r-medium": null,
+
+    "calc/calc/t-default/r-default/force-tool-default": null,
+    "calc/calc/t-default/r-default/force-tool": null,
+    "calc/calc/t-default/r-none/force-tool": null,
+
+    "reasoning/no-tools/t-default/r-none": null,
+    // Unlike Pro/Flash, this lightweight model does not reliably surface thought
+    // content at `low` effort, so we only assert the stream completes.
+    "reasoning/no-tools/t-default/r-low": [SUCCESS],
+
+    "output-format/json-schema/t-default/r-none": null,
+    "output-format/json-schema/t-default/r-high": null,
+
+    "following/no-tools/t-default/r-default": null,
+  },
+};
+
+// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/google_ai_studio_global_gemini_3_1_flash_lite.test.ts
+runStreamEndpointTests(GoogleAiStudioGlobalGemini31FlashLiteStream, setup);
