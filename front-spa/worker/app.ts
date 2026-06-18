@@ -33,12 +33,13 @@ interface Env {
 const ShareFrameMetadataSchema: z.ZodType<
   Pick<
     GetShareFrameMetadataResponseBody,
-    "title" | "workspaceName" | "ogImageUrl"
+    "title" | "workspaceName" | "ogImageUrl" | "description"
   >
 > = z.object({
   title: z.string(),
   workspaceName: z.string(),
   ogImageUrl: z.string().nullable(),
+  description: z.string().nullable(),
 });
 
 type ShareFrameMetadata = z.infer<typeof ShareFrameMetadataSchema>;
@@ -70,18 +71,13 @@ function buildOgMetaTags(
 ): string {
   const title = `${meta.title} - ${meta.workspaceName}`;
   const image = meta.ogImageUrl ?? fallbackImageUrl;
-  // Show viral description only for non-premium workspaces (no custom OG image).
-  const description =
-    meta.ogImageUrl === null
-      ? `Discover what ${meta.workspaceName} built with AI. Explore now.`
-      : null;
 
   return [
     `<title>${escapeHtml(title)}</title>`,
-    ...(description
+    ...(meta.description
       ? [
-          `<meta name="description" content="${escapeHtml(description)}">`,
-          `<meta property="og:description" content="${escapeHtml(description)}">`,
+          `<meta name="description" content="${escapeHtml(meta.description)}">`,
+          `<meta property="og:description" content="${escapeHtml(meta.description)}">`,
         ]
       : []),
     `<meta property="og:type" content="website">`,
