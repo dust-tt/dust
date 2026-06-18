@@ -1,0 +1,195 @@
+# Local dev environment, managed by process-compose. Replaces tools/mprocs.yaml.
+#
+# Run it via tools/dev.sh (sets DUST_DEV_ROOT, selects the Node version, clears
+# stale build artifacts, runs `npm install`, then launches process-compose).
+# Do not run process-compose directly: the config relies on ${DUST_DEV_ROOT}
+# being exported and on the Node version being on PATH (the _check-start-script
+# process enforces this).
+#
+# Requirements:
+# * process-compose (`brew install f1bonacc1/tap/process-compose`)
+# * cargo-watch     (`cargo install cargo-watch`)  -- live reload for Rust services
+#
+# The inline shell waits that mprocs.yaml used (`while [ ! -f ... ]`,
+# `until curl ...`) are now first-class `depends_on` + `readiness_probe`
+# dependencies:
+#   * sdks-js / sparkle expose a readiness probe (build output file exists).
+#   * front-api-hono, connectors and migrations depend on sdks-js being healthy.
+#   * front-spa / front-poke / marketing-site depend on sparkle being healthy.
+#   * front-workers depends on front-api-hono being healthy -- it now starts
+#     automatically, so the old "select front-workers and press r" step is gone.
+
+version: "0.5"
+
+shell:
+  shell_command: "bash"
+  shell_argument: "-c"
+
+processes:
+  # Guard: fail loudly if process-compose was launched directly instead of via
+  # tools/dev.sh (which sets up nvm, clears stale build artifacts and installs
+  # dependencies). dev.sh exports DUST_USE_DEV_SH=1. The `$$` escapes
+  # process-compose's variable expansion so the check runs at runtime.
+  _check-start-script:
+    command: |
+      if [ -z "$$DUST_USE_DEV_SH" ]; then
+        echo ""
+        echo "ERROR: Run tools/dev.sh instead of invoking process-compose directly."
+        echo "       It sets up nvm, clears stale build artifacts, and installs dependencies."
+        echo ""
+        exit 1
+      fi
+      echo "OK"
+
+  # --- Rust services (cargo watch -> live reload) -------------------------
+  # `cargo watch` recompiles and reruns on source changes, streaming plain log
+  # output into the process-compose view (no TUI). CARGO_TERM_COLOR keeps output
+  # colored since cargo otherwise disables color when stdout is not a TTY.
+  core:
+    command: "cargo watch -x 'run --bin core-api'"
+    working_dir: "${DUST_DEV_ROOT}/core"
+    environment:
+      - "CARGO_TERM_COLOR=always"
+
+  sqlite-workers:
+    command: "cargo watch -x 'run --bin sqlite-worker'"
+    working_dir: "${DUST_DEV_ROOT}/core"
+    environment:
+      - "CARGO_TERM_COLOR=always"
+      - "CORE_API=http://localhost:3001"
+      - "IS_LOCAL_DEV=1"
+      - "DATABASES_STORE_DATABASE_URI=postgresql://dev:dev@localhost:5432/dust_databases_store"
+      - "CORE_API_KEY=soupinou"
+
+  oauth:
+    command: "cargo watch -x 'run --bin oauth'"
+    working_dir: "${DUST_DEV_ROOT}/core"
+    environment:
+      - "CARGO_TERM_COLOR=always"
+      - "RUST_BACKTRACE=1"
+
+  # --- Build watchers (readiness gates for downstream services) -----------
+  sparkle:
+    command: "npm run watch"
+    working_dir: "${DUST_DEV_ROOT}/sparkle"
+    readiness_probe:
+      exec:
+        command: "test -f ${DUST_DEV_ROOT}/sparkle/dist/cjs/index.js"
+      period_seconds: 1
+      failure_threshold: 600
+
+  sdks-js:
+    command: "./admin/dev.sh"
+    working_dir: "${DUST_DEV_ROOT}/sdks/js"
+    readiness_probe:
+      exec:
+        command: "test -f ${DUST_DEV_ROOT}/sdks/js/dist/client.esm.js.map"
+      period_seconds: 1
+      failure_threshold: 600
+
+  # --- Application services -----------------------------------------------
+  migrations:
+    command: "npm -w front run migration:apply && npm -w connectors run migration:apply"
+    working_dir: "${DUST_DEV_ROOT}"
+    depends_on:
+      sdks-js:
+        condition: process_healthy
+
+  front-api-hono:
+    command: "npm run dev"
+    working_dir: "${DUST_DEV_ROOT}/front-api"
+    depends_on:
+      sdks-js:
+        condition: process_healthy
+    environment:
+      - "NODE_ENV=development"
+      # forbid-next.cjs throws if anything loads `next` at runtime, guaranteeing
+      # the Hono server (not Next) serves every request.
+      - "NODE_OPTIONS=--require=./forbid-next.cjs"
+    readiness_probe:
+      http_get:
+        host: 127.0.0.1
+        scheme: http
+        port: 3000
+        path: "/api/healthz"
+      period_seconds: 2
+      failure_threshold: 600
+
+  front-workers:
+    command: "./admin/dev_worker.sh"
+    working_dir: "${DUST_DEV_ROOT}/front"
+    depends_on:
+      front-api-hono:
+        condition: process_healthy
+
+  connectors:
+    command: "./admin/dev.sh"
+    working_dir: "${DUST_DEV_ROOT}/connectors"
+    depends_on:
+      sdks-js:
+        condition: process_healthy
+
+  front-spa:
+    command: "npm run dev:app"
+    working_dir: "${DUST_DEV_ROOT}/front-spa"
+    depends_on:
+      sparkle:
+        condition: process_healthy
+
+  front-poke:
+    command: "npm run dev:poke"
+    working_dir: "${DUST_DEV_ROOT}/front-spa"
+    depends_on:
+      sparkle:
+        condition: process_healthy
+
+  # --- Optional services --------------------------------------------------
+  # `disabled: true` mirrors mprocs `autostart: false`: the process is listed in
+  # the TUI / REST client and can be started on demand, but does not autostart.
+  marketing-site:
+    command: "npm run dev -- -p 3009"
+    working_dir: "${DUST_DEV_ROOT}/marketing"
+    disabled: true
+    depends_on:
+      sparkle:
+        condition: process_healthy
+
+  sparkle-storybook:
+    command: "npm run storybook"
+    working_dir: "${DUST_DEV_ROOT}/sparkle"
+    disabled: true
+
+  sparkle-playground:
+    command: "npm install && npm run dev"
+    working_dir: "${DUST_DEV_ROOT}/sparkle/playground"
+    disabled: true
+
+  viz:
+    command: "npm run dev"
+    working_dir: "${DUST_DEV_ROOT}/viz"
+    disabled: true
+
+  extension:
+    command: "npm run dev:chrome"
+    working_dir: "${DUST_DEV_ROOT}/extension"
+    disabled: true
+
+  ngrok:
+    # Doc: https://www.notion.so/dust-tt/Runbook-Local-Setup-Slack-2ad003fc529d4144bb0ee61b7fd797c9?source=copy_link#2a728599d941807fb71dccb4addc0234
+    command: "ngrok start localhost-via-https"
+    disabled: true
+
+  firebase-webhook-router:
+    command: "docker-compose up --build"
+    working_dir: "${DUST_DEV_ROOT}/firebase-functions/webhook-router"
+    disabled: true
+
+  novu:
+    # Doc: https://docs.novu.co/framework/studio
+    command: "npx novu@latest dev --port 3000"
+    disabled: true
+
+  stripe:
+    # Doc: https://www.notion.so/dust-tt/Runbook-Local-Dev-setup-720bffc7d67a447184cb957e9471380c?source=copy_link#5814f227351d4d258422e21e8de39c82/
+    command: "stripe listen --forward-to localhost:3000/api/stripe/webhook"
+    disabled: true
