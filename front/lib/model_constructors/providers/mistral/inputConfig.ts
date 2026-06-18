@@ -15,3 +15,14 @@ export const mistralConfigSchema = inputConfigSchema.extend({
 });
 
 export type MistralInputConfig = z.infer<typeof mistralConfigSchema>;
+
+// Schema for non-reasoning Mistral models (Large, Small): accept `none` but drop
+// it so the request omits `reasoning_effort` (the API rejects it on these
+// models). Temperature passes through unchanged.
+export const mistralNonReasoningConfigSchema = inputConfigSchema.extend({
+  reasoning: z
+    .object({ effort: z.literal("none") })
+    .optional()
+    .transform(() => undefined),
+  cacheKey: z.undefined(),
+});
