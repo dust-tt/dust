@@ -1,8 +1,11 @@
 import { WithMistralInputConverter } from "@app/lib/model_constructors/providers/mistral/converters/input";
 import { rawOutputToEvents } from "@app/lib/model_constructors/providers/mistral/converters/output/utils";
+import {
+  type MistralInputConfig,
+  mistralConfigSchema,
+} from "@app/lib/model_constructors/providers/mistral/inputConfig";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
-import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { MISTRAL_API } from "@app/lib/model_constructors/types/provider_apis";
 import { MISTRAL_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
@@ -12,16 +15,17 @@ import type {
   CompletionEvent,
 } from "@mistralai/mistralai/models/components";
 
-import type { z } from "zod";
-
 export abstract class MistralStream extends WithMistralInputConverter(
-  StreamEndpoint<ChatCompletionStreamRequest, CompletionEvent>
+  StreamEndpoint<
+    ChatCompletionStreamRequest,
+    CompletionEvent,
+    MistralInputConfig
+  >
 ) {
   static readonly providerId = MISTRAL_PROVIDER_ID;
   static readonly api = MISTRAL_API;
 
-  static readonly configSchema: z.ZodType<z.infer<typeof inputConfigSchema>> =
-    inputConfigSchema;
+  static readonly configSchema = mistralConfigSchema;
 
   private readonly client: Mistral;
 
