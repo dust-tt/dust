@@ -6,7 +6,6 @@ import {
   CONFIG_ENV_PATH,
   DUST_HIVE_ENVS,
   DUST_HIVE_HOME,
-  HIVES_DIR,
   findRepoRoot,
   getDockerOverridePath,
   getEnvDir,
@@ -17,6 +16,7 @@ import {
   getPidPath,
   getPortsPath,
   getWorktreeDir,
+  HIVES_DIR,
 } from "../../src/lib/paths";
 
 describe("paths", () => {

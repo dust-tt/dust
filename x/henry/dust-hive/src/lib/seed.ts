@@ -10,7 +10,7 @@
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
+import { getEnvFilePath, getWorktreeDir, SEED_USER_PATH } from "./paths";
 import { buildShell, shellQuote } from "./shell";
 
 // Keep in sync with front/scripts/seed/* (workspace created by dust-hive seed SQL).
