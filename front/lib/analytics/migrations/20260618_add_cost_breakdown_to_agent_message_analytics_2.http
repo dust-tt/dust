@@ -1,0 +1,30 @@
+PUT /front.agent_message_analytics_2/_mapping
+{
+  "properties": {
+    "ancestor_message_ids": {
+      "type": "keyword"
+    },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "full_awu": {
+          "type": "integer"
+        },
+        "llm_awu": {
+          "type": "integer"
+        },
+        "tool_awu": {
+          "type": "integer"
+        }
+      }
+    },
+    "tools_used": {
+      "type": "nested",
+      "properties": {
+        "cost_awu": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}
