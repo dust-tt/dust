@@ -53,26 +53,15 @@ const OVERLAY = cn(
   "after:s-transition-colors disabled:after:s-hidden"
 );
 
-// Press feedback: the content scales down to 0.97 over 150ms ease-out while the
-// button (and tooltip anchor) stays fixed. `group-active` keys off the button's
-// :active state so pressing anywhere — including the padding — animates, with no
-// dead zone. Honors prefers-reduced-motion (no scale, no transition). This also
-// owns the icon/label flex layout, since it is now the button's only child.
-const PRESS_FEEDBACK = cn(
-  "s-inline-flex s-items-center s-justify-center s-gap-1.5",
-  "s-transition-transform s-duration-150 s-ease-out group-active:s-scale-[0.97]",
-  "motion-reduce:s-transition-none motion-reduce:group-active:s-scale-100"
-);
-
 const buttonVariants = cva(
   cn(
-    // `s-group` drives the press animation on the inner content (see
-    // PRESS_FEEDBACK). The button itself must NOT transform: it is the Radix
-    // tooltip anchor, and Floating UI tracks its rendered rect — scaling the
-    // button makes the tooltip slide to follow it. Scaling the content leaves
-    // the anchor box fixed, so the tooltip stays put.
-    "s-group s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
-    "s-transition-[color,background-color,border-color] s-duration-150 s-ease-out",
+    "s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
+    // Press feedback (scale 0.97 on :active) is added by the `press` variant.
+    // It is disabled when the button has a tooltip: the button is then the
+    // Radix tooltip anchor and Floating UI tracks its rendered rect, so scaling
+    // it makes the tooltip slide to follow. `transform` stays in the transition
+    // list so the press eases in/out when the variant enables it.
+    "s-transition-[color,background-color,border-color,transform] s-duration-150 s-ease-out",
     "motion-reduce:s-transition-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
     // Disabled is a per-variant recipe (lighter fill / muted text / no shadow),
@@ -165,6 +154,11 @@ const buttonVariants = cva(
         true: "",
         false: "",
       },
+      // Press feedback. Turned off for tooltip buttons (see base comment).
+      press: {
+        true: "active:s-scale-[0.97] motion-reduce:active:s-scale-100",
+        false: "",
+      },
     },
     compoundVariants: [
       { size: "sm", isIconOnly: true, className: "s-w-6 s-px-0" },
@@ -176,6 +170,7 @@ const buttonVariants = cva(
       size: "md",
       rounded: "md",
       isIconOnly: false,
+      press: true,
     },
   }
 );
@@ -354,6 +349,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             size,
             rounded: isRounded ? "full" : size,
             isIconOnly,
+            // No press scale when there's a tooltip: scaling the button (the
+            // tooltip anchor) makes Floating UI slide the tooltip on press.
+            press: !tooltip,
           }),
           isPulsing && "s-animate-ring-pulse",
           className
@@ -363,13 +361,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
         {...pointerEventProps}
       >
-        {shouldUseSlot ? (
-          <span>
-            <span className={PRESS_FEEDBACK}>{content}</span>
-          </span>
-        ) : (
-          <span className={PRESS_FEEDBACK}>{content}</span>
-        )}
+        {shouldUseSlot ? <span>{content}</span> : content}
       </Comp>
     );
 
