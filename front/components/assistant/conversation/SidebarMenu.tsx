@@ -1258,7 +1258,7 @@ function UnreadConversationsSection({
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
             hasLighterFont
-            className="hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
+            className="hover:s-bg-sidebar-hover dark:hover:s-bg-sidebar-hover-night active:s-bg-sidebar-selected dark:active:s-bg-sidebar-selected-night"
           />
         ) : null
       }
