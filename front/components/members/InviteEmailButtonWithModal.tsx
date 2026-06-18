@@ -29,6 +29,7 @@ import {
 } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -73,27 +74,15 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
-// Pre-paid slots remaining within the seat type's committed floor (minSeats
-// not yet consumed). Meaningful for any seat type, not just free — it's the
-// number the admin can assign without affecting billing.
 function includedSeatsOpen(info: SeatTypeInfo): number {
   return Math.max(0, info.minSeats - info.assignedCount);
 }
 
-// Every seat type present in `seatPlans` is offered by the workspace's
-// contract, so all are selectable in the invite picker — the requested seat
-// is only a hint the backend resolves at acceptance time, falling back
-// rather than billing an unrequested tier. This only flags a paid seat
-// type's hard cap as exhausted, to bias the default selection towards seats
-// likely to succeed and to warn the admin about the current pick.
 function isSeatAtCapacity(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): boolean {
   if (seatType === "free") {
-    // Free-seat eligibility depends on the invitee's returning-member status
-    // and workspace-wide free-seat caps, neither knowable at invite time —
-    // never treat it as exhausted here.
     return false;
   }
   return info.maxSeats !== null && info.assignedCount >= info.maxSeats;
@@ -104,9 +93,6 @@ function seatBadge(
   info: SeatTypeInfo
 ): ReactNode {
   if (seatType === "free") {
-    // The committed-floor count is not a reliable proxy for free-seat
-    // eligibility (see `isSeatAtCapacity`), so avoid displaying a number
-    // that could read as a guarantee.
     return (
       <span className="text-xs text-foreground dark:text-foreground-night">
         Free if eligible
@@ -121,7 +107,7 @@ function seatBadge(
   );
   return (
     <span className="text-xs text-foreground dark:text-foreground-night">
-      {price} · {openCount} included seat{openCount === 1 ? "" : "s"} open
+      {price} · {openCount} included seat{pluralize(openCount)} open
     </span>
   );
 }
@@ -180,9 +166,6 @@ export function InviteEmailButtonWithModal({
     if (seatInitializedRef.current || isSeatPlanLoading || !hasSeatSelection) {
       return;
     }
-    // Prefer seats that aren't at capacity for the default pick — all seat
-    // types are still requestable regardless, this just avoids defaulting to
-    // a choice that's likely to fall back immediately.
     const notAtCapacity = seatTypes.filter((s) => {
       const info = seatPlans[s];
       return info && !isSeatAtCapacity(s, info);
@@ -219,9 +202,8 @@ export function InviteEmailButtonWithModal({
     availableFrequencies,
   ]);
 
-  // Switch billing cadence; keep the selection valid by falling back to a
-  // tier in the new cadence that isn't at capacity when the current one
-  // isn't offered there.
+  // Switch billing cadence; keep the selection valid by falling back to the
+  // first selectable tier in the new cadence when the current one isn't offered.
   function handleSeatFrequencyChange(period: "monthly" | "yearly") {
     let frequency: SeatBillingFrequency;
     switch (period) {
