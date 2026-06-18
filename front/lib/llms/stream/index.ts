@@ -5,6 +5,7 @@ import { DustGoogleAiStudioGlobalGemini31FlashLiteStream } from "@app/lib/llms/s
 import { DustGoogleAiStudioGlobalGemini31ProStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { DustGoogleAiStudioGlobalGemini35FlashStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
 import { DustMistralEuropeMistralLargeStream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_large";
+import { DustMistralEuropeMistralMedium35Stream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_medium_3_5";
 import { DustOpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import type {
@@ -28,6 +29,8 @@ export const DUST_STREAM_ENDPOINTS = {
   [DustGoogleAiStudioGlobalGemini31FlashLiteStream.id]:
     DustGoogleAiStudioGlobalGemini31FlashLiteStream,
   [DustMistralEuropeMistralLargeStream.id]: DustMistralEuropeMistralLargeStream,
+  [DustMistralEuropeMistralMedium35Stream.id]:
+    DustMistralEuropeMistralMedium35Stream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
 export function getStreamEndpoints(
