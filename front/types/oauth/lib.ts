@@ -114,7 +114,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "ukg_ready_company_id",
   "jira_cloud_url",
   "confluence_cloud_url",
-  "workday_tenant_url"
+  "workday_tenant_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -309,7 +309,7 @@ export function getProviderRequiredOAuthCredentialInputs({
         };
         return result;
       }
-      return null
+      return null;
     case "ukg_ready":
       if (useCase === "personal_actions") {
         // UKG Ready uses PKCE authorization code flow (no client_secret needed)
