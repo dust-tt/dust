@@ -44,6 +44,11 @@ POST /front.agent_message_analytics_2/_update_by_query?wait_for_completion=false
               "gte": "now-3M"
             }
           }
+        },
+        {
+          "term": {
+            "workspace_id": "0ec9852c2f"
+          }
         }
       ],
       "must_not": [
