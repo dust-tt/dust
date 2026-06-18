@@ -9,7 +9,10 @@ export abstract class StreamEndpoint<
   O = unknown,
   C extends InputConfig = InputConfig,
 > extends Client<C> {
-  abstract buildRequestPayload(payload: Payload, config: C): I;
+  // Async-capable so providers that must resolve external resources (e.g.
+  // fetching+inlining images for Gemini) can build the payload. Sync providers
+  // simply return `I`.
+  abstract buildRequestPayload(payload: Payload, config: C): Promise<I> | I;
   abstract streamRaw(input: I): AsyncGenerator<O>;
   abstract rawStreamOutputToEvents(
     raw: AsyncGenerator<O>

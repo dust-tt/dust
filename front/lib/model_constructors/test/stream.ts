@@ -26,7 +26,7 @@ export async function* runStream(
     return;
   }
 
-  const input = instance.buildRequestPayload(
+  const input = await instance.buildRequestPayload(
     payload,
     configValidationResult.data
   );
