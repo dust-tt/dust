@@ -2,12 +2,15 @@ import { computeAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
 import {
   awuFromMicroUsd,
   intelligenceAwuFromRunUsages,
+  intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
 
-function usage(overrides: Partial<RunUsageType>): RunUsageType {
+function usage(
+  overrides: Partial<RunUsageType & { runKey: string | null }>
+): RunUsageType & { runKey: string | null } {
   return {
     completionTokens: 0,
     promptTokens: 0,
@@ -17,6 +20,7 @@ function usage(overrides: Partial<RunUsageType>): RunUsageType {
     modelId: "gpt-4o",
     providerId: "openai",
     isBatch: false,
+    runKey: null,
     ...overrides,
   };
 }
@@ -56,6 +60,41 @@ describe("intelligenceAwuFromRunUsages", () => {
 
   it("returns 0 for no usages", () => {
     expect(intelligenceAwuFromRunUsages([])).toBe(0);
+  });
+});
+
+describe("intelligenceAwuFromRunUsagesGroupedByRunKey", () => {
+  it("ceils per runKey (execution) so it matches additive Metronome events on interrupt/resume", () => {
+    // Ceiling over the union (the old behavior) would undercount: ceil(10000/8500)=2
+    // here it happens to match, so use an uneven split to prove the difference.
+    const credits = intelligenceAwuFromRunUsagesGroupedByRunKey([
+      usage({ costMicroUsd: 9000, runKey: "exec1" }), // ceil -> 2
+      usage({ costMicroUsd: 1000, runKey: "exec2" }), // ceil -> 1
+    ]);
+    expect(credits).toBe(3);
+  });
+
+  it("still ceils per (provider, model) within a single execution", () => {
+    const credits = intelligenceAwuFromRunUsagesGroupedByRunKey([
+      usage({ costMicroUsd: 5000, modelId: "gpt-4o", runKey: "exec1" }),
+      usage({
+        costMicroUsd: 5000,
+        modelId: "claude-opus-4-8",
+        providerId: "anthropic",
+        runKey: "exec1",
+      }),
+    ]);
+    // Same execution, two models: ceil(5000)=1 per model -> 2.
+    expect(credits).toBe(2);
+  });
+
+  it("folds untagged (null runKey) usages into a single legacy group", () => {
+    const credits = intelligenceAwuFromRunUsagesGroupedByRunKey([
+      usage({ costMicroUsd: 9000, runKey: null }),
+      usage({ costMicroUsd: 1000, runKey: null }),
+    ]);
+    // Both summed before ceiling: ceil(10000/8500) = 2.
+    expect(credits).toBe(2);
   });
 });
 
