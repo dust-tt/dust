@@ -44,7 +44,7 @@ import {
   listProjectContextAttachments,
   removeContentNodesFromProject,
 } from "@app/lib/api/projects/context";
-import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
+import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
@@ -66,6 +66,7 @@ import {
 } from "@app/types/assistant/conversation";
 import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { formatConversationsForDisplay } from "./conversation_formatting";
 
@@ -602,19 +603,74 @@ export function createProjectManagerTools(
         );
       }, "Failed to list Pod members");
     },
-    list_pods: async () => {
+    list_pods: async (params) => {
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
         const workspaceSId = owner.sId;
-        const { nonArchivedSpaces } =
-          await listNonArchivedMemberSpacesWithMetadata(auth);
-        const memberPods = nonArchivedSpaces
-          .filter((space) => space.isProject())
-          .sort((a, b) =>
-            a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
-          );
+        const { access = "member", q, limit = 20, pageCursor } = params;
 
-        const pods = memberPods.map((pod) => ({
+        const decodedPageOffset = pageCursor
+          ? Number.parseInt(pageCursor, 10)
+          : 0;
+        const pageOffset =
+          Number.isInteger(decodedPageOffset) && decodedPageOffset >= 0
+            ? decodedPageOffset
+            : null;
+
+        if (pageOffset === null) {
+          return new Err(
+            new MCPError(
+              "Invalid pageCursor. Expected an offset cursor from a previous list_pods response.",
+              { tracked: false }
+            )
+          );
+        }
+
+        const {
+          pods: pagePods,
+          total,
+          hasMore,
+        } = await listPodsForScope(auth, {
+          access,
+          q,
+          pagination: { limit, pageOffset },
+        });
+
+        if (total === 0) {
+          let emptyMessage: string;
+          switch (access) {
+            case "open":
+              emptyMessage = q?.trim()
+                ? `No open Pods found matching "${q.trim()}".`
+                : "No non-archived open Pods found in this workspace.";
+              break;
+            case "member":
+              emptyMessage = q?.trim()
+                ? `No Pods found matching "${q.trim()}" where you are a member.`
+                : "No non-archived Pods found where you are a space member.";
+              break;
+            default:
+              assertNever(access);
+          }
+
+          return new Ok(
+            makeSuccessResponse({
+              success: true,
+              count: 0,
+              total: 0,
+              hasMore: false,
+              nextPageCursor: null,
+              pods: [],
+              message: emptyMessage,
+            })
+          );
+        }
+
+        const nextPageCursor = hasMore
+          ? String(pageOffset + pagePods.length)
+          : null;
+
+        const pods = pagePods.map((pod) => ({
           id: pod.sId,
           name: pod.name,
           dustPod: {
@@ -623,15 +679,32 @@ export function createProjectManagerTools(
           },
         }));
 
+        let accessLabel: string;
+        switch (access) {
+          case "open":
+            accessLabel = "open Pod(s)";
+            break;
+          case "member":
+            accessLabel = "Pod(s) you are a member of";
+            break;
+          default:
+            assertNever(access);
+        }
+        const filterLabel = q?.trim() ? ` matching "${q.trim()}"` : "";
+
         return new Ok(
           makeSuccessResponse({
             success: true,
             count: pods.length,
+            total,
+            hasMore,
+            nextPageCursor,
             pods,
             message:
-              pods.length === 0
-                ? "No non-archived Pods found where you are a space member."
-                : `Found ${pods.length} Pod(s). Use each entry's dustPod as the dustPod argument for other pod_manager tools.`,
+              `Found ${pods.length} of ${total} ${accessLabel}${filterLabel}.` +
+              (hasMore
+                ? " Pass nextPageCursor to fetch more Pods."
+                : " Use each entry's dustPod as the dustPod argument for other pod_manager tools."),
           })
         );
       }, "Failed to list Pods");
