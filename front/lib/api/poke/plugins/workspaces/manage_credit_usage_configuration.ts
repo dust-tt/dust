@@ -1,7 +1,4 @@
-import {
-  getWorkspaceBalanceThreshold,
-  syncMetronomeBalanceThresholdAlert,
-} from "@app/lib/api/credits/balance_threshold_alert";
+import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import { syncCreditBasedPayg } from "@app/lib/api/credits/credit_based_payg";
 import {
   getProgrammaticUsageLimit,
@@ -139,9 +136,8 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
     const config =
       await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-    const [balanceThreshold, defaultPoolLimit, programmaticLimit, usageConfig] =
+    const [defaultPoolLimit, programmaticLimit, usageConfig] =
       await Promise.all([
-        getWorkspaceBalanceThreshold(auth),
         getDefaultUserSpendLimit(auth),
         getProgrammaticUsageLimit(auth),
         getUsageConfiguration(auth),
@@ -151,7 +147,7 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       defaultDiscountPercent: config?.defaultDiscountPercent ?? 0,
       paygEnabled: config?.paygEnabled ?? false,
       usageCapCredits: config?.usageCapCredits ?? 0,
-      balanceThresholdCredits: balanceThreshold ?? 0,
+      balanceThresholdCredits: config?.balanceThresholdAwuCredits ?? 0,
       defaultPoolCapCredits: defaultPoolLimit.isOk()
         ? (defaultPoolLimit.value.awuCredits ?? 0)
         : 0,
