@@ -14,7 +14,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use tracing::error;
 
-
 pub struct WorkdayConnectionProvider {}
 
 impl WorkdayConnectionProvider {
@@ -79,10 +78,7 @@ impl Provider for WorkdayConnectionProvider {
         // Decrypt and retrieve client_id and client_secret.
         let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
-        let token_endpoint = format!(
-            "{}/token",
-            workday_tenant_url.trim_end_matches('/')
-        );
+        let token_endpoint = format!("{}/token", workday_tenant_url.trim_end_matches('/'));
 
         let params = [
             ("grant_type", "authorization_code"),
@@ -157,10 +153,7 @@ impl Provider for WorkdayConnectionProvider {
         // Decrypt and retrieve client_id and client_secret.
         let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
-        let token_endpoint = format!(
-            "{}/token",
-            workday_tenant_url.trim_end_matches('/')
-        );
+        let token_endpoint = format!("{}/token", workday_tenant_url.trim_end_matches('/'));
 
         let params = [
             ("grant_type", "refresh_token"),
