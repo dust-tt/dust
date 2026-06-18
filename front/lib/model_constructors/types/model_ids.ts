@@ -5,6 +5,7 @@ export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 export const CLAUDE_HAIKU_4_5_MODEL_ID = "claude-haiku-4-5" as const;
 
 export const GEMINI_3_1_PRO_MODEL_ID = "gemini-3.1-pro-preview" as const;
+export const GEMINI_3_5_FLASH_MODEL_ID = "gemini-3.5-flash" as const;
 
 // Include a few examples for now
 export const MODEL_IDS = [
@@ -13,6 +14,7 @@ export const MODEL_IDS = [
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_HAIKU_4_5_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
+  GEMINI_3_5_FLASH_MODEL_ID,
 ] as const;
 
 export type ModelId = (typeof MODEL_IDS)[number];
