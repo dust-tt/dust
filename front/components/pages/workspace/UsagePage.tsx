@@ -620,7 +620,7 @@ export function UsagePage() {
 
         {showPoolSection && (
           <Page.Vertical gap="xs" align="stretch">
-            <Page.H variant="h4">Workspace Credit Pool</Page.H>
+            <Page.H variant="h4">Workspace credit pool</Page.H>
 
             {isAwuPoolSummaryError && (
               <ContentMessage

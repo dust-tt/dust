@@ -88,10 +88,10 @@ export function UsageSettingsCard({
       <SettingsList>
         <LockedSection locked={!hasPool}>
           <SettingsList.Row
-            title="Default Workspace Credit Pool limit"
+            title="Default workspace credit pool limit"
             description={
               <>
-                Define the Workspace Credit Pool credit limit for users in your
+                Define the workspace credit pool credit limit for users in your
                 workspace. This limit is added on top of each seat&apos;s
                 built-in allowance. Can be overridden per user in the members
                 table. <strong>Set to 0 to remove pool access.</strong>
