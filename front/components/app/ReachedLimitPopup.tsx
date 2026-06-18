@@ -385,6 +385,7 @@ export function ReachedLimitPopup({
       <FairUsageModal
         isOpened={isFairUsageModalOpened}
         onClose={() => setIsFairUsageModalOpened(false)}
+        subscription={subscription}
       />
       <Dialog
         open={isOpened}
