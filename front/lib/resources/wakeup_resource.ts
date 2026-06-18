@@ -1,3 +1,4 @@
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -14,6 +15,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
+import logger from "@app/logger/logger";
 import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
@@ -239,6 +241,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     if (temporalResult.isErr()) {
       return temporalResult;
     }
+
+    await wakeUp.notifyConversationOfWakeUpChange(auth);
 
     void emitAuditLogEvent({
       auth,
@@ -511,7 +515,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    await this.triggerConversationESIndexing(auth);
+    await this.notifyConversationOfWakeUpChange(auth);
 
     void emitAuditLogEvent({
       auth,
@@ -545,7 +549,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    await this.triggerConversationESIndexing(auth);
+    await this.notifyConversationOfWakeUpChange(auth);
 
     void emitAuditLogEvent({
       auth,
@@ -632,7 +636,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    await this.triggerConversationESIndexing(auth);
+    await this.notifyConversationOfWakeUpChange(auth);
 
     void emitAuditLogEvent({
       auth,
@@ -724,15 +728,44 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     };
   }
 
-  private async triggerConversationESIndexing(
+  // Re-index the conversation and push a `wake_up_updated` event so viewers update their wake-up
+  // state (notably the banner) live. This is a best-effort UX signal, not part of the wake-up
+  // mutation: a Redis/indexing hiccup must never make a committed status change (or a successful
+  // makeNew whose row + workflow already exist) look like a failure. The client refetches on this
+  // event, so a missed one only means the banner updates on the next refresh.
+  private async notifyConversationOfWakeUpChange(
     auth: Authenticator
   ): Promise<void> {
     const conversation =
       (
         await ConversationResource.fetchByModelIds(auth, [this.conversationId])
       )[0] ?? null;
-    if (conversation) {
+    if (!conversation) {
+      return;
+    }
+
+    try {
       await ConversationResource.triggerEsIndexing(auth, conversation.sId);
+
+      await publishConversationEvent(
+        {
+          type: "wake_up_updated",
+          created: Date.now(),
+          conversationId: conversation.sId,
+          wakeUpId: this.sId,
+          userId: this.user.sId,
+        },
+        { conversationId: conversation.sId }
+      );
+    } catch (err) {
+      logger.error(
+        {
+          wakeUpId: this.sId,
+          conversationId: conversation.sId,
+          err: normalizeError(err),
+        },
+        "Failed to notify conversation of wake-up change."
+      );
     }
   }
 

@@ -11835,6 +11835,9 @@
           },
           {
             "$ref": "#/components/schemas/PrivateConversationTitleEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateWakeUpUpdatedEvent"
           }
         ]
       },
@@ -12003,6 +12006,37 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "PrivateWakeUpUpdatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "wakeUpId",
+          "userId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "wake_up_updated"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "wakeUpId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "description": "sId of the user who owns the wake-up."
           }
         }
       },

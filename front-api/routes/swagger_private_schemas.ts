@@ -1282,6 +1282,7 @@
  *         - $ref: '#/components/schemas/PrivateCompactionMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageDoneEvent'
  *         - $ref: '#/components/schemas/PrivateConversationTitleEvent'
+ *         - $ref: '#/components/schemas/PrivateWakeUpUpdatedEvent'
  *     PrivateUserMessageNewEvent:
  *       type: object
  *       required: [type, created, messageId, message]
@@ -1365,6 +1366,22 @@
  *           type: integer
  *         title:
  *           type: string
+ *     PrivateWakeUpUpdatedEvent:
+ *       type: object
+ *       required: [type, created, conversationId, wakeUpId, userId]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [wake_up_updated]
+ *         created:
+ *           type: integer
+ *         conversationId:
+ *           type: string
+ *         wakeUpId:
+ *           type: string
+ *         userId:
+ *           type: string
+ *           description: sId of the user who owns the wake-up.
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.

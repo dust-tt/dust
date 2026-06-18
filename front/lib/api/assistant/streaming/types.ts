@@ -23,6 +23,7 @@ import type {
   PlanUpdatedEvent,
   UserMessageNewEvent,
   UserMessagePromotedEvent,
+  WakeUpUpdatedEvent,
 } from "@app/types/assistant/conversation";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
@@ -49,7 +50,8 @@ export type ConversationEvents =
   | AgentMessageDoneEvent
   | CompactionMessageNewEvent
   | CompactionMessageDoneEvent
-  | PlanUpdatedEvent;
+  | PlanUpdatedEvent
+  | WakeUpUpdatedEvent;
 
 export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =
   [

@@ -50,6 +50,19 @@ function planUpdatedEvent(): ConversationEvent {
   };
 }
 
+function wakeUpUpdatedEvent(): ConversationEvent {
+  return {
+    eventId: "wakeup",
+    data: {
+      type: "wake_up_updated",
+      created: 0,
+      conversationId: "conv",
+      wakeUpId: "wu_test",
+      userId: "u_test",
+    },
+  };
+}
+
 function getEvents(
   workspaceId: string,
   conversationId: string,
@@ -147,7 +160,11 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events", () => {
     const { workspace, key, conversation } = await setupConversation();
 
     vi.mocked(getConversationEvents).mockImplementation(
-      asyncIteratorFrom([titleEvent("kept"), planUpdatedEvent()])
+      asyncIteratorFrom([
+        titleEvent("kept"),
+        planUpdatedEvent(),
+        wakeUpUpdatedEvent(),
+      ])
     );
 
     const response = await getEvents(
@@ -159,6 +176,8 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events", () => {
     const body = await response.text();
     expect(body).toContain("kept");
     expect(body).not.toContain("plan_updated");
+    // wake_up_updated is front-only; it must never reach the public API stream.
+    expect(body).not.toContain("wake_up_updated");
   });
 
   it("delivers events produced before an iterator error and ends the stream", async () => {

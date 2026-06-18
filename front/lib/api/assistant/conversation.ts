@@ -3034,6 +3034,7 @@ export async function isConversationEventAllowedForAuth(
     case "conversation_title":
     case "user_message_promoted":
     case "plan_updated":
+    case "wake_up_updated":
       return true;
     default:
       assertNever(type);

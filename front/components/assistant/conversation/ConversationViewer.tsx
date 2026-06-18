@@ -61,6 +61,8 @@ import {
   CompactionStartedEvent,
 } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useConversationWakeUps } from "@app/lib/swr/wakeups";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import {
   type ConversationForkedChildType,
@@ -73,6 +75,7 @@ import {
   isRichAgentMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -417,6 +420,12 @@ export const ConversationViewer = ({
     conversationId,
     workspaceId: owner.sId,
     options: { disabled: true }, // We don't need the participants, only the mutator.
+  });
+
+  const { mutateWakeUps } = useConversationWakeUps({
+    owner,
+    conversationId,
+    disabled: true, // We don't fetch here, only patch the cache on wake_up_updated events.
   });
 
   const { mutateContextUsage } = useConversationContextUsage({
@@ -1058,6 +1067,24 @@ export const ConversationViewer = ({
             );
             break;
           }
+          case "wake_up_updated": {
+            // Refetch wake-ups, then sync the conversation list's nextWakeupAt. Only one wake-up
+            // can be active per conversation, so the active one fully determines that value.
+            void mutateWakeUps().then((updated) => {
+              const active = updated?.wakeUps.find(isActiveWakeUp) ?? null;
+              const nextWakeupAt = active
+                ? getNextWakeUpFireAtFromScheduleConfig(active.scheduleConfig)
+                : null;
+              void mutateConversations(
+                (currentData: ConversationListItemType[] | undefined) =>
+                  currentData?.map((c) =>
+                    c.sId === conversationId ? { ...c, nextWakeupAt } : c
+                  ),
+                { revalidate: false }
+              );
+            });
+            break;
+          }
           default:
             ((t: never) => {
               logger.error({ event: t }, "Unknown event type");
@@ -1075,6 +1102,7 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
+      mutateWakeUps,
       openPanel,
       owner.sId,
       user.sId,
