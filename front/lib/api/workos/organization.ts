@@ -3,6 +3,7 @@ import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import { getWorkOSOrganization } from "@app/lib/api/workos/organization_primitives";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
@@ -523,5 +524,36 @@ export async function deleteWorksOSOrganizationWithWorkspace(
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Ensure the workspace has a WorkOS organization once it lands on a paid plan.
+ * Idempotent — failures are logged but do not fail the caller: the org can be
+ * created later by the `/w/[wId]/domains` endpoint or a re-trigger.
+ */
+export async function ensureWorkOSOrganizationForPaidPlan({
+  workspace,
+  planCode,
+  contractId,
+}: {
+  workspace: LightWorkspaceType;
+  planCode: string;
+  contractId: string;
+}): Promise<void> {
+  if (isFreePlan(planCode)) {
+    return;
+  }
+  const workosResult = await getOrCreateWorkOSOrganization(workspace);
+  if (workosResult.isErr()) {
+    logger.error(
+      {
+        contractId,
+        planCode,
+        workspaceId: workspace.sId,
+        err: workosResult.error,
+      },
+      "[WorkOS] Failed to provision organization for paid plan"
+    );
   }
 }

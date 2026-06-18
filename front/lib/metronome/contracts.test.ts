@@ -3,6 +3,7 @@ import {
   buildEnterpriseOverrides,
   extractEnterprisePricing,
   provisionMetronomeContract,
+  provisionPaymentGatedActivationContract,
   resolveCurrencyForExistingMetronomeCustomer,
 } from "@app/lib/metronome/contracts";
 import { Err, Ok } from "@app/types/shared/result";
@@ -884,6 +885,93 @@ describe("provisionMetronomeContract — overlap sunset", () => {
       throw new Error("expected error");
     }
     expect(result.error.message).toContain("failed to list");
+  });
+});
+
+describe("provisionPaymentGatedActivationContract", () => {
+  it("creates a contract with the expected custom fields", async () => {
+    const result = await provisionPaymentGatedActivationContract({
+      metronomeCustomerId: "m-customer",
+      workspace: WORKSPACE,
+      packageAlias: "business-usd",
+      uniquenessKey: "activation-w_123-setup_xyz",
+      startingAt: new Date(START_DATE),
+      planCode: "CP_BUSINESS_PLAN",
+      additionalCustomFields: {
+        DUST_PAYMENT_GATE_TYPE: "subscription_activation",
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockCreateMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeCustomerId: "m-customer",
+        packageAlias: "business-usd",
+        planCode: "CP_BUSINESS_PLAN",
+        additionalCustomFields: {
+          DUST_PAYMENT_GATE_TYPE: "subscription_activation",
+        },
+        enableStripeBilling: true,
+      })
+    );
+  });
+
+  it("does not sunset any overlapping existing contracts", async () => {
+    mockListMetronomeContracts.mockResolvedValue(
+      new Ok([
+        {
+          id: "existing-free-contract",
+          starting_at: "2026-03-01T00:00:00.000Z",
+          ending_before: null,
+          archived_at: null,
+        },
+      ])
+    );
+
+    const result = await provisionPaymentGatedActivationContract({
+      metronomeCustomerId: "m-customer",
+      workspace: WORKSPACE,
+      packageAlias: "business-usd",
+      startingAt: new Date(START_DATE),
+      planCode: "CP_BUSINESS_PLAN",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockScheduleMetronomeContractEnd).not.toHaveBeenCalled();
+  });
+
+  it("returns an error when contract creation fails", async () => {
+    mockCreateMetronomeContract.mockResolvedValue(
+      new Err(new Error("Metronome API error"))
+    );
+
+    const result = await provisionPaymentGatedActivationContract({
+      metronomeCustomerId: "m-customer",
+      workspace: WORKSPACE,
+      packageAlias: "business-usd",
+      startingAt: new Date(START_DATE),
+      planCode: "CP_BUSINESS_PLAN",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected error");
+    }
+    expect(result.error.message).toBe("Metronome API error");
+  });
+
+  it("does not run seat sync", async () => {
+    await provisionPaymentGatedActivationContract({
+      metronomeCustomerId: "m-customer",
+      workspace: WORKSPACE,
+      packageAlias: "business-usd",
+      startingAt: new Date(START_DATE),
+      planCode: "CP_BUSINESS_PLAN",
+    });
+
+    expect(mockSyncSeatCount).not.toHaveBeenCalled();
+    expect(mockSyncMauCount).not.toHaveBeenCalled();
+    expect(mockRemapMembershipSeatTypesForContract).not.toHaveBeenCalled();
   });
 });
 
