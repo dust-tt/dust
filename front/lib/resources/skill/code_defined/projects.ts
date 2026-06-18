@@ -63,6 +63,8 @@ When you need to find information, use this order (skip steps if the relevant to
   // Auto-enabled whenever the conversation belongs to a Pod.
   isAutoEnabledForAgentLoop: ({ conversation }) =>
     isPodConversation(conversation),
+  // Auto-equipped for all agent loops.
+  isAutoEquippedForAgentLoop: (): boolean => true,
 } as const satisfies GlobalSkillDefinition;
 
 export async function constructProjectContext(
