@@ -97,10 +97,7 @@ async function setupAdoptedWorktree(
   }
 
   try {
-    await installAllDependencies(worktreePath, metadata.repoRoot, {
-      rust: "symlink",
-      copyUserConfig: false,
-    });
+    await installAllDependencies(worktreePath, metadata.repoRoot);
   } catch (error) {
     await cleanupAdoptedEnvironment(metadata.name, worktreePath);
     return Err(new CommandError(`Failed to install dependencies: ${errorMessage(error)}`));

@@ -23,7 +23,6 @@ const USER_CONFIG_DIRS = [".claude"];
 // Configuration for how to install each dependency type
 export interface DependencyConfig {
   rust: "symlink" | "build";
-  copyUserConfig: boolean;
 }
 
 // Setup a shallow copy of node_modules: a real directory with symlinks to
@@ -183,7 +182,6 @@ async function buildRustInWorktree(worktreePath: string): Promise<boolean> {
 // Default config: symlink everything from cache
 const DEFAULT_CONFIG: DependencyConfig = {
   rust: "symlink",
-  copyUserConfig: true,
 };
 
 // Workspace directories that have their own node_modules (version overrides)
@@ -270,10 +268,6 @@ export async function installAllDependencies(
 
   if (failed.length > 0) {
     throw new Error(`Failed to install dependencies for: ${failed.join(", ")}`);
-  }
-
-  if (!config.copyUserConfig) {
-    return;
   }
 
   // Copy user config files (AGENTS.local.md, AGENTS.override.md, .claude/) if they exist
