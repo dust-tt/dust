@@ -21,6 +21,7 @@ import {
   classifySeatChange,
   hasContractSeatSubscription,
 } from "@app/lib/metronome/seats";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -182,6 +183,18 @@ export async function createAndTrackMembership({
       ? renderLightWorkspaceType({ workspace })
       : workspace;
 
+  // Capture the previous (potentially revoked) membership before creating
+  // the new one, so we can restore group memberships that were ended at the
+  // same time as the workspace revocation.
+  const previousMembership =
+    await MembershipResource.getLatestMembershipOfUserInWorkspace({
+      user,
+      workspace: w,
+    });
+  const prevRevokedAt = previousMembership?.isRevoked()
+    ? previousMembership.endAt
+    : null;
+
   const seatType = await resolveSeatTypeForNewMembership(
     user,
     w,
@@ -195,6 +208,21 @@ export async function createAndTrackMembership({
     origin,
     seatType,
   });
+
+  if (prevRevokedAt) {
+    const restoredCount =
+      await GroupResource.restoreGroupMembershipsRevokedWith({
+        user,
+        workspace: w,
+        revokedAt: prevRevokedAt,
+      });
+    if (restoredCount > 0) {
+      logger.info(
+        { userId: user.sId, workspaceId: w.sId, restoredCount },
+        "[Membership] Restored group memberships for rejoining user"
+      );
+    }
+  }
 
   void ServerSideTracking.trackCreateMembership({
     user: user.toJSON(),
