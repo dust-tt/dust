@@ -17,6 +17,7 @@ import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import sortBy from "lodash/sortBy";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
@@ -100,9 +101,11 @@ export async function getDataSourceViewsUsageByModelIds({
   // Step 3: fetch the MCP server configuration -> agent configuration mappings
   // once for both sources.
   const mcpServerConfigurationModelIds = uniq(
-    [...dataSourceConfigLinks, ...tableConfigLinks]
-      .map((link) => link.mcpServerConfigurationId)
-      .filter((id): id is ModelId => id !== null && id !== undefined)
+    removeNulls(
+      [...dataSourceConfigLinks, ...tableConfigLinks].map(
+        (link) => link.mcpServerConfigurationId
+      )
+    )
   );
 
   const mcpConfigs =
@@ -150,14 +153,14 @@ export async function getDataSourceViewsUsageByModelIds({
 
   // 4A. Agents for AgentDataSourceConfigurationModel links.
   const dataSourceAgentConfigurationModelIds = uniq(
-    dataSourceConfigLinks
-      .map((link) =>
+    removeNulls(
+      dataSourceConfigLinks.map((link) =>
         link.mcpServerConfigurationId === null
           ? undefined
           : mcpConfigByModelId.get(link.mcpServerConfigurationId)
               ?.agentConfigurationId
       )
-      .filter((id): id is ModelId => id !== null && id !== undefined)
+    )
   );
 
   const dataSourceAgents =
@@ -176,13 +179,13 @@ export async function getDataSourceViewsUsageByModelIds({
 
   // 4B. Agents for AgentTablesQueryConfigurationTableModel links.
   const tableAgentConfigurationModelIds = uniq(
-    tableConfigLinks
-      .map(
+    removeNulls(
+      tableConfigLinks.map(
         (link) =>
           mcpConfigByModelId.get(link.mcpServerConfigurationId)
             ?.agentConfigurationId
       )
-      .filter((id): id is ModelId => id !== null && id !== undefined)
+    )
   );
 
   const tableAgents =
@@ -219,15 +222,6 @@ export async function getDataSourceViewsUsageByModelIds({
       pictureUrl: string;
     };
   }) => {
-    if (
-      !agent.sId ||
-      agent.sId.length === 0 ||
-      !agent.name ||
-      agent.name.length === 0
-    ) {
-      return;
-    }
-
     let usage = result[dataSourceViewId];
     if (!usage) {
       usage = { count: 0, agents: [] };

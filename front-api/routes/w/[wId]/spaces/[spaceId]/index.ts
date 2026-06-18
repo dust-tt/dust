@@ -258,30 +258,21 @@ app.get(
 
     const categories: { [key: string]: SpaceCategoryInfo } = {};
     for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
-      categories[category] = {
-        count: 0,
-        usage: { count: 0, agents: [] },
-      };
-
       const dataSourceViewsInCategory = dataSourceViewsList.filter(
         (view) => view.toJSON().category === category
       );
 
-      for (const dsView of dataSourceViewsInCategory) {
-        categories[category].count += 1;
-        const usage = usages[dsView.id];
-        if (usage) {
-          categories[category].usage.agents = categories[
-            category
-          ].usage.agents.concat(usage.agents);
-          categories[category].usage.agents = uniqBy(
-            categories[category].usage.agents,
-            "sId"
-          );
-        }
-      }
-      categories[category].usage.count =
-        categories[category].usage.agents.length;
+      const agents = uniqBy(
+        dataSourceViewsInCategory.flatMap(
+          (view) => usages[view.id]?.agents ?? []
+        ),
+        "sId"
+      );
+
+      categories[category] = {
+        count: dataSourceViewsInCategory.length,
+        usage: { count: agents.length, agents },
+      };
     }
 
     categories["apps"].count = appsList.length;
