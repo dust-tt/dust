@@ -23,7 +23,6 @@ import { normalizeRequest } from "@app/lib/api/llm/tests/parity/allowlist";
 import { buildParityMatrix } from "@app/lib/api/llm/tests/parity/matrix";
 import {
   getParityProvider,
-  hasParityProvider,
   PARITY_CREDENTIALS,
   readEndpointInfo,
 } from "@app/lib/api/llm/tests/parity/providers";
@@ -43,6 +42,7 @@ const kit = vi.hoisted(() => {
   const emptyStream = () => (async function* () {})();
   const freshCaptures = () => ({
     anthropic: { ga: [] as unknown[], beta: [] as unknown[] },
+    google: [] as unknown[],
     openai: [] as unknown[],
   });
   const state = { captures: freshCaptures() };
@@ -63,6 +63,17 @@ const kit = vi.hoisted(() => {
         },
       };
     };
+  // Both the legacy and new Google routers call `models.generateContentStream`,
+  // which the SDK exposes as async — return a resolved async iterator.
+  const makeGoogleClient = () =>
+    class {
+      models = {
+        generateContentStream: (input: unknown) => {
+          state.captures.google.push(input);
+          return Promise.resolve(emptyStream());
+        },
+      };
+    };
   // Both the legacy and new OpenAI routers call `client.responses.create`, so
   // one bucket records both; the adapter splits them by call order.
   const makeOpenAIClient = () =>
@@ -74,12 +85,17 @@ const kit = vi.hoisted(() => {
         },
       };
     };
-  return { state, makeClient, makeOpenAIClient, freshCaptures };
+  return { state, makeClient, makeGoogleClient, makeOpenAIClient, freshCaptures };
 });
 
 vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@anthropic-ai/sdk")>();
   return { ...actual, default: kit.makeClient() };
+});
+
+vi.mock("@google/genai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@google/genai")>();
+  return { ...actual, GoogleGenAI: kit.makeGoogleClient() };
 });
 
 vi.mock("openai", async (importOriginal) => {
@@ -102,11 +118,7 @@ async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
 // locally. Global agent-platform coverage can be added here once it exists.
 const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   .map(readEndpointInfo)
-  // Skip providers without a parity adapter yet (e.g. google_ai_studio).
-  .filter(
-    (endpoint) =>
-      endpoint.region === GLOBAL && hasParityProvider(endpoint.providerId)
-  );
+  .filter((endpoint) => endpoint.region === GLOBAL);
 const MATRIX = buildParityMatrix();
 
 describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
