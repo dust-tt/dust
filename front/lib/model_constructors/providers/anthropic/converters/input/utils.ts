@@ -7,6 +7,7 @@ import type {
   ThinkingBlockParam,
   ThinkingConfigAdaptive,
   ThinkingConfigDisabled,
+  ThinkingConfigEnabled,
   Tool,
   ToolChoiceAuto,
   ToolChoiceTool,
@@ -291,16 +292,21 @@ function effortToAnthropicEffort(
   }
 }
 
-export function reasoningToThinkingConfig(
+export type ReasoningToThinkingConfig = (
   reasoning: AnthropicInputConfig["reasoning"]
-):
+) =>
   | {
       output_config: { effort: NonNullable<OutputConfig["effort"]> };
       thinking: ThinkingConfigAdaptive;
     }
-  | {
-      thinking: ThinkingConfigDisabled;
-    } {
+  | { thinking: ThinkingConfigEnabled }
+  | { thinking: ThinkingConfigDisabled };
+
+// Adaptive thinking; extended-thinking-only models swap in
+// `reasoningToExtendedThinkingConfig`.
+export const reasoningToThinkingConfig: ReasoningToThinkingConfig = (
+  reasoning
+) => {
   if (!reasoning || reasoning.effort === "none") {
     return { thinking: { type: "disabled" } };
   }
@@ -309,4 +315,30 @@ export function reasoningToThinkingConfig(
     output_config: { effort: effortToAnthropicEffort(reasoning.effort) },
     thinking: { type: "adaptive" },
   };
-}
+};
+
+// low/medium/high mirror the legacy budget mapping (1024 minimum); xhigh/maximal
+// extend it. budget_tokens must be >= 1024 and < max_tokens.
+const EXTENDED_THINKING_BUDGET_TOKENS = {
+  low: 1_024,
+  medium: 1_024,
+  high: 4_096,
+  xhigh: 8_192,
+  maximal: 16_384,
+} as const;
+
+// Extended thinking for models without adaptive-thinking support (e.g. Haiku 4.5).
+export const reasoningToExtendedThinkingConfig: ReasoningToThinkingConfig = (
+  reasoning
+) => {
+  if (!reasoning || reasoning.effort === "none") {
+    return { thinking: { type: "disabled" } };
+  }
+
+  return {
+    thinking: {
+      type: "enabled",
+      budget_tokens: EXTENDED_THINKING_BUDGET_TOKENS[reasoning.effort],
+    },
+  };
+};

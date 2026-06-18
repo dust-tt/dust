@@ -48,6 +48,7 @@ export function WithAnthropicInputConverter<
       assistantReasoningMessageToThinkingBlocks;
     assistantToolCallRequestToToolUseBlock =
       assistantToolCallRequestToToolUseBlock;
+    reasoningToThinkingConfig = reasoningToThinkingConfig;
 
     conversationToMessages(
       conversation: Payload["conversation"]
@@ -72,7 +73,7 @@ export function WithAnthropicInputConverter<
         outputFormat,
       } = config;
 
-      const thinkingConfig = reasoningToThinkingConfig(reasoning);
+      const thinkingConfig = this.reasoningToThinkingConfig(reasoning);
       const outputConfig = {
         ...(outputFormat ? outputFormatToOutputConfig(outputFormat) : {}),
         ...("output_config" in thinkingConfig
