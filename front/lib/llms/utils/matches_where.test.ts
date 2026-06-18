@@ -1,12 +1,12 @@
 import type {
-  EndpointFilter,
+  EndpointConfig,
   Where,
-  WorkspaceFilter,
+  WorkspaceConfig,
 } from "@app/lib/llms/types/filter";
 import { matchesWhere } from "@app/lib/llms/utils/matches_where";
 import { describe, expect, it } from "vitest";
 
-const enterpriseWorkspace: EndpointFilter = {
+const enterpriseWorkspace: WorkspaceConfig = {
   featureFlags: [
     "use_vertex_for_supported_models",
     "anthropic_vertex_fallback",
@@ -16,7 +16,7 @@ const enterpriseWorkspace: EndpointFilter = {
 };
 
 // A representative non-enterprise workspace with no flags.
-const freeWorkspace: EndpointFilter = {
+const freeWorkspace: WorkspaceConfig = {
   featureFlags: [],
   isEnterprise: false,
   isCreditPriced: false,
@@ -31,7 +31,7 @@ describe("matchesWhere", () => {
 
     it("ignores a field whose filter is not an object (undefined)", () => {
       // `isEnterprise: undefined` is a no-op, not a falsy match.
-      const where: Where<EndpointFilter> = { isEnterprise: undefined };
+      const where: Where<WorkspaceConfig> = { isEnterprise: undefined };
       expect(matchesWhere(enterpriseWorkspace, where)).toBe(true);
       expect(matchesWhere(freeWorkspace, where)).toBe(true);
     });
@@ -209,15 +209,15 @@ describe("matchesWhere", () => {
     });
   });
 
-  describe("array filters on WorkspaceFilter lists", () => {
+  describe("array filters on EndpointConfig lists", () => {
     // Mimics an endpoint description that covers several values per
-    // WorkspaceFilter field: the set of providers / regions / models / apis it
-    // exposes. `WorkspaceFilter` itself is scalar (one value per field on a real
+    // EndpointConfig field: the set of providers / regions / models / apis it
+    // exposes. `EndpointConfig` itself is scalar (one value per field on a real
     // endpoint), so the coverage shape arrays each field.
-    type WorkspaceFilterCoverage = {
-      [K in keyof WorkspaceFilter]: WorkspaceFilter[K][];
+    type EndpointConfigCoverage = {
+      [K in keyof EndpointConfig]: EndpointConfig[K][];
     };
-    const description: WorkspaceFilterCoverage = {
+    const description: EndpointConfigCoverage = {
       region: ["eu", "global"],
       providerId: ["anthropic"],
       modelId: ["claude-sonnet-4-6"],
@@ -313,7 +313,7 @@ describe("matchesWhere", () => {
 
     it("supports nested logical operators", () => {
       // (enterprise AND (vertex flag OR audit flag)) AND NOT(deepseek flag)
-      const where: Where<EndpointFilter> = {
+      const where: Where<WorkspaceConfig> = {
         and: [
           { isEnterprise: { eq: true } },
           {
@@ -352,7 +352,7 @@ describe("matchesWhere", () => {
   describe("realistic endpoint availability scenarios", () => {
     // A gated endpoint: only available to enterprise workspaces that have the
     // vertex routing flag enabled.
-    const gatedEndpointFilter: Where<EndpointFilter> = {
+    const gatedEndpointFilter: Where<WorkspaceConfig> = {
       isEnterprise: { eq: true },
       featureFlags: { contains: "use_vertex_for_supported_models" },
     };
@@ -362,7 +362,7 @@ describe("matchesWhere", () => {
     });
 
     it("rejects a non-enterprise workspace", () => {
-      const enterpriseFlagOnly: EndpointFilter = {
+      const enterpriseFlagOnly: WorkspaceConfig = {
         featureFlags: ["use_vertex_for_supported_models"],
         isEnterprise: false,
         isCreditPriced: false,
@@ -371,7 +371,7 @@ describe("matchesWhere", () => {
     });
 
     it("rejects an enterprise workspace missing the flag", () => {
-      const enterpriseNoFlag: EndpointFilter = {
+      const enterpriseNoFlag: WorkspaceConfig = {
         featureFlags: ["anthropic_vertex_fallback"],
         isEnterprise: true,
         isCreditPriced: false,

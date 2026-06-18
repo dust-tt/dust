@@ -4,13 +4,13 @@ import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids"
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-export type EndpointFilter = {
+export type WorkspaceConfig = {
   featureFlags: WhitelistableFeature[];
   isEnterprise: boolean;
   isCreditPriced: boolean;
 };
 
-export type WorkspaceFilter = {
+export type EndpointConfig = {
   region: Region;
   providerId: ProviderId;
   modelId: ModelId;
