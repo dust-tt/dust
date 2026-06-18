@@ -198,14 +198,8 @@ export function finishReasonToErrorEvent(
         type: "model_output_error",
         message: `Model generated an invalid tool call for ${metadata.modelId}.`,
       });
-    case FinishReason.NO_IMAGE:
-    case FinishReason.OTHER:
-    case FinishReason.FINISH_REASON_UNSPECIFIED:
-      return buildErrorEvent({
-        metadata,
-        type: "unknown_error",
-        message: `Unexpected finish reason from Google: ${finishReason}.`,
-      });
+    // Any other finish reason (OTHER, NO_IMAGE, unspecified, future values, ...)
+    // is surfaced as an unknown error.
     default:
       return buildErrorEvent({
         metadata,
