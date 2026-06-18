@@ -1,3 +1,4 @@
+import { queryTracker } from "@app/lib/api/query_tracker";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -83,28 +84,35 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
     inFlightPeaks.add(peakRef);
 
     const startMs = performance.now();
-    await runWithRequestContext(reqCtx, async () => {
-      try {
-        await next();
-      } finally {
-        inFlightPeaks.delete(peakRef);
-        activeRequests -= 1;
+    // Tracks the peak number of concurrent Sequelize queries within this
+    // request. `SequelizeWithComments.query()` reads this store off the
+    // AsyncLocalStorage and updates `peak`; we log it as `peakConcurrentQueries`
+    // below.
+    const queryTrackerStore = { concurrent: 0, peak: 0 };
+    await runWithRequestContext(reqCtx, () =>
+      queryTracker.run(queryTrackerStore, async () => {
+        try {
+          await next();
+        } finally {
+          inFlightPeaks.delete(peakRef);
+          activeRequests -= 1;
 
-        const _routePath = routePath(c);
-        if (_routePath) {
-          // dd-trace's Hono auto-instrumentation can land on a wildcard
-          // middleware path (e.g. `/api/w/:wId/*` from
-          // `app.use("*", workspaceAuth())`) instead of the matched handler
-          // route. Override with Hono's own routePath, which always points at
-          // the handler that ran.
-          const span = tracer.scope().active();
-          if (span) {
-            span.setTag("resource.name", `${c.req.method} ${_routePath}`);
+          const _routePath = routePath(c);
+          if (_routePath) {
+            // dd-trace's Hono auto-instrumentation can land on a wildcard
+            // middleware path (e.g. `/api/w/:wId/*` from
+            // `app.use("*", workspaceAuth())`) instead of the matched handler
+            // route. Override with Hono's own routePath, which always points at
+            // the handler that ran.
+            const span = tracer.scope().active();
+            if (span) {
+              span.setTag("resource.name", `${c.req.method} ${_routePath}`);
+            }
+            reqCtx.route = _routePath;
           }
-          reqCtx.route = _routePath;
         }
-      }
-    });
+      })
+    );
 
     const durationMs = Math.round(performance.now() - startMs);
 
@@ -141,6 +149,7 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
           durationMs,
           method: c.req.method,
           peakConcurrency: peakRef.peak,
+          peakConcurrentQueries: queryTrackerStore.peak,
           route,
           sessionId: session?.sessionId ?? "unknown",
           statusCode,
