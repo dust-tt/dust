@@ -582,7 +582,7 @@ export class SnowflakeClient {
   }
 }
 
-export function exportSnowflakePrivateKey({
+function exportSnowflakePrivateKey({
   privateKey,
   privateKeyPassphrase,
 }: {
