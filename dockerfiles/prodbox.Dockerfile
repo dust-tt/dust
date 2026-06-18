@@ -31,8 +31,12 @@ RUN cd front \
 WORKDIR /dust
 
 # Ephemeral target: headless job runner for k8s Jobs.
-# The k8s Job spec overrides CMD with the actual `npm run XXX` invocation.
+# The entrypoint pulls the latest code from `main` (using the mounted GitHub
+# deploy key) then execs the command the k8s Job spec passes as `args`
+# (e.g. `npm run migration:apply:pre-deploy --workspace front`).
 FROM base AS ephemeral
+ENV GIT_SSH_COMMAND="ssh -i ~/.ssh/github-deploykey-deploybox"
+ENTRYPOINT ["/bin/bash", "/dust/prodbox/ephemeral-entrypoint.sh"]
 CMD ["/bin/bash"]
 
 # Prodbox target: interactive debug environment (default / last stage).
