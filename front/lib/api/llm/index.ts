@@ -340,7 +340,7 @@ function selectPreferredEndpoint<T extends { region: Region }>(
     {
       featureFlags,
       isEnterprise: isEnterpriseOrDust(plan),
-      creditPricing: isCreditPricedPlanPrefix(plan.code),
+      isCreditPriced: isCreditPricedPlanPrefix(plan.code),
     },
     {
       ...workspaceFilter,

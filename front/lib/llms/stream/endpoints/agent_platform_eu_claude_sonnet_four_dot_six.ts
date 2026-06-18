@@ -10,7 +10,7 @@ export class DustAgentPlatformEuropeClaudeSonnetFourDotSixStream extends WithDus
       {
         featureFlags: { contains: "use_vertex_for_supported_models" as const },
       },
-      { creditPricing: { eq: true } },
+      { isCreditPriced: { eq: true } },
     ],
   };
 }

@@ -12,14 +12,14 @@ const enterpriseWorkspace: EndpointFilter = {
     "anthropic_vertex_fallback",
   ],
   isEnterprise: true,
-  creditPricing: false,
+  isCreditPriced: false,
 };
 
 // A representative non-enterprise workspace with no flags.
 const freeWorkspace: EndpointFilter = {
   featureFlags: [],
   isEnterprise: false,
-  creditPricing: false,
+  isCreditPriced: false,
 };
 
 describe("matchesWhere", () => {
@@ -365,7 +365,7 @@ describe("matchesWhere", () => {
       const enterpriseFlagOnly: EndpointFilter = {
         featureFlags: ["use_vertex_for_supported_models"],
         isEnterprise: false,
-        creditPricing: false,
+        isCreditPriced: false,
       };
       expect(matchesWhere(enterpriseFlagOnly, gatedEndpointFilter)).toBe(false);
     });
@@ -374,7 +374,7 @@ describe("matchesWhere", () => {
       const enterpriseNoFlag: EndpointFilter = {
         featureFlags: ["anthropic_vertex_fallback"],
         isEnterprise: true,
-        creditPricing: false,
+        isCreditPriced: false,
       };
       expect(matchesWhere(enterpriseNoFlag, gatedEndpointFilter)).toBe(false);
     });

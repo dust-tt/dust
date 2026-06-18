@@ -17,7 +17,7 @@ export function getStreamEndpoints(
   workspaceConfiguration: {
     featureFlags: WhitelistableFeature[];
     isEnterprise: boolean;
-    creditPricing: boolean;
+    isCreditPriced: boolean;
   },
   inputCondition: Where<WorkspaceFilter>
 ) {
