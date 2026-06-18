@@ -47,6 +47,7 @@ const SwitchContractFormSchema = z
   .object({
     metronomePackageId: z.string().min(1, "Required"),
     planCode: z.string().min(1, "Required"),
+    hubspotDealId: z.string().optional(),
     startingAt: z.string().optional(),
     // How the enterprise contract's start moment is resolved:
     //  - "immediately": swap at the current hour (no startingAt sent).
@@ -220,6 +221,7 @@ export default function SwitchContractDialog({
     defaultValues: {
       metronomePackageId: "",
       planCode: "",
+      hubspotDealId: "",
       startingAt: "",
       startMode: "select",
       stripeCustomerId: stripeCustomerId ?? "",
@@ -425,10 +427,14 @@ export default function SwitchContractDialog({
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
       const trimmedStripe = values.stripeCustomerId.trim();
+      const trimmedHubspotDealId = values.hubspotDealId?.trim();
       const cleaned: SwitchContractBodyInput = {
         metronomePackageId: values.metronomePackageId.trim(),
         planCode: values.planCode.trim(),
         paygEnabled: values.paygEnabled,
+        ...(trimmedHubspotDealId
+          ? { hubspotDealId: trimmedHubspotDealId }
+          : {}),
       };
       // For free-tier switches, the operator can omit the Stripe customer —
       // the resulting Metronome contract has no Stripe billing link. The
@@ -621,6 +627,12 @@ export default function SwitchContractDialog({
                   name="stripeCustomerId"
                   title="Stripe Customer Id (optional for free plans)"
                   placeholder="cus_1234567890"
+                />
+                <InputField
+                  control={form.control}
+                  name="hubspotDealId"
+                  title="HubSpot Deal Id (optional)"
+                  placeholder="e.g., 12345678901"
                 />
                 {isCurrencyLoading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">

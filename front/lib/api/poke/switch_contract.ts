@@ -22,6 +22,7 @@ import {
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
   getProductSeatSubscriptionCommitId,
+  HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import {
   applySeatRateOverrides,
@@ -125,6 +126,10 @@ export const SwitchContractBodySchema = z.object({
   // `minSeats * rate` of contract credit, invoiced at `commitmentPrice` —
   // letting the customer prepay the seat commitment at a negotiated (lower)
   // price. Unknown seat-type keys are ignored.
+  // Optional HubSpot deal ID. Stored on the subscription and forwarded to
+  // Metronome as a custom field so contracts can be joined back to HubSpot deals
+  // for ARR reporting.
+  hubspotDealId: z.string().optional(),
   seats: z
     .array(
       z.object({
@@ -574,6 +579,9 @@ export async function switchContract({
     planCode: body.planCode,
     fromContractId: currentSubscription?.metronomeContractId ?? undefined,
     enableSeatSync: false,
+    additionalCustomFields: body.hubspotDealId
+      ? { [HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY]: body.hubspotDealId }
+      : undefined,
   });
   if (provisionResult.isErr()) {
     return new Err(
@@ -671,6 +679,7 @@ export async function switchContract({
       planCode: body.planCode,
       metronomeContractId,
       startDate: alignedStart,
+      hubspotDealId: body.hubspotDealId,
     });
   } catch (err) {
     return new Err(

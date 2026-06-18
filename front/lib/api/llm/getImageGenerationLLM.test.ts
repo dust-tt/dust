@@ -78,6 +78,7 @@ function makeAuth(): Authenticator {
       planId: -1,
       stripeSubscriptionId: null,
       metronomeContractId: null,
+      hubspotDealId: null,
       requestCancelAt: null,
       workspaceId: -1,
       createdAt: new Date(),

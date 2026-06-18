@@ -352,6 +352,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       planId: data.planId,
       stripeSubscriptionId: data.stripeSubscriptionId,
       metronomeContractId: data.metronomeContractId ?? null,
+      hubspotDealId: null,
       requestCancelAt: data.requestCancelAt
         ? new Date(data.requestCancelAt)
         : null,
@@ -616,11 +617,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     planCode,
     metronomeContractId,
     startDate,
+    hubspotDealId,
   }: {
     workspaceModelId: ModelId;
     planCode: string;
     metronomeContractId: string;
     startDate: Date;
+    hubspotDealId?: string | null;
   }): Promise<SubscriptionResource> {
     const plan = await this.findPlanOrThrow(planCode);
     return withTransaction(async (t) => {
@@ -648,6 +651,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           endDate: null,
           stripeSubscriptionId: null,
           metronomeContractId,
+          hubspotDealId: hubspotDealId ?? null,
         },
         renderPlanFromModel({ plan }),
         t
@@ -1470,6 +1474,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       planId: -1,
       stripeSubscriptionId: null,
       metronomeContractId: null,
+      hubspotDealId: null,
       requestCancelAt: null,
     };
   }
