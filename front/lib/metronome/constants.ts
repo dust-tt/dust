@@ -177,6 +177,10 @@ export const USAGE_TYPE_USER = "user";
 export const USAGE_TYPE_PROGRAMMATIC = "programmatic";
 export const USAGE_TYPE_FREE = "free";
 
+// Custom field key used to store the HubSpot deal ID on a Metronome contract.
+// Must be registered in Metronome before it can be stamped.
+export const HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY = "HUBSPOT_DEAL_ID";
+
 // Suffix appended to the annual variant of each seat product name in
 // Metronome (e.g. "Pro Seat (Yearly)"). Used by the setup script when
 // declaring products and by the UI to strip the suffix from displayed seat

@@ -1,7 +1,7 @@
 FROM node:24.16.0 AS base
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential tmux
+# Install system dependencies needed for building
+RUN apt-get update && apt-get install -y postgresql-client curl libpq-dev build-essential
 
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -28,13 +28,20 @@ RUN cd front \
   NODE_OPTIONS="--max-old-space-size=8192" \
   npm run build -- --no-lint
 
-# Set the default start directory to /dust when SSH into the container
 WORKDIR /dust
 
-# Wraning and prompt
+# Ephemeral target: headless job runner for k8s Jobs.
+# The k8s Job spec overrides CMD with the actual `npm run XXX` invocation.
+FROM base AS ephemeral
+CMD ["/bin/bash"]
+
+# Prodbox target: interactive debug environment (default / last stage).
+FROM base AS prodbox
+RUN apt-get update && apt-get install -y vim redis-tools htop tmux
+
+# Warning and prompt
 RUN echo "echo -e \"\033[0;31mWARNING: This is a PRODUCTION system!\033[0m\"" >> /root/.bashrc
 
 ENV GIT_SSH_COMMAND="ssh -i ~/.ssh/github-deploykey-deploybox"
 
-# Set a default command
 CMD ["/dust/prodbox/init.sh"]
