@@ -37,7 +37,6 @@ import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -205,14 +204,11 @@ export async function storeAgentAnalytics(
     tool_awu: toolAwu,
   };
 
-  // Denormalize the sub-agent ancestor chain so a sub-agent's cost can be rolled
-  // up to its ancestors via a query-time aggregation (ES has no recursive query).
-  // Only run_agent replies have ancestors — skip the recursive query otherwise.
+  // TODO: replace with a recursive research of ancestor messages
+  const agentOriginMessageId = userMessageModel.agenticOriginMessageId;
   const ancestorMessageIds =
-    userMessageModel.agenticMessageType === "run_agent"
-      ? await ConversationResource.listAncestorAgentMessageIds(auth, {
-          agentMessageId: agentMessageRow.sId,
-        })
+    userMessageModel.agenticMessageType === "run_agent" && agentOriginMessageId
+      ? [agentOriginMessageId]
       : [];
 
   // Collect feedback from the agent message.
