@@ -44,7 +44,7 @@ POST /front.agent_message_analytics_2/_update_by_query?wait_for_completion=false
               "gte": "now-3M"
             }
           }
-        },
+        }
       ],
       "must_not": [
         {
