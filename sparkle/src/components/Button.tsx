@@ -16,8 +16,9 @@ import * as React from "react";
 // New button design (Figma "Product - WIP" > Controls & input > Button).
 // Replaces Button incrementally: sizes follow the new S/M/L control scale
 // (24/32/40px) where every old size maps one step down (md->lg, sm->md,
-// xs/mini/xmini->sm). Night-mode styles are provisional: the redesign only
-// covers light mode so far.
+// xs/mini/xmini->sm). Dark mode is an interim pass built from the palette's
+// auto-generated `-night` ramp mirror ({shade}-night = ramp[1000-shade]); it is
+// internally consistent but not yet reconciled with the designer's dark spec.
 
 export const BUTTON_VARIANTS = [
   "primary",
@@ -73,29 +74,39 @@ const buttonVariants = cva(
       variant: {
         primary: cn(
           OVERLAY,
+          // Dark = the ramp mirror (-night): the neutral fill flips light, so the
+          // text flips dark (as the legacy button did). Disabled mirrors the
+          // other way (dark fill) and needs muted light text.
           "s-bg-gradient-to-b s-from-stone-700 s-to-stone-800",
-          "s-text-white",
+          "dark:s-from-stone-700-night dark:s-to-stone-800-night",
+          "s-text-white dark:s-text-foreground",
           SOLID_SHADOW("#44403b"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
-          "disabled:s-from-stone-300 disabled:s-to-stone-400 disabled:s-shadow-none"
+          "disabled:s-from-stone-300 disabled:s-to-stone-400 disabled:s-shadow-none",
+          "dark:disabled:s-from-stone-300-night dark:disabled:s-to-stone-400-night dark:disabled:s-text-faint-night"
         ),
         highlight: cn(
           OVERLAY,
+          // Dark = ramp mirror (-night): blue stays saturated, white text holds.
           "s-bg-gradient-to-b s-from-blue-400 s-to-blue-500",
+          "dark:s-from-blue-400-night dark:s-to-blue-500-night",
           "s-text-white",
           SOLID_SHADOW("#4BABFF"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
-          "disabled:s-from-blue-200 disabled:s-to-blue-300 disabled:s-shadow-none"
+          "disabled:s-from-blue-200 disabled:s-to-blue-300 disabled:s-shadow-none",
+          "dark:disabled:s-from-blue-200-night dark:disabled:s-to-blue-300-night"
         ),
         warning: cn(
           OVERLAY,
           // The design's "critical" reds come from the preset's red palette
           // (red-400/500), not the rose ramp the legacy warning variant uses.
           "s-bg-gradient-to-b s-from-red-400 s-to-red-500",
+          "dark:s-from-red-400-night dark:s-to-red-500-night",
           "s-text-white",
           SOLID_SHADOW("#E76449"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
-          "disabled:s-from-red-200 disabled:s-to-red-300 disabled:s-shadow-none"
+          "disabled:s-from-red-200 disabled:s-to-red-300 disabled:s-shadow-none",
+          "dark:disabled:s-from-red-200-night dark:disabled:s-to-red-300-night"
         ),
         outline: cn(
           OVERLAY,
@@ -110,14 +121,14 @@ const buttonVariants = cva(
         ghost: cn(
           "s-text-foreground dark:s-text-foreground-night",
           "hover:s-bg-stone-200 active:s-bg-stone-300",
-          "dark:hover:s-bg-gray-800 dark:active:s-bg-gray-700",
+          "dark:hover:s-bg-stone-200-night dark:active:s-bg-stone-300-night",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
         "ghost-secondary": cn(
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
           "hover:s-bg-stone-200 active:s-bg-stone-300",
-          "dark:hover:s-bg-gray-800 dark:active:s-bg-gray-700",
+          "dark:hover:s-bg-stone-200-night dark:active:s-bg-stone-300-night",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
