@@ -32,6 +32,7 @@ export const deleteWorkspacePlugin = createPlugin({
         label: "Workspace has been relocated?",
       },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (
     auth,

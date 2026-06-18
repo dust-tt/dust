@@ -308,7 +308,7 @@ export async function destroyConversation(
     where: { workspaceId: owner.id, sourceId: conversation.sId },
   });
 
-  await SandboxResource.deleteByConversationId(auth, conversation.sId);
+  await SandboxResource.deleteByConversation(auth, conversation);
 
   // TODO(2026-03-09 SANDBOX): Implement proper file deletion.
   // FileResource records associated with this conversation (via

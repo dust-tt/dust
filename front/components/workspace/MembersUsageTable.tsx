@@ -1,4 +1,7 @@
-import { SEAT_TYPE_ICONS } from "@app/components/workspace/billing/seatTypeUtils";
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeDisplayName,
+} from "@app/components/workspace/billing/seatTypeUtils";
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import {
   getSeatBarClasses,
@@ -67,8 +70,7 @@ function getScheduledSeatChangeLabel(
       : scheduledRank < currentRank
         ? "downgraded"
         : "changed";
-  const target = toBaseSeatType(scheduledSeatType);
-  const targetLabel = target.charAt(0).toUpperCase() + target.slice(1);
+  const targetLabel = seatTypeDisplayName(scheduledSeatType);
   const dateSuffix = scheduledSeatChangeAt
     ? ` (${new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
         month: "long",
@@ -329,9 +331,9 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
     const scheduledSeatChangeAt = info.row.original.scheduledSeatChangeAt;
     return (
       <DataTable.CellContent>
-        <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
           <SeatTypeIcon seatType={seatType} />
-          {seatType ? toBaseSeatType(seatType) : "—"}
+          {seatType ? seatTypeDisplayName(seatType) : seatType}
           {scheduledSeatType && (
             <Tooltip
               label={getScheduledSeatChangeLabel(

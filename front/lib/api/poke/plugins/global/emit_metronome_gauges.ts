@@ -12,6 +12,7 @@ export const emitMetronomeGaugesPlugin = createPlugin({
       "Runs the Metronome gauge events workflow immediately for all workspaces (workspace_gauge: member_count, MAU, etc.).",
     resourceTypes: ["global"],
     args: {},
+    requiredRoles: ["billing"],
   },
   execute: async () => {
     const client = await getTemporalClientForFrontNamespace();

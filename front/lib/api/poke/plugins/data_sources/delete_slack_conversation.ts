@@ -27,6 +27,7 @@ export const deleteSlackConversationPlugin = createPlugin({
           "Timestamp of the thread to delete (e.g., 1234567890.123456)",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

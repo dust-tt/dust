@@ -228,6 +228,7 @@ export async function getMembers(
       ...user.toJSON(),
       workspaces: [{ ...owner, role, flags: null }],
       origin,
+      seatType: m.seatType,
     };
   });
 

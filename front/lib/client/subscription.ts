@@ -15,16 +15,11 @@ export const PRO_PLAN_COST_YEARLY = 27;
 export const BUSINESS_PLAN_COST_MONTHLY = 45;
 
 // Credit-priced (CP) self-serve seat prices
+export const CP_ENTERPRISE_BASIS = 20;
 export const CP_PRO_SEAT_COST_MONTHLY = 30;
 export const CP_PRO_SEAT_COST_YEARLY = 24;
 export const CP_MAX_SEAT_COST_MONTHLY = 150;
 export const CP_MAX_SEAT_COST_YEARLY = 120;
-
-// Lifetime AWU credits granted once per seat on the credit-priced Free plan.
-// Mirrors the server-side source of truth `FREE_SEAT_LIFETIME_AWU_CREDITS` in
-// `front/lib/metronome/setup_new_pricing.ts` (that module is server-only and
-// cannot be imported client-side).
-export const CP_FREE_PLAN_CREDITS = 300;
 
 /**
  * Client-side mirror of the server-side `isMetronomeBillingEnabled` gate: the

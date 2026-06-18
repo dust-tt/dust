@@ -343,6 +343,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={context.owner}
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
               isProjectArchived={context.isProjectArchived}
+              setLimitReachedCode={context.setLimitReachedCode}
             />
           )}
           {isAgentMessageWithStreaming(data) && (
@@ -365,6 +366,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
               isAutoScrollEnabledRef={context.isAutoScrollEnabledRef}
               isProjectArchived={context.isProjectArchived}
+              setLimitReachedCode={context.setLimitReachedCode}
             />
           )}
           {data.visibility !== "deleted" &&

@@ -1,32 +1,51 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
+import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
+import {
+  formatPriceCents,
+  getAvailableFrequencies,
+  groupSeatTypesByFrequency,
+  SeatCard,
+  sortSeatTypes,
+} from "@app/components/workspace/SeatCard";
 import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  SeatBillingFrequency,
+  SeatTypeInfo,
+} from "@app/lib/api/credits/seat_plan";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
   sendInvitations,
 } from "@app/lib/invitations";
+import { useSeatPlan } from "@app/lib/swr/credits";
 import { isEmailValid } from "@app/lib/utils";
+import {
+  isMembershipSeatType,
+  type MembershipSeatType,
+} from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   InfoCircle,
   Plus,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { mutate } from "swr";
 
 const useGetEmailsListAndError = (
@@ -54,6 +73,43 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
+// Pre-paid slots remaining for the free seat type (minSeats floor not yet consumed).
+function freeSeatAvailability(info: SeatTypeInfo): number {
+  return Math.max(0, info.minSeats - info.assignedCount);
+}
+
+function isSeatSelectable(
+  seatType: MembershipSeatType,
+  info: SeatTypeInfo
+): boolean {
+  if (seatType === "free") {
+    return freeSeatAvailability(info) > 0;
+  }
+  return info.maxSeats === null || info.assignedCount < info.maxSeats;
+}
+
+function seatBadge(
+  seatType: MembershipSeatType,
+  info: SeatTypeInfo
+): ReactNode {
+  let label: string;
+  if (seatType === "free") {
+    const available = freeSeatAvailability(info);
+    label = `${available} available`;
+  } else {
+    label = formatPriceCents(
+      info.priceCents,
+      info.currency,
+      info.billingFrequency
+    );
+  }
+  return (
+    <span className="text-xs text-foreground dark:text-foreground-night">
+      {label}
+    </span>
+  );
+}
+
 interface InviteEmailButtonWithModalProps {
   owner: WorkspaceType;
   prefillText: string;
@@ -78,6 +134,98 @@ export function InviteEmailButtonWithModal({
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const handleMembersRoleChange = useChangeMembersRoles({ owner });
+
+  const { seatPlans, isSeatPlanLoading } = useSeatPlan({
+    workspaceId: owner.sId,
+    disabled: !open,
+  });
+  const seatTypes = useMemo(
+    () => sortSeatTypes(Object.keys(seatPlans).filter(isMembershipSeatType)),
+    [seatPlans]
+  );
+  const seatTypesByFrequency = useMemo(
+    () => groupSeatTypesByFrequency(seatTypes, seatPlans),
+    [seatTypes, seatPlans]
+  );
+  const availableFrequencies = getAvailableFrequencies(seatTypesByFrequency);
+  const hasSeatSelection = seatTypes.length > 0;
+  const [activeFrequency, setActiveFrequency] =
+    useState<SeatBillingFrequency>("monthly");
+  const [selectedSeatType, setSelectedSeatType] =
+    useState<MembershipSeatType | null>(null);
+  const seatInitializedRef = useRef(false);
+
+  // Initialize the seat selection once per modal opening
+  useEffect(() => {
+    if (!open) {
+      seatInitializedRef.current = false;
+      return;
+    }
+    if (seatInitializedRef.current || isSeatPlanLoading || !hasSeatSelection) {
+      return;
+    }
+    const selectable = seatTypes.filter((s) => {
+      const info = seatPlans[s];
+      return info && isSeatSelectable(s, info);
+    });
+    const paidSelectable = selectable.filter((s) => s !== "free");
+    const cheapestPaid = paidSelectable.reduce<MembershipSeatType | undefined>(
+      (min, s) =>
+        min === undefined ||
+        (seatPlans[s]?.priceCents ?? 0) < (seatPlans[min]?.priceCents ?? 0)
+          ? s
+          : min,
+      undefined
+    );
+    const defaultSeat =
+      selectable.find((s) => s === "free") ??
+      cheapestPaid ??
+      selectable[0] ??
+      null;
+    setSelectedSeatType(defaultSeat);
+    setActiveFrequency(
+      (defaultSeat && seatPlans[defaultSeat]?.billingFrequency) ??
+        (availableFrequencies.includes("monthly")
+          ? "monthly"
+          : (availableFrequencies[0] ?? "monthly"))
+    );
+    seatInitializedRef.current = true;
+  }, [
+    open,
+    isSeatPlanLoading,
+    hasSeatSelection,
+    seatTypes,
+    seatPlans,
+    availableFrequencies,
+  ]);
+
+  // Switch billing cadence; keep the selection valid by falling back to the
+  // first selectable tier in the new cadence when the current one isn't offered.
+  function handleSeatFrequencyChange(period: "monthly" | "yearly") {
+    let frequency: SeatBillingFrequency;
+    switch (period) {
+      case "yearly":
+        frequency = "annual";
+        break;
+      case "monthly":
+        frequency = "monthly";
+        break;
+      default:
+        assertNever(period);
+    }
+    setActiveFrequency(frequency);
+    const inFrequency = seatTypesByFrequency[frequency];
+    if (!selectedSeatType || !inFrequency.includes(selectedSeatType)) {
+      const nextSeat =
+        inFrequency.find((s) => {
+          const info = seatPlans[s];
+          return info && isSeatSelectable(s, info);
+        }) ??
+        inFrequency[0] ??
+        null;
+      setSelectedSeatType(nextSeat);
+    }
+  }
 
   async function handleSendInvitations(
     inviteEmailsList: string[]
@@ -167,6 +315,7 @@ export function InviteEmailButtonWithModal({
         owner,
         emails: notInWorkspace,
         invitationRole,
+        seatType: selectedSeatType,
         sendNotification,
         isNewInvitation: true,
       });
@@ -199,8 +348,8 @@ export function InviteEmailButtonWithModal({
   }, [inviteEmailsList, emailError]);
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           icon={Plus}
           label="Invite members"
@@ -208,19 +357,24 @@ export function InviteEmailButtonWithModal({
           onClick={onInviteClick}
           disabled={disabled}
         />
-      </SheetTrigger>
-      <SheetContent size="lg">
-        <SheetHeader>
-          <SheetTitle>Invite new users</SheetTitle>
-        </SheetHeader>
-        <SheetContainer>
-          <div className="flex grow flex-col gap-6 text-sm">
-            <div className="flex flex-grow flex-col gap-2">
-              <div className="heading-base">
-                Email addresses (comma or newline separated):
+      </DialogTrigger>
+      <DialogContent size="md">
+        <DialogHeader>
+          <div className="flex flex-col gap-1">
+            <DialogTitle>Invite new users</DialogTitle>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Choose a new plan to continue
+            </p>
+          </div>
+        </DialogHeader>
+        <DialogContainer>
+          <div className="flex flex-col gap-6 text-sm">
+            <div className="flex flex-col gap-2">
+              <div className="heading-base text-foreground dark:text-foreground-night">
+                Email addresses
               </div>
               <TextArea
-                placeholder="Email addresses, comma or newline separated"
+                placeholder="Email addresses, comma separated"
                 value={inviteEmails}
                 onChange={(e) => {
                   setInviteEmails(e.target.value);
@@ -229,9 +383,6 @@ export function InviteEmailButtonWithModal({
                 showErrorLabel
               />
               <div className="flex items-center gap-2">
-                <div className="heading-base text-foreground dark:text-foreground-night">
-                  Role:
-                </div>
                 <RoleDropDown
                   selectedRole={invitationRole}
                   onChange={setInvitationRole}
@@ -241,20 +392,55 @@ export function InviteEmailButtonWithModal({
                 {ROLES_DATA[invitationRole]["description"]}
               </div>
             </div>
+            {hasSeatSelection && (
+              <div className="flex flex-col gap-3">
+                {availableFrequencies.length > 1 && (
+                  <div className="self-start">
+                    <BillingPeriodSwitch
+                      key={activeFrequency}
+                      defaultValue={
+                        activeFrequency === "annual" ? "yearly" : "monthly"
+                      }
+                      onValueChange={handleSeatFrequencyChange}
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  {seatTypesByFrequency[activeFrequency].map((seatType) => {
+                    const info = seatPlans[seatType];
+                    if (!info) {
+                      return null;
+                    }
+                    return (
+                      <SeatCard
+                        key={seatType}
+                        seatType={seatType}
+                        info={info}
+                        isSelected={selectedSeatType === seatType}
+                        isDisabled={!isSeatSelectable(seatType, info)}
+                        badge={seatBadge(seatType, info)}
+                        onClick={() => setSelectedSeatType(seatType)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {perSeatPricing !== null && (
               <div className="justify-self-end">
                 <ProPlanBillingNotice perSeatPricing={perSeatPricing} />
               </div>
             )}
           </div>
-        </SheetContainer>
-        <SheetFooter
+        </DialogContainer>
+        <DialogFooter
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Send Invite",
+            label: "Validate",
+            variant: "primary",
             disabled: !!shouldDisableButton,
             onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
@@ -266,8 +452,8 @@ export function InviteEmailButtonWithModal({
             },
           }}
         />
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -1,0 +1,63 @@
+POST /front.agent_message_analytics_2/_update_by_query?wait_for_completion=false&slices=auto&scroll_size=5000&requests_per_second=10000
+{
+  "conflicts": "proceed",
+  "script": {
+    "lang": "painless",
+    "source": "boolean isFreeUsage = ctx._source.context_origin != null && params.free_origins.contains(ctx._source.context_origin); long costMicroUsd = (ctx._source.tokens != null && ctx._source.tokens.cost_micro_usd != null) ? ctx._source.tokens.cost_micro_usd : 0; int llmAwu = isFreeUsage ? 0 : (int) Math.ceil(costMicroUsd / 8500.0); int toolAwu = 0; if (ctx._source.tools_used != null) { for (def tool : ctx._source.tools_used) { int cost = 0; def server = tool.server_name; if (!isFreeUsage && params.final_statuses.contains(tool.status) && (server == null || !params.free_tool_servers.contains(server))) { cost = (server != null && params.basic_tool_servers.contains(server)) ? 1 : 3; } tool.cost_awu = cost; toolAwu += cost; } } ctx._source.cost = ['full_awu': llmAwu + toolAwu, 'llm_awu': llmAwu, 'tool_awu': toolAwu];",
+    "params": {
+      "free_origins": ["agent_sidekick"],
+      "free_tool_servers": [
+        "agent_router",
+        "common_utilities",
+        "toolsets",
+        "agent_memory"
+      ],
+      "basic_tool_servers": [
+        "web_search_&_browse",
+        "run_agent",
+        "agent_sidekick_agent_state",
+        "agent_sidekick_context",
+        "run_dust_app",
+        "user_mentions",
+        "missing_action_catcher",
+        "primitive_types_debugger",
+        "jit_testing",
+        "skill_authoring",
+        "skill_management",
+        "schedules_management",
+        "pod_manager",
+        "pod_tasks",
+        "poke",
+        "ask_user_question",
+        "wakeups",
+        "plan_mode"
+      ],
+      "final_statuses": ["succeeded", "errored", "denied"]
+    }
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "range": {
+            "timestamp": {
+              "gte": "now-3M"
+            }
+          }
+        },
+        {
+          "term": {
+            "workspace_id": "0ec9852c2f"
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "exists": {
+            "field": "cost"
+          }
+        }
+      ]
+    }
+  }
+}

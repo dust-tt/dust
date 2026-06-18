@@ -4,6 +4,7 @@ import { registerFilesCreateTool } from "./create";
 import { registerFilesGrepTool } from "./grep";
 import { registerFilesListTool } from "./list";
 import { registerFilesResolveTool } from "./resolve";
+import { registerFilesUploadFromUrlTool } from "./upload_from_url";
 
 export function registerFilesTools(server: McpServer) {
   registerFilesListTool(server);
@@ -11,4 +12,5 @@ export function registerFilesTools(server: McpServer) {
   registerFilesCreateTool(server);
   registerFilesGrepTool(server);
   registerFilesResolveTool(server);
+  registerFilesUploadFromUrlTool(server);
 }

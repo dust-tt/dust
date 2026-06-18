@@ -31,6 +31,7 @@ export const getAdminsForWorkspacesPlugin = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (_, __, args) => {
     const sIds = args.workspaceIds

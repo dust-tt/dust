@@ -603,3 +603,31 @@ export interface LessonPageProps {
   academySettings: AcademySettings;
   quizSettings: QuizSettings;
 }
+
+// Conversation draft (deeplink) types
+//
+// Contentful content type id: `conversationDraft`
+export interface ConversationDraftFields {
+  slug: string;
+  title: string;
+  prompt: string;
+  attachments?: Asset[];
+}
+
+export type ConversationDraftSkeleton = EntrySkeletonType<
+  ConversationDraftFields,
+  "conversationDraft"
+>;
+
+export interface ConversationDraftAttachment {
+  url: string;
+  fileName: string;
+  contentType: string | null;
+}
+
+export interface ConversationDraft {
+  slug: string;
+  title: string;
+  prompt: string;
+  attachments: ConversationDraftAttachment[];
+}

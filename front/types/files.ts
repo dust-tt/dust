@@ -89,8 +89,8 @@ export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 /**
  * Allowlist of files a shared Frame may load via useFile().
- * AuthorizedFileAccessModel stores one row per authorized file; active rows have
- * revokedAt = null.
+ * AuthorizedFileAccessModel stores one row per authorized file ref for the
+ * current frame version (replaced on recompute).
  */
 export const authorizedFileAccessKindSchema = z.enum([
   "file_id",
@@ -104,10 +104,8 @@ export type AuthorizedFileAccessKind = z.infer<
 
 const authorizedFileAccessEntryBaseSchema = {
   shareScope: fileShareScopeSchema,
-  computedByUserId: z.string(),
   frameContentHash: z.string(),
   allowedAt: z.string(),
-  revokedAt: z.string().nullable().optional(),
 };
 
 const authorizedFileIdAccessEntrySchema = z
@@ -207,7 +205,7 @@ export function entryToAuthorizedFileRef(
 
 /** Active allowlist view derived from non-revoked DB rows. */
 export type AuthorizedFileAccessAllowlist = {
-  computedByUserId: string;
+  generatedByUserId: number | null;
   frameContentHash: string;
   refs: AuthorizedFileRef[];
 };
@@ -221,12 +219,6 @@ export function parseAuthorizedFileAccessEntry(
   data: unknown
 ): AuthorizedFileAccessEntry {
   return authorizedFileAccessEntrySchema.parse(data);
-}
-
-export function getActiveAuthorizedFileAccessEntries(
-  entries: AuthorizedFileAccessEntry[]
-): AuthorizedFileAccessEntry[] {
-  return entries.filter((entry) => entry.revokedAt == null);
 }
 
 export type AuthorizedFileAccessShareError = Omit<DustError, "code"> & {

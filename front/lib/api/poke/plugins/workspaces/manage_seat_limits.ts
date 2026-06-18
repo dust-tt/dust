@@ -16,11 +16,14 @@ const SeatLimitArgsSchema = z.object({
     .number()
     .int("Min seats must be an integer")
     .min(0, "Min seats must be at least 0"),
-  maxSeats: z
-    .number()
-    .int("Max seats must be an integer")
-    .min(1, "Max seats must be at least 1")
-    .optional(),
+  maxSeats: z.preprocess(
+    (v) => (v === 0 ? undefined : v),
+    z
+      .number()
+      .int("Max seats must be an integer")
+      .min(1, "Max seats must be at least 1")
+      .optional()
+  ),
 });
 
 export const manageSeatLimitsPlugin = createPlugin({
@@ -68,6 +71,7 @@ export const manageSeatLimitsPlugin = createPlugin({
         dependsOn: { field: "enabled", value: true },
       },
     },
+    requiredRoles: ["billing"],
   },
 
   isApplicableTo: (auth) => {

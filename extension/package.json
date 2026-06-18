@@ -16,7 +16,7 @@
     "tsgo": "tsgo"
   },
   "engines": {
-    "node": ">=24.14.0"
+    "node": ">=24.16.0"
   },
   "author": "@dust-tt",
   "license": "ISC",

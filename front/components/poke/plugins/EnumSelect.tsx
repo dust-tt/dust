@@ -38,7 +38,17 @@ export function EnumSelect({
 }: EnumSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  let title = values?.length ? values.sort().join(", ") : placeholder;
+  const optionLabelByValue = React.useMemo(
+    () => new Map(options.map((option) => [option.value, option.label])),
+    [options]
+  );
+
+  let title = values?.length
+    ? values
+        .map((value) => optionLabelByValue.get(value) ?? value)
+        .sort()
+        .join(", ")
+    : placeholder;
 
   if (title.length > 80) {
     title = `${values?.length} items selected`;

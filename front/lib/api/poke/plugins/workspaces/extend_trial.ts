@@ -15,6 +15,7 @@ export const extendTrialPlugin = createPlugin({
         description: "Number of days to extend the trial period",
       },
     },
+    requiredRoles: ["billing"],
   },
   execute: async (auth, _, args) => {
     const subscription = auth.subscription();

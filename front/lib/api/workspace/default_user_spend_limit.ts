@@ -2,10 +2,10 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  getMetronomeDefaultUserCapAlertForSeatType,
   upsertMetronomeDefaultUserCapAlertForSeatType,
   upsertMetronomeDefaultUserWarningAlertForSeatType,
 } from "@app/lib/metronome/alerts/spend_limits";
@@ -15,18 +15,20 @@ import {
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
 import {
-  NORMALIZED_POOL_LIMIT_SEAT_TYPES,
   type NormalizedPoolLimitSeatType,
   normalizeToPoolLimitSeatType,
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export type DefaultUserSpendLimit = {
   awuCredits: number;
@@ -41,7 +43,6 @@ export type PutDefaultUserSpendLimitResponseBody = DefaultUserSpendLimit;
 export type DefaultUserSpendLimitErrorType =
   | "workspace_not_metronome_billed"
   | "metronome_error"
-  | "not_found"
   | "invalid_threshold"
   | "contract_not_found";
 
@@ -55,15 +56,18 @@ export class DefaultUserSpendLimitError extends Error {
 }
 
 /**
- * Read the default pool credit limit for the workspace. Reads per-seat-type
- * alerts and recovers the pool limit by subtracting the seat allowance.
- *
- * Since all seat types share the same pool limit, we read the first
- * per-seat-type alert we find and subtract its seat type's AWU allocation.
+ * Read the default pool credit limit for the workspace. The pool-only value
+ * persisted on the credit-usage configuration
+ * (`credit_usage_configurations.defaultPoolCapAwuCredits`) is the source of
+ * truth — the per-seat-type Metronome alerts (threshold = seatAllowance +
+ * poolLimit) are derived from it. When no workspace default is configured,
+ * returns 0 (no pool access). Unlimited pool is not supported.
  */
 export async function getDefaultUserSpendLimit(
   auth: Authenticator
-): Promise<Result<DefaultUserSpendLimit, DefaultUserSpendLimitError>> {
+): Promise<
+  Result<GetDefaultUserSpendLimitResponseBody, DefaultUserSpendLimitError>
+> {
   const workspace = auth.getNonNullableWorkspace();
   if (!workspace.metronomeCustomerId) {
     logger.info(
@@ -78,88 +82,122 @@ export async function getDefaultUserSpendLimit(
     );
   }
 
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  if (!config || config.defaultPoolCapAwuCredits === null) {
+    return new Ok({ awuCredits: 0 });
+  }
+
+  return new Ok({ awuCredits: config.defaultPoolCapAwuCredits });
+}
+
+/**
+ * Create or update Metronome per-seat-type cap + warning alerts so that every
+ * active seat type has an alert at (seatAllowance + poolAwuCredits). Uses the
+ * workspace's configured `defaultPoolCapAwuCredits` (or 0 when none is set).
+ * Call after contract provisioning or when the default changes.
+ */
+export async function syncDefaultPoolCapAlertsForWorkspace(
+  workspace: LightWorkspaceType
+): Promise<Result<void, DefaultUserSpendLimitError>> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return new Ok(undefined);
+  }
+
+  const config = await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+    workspace.id
+  );
+  const poolAwuCredits = config?.defaultPoolCapAwuCredits ?? 0;
+
   const contract = await getActiveContract(workspace.sId);
-  const productSeatTypes = contract ? await getProductSeatTypes() : null;
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      hasContract: Boolean(contract),
-      productSeatTypeCount: productSeatTypes?.size ?? 0,
-    },
-    "[DefaultUserSpendLimit] get: resolved contract and product seat types"
+  if (!contract) {
+    logger.error(
+      { workspaceId: workspace.sId },
+      "[DefaultUserSpendLimit] syncDefaultPoolCapAlerts: no active contract found"
+    );
+    return new Err(
+      new DefaultUserSpendLimitError(
+        "contract_not_found",
+        "No active contract found for this workspace."
+      )
+    );
+  }
+  const productSeatTypes = await getProductSeatTypes();
+  const seatSubscriptions = getSeatSubscriptionsFromContract(
+    contract,
+    productSeatTypes
   );
 
-  // Try each normalized seat type until we find one with an alert configured.
-  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
-    const result = await getMetronomeDefaultUserCapAlertForSeatType({
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      workspaceId: workspace.sId,
-      seatType,
-    });
-    if (result.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          seatType,
-          err: result.error,
-        },
-        "[DefaultUserSpendLimit] get: failed to read default per-user cap alert from Metronome"
-      );
-      return new Err(
-        new DefaultUserSpendLimitError("metronome_error", result.error.message)
-      );
-    }
-    if (result.value) {
-      const totalThreshold = result.value.alert.threshold;
-      const seatAllowance =
-        contract && productSeatTypes
-          ? getAwuAllocationForNormalizedSeatType(
-              contract,
-              seatType,
-              productSeatTypes
-            )
-          : 0;
-      const poolAwuCredits = totalThreshold - seatAllowance;
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          seatType,
-          alertId: result.value.alert.id,
-          totalThreshold,
-          seatAllowance,
-          poolAwuCredits,
-        },
-        "[DefaultUserSpendLimit] get: resolved default pool limit from cap alert"
-      );
-      return new Ok({ awuCredits: poolAwuCredits });
+  const normalizedSeatTypes = new Set<NormalizedPoolLimitSeatType>();
+  for (const seatType of seatSubscriptions.keys()) {
+    const normalized = normalizeToPoolLimitSeatType(seatType);
+    if (normalized) {
+      normalizedSeatTypes.add(normalized);
     }
   }
 
-  logger.info(
-    {
+  for (const seatType of normalizedSeatTypes) {
+    const seatAllowance = getAwuAllocationForNormalizedSeatType(
+      contract,
+      seatType,
+      productSeatTypes
+    );
+    const totalThreshold = seatAllowance + poolAwuCredits;
+
+    const upsertResult = await upsertMetronomeDefaultUserCapAlertForSeatType({
+      metronomeCustomerId,
       workspaceId: workspace.sId,
-      metronomeCustomerId: workspace.metronomeCustomerId,
-    },
-    "[DefaultUserSpendLimit] get: no default per-user cap alert configured for any seat type"
-  );
-  return new Err(
-    new DefaultUserSpendLimitError(
-      "not_found",
-      "No default per-user spend limit configured for this workspace."
-    )
-  );
+      seatType,
+      awuCredits: totalThreshold,
+    });
+    if (upsertResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          seatType,
+          totalThreshold,
+          err: upsertResult.error,
+        },
+        "[DefaultUserSpendLimit] syncDefaultPoolCapAlerts: failed to upsert cap alert"
+      );
+      return new Err(
+        new DefaultUserSpendLimitError(
+          "metronome_error",
+          upsertResult.error.message
+        )
+      );
+    }
+
+    const warningResult =
+      await upsertMetronomeDefaultUserWarningAlertForSeatType({
+        metronomeCustomerId,
+        workspaceId: workspace.sId,
+        seatType,
+        capAwuCredits: totalThreshold,
+      });
+    if (warningResult.isErr()) {
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+          seatType,
+          totalThreshold,
+          err: warningResult.error,
+        },
+        "[DefaultUserSpendLimit] syncDefaultPoolCapAlerts: failed to upsert warning alert; continuing"
+      );
+    }
+  }
+
+  return new Ok(undefined);
 }
 
 /**
  * Update the workspace-wide default pool credit limit.
  *
- * Creates one Metronome alert per seat type on the contract. Each alert's
- * threshold = seatAllowance + poolAwuCredits so that the limit only
- * concerns pool credits, not the seat allowance.
- *
+ * Persists the new limit then syncs Metronome per-seat-type cap + warning
+ * alerts (threshold = seatAllowance + poolAwuCredits) via
+ * `syncDefaultPoolCapAlertsForWorkspace`.
  */
 export async function setDefaultUserSpendLimit(
   auth: Authenticator,
@@ -217,134 +255,47 @@ export async function setDefaultUserSpendLimit(
     "[DefaultUserSpendLimit] set: starting default per-user spend limit update"
   );
 
-  const contract = await getActiveContract(workspace.sId);
-  if (!contract) {
-    logger.error(
-      { workspaceId: workspace.sId, metronomeCustomerId },
-      "[DefaultUserSpendLimit] set: no active contract found for workspace"
-    );
-    return new Err(
-      new DefaultUserSpendLimitError(
-        "contract_not_found",
-        "No active contract found for this workspace."
-      )
-    );
-  }
-  const productSeatTypes = await getProductSeatTypes();
+  // Persist the admin's intent first: the credit-usage configuration column is
+  // the source of truth, the per-seat-type Metronome alerts below are derived
+  // enforcement (a failed sync can be retried and re-derives from this value).
+  // The config row is created lazily, so upsert it.
+  const existingConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const previousAwuCredits = existingConfig?.defaultPoolCapAwuCredits ?? null;
 
-  // Determine which seat types the contract actually sells.
-  const seatSubscriptions = getSeatSubscriptionsFromContract(
-    contract,
-    productSeatTypes
-  );
-
-  // Normalize to pool-limit seat types (dedup monthly/yearly).
-  const normalizedSeatTypes = new Set<NormalizedPoolLimitSeatType>();
-  for (const seatType of seatSubscriptions.keys()) {
-    const normalized = normalizeToPoolLimitSeatType(seatType);
-    if (normalized) {
-      normalizedSeatTypes.add(normalized);
-    }
-  }
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      metronomeCustomerId,
-      productSeatTypeCount: productSeatTypes.size,
-      contractSeatTypes: [...seatSubscriptions.keys()],
-      normalizedSeatTypes: [...normalizedSeatTypes],
-    },
-    "[DefaultUserSpendLimit] set: resolved seat types from contract"
-  );
-
-  if (normalizedSeatTypes.size === 0) {
-    // No seat alert will be created, so the limit would silently not apply.
-    // Surface this loudly rather than returning a success that does nothing.
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        metronomeCustomerId,
-        contractSeatTypes: [...seatSubscriptions.keys()],
-      },
-      "[DefaultUserSpendLimit] set: contract has no pool-limit seat types; no cap alert will be created"
-    );
-  }
-
-  // Read previous pool limit for audit metadata (best-effort).
-  const previousResult = await getDefaultUserSpendLimit(auth);
-  const previousAwuCredits = previousResult.isOk()
-    ? previousResult.value.awuCredits
-    : null;
-
-  // Create per-seat-type alerts.
-  for (const seatType of normalizedSeatTypes) {
-    const seatAllowance = getAwuAllocationForNormalizedSeatType(
-      contract,
-      seatType,
-      productSeatTypes
-    );
-    const totalThreshold = seatAllowance + poolAwuCredits;
-
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        metronomeCustomerId,
-        seatType,
-        seatAllowance,
-        poolAwuCredits,
-        totalThreshold,
-      },
-      "[DefaultUserSpendLimit] set: computed cap threshold for seat type (seatAllowance + poolAwuCredits)"
-    );
-
-    const upsertResult = await upsertMetronomeDefaultUserCapAlertForSeatType({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-      seatType,
-      awuCredits: totalThreshold,
+  if (existingConfig) {
+    await existingConfig.updateConfiguration(auth, {
+      defaultPoolCapAwuCredits: poolAwuCredits,
     });
-    if (upsertResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          metronomeCustomerId,
-          seatType,
-          seatAllowance,
-          poolAwuCredits,
-          totalThreshold,
-          err: upsertResult.error,
-        },
-        "[DefaultUserSpendLimit] set: failed to upsert default per-user cap alert"
-      );
-      return new Err(
-        new DefaultUserSpendLimitError(
-          "metronome_error",
-          upsertResult.error.message
-        )
-      );
-    }
+  } else {
+    await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      defaultPoolCapAwuCredits: poolAwuCredits,
+    });
+  }
 
-    // 80% warning alert. Errors are logged but don't fail the operation.
-    const warningResult =
-      await upsertMetronomeDefaultUserWarningAlertForSeatType({
-        metronomeCustomerId,
-        workspaceId: workspace.sId,
-        seatType,
-        capAwuCredits: totalThreshold,
-      });
-    if (warningResult.isErr()) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          seatType,
-          metronomeCustomerId,
-          poolAwuCredits,
-          err: warningResult.error,
-        },
-        "[DefaultUserSpendLimit] Failed to upsert warning alert for seat type; continuing"
+  // Sync per-seat-type Metronome alerts from the newly persisted value.
+  const syncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
+  if (syncResult.isErr()) {
+    return new Err(syncResult.error);
+  }
+
+  // Reconcile all workspace user credit states against the new cap so that
+  // users previously blocked by the old cap are unblocked immediately rather
+  // than waiting for the next webhook or manual reconcile.
+  const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
+  if (metronomeContractId) {
+    void reconcileWorkspaceUserCreditStates({
+      workspace,
+      metronomeCustomerId,
+      metronomeContractId,
+    }).catch((err) => {
+      logger.error(
+        { workspaceId: workspace.sId, err: normalizeError(err) },
+        "[DefaultUserSpendLimit] set: failed to reconcile user credit states after cap update"
       );
-    }
+    });
   }
 
   logger.info(
@@ -353,7 +304,6 @@ export async function setDefaultUserSpendLimit(
       metronomeCustomerId,
       previousAwuCredits,
       poolAwuCredits,
-      seatTypesUpdated: [...normalizedSeatTypes],
     },
     "[DefaultUserSpendLimit] set: default per-user spend limit update succeeded"
   );

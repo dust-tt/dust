@@ -40,6 +40,7 @@ export const relocateUserPlugin = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (auth, _, args) => {
     const { userId, newRegion } = args;

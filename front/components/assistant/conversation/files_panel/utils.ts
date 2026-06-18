@@ -1,5 +1,5 @@
 import type { FilePanelCategory } from "@app/components/file_explorer/types";
-import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
+import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,

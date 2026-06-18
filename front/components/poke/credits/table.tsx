@@ -117,6 +117,7 @@ export function CreditsDataTable({
             <PokeDataTable
               columns={makeColumnsForUnifiedCredits({
                 metronomeCustomerId: owner.metronomeCustomerId,
+                owner,
               })}
               data={sortRowsByStartDateDescending(data.rows)}
               defaultFilterColumn="type"

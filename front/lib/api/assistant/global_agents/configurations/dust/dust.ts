@@ -52,6 +52,7 @@ import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.
 import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
+  FIREWORKS_GLM_5P2_MODEL_CONFIG,
   FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
@@ -694,6 +695,42 @@ export function _getDustGlmHighGlobalAgent(
   });
 }
 
+export function _getDustPistacheGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
+    name: "dust-pistache",
+    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustPistacheMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+    name: "dust-pistache-medium",
+    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustPistacheHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+    name: "dust-pistache-high",
+    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
 export function _getDustMinimaxGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -1002,18 +1039,6 @@ const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   [
     GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
     { name: "dust-sundae-high", preferredReasoningEffort: "high" },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_PISTACHE,
-    { name: "dust-pistache", preferredReasoningEffort: "light" },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
-    { name: "dust-pistache-medium", preferredReasoningEffort: "medium" },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
-    { name: "dust-pistache-high", preferredReasoningEffort: "high" },
   ],
   [
     GLOBAL_AGENTS_SID.DUST_CHALOM,

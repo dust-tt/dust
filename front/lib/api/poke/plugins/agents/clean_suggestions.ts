@@ -23,6 +23,7 @@ export const cleanSuggestionsPlugin = createPlugin({
         multiple: true,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, resource, args) => {
     if (!resource) {

@@ -1,4 +1,3 @@
-import { Authenticator } from "@app/lib/auth";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -155,8 +154,7 @@ describe("WorkspaceSeatLimitResource", () => {
       minSeats: 1,
     });
 
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await WorkspaceSeatLimitResource.deleteAllForWorkspace(auth);
+    await WorkspaceSeatLimitResource.deleteAllForWorkspace({ workspace });
 
     const limits = await WorkspaceSeatLimitResource.fetchByWorkspace({
       workspace,

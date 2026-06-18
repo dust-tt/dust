@@ -1,8 +1,13 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
+import { getWorkspaceLimitFromApiErrorType } from "@app/components/app/ReachedLimitPopup";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
+import { isAPIErrorResponse } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export function useEditUserMessage({
   owner,
@@ -22,7 +27,7 @@ export function useEditUserMessage({
       messageId: string;
       content: string;
       mentions: RichMention[];
-    }) => {
+    }): Promise<Result<void, WorkspaceLimit>> => {
       const apiMentions = mentions.map(toMentionType);
 
       const res = await clientFetch(
@@ -40,12 +45,19 @@ export function useEditUserMessage({
       );
 
       if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (isAPIErrorResponse(body)) {
+          const limitCode = getWorkspaceLimitFromApiErrorType(body.error.type);
+          if (limitCode) {
+            return new Err(limitCode);
+          }
+        }
         sendNotification({
           title: "Failed to edit message",
           description: "Please try again.",
           type: "error",
         });
-        return;
+        return new Ok(undefined);
       }
 
       sendNotification({
@@ -53,6 +65,7 @@ export function useEditUserMessage({
         description: "Message has been edited successfully.",
         type: "success",
       });
+      return new Ok(undefined);
     }
   );
 

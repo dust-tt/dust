@@ -2,7 +2,9 @@ import { legacyScopedPathsMatch } from "@app/lib/api/files/mount_path";
 import type {
   AuthorizedFileAccessAllowlist,
   FileShareScope,
+  FileUseCase,
 } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const FNV_OFFSET_BASIS_64 = BigInt("0xcbf29ce484222325");
 const FNV_PRIME_64 = BigInt("0x100000001b3");
@@ -56,6 +58,27 @@ export function isAuthorizedFileRef(
   }
 
   return false;
+}
+
+/** file_id refs are only allowlistable for user-scoped conversation, tool, and pod files. */
+export function isVerifiableAuthorizedFileIdRefUseCase(
+  useCase: FileUseCase
+): boolean {
+  switch (useCase) {
+    case "tool_output":
+    case "conversation":
+    case "project_context":
+      return true;
+    case "avatar":
+    case "upsert_document":
+    case "folders_document":
+    case "upsert_table":
+    case "skill_attachment":
+    case "workspace_branding":
+      return false;
+    default:
+      assertNever(useCase);
+  }
 }
 
 /** Canonical scoped path to read when a request matches an allowlisted entry. */

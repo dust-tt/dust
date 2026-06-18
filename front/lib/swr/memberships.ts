@@ -174,6 +174,7 @@ export function useSearchMembers<
       `/api/w/${workspaceId}/members/search?${searchParams.toString()}`,
       searchMembersFetcher,
       {
+        keepPreviousData: true,
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
         disabled,
@@ -282,6 +283,7 @@ export function useMembersUsage({
     `${membersUsageUrl(workspaceId)}?${searchParams.toString()}`,
     membersUsageFetcher,
     {
+      keepPreviousData: true,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       disabled,

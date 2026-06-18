@@ -43,6 +43,7 @@ export const unstickConversationPlugin = createPlugin({
       "indefinitely and any follow-up user messages aren't being processed. Running " +
       "it will finalize the stuck answer as failed and resume the conversation.",
     args: {},
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_auth, conversation) => {
     if (!conversation) {

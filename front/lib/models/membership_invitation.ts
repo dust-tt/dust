@@ -2,6 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { RoleType } from "@app/types/user";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
@@ -17,6 +18,7 @@ export class MembershipInvitationModel extends WorkspaceAwareModel<MembershipInv
   declare invitedUserId: ForeignKey<UserModel["id"]> | null;
 
   declare reminderSentAt: Date | null;
+  declare seatType: MembershipSeatType | null;
 }
 MembershipInvitationModel.init(
   {
@@ -50,6 +52,11 @@ MembershipInvitationModel.init(
     },
     reminderSentAt: {
       type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    seatType: {
+      type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },

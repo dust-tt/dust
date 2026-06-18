@@ -1,5 +1,5 @@
 # Base dependencies stage (shared by workers and front-api)
-FROM node:24.14.0-slim AS base-deps
+FROM node:24.16.0-slim AS base-deps
 
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
@@ -43,6 +43,9 @@ RUN npx tsx scripts/fetch-custom-models.ts
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
 
+# Copy shared migration tooling (scripts/migrate.ts imports ../../scripts/db/migration-runner)
+COPY /scripts/db /app/scripts/db
+
 # Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
 RUN npx esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap
 
@@ -83,7 +86,7 @@ RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then 
   fi
 
 # Workers image (Full Node.js environment) for front-workers deployment
-FROM node:24.14.0-slim AS workers
+FROM node:24.16.0-slim AS workers
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
@@ -99,11 +102,15 @@ WORKDIR /app/front
 
 # Copy worker assets from workers-specific build
 COPY --from=workers-build /app/front/dist ./dist
+# Ensure migrate.js is present (workers-build may clean dist before building)
+COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
 # Copy front's package.json and local node_modules (non-hoisted deps)
 COPY --from=base-deps /app/front/package.json ./package.json
 COPY --from=base-deps /app/front/node_modules ./node_modules
 # Copy scripts directory
 COPY --from=base-deps /app/front/scripts ./scripts
+# Shared migration tooling lives at the repo root; front/package.json runs `node ../scripts/db/run-migrate.cjs`.
+COPY --from=base-deps /app/scripts/db /app/scripts/db
 # Copy built SDK
 COPY --from=base-deps /app/sdks/js/dist /app/sdks/js/dist
 COPY --from=base-deps /app/sdks/js/package.json /app/sdks/js/package.json
@@ -220,7 +227,7 @@ RUN npm run build && \
   fi
 
 # Front-api runtime image — Hono server.
-FROM node:24.14.0-slim AS front-api
+FROM node:24.16.0-slim AS front-api
 
 RUN apt-get update && \
   apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
@@ -234,6 +241,10 @@ COPY --from=front-api-build /app/package.json ./package.json
 COPY --from=front-api-build /app/package-lock.json ./package-lock.json
 
 COPY --from=front-api-build /app/front ./front
+# Ensure migrate.js is present explicitly
+COPY --from=base-deps /app/front/dist/migrate.js ./front/dist/migrate.js
+# Shared migration tooling lives at the repo root; front-api/package.json runs `node ../scripts/db/run-migrate.cjs`.
+COPY --from=base-deps /app/scripts/db /app/scripts/db
 
 # front-api workspace (server.ts, app.ts, routes/, middleware/).
 COPY --from=front-api-build /app/front-api ./front-api

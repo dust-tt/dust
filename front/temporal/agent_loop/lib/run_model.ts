@@ -36,7 +36,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
-import { getLLM } from "@app/lib/api/llm";
+import { getStreamLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -534,7 +534,7 @@ export async function runModel(
     skipEmbeddingApiKeyRequirement: true,
   });
 
-  const llm = await getLLM(auth, {
+  const llm = await getStreamLLM(auth, {
     credentials,
     modelId: model.modelId,
     temperature: agentConfiguration.model.temperature,

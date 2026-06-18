@@ -1,6 +1,6 @@
 import { requireEnvironment } from "../lib/commands";
 import { removeDockerVolumes, stopDocker } from "../lib/docker";
-import { type Environment, deleteEnvironmentDir, getEnvironment } from "../lib/environment";
+import { deleteEnvironmentDir, type Environment, getEnvironment } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
@@ -11,7 +11,7 @@ import { readPid, stopAllServices } from "../lib/process";
 import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
-import { type Settings, loadSettings } from "../lib/settings";
+import { loadSettings, type Settings } from "../lib/settings";
 import { isDockerRunning } from "../lib/state";
 import { getTemporalNamespaces } from "../lib/temporal";
 import { isTemporalServerRunning } from "../lib/temporal-server";

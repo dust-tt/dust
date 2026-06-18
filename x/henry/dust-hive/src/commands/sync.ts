@@ -5,13 +5,13 @@ import { join } from "node:path";
 import {
   ALL_BINARIES,
   type Binary,
-  type SyncState,
   binaryExists,
   buildBinaries,
   coreChangedBetweenCommits,
   getHeadCommit,
   getSyncState,
   hashFile,
+  type SyncState,
   saveSyncState,
   setCacheSource,
 } from "../lib/cache";

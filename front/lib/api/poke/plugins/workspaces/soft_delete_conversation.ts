@@ -19,6 +19,7 @@ export const softDeleteConversationPlugin = createPlugin({
         required: true,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const conversationId = args.conversationId.trim();

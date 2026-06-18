@@ -1,8 +1,10 @@
+import { TriggerFreeCreditSegmentGrantButton } from "@app/components/poke/credits/TriggerFreeCreditSegmentGrantButton";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { TYPE_COLORS } from "@app/components/workspace/CreditsList";
 import type { PokeUnifiedCreditRow } from "@app/lib/api/poke/credits";
 import { getMetronomeCommitOrCreditUrl } from "@app/lib/metronome/urls";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
+import type { WorkspaceType } from "@app/types/user";
 import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -87,12 +89,26 @@ function AmountCell({
   );
 }
 
-function StatusCell({ row }: { row: PokeUnifiedCreditRow }) {
+function StatusCell({
+  row,
+  owner,
+}: {
+  row: PokeUnifiedCreditRow;
+  owner: WorkspaceType;
+}) {
   if (!row.internal && row.metronome) {
     return (
-      <Chip color="warning" size="xs">
-        Metronome only
-      </Chip>
+      <div className="flex items-center gap-2">
+        <Chip color="warning" size="xs">
+          Metronome only
+        </Chip>
+        {row.metronome.type === "free" && (
+          <TriggerFreeCreditSegmentGrantButton
+            owner={owner}
+            metronomeCreditId={row.metronome.sId}
+          />
+        )}
+      </div>
     );
   }
   if (row.internal && !row.metronome) {
@@ -137,8 +153,10 @@ function StatusCell({ row }: { row: PokeUnifiedCreditRow }) {
 
 export function makeColumnsForUnifiedCredits({
   metronomeCustomerId,
+  owner,
 }: {
   metronomeCustomerId: string | null;
+  owner: WorkspaceType;
 }): ColumnDef<PokeUnifiedCreditRow>[] {
   return [
     {
@@ -200,7 +218,7 @@ export function makeColumnsForUnifiedCredits({
     {
       id: "status",
       header: "Status",
-      cell: ({ row }) => <StatusCell row={row.original} />,
+      cell: ({ row }) => <StatusCell row={row.original} owner={owner} />,
     },
     {
       id: "initial",

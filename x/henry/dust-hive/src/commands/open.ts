@@ -2,15 +2,15 @@ import { setLastActiveEnv } from "../lib/activity";
 import { type Environment, getEnvironment } from "../lib/environment";
 import { logger } from "../lib/logger";
 import {
+  getConfiguredMultiplexer,
+  getSessionName,
   type LayoutConfig,
   MAIN_SESSION_NAME,
   type MainLayoutConfig,
-  getConfiguredMultiplexer,
-  getSessionName,
 } from "../lib/multiplexer";
 import { getEnvFilePath, getWorktreeDir } from "../lib/paths";
 import { selectEnvironmentWithFzf } from "../lib/prompt";
-import { CommandError, Err, Ok, type Result, envNotFoundError } from "../lib/result";
+import { CommandError, Err, envNotFoundError, Ok, type Result } from "../lib/result";
 
 interface OpenOptions {
   warmCommand?: string | undefined;

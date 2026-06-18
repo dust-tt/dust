@@ -778,7 +778,7 @@ export async function deleteWorkspaceActivity({
   await ProgrammaticUsageConfigurationResource.deleteAllForWorkspace(auth);
   await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
-  await WorkspaceSeatLimitResource.deleteAllForWorkspace(auth);
+  await WorkspaceSeatLimitResource.deleteAllForWorkspace({ workspace });
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
@@ -808,6 +808,7 @@ export async function deleteTranscriptsActivity({
 
   await LabsTranscriptsHistoryModel.destroy({
     where: {
+      workspaceId: workspace.id,
       configurationId: {
         [Op.in]: configs.map((c) => c.id),
       },

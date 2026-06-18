@@ -1,9 +1,127 @@
-import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
 import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import {
   frameSlideshowContentType,
+  getFileFormatCategory,
   isInteractiveContentType,
+  isMarkdownContentType,
+  isPdfContentType,
 } from "@app/types/files";
+
+const VIEWER_CONTENT_TYPES = [
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+] as const;
+
+function isViewerCompatible(contentType: string): boolean {
+  return VIEWER_CONTENT_TYPES.includes(
+    contentType as (typeof VIEWER_CONTENT_TYPES)[number]
+  );
+}
+
+export type FilePreviewCategory =
+  | "frame"
+  | "code"
+  | "pdf"
+  | "viewer"
+  | "audio"
+  | "markdown"
+  | "delimited"
+  | "text"
+  | "image";
+
+export interface FilePreviewConfig {
+  category: FilePreviewCategory;
+  needsProcessedVersion: boolean;
+  supportsExternalViewer: boolean;
+  supportsCopyContent: boolean;
+}
+
+export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
+  const category = getFileFormatCategory(contentType);
+
+  if (isInteractiveContentType(contentType)) {
+    return {
+      category: "frame",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+      supportsCopyContent: false,
+    };
+  }
+
+  if (isPdfContentType(contentType)) {
+    return {
+      category: "pdf",
+      needsProcessedVersion: true,
+      supportsExternalViewer: true,
+      supportsCopyContent: false,
+    };
+  }
+
+  if (isViewerCompatible(contentType)) {
+    return {
+      category: "viewer",
+      needsProcessedVersion: true,
+      supportsExternalViewer: true,
+      supportsCopyContent: false,
+    };
+  }
+
+  if (isMarkdownContentType(contentType)) {
+    return {
+      category: "markdown",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+      supportsCopyContent: true,
+    };
+  }
+
+  if (category === "code" || category === "data") {
+    return {
+      category: "code",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+      supportsCopyContent: true,
+    };
+  }
+
+  if (category === "audio") {
+    return {
+      category: "audio",
+      needsProcessedVersion: true,
+      supportsExternalViewer: false,
+      supportsCopyContent: false,
+    };
+  }
+
+  if (category === "delimited") {
+    return {
+      category: "delimited",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+      supportsCopyContent: false,
+    };
+  }
+
+  if (category === "image") {
+    return {
+      category: "image",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+      supportsCopyContent: false,
+    };
+  }
+
+  return {
+    category: "text",
+    needsProcessedVersion: false,
+    supportsExternalViewer: false,
+    supportsCopyContent: true,
+  };
+}
 
 import type {
   FileEntry,

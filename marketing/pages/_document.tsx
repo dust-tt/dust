@@ -40,7 +40,7 @@ class MyDocument extends Document {
              '${
                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || ""
-             }' && window.DD_RUM.onReady(function() {
+}' && window.DD_RUM.onReady(function() {
                window.DD_RUM.init({
                  clientToken: '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN}',
                  applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
@@ -48,12 +48,12 @@ class MyDocument extends Document {
                  service: '${
                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                    process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"
-                 }-browser',
+}-browser',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
                  version: '${
                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                    process.env.NEXT_PUBLIC_COMMIT_HASH || ""
-                 }',
+}',
                  allowedTracingUrls: [
                    "https://dust.tt",
                    "https://eu.dust.tt",

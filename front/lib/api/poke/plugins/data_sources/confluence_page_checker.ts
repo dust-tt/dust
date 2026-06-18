@@ -23,6 +23,7 @@ export const confluencePageCheckerPlugin = createPlugin({
         description: "The Confluence page URL to check",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, dataSource) => {
     if (!dataSource) {

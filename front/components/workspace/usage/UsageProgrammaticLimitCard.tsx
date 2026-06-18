@@ -51,16 +51,26 @@ export function UsageProgrammaticLimitCard({
       <SettingsList>
         <SettingsList.Row
           title="Programmatic monthly limit"
-          description="Maximum credits allowed for programmatic usage per month"
+          description={
+            <>
+              Maximum credits allowed for programmatic usage per month.{" "}
+              <strong> Set to 0 to block all programmatic access. </strong>
+            </>
+          }
           action={
             <div className="w-52">
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
                 placeholder="No limit"
-                value={currentLimit !== null ? String(currentLimit) : ""}
+                value={
+                  currentLimit !== null ? currentLimit.toLocaleString() : ""
+                }
                 unit="credits"
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                formatValue={(value) =>
+                  value ? Number(value).toLocaleString() : value
+                }
                 onSave={handleSaveLimit}
                 disabled={readOnly || isProgrammaticUsageLimitLoading}
               />

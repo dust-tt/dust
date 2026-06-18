@@ -2,7 +2,7 @@ import { withEnvironment } from "../lib/commands";
 import { getLogPath } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { isServiceRunning } from "../lib/process";
-import { SERVICE_REGISTRY, checkServiceHealth, getHealthChecks } from "../lib/registry";
+import { checkServiceHealth, getHealthChecks, SERVICE_REGISTRY } from "../lib/registry";
 import { Ok } from "../lib/result";
 import { ALL_SERVICES } from "../lib/services";
 import { getStateInfo, isDockerRunning } from "../lib/state";

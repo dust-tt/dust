@@ -88,11 +88,17 @@ export async function terminateMessageGeneration(
       continue;
     }
 
-    await updateAgentMessageWithFinalStatus(auth, {
+    const result = await updateAgentMessageWithFinalStatus(auth, {
       conversation,
       agentMessage,
       status,
     });
+
+    // The status check above reads a snapshot: the message may have been finalized between the
+    // render and the update. Don't publish a stale terminal event in that case.
+    if (!result.applied) {
+      continue;
+    }
 
     await publishConversationRelatedEvent({
       event: {

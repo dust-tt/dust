@@ -54,6 +54,9 @@ import {
   _getDustOaiHighGlobalAgent,
   _getDustOaiMediumGlobalAgent,
   _getDustOmittedGlobalAgent,
+  _getDustPistacheGlobalAgent,
+  _getDustPistacheHighGlobalAgent,
+  _getDustPistacheMediumGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
   _getRetiredDustLikeGlobalAgent,
@@ -120,7 +123,6 @@ import {
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import { isDevelopment } from "@app/types/shared/env";
 
 // Exhaustive map of flags for each global agent. This is used to control which agents inject
 // per-user dynamic content (like memories) into the prompt context. This approach is not ideal but
@@ -1062,6 +1064,30 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE:
+      agentConfiguration = _getDustPistacheGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
+      agentConfiguration = _getDustPistacheMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH:
+      agentConfiguration = _getDustPistacheHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX:
       agentConfiguration = _getDustMinimaxGlobalAgent(auth, {
         settings,
@@ -1271,9 +1297,6 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH:
-    case GLOBAL_AGENTS_SID.DUST_PISTACHE:
-    case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH:
     case GLOBAL_AGENTS_SID.DUST_CHALOM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
@@ -1329,12 +1352,8 @@ function getGlobalAgent({
       agentConfiguration = _getAnalystGlobalAgent({ auth });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
-      // we want only to have it in development
-      if (isDevelopment()) {
-        agentConfiguration = _getNoopAgent();
-        break;
-      }
-      return null;
+      agentConfiguration = _getNoopAgent();
+      break;
     default:
       return null;
   }
@@ -1381,9 +1400,6 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_SUNDAE,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
-  GLOBAL_AGENTS_SID.DUST_PISTACHE,
-  GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
-  GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
   GLOBAL_AGENTS_SID.DUST_CHALOM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
@@ -1529,6 +1545,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_LIONEL,
     GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
+    GLOBAL_AGENTS_SID.NOOP,
   ];
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(

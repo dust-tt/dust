@@ -23,6 +23,7 @@ export const skipSlackChannelPlugin = createPlugin({
         description: "Reason for skipping this channel",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

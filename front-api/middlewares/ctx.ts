@@ -1,6 +1,7 @@
 import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import type { PokeRole } from "@app/lib/poke/roles";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -22,6 +23,7 @@ export type WorkspaceAwareCtx = SessionCtx & {
 export type PokeCtx = SessionCtx & {
   Variables: {
     auth: Authenticator;
+    pokeRoles: PokeRole[];
   };
 };
 

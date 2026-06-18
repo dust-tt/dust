@@ -28,6 +28,7 @@ export const updateSkillEditorsPlugin = createPlugin({
         multiple: true,
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth, resource) => {
     if (!resource) {

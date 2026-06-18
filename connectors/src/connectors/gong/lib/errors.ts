@@ -17,6 +17,30 @@ function isGongAPIErrorBody(body: unknown): body is {
   );
 }
 
+export function parseGongAPIErrorBody(body: string): {
+  errors: string[];
+  requestId?: string;
+} {
+  const bodyParsedRes = safeParseJSON(body);
+
+  if (bodyParsedRes.isErr()) {
+    return {
+      errors: [
+        `Failed to parse error response: ${bodyParsedRes.error.message}`,
+      ],
+    };
+  }
+
+  if (isGongAPIErrorBody(bodyParsedRes.value)) {
+    return {
+      errors: bodyParsedRes.value.errors,
+      requestId: bodyParsedRes.value.requestId,
+    };
+  }
+
+  return { errors: [body] };
+}
+
 export class GongAPIError extends Error {
   readonly type: GongAPIErrorType;
   readonly connectorId: ModelId;
@@ -77,21 +101,7 @@ export class GongAPIError extends Error {
       retryAfterSeconds?: number;
     }
   ) {
-    // Attempt to parse the body as JSON.
-    const bodyParsedRes = safeParseJSON(body);
-    let errors: string[] = [];
-    let requestId: string | undefined;
-
-    if (bodyParsedRes.isErr()) {
-      errors = [
-        `Failed to parse error response: ${bodyParsedRes.error.message}`,
-      ];
-    } else if (isGongAPIErrorBody(bodyParsedRes.value)) {
-      errors = bodyParsedRes.value.errors;
-      requestId = bodyParsedRes.value.requestId;
-    } else {
-      errors = [body];
-    }
+    const { errors, requestId } = parseGongAPIErrorBody(body);
 
     return new this(
       `Gong API responded with status: ${response.status} on ${endpoint}`,

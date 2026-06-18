@@ -4,20 +4,20 @@ import { setCacheSource } from "../lib/cache";
 import { writeDockerComposeOverride } from "../lib/docker";
 import { writeEnvSh } from "../lib/envgen";
 import {
-  type Environment,
-  type EnvironmentMetadata,
   createEnvironment,
   deleteEnvironmentDir,
+  type Environment,
+  type EnvironmentMetadata,
   environmentExists,
   validateEnvName,
 } from "../lib/environment";
 import { logger } from "../lib/logger";
-import { HIVES_DIR, findRepoRoot, getEnvFilePath, getWorktreeDir } from "../lib/paths";
+import { findRepoRoot, getEnvFilePath, getWorktreeDir, HIVES_DIR } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts, savePortAllocation } from "../lib/ports";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
-import { type Settings, getBranchName, loadSettings } from "../lib/settings";
+import { getBranchName, loadSettings, type Settings } from "../lib/settings";
 import { installAllDependencies } from "../lib/setup";
 import { createTestDatabase, isTestPostgresRunning } from "../lib/test-postgres";
 import {

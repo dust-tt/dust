@@ -37,7 +37,6 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "24.14.0"
           build-sdks: "true"
           build-sparkle: "true"
       - name: Install Postgres
@@ -75,7 +74,6 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "24.14.0"
           build-sdks: "true"
           build-sparkle: "true"
       - name: Typecheck
@@ -91,7 +89,5 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
-        with:
-          node-version: "24.14.0"
       - name: Lint audit log schemas
         run: npm -w front run lint:audit-log-schemas

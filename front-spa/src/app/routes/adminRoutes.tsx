@@ -2,10 +2,6 @@ import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayou
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 
-const ProfilePage = withSuspense(
-  () => import("@dust-tt/front/components/pages/workspace/ProfilePage"),
-  "ProfilePage"
-);
 const AnalyticsPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/AnalyticsPage"),
   "AnalyticsPage"
@@ -98,7 +94,6 @@ const BillingPage = withSuspense(
 );
 
 export const adminRoutes: RouteObject[] = [
-  { path: "me", element: <ProfilePage /> },
   {
     // People page: accessible to admins and business admins.
     element: <RequirePermissionLayout permission="workspace:manage_members" />,

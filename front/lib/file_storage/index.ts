@@ -492,3 +492,6 @@ export const getWebhookRequestsBucket = (options?: FileStorageOptions) =>
 
 export const getLLMTracesBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getLLMTracesBucket(), options);
+
+export const getPokeUserConfigBucket = (options?: FileStorageOptions) =>
+  getBucketInstance(config.getPokeUserConfigBucket(), options);

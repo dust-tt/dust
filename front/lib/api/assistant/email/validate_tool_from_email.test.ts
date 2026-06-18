@@ -40,7 +40,10 @@ describe("validateActionFromEmail", () => {
     });
   });
 
-  it("rejects resolving an action whose agent message can no longer resume", async () => {
+  it.each([
+    "interrupted",
+    "gracefully_stopped",
+  ] as const)("rejects resolving an action whose agent message is %s", async (status) => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
     });
@@ -68,7 +71,7 @@ describe("validateActionFromEmail", () => {
     await ConversationFactory.setAgentMessageStatus({
       workspace,
       agentMessageModelId: messageRow.agentMessageId!,
-      status: "interrupted",
+      status,
     });
 
     const result = await validateActionFromEmail(auth, {

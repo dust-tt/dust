@@ -154,6 +154,7 @@ export const grantAwuCreditsPlugin = createPlugin({
           "I confirm that I want to grant these AWU credits. Free credits give money to the customer; prepaid commits assume the customer is invoiced separately.",
       },
     },
+    requiredRoles: ["billing"],
   },
   isApplicableTo: (auth) => {
     const plan = auth.plan();

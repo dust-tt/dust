@@ -1,0 +1,15 @@
+{
+  "action": "membership.seat_auto_upgraded",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "previous_seat_type": "string",
+    "new_seat_type": "string"
+  }
+}

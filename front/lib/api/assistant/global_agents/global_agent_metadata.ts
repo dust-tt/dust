@@ -421,8 +421,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
         name: "dust-pistache",
-        description:
-          "Same as dust but running a custom model for internal testing.",
+        description: "Same as dust but running GLM-5.2.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:

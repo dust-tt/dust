@@ -56,6 +56,7 @@ export abstract class AnthropicStream extends WithAnthropicInputConverter(
     const streamingInput: MessageCreateParamsStreaming = {
       ...input,
       stream: true,
+      cache_control: { type: "ephemeral" },
     };
     const stream = this.client.messages.stream(streamingInput);
 

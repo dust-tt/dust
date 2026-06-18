@@ -1,7 +1,4 @@
-import {
-  getWorkspaceBalanceThreshold,
-  syncMetronomeBalanceThresholdAlert,
-} from "@app/lib/api/credits/balance_threshold_alert";
+import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import type { Result } from "@app/types/shared/result";
@@ -9,9 +6,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
 // Combined workspace-level usage configuration surfaced to admins on the Usage
-// page. `balanceThresholdCredits` is derived from the workspace's Metronome
-// balance-threshold alert (see `balance_threshold_alert.ts`); the upgrade-request
-// toggles are stored on the `credit_usage_configurations` row.
+// page. All fields are stored on the `credit_usage_configurations` row:
+// `balanceThresholdCredits` is the source of truth from which the Metronome
+// balance-threshold alert is derived (see `balance_threshold_alert.ts`).
 export type CreditUsageConfigurationBody = {
   // Credit balance (in AWU credits) below which workspace admins are emailed.
   // `null` means no threshold is configured (the warning is off).
@@ -21,6 +18,9 @@ export type CreditUsageConfigurationBody = {
   allowMemberUpgradeRequests: boolean;
   // Whether workspace admins are emailed when a member requests an upgrade.
   upgradeRequestEmailEnabled: boolean;
+  // Whether members who hit their per-user credit limit are automatically bumped
+  // to the next entitled seat tier instead of being blocked.
+  autoSeatUpgradeEnabled: boolean;
 };
 
 export type GetCreditUsageConfigurationResponseBody = {
@@ -36,6 +36,7 @@ export const PatchCreditUsageConfigurationRequestBody = z.object({
   balanceThresholdCredits: z.number().int().min(0).nullable().optional(),
   allowMemberUpgradeRequests: z.boolean().optional(),
   upgradeRequestEmailEnabled: z.boolean().optional(),
+  autoSeatUpgradeEnabled: z.boolean().optional(),
 });
 
 export type PatchCreditUsageConfigurationBody = z.infer<
@@ -44,36 +45,38 @@ export type PatchCreditUsageConfigurationBody = z.infer<
 
 const DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS = true;
 const DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED = true;
+const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 
 /**
- * Read the full usage configuration for a workspace: the Metronome-derived
- * balance threshold plus the upgrade-request toggles. Toggles fall back to their
- * defaults when no configuration row exists yet.
+ * Read the full usage configuration for a workspace: the balance threshold plus
+ * the upgrade-request toggles, all read from the credit-usage configuration row.
+ * Toggles fall back to their defaults when no configuration row exists yet.
  */
 export async function getUsageConfiguration(
   auth: Authenticator
 ): Promise<CreditUsageConfigurationBody> {
-  const [balanceThresholdCredits, config] = await Promise.all([
-    getWorkspaceBalanceThreshold(auth),
-    CreditUsageConfigurationResource.fetchByWorkspaceId(auth),
-  ]);
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
   return {
-    balanceThresholdCredits,
+    balanceThresholdCredits: config?.balanceThresholdAwuCredits ?? null,
     allowMemberUpgradeRequests:
       config?.allowMemberUpgradeRequests ??
       DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
     upgradeRequestEmailEnabled:
       config?.upgradeRequestEmailEnabled ??
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    autoSeatUpgradeEnabled:
+      config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
   };
 }
 
-async function setUpgradeRequestToggles(
+async function setConfigurationToggles(
   auth: Authenticator,
   toggles: {
     allowMemberUpgradeRequests?: boolean;
     upgradeRequestEmailEnabled?: boolean;
+    autoSeatUpgradeEnabled?: boolean;
   }
 ): Promise<Result<undefined, Error>> {
   const config =
@@ -93,6 +96,8 @@ async function setUpgradeRequestToggles(
     upgradeRequestEmailEnabled:
       toggles.upgradeRequestEmailEnabled ??
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    autoSeatUpgradeEnabled:
+      toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
   });
   if (createResult.isErr()) {
     return new Err(createResult.error);
@@ -129,11 +134,13 @@ export async function updateUsageConfiguration(
 
   if (
     patch.allowMemberUpgradeRequests !== undefined ||
-    patch.upgradeRequestEmailEnabled !== undefined
+    patch.upgradeRequestEmailEnabled !== undefined ||
+    patch.autoSeatUpgradeEnabled !== undefined
   ) {
-    const toggleResult = await setUpgradeRequestToggles(auth, {
+    const toggleResult = await setConfigurationToggles(auth, {
       allowMemberUpgradeRequests: patch.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: patch.upgradeRequestEmailEnabled,
+      autoSeatUpgradeEnabled: patch.autoSeatUpgradeEnabled,
     });
     if (toggleResult.isErr()) {
       return new Err(toggleResult.error);

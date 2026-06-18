@@ -49,6 +49,7 @@ export const AUDIT_ACTIONS = [
   "member.spend_limit_updated",
   "membership.upgrade_request_created",
   "membership.upgrade_request_resolved",
+  "membership.seat_auto_upgraded",
   // Domains & SSO.
   "domain.verified",
   "domain.verification_failed",
@@ -132,6 +133,7 @@ export const AUDIT_ACTIONS = [
   "datasource.reauthorized",
   // Files.
   "file.moved",
+  "frame.authorized_files_updated",
   // Audit Logs.
   "audit_log.viewed",
   "audit_log.export_configured",

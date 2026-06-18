@@ -1,5 +1,5 @@
+import type { PokeRole } from "@app/lib/poke/roles";
 import { z } from "zod";
-
 import type { LightWorkspaceType } from "../user";
 
 export interface DependsOnCondition {
@@ -144,6 +144,9 @@ export interface PluginManifest<
   isHidden?: boolean;
   readonly?: boolean;
   redactResult?: boolean;
+  // If set, only super-users with at least one of these roles (from GCS poke-roles.json) can see
+  // and run this plugin. Unset means all super-users have access.
+  requiredRoles?: PokeRole[];
 }
 
 interface PluginResourceScope {

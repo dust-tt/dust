@@ -25,11 +25,27 @@ import type { CreationOptional } from "sequelize";
  *   Defaults to true.
  * - upgradeRequestEmailEnabled: Whether workspace admins are emailed when a
  *   member requests an upgrade. Defaults to true.
+ * - defaultPoolCapAwuCredits: Workspace-wide default per-user cap on
+ *   workspace-pool AWU consumption, in AWU credits, excluding the seat
+ *   allowance. NULL means no default is configured (the plan-tier default
+ *   applies).
+ * - programmaticMonthlyCapAwuCredits: Workspace monthly cap on programmatic
+ *   (API) AWU consumption, in AWU credits. Source of truth for the cap; the
+ *   four Metronome programmatic alerts (cap/warning/low/critical) are derived
+ *   from it. NULL means no cap is configured; 0 is a meaningful hard cap.
+ * - autoSeatUpgradeEnabled: Whether members who hit their per-user credit limit
+ *   are automatically bumped to the next entitled seat tier (free→pro, pro→max,
+ *   none→workspace) instead of being blocked. May increase the bill. Defaults to
+ *   false.
+ * - balanceThresholdAwuCredits: Credit balance (in AWU credits) below which
+ *   workspace admins are emailed. Source of truth for the threshold value; the
+ *   Metronome balance-threshold alert (see
+ *   `lib/metronome/alerts/balance_threshold.ts`) is derived from it. NULL means
+ *   no threshold is configured (the warning is off); 0 is normalized to NULL.
  *
- * The credit-cap-warning notification settings (whether to warn, and at which
- * balance) are NOT stored here: they are derived from the workspace's Metronome
- * balance-threshold alert (see `lib/metronome/alerts/balance_threshold.ts`),
- * with reads cached in Redis.
+ * The Metronome balance-threshold alert id (used by the webhook to match the
+ * firing alert) is NOT stored here: it is a Metronome-generated value resolved
+ * from the alert, with reads cached in Redis.
  */
 export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsageConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -39,6 +55,10 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare usageCapCredits: number | null;
   declare allowMemberUpgradeRequests: CreationOptional<boolean>;
   declare upgradeRequestEmailEnabled: CreationOptional<boolean>;
+  declare defaultPoolCapAwuCredits: number | null;
+  declare programmaticMonthlyCapAwuCredits: number | null;
+  declare autoSeatUpgradeEnabled: CreationOptional<boolean>;
+  declare balanceThresholdAwuCredits: number | null;
 }
 
 CreditUsageConfigurationModel.init(
@@ -90,6 +110,26 @@ CreditUsageConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    defaultPoolCapAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    programmaticMonthlyCapAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    autoSeatUpgradeEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    balanceThresholdAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

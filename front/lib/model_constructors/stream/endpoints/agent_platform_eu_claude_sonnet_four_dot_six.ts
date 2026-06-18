@@ -8,12 +8,15 @@ export class AgentPlatformEuropeClaudeSonnetFourDotSixStream extends WithAnthrop
   // https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing#europe-west1
   static readonly tokenPricing = {
     cacheCreated: 4.13,
+    // 5m cache write = 1.25x base input; 1h cache write = 2x base input.
+    shortCacheCreated: 4.13,
+    longCacheCreated: 6.6,
     cacheHit: 0.33,
     standardInput: 3.3,
     standardOutput: 16.5,
   };
   static readonly region = "eu";
-  static readonly regionalEndpoint = "europe-west1";
+  static readonly regionalEndpoint = "eu";
 
   static readonly id = this.buildId();
 }

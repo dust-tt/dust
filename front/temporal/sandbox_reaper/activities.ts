@@ -1,9 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
 import { heartbeat } from "@temporalio/activity";
 
 import {
@@ -16,241 +18,192 @@ import {
 const REAPER_CONCURRENCY = 16;
 
 /**
- * Batch-fetch workspaces for a list of conversations to avoid N+1 queries.
- * Returns a Map for O(1) lookup during concurrent processing.
+ * Build a workspace-scoped internal Authenticator for each workspace touched by
+ * the batch. One query for all workspaces, then one builder per workspace.
  */
-async function fetchWorkspaceMap(
-  conversations: Array<{ conversationId: string; workspaceModelId: ModelId }>
-): Promise<Map<ModelId, WorkspaceResource>> {
+async function fetchAuthMap(
+  sandboxes: SandboxResource[]
+): Promise<Map<ModelId, Authenticator>> {
   const uniqueWorkspaceModelIds = [
-    ...new Set(conversations.map((c) => c.workspaceModelId)),
+    ...new Set(sandboxes.map((s) => s.workspaceId)),
   ];
 
   const workspaces = await WorkspaceResource.fetchByModelIds(
     uniqueWorkspaceModelIds
   );
 
-  return new Map(workspaces.map((w) => [w.id, w]));
+  const entries = await concurrentExecutor(
+    workspaces,
+    async (w) => {
+      const authenticator = await Authenticator.internalBuilderForWorkspace(
+        w.sId
+      );
+      return [w.id, authenticator] as const;
+    },
+    { concurrency: REAPER_CONCURRENCY }
+  );
+
+  return new Map(entries);
 }
 
 /**
- * Process one batch of stale sandboxes. Returns `true` when either query
- * returned a full batch, signalling the workflow to loop for more.
+ * Fetch the ConversationResource for each sandbox, keyed by conversation
+ * ModelId. The reaper spans every workspace, so we issue a single
+ * cross-workspace query instead of one scoped query per workspace.
+ */
+async function fetchConversationMap(
+  sandboxes: SandboxResource[]
+): Promise<Map<ModelId, ConversationResource>> {
+  const conversations = await ConversationResource.dangerouslyFetchByModelIds(
+    sandboxes.map((s) => s.conversationId)
+  );
+
+  return new Map(conversations.map((c) => [c.id, c]));
+}
+
+/**
+ * Shared driver for every reaper phase: resolve the workspace auth and the
+ * ConversationResource for each sandbox, then run `action` concurrently. The
+ * lifecycle methods take the serialized conversation, so we pass
+ * `conversation.toJSON()`.
+ */
+async function processSandboxes(
+  sandboxes: SandboxResource[],
+  action: (
+    auth: Authenticator,
+    conversation: ConversationResource
+  ) => Promise<Result<void, Error>>,
+  errorMessage: string
+): Promise<void> {
+  const authMap = await fetchAuthMap(sandboxes);
+  const conversationMap = await fetchConversationMap(sandboxes);
+
+  await concurrentExecutor(
+    sandboxes,
+    async (sandbox) => {
+      const auth = authMap.get(sandbox.workspaceId);
+      const conversation = conversationMap.get(sandbox.conversationId);
+
+      if (!auth || !conversation) {
+        logger.warn(
+          {
+            conversationModelId: sandbox.conversationId,
+            workspaceModelId: sandbox.workspaceId,
+          },
+          "Reaper: workspace or conversation not found, skipping."
+        );
+        return;
+      }
+
+      const result = await action(auth, conversation);
+      if (result.isErr()) {
+        logger.error(
+          {
+            conversationModelId: sandbox.conversationId,
+            error: result.error.message,
+          },
+          errorMessage
+        );
+      }
+      heartbeat();
+    },
+    { concurrency: REAPER_CONCURRENCY }
+  );
+}
+
+/**
+ * Process one batch of stale sandboxes. Returns `true` when any query returned a
+ * full batch, signalling the workflow to loop for more.
  */
 export async function reapStaleSandboxesActivity(): Promise<boolean> {
   // Phase 0: Destroy sandboxes flagged with killRequestedAt. These bypass the
   // sleep→destroy cycle and are reaped immediately regardless of status/age.
-  const killRequestedConversations =
-    await SandboxResource.dangerouslyGetKillRequestedConversationIds({
+  const killRequestedSandboxes =
+    await SandboxResource.dangerouslyGetKillRequestedSandboxes({
       limit: BATCH_SIZE,
     });
 
-  if (killRequestedConversations.length > 0) {
+  if (killRequestedSandboxes.length > 0) {
     logger.info(
-      { count: killRequestedConversations.length },
+      { count: killRequestedSandboxes.length },
       "Reaper: kill-requested sandboxes found."
     );
 
-    const workspaceMap = await fetchWorkspaceMap(killRequestedConversations);
-
-    await concurrentExecutor(
-      killRequestedConversations,
-      async ({ conversationId, workspaceModelId }) => {
-        const workspace = workspaceMap.get(workspaceModelId);
-
-        if (!workspace) {
-          logger.warn(
-            { conversationId, workspaceModelId },
-            "Workspace not found, skipping"
-          );
-          return;
-        }
-
-        const auth = await Authenticator.internalBuilderForWorkspace(
-          workspace.sId
-        );
-        const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
-          auth,
-          conversationId
-        );
-        if (result.isErr()) {
-          logger.error(
-            { conversationId, error: result.error.message },
-            "Reaper: failed to destroy kill-requested sandbox — continuing."
-          );
-        }
-        heartbeat();
-      },
-      { concurrency: REAPER_CONCURRENCY }
+    await processSandboxes(
+      killRequestedSandboxes,
+      (auth, conversation) =>
+        SandboxResource.dangerouslyDestroyIfKillRequested(auth, conversation),
+      "Reaper: failed to destroy kill-requested sandbox — continuing."
     );
   }
 
   // Phase 1: Sleep running sandboxes that have been idle > SLEEP_THRESHOLD_MS.
-  const runningConversations =
-    await SandboxResource.dangerouslyGetStaleConversationIds({
-      status: "running",
-      olderThanMs: SLEEP_THRESHOLD_MS,
-      limit: BATCH_SIZE,
-    });
+  const runningSandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
+    status: "running",
+    olderThanMs: SLEEP_THRESHOLD_MS,
+    limit: BATCH_SIZE,
+  });
 
-  if (runningConversations.length > 0) {
+  if (runningSandboxes.length > 0) {
     logger.info(
-      { count: runningConversations.length },
+      { count: runningSandboxes.length },
       "Reaper: stale running sandboxes found."
     );
 
-    // Batch-fetch all workspaces to avoid N queries inside the concurrent loop
-    const workspaceMap = await fetchWorkspaceMap(runningConversations);
-
-    logger.info(
-      {
-        conversationCount: runningConversations.length,
-        uniqueWorkspaceCount: workspaceMap.size,
-      },
-      "Batch-fetched workspaces for running sandboxes"
-    );
-
-    await concurrentExecutor(
-      runningConversations,
-      async ({ conversationId, workspaceModelId }) => {
-        const workspace = workspaceMap.get(workspaceModelId);
-
-        if (!workspace) {
-          logger.warn(
-            { conversationId, workspaceModelId },
-            "Workspace not found, skipping"
-          );
-          return;
-        }
-
-        const auth = await Authenticator.internalBuilderForWorkspace(
-          workspace.sId
-        );
-        const result = await SandboxResource.dangerouslySleepIfRunning(
-          auth,
-          conversationId
-        );
-        if (result.isErr()) {
-          logger.error(
-            { conversationId, error: result.error.message },
-            "Reaper: failed to sleep sandbox — continuing."
-          );
-        }
-        heartbeat();
-      },
-      { concurrency: REAPER_CONCURRENCY }
+    await processSandboxes(
+      runningSandboxes,
+      (auth, conversation) =>
+        SandboxResource.dangerouslySleepIfRunning(auth, conversation),
+      "Reaper: failed to sleep sandbox — continuing."
     );
   }
 
   // Phase 2: Transition abandoned pending_approval sandboxes to sleeping.
-  const pendingConversations =
-    await SandboxResource.dangerouslyGetStaleConversationIds({
-      status: "pending_approval",
-      olderThanMs: PENDING_APPROVAL_THRESHOLD_MS,
-      limit: BATCH_SIZE,
-    });
+  const pendingSandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
+    status: "pending_approval",
+    olderThanMs: PENDING_APPROVAL_THRESHOLD_MS,
+    limit: BATCH_SIZE,
+  });
 
-  if (pendingConversations.length > 0) {
+  if (pendingSandboxes.length > 0) {
     logger.info(
-      { count: pendingConversations.length },
+      { count: pendingSandboxes.length },
       "Reaper: stale pending_approval sandboxes found."
     );
 
-    const workspaceMap = await fetchWorkspaceMap(pendingConversations);
-
-    await concurrentExecutor(
-      pendingConversations,
-      async ({ conversationId, workspaceModelId }) => {
-        const workspace = workspaceMap.get(workspaceModelId);
-
-        if (!workspace) {
-          logger.warn(
-            { conversationId, workspaceModelId },
-            "Workspace not found, skipping"
-          );
-          return;
-        }
-
-        const auth = await Authenticator.internalBuilderForWorkspace(
-          workspace.sId
-        );
-        const result = await SandboxResource.dangerouslySleepIfPendingApproval(
-          auth,
-          conversationId
-        );
-        if (result.isErr()) {
-          logger.error(
-            { conversationId, error: result.error.message },
-            "Reaper: failed to transition pending_approval sandbox — continuing."
-          );
-        }
-        heartbeat();
-      },
-      { concurrency: REAPER_CONCURRENCY }
+    await processSandboxes(
+      pendingSandboxes,
+      (auth, conversation) =>
+        SandboxResource.dangerouslySleepIfPendingApproval(auth, conversation),
+      "Reaper: failed to transition pending_approval sandbox — continuing."
     );
   }
 
   // Phase 3: Destroy sleeping sandboxes that have been idle > DESTROY_THRESHOLD_MS.
-  const sleepingConversations =
-    await SandboxResource.dangerouslyGetStaleConversationIds({
-      status: "sleeping",
-      olderThanMs: DESTROY_THRESHOLD_MS,
-      limit: BATCH_SIZE,
-    });
+  const sleepingSandboxes = await SandboxResource.dangerouslyGetStaleSandboxes({
+    status: "sleeping",
+    olderThanMs: DESTROY_THRESHOLD_MS,
+    limit: BATCH_SIZE,
+  });
 
-  if (sleepingConversations.length > 0) {
+  if (sleepingSandboxes.length > 0) {
     logger.info(
-      { count: sleepingConversations.length },
+      { count: sleepingSandboxes.length },
       "Reaper: stale sleeping sandboxes found."
     );
 
-    // Batch-fetch all workspaces to avoid N queries inside the concurrent loop
-    const workspaceMap = await fetchWorkspaceMap(sleepingConversations);
-
-    logger.info(
-      {
-        conversationCount: sleepingConversations.length,
-        uniqueWorkspaceCount: workspaceMap.size,
-      },
-      "Batch-fetched workspaces for sleeping sandboxes"
-    );
-
-    await concurrentExecutor(
-      sleepingConversations,
-      async ({ conversationId, workspaceModelId }) => {
-        const workspace = workspaceMap.get(workspaceModelId);
-
-        if (!workspace) {
-          logger.warn(
-            { conversationId, workspaceModelId },
-            "Workspace not found, skipping"
-          );
-          return;
-        }
-
-        const auth = await Authenticator.internalBuilderForWorkspace(
-          workspace.sId
-        );
-        const result = await SandboxResource.dangerouslyDestroyIfSleeping(
-          auth,
-          conversationId
-        );
-        if (result.isErr()) {
-          logger.error(
-            { conversationId, error: result.error.message },
-            "Reaper: failed to destroy sandbox — continuing."
-          );
-        }
-        heartbeat();
-      },
-      { concurrency: REAPER_CONCURRENCY }
+    await processSandboxes(
+      sleepingSandboxes,
+      (auth, conversation) =>
+        SandboxResource.dangerouslyDestroyIfSleeping(auth, conversation),
+      "Reaper: failed to destroy sandbox — continuing."
     );
   }
 
   return (
-    killRequestedConversations.length >= BATCH_SIZE ||
-    runningConversations.length >= BATCH_SIZE ||
-    pendingConversations.length >= BATCH_SIZE ||
-    sleepingConversations.length >= BATCH_SIZE
+    killRequestedSandboxes.length >= BATCH_SIZE ||
+    runningSandboxes.length >= BATCH_SIZE ||
+    pendingSandboxes.length >= BATCH_SIZE ||
+    sleepingSandboxes.length >= BATCH_SIZE
   );
 }

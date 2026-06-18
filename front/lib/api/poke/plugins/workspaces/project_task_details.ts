@@ -20,6 +20,7 @@ export const projectTodoDetailsPlugin = createPlugin({
           "The sId or numeric ModelId of the Project Task to inspect",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

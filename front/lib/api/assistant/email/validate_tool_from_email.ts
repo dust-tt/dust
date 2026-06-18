@@ -229,8 +229,8 @@ export async function validateActionFromEmail(
   }
 
   // A blocked action is only actionable while its agent message can still resume: resolving one
-  // from a stale email link after interruption, cancellation or failure would relaunch an agent
-  // loop that was already terminated.
+  // from a stale email link after a non-resumable terminal status would relaunch an agent loop
+  // that was already terminated.
   if (!(await action.canAgentMessageResume(auth))) {
     return new Err(
       new DustError(

@@ -132,6 +132,33 @@ export type ContractCreditType =
   | typeof CONTRACT_CREDIT_TYPE_POOL
   | typeof CONTRACT_CREDIT_TYPE_FREE_SEAT;
 
+// Custom field stamped on the non-recurring, contract-level commits/credits
+// whose unused balance must survive a RENEWAL transition (initial credits,
+// AWU top-ups, business-activation seat prepayment). On renewal the
+// `contract.start` webhook reads the source contract's flagged entries, derives
+// the balance left at the transition from their expiration ledger entry, and
+// re-grants it on the successor contract (see `carryOverContractBalancesOnRenewal`).
+//
+// The field VALUE is either `CARRY_ON_RENEWAL_FOREVER_VALUE` (the entry never
+// expires and carries indefinitely) or an ISO timestamp (a finite expiry).
+// Metronome clamps a commit's live access window to the contract end when a
+// RENEWAL ends the source, so by the time the webhook runs the original expiry
+// is gone — we stamp it here so it survives. The carried grant re-stamps the
+// same value, preserving the policy across any number of renewals.
+//
+// This replaces Metronome's `rollover_fraction`: a rolled-over commit becomes a
+// "rollover" commit, and Metronome consumes rollover commits before all prepaid
+// commits regardless of priority ("commit type takes precedence over priority").
+// Since these are non-seat-based, that ordering trips our client-level rule that
+// a non-seat-based commit may not be prioritized over a seat-based one, so the
+// transition is rejected. Re-granting as a plain prepaid commit keeps it in the
+// prepaid tier, ordered after the seat allocation by priority.
+export const CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY = "DUST_CARRY_ON_RENEWAL";
+
+export const CARRY_ON_RENEWAL_FOREVER_VALUE = "forever";
+
+export const FOREVER_ENDING_BEFORE = new Date("2999-01-01T00:00:00.000Z");
+
 // Custom field stamped on a per-user (free) seat credit, carrying the seat's
 // user sId. Metronome alerts can filter on custom fields but not on a credit's
 // presentation specifier, so this is what lets a per-user
@@ -149,6 +176,10 @@ export const USAGE_TYPE_GROUP_KEY = "usage_type";
 export const USAGE_TYPE_USER = "user";
 export const USAGE_TYPE_PROGRAMMATIC = "programmatic";
 export const USAGE_TYPE_FREE = "free";
+
+// Custom field key used to store the HubSpot deal ID on a Metronome contract.
+// Must be registered in Metronome before it can be stamped.
+export const HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY = "HUBSPOT_DEAL_ID";
 
 // Suffix appended to the annual variant of each seat product name in
 // Metronome (e.g. "Pro Seat (Yearly)"). Used by the setup script when
@@ -261,11 +292,21 @@ export const AWU_PRIORITY_PURCHASED_COMMIT = 300;
 // than via a recurring credit, so this constant is also the authoritative
 // source for the free seat's displayed allowance (see
 // `getAwuAllocationInfoForSeatType`).
-export const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
+export const FREE_SEAT_LIFETIME_AWU_CREDITS = 500;
+
+// Per-seat monthly AWU allocations for paid seat types. Stamped onto recurring
+// credits at package creation and used as the authoritative displayed allowance.
+export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
+export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 
 // Seat commit/credit priorities
 export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;
 export const SEAT_PRIORITY_COUPON_CREDIT = 300;
+
+// 80% threshold for near-limit warnings: applies to both cap consumption
+// (consumed ≥ 80% of effectiveCapAwuCredits) and seat depletion (≤ 20%
+// remaining = 80% used).
+export const NEAR_LIMIT_FRACTION = 0.8;
 
 // tier product accessors — ordered array for indexed access.
 export const MAX_MAU_TIERS = 6;

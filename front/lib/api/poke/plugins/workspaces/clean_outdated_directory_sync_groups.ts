@@ -27,6 +27,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
           "If disabled, will only show what groups would be deleted without actually deleting them",
       },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

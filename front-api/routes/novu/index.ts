@@ -5,6 +5,7 @@ import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/con
 import { podAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { programmaticCapReachedWorkflow } from "@app/lib/notifications/workflows/programmatic-cap-reached";
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
+import { seatAutoUpgradedWorkflow } from "@app/lib/notifications/workflows/seat-auto-upgraded";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import { upgradeRequestCreatedWorkflow } from "@app/lib/notifications/workflows/upgrade-request-created";
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
@@ -36,6 +37,7 @@ const options: ServeHandlerOptions = {
     balanceThresholdReachedWorkflow,
     programmaticCapReachedWorkflow,
     upgradeRequestCreatedWorkflow,
+    seatAutoUpgradedWorkflow,
   ],
 };
 

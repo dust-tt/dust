@@ -5,6 +5,7 @@ import {
 } from "@anthropic-ai/sdk";
 import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches";
 import type {
+  CacheCreation,
   Message,
   MessageDeltaUsage,
   RawContentBlockDeltaEvent,
@@ -158,7 +159,8 @@ export interface OutputEventConverters {
   ): ToolCallEvent;
   messageDeltaUsageToTokenUsageEvent(
     metadata: EndpointMetadata,
-    usage: MessageDeltaUsage
+    usage: MessageDeltaUsage,
+    cacheCreation: CacheCreation | null
   ): TokenUsageEvent;
   stopReasonToErrorEvent(
     metadata: EndpointMetadata,
@@ -269,9 +271,9 @@ export function invalidJsonToolCallToToolCallEvent(
 
 export function messageDeltaUsageToTokenUsageEvent(
   metadata: EndpointMetadata,
-  usage: MessageDeltaUsage
+  usage: MessageDeltaUsage,
+  cacheCreation: CacheCreation | null
 ): TokenUsageEvent {
-  const cacheCreated = usage.cache_creation_input_tokens ?? 0;
   const cacheHit = usage.cache_read_input_tokens ?? 0;
   const uncachedInput = usage.input_tokens ?? 0;
   // thinking_tokens is the reasoning portion of output_tokens; subtracting
@@ -279,10 +281,28 @@ export function messageDeltaUsageToTokenUsageEvent(
   // standardOutput.
   const thinkingTokens = usage.output_tokens_details?.thinking_tokens ?? 0;
 
+  // The per-TTL breakdown lives on the full `Usage` object (`cache_creation`),
+  // not on `MessageDeltaUsage`. When it's present, split cache creation into the
+  // 1h (long) and 5m (short) buckets and leave `cacheCreated` at 0. Otherwise we
+  // only know the flat total, so report it as `cacheCreated` and leave both
+  // per-TTL buckets at 0 — consumers fall back to `long + short` only when
+  // `cacheCreated` is 0.
+  let cacheCreated = 0;
+  let longCacheCreated = 0;
+  let shortCacheCreated = 0;
+  if (cacheCreation) {
+    longCacheCreated = cacheCreation.ephemeral_1h_input_tokens;
+    shortCacheCreated = cacheCreation.ephemeral_5m_input_tokens;
+  } else {
+    cacheCreated = usage.cache_creation_input_tokens ?? 0;
+  }
+
   return {
     type: "token_usage",
     content: {
       cacheCreated,
+      longCacheCreated,
+      shortCacheCreated,
       cacheHit,
       standardInput: uncachedInput,
       standardOutput: usage.output_tokens - thinkingTokens,
@@ -655,6 +675,9 @@ export async function* rawOutputToEvents(
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let blockState: BlockState | null = null;
   let tokenUsage: MessageDeltaUsage | null = null;
+  // The per-TTL cache-creation breakdown is only emitted on `message_start`;
+  // capture it so the trailing `message_delta` usage can be split by TTL.
+  let cacheCreation: CacheCreation | null = null;
 
   while (true) {
     let result: IteratorResult<RawMessageStreamEvent>;
@@ -699,6 +722,7 @@ export async function* rawOutputToEvents(
     let outputEvents: ModelResponseEvent[];
     switch (event.type) {
       case "message_start":
+        cacheCreation = event.message.usage?.cache_creation ?? null;
         outputEvents = [
           converters.messageStartToResponseIdEvent(metadata, event),
         ];
@@ -769,7 +793,11 @@ export async function* rawOutputToEvents(
   }
 
   if (tokenUsage !== null) {
-    yield converters.messageDeltaUsageToTokenUsageEvent(metadata, tokenUsage);
+    yield converters.messageDeltaUsageToTokenUsageEvent(
+      metadata,
+      tokenUsage,
+      cacheCreation
+    );
   }
 
   yield {
@@ -871,7 +899,11 @@ export function messageToEvents(
   }
 
   events.push(
-    converters.messageDeltaUsageToTokenUsageEvent(metadata, message.usage)
+    converters.messageDeltaUsageToTokenUsageEvent(
+      metadata,
+      message.usage,
+      message.usage.cache_creation
+    )
   );
 
   events.push({ type: "success", content: { aggregated }, metadata });

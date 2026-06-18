@@ -162,7 +162,7 @@ export function UserProfileStep({
       </div>
       <div>
         <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
-          Pick your job type to get relevant feature updates:
+          Pick your role to customize your experience:
         </p>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

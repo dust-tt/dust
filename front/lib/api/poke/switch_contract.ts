@@ -15,10 +15,14 @@ import {
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
+  CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  CARRY_ON_RENEWAL_FOREVER_VALUE,
   CURRENCY_TO_CREDIT_TYPE_ID,
+  FOREVER_ENDING_BEFORE,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
   getProductSeatSubscriptionCommitId,
+  HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import {
   applySeatRateOverrides,
@@ -56,6 +60,19 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
+
+const paymentScheduleSchema = z
+  .object({
+    frequency: z
+      .enum(["one_time", "monthly", "quarterly", "semi_annually", "annually"])
+      .default("one_time"),
+    periods: z.number().int().min(2).max(60).optional(),
+  })
+  .refine(
+    (s) => s.frequency === "one_time" || s.periods !== undefined,
+    "periods is required when frequency is not one_time"
+  )
+  .default({ frequency: "one_time" });
 
 export const SwitchContractBodySchema = z.object({
   planCode: z.string().min(1),
@@ -97,6 +114,7 @@ export const SwitchContractBodySchema = z.object({
         .int("Initial credits must be an integer number of credits")
         .min(1, "Initial credits must be at least 1 credit"),
       invoiceAmount: z.number().min(0, "Invoice amount must be zero or more"),
+      paymentSchedule: paymentScheduleSchema,
     })
     .optional(),
   // Optional per-seat-type settings for the new contract. `minSeats` is the
@@ -108,6 +126,10 @@ export const SwitchContractBodySchema = z.object({
   // `minSeats * rate` of contract credit, invoiced at `commitmentPrice` —
   // letting the customer prepay the seat commitment at a negotiated (lower)
   // price. Unknown seat-type keys are ignored.
+  // Optional HubSpot deal ID. Stored on the subscription and forwarded to
+  // Metronome as a custom field so contracts can be joined back to HubSpot deals
+  // for ARR reporting.
+  hubspotDealId: z.string().optional(),
   seats: z
     .array(
       z.object({
@@ -123,6 +145,7 @@ export const SwitchContractBodySchema = z.object({
           .number()
           .min(0, "Commitment price must be ≥ 0")
           .optional(),
+        paymentSchedule: paymentScheduleSchema,
       })
     )
     .optional(),
@@ -214,6 +237,79 @@ function firstPeriodProration(
   );
   const fraction = Math.max(0, Math.min(1, remainingHours / totalHours));
   return { fraction, periodEnd: new Date(periodEndMs) };
+}
+
+const MONTHS_PER_PAYMENT_FREQUENCY: Record<
+  "monthly" | "quarterly" | "semi_annually" | "annually",
+  number
+> = {
+  monthly: 1,
+  quarterly: 3,
+  semi_annually: 6,
+  annually: 12,
+};
+
+function buildInvoiceScheduleItems({
+  invoiceAmountCents,
+  resolvedCurrency,
+  alignedStart,
+  paymentSchedule,
+}: {
+  invoiceAmountCents: number;
+  resolvedCurrency: SupportedCurrency;
+  alignedStart: Date;
+  paymentSchedule: {
+    frequency:
+      | "one_time"
+      | "monthly"
+      | "quarterly"
+      | "semi_annually"
+      | "annually";
+    periods?: number;
+  };
+}): { unitPrice: number; quantity: number; timestamp: Date }[] {
+  const { frequency, periods } = paymentSchedule;
+  if (frequency === "one_time" || !periods || periods <= 1) {
+    return [
+      {
+        unitPrice: metronomeAmount(invoiceAmountCents, resolvedCurrency),
+        quantity: 1,
+        timestamp: alignedStart,
+      },
+    ];
+  }
+  const monthsPerPeriod = MONTHS_PER_PAYMENT_FREQUENCY[frequency];
+  const perPeriodCents = Math.floor(invoiceAmountCents / periods);
+  const remainderCents = invoiceAmountCents - perPeriodCents * periods;
+  return Array.from({ length: periods }, (_, i) => {
+    const totalMonths = alignedStart.getUTCMonth() + i * monthsPerPeriod;
+    const targetYear =
+      alignedStart.getUTCFullYear() + Math.floor(totalMonths / 12);
+    const targetMonth = ((totalMonths % 12) + 12) % 12;
+    const lastDayOfMonth = new Date(
+      Date.UTC(targetYear, targetMonth + 1, 0)
+    ).getUTCDate();
+    const day =
+      i === 0 ? Math.min(alignedStart.getUTCDate(), lastDayOfMonth) : 1;
+    const ts = new Date(
+      Date.UTC(
+        targetYear,
+        targetMonth,
+        day,
+        alignedStart.getUTCHours(),
+        alignedStart.getUTCMinutes(),
+        alignedStart.getUTCSeconds(),
+        alignedStart.getUTCMilliseconds()
+      )
+    );
+    const amountCents =
+      i === 0 ? perPeriodCents + remainderCents : perPeriodCents;
+    return {
+      unitPrice: metronomeAmount(amountCents, resolvedCurrency),
+      quantity: 1,
+      timestamp: ts,
+    };
+  });
 }
 
 /**
@@ -483,6 +579,9 @@ export async function switchContract({
     planCode: body.planCode,
     fromContractId: currentSubscription?.metronomeContractId ?? undefined,
     enableSeatSync: false,
+    additionalCustomFields: body.hubspotDealId
+      ? { [HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY]: body.hubspotDealId }
+      : undefined,
   });
   if (provisionResult.isErr()) {
     return new Err(
@@ -524,20 +623,19 @@ export async function switchContract({
   );
 
   // Optional one-off initial credits: a contract-level prepaid AWU commit
-  // starting with the contract and lasting one year. `invoiceAmount` is in the
-  // customer's currency major units; convert to Metronome fiat units (cents
-  // for USD, whole units for EUR) for the invoice unit price.
+  // starting with the contract. `invoiceAmount` is in the customer's currency
+  // major units; convert to Metronome fiat units (cents for USD, whole units
+  // for EUR) for the invoice unit price.
   if (body.initialCredits && resolvedCurrency) {
-    const oneYearAfterStart = new Date(alignedStart);
-    oneYearAfterStart.setUTCFullYear(oneYearAfterStart.getUTCFullYear() + 1);
-
     const invoiceAmountCents = Math.round(
       body.initialCredits.invoiceAmount * 100
     );
-    const invoiceUnitPrice = metronomeAmount(
+    const invoiceScheduleItems = buildInvoiceScheduleItems({
       invoiceAmountCents,
-      resolvedCurrency
-    );
+      resolvedCurrency,
+      alignedStart,
+      paymentSchedule: body.initialCredits.paymentSchedule,
+    });
 
     const commitResult = await addPrepaidCommitToContract({
       metronomeCustomerId,
@@ -546,11 +644,9 @@ export async function switchContract({
       accessAmount: body.initialCredits.amountCredits,
       accessCreditTypeId: getCreditTypeAwuId(),
       accessStartingAt: alignedStart,
-      accessEndingBefore: oneYearAfterStart,
-      invoiceUnitPrice,
-      invoiceQuantity: 1,
+      accessEndingBefore: FOREVER_ENDING_BEFORE,
+      invoiceScheduleItems,
       invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
-      invoiceTimestamp: alignedStart,
       priority: AWU_PRIORITY_PURCHASED_COMMIT,
       applicableProductTags: ["usage"],
       name: `Initial credits: ${body.initialCredits.amountCredits.toLocaleString()} credits`,
@@ -558,6 +654,9 @@ export async function switchContract({
       // start can otherwise collide with a prior switch that shared the same
       // workspace, start moment, and amount.
       uniquenessKey: `initial-credits-${metronomeContractId}-${body.initialCredits.amountCredits}`,
+      customFields: {
+        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: CARRY_ON_RENEWAL_FOREVER_VALUE,
+      },
     });
     if (commitResult.isErr()) {
       return new Err(
@@ -580,6 +679,7 @@ export async function switchContract({
       planCode: body.planCode,
       metronomeContractId,
       startDate: alignedStart,
+      hubspotDealId: body.hubspotDealId,
     });
   } catch (err) {
     return new Err(
@@ -691,10 +791,12 @@ export async function switchContract({
         // units for EUR — the unit the fiat credit type expects).
         const accessAmountNative =
           Math.round(seat.minSeats * rateNative * fraction * 100) / 100;
-        const commitmentPriceNative = metronomeAmount(
-          Math.round(seat.commitmentPrice * 100),
-          resolvedCurrency
-        );
+        const seatInvoiceScheduleItems = buildInvoiceScheduleItems({
+          invoiceAmountCents: Math.round(seat.commitmentPrice * 100),
+          resolvedCurrency,
+          alignedStart,
+          paymentSchedule: seat.paymentSchedule,
+        });
         const commitResult = await addPrepaidCommitToContract({
           metronomeCustomerId,
           metronomeContractId,
@@ -703,10 +805,8 @@ export async function switchContract({
           accessCreditTypeId: fiatCreditTypeId,
           accessStartingAt: alignedStart,
           accessEndingBefore: periodEnd,
-          invoiceUnitPrice: commitmentPriceNative,
-          invoiceQuantity: 1,
+          invoiceScheduleItems: seatInvoiceScheduleItems,
           invoiceCreditTypeId: fiatCreditTypeId,
-          invoiceTimestamp: alignedStart,
           priority: AWU_PRIORITY_PURCHASED_COMMIT,
           // Draw only against this seat's product, not all `usage`.
           applicableProductIds: [pkgSeat.productId],
@@ -810,7 +910,8 @@ export async function switchContract({
     metronomeCustomerId,
     metronomeContractId,
     ownerLight,
-    alignedStart.toISOString()
+    alignedStart.toISOString(),
+    body.planCode
   );
   if (resyncResult.isErr()) {
     return new Err(

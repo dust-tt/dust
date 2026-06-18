@@ -15,6 +15,7 @@ export const disableSSOPlugin = createPlugin({
         description: "Are you sure?",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

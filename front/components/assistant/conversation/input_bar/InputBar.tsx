@@ -61,6 +61,8 @@ interface InputBarProps {
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   stickyMentions?: RichMention[];
+  defaultAgentId?: string | null;
+  isDefaultAgentLoading?: boolean;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
@@ -86,6 +88,8 @@ export const InputBar = React.memo(function InputBar({
   draftKey,
   space,
   stickyMentions,
+  defaultAgentId,
+  isDefaultAgentLoading,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   disableUserMentions,
@@ -113,6 +117,7 @@ export const InputBar = React.memo(function InputBar({
     selectedSingleAgent,
     getAndClearPendingInputText,
     fileUploaderService,
+    isLoadingGoTemplate,
   } = useContext(InputBarContext);
 
   // We use this specific hook because this component is involved in the new conversation page.
@@ -128,6 +133,12 @@ export const InputBar = React.memo(function InputBar({
     draftKey,
     shouldUseDraft: !isAgentBuilder,
   });
+
+  useEffect(() => {
+    if (isLoadingGoTemplate) {
+      clearDraft();
+    }
+  }, [isLoadingGoTemplate, clearDraft]);
 
   useEffect(() => {
     if (droppedFiles.length > 0) {
@@ -486,9 +497,13 @@ export const InputBar = React.memo(function InputBar({
             pendingInputText={pendingInputText}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}
+            defaultAgentId={defaultAgentId}
+            isDefaultAgentLoading={isDefaultAgentLoading}
             fileUploaderService={fileUploaderService}
             isSubmitting={
-              isLocalSubmitting || fileUploaderService.isProcessingFiles
+              isLocalSubmitting ||
+              fileUploaderService.isProcessingFiles ||
+              isLoadingGoTemplate
             }
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}

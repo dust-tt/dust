@@ -210,6 +210,8 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
 interface ProcessingEntry {
   process: ProcessingFunction;
   processedContentType: AllSupportedFileContentType;
+  // When set, this entry only applies when the predicate returns true. Omit to apply for all use cases.
+  appliesTo?: (useCase: FileUseCase) => boolean;
 }
 
 const PROCESSING_BY_CONTENT_TYPE = new Map<
@@ -300,16 +302,67 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
       processedContentType: "text/plain",
     },
   ],
+
+  // Binary documents: Tika text extraction for all use cases except conversation (only tabular
+  // data is indexed in the data source for conversation).
+  [
+    "application/pdf",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+      appliesTo: (uc) => uc !== "conversation",
+    },
+  ],
+  [
+    "application/msword",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+      appliesTo: (uc) => uc !== "conversation",
+    },
+  ],
+  [
+    "application/vnd.ms-powerpoint",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+      appliesTo: (uc) => uc !== "conversation",
+    },
+  ],
+  [
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+      appliesTo: (uc) => uc !== "conversation",
+    },
+  ],
+  [
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    {
+      process: extractTextFromFileAndUpload,
+      processedContentType: "text/plain",
+      appliesTo: (uc) => uc !== "conversation",
+    },
+  ],
 ]);
 
-// Returns the processing entry for a content type (processing function + output content type).
-// Returns undefined when no transformation is needed. The original file is used as-is. Processing
-// is purely content-type-driven. Upload support per use case is handled separately by the
-// per-use-case files.
+// Returns the processing entry for a content type and use case.
+// Returns undefined when no transformation is needed. The original file is used as-is.
 function getProcessingEntry(
-  contentType: AllSupportedFileContentType
+  contentType: AllSupportedFileContentType,
+  useCase?: FileUseCase
 ): ProcessingEntry | undefined {
-  return PROCESSING_BY_CONTENT_TYPE.get(contentType);
+  const entry = PROCESSING_BY_CONTENT_TYPE.get(contentType);
+  if (!entry) {
+    return undefined;
+  }
+
+  if (entry.appliesTo && useCase !== undefined && !entry.appliesTo(useCase)) {
+    return undefined;
+  }
+
+  return entry;
 }
 
 // Whether uploading this content type for this use case is supported. Dispatches to per-use-case
@@ -356,23 +409,25 @@ export function isUploadSupportedForContentType({
 
 /**
  * Whether a file with this content type has a meaningful processed version (e.g., text extraction,
- * image resize, audio transcription). When false, readers should use the "original" version
- * directly. Purely content-type-driven — no use-case branching.
+ * image resize, audio transcription) for the given use case. When false, readers should use the
+ * "original" version directly.
  */
 export function hasProcessedVersion(
-  contentType: AllSupportedFileContentType
+  contentType: AllSupportedFileContentType,
+  useCase?: FileUseCase
 ): boolean {
-  return getProcessingEntry(contentType) !== undefined;
+  return getProcessingEntry(contentType, useCase) !== undefined;
 }
 
 /**
- * Returns the content type of the processed version for a given original content type.
- * Returns undefined when there is no processed version.
+ * Returns the content type of the processed version for a given original content type and use
+ * case. Returns undefined when there is no processed version.
  */
 export function getProcessedContentType(
-  contentType: AllSupportedFileContentType
+  contentType: AllSupportedFileContentType,
+  useCase?: FileUseCase
 ): AllSupportedFileContentType | undefined {
-  return getProcessingEntry(contentType)?.processedContentType;
+  return getProcessingEntry(contentType, useCase)?.processedContentType;
 }
 
 const maybeApplyProcessing = async (
@@ -383,7 +438,7 @@ const maybeApplyProcessing = async (
     return new Ok(undefined);
   }
 
-  const entry = getProcessingEntry(file.contentType);
+  const entry = getProcessingEntry(file.contentType, file.useCase);
   if (!entry) {
     // No processing needed. The original file is used as-is.
     return new Ok(undefined);
