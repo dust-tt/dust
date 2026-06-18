@@ -207,6 +207,61 @@ describe("createSpaceAndGroup", () => {
       createConnectorSpy.mockRestore();
     });
 
+    it("should add the creator to the project editor group", async () => {
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects/connector"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Ok(undefined));
+
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user1.sId,
+        workspace.sId
+      );
+      const staleAuthJson = userAuth.toJSON();
+
+      const result = await createSpaceAndGroup(userAuth, {
+        name: "Test Project Creator Editor",
+        isRestricted: true,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const pod = result.value;
+        const creator = userAuth.getNonNullableUser();
+        const { groupsToProcess, allGroupMemberships } =
+          await pod.fetchManualGroupsMemberships(userAuth);
+        const editorGroup = groupsToProcess.find(
+          (group) => group.kind === "space_editors"
+        );
+
+        expect(editorGroup).toBeDefined();
+        expect(
+          allGroupMemberships.some(
+            (membership) =>
+              membership.groupId === editorGroup!.id &&
+              membership.userId === creator.id
+          )
+        ).toBe(true);
+
+        const staleAuth = await Authenticator.fromJSON(staleAuthJson);
+        expect(pod.canAdministrate(staleAuth)).toBe(false);
+        expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
+
+        await staleAuth.refresh();
+        expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
+
+        const refreshedPod = await SpaceResource.fetchById(staleAuth, pod.sId);
+        expect(refreshedPod?.canAdministrate(staleAuth)).toBe(true);
+      }
+
+      createConnectorSpy.mockRestore();
+    });
+
     it("should handle connector creation failure gracefully", async () => {
       // Mock createDataSourceAndConnectorForProject to fail
       const createConnectorError = new Error("Failed to create connector");
