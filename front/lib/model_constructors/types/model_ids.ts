@@ -12,6 +12,7 @@ export const GEMINI_3_1_FLASH_LITE_MODEL_ID = "gemini-3.1-flash-lite" as const;
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_3_5_MODEL_ID = "mistral-medium-3-5" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
+export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
 
 // Include a few examples for now
 export const MODEL_IDS = [
@@ -26,6 +27,7 @@ export const MODEL_IDS = [
   MISTRAL_LARGE_MODEL_ID,
   MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
+  MISTRAL_CODESTRAL_MODEL_ID,
 ] as const;
 
 export type ModelId = (typeof MODEL_IDS)[number];
