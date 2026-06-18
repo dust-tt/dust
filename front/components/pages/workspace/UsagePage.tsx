@@ -650,7 +650,7 @@ export function UsagePage() {
                 <Button
                   label="Change my seat"
                   variant="primary"
-                  size="xs"
+                  size="sm"
                   onClick={() => setChangeSeatMember(myUsage)}
                 />
               </div>
