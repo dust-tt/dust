@@ -52,9 +52,9 @@ const IDEAL_PARTNERS: PartnerCard[] = [
 interface PartnerLogo {
   name: string;
   src: string;
-  // Transparent/dark wordmarks invert to white on the dark section. Niji is a
-  // recolored brand tile (gray square + dark-gray wordmark), so it must NOT be
-  // inverted — it's shown as-is as a rounded tile.
+  // Transparent/dark wordmarks invert to white on the dark section. Set this to
+  // false for self-contained color tiles that must be shown as-is (rendered as a
+  // rounded tile rather than inverted).
   invertOnDark?: boolean;
   // Per-logo height cap for optical balancing (bolder marks read larger at the
   // same height, so they need a shorter cap).
@@ -66,7 +66,6 @@ const PARTNER_LOGOS: PartnerLogo[] = [
   {
     name: "Niji",
     src: "/static/landing/partners/niji.svg",
-    invertOnDark: false,
     maxHClass: "max-h-7",
   },
   { name: "Devoteam", src: "/static/landing/partners/devoteam.png" },
@@ -113,7 +112,7 @@ export function PartnerSocialProof() {
         {PARTNER_LOGOS.map((logo) => (
           <div
             key={logo.name}
-            className="flex h-10 items-center justify-center opacity-60 transition-opacity duration-150 ease-in-out hover:opacity-100"
+            className="flex h-10 items-center justify-center opacity-80 transition-opacity duration-150 ease-in-out hover:opacity-100"
           >
             <Image
               alt={logo.name}
