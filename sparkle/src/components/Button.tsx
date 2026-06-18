@@ -58,10 +58,10 @@ const buttonVariants = cva(
   cn(
     "s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
     // Press feedback (scale 0.97 on :active) is added by the `press` variant.
-    // It is disabled when the button has a tooltip: the button is then the
-    // Radix tooltip anchor and Floating UI tracks its rendered rect, so scaling
-    // it makes the tooltip slide to follow. `transform` stays in the transition
-    // list so the press eases in/out when the variant enables it.
+    // It is disabled for dropdown/popover/select triggers: the button is then
+    // the floating menu's anchor and Floating UI tracks its rendered rect, so
+    // scaling it makes the menu jump as it opens. `transform` stays in the
+    // transition list so the press eases in/out when the variant enables it.
     "s-transition-[color,background-color,border-color,transform] s-duration-150 s-ease-out",
     "motion-reduce:s-transition-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
@@ -165,7 +165,7 @@ const buttonVariants = cva(
         true: "",
         false: "",
       },
-      // Press feedback. Turned off for tooltip buttons (see base comment).
+      // Press feedback. Turned off for menu triggers (see base comment).
       press: {
         true: "active:s-scale-[0.97] motion-reduce:active:s-scale-100",
         false: "",
@@ -293,6 +293,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const iconSize = ICON_SIZE_MAP[size];
     const showCounter = isCounter && counterValue != null;
     const isIconOnly = !label && !showCounter && !isSelect && !!icon;
+    // A dropdown/popover/select trigger anchors a floating menu; pressing it
+    // would scale the anchor and make the menu jump as it opens. Radix merges
+    // `aria-haspopup` onto the trigger (via asChild), and `isSelect` is our own
+    // chevron affordance — either means "no press scale". Tooltips do NOT set
+    // aria-haspopup, so tooltip buttons keep the press.
+    const isMenuTrigger = isSelect || props["aria-haspopup"] != null;
     const hasTextShadow =
       variant != null && RAISED_VARIANTS.includes(variant as ButtonVariantType);
     const iconShadow = hasTextShadow ? ICON_SHADOW : "";
@@ -360,9 +366,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             size,
             rounded: isRounded ? "full" : size,
             isIconOnly,
-            // No press scale when there's a tooltip: scaling the button (the
-            // tooltip anchor) makes Floating UI slide the tooltip on press.
-            press: !tooltip,
+            // No press scale on menu triggers: scaling the trigger makes the
+            // opening dropdown/popover jump (Floating UI tracks the anchor box).
+            press: !isMenuTrigger,
           }),
           isPulsing && "s-animate-ring-pulse",
           className
