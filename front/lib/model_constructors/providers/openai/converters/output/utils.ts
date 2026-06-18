@@ -13,7 +13,10 @@ import type {
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { APIConnectionError, APIError } from "openai";
@@ -61,11 +64,14 @@ export interface OutputEventConverters {
   ): ToolCallDeltaEvent;
   accumulatedTextToTextEvent(
     metadata: EndpointMetadata,
-    text: string
+    text: string,
+    id?: string
   ): TextEvent;
   accumulatedReasoningToReasoningEvent(
     metadata: EndpointMetadata,
-    text: string
+    text: string,
+    id?: string,
+    encryptedContent?: string
   ): ReasoningEvent;
   functionCallToToolCallEvent(
     metadata: EndpointMetadata,
@@ -127,16 +133,40 @@ export function argumentsDeltaToToolCallDeltaEvent(
 
 export function accumulatedTextToTextEvent(
   metadata: EndpointMetadata,
-  text: string
+  text: string,
+  id?: string
 ): TextEvent {
-  return { type: "text", content: { value: text }, metadata };
+  return {
+    type: "text",
+    content: { value: text },
+    // Thread the message item id through so the input converter can resend it
+    // on the next turn.
+    metadata: { ...metadata, ...(id ? { content: { id } } : {}) },
+  };
 }
 
 export function accumulatedReasoningToReasoningEvent(
   metadata: EndpointMetadata,
-  text: string
+  text: string,
+  id?: string,
+  encryptedContent?: string
 ): ReasoningEvent {
-  return { type: "reasoning", content: { value: text }, metadata };
+  // The reasoning item id and its encrypted content are needed to resend the
+  // reasoning item on the next turn (the Responses API requires both).
+  const reasoningContent = {
+    ...(id ? { id } : {}),
+    ...(encryptedContent ? { encryptedContent } : {}),
+  };
+  return {
+    type: "reasoning",
+    content: { value: text },
+    metadata: {
+      ...metadata,
+      ...(Object.keys(reasoningContent).length > 0
+        ? { content: reasoningContent }
+        : {}),
+    },
+  };
 }
 
 export function functionCallToToolCallEvent(
@@ -303,10 +333,16 @@ export function outputItemToEvents(
 ): ModelResponseEvent[] {
   switch (item.type) {
     case "message":
-      return item.content.flatMap((part) => {
+      return item.content.flatMap((part): ModelResponseEvent[] => {
         switch (part.type) {
           case "output_text":
-            return [converters.accumulatedTextToTextEvent(metadata, part.text)];
+            return [
+              converters.accumulatedTextToTextEvent(
+                metadata,
+                part.text,
+                item.id
+              ),
+            ];
           case "refusal":
             return [
               buildErrorEvent({
@@ -316,6 +352,7 @@ export function outputItemToEvents(
               }),
             ];
           default:
+            assertNeverAndIgnore(part);
             return [];
         }
       });
@@ -323,7 +360,14 @@ export function outputItemToEvents(
       const text = item.summary.map((summary) => summary.text).join("\n\n");
       // Skip empty reasoning items (no summary emitted, e.g. effort "none").
       return text
-        ? [converters.accumulatedReasoningToReasoningEvent(metadata, text)]
+        ? [
+            converters.accumulatedReasoningToReasoningEvent(
+              metadata,
+              text,
+              item.id,
+              item.encrypted_content ?? undefined
+            ),
+          ]
         : [];
     }
     case "function_call":
