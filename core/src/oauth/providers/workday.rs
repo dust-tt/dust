@@ -102,7 +102,7 @@ impl Provider for WorkdayConnectionProvider {
             Some(token) => token,
             None => Err(anyhow!("Missing `access_token` in response from Workday"))?,
         };
-        let expires_in = match raw_json.get("expires_in") {
+        let expires_in_seconds = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
                 Some(n) => n,
                 None => Err(anyhow!("Invalid `expires_in` in response from Workday"))?,
@@ -122,7 +122,7 @@ impl Provider for WorkdayConnectionProvider {
             code: code.to_string(),
             access_token: access_token.to_string(),
             access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
+                utils::now() + (expires_in_seconds - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
             refresh_token: Some(refresh_token.to_string()),
             raw_json,
@@ -176,7 +176,7 @@ impl Provider for WorkdayConnectionProvider {
             Some(token) => token,
             None => Err(anyhow!("Missing `access_token` in response from Workday"))?,
         };
-        let expires_in = match raw_json.get("expires_in") {
+        let expires_in_seconds = match raw_json.get("expires_in") {
             Some(serde_json::Value::Number(n)) => match n.as_u64() {
                 Some(n) => n,
                 None => Err(anyhow!("Invalid `expires_in` in response from Workday"))?,
@@ -194,7 +194,7 @@ impl Provider for WorkdayConnectionProvider {
         Ok(RefreshResult {
             access_token: access_token.to_string(),
             access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
+                utils::now() + (expires_in_seconds - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
             refresh_token: Some(refresh_token.to_string()),
             raw_json,
