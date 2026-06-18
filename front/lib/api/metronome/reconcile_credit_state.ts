@@ -484,14 +484,13 @@ export async function reconcileWorkspaceUserCreditStates({
     const seatType = membership.seatType;
 
     const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
-    const poolCapAwuCredits =
-      membership.poolCapOverrideAwuCredits ??
-      (normalizedSeatType ? defaultPoolCapAwuCredits : 0);
-    const effectiveCapAwuCredits =
-      poolCapAwuCredits !== null
-        ? poolCapAwuCredits +
-          (normalizedSeatType ? (seatAllowances[normalizedSeatType] ?? 0) : 0)
-        : null;
+    // Cap + usage only apply to pool-limit seat types (pro/max/workspace),
+    // matching fetchLiveUserCreditInputs. Free/none seats have no pool access —
+    // their effective cap is null and near-limit uses the seat-balance path.
+    const effectiveCapAwuCredits = normalizedSeatType
+      ? (membership.poolCapOverrideAwuCredits ?? defaultPoolCapAwuCredits) +
+        (seatAllowances[normalizedSeatType] ?? 0)
+      : null;
     // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
     // seats read their per-user credit balance instead (not a seat balance).
     // Pro/max read their seat balance. `expectedUserCreditState` decides routing
