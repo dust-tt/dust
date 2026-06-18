@@ -10,12 +10,14 @@ const CONTEXT_SIZE = 256_000;
 // legacy client doesn't either), so Mistral uses its own default.
 const MAX_OUTPUT_TOKENS = 2_048;
 
-// Mistral Large is a non-reasoning model: it only accepts `none`, and the
-// request never sends a reasoning effort. Temperature passes through unchanged.
+// Mistral Large is a non-reasoning model: the API rejects `reasoning_effort`.
+// We accept `none` but drop it, so the converter omits `reasoning_effort`
+// entirely. Temperature passes through unchanged.
 const configSchema = inputConfigSchema.extend({
   reasoning: z
     .object({ effort: z.literal("none") })
-    .default({ effort: "none" }),
+    .optional()
+    .transform(() => undefined),
   // Mistral has no explicit prompt-cache key.
   cacheKey: z.undefined(),
 });
