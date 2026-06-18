@@ -183,8 +183,30 @@ runs:
           LATEST_TAGS+=("-t" "${REGISTRY}/${COMPONENT}:latest")
         fi
 
+        # Special handling for prodbox-ephemeral: reuse prodbox.Dockerfile with the ephemeral target,
+        # pulling from the prodbox cache scope so the heavy base layers are already warm.
+        if [[ "$BASE_COMPONENT" == "prodbox-ephemeral" ]]; then
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --target ephemeral \
+            --cache-from type=gha,scope=prodbox \
+            --cache-from type=gha,scope=${{ inputs.component }} \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
+            -f ./dockerfiles/prodbox.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
+            "${LATEST_TAGS[@]}" \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
+            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
+
         # Special handling for front component, build workers and front-api targets
-        if [[ "$BASE_COMPONENT" == "front" ]]; then
+        elif [[ "$BASE_COMPONENT" == "front" ]]; then
           echo "🏗️ Building front component with two targets (workers + front-api)"
 
           # Build workers target

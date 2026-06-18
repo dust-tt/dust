@@ -27,6 +27,7 @@ on:
           - core
           - front-sse
           - prodbox
+          - prodbox-ephemeral
           - oauth
           - viz
           - dante
