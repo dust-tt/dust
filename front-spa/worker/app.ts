@@ -33,7 +33,7 @@ interface Env {
 const ShareFrameMetadataSchema: z.ZodType<
   Pick<
     GetShareFrameMetadataResponseBody,
-    "description" | "ogImageUrl" | "title" | "workspaceName" |
+    "description" | "ogImageUrl" | "title" | "workspaceName"
   >
 > = z.object({
   description: z.string().nullable(),
