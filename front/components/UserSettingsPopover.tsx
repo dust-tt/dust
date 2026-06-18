@@ -1,6 +1,7 @@
 import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
+import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -17,9 +18,11 @@ import {
 } from "@app/lib/swr/credits";
 import {
   usePatchUser,
+  usePendingInvitations,
   useUser,
   useWorkspaceUsageStatus,
 } from "@app/lib/swr/user";
+import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
@@ -40,6 +43,7 @@ import {
   Edit04,
   Input,
   Label,
+  Mail01,
   Moon01,
   NavigationList,
   NavigationListItem,
@@ -69,7 +73,8 @@ type SettingsSection =
   | "usage"
   | "customization"
   | "notifications"
-  | "tools";
+  | "tools"
+  | "invitations";
 
 interface UserSettingsPopoverProps {
   open: boolean;
@@ -670,6 +675,33 @@ function ToolsSection({ owner }: { owner: WorkspaceType }) {
   );
 }
 
+// ─── Invitations ──────────────────────────────────────────────────────────────
+
+interface InvitationsSectionProps {
+  invitations: PendingInvitationOption[];
+  isLoading: boolean;
+}
+
+function InvitationsSection({
+  invitations,
+  isLoading,
+}: InvitationsSectionProps) {
+  return (
+    <SectionContent
+      title="Invitations"
+      description="Workspaces you've been invited to join"
+    >
+      {isLoading ? (
+        <div className="flex justify-center py-6">
+          <Spinner />
+        </div>
+      ) : (
+        <PendingInvitationsTable invitations={invitations} />
+      )}
+    </SectionContent>
+  );
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS: Array<{
@@ -691,6 +723,23 @@ export function UserSettingsPopover({
 }: UserSettingsPopoverProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("personal");
+
+  // Only fetch while the popover is open: it is always mounted in the user menu.
+  const { pendingInvitations, isPendingInvitationsLoading } =
+    usePendingInvitations({ workspaceId: owner.sId, disabled: !open });
+  const hasPendingInvitations = pendingInvitations.length > 0;
+
+  // The "Invitations" item only appears when the user has pending invitations.
+  const navItems = useMemo<typeof NAV_ITEMS>(
+    () =>
+      hasPendingInvitations
+        ? [
+            ...NAV_ITEMS,
+            { section: "invitations", icon: Mail01, label: "Invitations" },
+          ]
+        : NAV_ITEMS,
+    [hasPendingInvitations]
+  );
 
   useEffect(() => {
     if (open) {
@@ -717,7 +766,7 @@ export function UserSettingsPopover({
               />
             </DialogClose>
             <div className="flex flex-1">
-              {NAV_ITEMS.map(({ section, icon: Icon, label }) => (
+              {navItems.map(({ section, icon: Icon, label }) => (
                 <button
                   key={section}
                   type="button"
@@ -746,7 +795,7 @@ export function UserSettingsPopover({
               </DialogClose>
             </div>
             <NavigationList className="flex-1 px-2 pb-3">
-              {NAV_ITEMS.map(({ section, icon, label }) => (
+              {navItems.map(({ section, icon, label }) => (
                 <NavigationListItem
                   key={section}
                   icon={icon}
@@ -770,6 +819,12 @@ export function UserSettingsPopover({
               <NotificationsSection owner={owner} />
             )}
             {activeSection === "tools" && <ToolsSection owner={owner} />}
+            {activeSection === "invitations" && (
+              <InvitationsSection
+                invitations={pendingInvitations}
+                isLoading={isPendingInvitationsLoading}
+              />
+            )}
           </div>
         </div>
       </DialogContent>
