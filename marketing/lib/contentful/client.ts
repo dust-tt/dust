@@ -30,6 +30,9 @@ import type {
   QuizSettings,
   QuizSettingsSkeleton,
   SearchableItem,
+  ConversationDraft,
+  ConversationDraftAttachment,
+  ConversationDraftSkeleton,
 } from "@marketing/lib/contentful/types";
 import {
   ACADEMY_LOCALE_COOKIE,
@@ -1877,6 +1880,94 @@ export async function getAllHomepageNews(
     return new Ok(items);
   } catch (error) {
     logger.error({ error }, "[Contentful] Failed to fetch homepage news");
+    return new Err(normalizeError(error));
+  }
+}
+
+const ConversationDraftFieldsSchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  prompt: z.string().min(1),
+  attachments: z
+    .array(z.custom<Asset>((value): value is Asset => isContentfulAsset(value)))
+    .optional(),
+});
+
+function contentfulAssetToAttachment(
+  asset: Asset
+): ConversationDraftAttachment | null {
+  const file = asset.fields?.file;
+  if (!file || !isString(file.url)) {
+    return null;
+  }
+
+  const url = file.url.startsWith("//")
+    ? `https:${file.url}`
+    : file.url.startsWith("http")
+      ? file.url
+      : `https:${file.url}`;
+
+  const fileName =
+    (isString(asset.fields.title) ? asset.fields.title : null) ||
+    (isString(file.fileName) ? file.fileName : null) ||
+    new URL(url).pathname.split("/").pop() ||
+    "attachment";
+
+  const contentType = isString(file.contentType) ? file.contentType : null;
+
+  return { url, fileName, contentType };
+}
+
+function contentfulEntryToConversationDraft(
+  entry: Entry<ConversationDraftSkeleton>
+): ConversationDraft | null {
+  const result = ConversationDraftFieldsSchema.safeParse(entry.fields);
+  if (!result.success) {
+    return null;
+  }
+
+  const parsed = result.data;
+
+  const attachments = (parsed.attachments ?? [])
+    .map(contentfulAssetToAttachment)
+    .filter(
+      (attachment): attachment is ConversationDraftAttachment =>
+        attachment !== null
+    );
+
+  return {
+    slug: parsed.slug,
+    title: parsed.title,
+    prompt: parsed.prompt.trim(),
+    attachments,
+  };
+}
+
+export async function getConversationDraftBySlug(
+  slug: string,
+  resolvedUrl: string = ""
+): Promise<Result<ConversationDraft | null, Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const queryParams: Record<string, string | number> = {
+      content_type: "conversationDraft",
+      "fields.slug": slug,
+      limit: 1,
+      include: 1,
+    };
+    const response =
+      await contentfulClient.getEntries<ConversationDraftSkeleton>(queryParams);
+
+    if (response.items.length === 0) {
+      return new Ok(null);
+    }
+
+    return new Ok(contentfulEntryToConversationDraft(response.items[0]));
+  } catch (error) {
+    logger.error(
+      { error, slug },
+      "[Contentful] Failed to get conversation draft by slug"
+    );
     return new Err(normalizeError(error));
   }
 }

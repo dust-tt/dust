@@ -32,6 +32,7 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
@@ -96,7 +97,9 @@ export function ConversationContainerVirtuoso({
   // A seatless member can never send a message. We surface this up-front rather
   // than relying on the deferred background message-post failure, which lands
   // after navigation and would otherwise leave behind an empty conversation.
-  const { noSeat } = useWorkspaceUsageStatus({ owner });
+  const { userBlockedReason } = useWorkspaceUsageStatus({
+    owner,
+  });
 
   // Maps a message-send failure to the right surface: blocking limits (no seat,
   // credits, per-user cap, plan limit) open the dedicated popup, everything else
@@ -132,15 +135,33 @@ export function ConversationContainerVirtuoso({
         });
       }
 
-      // Block seatless members before creating the conversation: the backend
-      // would reject the message anyway, and doing it here shows the popup
-      // immediately without leaving an empty conversation behind.
-      if (noSeat) {
-        setLimitReachedCode("no_seat");
+      // Pre-check blocking conditions before creating the conversation.
+      // With deferMessage:true the message posts after navigation, so backend
+      // errors arrive too late and leave an empty conversation behind.
+      // userBlockedReason comes directly from isUserBlocked on the server —
+      // no blocking logic lives here.
+      if (userBlockedReason) {
+        let limitCode: WorkspaceLimit;
+        switch (userBlockedReason) {
+          case "no_seat":
+            limitCode = "no_seat";
+            break;
+          case "user_cap_reached":
+            limitCode = "user_credits_exhausted";
+            break;
+          case "credits_exhausted":
+            limitCode = "pool_credits_exhausted";
+            break;
+          default:
+            assertNeverAndIgnore(userBlockedReason);
+            limitCode = "pool_credits_exhausted";
+            break;
+        }
+        setLimitReachedCode(limitCode);
         return new Err({
           code: "internal_error",
-          name: "NoSeat",
-          message: "You don't have a seat in this workspace.",
+          name: "UserBlocked",
+          message: "You are not allowed to send messages.",
         });
       }
 
@@ -195,7 +216,7 @@ export function ConversationContainerVirtuoso({
     },
     [
       isSubmitting,
-      noSeat,
+      userBlockedReason,
       mutateConversations,
       owner,
       router,

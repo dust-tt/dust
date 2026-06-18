@@ -71,16 +71,25 @@ export function UsageNotificationsCard({
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Credit balance threshold"
-          description="Email all workspace admins when your remaining credit balance drops below this amount (in credits). Set to 0 to disable."
+          title="Workspace credit pool threshold"
+          description={
+            <>
+              Email all workspace admins when your remaining workspace credit
+              pool balance drops below this amount.{" "}
+              <strong>Set to 0 to disable.</strong>
+            </>
+          }
           action={
             <div className="w-52">
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={String(currentThreshold)}
+                value={currentThreshold.toLocaleString()}
                 unit="credits"
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                formatValue={(value) =>
+                  value ? Number(value).toLocaleString() : value
+                }
                 onSave={handleSaveBalanceThreshold}
                 disabled={readOnly || isUsageNotificationsLoading}
               />
@@ -88,7 +97,7 @@ export function UsageNotificationsCard({
           }
         />
         <SettingsList.Row
-          title="Upgrade request"
+          title="Upgrade request emails"
           description="Email all workspace admins when a member requests a spend-limit upgrade."
           action={
             <SliderToggle

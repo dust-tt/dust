@@ -1,4 +1,4 @@
-import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
+import { getDataSourceViewsUsageByModelIds } from "@app/lib/api/agent_data_sources";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -251,40 +251,28 @@ app.get(
       (a) => a.toJSON().server.availability === "manual"
     ).length;
 
+    const usages = await getDataSourceViewsUsageByModelIds({
+      auth,
+      dataSourceViewModelIds: dataSourceViewsList.map((dsv) => dsv.id),
+    });
+
     const categories: { [key: string]: SpaceCategoryInfo } = {};
     for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
-      categories[category] = {
-        count: 0,
-        usage: { count: 0, agents: [] },
-      };
-
       const dataSourceViewsInCategory = dataSourceViewsList.filter(
         (view) => view.toJSON().category === category
       );
 
-      // The usage call is expensive, so only run it when there are views.
-      if (dataSourceViewsInCategory.length > 0) {
-        const usages = await getDataSourceViewsUsageByCategory({
-          auth,
-          category,
-        });
+      const agents = uniqBy(
+        dataSourceViewsInCategory.flatMap(
+          (view) => usages[view.id]?.agents ?? []
+        ),
+        "sId"
+      );
 
-        for (const dsView of dataSourceViewsInCategory) {
-          categories[category].count += 1;
-          const usage = usages[dsView.id];
-          if (usage) {
-            categories[category].usage.agents = categories[
-              category
-            ].usage.agents.concat(usage.agents);
-            categories[category].usage.agents = uniqBy(
-              categories[category].usage.agents,
-              "sId"
-            );
-          }
-        }
-        categories[category].usage.count =
-          categories[category].usage.agents.length;
-      }
+      categories[category] = {
+        count: dataSourceViewsInCategory.length,
+        usage: { count: agents.length, agents },
+      };
     }
 
     categories["apps"].count = appsList.length;

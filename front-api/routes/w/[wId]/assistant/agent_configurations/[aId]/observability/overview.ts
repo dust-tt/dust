@@ -1,7 +1,11 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { GetAgentOverviewResponseBody } from "@app/lib/api/assistant/observability/overview";
-import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
+import {
+  fetchAgentCostStats,
+  fetchAgentOverview,
+  getAgentCostStats,
+} from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -55,7 +59,18 @@ app.get(
       version,
     });
 
-    const overview = await fetchAgentOverview(baseQuery, days);
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const [overview, costStatsMap] = await Promise.all([
+      fetchAgentOverview(baseQuery, days),
+      fetchAgentCostStats(
+        owner,
+        [assistant.sId],
+        cutoff,
+        version !== undefined ? Number(version) : undefined
+      ),
+    ]);
+    const costs = getAgentCostStats(costStatsMap, assistant.sId);
+
     if (overview.isErr()) {
       return apiError(ctx, {
         status_code: 500,
@@ -86,6 +101,7 @@ app.get(
         negativeFeedbacks,
         timePeriodSec: days * 24 * 60 * 60,
       },
+      costs,
     });
   }
 );

@@ -8147,6 +8147,58 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/go-template": {
+      "get": {
+        "summary": "Resolve a conversation go template draft",
+        "description": "Fetches a Contentful conversation go template by slug and returns a composer-ready draft with optional pre-uploaded attachments.",
+        "tags": [
+          "Private Assistant"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "slug",
+            "required": true,
+            "description": "Contentful template slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Composer draft resolved from the template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetGoTemplateDraftResponseBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or disabled"
+          },
+          "422": {
+            "description": "Missing slug query parameter"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/mentions/suggestions": {
       "get": {
         "summary": "Get mention suggestions",
@@ -11011,6 +11063,72 @@
               },
               "down": {
                 "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "GetGoTemplateDraftResponseBody": {
+        "type": "object",
+        "description": "Composer draft resolved from a Contentful conversation go template.",
+        "required": [
+          "title",
+          "prompt",
+          "attachments",
+          "attachmentErrors"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "fileId",
+                "name",
+                "contentType",
+                "size",
+                "url"
+              ],
+              "properties": {
+                "fileId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "contentType": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "attachmentErrors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "url",
+                "message"
+              ],
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
               }
             }
           }

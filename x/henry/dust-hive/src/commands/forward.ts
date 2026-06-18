@@ -2,7 +2,7 @@ import { getEnvironment } from "../lib/environment";
 import { getForwarderStatus, startForwarder, stopForwarder } from "../lib/forward";
 import { FORWARDER_MAPPINGS } from "../lib/forwarderConfig";
 import { logger } from "../lib/logger";
-import { FORWARDER_LOG_PATH, detectEnvFromCwd } from "../lib/paths";
+import { detectEnvFromCwd, FORWARDER_LOG_PATH } from "../lib/paths";
 import { isServiceRunning } from "../lib/process";
 import { restoreTerminal, selectEnvironment } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";

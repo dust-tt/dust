@@ -1,7 +1,7 @@
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import {
   getDataSourcesUsageByCategory,
-  getDataSourceViewsUsageByCategory,
+  getDataSourceViewsUsageByModelIds,
 } from "@app/lib/api/agent_data_sources";
 import type {
   GetSpaceDataSourceViewsResponseBody,
@@ -179,7 +179,10 @@ app.get(
         usages[dsView.id] = usagesByDataSources[dsView.dataSource.id];
       });
     } else {
-      usages = await getDataSourceViewsUsageByCategory({ auth, category });
+      usages = await getDataSourceViewsUsageByModelIds({
+        auth,
+        dataSourceViewModelIds: dataSourceViews.map((dsv) => dsv.id),
+      });
     }
 
     const enhancedDataSourceViews: DataSourceViewsWithDetails[] =

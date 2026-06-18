@@ -1,3 +1,4 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
@@ -134,6 +135,7 @@ interface UserMessageProps {
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
   isProjectArchived?: boolean;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
 
 export function UserMessage({
@@ -146,6 +148,7 @@ export function UserMessage({
   owner,
   onReactionToggle,
   isProjectArchived = false,
+  setLimitReachedCode,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
@@ -186,11 +189,19 @@ export function UserMessage({
         .trim();
     }
 
-    await editMessage({
+    const result = await editMessage({
       messageId: message.sId,
       content,
       mentions: filteredMentions,
     });
+
+    if (!result) {
+      return;
+    }
+    if (result.isErr()) {
+      setLimitReachedCode?.(result.error);
+      return;
+    }
 
     setShouldShowEditor(false);
   };

@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { getLLM } from "@app/lib/api/llm";
+import { getStreamLLM } from "@app/lib/api/llm";
 import type { TestStructuredOutputKey } from "@app/lib/api/llm/tests/schemas";
 import {
   TEST_RESPONSE_FORMATS,
@@ -45,6 +45,7 @@ export function createMockAuthenticator(): Authenticator {
       planId: -1,
       stripeSubscriptionId: null,
       metronomeContractId: null,
+      hubspotDealId: null,
       requestCancelAt: null,
       workspaceId: -1,
       createdAt: new Date(),
@@ -339,7 +340,7 @@ export const runConversation = async (
   const credentials = await getLlmCredentials(mockAuth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llm = await getLLM(mockAuth, {
+  const llm = await getStreamLLM(mockAuth, {
     credentials,
     modelId: config.modelId,
     temperature: config.temperature,

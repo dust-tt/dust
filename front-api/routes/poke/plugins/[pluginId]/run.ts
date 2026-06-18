@@ -2,6 +2,7 @@ import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PokeRunPluginResponseBody } from "@app/lib/api/poke/plugins/run";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
+import { hasPokeRole } from "@app/lib/poke/roles";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import {
@@ -72,6 +73,19 @@ app.post(
           message: "Could not find the plugin.",
         },
       });
+    }
+
+    if (plugin.manifest.requiredRoles) {
+      const userRoles = ctx.get("pokeRoles");
+      if (!hasPokeRole(userRoles, plugin.manifest.requiredRoles)) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "not_authenticated",
+            message: "You do not have the required role to run this plugin.",
+          },
+        });
+      }
     }
 
     const resource = resourceId

@@ -6,7 +6,7 @@ import { Tooltip } from "@sparkle/components/Tooltip";
 import { XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
-import React, { type ReactNode } from "react";
+import React, { type ReactNode, useMemo } from "react";
 
 const CitationContext = React.createContext<{ compact: boolean }>({
   compact: false,
@@ -82,6 +82,8 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         )}
       </>
     );
+    const citationContextValue = useMemo(() => ({ compact }), [compact]);
+
     const cardButton = (
       <Card
         ref={ref}
@@ -90,7 +92,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         className={cn(citationVariants({ hasImage, compact }), className)}
         {...props}
       >
-        <CitationContext.Provider value={{ compact }}>
+        <CitationContext.Provider value={citationContextValue}>
           {contentWithDescription}
         </CitationContext.Provider>
         {isLoading && <CitationLoading label={loadingLabel} />}

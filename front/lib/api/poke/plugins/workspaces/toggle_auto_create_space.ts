@@ -18,6 +18,7 @@ export const toggleAutoCreateSpacePlugin = createPlugin({
           "When enabled, automatically creates a restricted space for each provisioned group",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

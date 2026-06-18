@@ -238,6 +238,7 @@ export class SubscriptionModel extends WorkspaceAwareModel<SubscriptionModel> {
 
   declare stripeSubscriptionId: string | null;
   declare metronomeContractId: string | null;
+  declare hubspotDealId: string | null;
 
   // not necessary for business logic, but helpful
   // for analytics and business operations.
@@ -288,6 +289,11 @@ SubscriptionModel.init(
       allowNull: true,
     },
     metronomeContractId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    hubspotDealId: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,

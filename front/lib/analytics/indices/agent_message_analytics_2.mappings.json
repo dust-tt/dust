@@ -15,6 +15,9 @@
     "agent_version": {
       "type": "keyword"
     },
+    "ancestor_message_ids": {
+      "type": "keyword"
+    },
     "user_id": {
       "type": "keyword"
     },
@@ -57,6 +60,20 @@
         }
       }
     },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "full_awu": {
+          "type": "integer"
+        },
+        "llm_awu": {
+          "type": "integer"
+        },
+        "tool_awu": {
+          "type": "integer"
+        }
+      }
+    },
     "tools_used": {
       "type": "nested",
       "properties": {
@@ -77,6 +94,9 @@
         },
         "status": {
           "type": "keyword"
+        },
+        "cost_awu": {
+          "type": "integer"
         }
       }
     },

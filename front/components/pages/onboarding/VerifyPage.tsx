@@ -2,11 +2,9 @@ import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import {
-  CP_FREE_PLAN_CREDITS,
-  useIsMetronomeCheckout,
-} from "@app/lib/client/subscription";
+import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
+import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
 import {
   CODE_LENGTH,
   isValidPhoneNumber,
@@ -324,7 +322,7 @@ export function VerifyPage() {
     case "done":
       return (
         <WelcomeStep
-          credits={CP_FREE_PLAN_CREDITS}
+          credits={FREE_SEAT_LIFETIME_AWU_CREDITS}
           onStartBuilding={goToWorkspace}
         />
       );

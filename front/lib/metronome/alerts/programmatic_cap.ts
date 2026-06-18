@@ -1,6 +1,5 @@
 import {
   clearMetronomeAlert,
-  findMetronomeAlert,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
 import { listMetronomeAlerts } from "@app/lib/metronome/client";
@@ -63,27 +62,6 @@ export const PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME =
 export const PROGRAMMATIC_LOW_BALANCE_ALERT_NAME = "Programmatic low balance";
 export const PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME =
   "Programmatic critical balance";
-
-/**
- * Read the current programmatic monthly cap from Metronome. Returns the cap
- * alert threshold (in Programmatic USD credits), or null if no cap is set.
- */
-export async function getMetronomeProgrammaticCap({
-  metronomeCustomerId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-}): Promise<Result<number | null, Error>> {
-  const result = await findMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: programmaticCapUniquenessKey(workspaceId),
-  });
-  if (result.isErr()) {
-    return new Err(result.error);
-  }
-  return new Ok(result.value?.alert.threshold ?? null);
-}
 
 export type ProgrammaticCapAlertState = {
   id: string;

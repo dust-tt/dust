@@ -376,10 +376,8 @@ export default function AgentBuilder({
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
-      setIsSaving(true);
       const confirmed = await showDialog();
       if (!confirmed) {
-        setIsSaving(false);
         return;
       }
 
@@ -410,7 +408,6 @@ export default function AgentBuilder({
           description: result.error.message,
           type: "error",
         });
-        setIsSaving(false);
         return;
       }
 
@@ -457,13 +454,10 @@ export default function AgentBuilder({
           keepValues: true,
         });
       }
-
-      setIsSaving(false);
     } catch (error) {
       datadogLogger.error("Unexpected error:", {
         error: normalizeError(error),
       });
-      setIsSaving(false);
     }
   };
 
@@ -500,11 +494,18 @@ export default function AgentBuilder({
       description: "There was an error validating the form.",
       type: "error",
     });
-    setIsSaving(false);
   };
 
-  const handleSave = () => {
-    void form.handleSubmit(handleSubmit, handleFormErrors)();
+  const handleSave = async () => {
+    if (isSaving) {
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await form.handleSubmit(handleSubmit, handleFormErrors)();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {

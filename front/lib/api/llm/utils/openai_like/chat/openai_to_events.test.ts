@@ -41,6 +41,17 @@ function makeChunk({
   };
 }
 
+function makeUsageChunk(usage: ChunkUsage): ChatCompletionChunk {
+  return {
+    id: "chatcmpl_test",
+    object: "chat.completion.chunk",
+    created: 1,
+    model: "gpt-5",
+    choices: [],
+    usage,
+  };
+}
+
 const toolCallChunks = [
   makeChunk({
     delta: {
@@ -342,5 +353,49 @@ describe("streamLLMEvents", () => {
         metadata,
       },
     ]);
+  });
+
+  it("should handle usage-only chunks after the finish chunk", async () => {
+    const result = [];
+
+    for await (const event of streamLLMEvents(
+      createAsyncGenerator([
+        makeChunk({
+          delta: {
+            content: "Done.",
+          },
+        }),
+        makeChunk({
+          delta: {},
+          finishReason: "stop",
+        }),
+        makeUsageChunk({
+          prompt_tokens: 3,
+          completion_tokens: 4,
+          total_tokens: 7,
+        }),
+      ]),
+      metadata
+    )) {
+      result.push(event);
+    }
+
+    expect(result.map((event) => event.type)).toEqual([
+      "interaction_id",
+      "text_delta",
+      "text_generated",
+      "token_usage",
+      "success",
+    ]);
+    expect(result[3]).toEqual({
+      type: "token_usage",
+      content: {
+        inputTokens: 3,
+        outputTokens: 4,
+        totalTokens: 7,
+        cachedTokens: undefined,
+      },
+      metadata,
+    });
   });
 });

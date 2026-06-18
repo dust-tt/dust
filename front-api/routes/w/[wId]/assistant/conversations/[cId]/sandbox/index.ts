@@ -33,7 +33,10 @@ app.get(
       });
     }
 
-    const sandbox = await SandboxResource.fetchByConversationId(auth, cId);
+    const sandbox = await SandboxResource.fetchByConversation(
+      auth,
+      conversation.toJSON()
+    );
 
     return ctx.json({
       sandboxStatus: sandbox?.status ?? null,

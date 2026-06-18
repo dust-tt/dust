@@ -1,6 +1,8 @@
+import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
+  convertCanonicalFileToPdf,
   deleteCanonicalFile,
   moveCanonicalFile,
   renameCanonicalFile,
@@ -90,6 +92,75 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
 
   const thumbnail = ctx.req.query("thumbnail");
   const download = ctx.req.query("download");
+  const previewPdf = ctx.req.query("preview") === "pdf";
+
+  // ?preview=pdf converts Office files to PDF via Gotenberg's LibreOffice route.
+  if (previewPdf) {
+    const rendererUrl = config.getDocumentRendererUrl();
+    if (!rendererUrl) {
+      return apiError(ctx, {
+        status_code: 503,
+        api_error: {
+          type: "internal_server_error",
+          message: "PDF preview is not configured.",
+        },
+      });
+    }
+
+    const conversionResult = await convertCanonicalFileToPdf(
+      dustFs,
+      canonicalPath,
+      rendererUrl
+    );
+    if (conversionResult.isErr()) {
+      const e = conversionResult.error;
+
+      switch (e.code) {
+        case "not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: { type: "file_not_found", message: e.message },
+          });
+
+        case "too_large":
+          return apiError(ctx, {
+            status_code: 413,
+            api_error: { type: "invalid_request_error", message: e.message },
+          });
+
+        case "unsupported_type":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "invalid_request_error", message: e.message },
+          });
+
+        case "conversion_failed":
+        case "internal":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: { type: "internal_server_error", message: e.message },
+          });
+
+        default:
+          assertNever(e.code);
+      }
+    }
+
+    const { pdfBuffer, pdfFileName } = conversionResult.value;
+    // RFC 5987: filename= must be ASCII-safe; filename*= carries the UTF-8 encoded name.
+    const asciiFallback = pdfFileName.replace(/[^\x20-\x7E]/g, "_");
+    const encodedName = encodeURIComponent(pdfFileName);
+
+    return new Response(new Uint8Array(pdfBuffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodedName}`,
+        "Content-Length": String(pdfBuffer.length),
+        "Cache-Control": "private, max-age=3600",
+      },
+    });
+  }
 
   // ?thumbnail=1 serves the resized/processed version (images only).
   if (thumbnail && thumbnail !== "0") {

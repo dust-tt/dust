@@ -4,7 +4,7 @@ import type {
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
-import type { BaseModelConfiguration } from "@app/lib/model_constructors/configuration";
+import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import { WithAnthropicInputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/input";
 import { WithAnthropicOutputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
@@ -19,7 +19,7 @@ import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provide
 import { z } from "zod";
 
 // Can be extended later (e.g. "us", "asia-east1"...)
-type AgentPlatformRegionalEndpoint = "global" | "europe-west1";
+export type AgentPlatformRegionalEndpoint = "global" | "eu";
 
 const configSchema = inputConfigSchema.extend({
   reasoning: z
@@ -38,12 +38,14 @@ export abstract class AgentPlatformStream extends WithAnthropicInputConverter(
   )
 ) {
   // Narrow `this.constructor` so the per-endpoint static below is visible.
-  declare ["constructor"]: BaseModelConfiguration & {
+  declare ["constructor"]: BaseEndpointConfiguration & {
     regionalEndpoint: AgentPlatformRegionalEndpoint;
   };
 
   static readonly providerId = ANTHROPIC_PROVIDER_ID;
   static readonly api = AGENT_PLATFORM_API;
+
+  static readonly regionalEndpoint: AgentPlatformRegionalEndpoint;
 
   static readonly configSchema: z.ZodType<z.infer<typeof configSchema>> =
     configSchema;

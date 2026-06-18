@@ -165,7 +165,10 @@ const app = workspaceApp();
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  withDataSourceView({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({
+    requireCanReadOrAdministrate: true,
+    includeEditedBy: true,
+  }),
   async (ctx): HandlerResult<GetDataSourceViewResponseBody> => {
     const dataSourceView = ctx.get("dataSourceView");
     let connector: ConnectorType | null = null;

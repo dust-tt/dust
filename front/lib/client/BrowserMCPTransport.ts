@@ -84,6 +84,18 @@ export class BrowserMCPTransport implements Transport {
    */
   private async registerServer(): Promise<boolean> {
     try {
+      // If we already hold a registration (e.g. re-registering after a failed
+      // heartbeat), release it first so the server reuses the same slot instead
+      // of allocating a new serverId suffix that would linger until its TTL
+      // expires. Without this, repeated re-registrations leak slots and
+      // eventually exhaust the per-user limit ("Maximum number of servers
+      // reached").
+      if (this.serverId) {
+        const previousServerId = this.serverId;
+        this.serverId = null;
+        await this.deregisterServer(previousServerId);
+      }
+
       const response = await clientFetch(
         `/api/w/${this.workspaceId}/mcp/register`,
         {

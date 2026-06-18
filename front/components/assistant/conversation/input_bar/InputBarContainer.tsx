@@ -1,6 +1,7 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
+import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -12,19 +13,27 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashSuggestionCapability,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
+import {
+  useCompactConversation,
+  useConversationContextUsage,
+} from "@app/hooks/conversations";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
@@ -32,6 +41,7 @@ import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
@@ -124,6 +134,8 @@ export interface InputBarContainerProps {
     text: string;
     agentMention?: RichAgentMention | null;
   } | null;
+  defaultAgentId?: string | null;
+  isDefaultAgentLoading?: boolean;
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
@@ -139,7 +151,7 @@ export interface InputBarContainerProps {
   onResetMCPServerViews: () => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
-  pendingInputText: string | null;
+  pendingInputText: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
   stickyMentions?: RichMention[];
@@ -161,6 +173,8 @@ const InputBarContainer = ({
   isSubmitting,
   fileUploaderService,
   getDraft,
+  defaultAgentId,
+  isDefaultAgentLoading,
   isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
@@ -197,7 +211,7 @@ const InputBarContainer = ({
   );
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
-  const { selectedSingleAgent, setSelectedSingleAgent } =
+  const { selectedSingleAgent, setSelectedSingleAgent, isLoadingGoTemplate } =
     useContext(InputBarContext);
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
@@ -263,6 +277,10 @@ const InputBarContainer = ({
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
+  // The slash suggestion extension captures its options at editor initialization, while the
+  // conversation may only be created after the first message; the ref keeps it current.
+  const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
+  conversationIdRef.current = conversation?.sId ?? null;
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
@@ -378,6 +396,18 @@ const InputBarContainer = ({
 
   const sendNotification = useSendNotification();
 
+  // Context usage provides the model required by the compaction endpoint; both back the /compact
+  // slash command. SWR dedupes these with the ContextUsageIndicator calls.
+  const { contextUsage, mutateContextUsage } = useConversationContextUsage({
+    conversationId: conversation?.sId,
+    workspaceId: owner.sId,
+    options: { disabled: !conversation?.sId },
+  });
+  const { compact, isCompacting } = useCompactConversation({
+    owner,
+    conversationId: conversation?.sId,
+  });
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
@@ -477,8 +507,40 @@ const InputBarContainer = ({
       .run();
   };
 
+  const handleSlashCommandSelect = (command: InputBarSlashCommand) => {
+    switch (command.id) {
+      case "compact":
+        if (isCompacting) {
+          break;
+        }
+        // The cached context usage may be missing or stale (the endpoint reports a null model
+        // until the latest agent run has usage rows); revalidate on demand before giving up.
+        void (async () => {
+          const usage = contextUsage?.model
+            ? contextUsage
+            : await mutateContextUsage();
+          if (usage?.model) {
+            void compact(usage.model);
+          } else {
+            sendNotification({
+              type: "error",
+              title: "Cannot compact conversation",
+              description:
+                "Compaction requires a completed agent message in the conversation.",
+            });
+          }
+        })();
+        break;
+      default:
+        assertNeverAndIgnore(command.id);
+    }
+  };
+
   onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
     switch (capability.kind) {
+      case "command":
+        handleSlashCommandSelect(capability.command);
+        break;
       case "skill":
         handleSkillSelect(capability.skill);
         break;
@@ -494,6 +556,9 @@ const InputBarContainer = ({
 
   onDetailsRef.current = (capability: InputBarSlashSuggestionCapability) => {
     switch (capability.kind) {
+      case "command":
+        // Static commands have no details sheet.
+        break;
       case "skill":
         setSelectedSkillIdForDetails(capability.skill.sId);
         break;
@@ -520,6 +585,7 @@ const InputBarContainer = ({
     onInlineText: handleInlineText,
     onFirstAgentMentionPasteRef,
     slashSuggestion: {
+      conversationIdRef,
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
       onDetailsRef,
@@ -578,6 +644,8 @@ const InputBarContainer = ({
   editorServiceRef.current = editorService;
   const saveDraftRef = useRef(saveDraft);
   saveDraftRef.current = saveDraft;
+  // Skip auto-save (especially clearDraft on empty) until initial content is restored.
+  const hasCompletedInitialContentRestoreRef = useRef(false);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -665,6 +733,9 @@ const InputBarContainer = ({
     });
   }, [attachedNodes]);
 
+  const { hasFeature } = useFeatureFlags();
+  const isLiveStt = hasFeature("live_speech_to_text");
+
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,
     fileUploaderService,
@@ -697,6 +768,29 @@ const InputBarContainer = ({
       });
     },
   });
+
+  const voiceLiveTranscriberService = useVoiceLiveTranscriberService({
+    owner,
+    onTranscribeDelta: (text) => {
+      editorService.appendText(text);
+    },
+    onTranscribeComplete: () => {
+      if (isCompactRef.current) {
+        void submitCompactVoiceMessageRef.current?.();
+      }
+    },
+    onError: (error) => {
+      sendNotification({
+        type: "error",
+        title: "Failed to transcribe voice",
+        description: normalizeError(error).message,
+      });
+    },
+  });
+
+  const activeVoiceService = isLiveStt
+    ? voiceLiveTranscriberService
+    : voiceTranscriberService;
 
   // Keep the editor non-editable while the input is fully disabled (e.g. a
   // non-owner viewing a conversation with an active wake-up). The placeholder
@@ -750,10 +844,12 @@ const InputBarContainer = ({
     // overwrite the agent mention saved by the single-agent effect.
     const { markdown, mentions: editorMentions } =
       currentEditorService.getMarkdownAndMentions();
-    saveDraftRef.current(
-      editorIsEmpty ? "" : markdown,
-      selectedSingleAgentRef.current
-    );
+    if (hasCompletedInitialContentRestoreRef.current) {
+      saveDraftRef.current(
+        editorIsEmpty ? "" : markdown,
+        selectedSingleAgentRef.current
+      );
+    }
     const userMentioned = editorMentions.some((m) => m.type === "user");
 
     // Check if the very first content node in the editor is a user mention.
@@ -994,10 +1090,36 @@ const InputBarContainer = ({
     };
   }, [clientType, editorService]);
 
-  // Restore draft text when switching conversations (including new conversations).
-  // Agent selection is handled by useHandleMention.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    const shouldBeEditable = !isLoadingGoTemplate;
+    if (editor.isEditable === shouldBeEditable) {
+      // Keep the loading shimmer in sync without toggling editability (which
+      // emits an empty update and would clear the draft before restore runs).
+      if (isLoadingGoTemplate) {
+        editor.view.dom.classList.add("loading-text");
+      } else {
+        editor.view.dom.classList.remove("loading-text");
+      }
+      return;
+    }
+
+    editorService.setLoading(isLoadingGoTemplate);
+  }, [editor, editorService, isLoadingGoTemplate]);
+
+  const pendingReplaceInputRef = useRef<PendingInputText | null>(null);
+
+  // Apply replace-mode pending text once the editor is ready. The async /go
+  // template fetch often completes before TipTap initializes; applying earlier
+  // would no-op and the pending payload is already consumed by InputBar.
+  useEffect(() => {
+    if (pendingInputText?.replace) {
+      pendingReplaceInputRef.current = pendingInputText;
+    }
+
     if (
       !editor ||
       editor.isDestroyed ||
@@ -1007,8 +1129,47 @@ const InputBarContainer = ({
       return;
     }
 
+    const pending = pendingReplaceInputRef.current;
+    if (!pending?.replace) {
+      return;
+    }
+
+    pendingReplaceInputRef.current = null;
+    queueMicrotask(() => {
+      editorService.setContent(pending.text, { focus: !disableAutoFocus });
+      hasCompletedInitialContentRestoreRef.current = true;
+    });
+  }, [
+    pendingInputText,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+    editorService,
+    disableAutoFocus,
+  ]);
+
+  // Restore draft text when switching conversations (including new conversations).
+  // Agent selection is handled by useHandleMention.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  useEffect(() => {
+    hasCompletedInitialContentRestoreRef.current = false;
+
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    if (pendingReplaceInputRef.current?.replace) {
+      return;
+    }
+
     // Only restore draft if editor is empty to avoid overwriting existing content.
     if (!editorService.isEmpty()) {
+      hasCompletedInitialContentRestoreRef.current = true;
       return;
     }
 
@@ -1016,9 +1177,10 @@ const InputBarContainer = ({
 
     if (draft) {
       // Schedule content restoration to avoid flushing during render lifecycle.
-      queueMicrotask(() =>
-        editorService.setContent(draft.text, { focus: !disableAutoFocus })
-      );
+      queueMicrotask(() => {
+        editorService.setContent(draft.text, { focus: !disableAutoFocus });
+        hasCompletedInitialContentRestoreRef.current = true;
+      });
       return;
     }
 
@@ -1027,6 +1189,8 @@ const InputBarContainer = ({
     if (stickyUserMentions.length > 0) {
       editorService.resetWithMentions(stickyUserMentions, disableAutoFocus);
     }
+
+    hasCompletedInitialContentRestoreRef.current = true;
   }, [
     conversation,
     editor,
@@ -1044,6 +1208,8 @@ const InputBarContainer = ({
     disableAutoFocus,
     editorService,
     getDraft,
+    defaultAgentId,
+    isDefaultAgentLoading,
     isAgentBuilder,
     pendingInputText,
     selectedAgent,
@@ -1060,9 +1226,24 @@ const InputBarContainer = ({
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
     isSubmitBlocked ||
-    voiceTranscriberService.status !== "idle";
+    activeVoiceService.status !== "idle";
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
+
+  // A pod can pre-select a default agent that the current member can't access
+  // (e.g. an unpublished agent). `allAgents` only contains agents the member
+  // can read, so when the configured default is missing from it, the
+  // resolution in `useHandleMentions` silently falls back to @dust. Surface a
+  // notice on the agent pill so the member understands why the pod's default
+  // isn't the one shown. (We can't distinguish "no access" from "deleted"
+  // client-side, so the copy stays neutral.)
+  const isDefaultAgentUnavailable =
+    !conversation &&
+    !isAgentBuilder &&
+    !isDefaultAgentLoading &&
+    !!defaultAgentId &&
+    defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
+    !agentsById.has(defaultAgentId);
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
@@ -1071,8 +1252,8 @@ const InputBarContainer = ({
     "px-3 sm:pl-4 pt-3 sm:pt-3.5"
   );
 
-  const isRecording = voiceTranscriberService.status === "recording";
-  const isVoiceActive = voiceTranscriberService.status !== "idle";
+  const isRecording = activeVoiceService.status === "recording";
+  const isVoiceActive = activeVoiceService.status !== "idle";
   const compactPreviewText = editorService.getTrimmedText();
   const compactDisplayPlaceholder =
     (disableInput ? submitBlockMessage : placeholder) ?? "Get work done";
@@ -1158,11 +1339,11 @@ const InputBarContainer = ({
                 data-compact-voice
               >
                 <VoicePicker
-                  status={voiceTranscriberService.status}
-                  level={voiceTranscriberService.level}
-                  elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                  onRecordStart={voiceTranscriberService.startRecording}
-                  onRecordStop={voiceTranscriberService.stopRecording}
+                  status={activeVoiceService.status}
+                  level={activeVoiceService.level}
+                  elapsedSeconds={activeVoiceService.elapsedSeconds}
+                  onRecordStart={activeVoiceService.startRecording}
+                  onRecordStop={activeVoiceService.stopRecording}
                   size="xs"
                   compact
                   showStopLabel={false}
@@ -1289,6 +1470,7 @@ const InputBarContainer = ({
                       fileUploaderService={fileUploaderService}
                       handleSingleAgentSelect={handleSingleAgentSelect}
                       hideCapabilities={hideCapabilities}
+                      isDefaultAgentUnavailable={isDefaultAgentUnavailable}
                       isInputDisabled={disableInput}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
@@ -1441,11 +1623,11 @@ const InputBarContainer = ({
                 actions.includes("voice") &&
                 !isCompact && (
                   <VoicePicker
-                    status={voiceTranscriberService.status}
-                    level={voiceTranscriberService.level}
-                    elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                    onRecordStart={voiceTranscriberService.startRecording}
-                    onRecordStop={voiceTranscriberService.stopRecording}
+                    status={activeVoiceService.status}
+                    level={activeVoiceService.level}
+                    elapsedSeconds={activeVoiceService.elapsedSeconds}
+                    onRecordStart={activeVoiceService.startRecording}
+                    onRecordStop={activeVoiceService.stopRecording}
                     size={buttonSize}
                     showStopLabel={!isMobile}
                     disabled={disableInput}
@@ -1475,7 +1657,7 @@ const InputBarContainer = ({
                     size={buttonSize}
                     isLoading={
                       isSubmitting &&
-                      voiceTranscriberService.status !== "transcribing"
+                      activeVoiceService.status !== "transcribing"
                     }
                     icon={ArrowUp}
                     variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}

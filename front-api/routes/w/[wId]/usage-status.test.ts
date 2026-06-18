@@ -29,7 +29,8 @@ describe("/api/w/[wId]/usage-status", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.awuStatus).toBe("normal");
+    expect(body.userNearCreditLimit).toBe(false);
+    expect(body.userBlockedReason).toBeNull();
     expect(body.canRequestUpgrade).toBe(false);
     expect(body.hasPendingUpgradeRequest).toBe(false);
   });
@@ -47,7 +48,7 @@ describe("/api/w/[wId]/usage-status", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.awuStatus).toBe("blocked");
+    expect(body.userBlockedReason).toBe("user_cap_reached");
     expect(body.canRequestUpgrade).toBe(true);
     expect(body.hasPendingUpgradeRequest).toBe(false);
   });

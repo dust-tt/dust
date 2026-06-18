@@ -8,6 +8,7 @@ import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
 import { routes } from "@spa/poke/routes";
+import { useMemo } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 const router = createBrowserRouter(routes, {
@@ -15,13 +16,16 @@ const router = createBrowserRouter(routes, {
 });
 
 export default function PokeApp() {
+  const sparkleContextValue = useMemo(
+    () => ({ components: { link: ReactRouterLinkWrapper } }),
+    []
+  );
+
   return (
     <AppReadyProvider>
       <RegionProvider>
         <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-          <SparkleContext.Provider
-            value={{ components: { link: ReactRouterLinkWrapper } }}
-          >
+          <SparkleContext.Provider value={sparkleContextValue}>
             <RootLayout>
               <ErrorBoundary fallback={<GlobalErrorFallback />}>
                 <RouterProvider router={router} />

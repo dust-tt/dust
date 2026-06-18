@@ -2,6 +2,7 @@ import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   getDefaultSeatTypeForContract,
   getSeatSubscriptionsFromContract,
+  resolveRequestedSeatTypeForContract,
 } from "@app/lib/metronome/seat_types";
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -181,6 +182,163 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     expect(
       getDefaultSeatTypeForContract(legacyContract, productSeatTypes)
     ).toBe("none");
+  });
+});
+
+// An explicit seat carried on an accepted invitation is honored when the
+// contract entitles it and its maxSeats cap is not hit, then falls back to
+// free → none — never to a committed paid seat the user did not request.
+describe("getDefaultSeatTypeForContract — requested seat (invitation)", () => {
+  const productSeatTypes = new Map<string, MembershipSeatType>([
+    ["free-product", "free"],
+    ["pro-product", "pro"],
+    ["max-product", "max"],
+  ]);
+
+  // Contract entitles free, pro and max.
+  const contract = {
+    subscriptions: [
+      {
+        id: "sub_free",
+        subscription_rate: { product: { id: "free-product", name: "Free" } },
+      },
+      {
+        id: "sub_pro",
+        subscription_rate: { product: { id: "pro-product", name: "Pro" } },
+      },
+      {
+        id: "sub_max",
+        subscription_rate: { product: { id: "max-product", name: "Max" } },
+      },
+    ],
+    recurring_credits: [],
+    overrides: [
+      { entitled: true, product: { id: "free-product" } },
+      { entitled: true, product: { id: "pro-product" } },
+      { entitled: true, product: { id: "max-product" } },
+    ],
+  } as unknown as CachedContract;
+
+  it("honors a requested paid tier when uncapped", () => {
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "max",
+      })
+    ).toBe("max");
+  });
+
+  it("honors a requested paid tier under its maxSeats cap", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 0, maxSeats: 5 }],
+    ]);
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "pro",
+        seatLimits,
+        seatCounts: { pro: 4 },
+      })
+    ).toBe("pro");
+  });
+
+  it("falls back to free when the requested paid tier hit its maxSeats cap", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 0, maxSeats: 5 }],
+    ]);
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "pro",
+        seatLimits,
+        seatCounts: { pro: 5 },
+      })
+    ).toBe("free");
+  });
+
+  it("falls back to free when the requested tier is not entitled", () => {
+    const proOnly = {
+      subscriptions: [
+        {
+          id: "sub_free",
+          subscription_rate: { product: { id: "free-product", name: "Free" } },
+        },
+        {
+          id: "sub_pro",
+          subscription_rate: { product: { id: "pro-product", name: "Pro" } },
+        },
+      ],
+      recurring_credits: [],
+      overrides: [
+        { entitled: true, product: { id: "free-product" } },
+        { entitled: true, product: { id: "pro-product" } },
+      ],
+    } as unknown as CachedContract;
+    expect(
+      resolveRequestedSeatTypeForContract(proOnly, productSeatTypes, {
+        requestedSeatType: "max",
+      })
+    ).toBe("free");
+  });
+
+  it("does not fall back to a committed paid seat; uses free instead", () => {
+    // max requested but capped; pro has open committed slots. The default path
+    // would hand out the committed pro seat — the fallback must not, to avoid
+    // billing a user for a seat they did not request.
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 10, maxSeats: null }],
+      ["max", { minSeats: 0, maxSeats: 2 }],
+    ]);
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "max",
+        seatLimits,
+        seatCounts: { pro: 0, max: 2 },
+      })
+    ).toBe("free");
+  });
+
+  it("honors a requested free seat within the free caps", () => {
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "free",
+        freeSeatCounts: { active: 2, lifetime: 2 },
+        freeSeatLimits: { maxActiveFreeUsers: 5, maxLifetimeFreeUsers: 10 },
+      })
+    ).toBe("free");
+  });
+
+  it("falls back to none when free is requested but the free cap is exhausted", () => {
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: "free",
+        freeSeatCounts: { active: 5, lifetime: 5 },
+        freeSeatLimits: { maxActiveFreeUsers: 5, maxLifetimeFreeUsers: 10 },
+      })
+    ).toBe("none");
+  });
+
+  it("enterprise pooled (no free): an unassignable paid request → none", () => {
+    const noFree = {
+      subscriptions: [
+        {
+          id: "sub_pro",
+          subscription_rate: { product: { id: "pro-product", name: "Pro" } },
+        },
+      ],
+      recurring_credits: [],
+      overrides: [{ entitled: true, product: { id: "pro-product" } }],
+    } as unknown as CachedContract;
+    expect(
+      resolveRequestedSeatTypeForContract(noFree, productSeatTypes, {
+        requestedSeatType: "max",
+      })
+    ).toBe("none");
+  });
+
+  it("requestedSeatType null applies the default resolution", () => {
+    expect(
+      resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+        requestedSeatType: null,
+      })
+    ).toBe("free");
   });
 });
 

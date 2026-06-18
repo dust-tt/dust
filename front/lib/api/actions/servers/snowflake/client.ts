@@ -591,11 +591,20 @@ function exportSnowflakePrivateKey({
 }): string {
   const passphraseToUse = privateKeyPassphrase ?? "";
 
-  const privateKeyObject = createPrivateKey({
-    key: privateKey.trim(),
-    format: "pem",
-    passphrase: passphraseToUse,
-  });
+  let privateKeyObject;
+  try {
+    privateKeyObject = createPrivateKey({
+      key: privateKey.trim(),
+      format: "pem",
+      passphrase: passphraseToUse,
+    });
+  } catch (cause) {
+    throw new Error(
+      "Snowflake key-pair credential could not be decrypted. " +
+        "Please re-enter the private key passphrase or rotate the key in your Snowflake connection settings.",
+      { cause }
+    );
+  }
 
   // Export as unencrypted PKCS#8 PEM since snowflake-sdk only accepts that shape.
   return privateKeyObject

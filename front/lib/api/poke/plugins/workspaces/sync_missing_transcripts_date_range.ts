@@ -44,6 +44,7 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
           "If enabled, resync all transcripts even if they are already in the database",
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();

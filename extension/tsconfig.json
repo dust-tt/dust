@@ -10,7 +10,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "outDir": "./build",
-    "rootDir": "./",
+    "rootDir": "../",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,

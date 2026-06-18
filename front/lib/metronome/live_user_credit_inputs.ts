@@ -10,7 +10,6 @@
 // reconcile module imports the dispatcher, so the dispatcher cannot import the
 // reconcile module back.
 
-import { getMetronomeDefaultUserCapAlertForSeatType } from "@app/lib/metronome/alerts/spend_limits";
 import {
   listContractPerUserCreditBalances,
   listMetronomeSeatBalances,
@@ -45,13 +44,12 @@ export function awuSeatBalanceForUser(
 }
 
 export type LiveUserCreditInputs = {
-  // Live Metronome per-seat AWU balance for this user: `seatBalanceAwu` is the
-  // amount remaining, `seatStartingBalanceAwu` the full allocation granted for
-  // the period (e.g. 8000 for a pro seat). Both null for pool-based seats with
-  // no individual allocation. The remaining/starting ratio drives the
-  // user_seat ↔ user_seat_low_balance band.
+  // Live Metronome per-seat AWU balance: remaining and full allocation.
+  // Both null for pool-based seats with no individual allocation.
   seatBalanceAwu: number | null;
   seatStartingBalanceAwu: number | null;
+  // Effective per-user cap = poolCap + seatAllowance. Null for seat types with
+  // no pool access (free, none).
   effectiveCapAwuCredits: number | null;
   capSource: "override" | "default" | "none";
   consumedAwuCredits: number | null;
@@ -65,10 +63,12 @@ export type LiveUserCreditInputs = {
  * derive the actual state — this only reads the numbers.
  *
  * `poolCapOverrideAwuCredits` is the pool-only override persisted on the
- * membership (`memberships.poolCapOverrideAwuCredits`) — the source of truth
- * for per-user overrides. When set, the seat allowance is added back to get
- * the total cap threshold; the seat-type default alert is only consulted when
- * no override is set.
+ * membership (`memberships.poolCapOverrideAwuCredits`) and
+ * `defaultPoolCapAwuCredits` the pool-only workspace default persisted on the
+ * credit-usage configuration
+ * (`credit_usage_configurations.defaultPoolCapAwuCredits`) — the DB sources of
+ * truth for the cap. The override wins; the seat allowance is added back to get
+ * the total cap threshold.
  *
  * Surfaces Metronome read failures as `Err` so callers can fall back.
  */
@@ -77,6 +77,7 @@ export async function fetchLiveUserCreditInputs({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  defaultPoolCapAwuCredits,
   metronomeCustomerId,
   metronomeContractId,
 }: {
@@ -84,6 +85,7 @@ export async function fetchLiveUserCreditInputs({
   userId: string;
   seatType: MembershipSeatType | null;
   poolCapOverrideAwuCredits: number | null;
+  defaultPoolCapAwuCredits: number;
   metronomeCustomerId: string;
   metronomeContractId: string | null;
 }): Promise<Result<LiveUserCreditInputs, Error>> {
@@ -131,66 +133,47 @@ export async function fetchLiveUserCreditInputs({
     }
   }
 
-  // Resolve the effective per-user cap threshold (in AWU credits, seat
-  // allowance included): the user-specific override if present, otherwise the
-  // seat-type default. `null` means no cap is configured for this user. The
-  // override is the pool-only value persisted on the membership; the seat
-  // allowance is added back to get the total threshold.
+  // Cap + usage only apply to pool-limit seat types (pro/max/workspace).
+  // Free and none seats have no pool access — their effective cap is null.
+  const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
   let effectiveCapAwuCredits: number | null = null;
   let capSource: LiveUserCreditInputs["capSource"] = "none";
+  let consumedAwuCredits: number | null = null;
 
-  const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
-  if (poolCapOverrideAwuCredits !== null) {
+  if (normalizedSeatType) {
+    const poolCapAwuCredits =
+      poolCapOverrideAwuCredits ?? defaultPoolCapAwuCredits;
+    capSource = poolCapOverrideAwuCredits !== null ? "override" : "default";
+
     let seatAllowance = 0;
-    if (normalizedSeatType) {
-      try {
-        const allowances =
-          await getSeatAllowancesByNormalizedSeatType(workspaceId);
-        seatAllowance = allowances[normalizedSeatType] ?? 0;
-      } catch (err) {
-        return new Err(
-          new Error(
-            `Failed to resolve seat allowance: ${normalizeError(err).message}`
-          )
-        );
-      }
-    }
-    effectiveCapAwuCredits = poolCapOverrideAwuCredits + seatAllowance;
-    capSource = "override";
-  } else if (normalizedSeatType) {
-    const defaultResult = await getMetronomeDefaultUserCapAlertForSeatType({
-      metronomeCustomerId,
-      workspaceId,
-      seatType: normalizedSeatType,
-    });
-    if (defaultResult.isErr()) {
+    try {
+      const allowances =
+        await getSeatAllowancesByNormalizedSeatType(workspaceId);
+      seatAllowance = allowances[normalizedSeatType] ?? 0;
+    } catch (err) {
       return new Err(
         new Error(
-          `Failed to read default per-user cap: ${defaultResult.error.message}`
+          `Failed to resolve seat allowance: ${normalizeError(err).message}`
         )
       );
     }
-    if (defaultResult.value) {
-      effectiveCapAwuCredits = defaultResult.value.alert.threshold;
-      capSource = "default";
-    }
-  }
+    effectiveCapAwuCredits = poolCapAwuCredits + seatAllowance;
 
-  // Consumption is only needed for the cap bands (capped / on_pool_low_balance),
-  // which require a configured cap; skip the fetch otherwise.
-  let consumedAwuCredits: number | null = null;
-  if (effectiveCapAwuCredits !== null && metronomeContractId) {
-    const usageResult = await fetchPerUserAwuUsage({
-      metronomeCustomerId,
-      metronomeContractId,
-      userIds: [userId],
-    });
-    if (usageResult.isErr()) {
-      return new Err(
-        new Error(`Failed to read per-user usage: ${usageResult.error.message}`)
-      );
+    if (metronomeContractId) {
+      const usageResult = await fetchPerUserAwuUsage({
+        metronomeCustomerId,
+        metronomeContractId,
+        userIds: [userId],
+      });
+      if (usageResult.isErr()) {
+        return new Err(
+          new Error(
+            `Failed to read per-user usage: ${usageResult.error.message}`
+          )
+        );
+      }
+      consumedAwuCredits = usageResult.value.get(userId) ?? 0;
     }
-    consumedAwuCredits = usageResult.value.get(userId) ?? 0;
   }
 
   return new Ok({

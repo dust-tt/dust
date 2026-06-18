@@ -111,6 +111,16 @@ type MessageGroupContextValue = {
 const messageGroupTypeContext =
   React.createContext<MessageGroupContextValue>(null);
 
+const LOCUTOR_GROUP_CONTEXT: MessageGroupContextValue = {
+  messageType: "locutor",
+  messageContainerType: "locutor",
+};
+
+const AGENT_GROUP_CONTEXT: MessageGroupContextValue = {
+  messageType: "agent",
+  messageContainerType: "agent",
+};
+
 export const NewConversationContainer = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -241,11 +251,13 @@ export const NewConversationMessageGroup = React.forwardRef<
     const align: MessageGroupAlign = type === "locutor" ? "end" : "start";
     const messageType = messageTypeFromGroupType(type);
     const messageContainerType: MessageType = type;
+    const value = React.useMemo(
+      () => ({ messageType, messageContainerType }),
+      [messageType, messageContainerType]
+    );
 
     return (
-      <messageGroupTypeContext.Provider
-        value={{ messageType, messageContainerType }}
-      >
+      <messageGroupTypeContext.Provider value={value}>
         <div
           ref={ref}
           className={cn(messageGroupVariants({ align, className }))}
@@ -1052,9 +1064,7 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
         {...props}
       >
         <div className="s-flex s-w-full s-flex-col s-gap-1 s-pl-12">
-          <messageGroupTypeContext.Provider
-            value={{ messageType: "locutor", messageContainerType: "locutor" }}
-          >
+          <messageGroupTypeContext.Provider value={LOCUTOR_GROUP_CONTEXT}>
             <NewConversationUserMessage
               hideActions
               isLastMessage
@@ -1065,9 +1075,7 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
           </messageGroupTypeContext.Provider>
         </div>
         <div className="s-flex s-w-full s-flex-col s-gap-1">
-          <messageGroupTypeContext.Provider
-            value={{ messageType: "agent", messageContainerType: "agent" }}
-          >
+          <messageGroupTypeContext.Provider value={AGENT_GROUP_CONTEXT}>
             <NewConversationMessageGroupHeader
               groupType="agent"
               type="agent"

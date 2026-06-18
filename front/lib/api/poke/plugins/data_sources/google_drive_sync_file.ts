@@ -57,6 +57,7 @@ export const googleDriveSyncFilePlugin = createPlugin({
           "Google Drive file ID (e.g., 1a2b3c4d5e6f7g8h9i0j or the full URL)",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

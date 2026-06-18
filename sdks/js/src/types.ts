@@ -91,6 +91,7 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
+  | "accounts/fireworks/models/glm-5p2" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4-latest" // xAI
@@ -704,7 +705,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "claude_fable_5_feature"
-  | "sessions_branching"
   | "databricks_tool"
   | "deepseek_feature"
   | "dev_mcp_actions"
@@ -721,7 +721,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
-  | "force_us_api_url"
   | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "gpt_image_2_feature"
@@ -743,6 +742,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "metronome_billing"
   | "plan_mode"
+  | "pod_default_agent"
   | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
@@ -774,8 +774,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "new_file_explorer"
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
-  | "user_settings_v2"
   | "admin_governance"
+  | "use_new_llm_router"
+  | "live_speech_to_text"
+  | "force_us_api_url"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3315,6 +3317,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionSpeakIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
+  | "AdomikLogo"
   | "AmplitudeLogo"
   | "ApifyLogo"
   | "AsanaLogo"
@@ -3345,6 +3348,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "HubspotLogo"
   | "IntercomLogo"
   | "JiraLogo"
+  | "LemlistLogo"
   | "LinearLogo"
   | "LumaLogo"
   | "MicrosoftExcelLogo"

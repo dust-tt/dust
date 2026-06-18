@@ -13,10 +13,13 @@ import {
 } from "@app/lib/api/file_system/types";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import { isSupportedImageContentType } from "@app/types/files";
+import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import path from "path";
 import type { Readable } from "stream";
 
 // ---------------------------------------------------------------------------
@@ -333,6 +336,130 @@ export async function moveCanonicalFile(
   }
 
   return moveResult;
+}
+
+// ---------------------------------------------------------------------------
+// Office → PDF conversion
+// ---------------------------------------------------------------------------
+
+const OFFICE_PREVIEW_CONTENT_TYPES = new Set([
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]);
+
+async function readableToBuffer(stream: Readable): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
+}
+
+const OFFICE_PDF_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+const OFFICE_PDF_CONVERSION_TIMEOUT_MS = 60_000;
+
+export type OfficePdfErrorCode =
+  | "not_found"
+  | "too_large"
+  | "unsupported_type"
+  | "conversion_failed"
+  | "internal";
+
+export class OfficePdfError extends Error {
+  constructor(
+    readonly code: OfficePdfErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "OfficePdfError";
+  }
+}
+
+export type OfficePdfResult = {
+  pdfBuffer: Buffer;
+  pdfFileName: string;
+};
+
+/**
+ * Read an Office file at `canonicalPath` from GCS and convert it to PDF using
+ * Gotenberg's LibreOffice route. `rendererUrl` is the Gotenberg base URL; the
+ * caller is responsible for checking it is configured before calling this.
+ */
+export async function convertCanonicalFileToPdf(
+  dustFs: DustFileSystem,
+  canonicalPath: string,
+  rendererUrl: string
+): Promise<Result<OfficePdfResult, OfficePdfError>> {
+  const statResult = await dustFs.stat(canonicalPath);
+  if (statResult.isErr()) {
+    return new Err(new OfficePdfError("internal", statResult.error.message));
+  }
+
+  if (!statResult.value) {
+    return new Err(
+      new OfficePdfError("not_found", `File not found: \`${canonicalPath}\`.`)
+    );
+  }
+
+  const { contentType, sizeBytes } = statResult.value;
+
+  if (sizeBytes > OFFICE_PDF_MAX_SIZE_BYTES) {
+    return new Err(
+      new OfficePdfError(
+        "too_large",
+        `File exceeds the ${OFFICE_PDF_MAX_SIZE_BYTES / 1024 / 1024} MB limit for PDF preview.`
+      )
+    );
+  }
+
+  if (!OFFICE_PREVIEW_CONTENT_TYPES.has(contentType)) {
+    return new Err(
+      new OfficePdfError(
+        "unsupported_type",
+        "PDF preview is only supported for Office file types."
+      )
+    );
+  }
+
+  // TODO: Consider streaming the GCS read directly into Gotenberg's multipart body and piping its
+  // response back to the client to avoid buffering the full file in memory.
+  const readResult = await dustFs.read(canonicalPath);
+  if (readResult.isErr()) {
+    return new Err(new OfficePdfError("internal", readResult.error.message));
+  }
+
+  if (!readResult.value) {
+    return new Err(
+      new OfficePdfError("not_found", `File not found: \`${canonicalPath}\`.`)
+    );
+  }
+
+  const fileBuffer = await readableToBuffer(readResult.value);
+  const fileName = path.posix.basename(canonicalPath);
+
+  const renderer = new DocumentRenderer(rendererUrl, logger, {
+    timeoutMs: OFFICE_PDF_CONVERSION_TIMEOUT_MS,
+  });
+
+  const conversionResult = await renderer.convertOfficeToPdf(
+    fileBuffer,
+    fileName
+  );
+  if (conversionResult.isErr()) {
+    return new Err(
+      new OfficePdfError("conversion_failed", conversionResult.error.message)
+    );
+  }
+
+  return new Ok({
+    pdfBuffer: conversionResult.value,
+    pdfFileName: fileName.replace(/\.[^.]+$/, ".pdf"),
+  });
 }
 
 /**

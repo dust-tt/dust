@@ -1,3 +1,4 @@
+/*
 import type { Logger } from "pino";
 import { Op, QueryTypes } from "sequelize";
 
@@ -643,3 +644,4 @@ makeScript(
     );
   }
 );
+*/

@@ -55,8 +55,8 @@ describe("maybeUpsertFileAttachment", () => {
 
   it("stamps conversationId on files without useCaseMetadata and attempts upsert", async () => {
     const file = await FileFactory.create(auth, null, {
-      contentType: "text/plain",
-      fileName: "attachment.txt",
+      contentType: "text/csv",
+      fileName: "attachment.csv",
       fileSize: 100,
       status: "ready",
       useCase: "conversation",

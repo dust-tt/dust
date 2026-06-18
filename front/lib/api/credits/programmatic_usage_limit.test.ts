@@ -1,5 +1,8 @@
 import * as workosAudit from "@app/lib/api/audit/workos_audit";
-import { syncProgrammaticUsageLimit } from "@app/lib/api/credits/programmatic_usage_limit";
+import {
+  getProgrammaticUsageLimit,
+  syncProgrammaticUsageLimit,
+} from "@app/lib/api/credits/programmatic_usage_limit";
 import { Authenticator } from "@app/lib/auth";
 import * as programmaticCap from "@app/lib/metronome/alerts/programmatic_cap";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -12,7 +15,6 @@ vi.mock("@app/lib/metronome/alerts/programmatic_cap", async () => {
   );
   return {
     ...actual,
-    getMetronomeProgrammaticCap: vi.fn(),
     upsertMetronomeProgrammaticCapAlerts: vi.fn(),
     clearMetronomeProgrammaticCapAlerts: vi.fn(),
   };
@@ -32,9 +34,6 @@ const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const AUDIT_CONTEXT = { location: "127.0.0.1" };
 
 beforeEach(() => {
-  vi.mocked(programmaticCap.getMetronomeProgrammaticCap).mockResolvedValue(
-    new Ok(null)
-  );
   vi.mocked(
     programmaticCap.upsertMetronomeProgrammaticCapAlerts
   ).mockResolvedValue(new Ok(undefined));
@@ -44,15 +43,67 @@ beforeEach(() => {
   vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
 });
 
+describe("syncProgrammaticUsageLimit persistence", () => {
+  it("persists the cap to the configuration as the source of truth", async () => {
+    const workspace = await WorkspaceFactory.creditPriced({
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: 500 });
+
+    const read = await getProgrammaticUsageLimit(auth);
+    expect(read.isOk() && read.value).toBe(500);
+    expect(
+      programmaticCap.upsertMetronomeProgrammaticCapAlerts
+    ).toHaveBeenCalled();
+  });
+
+  it("persists 0 as a hard cap rather than clearing it", async () => {
+    const workspace = await WorkspaceFactory.creditPriced({
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: 0 });
+
+    const read = await getProgrammaticUsageLimit(auth);
+    expect(read.isOk() && read.value).toBe(0);
+    expect(
+      programmaticCap.upsertMetronomeProgrammaticCapAlerts
+    ).toHaveBeenCalled();
+    expect(
+      programmaticCap.clearMetronomeProgrammaticCapAlerts
+    ).not.toHaveBeenCalled();
+  });
+
+  it("clears the cap and the alerts when set to null", async () => {
+    const workspace = await WorkspaceFactory.creditPriced({
+      metronomeCustomerId: METRONOME_CUSTOMER_ID,
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: 500 });
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: null });
+
+    const read = await getProgrammaticUsageLimit(auth);
+    expect(read.isOk() && read.value).toBe(null);
+    expect(
+      programmaticCap.clearMetronomeProgrammaticCapAlerts
+    ).toHaveBeenCalled();
+  });
+});
+
 describe("syncProgrammaticUsageLimit audit", () => {
   it("emits an audit event with previous and new cap", async () => {
     const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(programmaticCap.getMetronomeProgrammaticCap).mockResolvedValue(
-      new Ok(200)
-    );
+
+    // Seed a previous cap, then ignore its audit emission.
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: 200 });
+    vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
 
     await syncProgrammaticUsageLimit({
       auth,
@@ -98,9 +149,9 @@ describe("syncProgrammaticUsageLimit audit", () => {
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(programmaticCap.getMetronomeProgrammaticCap).mockResolvedValue(
-      new Ok(500)
-    );
+
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: 500 });
+    vi.mocked(workosAudit.emitAuditLogEvent).mockClear();
 
     await syncProgrammaticUsageLimit({
       auth,

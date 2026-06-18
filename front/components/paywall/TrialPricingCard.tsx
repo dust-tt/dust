@@ -1,16 +1,11 @@
+import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
   usePriceWithCurrency,
 } from "@app/lib/client/subscription";
 import type { BillingPeriod } from "@app/types/plan";
-import {
-  Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
-  Check,
-  Icon,
-} from "@dust-tt/sparkle";
+import { Button, Check, Icon } from "@dust-tt/sparkle";
 
 interface TrialPricingCardProps {
   billingPeriod: BillingPeriod;
@@ -53,14 +48,11 @@ export function TrialPricingCard({
         </div>
 
         {/* Billing toggle */}
-        <ButtonsSwitchList
+        <BillingPeriodSwitch
           defaultValue={billingPeriod}
           size="xs"
-          onValueChange={(v) => onBillingPeriodChange(v as BillingPeriod)}
-        >
-          <ButtonsSwitch value="monthly" label="Monthly" />
-          <ButtonsSwitch value="yearly" label="Yearly" />
-        </ButtonsSwitchList>
+          onValueChange={onBillingPeriodChange}
+        />
       </div>
 
       {/* Features list */}

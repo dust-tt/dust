@@ -120,21 +120,34 @@ const Carousel = React.forwardRef<
       };
     }, [api, onSelect]);
 
+    const contextValue = React.useMemo(
+      () => ({
+        carouselRef,
+        api,
+        opts,
+        orientation:
+          orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
+        scrollPrev,
+        scrollNext,
+        canScrollPrev,
+        canScrollNext,
+        isLooping,
+      }),
+      [
+        carouselRef,
+        api,
+        opts,
+        orientation,
+        scrollPrev,
+        scrollNext,
+        canScrollPrev,
+        canScrollNext,
+        isLooping,
+      ]
+    );
+
     return (
-      <CarouselContext.Provider
-        value={{
-          carouselRef,
-          api: api,
-          opts,
-          orientation:
-            orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
-          scrollPrev,
-          scrollNext,
-          canScrollPrev,
-          canScrollNext,
-          isLooping,
-        }}
-      >
+      <CarouselContext.Provider value={contextValue}>
         <div
           ref={ref}
           onKeyDownCapture={handleKeyDown}

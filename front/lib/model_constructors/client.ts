@@ -1,4 +1,4 @@
-import type { BaseModelConfiguration } from "@app/lib/model_constructors/configuration";
+import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
 import type { ProviderApi } from "@app/lib/model_constructors/types/provider_apis";
@@ -8,7 +8,7 @@ import type { Region } from "@app/lib/model_constructors/types/regions";
 export abstract class Client {
   // Re-type `this.constructor` (typed as `Function` by default) so the concrete
   // subclass's static config is visible at the type level.
-  declare ["constructor"]: BaseModelConfiguration;
+  declare ["constructor"]: BaseEndpointConfiguration;
 
   metadata(): EndpointMetadata {
     return {

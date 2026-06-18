@@ -23,6 +23,7 @@ import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
   FIREWORKS_GLM_5_MODEL_ID,
+  FIREWORKS_GLM_5P2_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   FIREWORKS_KIMI_K2P5_MODEL_ID,
   FIREWORKS_MINIMAX_M2P5_MODEL_ID,
@@ -201,6 +202,10 @@ export const MODELS: Record<
     providerId: "fireworks",
   },
   [FIREWORKS_GLM_5_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
+  [FIREWORKS_GLM_5P2_MODEL_ID]: {
     runTest: false,
     providerId: "fireworks",
   },

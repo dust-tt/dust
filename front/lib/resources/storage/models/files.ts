@@ -309,14 +309,14 @@ export class AuthorizedFileAccessModel extends WorkspaceAwareModel<AuthorizedFil
   declare fileName: string | null;
   declare legacyPath: string | null;
   declare shareScope: FileShareScope;
-  declare computedByUserId: string;
+  declare generatedByUserId: ForeignKey<UserModel["id"]> | null;
   declare frameContentHash: string;
   declare allowedAt: Date;
-  declare revokedAt: Date | null;
 
   declare shareableFileId: ForeignKey<ShareableFileModel["id"]>;
 
   declare shareableFile?: NonAttribute<ShareableFileModel>;
+  declare generatedByUser?: NonAttribute<UserModel | null>;
 }
 
 AuthorizedFileAccessModel.init(
@@ -353,10 +353,6 @@ AuthorizedFileAccessModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    computedByUserId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     frameContentHash: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -365,11 +361,6 @@ AuthorizedFileAccessModel.init(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    revokedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null,
-    },
   },
   {
     modelName: "authorized_file_access",
@@ -377,12 +368,7 @@ AuthorizedFileAccessModel.init(
     indexes: [
       { fields: ["workspaceId"], concurrently: true },
       { fields: ["shareableFileId"], concurrently: true },
-      {
-        fields: ["shareableFileId"],
-        where: { revokedAt: null },
-        name: "authorized_file_accesses_shareable_file_id_non_revoked",
-        concurrently: true,
-      },
+      { fields: ["generatedByUserId"], concurrently: true },
     ],
   }
 );
@@ -393,6 +379,16 @@ ShareableFileModel.hasMany(AuthorizedFileAccessModel, {
 });
 AuthorizedFileAccessModel.belongsTo(ShareableFileModel, {
   foreignKey: { name: "shareableFileId", allowNull: false },
+});
+
+UserModel.hasMany(AuthorizedFileAccessModel, {
+  foreignKey: { name: "generatedByUserId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AuthorizedFileAccessModel.belongsTo(UserModel, {
+  as: "generatedByUser",
+  foreignKey: { name: "generatedByUserId", allowNull: true },
+  onDelete: "SET NULL",
 });
 
 /**

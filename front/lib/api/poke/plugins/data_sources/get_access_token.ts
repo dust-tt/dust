@@ -14,6 +14,7 @@ export const getAccessTokenPlugin = createPlugin({
     readonly: true,
     args: {},
     redactResult: true,
+    requiredRoles: ["engineering"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

@@ -1,5 +1,6 @@
+import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
-import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
+import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
 import { useFileContent } from "@app/hooks/useFileContent";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
@@ -141,6 +142,39 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
   );
 }
 
+interface AudioPreviewProps {
+  fileUrl: string;
+  fileId: string | null;
+}
+
+function AudioPreview({ fileUrl, fileId }: AudioPreviewProps) {
+  const transcriptUrl = fileId ? `${fileUrl}&version=processed` : null;
+  const { fileContent: transcript } = useFileContent({
+    url: transcriptUrl,
+    disabled: !transcriptUrl,
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <audio controls className="w-full" src={fileUrl}>
+        Your browser does not support the audio element.
+      </audio>
+      {transcript ? (
+        <div className="flex flex-col gap-2">
+          <h4 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            Transcript
+          </h4>
+          <Markdown content={transcript} isStreaming={false} />
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No transcript available.
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface FilePreviewDialogContentProps {
   category: ReturnType<typeof getFilePreviewConfig>["category"];
   entry: FileEntry;
@@ -179,33 +213,24 @@ function FilePreviewDialogContent({
         />
       );
 
-    case "pdf":
-      return (
-        <iframe
-          src={`${fileUrl}#navpanes=0`}
-          className="h-[70vh] w-full rounded-lg border-0"
-          title={entry.fileName}
-        />
-      );
+    case "pdf": {
+      const sep = fileUrl.includes("?") ? "&" : "?";
+      const pdfUrl = entry.lastModifiedMs
+        ? `${fileUrl}${sep}v=${entry.lastModifiedMs}`
+        : fileUrl;
+      return <PDFViewer key={fileUrl} url={pdfUrl} />;
+    }
 
-    case "viewer":
-      // TODO(20260504 FILE_SYSTEM): add Office viewer preview support.
-      return (
-        <div className="flex h-48 items-center justify-center">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Cannot preview this file type. You can download it instead.
-          </p>
-        </div>
-      );
+    case "viewer": {
+      const sep = fileUrl.includes("?") ? "&" : "?";
+      const viewerUrl = entry.lastModifiedMs
+        ? `${fileUrl}${sep}preview=pdf&v=${entry.lastModifiedMs}`
+        : `${fileUrl}${sep}preview=pdf`;
+      return <PDFViewer key={fileUrl} url={viewerUrl} />;
+    }
 
     case "audio":
-      return (
-        <div className="flex flex-col gap-4">
-          <audio controls className="w-full" src={fileUrl}>
-            Your browser does not support the audio element.
-          </audio>
-        </div>
-      );
+      return <AudioPreview fileUrl={fileUrl} fileId={entry.fileId} />;
 
     case "delimited":
       if (fileContent) {

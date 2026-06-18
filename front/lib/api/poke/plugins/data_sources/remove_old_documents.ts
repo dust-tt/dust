@@ -30,6 +30,7 @@ export const removeOldDocumentsPlugin = createPlugin({
           "If disabled, will only show what documents would be deleted without actually deleting them",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, dataSource, args) => {
     if (!dataSource) {

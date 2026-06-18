@@ -32,6 +32,7 @@ type SelectFieldProps<T extends FieldValues> = {
   control: Control<T>;
   name: Path<T>;
   title?: string;
+  hideLabel?: boolean;
   mountPortalContainer?: HTMLElement;
 } & (
   | { options: SelectFieldOption[]; groups?: never }
@@ -42,6 +43,7 @@ export function SelectField<T extends FieldValues>({
   control,
   name,
   title,
+  hideLabel,
   options,
   groups,
   mountPortalContainer,
@@ -60,9 +62,11 @@ export function SelectField<T extends FieldValues>({
 
         return (
           <PokeFormItem>
-            <PokeFormLabel className="capitalize">
-              {title ?? name}
-            </PokeFormLabel>
+            {!hideLabel && (
+              <PokeFormLabel className="capitalize">
+                {title ?? name}
+              </PokeFormLabel>
+            )}
             <PokeFormControl>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -110,6 +114,7 @@ interface InputFieldProps<T extends FieldValues> {
   control: Control<T>;
   name: Path<T>;
   title?: string;
+  hideLabel?: boolean;
   type?: "text" | "number" | "datetime-local";
   placeholder?: string;
   /** Native `min` attribute, useful for `number` and `datetime-local`. */
@@ -126,6 +131,7 @@ export function InputField<T extends FieldValues>({
   control,
   name,
   title,
+  hideLabel,
   type,
   placeholder,
   min,
@@ -140,7 +146,11 @@ export function InputField<T extends FieldValues>({
       name={name}
       render={({ field }) => (
         <PokeFormItem>
-          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
+          {!hideLabel && (
+            <PokeFormLabel className="capitalize">
+              {title ?? name}
+            </PokeFormLabel>
+          )}
           <PokeFormControl>
             <Input
               placeholder={placeholder ?? name}

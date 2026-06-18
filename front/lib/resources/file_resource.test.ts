@@ -1150,7 +1150,7 @@ describe("FileResource", () => {
       });
     });
 
-    it("refreshAuthorizedFileAccess revokes prior rows and persists the refreshed allowlist", async () => {
+    it("refreshAuthorizedFileAccess replaces prior rows with the refreshed allowlist", async () => {
       const { authenticator: auth } = await createResourceTest({});
 
       const conversation = await ConversationFactory.create(auth, {
@@ -1181,10 +1181,9 @@ describe("FileResource", () => {
         fileName: null,
         legacyPath: null,
         shareScope: shareableFile!.shareScope,
-        computedByUserId: auth.user()!.sId,
+        generatedByUserId: auth.user()!.id,
         frameContentHash: "old-hash",
         allowedAt: existingAllowedAt,
-        revokedAt: null,
       });
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -1204,15 +1203,11 @@ describe("FileResource", () => {
           shareableFileId: shareableFile!.id,
           workspaceId: frameFile.workspaceId,
         },
-        order: [["allowedAt", "ASC"]],
       });
 
-      expect(rows).toHaveLength(2);
-      expect(rows[0]?.revokedAt).not.toBeNull();
-      expect(rows[0]?.ref).toBe("fil_OLDREF0001");
-      expect(rows[1]?.revokedAt).toBeNull();
-      expect(rows[1]?.kind).toBe("unverifiable");
-      expect(rows[1]?.ref).toBe("fil_ABCDEFGHIJ");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.kind).toBe("unverifiable");
+      expect(rows[0]?.ref).toBe("fil_ABCDEFGHIJ");
     });
 
     it("uploadFrameContent blocks when static refs cannot be verified", async () => {
@@ -1254,7 +1249,6 @@ describe("FileResource", () => {
         where: {
           shareableFileId: shareableFile!.id,
           workspaceId: frameFile.workspaceId,
-          revokedAt: null,
         },
       });
       expect(rows).toHaveLength(0);
@@ -1299,13 +1293,54 @@ describe("FileResource", () => {
         where: {
           shareableFileId: shareableFile!.id,
           workspaceId: frameFile.workspaceId,
-          revokedAt: null,
         },
       });
       expect(rows).toHaveLength(1);
       expect(rows[0]?.kind).toBe("file_id");
       expect(rows[0]?.ref).toBe(dataFile.sId);
       expect(rows[0]?.fileName).toBe("data.txt");
+      expect(rows[0]?.generatedByUserId).toBe(auth.user()!.id);
+    });
+
+    it("getActiveAuthorizedFileAccessAllowlist resolves computedByUserId from generatedByUserId FK", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const shareableFile = await FileResource.shareableFileModel.findOne({
+        where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+      });
+      expect(shareableFile).not.toBeNull();
+
+      await AuthorizedFileAccessModel.create({
+        workspaceId: frameFile.workspaceId,
+        shareableFileId: shareableFile!.id,
+        kind: "file_id",
+        ref: "fil_PLACEHOLDER",
+        fileName: null,
+        legacyPath: null,
+        shareScope: shareableFile!.shareScope,
+        generatedByUserId: auth.user()!.id,
+        frameContentHash: "hash123",
+        allowedAt: new Date(),
+      });
+
+      const allowlist =
+        await frameFile.getActiveAuthorizedFileAccessAllowlist();
+
+      expect(allowlist?.generatedByUserId).toBe(auth.user()!.id);
     });
 
     it("setShareScope updates share scope without recomputing the allowlist", async () => {
@@ -1338,7 +1373,6 @@ describe("FileResource", () => {
         where: {
           shareableFileId: shareableFile!.id,
           workspaceId: frameFile.workspaceId,
-          revokedAt: null,
         },
       });
       expect(rows).toHaveLength(0);

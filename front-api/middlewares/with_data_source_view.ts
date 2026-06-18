@@ -9,6 +9,7 @@ interface WithDataSourceViewOptions {
   requireCanReadOrAdministrate?: boolean;
   requireCanRead?: boolean;
   requireCanWrite?: boolean;
+  includeEditedBy?: boolean;
 }
 
 function hasPermission(
@@ -51,7 +52,9 @@ export function withDataSourceView(options: WithDataSourceViewOptions) {
         },
       });
     }
-    const view = await DataSourceViewResource.fetchById(auth, dsvId);
+    const view = await DataSourceViewResource.fetchById(auth, dsvId, {
+      includeEditedBy: options.includeEditedBy,
+    });
     if (
       !view ||
       view.space.sId !== space.sId ||

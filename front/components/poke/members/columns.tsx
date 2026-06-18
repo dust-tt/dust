@@ -1,6 +1,10 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { MembershipOriginType } from "@app/types/memberships";
+import type {
+  MembershipOriginType,
+  MembershipSeatType,
+} from "@app/types/memberships";
+import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import type { ActiveRoleType, RoleType } from "@app/types/user";
 import { ACTIVE_ROLES } from "@app/types/user";
 import { IconButton, Trash01 } from "@dust-tt/sparkle";
@@ -14,17 +18,23 @@ export type MemberDisplayType = {
   role: RoleType;
   sId: string;
   origin?: MembershipOriginType;
+  seatType?: MembershipSeatType;
 };
 
 export function makeColumnsForMembers({
   onRevokeMember,
   onUpdateMemberRole,
+  onUpdateMemberSeatType,
   readonly,
 }: {
   onRevokeMember: (m: MemberDisplayType) => Promise<void>;
   onUpdateMemberRole: (
     m: MemberDisplayType,
     role: ActiveRoleType
+  ) => Promise<void>;
+  onUpdateMemberSeatType: (
+    m: MemberDisplayType,
+    seatType: MembershipSeatType
   ) => Promise<void>;
   readonly?: boolean;
 }): ColumnDef<MemberDisplayType>[] {
@@ -129,6 +139,45 @@ export function makeColumnsForMembers({
       },
     },
   ];
+
+  baseColumns.push({
+    accessorKey: "seatType",
+    header: ({ column }) => (
+      <PokeColumnSortableHeader column={column} label="Seat type" />
+    ),
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
+    cell: ({ row }) => {
+      const member = row.original;
+
+      if (readonly) {
+        return <span>{member.seatType ?? "-"}</span>;
+      }
+
+      return (
+        <select
+          className="rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
+          value={member.seatType ?? ""}
+          onChange={async (e) => {
+            await onUpdateMemberSeatType(
+              member,
+              e.target.value as MembershipSeatType
+            );
+          }}
+        >
+          <option value="" disabled>
+            -
+          </option>
+          {MEMBERSHIP_SEAT_TYPES.map((st) => (
+            <option key={st} value={st}>
+              {st}
+            </option>
+          ))}
+        </select>
+      );
+    },
+  });
 
   if (!readonly) {
     baseColumns.push({

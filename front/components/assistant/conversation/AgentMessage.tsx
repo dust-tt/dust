@@ -1,4 +1,5 @@
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
@@ -216,6 +217,7 @@ interface AgentMessageProps {
   additionalMarkdownPlugins?: PluggableList;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isProjectArchived?: boolean;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
 
 export function AgentMessage({
@@ -235,6 +237,7 @@ export function AgentMessage({
   additionalMarkdownPlugins,
   isAutoScrollEnabledRef,
   isProjectArchived = false,
+  setLimitReachedCode,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
@@ -779,14 +782,17 @@ export function AgentMessage({
       blockedOnly?: boolean;
     }) => {
       setIsRetryHandlerProcessing(true);
-      await retryMessage({
+      const result = await retryMessage({
         conversationId,
         messageId,
         blockedOnly,
       });
       setIsRetryHandlerProcessing(false);
+      if (result.isErr()) {
+        setLimitReachedCode?.(result.error);
+      }
     },
-    [retryMessage]
+    [retryMessage, setLimitReachedCode]
   );
 
   const reloadMessage = useCallback(

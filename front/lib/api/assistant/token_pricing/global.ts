@@ -333,6 +333,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 0.2,
     cache_read_input_tokens: 0.002,
   },
+  // https://fireworks.ai/models/fireworks/glm-5p2
+  "accounts/fireworks/models/glm-5p2": {
+    input: 1.4,
+    output: 4.4,
+    cache_read_input_tokens: 0.26,
+  },
   "grok-3-latest": {
     input: 2.0,
     output: 10.0,

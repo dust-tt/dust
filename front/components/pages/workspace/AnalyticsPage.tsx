@@ -1,6 +1,7 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
+import { AwuUsageChart } from "@app/components/workspace/AwuUsageChart";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
 import { WorkspaceSkillUsageChart } from "@app/components/workspace/analytics/WorkspaceSkillUsageChart";
@@ -9,8 +10,9 @@ import { WorkspaceToolUsageChart } from "@app/components/workspace/analytics/Wor
 import { WorkspaceTopAgentsTable } from "@app/components/workspace/analytics/WorkspaceTopAgentsTable";
 import { WorkspaceTopUsersTable } from "@app/components/workspace/analytics/WorkspaceTopUsersTable";
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useCreditPurchaseInfo } from "@app/lib/swr/credits";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -21,6 +23,7 @@ import { useState } from "react";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();
+  const { hasFeature } = useFeatureFlags();
   const canSeeAnalytics = hasPermission(owner.role, "workspace:view_analytics");
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [includeInactive, setIncludeInactive] = useState(true);
@@ -31,6 +34,9 @@ export function AnalyticsPage() {
     owner,
     disabled: !canSeeAnalytics,
   });
+
+  const { billingCycleStartDay, isCreditPurchaseInfoLoading } =
+    useCreditPurchaseInfo({ workspaceId: owner.sId });
 
   const handleDownload = async (selectedMonth: string | null) => {
     if (!selectedMonth) {
@@ -173,6 +179,16 @@ export function AnalyticsPage() {
         period={period}
       />
       <div className="flex flex-col pb-8 gap-8">
+        {(billingCycleStartDay !== null ||
+          hasFeature("usage_page_read_only")) &&
+          (isCreditPurchaseInfoLoading ? (
+            <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+          ) : (
+            <AwuUsageChart
+              workspaceId={owner.sId}
+              billingCycleStartDay={billingCycleStartDay ?? 1}
+            />
+          ))}
         <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
         <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
         <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />

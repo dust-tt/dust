@@ -1,3 +1,4 @@
+import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
@@ -19,11 +20,13 @@ import { useState } from "react";
 interface UsageSettingsCardProps {
   workspaceId: string;
   readOnly: boolean;
+  hasPool: boolean;
 }
 
 export function UsageSettingsCard({
   workspaceId,
   readOnly,
+  hasPool,
 }: UsageSettingsCardProps) {
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
@@ -37,6 +40,7 @@ export function UsageSettingsCard({
 
   const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
     useState(false);
+  const [isSavingAutoSeatUpgrade, setIsSavingAutoSeatUpgrade] = useState(false);
 
   const handleToggleAllowUpgradeRequest = async () => {
     setIsSavingAllowUpgradeRequest(true);
@@ -46,6 +50,17 @@ export function UsageSettingsCard({
       });
     } finally {
       setIsSavingAllowUpgradeRequest(false);
+    }
+  };
+
+  const handleToggleAutoSeatUpgrade = async () => {
+    setIsSavingAutoSeatUpgrade(true);
+    try {
+      await doUpdateUsageSettings({
+        autoSeatUpgradeEnabled: !usageSettings.autoSeatUpgradeEnabled,
+      });
+    } finally {
+      setIsSavingAutoSeatUpgrade(false);
     }
   };
 
@@ -67,34 +82,46 @@ export function UsageSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-2xl text-foreground dark:text-foreground-night">
-        Settings
+      <span className="heading-base text-foreground dark:text-foreground-night">
+        Spending policies
       </span>
       <SettingsList>
-        <SettingsList.Row
-          title="Default pool credit limit"
-          description="Define the pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance."
-          action={
-            <div className="w-52">
-              <InputWithSave
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={
-                  currentDefaultLimit !== null
-                    ? String(currentDefaultLimit)
-                    : ""
-                }
-                unit="credits"
-                normalizeValue={(value) => value.replace(/[^\d]/g, "")}
-                onSave={handleSaveDefaultLimit}
-                disabled={readOnly || isDefaultUserSpendLimitLoading}
-              />
-            </div>
-          }
-        />
+        <LockedSection locked={!hasPool}>
+          <SettingsList.Row
+            title="Default workspace credit pool limit"
+            description={
+              <>
+                Define the workspace credit pool credit limit for users in your
+                workspace. This limit is added on top of each seat&apos;s
+                built-in allowance. Can be overridden per user in the members
+                table. <strong>Set to 0 to remove pool access.</strong>
+              </>
+            }
+            action={
+              <div className="w-52">
+                <InputWithSave
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={
+                    currentDefaultLimit !== null
+                      ? currentDefaultLimit.toLocaleString()
+                      : ""
+                  }
+                  unit="credits"
+                  normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                  formatValue={(value) =>
+                    value ? Number(value).toLocaleString() : value
+                  }
+                  onSave={handleSaveDefaultLimit}
+                  disabled={readOnly || isDefaultUserSpendLimitLoading}
+                />
+              </div>
+            }
+          />
+        </LockedSection>
         <SettingsList.Row
           title="Upgrade request"
-          description="Allow members who reach their pool credit limit to request an upgrade. Workspace admins review requests on the Usage page."
+          description="Allow members who reach their limit to request an upgrade. Workspace admins review requests on the this page."
           action={
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}
@@ -104,6 +131,19 @@ export function UsageSettingsCard({
                 isUsageSettingsLoading
               }
               onClick={() => void handleToggleAllowUpgradeRequest()}
+            />
+          }
+        />
+        <SettingsList.Row
+          title="Auto-upgrade seats"
+          description="When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost."
+          action={
+            <SliderToggle
+              selected={usageSettings.autoSeatUpgradeEnabled}
+              disabled={
+                readOnly || isSavingAutoSeatUpgrade || isUsageSettingsLoading
+              }
+              onClick={() => void handleToggleAutoSeatUpgrade()}
             />
           }
         />

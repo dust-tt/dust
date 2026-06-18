@@ -36,10 +36,10 @@ const ShareFrameMetadataSchema: z.ZodType<
     "title" | "workspaceName" | "ogImageUrl" | "description"
   >
 > = z.object({
+  description: z.string().nullable(),
+  ogImageUrl: z.string().nullable(),
   title: z.string(),
   workspaceName: z.string(),
-  ogImageUrl: z.string().nullable(),
-  description: z.string().nullable(),
 });
 
 type ShareFrameMetadata = z.infer<typeof ShareFrameMetadataSchema>;

@@ -5,6 +5,7 @@ import { QUEUE_NAME } from "@app/temporal/metronome_events_queue/config";
 import {
   cleanMetronomeInvoiceWorkflow,
   metronomeEventsWorkflow,
+  reconcileWorkspaceUserCreditStatesWorkflow,
 } from "@app/temporal/metronome_events_queue/workflows";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -13,6 +14,7 @@ import {
   WorkflowExecutionAlreadyStartedError,
   WorkflowIdReusePolicy,
 } from "@temporalio/client";
+import { WorkflowIdConflictPolicy } from "@temporalio/common";
 
 /**
  * Outcome of attempting to enqueue a Metronome webhook event for processing.
@@ -118,5 +120,42 @@ export async function launchCleanMetronomeInvoiceWorkflow({
       return new Ok("already_started");
     }
     return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Launch a deduplicated credit-state reconcile for a workspace. Uses a stable
+ * workspace-scoped workflow ID with `WorkflowIdConflictPolicy.USE_EXISTING` so
+ * that the N concurrent `credit.segment.start` events fired during a seat-type
+ * change collapse to a single workflow execution. After a reconcile completes,
+ * `WorkflowIdReusePolicy.ALLOW_DUPLICATE` allows a fresh run for the next event.
+ * Errors are logged but not propagated — a launch failure must not cause the
+ * parent webhook workflow to retry.
+ */
+export async function launchReconcileWorkspaceUserCreditStatesWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = `metronome-reconcile-${workspaceId}`;
+
+  try {
+    await client.workflow.start(reconcileWorkspaceUserCreditStatesWorkflow, {
+      args: [{ workspaceId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      workflowIdReusePolicy: WorkflowIdReusePolicy.ALLOW_DUPLICATE,
+      workflowIdConflictPolicy: WorkflowIdConflictPolicy.USE_EXISTING,
+    });
+    logger.info(
+      { workflowId, workspaceId },
+      "[Metronome Reconcile] Launched credit state reconcile workflow"
+    );
+  } catch (err) {
+    logger.error(
+      { workflowId, workspaceId, err },
+      "[Metronome Reconcile] Failed to launch credit state reconcile workflow"
+    );
   }
 }

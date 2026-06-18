@@ -1,3 +1,4 @@
+export { default as AdomikLogo } from "./Adomik";
 export { default as Ai21Logo } from "./Ai21";
 export { default as AmplitudeLogo } from "./Amplitude";
 export { default as AnthropicLogo } from "./Anthropic";
@@ -50,6 +51,7 @@ export { default as HuggingFaceLogo } from "./HuggingFace";
 export { default as ImageLogo } from "./Image";
 export { default as IntercomLogo } from "./Intercom";
 export { default as JiraLogo } from "./Jira";
+export { default as LemlistLogo } from "./Lemlist";
 export { default as LinearLogo } from "./Linear";
 export { default as LinearWhiteLogo } from "./LinearWhite";
 export { default as LinkedinLogo } from "./Linkedin";

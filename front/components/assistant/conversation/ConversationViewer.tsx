@@ -1424,6 +1424,7 @@ export const ConversationViewer = ({
       setBranchIdToApprove,
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
+      setLimitReachedCode,
     };
   }, [
     user,
@@ -1442,6 +1443,7 @@ export const ConversationViewer = ({
     spaceInfo?.name,
     branchIdToApprove,
     limitReachedCode,
+    setLimitReachedCode,
   ]);
 
   return (

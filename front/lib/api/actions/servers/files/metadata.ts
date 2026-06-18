@@ -6,6 +6,7 @@ import {
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   INTERACTIVE_CONTENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -15,6 +16,7 @@ export const FILES_LIST_ACTION_NAME = "list" as const;
 export const FILES_CAT_ACTION_NAME = "cat" as const;
 export const FILES_GREP_ACTION_NAME = "grep" as const;
 export const FILES_CREATE_ACTION_NAME = "create" as const;
+export const FILES_UPLOAD_FROM_URL_ACTION_NAME = "upload_from_url" as const;
 export const FILES_DELETE_ACTION_NAME = "delete" as const;
 export const FILES_COPY_ACTION_NAME = "copy" as const;
 export const FILES_MOVE_ACTION_NAME = "move" as const;
@@ -25,6 +27,8 @@ export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
 export const GREP_MATCHES_MAX = 50;
 export const CREATE_CONTENT_MAX_BYTES = 50 * 1024; // 50 KB (~12K tokens).
+
+const FRAME_FILES_UNSUPPORTED = `Does not support Frame files (\`${frameContentType}\`, \`${frameSlideshowContentType}\`)`;
 
 // Shared `list` description that opens with the generic file-system listing capability and is
 // followed by a context-specific suffix injected by the conversation-only or pod-aware
@@ -233,8 +237,7 @@ const FILES_TOOLS_COMMON_METADATA = {
       "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
       `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB. ` +
       "If the file already exists it is silently overwritten (shell \`>\` semantics). " +
-      "Does not support Frame files (`application/vnd.dust.frame`, " +
-      "`application/vnd.dust.frame.slideshow`); use " +
+      `${FRAME_FILES_UNSUPPORTED}; use ` +
       `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to create or ` +
       `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to edit them. ` +
       "Returns whether the file was created or updated, along with its path and size.",
@@ -255,6 +258,40 @@ const FILES_TOOLS_COMMON_METADATA = {
     displayLabels: {
       running: "Writing file",
       done: "Write file",
+    },
+  },
+  [FILES_UPLOAD_FROM_URL_ACTION_NAME]: {
+    description:
+      "Download a file from a public HTTPS URL and store it in a conversation or Pod file system. " +
+      "Use this for binary files (PDF, images, spreadsheets, etc.) that cannot be created with " +
+      `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
+      "If the file already exists it is silently overwritten. " +
+      `${FRAME_FILES_UNSUPPORTED}. ` +
+      "Returns whether the file was created or updated, along with its path and size.",
+    schema: {
+      path: z
+        .string()
+        .describe(
+          "Scoped destination path (e.g. `conversation-<id>/report.pdf`, `pod-<id>/assets/logo.png`)"
+        ),
+      url: z
+        .string()
+        .url()
+        .refine((u) => u.startsWith("https://"), {
+          message: "Only public HTTPS URLs are supported.",
+        })
+        .describe("Public HTTPS URL of the file to download and store"),
+      content_type: z
+        .string()
+        .optional()
+        .describe(
+          "Optional MIME content type override when the remote server does not send a reliable Content-Type header"
+        ),
+    },
+    stake: "never_ask" as const,
+    displayLabels: {
+      running: "Uploading file from URL",
+      done: "Uploaded file from URL",
     },
   },
   [FILES_DELETE_ACTION_NAME]: {
@@ -282,7 +319,8 @@ const EXTRACT_TEXT_TOOL = {
     "and save the result as a plain-text file next to the source. " +
     "Returns the scoped path of the extracted file. " +
     `Use this before \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` or \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_GREP_ACTION_NAME)}\` ` +
-    "on binary documents that cannot be read as text.",
+    "on binary documents that cannot be read as text. " +
+    "Do NOT use on plain-text files (.txt, .md, .csv, etc.), read those directly.",
   schema: {
     path: z
       .string()

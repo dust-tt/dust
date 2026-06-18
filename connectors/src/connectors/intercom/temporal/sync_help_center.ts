@@ -36,6 +36,7 @@ import {
   concurrentExecutor,
   INTERNAL_MIME_TYPES,
   safeSubstring,
+  stripNullBytes,
 } from "@connectors/types";
 
 /**
@@ -367,7 +368,9 @@ export async function upsertArticle({
       : "";
 
   let articleContentInMarkdown =
-    typeof article.body === "string" ? htmlToMarkdown(article.body) : "";
+    typeof article.body === "string"
+      ? htmlToMarkdown(stripNullBytes(article.body))
+      : "";
 
   if (!articleContentInMarkdown) {
     logger.warn(
@@ -390,7 +393,7 @@ export async function upsertArticle({
   );
   const renderedPage = await renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: article.title,
+    title: stripNullBytes(article.title),
     content: renderedMarkdown,
     createdAt: createdAtDate,
     updatedAt: updatedAtDate,
@@ -412,7 +415,7 @@ export async function upsertArticle({
     documentUrl: articleUrl,
     timestampMs: updatedAtDate.getTime(),
     tags: [
-      `title:${article.title}`,
+      `title:${stripNullBytes(article.title)}`,
       `createdAt:${createdAtDate.getTime()}`,
       `updatedAt:${updatedAtDate.getTime()}`,
     ],
@@ -425,7 +428,7 @@ export async function upsertArticle({
     upsertContext: {
       sync_type: "batch",
     },
-    title: article.title,
+    title: stripNullBytes(article.title),
     mimeType: INTERNAL_MIME_TYPES.INTERCOM.ARTICLE,
     async: true,
   });

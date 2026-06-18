@@ -17,6 +17,7 @@ export const agentRetentionPlugin = createPlugin({
         async: true,
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth, resource) => {
     if (!resource) {

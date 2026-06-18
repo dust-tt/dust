@@ -60,9 +60,11 @@ export function isToolSlashCommand(
 }
 
 export function matchesSlashCommandCapabilityQuery({
+  description,
   label,
   query,
 }: {
+  description?: string;
   label: string;
   query: string;
 }) {
@@ -70,20 +72,37 @@ export function matchesSlashCommandCapabilityQuery({
     return true;
   }
 
-  return subFilter(query, label.toLowerCase());
+  return (
+    subFilter(query, label.toLowerCase()) ||
+    (description !== undefined && subFilter(query, description.toLowerCase()))
+  );
 }
 
 export function sortSlashCommandCapabilityMatches<
-  T extends { sortName: string },
+  T extends { description?: string; sortName: string },
 >({ items, normalizedQuery }: { items: T[]; normalizedQuery: string }): T[] {
   return items.toSorted((a, b) => {
-    if (normalizedQuery.length > 0) {
+    if (normalizedQuery.length === 0) {
+      return a.sortName.localeCompare(b.sortName);
+    }
+
+    const aTitleMatch = subFilter(normalizedQuery, a.sortName);
+    const bTitleMatch = subFilter(normalizedQuery, b.sortName);
+
+    // Title matches rank above description-only matches.
+    if (aTitleMatch !== bTitleMatch) {
+      return aTitleMatch ? -1 : 1;
+    }
+
+    // Within title matches, use fuzzy sort on the title.
+    if (aTitleMatch) {
       return (
         compareForFuzzySort(normalizedQuery, a.sortName, b.sortName) ||
         a.sortName.localeCompare(b.sortName)
       );
     }
 
+    // Both are description-only matches: sort alphabetically by title.
     return a.sortName.localeCompare(b.sortName);
   });
 }

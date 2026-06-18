@@ -11,6 +11,7 @@ export const computeStatsPlugin = createPlugin({
     resourceTypes: ["data_sources"],
     readonly: true,
     args: {},
+    requiredRoles: ["support"],
   },
   execute: async (auth, dataSource) => {
     if (!dataSource) {

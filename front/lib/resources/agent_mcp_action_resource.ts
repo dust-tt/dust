@@ -346,7 +346,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
 
     // A blocked action is only actionable while its agent message can still resume: exclude
-    // actions left behind by messages that were interrupted, cancelled or failed before their
+    // actions left behind by messages that reached a non-resumable terminal status before their
     // blocked tools got resolved. Filtered application-side: agent_messages has no index on
     // status, and the rows are already narrowed to the conversation's latest agent messages.
     const blockedActions = blockedActionRows.filter(
@@ -807,10 +807,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Whether the agent message owning this action can still resume, i.e. has not reached a
-   * terminal status (interrupted, cancelled, failed). Resolving a blocked action (approving,
-   * denying, answering, retrying) is only allowed while the message can resume: otherwise it
-   * would relaunch an agent loop that was already terminated.
+   * Whether the agent message owning this action can still resume. Resolving a blocked action
+   * (approving, denying, answering, retrying) is only allowed while the message can resume:
+   * otherwise it would relaunch an agent loop that was already terminated.
    */
   async canAgentMessageResume(auth: Authenticator): Promise<boolean> {
     const agentMessage = await AgentMessageModel.findOne({

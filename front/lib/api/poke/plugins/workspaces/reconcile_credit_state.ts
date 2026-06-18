@@ -55,6 +55,7 @@ export const reconcileCreditStatePlugin = createPlugin({
         dependsOn: { field: "target", value: "user" },
       },
     },
+    requiredRoles: ["billing"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

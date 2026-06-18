@@ -1259,7 +1259,10 @@ describe("validateAction", () => {
       }
     });
 
-    it("rejects resolving an action whose agent message can no longer resume", async () => {
+    it.each([
+      "interrupted",
+      "gracefully_stopped",
+    ] as const)("rejects resolving an action whose agent message is %s", async (status) => {
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
         auth,
         { name: "Test Agent" }
@@ -1289,12 +1292,12 @@ describe("validateAction", () => {
         agentMessageModelId: messageRow.agentMessageId!,
       });
 
-      // Legacy stuck conversation: the message was interrupted while its blocked action was
-      // left pending. A stale approval (e.g. an old email link) must not resume the loop.
+      // Legacy stuck conversation: the message reached a non-resumable terminal status while its
+      // blocked action was left pending. A stale approval must not resume the loop.
       await ConversationFactory.setAgentMessageStatus({
         workspace,
         agentMessageModelId: messageRow.agentMessageId!,
-        status: "interrupted",
+        status,
       });
 
       const conversationResource = await ConversationResource.fetchById(
@@ -1324,10 +1327,12 @@ describe("validateAction", () => {
 
     it("rejects resolving authentication or file authorization whose agent message can no longer resume", async () => {
       async function expectResolveAuthenticationRejected({
+        agentMessageStatus,
         status,
         kind,
         rank,
       }: {
+        agentMessageStatus: "interrupted" | "gracefully_stopped";
         status:
           | "blocked_authentication_required"
           | "blocked_file_authorization_required";
@@ -1361,7 +1366,7 @@ describe("validateAction", () => {
         await ConversationFactory.setAgentMessageStatus({
           workspace,
           agentMessageModelId: agentMessageMessage.agentMessageId!,
-          status: "interrupted",
+          status: agentMessageStatus,
         });
 
         const conversationResource = await ConversationResource.fetchById(
@@ -1390,15 +1395,24 @@ describe("validateAction", () => {
         expect(action.status).toBe(status);
       }
 
-      await expectResolveAuthenticationRejected({
-        status: "blocked_authentication_required",
-        rank: 1,
-      });
-      await expectResolveAuthenticationRejected({
-        status: "blocked_file_authorization_required",
-        kind: "file_authorization",
-        rank: 3,
-      });
+      for (const agentMessageStatus of [
+        "interrupted",
+        "gracefully_stopped",
+      ] as const) {
+        const rankOffset = agentMessageStatus === "interrupted" ? 0 : 10;
+
+        await expectResolveAuthenticationRejected({
+          agentMessageStatus,
+          status: "blocked_authentication_required",
+          rank: 1 + rankOffset,
+        });
+        await expectResolveAuthenticationRejected({
+          agentMessageStatus,
+          status: "blocked_file_authorization_required",
+          kind: "file_authorization",
+          rank: 3 + rankOffset,
+        });
+      }
     });
   });
 

@@ -42,6 +42,7 @@ export const userIdentityMergePlugin = createPlugin({
         default: false,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const primaryUserId = args.primaryUserId.trim();

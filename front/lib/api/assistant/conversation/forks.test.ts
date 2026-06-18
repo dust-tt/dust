@@ -234,14 +234,16 @@ async function createConversationFile(
     conversationId,
     fileName,
     snippet = null,
+    contentType = "text/plain",
   }: {
     conversationId: string;
     fileName: string;
     snippet?: string | null;
+    contentType?: "text/plain" | "text/csv";
   }
 ): Promise<FileResource> {
   return FileFactory.create(auth, auth.getNonNullableUser(), {
-    contentType: "text/plain",
+    contentType,
     fileName,
     fileSize: 16,
     status: "ready",
@@ -907,8 +909,9 @@ describe("createConversationFork", () => {
 
     const sourceFile = await createConversationFile(auth, {
       conversationId: parentConversation.sId,
-      fileName: "notes.txt",
+      fileName: "notes.csv",
       snippet: "fork me",
+      contentType: "text/csv",
     });
 
     let parentConversationWithContent = await fetchConversationOrThrow(
@@ -966,7 +969,7 @@ describe("createConversationFork", () => {
     const childFileAttachments = childAttachments.filter(isFileAttachmentType);
 
     expect(childFileAttachments).toHaveLength(1);
-    expect(childFileAttachments[0]?.title).toBe("notes.txt");
+    expect(childFileAttachments[0]?.title).toBe("notes.csv");
     expect(childFileAttachments[0]?.fileId).not.toBe(sourceFile.sId);
 
     const copiedFiles = await FileResource.fetchByIds(auth, [
@@ -1023,6 +1026,7 @@ describe("createConversationFork", () => {
       conversationId: parentConversation.sId,
       fileName: "data.csv",
       snippet: "data",
+      contentType: "text/csv",
     });
     const frameFile = await FileFactory.create(
       auth,

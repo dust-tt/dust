@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/invitation";
 import { clientFetch } from "@app/lib/egress/client";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { ActiveRoleType, RoleType, WorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import { mutate } from "swr";
@@ -82,18 +83,21 @@ export async function sendInvitations({
   owner,
   emails,
   invitationRole,
+  seatType,
   sendNotification,
   isNewInvitation,
 }: {
   owner: WorkspaceType;
   emails: string[];
   invitationRole: ActiveRoleType;
+  seatType?: MembershipSeatType | null;
   sendNotification: any;
   isNewInvitation: boolean;
 }) {
   const body: PostInvitationRequestBody = emails.map((email) => ({
     email,
     role: invitationRole,
+    seatType: seatType ?? null,
   }));
 
   const res = await clientFetch(`/api/w/${owner.sId}/invitations`, {

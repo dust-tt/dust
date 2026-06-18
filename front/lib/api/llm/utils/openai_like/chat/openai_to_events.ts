@@ -25,6 +25,8 @@ export async function* streamLLMEvents(
     }
   > = new Map();
   let hasYieldedResponseId = false;
+  let hasYieldedTokenUsage = false;
+  let hasFinished = false;
   let hasError = false;
 
   for await (const chunk of chatCompletionStream) {
@@ -38,6 +40,22 @@ export async function* streamLLMEvents(
       };
       yield event;
       hasYieldedResponseId = true;
+    }
+
+    if (chunk.usage && !hasYieldedTokenUsage) {
+      const tokenUsageEvent: LLMEvent = {
+        type: "token_usage",
+        content: {
+          inputTokens: chunk.usage.prompt_tokens,
+          outputTokens: chunk.usage.completion_tokens,
+          totalTokens: chunk.usage.total_tokens,
+          cachedTokens: chunk.usage.prompt_tokens_details?.cached_tokens,
+        },
+        metadata,
+      };
+      aggregate.add(tokenUsageEvent);
+      yield tokenUsageEvent;
+      hasYieldedTokenUsage = true;
     }
 
     const choice = chunk.choices[0];
@@ -129,21 +147,6 @@ export async function* streamLLMEvents(
 
     // Handle finish reason.
     if (choice.finish_reason) {
-      if (chunk.usage) {
-        // Token usage is sent when we receive the finish reason
-        const tokenUsageEvent: LLMEvent = {
-          type: "token_usage",
-          content: {
-            inputTokens: chunk.usage.prompt_tokens,
-            outputTokens: chunk.usage.completion_tokens,
-            totalTokens: chunk.usage.total_tokens,
-            cachedTokens: chunk.usage.prompt_tokens_details?.cached_tokens,
-          },
-          metadata,
-        };
-        aggregate.add(tokenUsageEvent);
-        yield tokenUsageEvent;
-      }
       switch (choice.finish_reason) {
         case "stop": {
           // Only yield reasoning_generated if there's non-whitespace content
@@ -263,18 +266,19 @@ export async function* streamLLMEvents(
           assertNever(choice.finish_reason);
       }
 
-      // Yield success event if no error occurred.
-      if (!hasError) {
-        const successEvent: LLMEvent = {
-          type: "success",
-          aggregated: aggregate.aggregated,
-          textGenerated: aggregate.textGenerated,
-          reasoningGenerated: aggregate.reasoningGenerated,
-          toolCalls: aggregate.toolCalls,
-          metadata,
-        };
-        yield successEvent;
-      }
+      hasFinished = true;
     }
+  }
+
+  if (hasFinished && !hasError) {
+    const successEvent: LLMEvent = {
+      type: "success",
+      aggregated: aggregate.aggregated,
+      textGenerated: aggregate.textGenerated,
+      reasoningGenerated: aggregate.reasoningGenerated,
+      toolCalls: aggregate.toolCalls,
+      metadata,
+    };
+    yield successEvent;
   }
 }

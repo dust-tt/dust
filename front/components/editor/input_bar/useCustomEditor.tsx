@@ -51,6 +51,10 @@ const useEditorService = (editor: Editor | null) => {
       insertText: (text: string) => {
         editor?.chain().focus().insertContent(text).run();
       },
+      // Append text at the end of the document (always at the end, regardless of cursor position).
+      appendText: (text: string) => {
+        editor?.chain().focus("end").insertContent(text).run();
+      },
       // Insert mention helper function.
       insertMention: ({
         type,
@@ -205,6 +209,8 @@ export interface CustomEditorProps {
     ((agentId: string) => void) | undefined
   >;
   slashSuggestion?: {
+    // The conversation may only exist after the editor is initialized, hence the ref.
+    conversationIdRef?: React.RefObject<string | null>;
     enabledRef: React.RefObject<boolean>;
     onSelectRef: React.RefObject<
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
@@ -356,6 +362,7 @@ export const buildEditorExtensions = ({
     extensions.push(
       InputBarSlashSuggestionExtension.configure({
         owner,
+        conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,

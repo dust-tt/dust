@@ -55,6 +55,7 @@ export const connectorOperationsPlugin = createPlugin({
         description: "Reason for performing the operation",
       },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (auth, dataSource, args) => {
     if (!dataSource) {

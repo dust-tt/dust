@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  live_speech_to_text: {
+    description:
+      "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
+    stage: "dust_only",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
@@ -295,10 +300,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
     stage: "dust_only",
   },
-  user_settings_v2: {
-    description: "Enable the new user settings v2 experience",
-    stage: "dust_only",
-  },
   force_us_api_url: {
     description:
       "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
@@ -318,6 +319,15 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   admin_governance: {
     description:
       "Access to admin governance features, including assigning the business_admin role from the UI",
+    stage: "dust_only",
+  },
+  use_new_llm_router: {
+    description: "Use the new LLM router for model selection and routing",
+    stage: "dust_only",
+  },
+  pod_default_agent: {
+    description:
+      "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

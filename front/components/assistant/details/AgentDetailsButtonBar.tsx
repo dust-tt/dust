@@ -67,6 +67,8 @@ export function AgentDetailsButtonBar({
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
 
+  const agentIsFavorite = agentConfiguration.userFavorite || isFavoriteDisabled;
+
   const handleNewConversation = async () => {
     onClose();
     await router.push(
@@ -78,33 +80,13 @@ export function AgentDetailsButtonBar({
     <div className="flex flex-row items-center gap-2 px-1.5">
       <div className="group">
         <Button
-          icon={
-            agentConfiguration.userFavorite || isFavoriteDisabled
-              ? Star01
-              : Star01
-          }
+          icon={Star01}
           tooltip={
-            agentConfiguration.userFavorite || isFavoriteDisabled
-              ? "Remove from favorites"
-              : "Add to favorites"
+            agentIsFavorite ? "Remove from favorites" : "Add to favorites"
           }
           size="sm"
           className="group-hover:hidden"
-          variant="outline"
-          disabled={isFavoriteDisabled}
-          onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
-        />
-
-        <Button
-          icon={Star01}
-          tooltip={
-            agentConfiguration.userFavorite || isFavoriteDisabled
-              ? "Remove from favorites"
-              : "Add to favorites"
-          }
-          size="sm"
-          className="hidden group-hover:block"
-          variant="outline"
+          variant={agentIsFavorite ? "highlight-secondary" : "outline"}
           disabled={isFavoriteDisabled}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />

@@ -1,4 +1,7 @@
-import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
+import {
+  GongAPIError,
+  parseGongAPIErrorBody,
+} from "@connectors/connectors/gong/lib/errors";
 import {
   ExternalOAuthTokenError,
   HTTPError,
@@ -244,6 +247,11 @@ const GongPermissionProfilesResponseCodec = t.intersection([
 const RETRY_AFTER_FLOOR_SECONDS = 10;
 const RETRY_AFTER_CEILING_SECONDS = 3600;
 
+const GONG_INVALID_CREDENTIALS_MESSAGES = [
+  "Validate credentials failed. Please check your credentials and try again.",
+  "Your access token has been revoked. Please generate a new access token.",
+];
+
 export function clampRetryAfterSeconds(
   raw: number | undefined
 ): number | undefined {
@@ -273,19 +281,24 @@ export class GongClient {
     codec: t.Type<T>
   ): Promise<T> {
     if (!response.ok) {
+      // Don't attempt to parse the body in JSON.
+      const body = await response.text();
+
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
       }
-      if (
-        response.status === 401 &&
-        (response.statusText.includes(
-          "Validate credentials failed. Please check your credentials and try again."
-        ) ||
-          response.statusText.includes(
-            "Your access token has been revoked. Please generate a new access token."
-          ))
-      ) {
-        throw new ExternalOAuthTokenError();
+
+      if (response.status === 401) {
+        const { errors } = parseGongAPIErrorBody(body);
+        const candidates = [...errors, response.statusText];
+        const isInvalidCredentials = candidates.some((candidate) =>
+          GONG_INVALID_CREDENTIALS_MESSAGES.some((message) =>
+            candidate.includes(message)
+          )
+        );
+        if (isInvalidCredentials) {
+          throw new ExternalOAuthTokenError();
+        }
       }
 
       // Handle rate limiting
@@ -321,9 +334,6 @@ export class GongClient {
           `provider:gong`,
         ]);
 
-        // Don't attempt to parse the body in JSON.
-        const body = await response.text();
-
         throw GongAPIError.fromAPIError(response, {
           body,
           connectorId: this.connectorId,
@@ -335,9 +345,6 @@ export class GongClient {
       if (response.status === 404) {
         throw new HTTPError(response.statusText, response.status);
       }
-
-      // Don't attempt to parse the body in JSON.
-      const body = await response.text();
 
       throw GongAPIError.fromAPIError(response, {
         endpoint,

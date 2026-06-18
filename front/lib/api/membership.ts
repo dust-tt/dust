@@ -15,11 +15,13 @@ import {
   getDefaultSeatTypeForContract,
   getProductSeatTypes,
   getSeatAllowancesByNormalizedSeatType,
+  resolveRequestedSeatTypeForContract,
 } from "@app/lib/metronome/seat_types";
 import {
   classifySeatChange,
   hasContractSeatSubscription,
 } from "@app/lib/metronome/seats";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -74,7 +76,8 @@ import type { Transaction } from "sequelize";
  */
 async function resolveSeatTypeForNewMembership(
   user: UserResource,
-  workspace: LightWorkspaceType
+  workspace: LightWorkspaceType,
+  requestedSeatType?: MembershipSeatType | null
 ): Promise<MembershipSeatType> {
   if (!workspace.metronomeCustomerId) {
     return "none";
@@ -107,17 +110,23 @@ async function resolveSeatTypeForNewMembership(
     ]);
 
   // Seat counts are needed to check whether committed slots (minSeats) are
-  // still available.
+  // still available, and to enforce the `maxSeats` cap when honoring an explicit
+  // paid-seat request.
+  const requestsPaidSeat =
+    requestedSeatType != null &&
+    requestedSeatType !== "free" &&
+    requestedSeatType !== "none";
   const hasCommittedSeats = [...seatLimits.values()].some(
     (l) => l.minSeats > 0
   );
-  const seatCounts = hasCommittedSeats
-    ? await MembershipResource.getActiveSeatTypeCountsForWorkspace({
-        workspace,
-      })
-    : undefined;
+  const seatCounts =
+    hasCommittedSeats || requestsPaidSeat
+      ? await MembershipResource.getActiveSeatTypeCountsForWorkspace({
+          workspace,
+        })
+      : undefined;
 
-  return getDefaultSeatTypeForContract(contract, productSeatTypes, {
+  const commonSeatResolutionOptions = {
     isReturningMember,
     freeSeatCounts,
     freeSeatLimits: {
@@ -126,7 +135,20 @@ async function resolveSeatTypeForNewMembership(
     },
     seatLimits,
     seatCounts,
-  });
+  };
+
+  if (requestedSeatType != null) {
+    return resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+      requestedSeatType,
+      ...commonSeatResolutionOptions,
+    });
+  }
+
+  return getDefaultSeatTypeForContract(
+    contract,
+    productSeatTypes,
+    commonSeatResolutionOptions
+  );
 }
 
 /**
@@ -141,12 +163,14 @@ export async function createAndTrackMembership({
   workspace,
   role,
   origin,
+  requestedSeatType,
   auditActor,
 }: {
   user: UserResource;
   workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
+  requestedSeatType?: MembershipSeatType | null;
   // Override for the audit-log actor. Defaults to the user themselves, which
   // is correct for self-signup. SCIM/system-driven provisioning should pass
   // `{ type: "system", id: directoryId, name: "Directory Sync" }` so the
@@ -159,7 +183,23 @@ export async function createAndTrackMembership({
       ? renderLightWorkspaceType({ workspace })
       : workspace;
 
-  const seatType = await resolveSeatTypeForNewMembership(user, w);
+  // Capture the previous (potentially revoked) membership before creating
+  // the new one, so we can restore group memberships that were ended at the
+  // same time as the workspace revocation.
+  const previousMembership =
+    await MembershipResource.getLatestMembershipOfUserInWorkspace({
+      user,
+      workspace: w,
+    });
+  const prevRevokedAt = previousMembership?.isRevoked()
+    ? previousMembership.endAt
+    : null;
+
+  const seatType = await resolveSeatTypeForNewMembership(
+    user,
+    w,
+    requestedSeatType
+  );
 
   const m = await MembershipResource.createMembership({
     role,
@@ -168,6 +208,21 @@ export async function createAndTrackMembership({
     origin,
     seatType,
   });
+
+  if (prevRevokedAt) {
+    const restoredCount =
+      await GroupResource.restoreGroupMembershipsRevokedWith({
+        user,
+        workspace: w,
+        revokedAt: prevRevokedAt,
+      });
+    if (restoredCount > 0) {
+      logger.info(
+        { userId: user.sId, workspaceId: w.sId, restoredCount },
+        "[Membership] Restored group memberships for rejoining user"
+      );
+    }
+  }
 
   void ServerSideTracking.trackCreateMembership({
     user: user.toJSON(),
@@ -536,11 +591,14 @@ export async function updateMembershipSeatAndTrack({
   workspace,
   newSeatType,
   author,
+  immediate = false,
 }: {
   user: UserResource;
   workspace: LightWorkspaceType;
   newSeatType: MembershipSeatType;
   author: UserType | "no-author";
+  // When true, skip billing-period scheduling and apply the change right now.
+  immediate?: boolean;
 }): Promise<
   Result<
     {
@@ -568,11 +626,20 @@ export async function updateMembershipSeatAndTrack({
 
   const previousSeatType = membership.seatType;
 
-  // `free` is a one-shot starter tier — only assignable when creating a
-  // user's first membership in the workspace. Any subsequent change to
-  // free is rejected, even for users who previously held a free seat
-  // (no twice-free). A free→free noop is unaffected: nothing is written.
-  if (newSeatType === "free" && previousSeatType !== "free") {
+  // `free` is a one-shot starter tier — only assignable when the user has
+  // never held a real seat in this workspace. `none` is not a real seat:
+  // a user whose active seat is `none` and who has no prior real-seat history
+  // is still eligible for `free`. A free→free noop is unaffected.
+  if (newSeatType === "free" && previousSeatType === "none") {
+    const hasPreviousMembership =
+      await MembershipResource.hasAnyMembershipOfUserInWorkspace({
+        user,
+        workspace,
+      });
+    if (hasPreviousMembership) {
+      return new Err({ type: "free_seat_not_allowed" });
+    }
+  } else if (newSeatType === "free" && previousSeatType !== "free") {
     return new Err({ type: "free_seat_not_allowed" });
   }
 
@@ -642,19 +709,23 @@ export async function updateMembershipSeatAndTrack({
   }
 
   const productSeatTypes = await getProductSeatTypes();
-  const outcome = classifySeatChange({
-    contract,
-    productSeatTypes,
-    now: new Date(),
-    change: {
-      userId: user.sId,
-      previousSeatType,
-      newSeatType,
-      pendingScheduledChange: scheduledRow
-        ? { seatType: scheduledRow.seatType, at: scheduledRow.startAt }
-        : undefined,
-    },
-  });
+  const outcome = immediate
+    ? previousSeatType === newSeatType
+      ? { kind: "noop" as const }
+      : { kind: "immediate" as const }
+    : classifySeatChange({
+        contract,
+        productSeatTypes,
+        now: new Date(),
+        change: {
+          userId: user.sId,
+          previousSeatType,
+          newSeatType,
+          pendingScheduledChange: scheduledRow
+            ? { seatType: scheduledRow.seatType, at: scheduledRow.startAt }
+            : undefined,
+        },
+      });
   if (!outcome) {
     logger.error(
       {

@@ -12,8 +12,10 @@ import type { PodConversationListFilter } from "@app/hooks/conversations/usePodC
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations";
 import type { GetSpaceResponseBody } from "@app/lib/api/spaces";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
+import { usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ConversationWithoutContentType,
@@ -86,6 +88,7 @@ export function PodConversationsTab({
   onNavigateToTasks,
 }: PodConversationsTabProps) {
   const { isEditor } = podInfo;
+  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -94,6 +97,12 @@ export function PodConversationsTab({
     podId: podInfo.sId,
   });
   const { unreadConversationIds } = usePodUnreadConversationIds({
+    workspaceId: owner.sId,
+    podId: podInfo.sId,
+  });
+  // This pod's default agent, applied to new conversations started here. Resolved
+  // downstream in `useHandleMentions`, falling back to @dust.
+  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
     podId: podInfo.sId,
   });
@@ -198,6 +207,12 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 placeholder={`Get work done in ${podInfo.name}`}
+                defaultAgentId={
+                  hasFeature("pod_default_agent")
+                    ? (podMetadata?.defaultAgentId ?? null)
+                    : null
+                }
+                isDefaultAgentLoading={isPodMetadataLoading}
               />
             ) : (
               <PodJoinCTA

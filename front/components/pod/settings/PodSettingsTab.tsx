@@ -1,3 +1,4 @@
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
@@ -6,6 +7,8 @@ import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/Sugge
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
 import type { RichSpaceType } from "@app/lib/api/spaces";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
   usePodMetadata,
@@ -16,12 +19,18 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Archive,
+  Avatar,
   Button,
+  ChevronDown,
   ContentMessage,
+  cn,
   Globe01,
+  Icon,
+  InfoCircle,
   Input,
   ScrollArea,
   SearchInput,
@@ -59,6 +68,8 @@ export function PodSettingsTab({
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
 
   const confirm = useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags();
+  const isDefaultAgentEnabled = hasFeature("pod_default_agent");
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -68,6 +79,103 @@ export function PodSettingsTab({
     owner,
     podId: pod.sId,
   });
+
+  // Default agent for new conversations started in this pod. Stored on pod metadata
+  // (shared across pod members). Resolved downstream in `useHandleMentions`, falling
+  // back to @dust.
+  const { agentConfigurations, isLoading: isAgentConfigurationsLoading } =
+    useUnifiedAgentConfigurations({
+      workspaceId: owner.sId,
+    });
+  const dustAgent =
+    agentConfigurations.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ?? null;
+  // Fall back to @dust when the pod's configured default agent isn't available
+  // to the current user (e.g. unpublished/deleted). This is the agent shown in
+  // the input bar and pod settings.
+  const displayedDefaultAgent =
+    (podMetadata?.defaultAgentId &&
+      agentConfigurations.find((a) => a.sId === podMetadata.defaultAgentId)) ||
+    dustAgent;
+  // The configured default may be an agent the current user can't access (e.g.
+  // an unpublished agent). `agentConfigurations` only contains viewable agents,
+  // so when the stored default is missing it falls back to @dust for this user.
+  // Surface the same notice as the conversations input bar.
+  const isDefaultAgentUnavailable =
+    !isAgentConfigurationsLoading &&
+    !isPodMetadataLoading &&
+    !!podMetadata?.defaultAgentId &&
+    podMetadata.defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
+    !agentConfigurations.some((a) => a.sId === podMetadata.defaultAgentId);
+  const saveDefaultAgent = useCallback(
+    async (agentId: string | null) => {
+      // Warn about the implications of using another default agentbefore switching.
+      // Resetting back to @dust needs no confirmation.
+      if (agentId && agentId !== GLOBAL_AGENTS_SID.DUST) {
+        const confirmed = await confirm({
+          title: "Warning",
+          message:
+            "@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?",
+          validateVariant: "warning",
+          validateLabel: "Yes",
+          cancelLabel: "No",
+        });
+        if (!confirmed) {
+          return;
+        }
+      }
+      await doUpdateMetadata({ defaultAgentId: agentId });
+    },
+    [confirm, doUpdateMetadata]
+  );
+
+  // Trigger pill for the default agent, mirroring the conversations input bar:
+  const renderDefaultAgentPill = (interactive: boolean) => (
+    <div
+      role="button"
+      tabIndex={interactive ? 0 : -1}
+      aria-label={`Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`}
+      aria-disabled={!interactive}
+      className={cn(
+        "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200",
+        interactive
+          ? "cursor-pointer hover:bg-primary-100 hover:border-primary-150 dark:hover:bg-primary-900 dark:hover:border-border-night"
+          : "opacity-50 pointer-events-none"
+      )}
+    >
+      <Avatar size="xs" visual={displayedDefaultAgent?.pictureUrl} />
+      <span className="grow truncate notranslate">
+        {displayedDefaultAgent?.name ?? "Dust"}
+      </span>
+      {isDefaultAgentUnavailable && (
+        <Tooltip
+          tooltipTriggerAsChild
+          trigger={
+            <span
+              className="flex items-center text-warning dark:text-warning-night"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <Icon visual={InfoCircle} size="xs" />
+            </span>
+          }
+          label="This Pod's default agent isn't available to you, so @dust is used instead. Contact the editor of the pod for more information."
+        />
+      )}
+      {interactive && (
+        <Icon
+          visual={ChevronDown}
+          size="xs"
+          className="-mr-1 text-faint dark:text-faint-night"
+        />
+      )}
+    </div>
+  );
 
   const [podName, setPodName] = useState(pod.name);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -290,6 +398,29 @@ export function PodSettingsTab({
             )}
           </div>
         </div>
+
+        {isDefaultAgentEnabled && (
+          <div className="flex w-full flex-col gap-2">
+            <div className="heading-lg">Default agent</div>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              The agent pre-selected when anyone starts a new conversation in
+              this Pod. Defaults to @dust.
+            </p>
+            <div className="flex items-center gap-2">
+              {isPodEditor ? (
+                <AgentPicker
+                  owner={owner}
+                  agents={agentConfigurations}
+                  showFooterButtons={false}
+                  onItemClick={(agent) => saveDefaultAgent(agent.sId)}
+                  pickerButton={renderDefaultAgentPill(true)}
+                />
+              ) : (
+                renderDefaultAgentPill(false)
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex w-full flex-col gap-2">
           <div className="flex flex-col border-y border-border">

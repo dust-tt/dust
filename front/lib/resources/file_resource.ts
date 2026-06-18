@@ -28,15 +28,14 @@ import {
   getDefaultFrameShareScope,
   sendFrameSharedEmail,
 } from "@app/lib/api/share/frame_sharing";
-import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
+import {
+  computeFrameContentHash,
+  isVerifiableAuthorizedFileIdRefUseCase,
+} from "@app/lib/api/viz/authorized_file_access_policy";
 import {
   extractFileRefs,
   type FileRef,
 } from "@app/lib/api/viz/extract_file_refs";
-import {
-  canAccessFileInConversation,
-  canAccessFileInProject,
-} from "@app/lib/api/viz/file_access";
 import type { ShareFrameViewerFile } from "@app/lib/api/viz/share_frame_viewer_files";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -659,7 +658,9 @@ export class FileResource extends BaseResource<FileModel> {
       return "original";
     }
 
-    return hasProcessedVersion(this.contentType) ? "processed" : "original";
+    return hasProcessedVersion(this.contentType, this.useCase)
+      ? "processed"
+      : "original";
   }
 
   /**
@@ -1322,7 +1323,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     if (
       this.useCaseMetadata?.skipFileProcessing === true ||
-      !hasProcessedVersion(this.contentType)
+      !hasProcessedVersion(this.contentType, this.useCase)
     ) {
       return;
     }
@@ -1330,7 +1331,10 @@ export class FileResource extends BaseResource<FileModel> {
     // Only delete processed mount file if this file type has real processing.
     const processedMountPath = makeProcessedMountFileName({
       mountFilePath: gcsMountFilePath,
-      processedContentType: getProcessedContentType(this.contentType),
+      processedContentType: getProcessedContentType(
+        this.contentType,
+        this.useCase
+      ),
     });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
 
@@ -1553,10 +1557,8 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     {
       fileId,
-      frameContext,
     }: {
       fileId: string;
-      frameContext: FrameScopedPathContext;
     }
   ): Promise<{ verified: true; file: FileResource } | { verified: false }> {
     const file = await FileResource.fetchById(auth, fileId);
@@ -1564,27 +1566,38 @@ export class FileResource extends BaseResource<FileModel> {
       return { verified: false };
     }
 
-    const owner = renderLightWorkspaceType({
-      workspace: auth.getNonNullableWorkspace(),
-    });
-
-    let hasAccess: Result<true, Error>;
-    if (frameContext.conversationId) {
-      hasAccess = await canAccessFileInConversation(owner, {
-        file,
-        requestedConversationId: frameContext.conversationId,
-      });
-    } else if (frameContext.spaceId) {
-      hasAccess = await canAccessFileInProject(owner, {
-        file,
-        requestedProjectId: frameContext.spaceId,
-      });
-    } else {
+    if (!isVerifiableAuthorizedFileIdRefUseCase(file.useCase)) {
       return { verified: false };
     }
 
-    if (hasAccess.isErr()) {
+    // We cannot verify the file access if we don't have a conversation or space id associated with the file.
+    if (
+      !file.useCaseMetadata?.conversationId &&
+      !file.useCaseMetadata?.spaceId
+    ) {
       return { verified: false };
+    }
+
+    // Check if the file has a conversation and if the conversation is accessible to the auth user.
+    if (file.useCaseMetadata?.conversationId) {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        file.useCaseMetadata.conversationId
+      );
+      if (!conversation) {
+        return { verified: false };
+      }
+    }
+
+    // Check if the file has a space and if the space is accessible to the auth user.
+    if (file.useCaseMetadata?.spaceId) {
+      const space = await SpaceResource.fetchById(
+        auth,
+        file.useCaseMetadata.spaceId
+      );
+      if (!space || !space.canRead(auth)) {
+        return { verified: false };
+      }
     }
 
     return { verified: true, file };
@@ -1612,7 +1625,6 @@ export class FileResource extends BaseResource<FileModel> {
       case "fileId": {
         const verifyResult = await this.verifyAuthorizedFileIdRef(auth, {
           fileId: fileRef.fileId,
-          frameContext,
         });
         if (!verifyResult.verified) {
           return { verified: false };
@@ -1780,22 +1792,35 @@ export class FileResource extends BaseResource<FileModel> {
         visited: new Set(),
       });
 
-    let computedByUserId = auth.user()?.sId;
-    if (!computedByUserId) {
-      // Temporary: API keys carry a userId FK to their owner, fall back to it
-      // until authorized file access is reworked to not require a user identity.
-      const keyUserModelId = auth.key()?.userModelId;
-      if (keyUserModelId) {
-        const keyUser = await UserResource.fetchByModelId(keyUserModelId);
-        computedByUserId = keyUser?.sId;
-      }
+    const generatedByUserId =
+      auth.user()?.id ?? auth.key()?.userModelId ?? null;
+    if (!generatedByUserId) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          hasApiKey: auth.key() != null,
+        },
+        "Cannot compute authorized file access without a userId"
+      );
+
+      throw new Error("Cannot compute authorized file access without a userId");
     }
-    if (!computedByUserId) {
+
+    const generatedByUser =
+      auth.user() ?? (await UserResource.fetchByModelId(generatedByUserId));
+    if (!generatedByUser) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          hasApiKey: auth.key() != null,
+        },
+        "Cannot compute authorized file access without a user"
+      );
       throw new Error("Cannot compute authorized file access without a user");
     }
 
     return {
-      computedByUserId,
+      generatedByUserId,
       frameContentHash: computeFrameContentHash(frameContent),
       refs,
       ...(unverifiableRefs.length > 0 ? { unverifiableRefs } : {}),
@@ -1826,9 +1851,9 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  private static allowlistFromActiveRows(
+  private static async allowlistFromActiveRows(
     rows: AuthorizedFileAccessModel[]
-  ): AuthorizedFileAccessAllowlist | null {
+  ): Promise<AuthorizedFileAccessAllowlist | null> {
     if (rows.length === 0) {
       return null;
     }
@@ -1838,9 +1863,15 @@ export class FileResource extends BaseResource<FileModel> {
       return ref ? [ref] : [];
     });
 
+    const firstRow = rows[0]!;
+    const generatedByUserId = firstRow.generatedByUserId;
+    if (!generatedByUserId) {
+      return null;
+    }
+
     return {
-      computedByUserId: rows[0]!.computedByUserId,
-      frameContentHash: rows[0]!.frameContentHash,
+      generatedByUserId: firstRow.generatedByUserId,
+      frameContentHash: firstRow.frameContentHash,
       refs,
     };
   }
@@ -1869,11 +1900,10 @@ export class FileResource extends BaseResource<FileModel> {
       where: {
         shareableFileId: shareableFile.id,
         workspaceId: this.workspaceId,
-        revokedAt: null,
       },
     });
 
-    return FileResource.allowlistFromActiveRows(rows);
+    return await FileResource.allowlistFromActiveRows(rows);
   }
 
   async getActiveAuthorizedFileAccessShareScope(): Promise<FileShareScope | null> {
@@ -1882,7 +1912,6 @@ export class FileResource extends BaseResource<FileModel> {
       where: {
         shareableFileId: shareableFile.id,
         workspaceId: this.workspaceId,
-        revokedAt: null,
       },
       attributes: ["shareScope"],
     });
@@ -1901,28 +1930,16 @@ export class FileResource extends BaseResource<FileModel> {
   ): Promise<void> {
     const shareableFile = await this.getShareableFile();
 
-    await FileResource.authorizedFileAccessModel.update(
-      { revokedAt: allowedAt },
-      {
-        where: {
-          shareableFileId: shareableFile.id,
-          workspaceId: this.workspaceId,
-          revokedAt: null,
-        },
-      }
-    );
-
     const baseRow = {
       workspaceId: this.workspaceId,
       shareableFileId: shareableFile.id,
       shareScope: shareableFile.shareScope,
-      computedByUserId: computed.computedByUserId,
+      generatedByUserId: computed.generatedByUserId,
       frameContentHash: computed.frameContentHash,
       allowedAt,
-      revokedAt: null,
     };
 
-    await FileResource.authorizedFileAccessModel.bulkCreate([
+    const rows = [
       ...computed.refs.map((ref) => ({
         ...baseRow,
         kind: ref.kind,
@@ -1938,7 +1955,18 @@ export class FileResource extends BaseResource<FileModel> {
         fileName: null,
         legacyPath: null,
       })),
-    ]);
+    ];
+
+    await FileResource.authorizedFileAccessModel.destroy({
+      where: {
+        shareableFileId: shareableFile.id,
+        workspaceId: this.workspaceId,
+      },
+    });
+
+    if (rows.length > 0) {
+      await FileResource.authorizedFileAccessModel.bulkCreate(rows);
+    }
   }
 
   private async readOriginalContent(

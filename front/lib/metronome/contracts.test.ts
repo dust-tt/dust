@@ -714,6 +714,7 @@ describe("provisionMetronomeContract", () => {
       metronomeCustomerId: "m-customer",
       contractId: "m-contract",
       workspace: WORKSPACE,
+      planCode: "PRO_PLAN_SEAT_29",
       startingAt: START_DATE,
       contract: CONTRACT,
     });

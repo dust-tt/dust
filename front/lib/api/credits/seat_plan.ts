@@ -37,6 +37,9 @@ export interface SeatTypeInfo {
   // `priceCents` is the amount billed per `billingFrequency` (per month for
   // monthly, per year for annual).
   billingFrequency: SeatBillingFrequency;
+  // Billing floor: the count billed to Metronome even when actual headcount
+  // is lower. Seats within this floor are "free" to assign (already paid).
+  minSeats: number;
   // Hard cap on assignments; null means no cap.
   maxSeats: number | null;
   // Number of workspace members currently assigned to this seat type.
@@ -209,6 +212,7 @@ export async function getSeatPlan(
       priceCents,
       currency,
       billingFrequency: billingFrequencyBySeatType.get(seatType) ?? "monthly",
+      minSeats: limit?.minSeats ?? 0,
       maxSeats: limit?.maxSeats ?? null,
       assignedCount: seatCounts[seatType] ?? 0,
     };

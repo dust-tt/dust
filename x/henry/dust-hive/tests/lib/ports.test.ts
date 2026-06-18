@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { BASE_PORT, PORT_INCREMENT, PORT_OFFSETS, calculatePorts } from "../../src/lib/ports";
+import { BASE_PORT, calculatePorts, PORT_INCREMENT, PORT_OFFSETS } from "../../src/lib/ports";
 
 describe("ports", () => {
   describe("calculatePorts", () => {

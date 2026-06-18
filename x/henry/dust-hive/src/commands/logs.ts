@@ -5,7 +5,7 @@ import { withEnvironment } from "../lib/commands";
 import { getLogPath } from "../lib/paths";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { ensureServiceLogsTui } from "../lib/scripts";
-import { ALL_SERVICES, type ServiceName, isServiceName } from "../lib/services";
+import { ALL_SERVICES, isServiceName, type ServiceName } from "../lib/services";
 
 interface LogsOptions {
   follow?: boolean;
