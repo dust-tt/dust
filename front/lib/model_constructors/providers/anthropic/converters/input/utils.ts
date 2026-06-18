@@ -285,6 +285,8 @@ function effortToAnthropicEffort(
       return "medium";
     case "high":
       return "high";
+    case "xhigh":
+      return "xhigh";
     case "maximal":
       return "max";
     default:

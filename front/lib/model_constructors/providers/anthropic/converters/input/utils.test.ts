@@ -668,10 +668,10 @@ describe("reasoningToThinkingConfig", () => {
     });
   });
 
-  it("disables thinking for an unsupported effort (e.g. 'xhigh')", () => {
-    const reasoning = { effort: "xhigh" } as Reasoning;
-    expect(reasoningToThinkingConfig(reasoning)).toEqual({
-      thinking: { type: "disabled" },
+  it("enables adaptive thinking for 'xhigh'", () => {
+    expect(reasoningToThinkingConfig({ effort: "xhigh" })).toEqual({
+      output_config: { effort: "xhigh" },
+      thinking: { type: "adaptive" },
     });
   });
 
