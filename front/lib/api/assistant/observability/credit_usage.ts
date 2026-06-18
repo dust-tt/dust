@@ -7,13 +7,7 @@ import {
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  awuFromMicroUsd,
-  FREE_ORIGINS,
-  getToolCategory,
-  isFreeToolServer,
-  TOOL_CATEGORY_AWU_WEIGHTS,
-} from "@app/lib/metronome/events";
+import { FREE_ORIGINS } from "@app/lib/metronome/events";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -25,14 +19,10 @@ export type CreditGroupBy = "agent" | "user" | "none";
 export type CreditUsageRow = {
   groupKey: string;
   name: string;
-  llmCredits: number;
-  toolCredits: number;
   totalCredits: number;
 };
 
 export type CreditUsageResult = {
-  llmCredits: number;
-  toolCredits: number;
   totalCredits: number;
   rows: CreditUsageRow[];
 };
@@ -40,23 +30,11 @@ export type CreditUsageResult = {
 export type CreditTimeseriesPoint = {
   timestamp: number;
   date: string;
-  llmCredits: number;
-  toolCredits: number;
   totalCredits: number;
 };
 
-type ServerBucket = { key: string; doc_count: number };
-
-type ToolsNestedAgg = {
-  by_server?: estypes.AggregationsMultiBucketAggregateBase<ServerBucket>;
-};
-
-// The LLM-cost + tool-usage aggregations from which one slice's credits are
-// computed. Shared by the workspace totals, the per-group buckets, and the
-// per-date histogram buckets so all of them convert credits identically.
 type CreditSlice = {
-  llm_cost?: estypes.AggregationsSumAggregate;
-  tools?: ToolsNestedAgg;
+  total_cost?: estypes.AggregationsSumAggregate;
 };
 
 type GroupBucket = CreditSlice & { key: string };
@@ -95,48 +73,12 @@ export type CreditTimeseriesBreakdown = {
   points: CreditTimeseriesBreakdownPoint[];
 };
 
-// Total credits (LLM + tool) cannot be ordered on inside a single ES terms
-// aggregation, so we overfetch the most active groups, compute credits for each,
-// then rank in JS. This caps how many groups we pull before ranking; workspaces
-// with more distinct agents/users than this fall back to an approximate top-N.
-const CREDIT_RANKING_FETCH = 500;
-
-const toolsNestedAgg: estypes.AggregationsAggregationContainer = {
-  nested: { path: "tools_used" },
-  aggs: {
-    by_server: {
-      terms: { field: "tools_used.server_name", size: 100 },
-    },
-  },
-};
-
-function toolCreditsFromServerBuckets(buckets: ServerBucket[]): number {
-  return buckets.reduce((total, bucket) => {
-    if (isFreeToolServer(bucket.key)) {
-      return total;
-    }
-    return (
-      total +
-      TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(bucket.key)] * bucket.doc_count
-    );
-  }, 0);
-}
-
 const creditSubAggs = {
-  llm_cost: { sum: { field: "tokens.cost_micro_usd" } },
-  tools: toolsNestedAgg,
+  total_cost: { sum: { field: "cost.full_awu" } },
 } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
-function creditsFromSlice(slice: CreditSlice): {
-  llmCredits: number;
-  toolCredits: number;
-  totalCredits: number;
-} {
-  const llmCredits = awuFromMicroUsd(slice.llm_cost?.value ?? 0);
-  const toolCredits = toolCreditsFromServerBuckets(
-    bucketsToArray<ServerBucket>(slice.tools?.by_server?.buckets)
-  );
-  return { llmCredits, toolCredits, totalCredits: llmCredits + toolCredits };
+function totalCreditsFromSlice(slice: CreditSlice): number {
+  return Math.round(slice.total_cost?.value ?? 0);
 }
 
 // Workspace query scoped to the window/filters, with free origins excluded to
@@ -216,12 +158,10 @@ async function resolveGroupNames(
   }
 }
 
-// Estimates AWU credit consumption from the analytics index, reusing the same
-// conversion as the Metronome billing pipeline: LLM credits from
-// tokens.cost_micro_usd (markup baked in) and tool credits from per-category
-// weights over executed tools. This is an ESTIMATE — costs are aggregated and
-// rounded, and per-group rows are rounded independently so they may not sum
-// exactly to the workspace total. The billed figure lives on the usage page.
+// Sums the per-message AWU credits (cost.full_awu) precomputed at index time
+// with the billing pipeline's conversion. Still an estimate vs the billed
+// figure on the usage page (indexing lag, docs indexed before the cost fields
+// shipped). Groups are ranked exactly by cost.full_awu inside ES.
 export async function fetchCreditUsage(
   auth: Authenticator,
   {
@@ -248,8 +188,8 @@ export async function fetchCreditUsage(
     aggregations.by_group = {
       terms: {
         field: groupFieldFor(groupBy),
-        size: Math.max(limit, CREDIT_RANKING_FETCH),
-        order: { _count: "desc" },
+        size: limit,
+        order: { total_cost: "desc" },
       },
       aggs: { ...creditSubAggs },
     };
@@ -272,23 +212,18 @@ export async function fetchCreditUsage(
 
   const aggs = result.value.aggregations;
 
-  const { llmCredits, toolCredits, totalCredits } = creditsFromSlice(
-    aggs ?? {}
-  );
+  const totalCredits = totalCreditsFromSlice(aggs ?? {});
 
   if (groupBy === "none") {
-    return new Ok({ llmCredits, toolCredits, totalCredits, rows: [] });
+    return new Ok({ totalCredits, rows: [] });
   }
 
-  const buckets = bucketsToArray<GroupBucket>(aggs?.by_group?.buckets);
-
-  const ranked = buckets
-    .map((bucket) => ({
+  const ranked = bucketsToArray<GroupBucket>(aggs?.by_group?.buckets).map(
+    (bucket) => ({
       groupKey: String(bucket.key),
-      ...creditsFromSlice(bucket),
-    }))
-    .sort((a, b) => b.totalCredits - a.totalCredits)
-    .slice(0, limit);
+      totalCredits: totalCreditsFromSlice(bucket),
+    })
+  );
 
   const namesById = await resolveGroupNames(
     auth,
@@ -303,12 +238,11 @@ export async function fetchCreditUsage(
       (groupBy === "agent" ? "Unknown agent" : "Programmatic usage"),
   }));
 
-  return new Ok({ llmCredits, toolCredits, totalCredits, rows });
+  return new Ok({ totalCredits, rows });
 }
 
-// Estimated AWU credits bucketed over time (the trend behind get_credit_usage's
-// totals). Same conversion and non-free scope as fetchCreditUsage; per-bucket
-// values are rounded independently so they need not sum to a window total.
+// Per-message AWU credits bucketed over time (the trend behind
+// get_credit_usage's totals). Same source and scope as fetchCreditUsage.
 export async function fetchCreditTimeseries(
   auth: Authenticator,
   {
@@ -363,7 +297,7 @@ export async function fetchCreditTimeseries(
     buckets.map((bucket) => ({
       timestamp: bucket.key,
       date: formatDateFromMillis(bucket.key, timezone),
-      ...creditsFromSlice(bucket),
+      totalCredits: totalCreditsFromSlice(bucket),
     }))
   );
 }
@@ -462,12 +396,12 @@ export async function fetchCreditTimeseriesBreakdown(
   );
 
   const points = buckets.map((bucket) => {
-    const totalCredits = creditsFromSlice(bucket).totalCredits;
+    const totalCredits = totalCreditsFromSlice(bucket);
     const creditsByKey = new Map(
       bucketsToArray<BreakdownGroupBucket>(bucket.by_group?.buckets).map(
         (groupBucket) => [
           String(groupBucket.key),
-          creditsFromSlice(groupBucket).totalCredits,
+          totalCreditsFromSlice(groupBucket),
         ]
       )
     );
