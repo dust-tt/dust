@@ -156,7 +156,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         conferenceDataVersion: 1,
         requestBody: {
           summary,
-          description,
+          ...(description !== undefined && { description }),
           start,
           end,
           ...(attendees && {
