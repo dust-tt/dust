@@ -12,6 +12,7 @@ import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
   trackEvent,
+  withTracking,
 } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
@@ -30,6 +31,7 @@ import {
   Separator,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type React from "react";
 import type { ReactElement, ReactNode } from "react";
@@ -97,7 +99,7 @@ const SEAT_TIERS: SeatTier[] = [
     name: "Free seat",
     priceYearDollars: 0,
     priceMonthDollars: 0,
-    credits: "300 credits · Lifetime",
+    credits: "500 credits · Lifetime",
   },
   {
     id: "pro",
@@ -136,7 +138,7 @@ const PLANS: Plan[] = [
   {
     id: "business",
     name: "Business",
-    tagline: "For teams up to 100 people.",
+    tagline: "For teams up to 100 people",
     seatTiers: SEAT_TIERS,
     cta: "Start for free",
     ctaStyle: "primary",
@@ -154,7 +156,7 @@ const PLANS: Plan[] = [
   {
     id: "enterprise",
     name: "Enterprise",
-    tagline: "For AI at scale.",
+    tagline: "For AI at scale",
     cta: "Talk to sales",
     ctaStyle: "dark",
     featured: false,
@@ -259,8 +261,8 @@ const COMPARISON: ComparisonSectionData[] = [
       },
       {
         feature: "Data residency",
-        business: "EU / US",
-        enterprise: "EU / US",
+        business: "US / EU",
+        enterprise: "US / EU",
       },
       {
         feature: "Single-tenant deployment",
@@ -333,7 +335,7 @@ function SeatTiersFAQAnswer() {
       </p>
       <ul>
         <li>
-          <strong>Free:</strong> {formatSeatPrice(0)}, 300 credits lifetime.
+          <strong>Free:</strong> {formatSeatPrice(0)}, 500 credits lifetime.
           Best for occasional users or people trying Dust.
         </li>
         <li>
@@ -623,6 +625,29 @@ function Hero({
 }: HeroProps) {
   return (
     <section className="-mx-6 flex flex-col items-center px-4 pt-6 text-center md:mx-0 md:px-0 md:pt-10 lg:pt-14">
+      <Link
+        href="/landing/ebook"
+        onClick={withTracking(TRACKING_AREAS.PRICING, "hero_ebook_pill")}
+        className="group mb-5 inline-flex items-center gap-2 rounded-full border border-gray-100 bg-white py-1.5 pl-3 pr-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+      >
+        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
+        <span className="whitespace-nowrap">Our new Pricing post</span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="flex-shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
+          aria-hidden="true"
+        >
+          <line x1="3" y1="8" x2="13" y2="8" />
+          <polyline points="9 4 13 8 9 12" />
+        </svg>
+      </Link>
       <h1
         className={classNames(
           "heading-5xl md:heading-6xl lg:heading-7xl",
@@ -631,11 +656,11 @@ function Hero({
       >
         Pricing that scales
         <br />
-        with the work you get done.
+        with the work you get done
       </h1>
       <p className="copy-lg mb-9 max-w-2xl text-balance text-muted-foreground">
         Choose self-serve plans for your team, or talk to us about
-        enterprise-ready deployment, governance, and support.
+        enterprise-ready deployment, governance, and support
       </p>
 
       <BillingToggle billing={billing} setBilling={setBilling} />
