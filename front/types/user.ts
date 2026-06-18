@@ -78,6 +78,13 @@ export type LightWorkspaceType = {
   groups?: string[];
 };
 
+export function getWorkspaceDefaultAgentId(
+  owner: LightWorkspaceType
+): string | null {
+  const value = owner.metadata?.workspaceDefaultAgentId;
+  return typeof value === "string" ? value : null;
+}
+
 export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
 };

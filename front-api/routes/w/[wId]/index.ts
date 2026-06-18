@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditLogTarget,
@@ -6,7 +7,10 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { validateDustMcpServerAllowedRedirectUris } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
-import { renameWorkspace } from "@app/lib/api/workspace";
+import {
+  renameWorkspace,
+  updateWorkspaceMetadata,
+} from "@app/lib/api/workspace";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -193,6 +197,11 @@ const WorkspaceAuditLogsUpdateBodySchema = z.object({
   disableAuditLogs: z.boolean(),
 });
 
+// A null value clears the workspace-wide default agent (falls back to @dust).
+const WorkspaceDefaultAgentUpdateBodySchema = z.object({
+  workspaceDefaultAgentId: z.string().nullable(),
+});
+
 const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -218,6 +227,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceReinforcementCapAwuCreditsUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
+  WorkspaceDefaultAgentUpdateBodySchema,
 ]);
 
 const app = workspaceApp();
@@ -641,6 +651,53 @@ app.post(
           enabled: String(!body.disableAuditLogs),
         },
       });
+    } else if ("workspaceDefaultAgentId" in body) {
+      if (!(await hasFeatureFlag(auth, "workspace_default_agent"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message:
+              "The workspace default agent feature is not enabled for this workspace.",
+          },
+        });
+      }
+
+      // Validate the default agent exists and is usable (handles both global
+      // agents and workspace agents). A null value clears the default (@dust).
+      if (body.workspaceDefaultAgentId) {
+        const agent = await getAgentConfiguration(auth, {
+          agentId: body.workspaceDefaultAgentId,
+          variant: "extra_light",
+        });
+        if (!agent || agent.status !== "active") {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Agent "${body.workspaceDefaultAgentId}" was not found or is not usable by the authenticated user.`,
+            },
+          });
+        }
+      }
+
+      const workspaceDefaultAgentId = body.workspaceDefaultAgentId ?? undefined;
+      const updateRes = await updateWorkspaceMetadata(owner, {
+        workspaceDefaultAgentId,
+      });
+      if (updateRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: updateRes.error.message,
+          },
+        });
+      }
+      owner.metadata = {
+        ...(owner.metadata ?? {}),
+        workspaceDefaultAgentId,
+      };
     } else if ("domainUpdates" in body) {
       for (const update of body.domainUpdates) {
         const updateResult = await workspace.updateDomainAutoJoinEnabled({

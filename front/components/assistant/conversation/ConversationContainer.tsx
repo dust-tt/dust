@@ -13,6 +13,7 @@ import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
@@ -34,7 +35,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
+import { getWorkspaceDefaultAgentId, isAdmin } from "@app/types/user";
 import {
   Button,
   Card,
@@ -81,6 +82,11 @@ export function ConversationContainerVirtuoso({
   const router = useAppRouter();
 
   const sendNotification = useSendNotification();
+
+  const { hasFeature } = useFeatureFlags();
+  const workspaceDefaultAgentId = hasFeature("workspace_default_agent")
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -274,6 +280,7 @@ export function ConversationContainerVirtuoso({
               onSubmit={handleConversationCreation}
               draftKey="home-new-conversation"
               disableAutoFocus={false}
+              defaultAgentId={workspaceDefaultAgentId}
             />
           </div>
 

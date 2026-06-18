@@ -350,6 +350,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Resize uploaded raster images via imgproxy instead of ConvertAPI",
     stage: "dust_only",
   },
+  workspace_default_agent: {
+    description:
+      "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

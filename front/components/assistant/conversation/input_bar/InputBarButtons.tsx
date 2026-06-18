@@ -156,7 +156,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                     <Icon visual={InfoCircle} size="xs" />
                   </span>
                 }
-                label="This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+                label="This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error."
               />
             )}
             <button

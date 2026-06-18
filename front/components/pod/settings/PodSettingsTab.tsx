@@ -20,7 +20,10 @@ import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { LightWorkspaceType } from "@app/types/user";
+import {
+  getWorkspaceDefaultAgentId,
+  type LightWorkspaceType,
+} from "@app/types/user";
 import {
   Archive,
   Avatar,
@@ -39,6 +42,7 @@ import {
   Tooltip,
   Upload01,
   Users01,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -69,7 +73,9 @@ export function PodSettingsTab({
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
-  const isDefaultAgentEnabled = hasFeature("pod_default_agent");
+  const hasWorkspaceDefaultAgent = hasFeature("workspace_default_agent");
+  const isDefaultAgentEnabled =
+    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgent;
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -89,12 +95,21 @@ export function PodSettingsTab({
     });
   const dustAgent =
     agentConfigurations.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ?? null;
-  // Fall back to @dust when the pod's configured default agent isn't available
-  // to the current user (e.g. unpublished/deleted). This is the agent shown in
-  // the input bar and pod settings.
+  // When the pod has no default set, new conversations inherit the workspace
+  // default agent (then @dust).
+  const workspaceDefaultAgentId = hasWorkspaceDefaultAgent
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
+  const isInheritingWorkspaceDefault =
+    hasWorkspaceDefaultAgent && !podMetadata?.defaultAgentId;
+  const resolvedDefaultAgentId =
+    podMetadata?.defaultAgentId ?? workspaceDefaultAgentId;
+  // Fall back to @dust when the default agent isn't available to the
+  // current user (e.g. unpublished/deleted). This is the agent shown in the
+  // input bar and pod settings.
   const displayedDefaultAgent =
-    (podMetadata?.defaultAgentId &&
-      agentConfigurations.find((a) => a.sId === podMetadata.defaultAgentId)) ||
+    (resolvedDefaultAgentId &&
+      agentConfigurations.find((a) => a.sId === resolvedDefaultAgentId)) ||
     dustAgent;
   // The configured default may be an agent the current user can't access (e.g.
   // an unpublished agent). `agentConfigurations` only contains viewable agents,
@@ -133,7 +148,11 @@ export function PodSettingsTab({
     <div
       role="button"
       tabIndex={interactive ? 0 : -1}
-      aria-label={`Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`}
+      aria-label={
+        isInheritingWorkspaceDefault
+          ? `Default agent: ${displayedDefaultAgent?.name ?? "Dust"} (workspace default)`
+          : `Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`
+      }
       aria-disabled={!interactive}
       className={cn(
         "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200",
@@ -145,6 +164,11 @@ export function PodSettingsTab({
       <Avatar size="xs" visual={displayedDefaultAgent?.pictureUrl} />
       <span className="grow truncate notranslate">
         {displayedDefaultAgent?.name ?? "Dust"}
+        {isInheritingWorkspaceDefault && (
+          <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+            · Workspace default
+          </span>
+        )}
       </span>
       {isDefaultAgentUnavailable && (
         <Tooltip
@@ -404,17 +428,34 @@ export function PodSettingsTab({
             <div className="heading-lg">Default agent</div>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               The agent pre-selected when anyone starts a new conversation in
-              this Pod.
+              this Pod.{" "}
+              {hasWorkspaceDefaultAgent
+                ? "When unset, it inherits the workspace default agent."
+                : "Defaults to @dust."}
             </p>
             <div className="flex items-center gap-2">
               {isPodEditor ? (
-                <AgentPicker
-                  owner={owner}
-                  agents={agentConfigurations}
-                  showFooterButtons={false}
-                  onItemClick={(agent) => saveDefaultAgent(agent.sId)}
-                  pickerButton={renderDefaultAgentPill(true)}
-                />
+                <>
+                  <AgentPicker
+                    owner={owner}
+                    agents={agentConfigurations}
+                    showFooterButtons={false}
+                    onItemClick={(agent) => saveDefaultAgent(agent.sId)}
+                    pickerButton={renderDefaultAgentPill(true)}
+                  />
+                  {/* Clearing the pod default reverts to inheriting the
+                      workspace default. Only shown when the workspace-default
+                      feature is on and an explicit pod default is set. */}
+                  {hasWorkspaceDefaultAgent && podMetadata?.defaultAgentId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={XCircle}
+                      tooltip="Reset to workspace default"
+                      onClick={() => void saveDefaultAgent(null)}
+                    />
+                  )}
+                </>
               ) : (
                 renderDefaultAgentPill(false)
               )}

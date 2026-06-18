@@ -25,7 +25,11 @@ import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
-import type { UserType, WorkspaceType } from "@app/types/user";
+import {
+  getWorkspaceDefaultAgentId,
+  type UserType,
+  type WorkspaceType,
+} from "@app/types/user";
 import {
   Button,
   ButtonsSwitch,
@@ -106,6 +110,18 @@ export function PodConversationsTab({
     workspaceId: owner.sId,
     podId: podInfo.sId,
   });
+
+  // Unless a pod default is explicitly set, fall back to the workspace-wide default
+  // agent. The final fallback to @dust happens in `useHandleMentions`.
+  const hasWorkspaceDefaultAgent = hasFeature("workspace_default_agent");
+  const workspaceDefaultAgentId = hasWorkspaceDefaultAgent
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
+  const podDefaultAgentId =
+    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgent
+      ? (podMetadata?.defaultAgentId ?? null)
+      : null;
+  const defaultAgentId = podDefaultAgentId ?? workspaceDefaultAgentId;
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
@@ -207,11 +223,7 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 placeholder={`Get work done in ${podInfo.name}`}
-                defaultAgentId={
-                  hasFeature("pod_default_agent")
-                    ? (podMetadata?.defaultAgentId ?? null)
-                    : null
-                }
+                defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
               />
             ) : (
