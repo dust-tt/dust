@@ -2,9 +2,12 @@ import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_st
 import { DustAgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { DustAnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_sonnet_four_dot_six";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
-import type { EndpointConfig, Where } from "@app/lib/llms/types/filter";
+import type {
+  EndpointConfig,
+  Where,
+  WorkspaceConfig,
+} from "@app/lib/llms/types/filter";
 import type { StreamEndpointId } from "@app/lib/model_constructors/stream";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export const DUST_STREAM_ENDPOINTS = {
   [DustAnthropicGlobalClaudeSonnetFourDotSixStream.id]:
@@ -14,11 +17,7 @@ export const DUST_STREAM_ENDPOINTS = {
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
 export function getStreamEndpoints(
-  workspaceConfiguration: {
-    featureFlags: WhitelistableFeature[];
-    isEnterprise: boolean;
-    isCreditPriced: boolean;
-  },
+  workspaceConfiguration: WorkspaceConfig,
   inputCondition: Where<EndpointConfig>
 ) {
   return Object.values(DUST_STREAM_ENDPOINTS).filter((constructor) =>
