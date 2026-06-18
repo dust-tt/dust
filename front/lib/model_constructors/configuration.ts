@@ -17,7 +17,10 @@ export type BaseEndpointConfiguration<C extends InputConfig = InputConfig> = {
   // Capabilities
   contextSize: number;
   maxOutputTokens: number;
-  configSchema: z.ZodType<C>;
+  // Config schemas parse loose external input (with defaults/transforms) into
+  // the precise config `C`, so only the parsed output is constrained; the input
+  // side stays open.
+  configSchema: z.ZodType<C, z.ZodTypeDef, unknown>;
 
   // Pricing
   tokenPricing: TokenPricing;

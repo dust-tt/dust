@@ -9,6 +9,7 @@ import {
 import { WithAnthropicInputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/input";
 import { WithAnthropicOutputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/output";
 import { batchResultToEvents } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
+import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { ANTHROPIC_API } from "@app/lib/model_constructors/types/provider_apis";
@@ -24,7 +25,11 @@ import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provide
  */
 export abstract class AnthropicBatch extends WithAnthropicInputConverter(
   WithAnthropicOutputConverter(
-    BatchEndpoint<MessageCreateParamsNonStreaming, MessageBatchResult>
+    BatchEndpoint<
+      MessageCreateParamsNonStreaming,
+      MessageBatchResult,
+      AnthropicInputConfig
+    >
   )
 ) {
   static readonly providerId = ANTHROPIC_PROVIDER_ID;
@@ -43,7 +48,9 @@ export abstract class AnthropicBatch extends WithAnthropicInputConverter(
     return batchResultToEvents(result, this.metadata(), this);
   }
 
-  async sendBatch(requests: Map<string, BatchRequest>): Promise<string> {
+  async sendBatch(
+    requests: Map<string, BatchRequest<AnthropicInputConfig>>
+  ): Promise<string> {
     const batchRequests = Array.from(requests.entries()).map(
       ([customId, { payload, config }]) => ({
         custom_id: customId,

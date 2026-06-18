@@ -8,6 +8,7 @@ import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/conf
 import { WithAnthropicInputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/input";
 import { WithAnthropicOutputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
+import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
@@ -34,11 +35,15 @@ const configSchema = inputConfigSchema.extend({
 
 export abstract class AgentPlatformStream extends WithAnthropicInputConverter(
   WithAnthropicOutputConverter(
-    StreamEndpoint<MessageCreateParamsNonStreaming, RawMessageStreamEvent>
+    StreamEndpoint<
+      MessageCreateParamsNonStreaming,
+      RawMessageStreamEvent,
+      AnthropicInputConfig
+    >
   )
 ) {
   // Narrow `this.constructor` so the per-endpoint static below is visible.
-  declare ["constructor"]: BaseEndpointConfiguration & {
+  declare ["constructor"]: BaseEndpointConfiguration<AnthropicInputConfig> & {
     regionalEndpoint: AgentPlatformRegionalEndpoint;
   };
 

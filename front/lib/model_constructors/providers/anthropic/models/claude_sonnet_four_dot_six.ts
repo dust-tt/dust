@@ -1,6 +1,6 @@
+import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import {
-  type InputConfig,
   inputConfigSchema,
   temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
@@ -33,6 +33,8 @@ const configSchema = z.union([
   }),
 ]);
 
+export type ClaudeSonnetFourDotSix = z.infer<typeof configSchema>;
+
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithAnthropicClaudeSonnetFourDotSixConfig<
   TBase extends abstract new (
@@ -40,9 +42,17 @@ export function WithAnthropicClaudeSonnetFourDotSixConfig<
   ) => object,
 >(Base: TBase) {
   abstract class AnthropicClaudeSonnetFourDotSix extends Base {
+    // Narrow `Client`'s `["constructor"]` to this model's precise config so the
+    // instance type carries `ClaudeSonnetFourDotSix` (not the wide `InputConfig`).
+    declare ["constructor"]: BaseEndpointConfiguration<ClaudeSonnetFourDotSix>;
+
     static readonly modelId = CLAUDE_SONNET_4_6_MODEL_ID;
 
-    static readonly configSchema: z.ZodType<InputConfig> = configSchema;
+    static readonly configSchema: z.ZodType<
+      ClaudeSonnetFourDotSix,
+      z.ZodTypeDef,
+      unknown
+    > = configSchema;
 
     static readonly contextSize = CONTEXT_SIZE;
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;

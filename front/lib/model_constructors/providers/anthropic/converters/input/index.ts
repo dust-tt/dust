@@ -20,7 +20,7 @@ import {
   userImageMessageToImageBlock,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
-import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
+import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type {
   Payload,
   SystemTextMessage,
@@ -32,7 +32,7 @@ type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 // API request shape. Leaf converters are bound as class fields and composites
 // route through `this`, so an endpoint can override a single leaf.
 export function WithAnthropicInputConverter<
-  TBase extends AbstractConstructor<Client>,
+  TBase extends AbstractConstructor<Client<AnthropicInputConfig>>,
 >(Base: TBase) {
   abstract class WithAnthropicInputConverter
     extends Base
@@ -61,7 +61,7 @@ export function WithAnthropicInputConverter<
 
     buildRequestPayload(
       payload: Payload,
-      config: InputConfig
+      config: AnthropicInputConfig
     ): MessageCreateParamsNonStreaming {
       const { conversation } = payload;
       const {

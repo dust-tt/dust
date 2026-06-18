@@ -26,7 +26,6 @@ import {
 } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
 import type {
   OutputFormat,
-  Reasoning,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -657,13 +656,6 @@ describe("reasoningToThinkingConfig", () => {
 
   it("disables thinking when effort is 'none'", () => {
     expect(reasoningToThinkingConfig({ effort: "none" })).toEqual({
-      thinking: { type: "disabled" },
-    });
-  });
-
-  it("disables thinking for an unsupported effort (e.g. 'minimal')", () => {
-    const reasoning = { effort: "minimal" } as Reasoning;
-    expect(reasoningToThinkingConfig(reasoning)).toEqual({
       thinking: { type: "disabled" },
     });
   });
