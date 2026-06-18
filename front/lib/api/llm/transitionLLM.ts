@@ -357,9 +357,13 @@ function convertToOldEvent(
         standardOutput,
         cacheHit,
         cacheCreated,
+        longCacheCreated,
+        shortCacheCreated,
         reasoning,
       } = event.content;
-      const inputTokens = standardInput + cacheHit + cacheCreated;
+      const totalCacheCreated =
+        cacheCreated > 0 ? cacheCreated : longCacheCreated + shortCacheCreated;
+      const inputTokens = standardInput + cacheHit + totalCacheCreated;
       return {
         type: "token_usage",
         content: {

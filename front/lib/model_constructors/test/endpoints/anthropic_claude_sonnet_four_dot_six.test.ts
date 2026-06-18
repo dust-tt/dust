@@ -60,6 +60,8 @@ const setup: StreamSetup = {
     "output-format/json-schema/t-default/r-high": null,
 
     "following/no-tools/t-default/r-default": null,
+
+    "cache/no-tools/t-default/r-default": null,
   },
 };
 

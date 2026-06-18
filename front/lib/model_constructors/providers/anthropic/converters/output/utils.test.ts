@@ -5,6 +5,7 @@ import {
 } from "@anthropic-ai/sdk";
 import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches";
 import type {
+  CacheCreation,
   Message,
   MessageDeltaUsage,
   RawContentBlockDeltaEvent,
@@ -121,6 +122,8 @@ function makeStubConverters(): OutputEventConverters {
       type: "token_usage" as const,
       content: {
         cacheCreated: 0,
+        longCacheCreated: 0,
+        shortCacheCreated: 0,
         cacheHit: 0,
         standardInput: 0,
         standardOutput: 0,
@@ -376,7 +379,7 @@ describe("invalidJsonToolCallToToolCallEvent", () => {
 });
 
 describe("messageDeltaUsageToTokenUsageEvent", () => {
-  it("splits reasoning out of output tokens when a breakdown is present", () => {
+  it("splits cache creation by TTL when the breakdown is present", () => {
     const usage: MessageDeltaUsage = {
       cache_creation_input_tokens: 10,
       cache_read_input_tokens: 20,
@@ -385,10 +388,42 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
       output_tokens_details: { thinking_tokens: 15 },
       server_tool_use: null,
     };
-    expect(messageDeltaUsageToTokenUsageEvent(metadata, usage)).toEqual({
+    const cacheCreation: CacheCreation = {
+      ephemeral_1h_input_tokens: 6,
+      ephemeral_5m_input_tokens: 4,
+    };
+    expect(
+      messageDeltaUsageToTokenUsageEvent(metadata, usage, cacheCreation)
+    ).toEqual({
+      type: "token_usage",
+      content: {
+        cacheCreated: 0,
+        longCacheCreated: 6,
+        shortCacheCreated: 4,
+        cacheHit: 20,
+        standardInput: 100,
+        standardOutput: 35,
+        reasoning: 15,
+      },
+      metadata,
+    });
+  });
+
+  it("reports the flat cache-creation total as cacheCreated when no breakdown is present", () => {
+    const usage: MessageDeltaUsage = {
+      cache_creation_input_tokens: 10,
+      cache_read_input_tokens: 20,
+      input_tokens: 100,
+      output_tokens: 50,
+      output_tokens_details: { thinking_tokens: 15 },
+      server_tool_use: null,
+    };
+    expect(messageDeltaUsageToTokenUsageEvent(metadata, usage, null)).toEqual({
       type: "token_usage",
       content: {
         cacheCreated: 10,
+        longCacheCreated: 0,
+        shortCacheCreated: 0,
         cacheHit: 20,
         standardInput: 100,
         standardOutput: 35,
@@ -407,10 +442,12 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
       output_tokens_details: null,
       server_tool_use: null,
     };
-    expect(messageDeltaUsageToTokenUsageEvent(metadata, usage)).toEqual({
+    expect(messageDeltaUsageToTokenUsageEvent(metadata, usage, null)).toEqual({
       type: "token_usage",
       content: {
         cacheCreated: 0,
+        longCacheCreated: 0,
+        shortCacheCreated: 0,
         cacheHit: 0,
         standardInput: 0,
         standardOutput: 40,
@@ -971,6 +1008,62 @@ describe("rawOutputToEvents", () => {
     const success = events.find((e) => e.type === "success");
     expect(success).toMatchObject({
       content: { aggregated: [{ type: "text", content: { value: "Hi" } }] },
+    });
+  });
+
+  it("splits cache creation by TTL using the cache_creation breakdown from message_start", async () => {
+    // Anthropic only emits the per-TTL split on message_start; the trailing
+    // message_delta usage carries the flat cache_creation_input_tokens. The
+    // breakdown captured from message_start must drive the token_usage event.
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf([
+          {
+            type: "message_start",
+            message: {
+              id: "msg_1",
+              usage: {
+                input_tokens: 3,
+                cache_creation_input_tokens: 4809,
+                cache_read_input_tokens: 0,
+                cache_creation: {
+                  ephemeral_5m_input_tokens: 7,
+                  ephemeral_1h_input_tokens: 4802,
+                },
+                output_tokens: 1,
+              },
+            },
+          } as RawMessageStartEvent,
+          {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: {
+              cache_creation_input_tokens: 4809,
+              cache_read_input_tokens: 0,
+              input_tokens: 3,
+              output_tokens: 5,
+              output_tokens_details: { thinking_tokens: 0 },
+              server_tool_use: null,
+            },
+          } as RawMessageStreamEvent,
+          { type: "message_stop" } as RawMessageStreamEvent,
+        ]),
+        metadata,
+        realConverters
+      )
+    );
+
+    const tokenUsage = events.find((e) => e.type === "token_usage");
+    expect(tokenUsage).toMatchObject({
+      content: {
+        cacheCreated: 0,
+        longCacheCreated: 4802,
+        shortCacheCreated: 7,
+        cacheHit: 0,
+        standardInput: 3,
+        standardOutput: 5,
+        reasoning: 0,
+      },
     });
   });
 

@@ -81,6 +81,35 @@ const SAME_ROLE_FOLLOWING_BLOCKS_CONVERSATION: BaseConversation = {
   ],
 };
 
+// Anthropic only writes a cache entry when the cumulative prefix up to a
+// breakpoint clears its minimum cacheable size (1024 tokens for Sonnet). This
+// filler pushes the system prompt well past that threshold so both breakpoints
+// in `CACHE_CONVERSATION` actually create cache entries.
+const LONG_CACHEABLE_SYSTEM_PROMPT = Array.from(
+  { length: 200 },
+  (_, i) =>
+    `Guideline ${i + 1}: Always be helpful, harmless, and honest, and follow the user's instructions exactly.`
+).join(" ");
+
+const CACHE_CONVERSATION: BaseConversation = {
+  system: [
+    {
+      role: "system",
+      type: "text",
+      content: { value: LONG_CACHEABLE_SYSTEM_PROMPT },
+      cache: "long",
+    },
+  ],
+  messages: [
+    {
+      role: "user",
+      type: "text",
+      content: { value: 'Say "Hi"' },
+      cache: "short",
+    },
+  ],
+};
+
 const REASONING_CONVERSATION: BaseConversation = {
   system: [
     {
@@ -262,6 +291,8 @@ export const TEST_KEYS = [
   "output-format/json-schema/t-default/r-high",
 
   "following/no-tools/t-default/r-default",
+
+  "cache/no-tools/t-default/r-default",
 ] as const;
 
 export type TestKey = (typeof TEST_KEYS)[number];
@@ -526,5 +557,12 @@ export const TEST_CASES: Record<TestKey, TestCase> = {
         value: "hello",
       },
     ],
+  },
+
+  // CACHE — "long" breakpoint on the system prompt, "short" on the user message.
+  "cache/no-tools/t-default/r-default": {
+    config: {},
+    conversation: CACHE_CONVERSATION,
+    defaultCheckers: [TEXT_CONTAINS_HI],
   },
 };

@@ -22,6 +22,7 @@ const setup: StreamSetup = {
     "calc/calc/t-default/r-default/force-tool": [INPUT_CONFIGURATION_ERROR],
 
     "simple/no-tools/t-default/r-default": null,
+
     "simple/no-tools/t-default/r-none": null,
     "simple/no-tools/t-default/r-low": null,
     "simple/no-tools/t-default/r-medium": null,
@@ -60,6 +61,8 @@ const setup: StreamSetup = {
     "output-format/json-schema/t-default/r-high": null,
 
     "following/no-tools/t-default/r-default": null,
+
+    "cache/no-tools/t-default/r-default": null,
   },
 };
 
