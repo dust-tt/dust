@@ -116,6 +116,7 @@ app.get(
     const { faviconUrl, logoUrl, ogImageUrl } =
       await getWorkspaceBrandingPublicUrls(workspace);
 
+    // Suppress the viral description for workspaces with custom branding.
     const description =
       ogImageUrl === null
         ? `Discover what ${workspace.name} built with AI. Explore now.`
