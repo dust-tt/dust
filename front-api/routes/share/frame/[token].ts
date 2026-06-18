@@ -116,7 +116,13 @@ app.get(
     const { faviconUrl, logoUrl, ogImageUrl } =
       await getWorkspaceBrandingPublicUrls(workspace);
 
+    const description =
+      ogImageUrl === null
+        ? `Discover what ${workspace.name} built with AI. Explore now.`
+        : null;
+
     return ctx.json({
+      description,
       faviconUrl,
       logoUrl,
       ogImageUrl,

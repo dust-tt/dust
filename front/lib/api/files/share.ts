@@ -1,4 +1,5 @@
 export interface GetShareFrameMetadataResponseBody {
+  description: string | null;
   faviconUrl: string | null;
   logoUrl: string | null;
   ogImageUrl: string | null;
