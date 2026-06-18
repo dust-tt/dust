@@ -4,6 +4,8 @@ import { AnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/model_cons
 
 export class DustAnthropicGlobalClaudeSonnetFourDotSixStream extends WithDustClaudeSonnetFourDotSixConfig(
   AnthropicGlobalClaudeSonnetFourDotSixStream
-) {}
+) {
+  static readonly endpointFilter = {};
+}
 
 defineDustStreamEndpoint(DustAnthropicGlobalClaudeSonnetFourDotSixStream);

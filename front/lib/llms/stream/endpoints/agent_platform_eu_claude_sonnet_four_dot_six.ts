@@ -4,6 +4,15 @@ import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_
 
 export class DustAgentPlatformEuropeClaudeSonnetFourDotSixStream extends WithDustClaudeSonnetFourDotSixConfig(
   AgentPlatformEuropeClaudeSonnetFourDotSixStream
-) {}
+) {
+  static readonly endpointFilter = {
+    or: [
+      {
+        featureFlags: { contains: "use_vertex_for_supported_models" as const },
+      },
+      { creditPricing: { eq: true } },
+    ],
+  };
+}
 
 defineDustStreamEndpoint(DustAgentPlatformEuropeClaudeSonnetFourDotSixStream);

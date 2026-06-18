@@ -9,7 +9,6 @@ export function WithDustClaudeSonnetFourDotSixConfig<
       "Anthropic's Claude Sonnet 4.6 model, balancing power and efficiency with enhanced reasoning capabilities (200k context).";
     static readonly defaultReasoningEffort = "medium";
     static readonly byok = true;
-    static readonly endpointFilter = {};
   }
 
   return DustClaudeSonnetFourDotSix;

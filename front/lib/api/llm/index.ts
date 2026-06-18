@@ -34,6 +34,7 @@ import { getBatchEndpoints } from "@app/lib/llms/batch";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type {
+  EndpointFilter,
   ValueFilter,
   Where,
   WorkspaceFilter,
@@ -323,10 +324,7 @@ function selectPreferredEndpoint<T extends { region: Region }>(
   featureFlags: WhitelistableFeature[],
   llmParameters: LLMParameters,
   getEndpoints: (
-    workspaceConfiguration: {
-      featureFlags: WhitelistableFeature[];
-      enterprise: boolean;
-    },
+    workspaceConfiguration: EndpointFilter,
     inputCondition: Where<WorkspaceFilter>
   ) => T[]
 ): T | null {
@@ -336,11 +334,13 @@ function selectPreferredEndpoint<T extends { region: Region }>(
   }
 
   const workspaceFilter = getWorkspaceFilter(auth);
+  const plan = auth.getNonNullablePlan();
 
   const endpoints = getEndpoints(
     {
       featureFlags,
-      enterprise: isEnterpriseOrDust(auth.getNonNullablePlan()),
+      enterprise: isEnterpriseOrDust(plan),
+      creditPricing: isCreditPricedPlanPrefix(plan.code),
     },
     {
       ...workspaceFilter,
