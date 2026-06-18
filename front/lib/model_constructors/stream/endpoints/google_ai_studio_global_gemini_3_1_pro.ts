@@ -8,10 +8,10 @@ export class GoogleAiStudioGlobalGemini31ProStream extends WithGoogleAiStudioGem
 ) {
   // https://ai.google.dev/gemini-api/docs/pricing (verify before launch).
   static readonly tokenPricing = {
-    cacheCreated: 0,
-    cacheHit: 0.2,
-    standardInput: 2.0,
-    standardOutput: 12.0,
+    cacheCreated: 4.5,
+    cacheHit: 0.4,
+    standardInput: 4.0,
+    standardOutput: 18.0,
   };
 
   static readonly region = GLOBAL;
