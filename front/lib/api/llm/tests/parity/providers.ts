@@ -176,3 +176,10 @@ export function getParityProvider(providerId: ProviderId): ParityProvider {
   }
   return provider;
 }
+
+// Whether a provider has a parity adapter yet. Endpoints whose provider has no
+// adapter are skipped by the parity suite (rather than throwing) until their
+// adapter + SDK mock + normalizer are added.
+export function hasParityProvider(providerId: ProviderId): boolean {
+  return PARITY_PROVIDERS[providerId] !== undefined;
+}

@@ -23,6 +23,7 @@ import { normalizeRequest } from "@app/lib/api/llm/tests/parity/allowlist";
 import { buildParityMatrix } from "@app/lib/api/llm/tests/parity/matrix";
 import {
   getParityProvider,
+  hasParityProvider,
   PARITY_CREDENTIALS,
   readEndpointInfo,
 } from "@app/lib/api/llm/tests/parity/providers";
@@ -101,7 +102,11 @@ async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
 // locally. Global agent-platform coverage can be added here once it exists.
 const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   .map(readEndpointInfo)
-  .filter((endpoint) => endpoint.region === GLOBAL);
+  // Skip providers without a parity adapter yet (e.g. google_ai_studio).
+  .filter(
+    (endpoint) =>
+      endpoint.region === GLOBAL && hasParityProvider(endpoint.providerId)
+  );
 const MATRIX = buildParityMatrix();
 
 describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
