@@ -43,7 +43,9 @@ export function WithGoogleAiStudioInputConverter<
     assistantReasoningMessageToPart = assistantReasoningMessageToPart;
     assistantToolCallRequestToPart = assistantToolCallRequestToPart;
 
-    conversationToContents(conversation: Payload["conversation"]): Content[] {
+    conversationToContents(
+      conversation: Payload["conversation"]
+    ): Promise<Content[]> {
       return conversationToContents(conversation, this);
     }
 
@@ -53,10 +55,10 @@ export function WithGoogleAiStudioInputConverter<
       return systemMessagesToSystemInstruction(system, this);
     }
 
-    buildRequestPayload(
+    async buildRequestPayload(
       payload: Payload,
       config: GoogleAiStudioInputConfig
-    ): GenerateContentParameters {
+    ): Promise<GenerateContentParameters> {
       const { conversation } = payload;
       const {
         tools = [],
@@ -68,7 +70,7 @@ export function WithGoogleAiStudioInputConverter<
 
       return {
         model: this.constructor.modelId,
-        contents: this.conversationToContents(conversation),
+        contents: await this.conversationToContents(conversation),
         config: {
           systemInstruction: this.systemMessagesToSystemInstruction(
             conversation.system

@@ -16,8 +16,10 @@ import type {
   BaseUserTextMessage,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isRecord } from "@app/types/shared/utils/general";
+import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type {
   Content,
@@ -29,14 +31,49 @@ import type {
 } from "@google/genai";
 import { FunctionCallingConfigMode, ThinkingLevel } from "@google/genai";
 
+// Gemini only accepts inline base64 image data for these MIME types.
+const GOOGLE_AI_STUDIO_SUPPORTED_IMAGE_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
+
+const IMAGE_LOAD_FAILED_TEXT = "Attachment: image could not be loaded.";
+
+// Conversion fans out to external image fetches; bound the concurrency.
+const MESSAGE_CONVERSION_CONCURRENCY = 10;
+
+// Fetches an image URL and returns a Gemini inline-data part, degrading to a
+// text note when the image cannot be fetched or its MIME type is unsupported
+// (rather than failing the whole request).
+async function imageUrlToPart(url: string): Promise<Part> {
+  let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+  try {
+    fetchResult = await trustedFetchImageBase64(url);
+  } catch {
+    return { text: IMAGE_LOAD_FAILED_TEXT };
+  }
+
+  const { mediaType, data } = fetchResult;
+  if (!GOOGLE_AI_STUDIO_SUPPORTED_IMAGE_MIME_TYPES.includes(mediaType)) {
+    return { text: IMAGE_LOAD_FAILED_TEXT };
+  }
+
+  return { inlineData: { mimeType: mediaType, data } };
+}
+
 // The per-message leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
 // every composite uses it.
 export interface ContentBlockConverters {
   systemMessageToPart(message: SystemTextMessage): Part;
   userTextMessageToPart(message: BaseUserTextMessage): Part;
-  userImageMessageToPart(message: BaseUserImageMessage): Part;
-  toolCallResultMessageToContent(message: BaseToolCallResultMessage): Content;
+  userImageMessageToPart(message: BaseUserImageMessage): Promise<Part>;
+  toolCallResultMessageToContent(
+    message: BaseToolCallResultMessage
+  ): Promise<Content>;
   assistantTextMessageToPart(message: BaseAssistantTextMessage): Part;
   assistantReasoningMessageToPart(message: BaseAssistantReasoningMessage): Part;
   assistantToolCallRequestToPart(
@@ -68,29 +105,34 @@ export function userTextMessageToPart(message: BaseUserTextMessage): Part {
   return { text: message.content.value };
 }
 
-// Gemini only accepts inline base64 image data, which requires an async fetch
-// that the synchronous `buildRequestPayload` contract cannot perform. Until the
-// framework supports async payload building, surface the image as a text note
-// rather than dropping it silently.
-export function userImageMessageToPart(_message: BaseUserImageMessage): Part {
-  return { text: "Attachment: image could not be loaded." };
+export function userImageMessageToPart(
+  message: BaseUserImageMessage
+): Promise<Part> {
+  return imageUrlToPart(message.content.url);
 }
 
-export function toolCallResultMessageToContent(
+export async function toolCallResultMessageToContent(
   message: BaseToolCallResultMessage
-): Content {
-  const output = message.content.parts
-    .map((part) => {
-      switch (part.type) {
-        case "text":
-          return part.text;
-        case "image_url":
-          return "Attachment: image could not be loaded.";
-        default:
-          return assertNever(part);
-      }
-    })
-    .join("\n");
+): Promise<Content> {
+  // A tool result may carry both text and image parts. Text is merged into the
+  // structured functionResponse; images become sibling inline-data parts, which
+  // Gemini associates with the same tool call.
+  const textParts: string[] = [];
+  const imageParts: Part[] = [];
+  for (const part of message.content.parts) {
+    switch (part.type) {
+      case "text":
+        textParts.push(part.text);
+        break;
+      case "image_url":
+        imageParts.push(await imageUrlToPart(part.url));
+        break;
+      default:
+        assertNever(part);
+    }
+  }
+
+  const output = textParts.join("\n");
 
   return {
     role: "user",
@@ -101,6 +143,7 @@ export function toolCallResultMessageToContent(
           response: message.content.isError ? { error: output } : { output },
         },
       },
+      ...imageParts,
     ],
   };
 }
@@ -138,10 +181,10 @@ export function assistantToolCallRequestToPart(
 
 // -- Composite message converters (depend on the leaf converters) --
 
-function userMessageToContent(
+async function userMessageToContent(
   message: BaseUserMessage,
   converters: ContentBlockConverters
-): Content {
+): Promise<Content> {
   switch (message.type) {
     case "text":
       return {
@@ -151,7 +194,7 @@ function userMessageToContent(
     case "image_url":
       return {
         role: "user",
-        parts: [converters.userImageMessageToPart(message)],
+        parts: [await converters.userImageMessageToPart(message)],
       };
     case "tool_call_result":
       return converters.toolCallResultMessageToContent(message);
@@ -194,20 +237,28 @@ function isFunctionResponseContent(content: Content): boolean {
   );
 }
 
-export function conversationToContents(
+export async function conversationToContents(
   conversation: BaseConversation,
   converters: ContentBlockConverters
-): Content[] {
-  const contents = conversation.messages.map((message) => {
-    switch (message.role) {
-      case "user":
-        return userMessageToContent(message, converters);
-      case "assistant":
-        return assistantMessageToContent(message, converters);
-      default:
-        assertNever(message);
-    }
-  });
+): Promise<Content[]> {
+  // User messages may fan out to external image fetches, so convert with
+  // bounded concurrency instead of an unbounded `Promise.all` ([BACK7]).
+  const contents = await concurrentExecutor(
+    conversation.messages,
+    (message) => {
+      switch (message.role) {
+        case "user":
+          return userMessageToContent(message, converters);
+        case "assistant":
+          return Promise.resolve(
+            assistantMessageToContent(message, converters)
+          );
+        default:
+          assertNever(message);
+      }
+    },
+    { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
+  );
 
   // Merge consecutive function-response turns into one user turn: Gemini
   // requires the functionResponse part count to match the functionCall count of
