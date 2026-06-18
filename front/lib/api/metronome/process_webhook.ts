@@ -351,7 +351,7 @@ async function reconcilePoolStateFromSegmentEvent({
 // Metronome is the source of truth: we update the segment amount there, then
 // ensure the matching DB credit (linked by metronomeCreditId) exists. Segments
 // that aren't the managed free credit are ignored.
-async function handleFreeCreditSegmentGrant({
+export async function handleFreeCreditSegmentGrant({
   workspace,
   metronomeCustomerId,
   contractId,
