@@ -84,9 +84,12 @@ export function UsageNotificationsCard({
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={String(currentThreshold)}
+                value={currentThreshold.toLocaleString()}
                 unit="credits"
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                formatValue={(value) =>
+                  value ? Number(value).toLocaleString() : value
+                }
                 onSave={handleSaveBalanceThreshold}
                 disabled={readOnly || isUsageNotificationsLoading}
               />

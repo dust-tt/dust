@@ -104,11 +104,14 @@ export function UsageSettingsCard({
                   pattern="[0-9]*"
                   value={
                     currentDefaultLimit !== null
-                      ? String(currentDefaultLimit)
+                      ? currentDefaultLimit.toLocaleString()
                       : ""
                   }
                   unit="credits"
                   normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                  formatValue={(value) =>
+                    value ? Number(value).toLocaleString() : value
+                  }
                   onSave={handleSaveDefaultLimit}
                   disabled={readOnly || isDefaultUserSpendLimitLoading}
                 />

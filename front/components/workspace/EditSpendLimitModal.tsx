@@ -259,8 +259,12 @@ export function EditSpendLimitModal({
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      placeholder="1000"
-                      value={creditsInput}
+                      placeholder="1,000"
+                      value={
+                        creditsInput !== ""
+                          ? Number(creditsInput).toLocaleString()
+                          : ""
+                      }
                       onChange={(e) => handleCreditsChange(e.target.value)}
                       isError={validationMessage !== null}
                       message={validationMessage ?? undefined}

@@ -16,8 +16,12 @@ export interface InputWithSaveProps
   unit?: string;
   onSave: (value: string) => Promise<void> | void;
   // Applied to the draft value on each keystroke (e.g. to strip non-digit
-  // characters for numeric inputs).
+  // characters for numeric inputs). The cleaned result is what gets passed to
+  // onSave.
   normalizeValue?: (value: string) => string;
+  // Applied to the normalized draft value for display during editing (e.g. to
+  // insert thousand-separator commas). Does not affect what onSave receives.
+  formatValue?: (value: string) => string;
   className?: string;
 }
 
@@ -28,6 +32,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
       unit,
       onSave,
       normalizeValue,
+      formatValue,
       className,
       disabled,
       onFocus,
@@ -64,7 +69,8 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
       if (!isSaving && !isEditing) {
-        setDraftValue(value ?? "");
+        const raw = value ?? "";
+        setDraftValue(normalizeValue ? normalizeValue(raw) : raw);
         setIsEditing(true);
       }
       onFocus?.(e);
@@ -122,7 +128,13 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
               "s-cursor-not-allowed s-text-muted-foreground dark:s-text-muted-foreground-night"
           )}
           data-1p-ignore
-          value={showSaveButton ? draftValue : (value ?? "")}
+          value={
+            showSaveButton
+              ? formatValue
+                ? formatValue(draftValue)
+                : draftValue
+              : (value ?? "")
+          }
           onChange={(e) =>
             setDraftValue(
               normalizeValue ? normalizeValue(e.target.value) : e.target.value
