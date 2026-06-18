@@ -17,6 +17,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseVoiceLiveTranscriberServiceParams {
   owner: LightWorkspaceType;
+  // Called on each partial transcript — insert or update the pending animated node.
+  onPartialTranscript?: (text: string) => void;
+  // Called when the engine commits a segment — replace the animated node with plain text.
   onTranscribeDelta?: (text: string) => void;
   onTranscribeComplete?: () => void;
   onError?: (error: Error) => void;
@@ -57,6 +60,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 export function useVoiceLiveTranscriberService({
   owner,
+  onPartialTranscript,
   onTranscribeDelta,
   onTranscribeComplete,
   onError,
@@ -72,6 +76,8 @@ export function useVoiceLiveTranscriberService({
   const levelIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep latest callbacks in refs so the stable SDK closures always see fresh values.
+  const onPartialTranscriptRef = useRef(onPartialTranscript);
+  onPartialTranscriptRef.current = onPartialTranscript;
   const onTranscribeDeltaRef = useRef(onTranscribeDelta);
   onTranscribeDeltaRef.current = onTranscribeDelta;
   const onTranscribeCompleteRef = useRef(onTranscribeComplete);
@@ -126,6 +132,10 @@ export function useVoiceLiveTranscriberService({
     onTranscribeCompleteRef.current?.();
   }, []);
 
+  const handlePartialTranscript = useCallback(({ text }: { text: string }) => {
+    onPartialTranscriptRef.current?.(text);
+  }, []);
+
   const handleCommittedTranscript = useCallback(
     ({ text }: { text: string }) => {
       onTranscribeDeltaRef.current?.(text);
@@ -157,6 +167,7 @@ export function useVoiceLiveTranscriberService({
     audioFormat: AudioFormat.PCM_16000,
     sampleRate: 16000,
     commitStrategy: CommitStrategy.VAD,
+    onPartialTranscript: handlePartialTranscript,
     onCommittedTranscript: handleCommittedTranscript,
     onError: handleError,
   });
@@ -227,7 +238,9 @@ export function useVoiceLiveTranscriberService({
       const workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
       workletNode.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
         const b64 = arrayBufferToBase64(event.data);
-        scribeRef.current.sendAudio(b64, { sampleRate: 16000 });
+        if (!isShuttingDownRef.current || scribeRef.current.isConnected) {
+          scribeRef.current.sendAudio(b64, { sampleRate: 16000 });
+        }
       };
       source.connect(workletNode);
       processorRef.current = workletNode;
