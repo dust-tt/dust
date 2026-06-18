@@ -1,6 +1,6 @@
 // Data-driven database initialization with binary caching
 
-import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
+import { binaryExists, getBinaryPath, getCacheSource, type InitBinary } from "./cache";
 import { getServiceContainerId } from "./docker";
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
@@ -8,7 +8,7 @@ import { logger } from "./logger";
 import { getEnvFilePath, getWorktreeDir } from "./paths";
 import { runSqlSeed } from "./seed";
 import { buildShell } from "./shell";
-import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
+import { getTemporalNamespaces, SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
 
@@ -423,10 +423,15 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
   const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
 
+  // connectors/admin/init_db.sh (sequelize sync) was removed as deprecated initdb
+  // tooling (#27417). Schema setup now goes through the migration tooling, same as
+  // production: the baseline migration creates the full schema (tables, indexes,
+  // the unaccent extension, and notion search-vector triggers). Idempotent: a
+  // re-run reports "No pending migrations" and exits 0.
   const command = buildShell({
     sourceEnv: envShPath,
     sourceNvm: true,
-    run: "./admin/init_db.sh --unsafe",
+    run: "npm run migration:apply",
   });
 
   const proc = Bun.spawn(["bash", "-c", command], {
@@ -439,14 +444,7 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   const stderr = await new Response(proc.stderr).text();
   await proc.exited;
 
-  // Treat "already exists" or "No migrations" as success (idempotent)
-  // Note: Postgres outputs "relation X already exists" which is caught by "already exists"
-  const alreadyExists =
-    stderr.includes("already exists") ||
-    stdout.includes("already exists") ||
-    stdout.includes("No migrations");
-
-  if (proc.exitCode !== 0 && !alreadyExists) {
+  if (proc.exitCode !== 0) {
     console.log(stdout);
     console.error(stderr);
     return false;
