@@ -1,6 +1,5 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
-import logger from "@app/logger/logger";
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import {
   isAnthropicVertexWhitelistedModelId,
@@ -52,6 +51,7 @@ import {
   type Region,
 } from "@app/lib/model_constructors/types/regions";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import logger from "@app/logger/logger";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";

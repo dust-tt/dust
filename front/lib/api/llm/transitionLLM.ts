@@ -1,4 +1,3 @@
-import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResult } from "@app/lib/api/llm/types/batch";
 import {
@@ -522,7 +521,7 @@ abstract class BaseTransition extends LLM {
       forceTool: forceToolCall,
       outputFormat: parseResponseFormatSchema(
         this.responseFormat,
-        ANTHROPIC_PROVIDER_ID
+        this.metadata.clientId
       ),
     });
   }
