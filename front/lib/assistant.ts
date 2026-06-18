@@ -38,7 +38,11 @@ export function isModelAvailable(
     return false;
   }
 
-  if (plan?.isByok && m.modelId !== "auto" && !isByokProviderId(m.providerId)) {
+  if (
+    plan?.isByok &&
+    m.modelId !== "auto" &&
+    !isByokProviderId(m.providerId)
+  ) {
     return false;
   }
 
