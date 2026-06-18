@@ -52,12 +52,12 @@ const agentAggregates: ProjectionAlias[] = (
   alias,
 ]);
 
-export async function getDataSourceViewsUsageByIds({
+export async function getDataSourceViewsUsageByModelIds({
   auth,
-  dataSourceViewIds,
+  dataSourceViewModelIds,
 }: {
   auth: Authenticator;
-  dataSourceViewIds: ModelId[];
+  dataSourceViewModelIds: ModelId[];
 }): Promise<DataSourcesUsageByAgent> {
   const owner = auth.workspace();
 
@@ -72,8 +72,8 @@ export async function getDataSourceViewsUsageByIds({
     return {};
   }
 
-  const uniqueDataSourceViewIds = uniq(dataSourceViewIds);
-  if (uniqueDataSourceViewIds.length === 0) {
+  const uniqueDataSourceViewModelIds = uniq(dataSourceViewModelIds);
+  if (uniqueDataSourceViewModelIds.length === 0) {
     return {};
   }
 
@@ -84,7 +84,7 @@ export async function getDataSourceViewsUsageByIds({
       attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
       where: {
         workspaceId: owner.id,
-        dataSourceViewId: { [Op.in]: uniqueDataSourceViewIds },
+        dataSourceViewId: { [Op.in]: uniqueDataSourceViewModelIds },
       },
     }),
     AgentTablesQueryConfigurationTableModel.findAll({
@@ -92,32 +92,32 @@ export async function getDataSourceViewsUsageByIds({
       attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
       where: {
         workspaceId: owner.id,
-        dataSourceViewId: { [Op.in]: uniqueDataSourceViewIds },
+        dataSourceViewId: { [Op.in]: uniqueDataSourceViewModelIds },
       },
     }),
   ]);
 
   // Step 3: fetch the MCP server configuration -> agent configuration mappings
   // once for both sources.
-  const mcpServerConfigurationIds = uniq(
+  const mcpServerConfigurationModelIds = uniq(
     [...dataSourceConfigLinks, ...tableConfigLinks]
       .map((link) => link.mcpServerConfigurationId)
       .filter((id): id is ModelId => id !== null && id !== undefined)
   );
 
   const mcpConfigs =
-    mcpServerConfigurationIds.length > 0
+    mcpServerConfigurationModelIds.length > 0
       ? await AgentMCPServerConfigurationModel.findAll({
           raw: true,
           attributes: ["id", "agentConfigurationId"],
           where: {
             workspaceId: owner.id,
-            id: { [Op.in]: mcpServerConfigurationIds },
+            id: { [Op.in]: mcpServerConfigurationModelIds },
           },
         })
       : [];
 
-  const mcpConfigById = new Map(
+  const mcpConfigByModelId = new Map(
     mcpConfigs.map((config) => [config.id, config])
   );
 
@@ -149,19 +149,19 @@ export async function getDataSourceViewsUsageByIds({
   });
 
   // 4A. Agents for AgentDataSourceConfigurationModel links.
-  const dataSourceAgentConfigurationIds = uniq(
+  const dataSourceAgentConfigurationModelIds = uniq(
     dataSourceConfigLinks
       .map((link) =>
         link.mcpServerConfigurationId === null
           ? undefined
-          : mcpConfigById.get(link.mcpServerConfigurationId)
+          : mcpConfigByModelId.get(link.mcpServerConfigurationId)
               ?.agentConfigurationId
       )
       .filter((id): id is ModelId => id !== null && id !== undefined)
   );
 
   const dataSourceAgents =
-    dataSourceAgentConfigurationIds.length > 0
+    dataSourceAgentConfigurationModelIds.length > 0
       ? await AgentConfigurationModel.findAll({
           raw: true,
           attributes: ["id", "sId", "name", "pictureUrl"],
@@ -169,39 +169,42 @@ export async function getDataSourceViewsUsageByIds({
             ...(auth.isAdmin()
               ? getAgentWhereClauseAdmin()
               : await getAgentWhereClauseNonAdmin()),
-            id: { [Op.in]: dataSourceAgentConfigurationIds },
+            id: { [Op.in]: dataSourceAgentConfigurationModelIds },
           },
         })
       : [];
 
   // 4B. Agents for AgentTablesQueryConfigurationTableModel links.
-  const tableAgentConfigurationIds = uniq(
+  const tableAgentConfigurationModelIds = uniq(
     tableConfigLinks
       .map(
         (link) =>
-          mcpConfigById.get(link.mcpServerConfigurationId)?.agentConfigurationId
+          mcpConfigByModelId.get(link.mcpServerConfigurationId)
+            ?.agentConfigurationId
       )
       .filter((id): id is ModelId => id !== null && id !== undefined)
   );
 
   const tableAgents =
-    tableAgentConfigurationIds.length > 0
+    tableAgentConfigurationModelIds.length > 0
       ? await AgentConfigurationModel.findAll({
           raw: true,
           attributes: ["id", "sId", "name", "pictureUrl"],
           where: {
             status: "active",
             workspaceId: owner.id,
-            id: { [Op.in]: tableAgentConfigurationIds },
+            id: { [Op.in]: tableAgentConfigurationModelIds },
           },
         })
       : [];
 
   // Step 5: join in memory and build the result.
-  const dataSourceAgentById = new Map(
+  const dataSourceAgentByModelId = new Map(
     dataSourceAgents.map((agent) => [agent.id, agent])
   );
-  const tableAgentById = new Map(tableAgents.map((agent) => [agent.id, agent]));
+  const tableAgentByModelId = new Map(
+    tableAgents.map((agent) => [agent.id, agent])
+  );
 
   const result: DataSourcesUsageByAgent = {};
 
@@ -242,11 +245,11 @@ export async function getDataSourceViewsUsageByIds({
     if (link.mcpServerConfigurationId === null) {
       continue;
     }
-    const mcpConfig = mcpConfigById.get(link.mcpServerConfigurationId);
+    const mcpConfig = mcpConfigByModelId.get(link.mcpServerConfigurationId);
     if (!mcpConfig) {
       continue;
     }
-    const agent = dataSourceAgentById.get(mcpConfig.agentConfigurationId);
+    const agent = dataSourceAgentByModelId.get(mcpConfig.agentConfigurationId);
     if (!agent) {
       continue;
     }
@@ -257,11 +260,11 @@ export async function getDataSourceViewsUsageByIds({
   }
 
   for (const link of tableConfigLinks) {
-    const mcpConfig = mcpConfigById.get(link.mcpServerConfigurationId);
+    const mcpConfig = mcpConfigByModelId.get(link.mcpServerConfigurationId);
     if (!mcpConfig) {
       continue;
     }
-    const agent = tableAgentById.get(mcpConfig.agentConfigurationId);
+    const agent = tableAgentByModelId.get(mcpConfig.agentConfigurationId);
     if (!agent) {
       continue;
     }

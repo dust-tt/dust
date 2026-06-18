@@ -1,4 +1,4 @@
-import { getDataSourceViewsUsageByIds } from "@app/lib/api/agent_data_sources";
+import { getDataSourceViewsUsageByModelIds } from "@app/lib/api/agent_data_sources";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -251,9 +251,9 @@ app.get(
       (a) => a.toJSON().server.availability === "manual"
     ).length;
 
-    const usages = await getDataSourceViewsUsageByIds({
+    const usages = await getDataSourceViewsUsageByModelIds({
       auth,
-      dataSourceViewIds: dataSourceViewsList.map((dsv) => dsv.id),
+      dataSourceViewModelIds: dataSourceViewsList.map((dsv) => dsv.id),
     });
 
     const categories: { [key: string]: SpaceCategoryInfo } = {};
