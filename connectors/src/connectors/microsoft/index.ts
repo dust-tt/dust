@@ -707,18 +707,27 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           );
         }
         await config.update({ allowedSensitivityLabels: labels });
+        const fullSyncRes = await launchMicrosoftFullSyncWorkflow(
+          this.connectorId
+        );
+        if (fullSyncRes.isErr()) {
+          return fullSyncRes;
+        }
+        // Reconciliation workflow handles ongoing drift (label changes on files
+        // in Microsoft with no content change, which delta misses). Start it
+        // when filtering is active, stop it when filtering is disabled.
         if (!labels || labels.length === 0) {
           await terminateWorkflow(
             microsoftSensitivityLabelsReconciliationWorkflowId(this.connectorId)
           );
-          return new Ok(undefined);
-        }
-        const workflowRes =
-          await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
-            this.connectorId
-          );
-        if (workflowRes.isErr()) {
-          return workflowRes;
+        } else {
+          const reconcileRes =
+            await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+              this.connectorId
+            );
+          if (reconcileRes.isErr()) {
+            return reconcileRes;
+          }
         }
         return new Ok(undefined);
       }

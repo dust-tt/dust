@@ -12,11 +12,14 @@ import {
   getFullDeltaResults,
   getItem,
   getParentReferenceInternalId,
+  getSensitivityLabels,
   getSiteAPIPath,
   getSites,
   itemToMicrosoftNode,
+  searchDriveItems,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import {
+  DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
   type DriveItem,
   MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
   type MicrosoftNode,
@@ -38,12 +41,12 @@ import {
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import {
+  computeDisallowedLabels,
   deleteFile,
   deleteFolder,
   getParents,
   isAlreadySeenItem,
   recursiveNodeDeletion,
-  removeFileBasedOnSensitivityLabel,
   shouldSyncFileBasedOnSensitivityLabels,
   syncOneFile,
   updateDescendantsParentsInCore,
@@ -57,6 +60,7 @@ import {
   getAdaptiveConcurrency,
 } from "@connectors/lib/async_utils";
 import {
+  deleteDataSourceDocument,
   MAX_FILE_SIZE_TO_DOWNLOAD,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -194,6 +198,9 @@ async function readDeltaFromGCSStream(
 
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
+
+// Page size for scanning sensitivity-label-skipped nodes during reconciliation.
+const HIDDEN_FILES_PAGE_SIZE = 50;
 
 export async function getRootNodesToSync(
   connectorId: ModelId
@@ -882,20 +889,15 @@ export async function syncFiles({
   }
 }
 
-export async function reconcileSensitivityLabelsForParent({
-  connectorId,
-  parentInternalId,
-  startSyncTs,
-  nextPageLink,
-}: {
-  connectorId: ModelId;
-  parentInternalId: string;
-  startSyncTs: number;
-  nextPageLink?: string;
-}): Promise<{
-  childNodes: string[];
-  nextLink?: string;
-}> {
+/**
+ * Returns the tenant sensitivity labels that are NOT in the connector's allowed
+ * set. This drives the Search queries that find already-synced files which
+ * should now be excluded. When no labels are configured (filtering disabled) the
+ * set is empty — we never exclude anything in that case.
+ */
+export async function getDisallowedSensitivityLabelGuids(
+  connectorId: ModelId
+): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -910,121 +912,203 @@ export async function reconcileSensitivityLabelsForParent({
   }
 
   const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  if (allowedLabels.length === 0) {
+    return [];
+  }
+
   const client = await getMicrosoftClient(connector.connectionId);
+  const tenantLabels = await getSensitivityLabels(logger, client);
 
-  let childrenResult: {
-    results: DriveItem[];
-    nextLink?: string;
-  };
-  try {
-    childrenResult = await getFilesAndFolders(
-      logger,
-      client,
-      parentInternalId,
-      nextPageLink,
-      allowedLabels.length > 0
-    );
-  } catch (error) {
-    if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
-      logger.info(
-        {
-          connectorId,
-          parentInternalId,
-          error: normalizeError(error).message,
-        },
-        "[ReconcileSensitivityLabels] Parent not found or malformed, skipping subtree"
-      );
-      return {
-        childNodes: [],
-        nextLink: undefined,
-      };
-    }
-    throw error;
-  }
-
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    csvEnabled: providerConfig.csvEnabled || false,
+  const disallowedLabels = computeDisallowedLabels({
+    tenantLabels,
+    allowedLabels,
   });
-
-  let removedCount = 0;
-  let addedCount = 0;
-
-  for (const child of childrenResult.results) {
-    await heartbeat();
-
-    if (!child.file) {
-      continue;
-    }
-
-    if (!child.parentReference) {
-      throw new Error(`Unexpected: parent reference missing: ${child}`);
-    }
-
-    const mimeType = child.file.mimeType;
-    if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
-      continue;
-    }
-
-    const internalId = getDriveItemInternalId(child);
-    const fileResource = await MicrosoftNodeResource.fetchByInternalId(
-      connectorId,
-      internalId
-    );
-
-    const shouldSync = shouldSyncFileBasedOnSensitivityLabels({
-      fields: child.listItem?.fields,
-      allowedLabels,
-    });
-
-    const isHiddenBySensitivityLabel =
-      fileResource?.skipReason ===
-      MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED;
-
-    if (!shouldSync) {
-      await removeFileBasedOnSensitivityLabel({
-        connectorId,
-        dataSourceConfig,
-        file: child,
-        fileResource,
-        parentInternalId,
-        logger,
-      });
-      removedCount++;
-    } else if (!fileResource || isHiddenBySensitivityLabel) {
-      const didSync = await syncOneFile({
-        connectorId,
-        dataSourceConfig,
-        providerConfig,
-        file: child,
-        parentInternalId: getParentReferenceInternalId(child.parentReference),
-        startSyncTs,
-        heartbeat,
-      });
-      if (didSync) {
-        addedCount++;
-      }
-    }
-  }
 
   logger.info(
     {
       connectorId,
-      parentInternalId,
-      removedCount,
-      addedCount,
+      allowedCount: allowedLabels.length,
+      tenantCount: tenantLabels.length,
+      disallowedCount: disallowedLabels.length,
     },
-    "[ReconcileSensitivityLabels] Parent page reconciled"
+    "[SensitivityLabels] Computed disallowed label guids"
   );
 
-  const childNodes = childrenResult.results
-    .filter((item) => item.folder)
-    .map((item) => getDriveInternalIdFromItem(item));
+  return disallowedLabels;
+}
+
+export async function searchFilesByLabel({
+  connectorId,
+  labelGuid,
+  from,
+}: {
+  connectorId: ModelId;
+  labelGuid: string;
+  from: number;
+}): Promise<{ internalIds: string[]; nextFrom: number | null }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+  const client = await getMicrosoftClient(connector.connectionId);
+
+  await heartbeat();
+
+  return searchDriveItems(logger, client, {
+    queryString: `InformationProtectionLabelId:${labelGuid}`,
+    from,
+  });
+}
+
+export async function removeSensitivityLabelFilesActivity({
+  connectorId,
+  internalIds,
+}: {
+  connectorId: ModelId;
+  internalIds: string[];
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const nodeResources = await MicrosoftNodeResource.fetchByInternalIds(
+    connectorId,
+    internalIds
+  );
+
+  const nodeByInternalId = new Map(nodeResources.map((n) => [n.internalId, n]));
+
+  // Only act on files we have synced that are not already hidden.
+  const toRemove = internalIds.filter((id) => {
+    const node = nodeByInternalId.get(id);
+    return (
+      node !== undefined &&
+      node.skipReason !== MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED
+    );
+  });
+
+  if (toRemove.length === 0) {
+    return;
+  }
+
+  logger.info(
+    { connectorId, count: toRemove.length },
+    "[RemoveSensitivityLabelFiles] Marking files as label-skipped"
+  );
+
+  await MicrosoftNodeResource.bulkMarkAsSensitivityLabelSkipped(
+    connectorId,
+    toRemove
+  );
+
+  for (const internalId of toRemove) {
+    await heartbeat();
+    await deleteDataSourceDocument(dataSourceConfig, internalId);
+  }
+}
+
+export async function reconcileHiddenFilesActivity({
+  connectorId,
+  idCursor,
+}: {
+  connectorId: ModelId;
+  idCursor: number;
+}): Promise<{ nextCursor: number | null }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const providerConfig =
+    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+  if (!providerConfig) {
+    throw new Error(`Configuration for connector ${connectorId} not found`);
+  }
+
+  const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
+  const client = await getMicrosoftClient(connector.connectionId);
+  const startSyncTs = new Date().getTime();
+
+  const hiddenFiles =
+    await MicrosoftNodeResource.fetchSensitivityLabelSkippedByPaginatedIds({
+      connectorId,
+      pageSize: HIDDEN_FILES_PAGE_SIZE,
+      idCursor,
+    });
+
+  if (hiddenFiles.length === 0) {
+    return { nextCursor: null };
+  }
+
+  const lastNode = hiddenFiles[hiddenFiles.length - 1];
+  const nextCursor = lastNode ? lastNode.id + 1 : null;
+
+  for (const node of hiddenFiles) {
+    await heartbeat();
+
+    const { itemAPIPath } = typeAndPathFromInternalId(node.internalId);
+
+    let file: DriveItem;
+    try {
+      file = await getItem<DriveItem>(
+        logger,
+        client,
+        `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS}`
+      );
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          { connectorId, internalId: node.internalId },
+          "[ReconcileHiddenFiles] File not found in Graph API, leaving hidden"
+        );
+        continue;
+      }
+      throw error;
+    }
+
+    if (!file.parentReference) {
+      continue;
+    }
+
+    const shouldSync = shouldSyncFileBasedOnSensitivityLabels({
+      fields: file.listItem?.fields,
+      allowedLabels,
+    });
+
+    if (!shouldSync) {
+      continue;
+    }
+
+    logger.info(
+      { connectorId, internalId: node.internalId },
+      "[ReconcileHiddenFiles] File now allowed, re-syncing"
+    );
+
+    const parentInternalId = getParentReferenceInternalId(file.parentReference);
+
+    await syncOneFile({
+      connectorId,
+      dataSourceConfig,
+      providerConfig,
+      file,
+      parentInternalId,
+      startSyncTs,
+      heartbeat,
+    });
+  }
 
   return {
-    childNodes,
-    nextLink: childrenResult.nextLink,
+    nextCursor: hiddenFiles.length < HIDDEN_FILES_PAGE_SIZE ? null : nextCursor,
   };
 }
 
