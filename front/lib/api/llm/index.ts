@@ -1,5 +1,6 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
+import logger from "@app/logger/logger";
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import {
   isAnthropicVertexWhitelistedModelId,
@@ -243,6 +244,10 @@ export async function getStreamLLM(
   );
 
   if (featureFlags.includes("use_new_llm_router") && streamEndpointLLM) {
+    logger.info(
+      { modelId: llmParameters.modelId },
+      `Sending request to ${llmParameters.modelId} with new router`
+    );
     return streamEndpointLLM;
   }
 

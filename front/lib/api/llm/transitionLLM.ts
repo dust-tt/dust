@@ -540,7 +540,7 @@ export class StreamEndpointTransition extends BaseTransition {
     llmParameters: LLMParameters,
     modelConstructor: StreamEndpointConstructor
   ) {
-    super(auth, ANTHROPIC_PROVIDER_ID, llmParameters);
+    super(auth, modelConstructor.providerId, llmParameters);
     this.model = new modelConstructor(llmParameters.credentials);
 
     const { api, region } = this.model.metadata();
@@ -581,7 +581,7 @@ export class BatchEndpointTransition extends BaseTransition {
     llmParameters: LLMParameters,
     modelConstructor: BatchEndpointConstructor
   ) {
-    super(auth, ANTHROPIC_PROVIDER_ID, llmParameters);
+    super(auth, modelConstructor.providerId, llmParameters);
     this.model = new modelConstructor(llmParameters.credentials);
   }
 
