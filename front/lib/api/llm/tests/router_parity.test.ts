@@ -42,6 +42,7 @@ const kit = vi.hoisted(() => {
   const emptyStream = () => (async function* () {})();
   const freshCaptures = () => ({
     anthropic: { ga: [] as unknown[], beta: [] as unknown[] },
+    openai: [] as unknown[],
   });
   const state = { captures: freshCaptures() };
   const makeClient = () =>
@@ -61,12 +62,28 @@ const kit = vi.hoisted(() => {
         },
       };
     };
-  return { state, makeClient, freshCaptures };
+  // Both the legacy and new OpenAI routers call `client.responses.create`, so
+  // one bucket records both; the adapter splits them by call order.
+  const makeOpenAIClient = () =>
+    class {
+      responses = {
+        create: (input: unknown) => {
+          state.captures.openai.push(input);
+          return emptyStream();
+        },
+      };
+    };
+  return { state, makeClient, makeOpenAIClient, freshCaptures };
 });
 
 vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@anthropic-ai/sdk")>();
   return { ...actual, default: kit.makeClient() };
+});
+
+vi.mock("openai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("openai")>();
+  return { ...actual, default: kit.makeOpenAIClient() };
 });
 
 async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {

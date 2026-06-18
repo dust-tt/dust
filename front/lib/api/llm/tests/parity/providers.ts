@@ -1,5 +1,7 @@
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import { isAnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
+import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
+import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
@@ -16,6 +18,7 @@ import type { LLMCredentialsType } from "@app/types/provider_credential";
 // (the legacy Anthropic client asserts a non-empty ANTHROPIC_API_KEY).
 export const PARITY_CREDENTIALS: LLMCredentialsType = {
   ANTHROPIC_API_KEY: "test-anthropic-key",
+  OPENAI_API_KEY: "test-openai-key",
 };
 
 /** Per-call parameters shared by both routers for one parity case. */
@@ -55,6 +58,13 @@ export function readEndpointInfo(
  */
 export interface SdkCaptures {
   anthropic: { ga: unknown[]; beta: unknown[] };
+  // OpenAI's legacy and new routers both call `client.responses.create`, so a
+  // single bucket holds both requests, split by call order (see the adapter).
+  openai: unknown[];
+}
+
+function first(arr: unknown[]): unknown {
+  return arr.length > 0 ? arr[0] : undefined;
 }
 
 function last(arr: unknown[]): unknown {
@@ -116,8 +126,44 @@ const anthropicProvider: ParityProvider = {
   },
 };
 
+const openaiProvider: ParityProvider = {
+  toModelId(raw) {
+    if (!isModelId(raw) || !isOpenAIResponsesWhitelistedModelId(raw)) {
+      throw new Error(`${raw} is not a whitelisted OpenAI model.`);
+    }
+    return raw;
+  },
+  buildLegacyLLM(auth, _endpoint, params) {
+    if (
+      !isModelId(params.modelId) ||
+      !isOpenAIResponsesWhitelistedModelId(params.modelId)
+    ) {
+      throw new Error(`${params.modelId} is not a whitelisted OpenAI model.`);
+    }
+    // Only global endpoints are exercised locally; the legacy counterpart is
+    // always the direct OpenAI Responses API.
+    return new OpenAIResponsesLLM(auth, {
+      credentials: PARITY_CREDENTIALS,
+      modelId: params.modelId,
+      temperature: params.temperature,
+      reasoningEffort: params.reasoningEffort,
+      responseFormat: params.responseFormat,
+      bypassFeatureFlag: true,
+    });
+  },
+  // Both routers hit the same `responses.create`; the test drains the legacy
+  // stream before the new one, so the first capture is legacy, the last is new.
+  selectOldRequest(_endpoint, captures) {
+    return first(captures.openai);
+  },
+  selectNewRequest(_endpoint, captures) {
+    return last(captures.openai);
+  },
+};
+
 const PARITY_PROVIDERS: Partial<Record<ProviderId, ParityProvider>> = {
   anthropic: anthropicProvider,
+  openai: openaiProvider,
 };
 
 export function getParityProvider(providerId: ProviderId): ParityProvider {
