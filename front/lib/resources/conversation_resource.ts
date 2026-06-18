@@ -878,7 +878,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       maxDepth = 10,
     }: { agentMessageId: string; maxDepth?: number }
   ): Promise<string[]> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     const query = `
       WITH RECURSIVE ancestors AS (
@@ -893,7 +893,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         JOIN user_messages um
           ON um.id = user_msg."userMessageId"
          AND um."workspaceId" = user_msg."workspaceId"
-        WHERE reply."workspaceId" = :workspaceId
+        WHERE reply."workspaceId" = :workspaceModelId
           AND reply."sId" = :agentMessageId
           AND reply."agentMessageId" IS NOT NULL
           AND um."agenticMessageType" = 'run_agent'
@@ -908,14 +908,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         FROM ancestors a
         JOIN messages reply
           ON reply."sId" = a.ancestor_sid
-         AND reply."workspaceId" = :workspaceId
+         AND reply."workspaceId" = :workspaceModelId
          AND reply."agentMessageId" IS NOT NULL
         JOIN messages user_msg
           ON user_msg.id = reply."parentId"
-         AND user_msg."workspaceId" = :workspaceId
+         AND user_msg."workspaceId" = :workspaceModelId
         JOIN user_messages um
           ON um.id = user_msg."userMessageId"
-         AND um."workspaceId" = :workspaceId
+         AND um."workspaceId" = :workspaceModelId
          AND um."agenticMessageType" = 'run_agent'
          AND um."agenticOriginMessageId" IS NOT NULL
         WHERE a.depth < :maxDepth
@@ -932,7 +932,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: number;
     }>(query, {
       type: QueryTypes.SELECT,
-      replacements: { workspaceId, agentMessageId, maxDepth },
+      replacements: { workspaceModelId, agentMessageId, maxDepth },
     });
 
     if (rows.length > 0 && rows[rows.length - 1].depth >= maxDepth) {
