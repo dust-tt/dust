@@ -8,7 +8,9 @@ import {
   clearMetronomeProgrammaticCapAlerts,
   upsertMetronomeProgrammaticCapAlerts,
 } from "@app/lib/metronome/alerts/programmatic_cap";
+import { setProgrammaticCreditStateReconciled } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -47,10 +49,10 @@ export async function getProgrammaticUsageLimit(
  * Set or clear the workspace's programmatic usage monthly cap.
  *
  * Persists the cap on `credit_usage_configurations` (the source of truth),
- * then derives the four Metronome programmatic alerts (cap, warning, low,
- * critical) from it. A non-negative `monthlyCapCredits` upserts the alerts
- * (0 included, as a hard cap); `null` or a negative value clears both the
- * stored cap and the alerts.
+ * then derives the Metronome programmatic alerts from it (only for positive
+ * caps; 0 and null both clear the alerts since a cap of 0 is always depleted),
+ * and finally reconciles `programmaticCreditState` so usage-status reflects
+ * the change immediately without waiting for a webhook.
  */
 export async function syncProgrammaticUsageLimit({
   auth,
@@ -106,8 +108,10 @@ export async function syncProgrammaticUsageLimit({
     });
   }
 
+  // Alerts only make sense for a positive cap: a cap of 0 means usage is
+  // always fully depleted, so no threshold transition can ever fire.
   const alertResult =
-    normalizedCapCredits !== null
+    normalizedCapCredits !== null && normalizedCapCredits > 0
       ? await upsertMetronomeProgrammaticCapAlerts({
           metronomeCustomerId: workspace.metronomeCustomerId,
           workspaceId: workspace.sId,
@@ -123,6 +127,18 @@ export async function syncProgrammaticUsageLimit({
         `Failed to sync Metronome programmatic cap alerts: ${alertResult.error.message}`
       )
     );
+  }
+
+  // Reconcile programmaticCreditState immediately so /usage-status reflects the
+  // change without waiting for a Metronome webhook. Cap > 0 → active (fresh
+  // cap, usage hasn't hit it yet); 0 or null → depleted (no access).
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (workspaceResource) {
+    const targetState =
+      normalizedCapCredits !== null && normalizedCapCredits > 0
+        ? "active"
+        : "depleted";
+    await setProgrammaticCreditStateReconciled(workspaceResource, targetState);
   }
 
   void emitAuditLogEvent({

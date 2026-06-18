@@ -3,6 +3,7 @@ import {
   useUpdateProgrammaticUsageLimit,
 } from "@app/lib/swr/usage_settings";
 import { InputWithSave, Page, SettingsList } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface UsageProgrammaticLimitCardProps {
   workspaceId: string;
@@ -21,15 +22,18 @@ export function UsageProgrammaticLimitCard({
 
   const currentLimit = programmaticUsageLimit?.monthlyCapCredits ?? null;
 
+  const [isEditing, setIsEditing] = useState(false);
+
   const handleSaveLimit = async (newValue: string) => {
     const trimmed = newValue.trim();
 
-    // An empty value means no limit.
+    // An empty value means no programmatic access. Save 0 (not null) so
+    // Metronome alerts are upserted with cap=0 and actually block access.
     if (trimmed === "") {
-      if (currentLimit === null) {
+      if (currentLimit === null || currentLimit === 0) {
         return;
       }
-      await doUpdateProgrammaticUsageLimit(null);
+      await doUpdateProgrammaticUsageLimit(0);
       return;
     }
 
@@ -62,16 +66,24 @@ export function UsageProgrammaticLimitCard({
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="No limit"
+                placeholder="No access"
                 value={
-                  currentLimit !== null ? currentLimit.toLocaleString() : ""
+                  currentLimit === null || currentLimit === 0
+                    ? ""
+                    : currentLimit.toLocaleString()
                 }
-                unit="credits"
+                unit={
+                  (currentLimit === null || currentLimit === 0) && !isEditing
+                    ? undefined
+                    : "credits"
+                }
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                 formatValue={(value) =>
                   value ? Number(value).toLocaleString() : value
                 }
                 onSave={handleSaveLimit}
+                onFocus={() => setIsEditing(true)}
+                onBlur={() => setIsEditing(false)}
                 disabled={readOnly || isProgrammaticUsageLimitLoading}
               />
             </div>

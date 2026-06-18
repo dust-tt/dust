@@ -27,6 +27,7 @@ export function UsageNotificationsCard({
 
   const [isSavingUpgradeRequestEmail, setIsSavingUpgradeRequestEmail] =
     useState(false);
+  const [isEditingThreshold, setIsEditingThreshold] = useState(false);
 
   const handleToggleUpgradeRequestEmail = async () => {
     setIsSavingUpgradeRequestEmail(true);
@@ -84,13 +85,24 @@ export function UsageNotificationsCard({
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={currentThreshold.toLocaleString()}
-                unit="credits"
+                placeholder="Disabled"
+                value={
+                  currentThreshold === 0
+                    ? ""
+                    : currentThreshold.toLocaleString()
+                }
+                unit={
+                  currentThreshold === 0 && !isEditingThreshold
+                    ? undefined
+                    : "credits"
+                }
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                 formatValue={(value) =>
                   value ? Number(value).toLocaleString() : value
                 }
                 onSave={handleSaveBalanceThreshold}
+                onFocus={() => setIsEditingThreshold(true)}
+                onBlur={() => setIsEditingThreshold(false)}
                 disabled={readOnly || isUsageNotificationsLoading}
               />
             </div>

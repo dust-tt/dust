@@ -41,6 +41,7 @@ export function UsageSettingsCard({
   const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
     useState(false);
   const [isSavingAutoSeatUpgrade, setIsSavingAutoSeatUpgrade] = useState(false);
+  const [isEditingDefaultLimit, setIsEditingDefaultLimit] = useState(false);
 
   const handleToggleAllowUpgradeRequest = async () => {
     setIsSavingAllowUpgradeRequest(true);
@@ -102,17 +103,26 @@ export function UsageSettingsCard({
                 <InputWithSave
                   inputMode="numeric"
                   pattern="[0-9]*"
+                  placeholder="No access"
                   value={
-                    currentDefaultLimit !== null
-                      ? currentDefaultLimit.toLocaleString()
-                      : ""
+                    currentDefaultLimit === null || currentDefaultLimit === 0
+                      ? ""
+                      : currentDefaultLimit.toLocaleString()
                   }
-                  unit="credits"
+                  unit={
+                    (currentDefaultLimit === null ||
+                      currentDefaultLimit === 0) &&
+                    !isEditingDefaultLimit
+                      ? undefined
+                      : "credits"
+                  }
                   normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                   formatValue={(value) =>
                     value ? Number(value).toLocaleString() : value
                   }
                   onSave={handleSaveDefaultLimit}
+                  onFocus={() => setIsEditingDefaultLimit(true)}
+                  onBlur={() => setIsEditingDefaultLimit(false)}
                   disabled={readOnly || isDefaultUserSpendLimitLoading}
                 />
               </div>

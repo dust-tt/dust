@@ -222,6 +222,38 @@ async function reconcileProgrammatic({
   metronomeCustomerId: string;
   execute: boolean;
 }): Promise<Result<ProgrammaticReconcileReport, Error>> {
+  // Read the cap from the DB first — it is the source of truth. A cap of 0 or
+  // null means no programmatic access; no alerts exist in that case so reading
+  // Metronome would incorrectly return "active" (no alarms → active).
+  const config = await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+    workspace.id
+  );
+  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? 0;
+
+  const noAlarms = { cap: false, low: false, critical: false };
+
+  if (monthlyCapCredits === 0) {
+    const expectedState: WorkspaceProgrammaticCreditState = "depleted";
+    const previousState = workspace.programmaticCreditState;
+    let newState = previousState;
+    if (execute) {
+      await setProgrammaticCreditStateReconciled(workspace, expectedState);
+      newState = workspace.programmaticCreditState;
+    }
+    return new Ok({
+      target: "programmatic",
+      previousState,
+      expectedState,
+      newState,
+      wasInvalid: previousState !== expectedState,
+      corrected: previousState !== newState,
+      executed: execute,
+      alarms: noAlarms,
+    });
+  }
+
+  // For a positive cap, read Metronome alert states to derive the expected
+  // state (cap/low/critical alarms may be in alarm if spend is high).
   const statesResult = await getMetronomeProgrammaticCapAlertStates({
     metronomeCustomerId,
     workspaceId: workspace.sId,

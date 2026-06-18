@@ -391,20 +391,21 @@ export function useUpdateProgrammaticUsageLimit({
         await res.json()
       );
 
-      if (monthlyCapCredits === null) {
+      if (monthlyCapCredits === null || monthlyCapCredits === 0) {
         sendNotification({
           type: "success",
-          title: "Programmatic usage limit has been removed",
+          title: "Programmatic access disabled",
         });
       } else {
         sendNotification({
           type: "success",
           title: "Programmatic usage limit updated",
-          description: `The monthly programmatic usage limit has been set to ${monthlyCapCredits.toLocaleString("en-US")} credits.`,
+          description: `Monthly limit set to ${monthlyCapCredits.toLocaleString()} credits.`,
         });
       }
 
       await mutate(programmaticUsageLimitUrl(workspaceId));
+      await mutate(`/api/w/${workspaceId}/usage-status`);
       return body;
     },
     [workspaceId, sendNotification]
