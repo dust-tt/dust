@@ -14,6 +14,11 @@ import {
   fetchMessageExportRows,
   MESSAGE_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/messages_export";
+import type { SkillExportRow } from "@app/lib/api/analytics/skills_export";
+import {
+  fetchSkillExportRows,
+  SKILL_EXPORT_HEADERS,
+} from "@app/lib/api/analytics/skills_export";
 import type { UserExportRow } from "@app/lib/api/analytics/users_export";
 import {
   fetchUserExportRows,
@@ -46,6 +51,7 @@ type AnalyticsExportTable =
   | "source"
   | "agents"
   | "users"
+  | "skills"
   | "skill_usage"
   | "tool_usage"
   | "messages"
@@ -146,6 +152,11 @@ export type ExportTableData =
       rows: UserExportRow[];
     }
   | {
+      table: "skills";
+      headers: typeof SKILL_EXPORT_HEADERS;
+      rows: SkillExportRow[];
+    }
+  | {
       table: "skill_usage";
       headers: typeof SKILL_USAGE_HEADERS;
       rows: SkillUsageRow[];
@@ -200,6 +211,8 @@ export async function exportTable({
       });
     case "users":
       return exportUsers({ startDate, endDate, timezone, owner });
+    case "skills":
+      return exportSkills({ auth, startDate, endDate, timezone, owner });
     case "skill_usage":
       return exportSkillUsage({ startDate, endDate, timezone, owner });
     case "tool_usage":
@@ -224,6 +237,8 @@ export function stringifyExportTableAsCsv(data: ExportTableData): string {
     case "agents":
       return stringifyRowsAsCsv(data.headers, data.rows);
     case "users":
+      return stringifyRowsAsCsv(data.headers, data.rows);
+    case "skills":
       return stringifyRowsAsCsv(data.headers, data.rows);
     case "skill_usage":
       return stringifyRowsAsCsv(data.headers, data.rows);
@@ -446,6 +461,40 @@ async function exportUsers({
   return new Ok({
     table: "users",
     headers: USER_EXPORT_HEADERS,
+    rows: result.value,
+  });
+}
+
+async function exportSkills({
+  auth,
+  startDate,
+  endDate,
+  timezone,
+  owner,
+}: {
+  auth: Authenticator;
+  startDate: string;
+  endDate: string;
+  timezone: string;
+  owner: WorkspaceType;
+}): Promise<Result<ExportTableData, Error>> {
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    startDate,
+    endDate,
+  });
+
+  const result = await fetchSkillExportRows(auth, baseQuery, timezone);
+
+  if (result.isErr()) {
+    return new Err(
+      new Error(`Failed to retrieve skills: ${result.error.message}`)
+    );
+  }
+
+  return new Ok({
+    table: "skills",
+    headers: SKILL_EXPORT_HEADERS,
     rows: result.value,
   });
 }

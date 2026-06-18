@@ -258,7 +258,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count.\n- \"users\": Top users by message count.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
+            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count.\n- \"users\": Top users by message count.\n- \"skills\": Skill metadata catalog.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -267,6 +267,7 @@
                 "source",
                 "agents",
                 "users",
+                "skills",
                 "skill_usage",
                 "tool_usage",
                 "messages",

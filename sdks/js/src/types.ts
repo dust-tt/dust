@@ -3035,6 +3035,7 @@ const AnalyticsExportTableSchema = z.enum([
   "source",
   "agents",
   "users",
+  "skills",
   "skill_usage",
   "tool_usage",
   "messages",
