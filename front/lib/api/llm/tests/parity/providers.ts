@@ -1,5 +1,7 @@
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import { isAnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
+import { GoogleLLM } from "@app/lib/api/llm/clients/google";
+import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
@@ -15,9 +17,10 @@ import type {
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 
 // Test credentials. The SDKs are mocked, so values only need to be present
-// (the legacy Anthropic client asserts a non-empty ANTHROPIC_API_KEY).
+// (the legacy clients assert a non-empty API key for their provider).
 export const PARITY_CREDENTIALS: LLMCredentialsType = {
   ANTHROPIC_API_KEY: "test-anthropic-key",
+  GOOGLE_AI_STUDIO_API_KEY: "test-google-key",
   OPENAI_API_KEY: "test-openai-key",
 };
 
@@ -58,6 +61,10 @@ export function readEndpointInfo(
  */
 export interface SdkCaptures {
   anthropic: { ga: unknown[]; beta: unknown[] };
+  // Both the legacy and the new Google routers call the same SDK method
+  // (`models.generateContentStream`), so calls land in one ordered bucket: the
+  // test drains the legacy stream first (index 0), then the new one (index 1).
+  google: unknown[];
   // OpenAI's legacy and new routers both call `client.responses.create`, so a
   // single bucket holds both requests, split by call order (see the adapter).
   openai: unknown[];
@@ -126,6 +133,43 @@ const anthropicProvider: ParityProvider = {
   },
 };
 
+const googleProvider: ParityProvider = {
+  toModelId(raw) {
+    if (!isModelId(raw) || !isGoogleAIStudioWhitelistedModelId(raw)) {
+      throw new Error(`${raw} is not a whitelisted Google AI Studio model.`);
+    }
+    return raw;
+  },
+  buildLegacyLLM(auth, _endpoint, params) {
+    if (
+      !isModelId(params.modelId) ||
+      !isGoogleAIStudioWhitelistedModelId(params.modelId)
+    ) {
+      throw new Error(
+        `${params.modelId} is not a whitelisted Google AI Studio model.`
+      );
+    }
+    // Only global endpoints are exercised locally, so the legacy counterpart is
+    // always the direct Google AI Studio API (no Vertex).
+    return new GoogleLLM(auth, {
+      credentials: PARITY_CREDENTIALS,
+      modelId: params.modelId,
+      temperature: params.temperature,
+      reasoningEffort: params.reasoningEffort,
+      responseFormat: params.responseFormat,
+      bypassFeatureFlag: true,
+    });
+  },
+  // Both routers call `models.generateContentStream`; the test drains legacy
+  // first (index 0), then new (index 1).
+  selectOldRequest(_endpoint, captures) {
+    return captures.google[0];
+  },
+  selectNewRequest(_endpoint, captures) {
+    return captures.google[1];
+  },
+};
+
 const openaiProvider: ParityProvider = {
   toModelId(raw) {
     if (!isModelId(raw) || !isOpenAIResponsesWhitelistedModelId(raw)) {
@@ -163,6 +207,7 @@ const openaiProvider: ParityProvider = {
 
 const PARITY_PROVIDERS: Partial<Record<ProviderId, ParityProvider>> = {
   anthropic: anthropicProvider,
+  google_ai_studio: googleProvider,
   openai: openaiProvider,
 };
 
@@ -175,11 +220,4 @@ export function getParityProvider(providerId: ProviderId): ParityProvider {
     );
   }
   return provider;
-}
-
-// Whether a provider has a parity adapter yet. Endpoints whose provider has no
-// adapter are skipped by the parity suite (rather than throwing) until their
-// adapter + SDK mock + normalizer are added.
-export function hasParityProvider(providerId: ProviderId): boolean {
-  return PARITY_PROVIDERS[providerId] !== undefined;
 }
