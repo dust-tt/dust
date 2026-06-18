@@ -12,6 +12,10 @@ export type BaseEndpointConfiguration<C extends InputConfig = InputConfig> = {
   providerId: ProviderId;
   api: ProviderApi;
   modelId: ModelId;
+  // Wire id sent to the provider API when it differs from our canonical
+  // `modelId` (e.g. Vertex expects `claude-haiku-4-5@20251001`). Defaults to
+  // `modelId`.
+  providerModelId?: string;
   region: Region;
 
   // Capabilities

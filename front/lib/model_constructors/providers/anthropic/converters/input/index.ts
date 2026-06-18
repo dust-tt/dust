@@ -82,7 +82,7 @@ export function WithAnthropicInputConverter<
       };
 
       return {
-        model: this.constructor.modelId,
+        model: this.constructor.providerModelId ?? this.constructor.modelId,
         max_tokens: this.constructor.maxOutputTokens,
         messages: this.conversationToMessages(conversation),
         system: this.systemMessagesToSystemParam(conversation.system),
