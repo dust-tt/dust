@@ -1,5 +1,6 @@
 import {
   getWhitelistedProviders,
+  getWorkspaceBackupModel,
   resolveAutoModel,
 } from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
@@ -235,14 +236,22 @@ export async function getStreamLLM(
   auth: Authenticator,
   inputLLMParameters: LLMParameters
 ): Promise<LLM | null> {
-  const llmParameters = resolveAutoLLMParameters(auth, inputLLMParameters);
+  let llmParameters = resolveAutoLLMParameters(auth, inputLLMParameters);
   if (!llmParameters) {
     return null;
   }
 
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  let modelConfig = getModelConfigByModelId(llmParameters.modelId);
   if (!modelConfig) {
-    return null;
+    llmParameters = resolveBackupLLMParameters(auth, llmParameters);
+    if (!llmParameters) {
+      return null;
+    }
+
+    modelConfig = getModelConfigByModelId(llmParameters.modelId);
+    if (!modelConfig) {
+      return null;
+    }
   }
   const featureFlags = await getFeatureFlags(auth);
 
@@ -261,6 +270,15 @@ export async function getStreamLLM(
   }
 
   const legacyLLM = await getLegacyLLM(auth, llmParameters);
+  if (!legacyLLM) {
+    const backupLLMParameters = resolveBackupLLMParameters(
+      auth,
+      llmParameters
+    );
+    if (backupLLMParameters) {
+      return getLegacyLLM(auth, backupLLMParameters);
+    }
+  }
 
   return legacyLLM;
 }
@@ -271,16 +289,26 @@ export async function getBatchLLM(
   auth: Authenticator,
   inputLLMParameters: LLMParameters
 ): Promise<LLM | null> {
-  const llmParameters = resolveAutoLLMParameters(auth, inputLLMParameters, {
+  let llmParameters = resolveAutoLLMParameters(auth, inputLLMParameters, {
     forBatch: true,
   });
   if (!llmParameters) {
     return null;
   }
 
-  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  let modelConfig = getModelConfigByModelId(llmParameters.modelId);
   if (!modelConfig) {
-    return null;
+    llmParameters = resolveBackupLLMParameters(auth, llmParameters, {
+      forBatch: true,
+    });
+    if (!llmParameters) {
+      return null;
+    }
+
+    modelConfig = getModelConfigByModelId(llmParameters.modelId);
+    if (!modelConfig) {
+      return null;
+    }
   }
   const featureFlags = await getFeatureFlags(auth);
 
@@ -295,6 +323,16 @@ export async function getBatchLLM(
   }
 
   const legacyLLM = await getLegacyLLM(auth, llmParameters);
+  if (!legacyLLM) {
+    const backupLLMParameters = resolveBackupLLMParameters(
+      auth,
+      llmParameters,
+      { forBatch: true }
+    );
+    if (backupLLMParameters) {
+      return getLegacyLLM(auth, backupLLMParameters);
+    }
+  }
 
   return legacyLLM;
 }
@@ -317,6 +355,24 @@ function resolveAutoLLMParameters(
     modelId: autoResolvedModel.modelId,
     reasoningEffort:
       llmParameters.reasoningEffort ?? autoResolvedModel.defaultReasoningEffort,
+  };
+}
+
+function resolveBackupLLMParameters(
+  auth: Authenticator,
+  llmParameters: LLMParameters,
+  { forBatch = false }: { forBatch?: boolean } = {}
+): LLMParameters | null {
+  const backupModel = getWorkspaceBackupModel(auth, { forBatch });
+  if (!backupModel || backupModel.modelId === llmParameters.modelId) {
+    return null;
+  }
+
+  return {
+    ...llmParameters,
+    modelId: backupModel.modelId,
+    reasoningEffort:
+      llmParameters.reasoningEffort ?? backupModel.defaultReasoningEffort,
   };
 }
 

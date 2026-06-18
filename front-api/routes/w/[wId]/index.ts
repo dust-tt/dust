@@ -1,5 +1,8 @@
 import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
+  getEnabledModelFromPreference,
+} from "@app/lib/api/assistant/models";
+import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
@@ -12,6 +15,13 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
+import { isAutoModelId } from "@app/types/assistant/models/auto";
+import { ModelIdSchema } from "@app/types/assistant/models/models";
+import {
+  WORKSPACE_BACKUP_MODEL_METADATA_KEY,
+  WORKSPACE_DEFAULT_MODEL_METADATA_KEY,
+  type WorkspaceModelPreference,
+} from "@app/types/assistant/models/preferences";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -111,6 +121,16 @@ const WorkspaceProvidersUpdateBodySchema = z.object({
   defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
 });
 
+const WorkspaceModelPreferenceSchema = z.object({
+  providerId: ModelProviderIdSchema,
+  modelId: ModelIdSchema,
+});
+
+const WorkspaceModelPreferencesUpdateBodySchema = z.object({
+  defaultModel: WorkspaceModelPreferenceSchema.nullable(),
+  backupModel: WorkspaceModelPreferenceSchema.nullable(),
+});
+
 const WorkspaceWorkOSUpdateBodySchema = z.object({
   workOSOrganizationId: z.string().nullable(),
 });
@@ -200,6 +220,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
+  WorkspaceModelPreferencesUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
   WorkspaceSharingPolicyUpdateBodySchema,
@@ -390,6 +411,110 @@ app.post(
       });
       owner.whiteListedProviders = body.whiteListedProviders;
       owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
+    } else if ("defaultModel" in body && "backupModel" in body) {
+      const { defaultModel, backupModel } = body;
+
+      if (defaultModel && isAutoModelId(defaultModel.modelId)) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The default model must be a concrete model.",
+          },
+        });
+      }
+
+      if (backupModel && isAutoModelId(backupModel.modelId)) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The backup model must be a concrete model.",
+          },
+        });
+      }
+
+      if (
+        defaultModel &&
+        backupModel &&
+        defaultModel.providerId === backupModel.providerId &&
+        defaultModel.modelId === backupModel.modelId
+      ) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The backup model must be different from the default model.",
+          },
+        });
+      }
+
+      const validatePreference = (
+        preference: WorkspaceModelPreference | null
+      ) => {
+        if (!preference) {
+          return true;
+        }
+
+        return Boolean(getEnabledModelFromPreference(auth, preference));
+      };
+
+      if (!validatePreference(defaultModel)) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The default model must be enabled for this workspace and region.",
+          },
+        });
+      }
+
+      if (!validatePreference(backupModel)) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The backup model must be enabled for this workspace and region.",
+          },
+        });
+      }
+
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+      };
+
+      if (defaultModel) {
+        newMetadata[WORKSPACE_DEFAULT_MODEL_METADATA_KEY] = defaultModel;
+      } else {
+        delete newMetadata[WORKSPACE_DEFAULT_MODEL_METADATA_KEY];
+      }
+
+      if (backupModel) {
+        newMetadata[WORKSPACE_BACKUP_MODEL_METADATA_KEY] = backupModel;
+      } else {
+        delete newMetadata[WORKSPACE_BACKUP_MODEL_METADATA_KEY];
+      }
+
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.model_preferences_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          default_model: defaultModel
+            ? `${defaultModel.providerId}/${defaultModel.modelId}`
+            : "system",
+          backup_model: backupModel
+            ? `${backupModel.providerId}/${backupModel.modelId}`
+            : "none",
+        },
+      });
     } else if ("workOSOrganizationId" in body) {
       await workspace.updateWorkspaceSettings({
         workOSOrganizationId: body.workOSOrganizationId,

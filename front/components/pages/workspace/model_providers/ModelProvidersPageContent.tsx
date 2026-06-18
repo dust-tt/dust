@@ -3,10 +3,12 @@ import { EmbeddingModelSelect } from "@app/components/pages/workspace/model_prov
 import { ProvidersConfigurationList } from "@app/components/pages/workspace/model_providers/ProvidersConfigurationList";
 import { ProvidersToggleList } from "@app/components/pages/workspace/model_providers/ProvidersToggleList";
 import { RegionalModelsOnlyToggle } from "@app/components/pages/workspace/model_providers/RegionalModelsOnlyToggle";
+import { WorkspaceModelPreferences } from "@app/components/pages/workspace/model_providers/WorkspaceModelPreferences";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -21,6 +23,7 @@ interface ModelProvidersPageContentProps {
   workspace: WorkspaceType;
   providersSelection: ProvidersSelection;
   isWorkspaceValidating: boolean;
+  mutateWorkspace: () => Promise<unknown>;
   onToggleProvider: (provider: ModelProviderIdType) => void;
   onSelectAllProviders: () => void;
 }
@@ -29,6 +32,7 @@ export function ModelProvidersPageContent({
   workspace,
   providersSelection,
   isWorkspaceValidating,
+  mutateWorkspace,
   onToggleProvider,
   onSelectAllProviders,
 }: ModelProvidersPageContentProps) {
@@ -57,6 +61,11 @@ export function ModelProvidersPageContent({
       modelConfigurations.map(({ displayName }) => displayName).join(", ")
   );
 
+  const enabledConcreteModels = filteredModels.filter(
+    (model) =>
+      model.modelId !== AUTO_MODEL_ID && providersSelection[model.providerId]
+  );
+
   return (
     <div className="flex flex-col gap-8">
       {plan.isByok ? (
@@ -79,6 +88,11 @@ export function ModelProvidersPageContent({
           />
         </>
       )}
+      <WorkspaceModelPreferences
+        workspace={workspace}
+        models={enabledConcreteModels}
+        mutateWorkspace={mutateWorkspace}
+      />
       <EmbeddingModelSelect workspace={workspace} />
     </div>
   );

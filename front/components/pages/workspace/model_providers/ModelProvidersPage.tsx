@@ -31,6 +31,7 @@ export function ModelProvidersPage() {
           workspace={workspace}
           providersSelection={providersSelection}
           isWorkspaceValidating={isWorkspaceValidating}
+          mutateWorkspace={mutateWorkspace}
           onToggleProvider={toggleProvider}
           onSelectAllProviders={selectAllProviders}
         />

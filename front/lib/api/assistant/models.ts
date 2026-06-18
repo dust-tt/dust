@@ -2,6 +2,7 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -24,6 +25,11 @@ import {
   BYOK_MODEL_PROVIDER_IDS,
   MODEL_PROVIDER_IDS,
 } from "@app/types/assistant/models/providers";
+import {
+  getWorkspaceBackupModelPreference,
+  getWorkspaceDefaultModelPreference,
+  type WorkspaceModelPreference,
+} from "@app/types/assistant/models/preferences";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -139,6 +145,43 @@ export function getLargeWhitelistedModel(
   );
 }
 
+export function getEnabledModelFromPreference(
+  auth: Authenticator,
+  preference: WorkspaceModelPreference | null,
+  { forBatch = false }: { forBatch?: boolean } = {}
+): ModelConfigurationType | null {
+  if (!preference || isAutoModelId(preference.modelId)) {
+    return null;
+  }
+
+  const modelConfig = getSupportedModelConfig(preference);
+  if (!modelConfig) {
+    return null;
+  }
+
+  const context = getModelEnablementContextWithoutFeatureFlag(auth);
+  if (!isModelEnabled(modelConfig, context)) {
+    return null;
+  }
+
+  if (forBatch && !modelConfig.supportsBatchProcessing) {
+    return null;
+  }
+
+  return modelConfig;
+}
+
+export function getWorkspaceBackupModel(
+  auth: Authenticator,
+  { forBatch = false }: { forBatch?: boolean } = {}
+): ModelConfigurationType | null {
+  return getEnabledModelFromPreference(
+    auth,
+    getWorkspaceBackupModelPreference(auth.getNonNullableWorkspace().metadata),
+    { forBatch }
+  );
+}
+
 export function resolveAutoModel(
   auth: Authenticator,
   modelId: string,
@@ -146,6 +189,20 @@ export function resolveAutoModel(
 ): ModelConfigurationType | null {
   if (!isAutoModelId(modelId)) {
     return null;
+  }
+
+  const defaultModel = getEnabledModelFromPreference(
+    auth,
+    getWorkspaceDefaultModelPreference(auth.getNonNullableWorkspace().metadata),
+    { forBatch }
+  );
+  if (defaultModel) {
+    return defaultModel;
+  }
+
+  const backupModel = getWorkspaceBackupModel(auth, { forBatch });
+  if (backupModel) {
+    return backupModel;
   }
 
   return getLargeWhitelistedModel(auth, new Set(), { forBatch });
