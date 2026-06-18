@@ -1,6 +1,7 @@
 import { createHono } from "@front-api/lib/hono";
 
 import { cors } from "./middlewares/cors";
+import { otel } from "./middlewares/otel";
 import { requestLogger } from "./middlewares/request_logger";
 import { spaRedirect } from "./middlewares/spa_redirect";
 import { unhandledErrorHandler } from "./middlewares/utils";
@@ -87,6 +88,9 @@ apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 apiApp.route("/:preStopSecret", preStopApp);
 
 export const honoApp = createHono();
+// Outermost: open a per-request OTel span (method + matched route) so the
+// active span is available to SequelizeWithComments for SQL query tagging.
+honoApp.use("*", otel);
 honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
 honoApp.use("*", spaRedirect);
