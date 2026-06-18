@@ -328,6 +328,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
     stage: "dust_only",
   },
+  imgproxy_image_resize: {
+    description:
+      "Resize uploaded raster images via imgproxy instead of ConvertAPI",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
