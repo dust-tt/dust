@@ -142,6 +142,7 @@ export async function getLegacyLLM(
   }
   if (isNoopWhitelistedModelId(modelId)) {
     return new NoopLLM(auth, {
+      context,
       credentials,
       getTraceInput,
       getTraceOutput,
