@@ -8,7 +8,6 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentsUsageType,
@@ -18,8 +17,8 @@ import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import sortBy from "lodash/sortBy";
+import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
 import type { ProjectionAlias, WhereAttributeHashValue } from "sequelize";
 import { Op, Sequelize } from "sequelize";
@@ -53,12 +52,12 @@ const agentAggregates: ProjectionAlias[] = (
   alias,
 ]);
 
-export async function getDataSourceViewsUsageByCategory({
+export async function getDataSourceViewsUsageByIds({
   auth,
-  category,
+  dataSourceViewIds,
 }: {
   auth: Authenticator;
-  category: DataSourceViewCategory;
+  dataSourceViewIds: ModelId[];
 }): Promise<DataSourcesUsageByAgent> {
   const owner = auth.workspace();
 
@@ -73,33 +72,56 @@ export async function getDataSourceViewsUsageByCategory({
     return {};
   }
 
-  let connectorProvider: WhereAttributeHashValue<ConnectorProvider | null> =
-    null;
-
-  switch (category) {
-    case "folder":
-      connectorProvider = null;
-      break;
-    case "website":
-      connectorProvider = "webcrawler";
-      break;
-    case "managed":
-      connectorProvider = {
-        [Op.in]: CONNECTOR_PROVIDERS.filter(isManagedConnectorProvider),
-      };
-      break;
-    case "apps":
-      return {};
-    case "actions":
-      connectorProvider = null;
-      break;
-    case "triggers":
-      connectorProvider = null;
-      break;
-    default:
-      assertNever(category);
+  const uniqueDataSourceViewIds = uniq(dataSourceViewIds);
+  if (uniqueDataSourceViewIds.length === 0) {
+    return {};
   }
 
+  // Step 1 & 2: fetch the config links from both sources.
+  const [dataSourceConfigLinks, tableConfigLinks] = await Promise.all([
+    AgentDataSourceConfigurationModel.findAll({
+      raw: true,
+      attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
+      where: {
+        workspaceId: owner.id,
+        dataSourceViewId: { [Op.in]: uniqueDataSourceViewIds },
+      },
+    }),
+    AgentTablesQueryConfigurationTableModel.findAll({
+      raw: true,
+      attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
+      where: {
+        workspaceId: owner.id,
+        dataSourceViewId: { [Op.in]: uniqueDataSourceViewIds },
+      },
+    }),
+  ]);
+
+  // Step 3: fetch the MCP server configuration -> agent configuration mappings
+  // once for both sources.
+  const mcpServerConfigurationIds = uniq(
+    [...dataSourceConfigLinks, ...tableConfigLinks]
+      .map((link) => link.mcpServerConfigurationId)
+      .filter((id): id is ModelId => id !== null && id !== undefined)
+  );
+
+  const mcpConfigs =
+    mcpServerConfigurationIds.length > 0
+      ? await AgentMCPServerConfigurationModel.findAll({
+          raw: true,
+          attributes: ["id", "agentConfigurationId"],
+          where: {
+            workspaceId: owner.id,
+            id: { [Op.in]: mcpServerConfigurationIds },
+          },
+        })
+      : [];
+
+  const mcpConfigById = new Map(
+    mcpConfigs.map((config) => [config.id, config])
+  );
+
+  // Step 4: fetch the agent configurations
   const getAgentsForUser = async () =>
     (await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())).map(
       (g) => g.agentConfigurationId
@@ -126,139 +148,128 @@ export async function getDataSourceViewsUsageByCategory({
     ],
   });
 
-  const agentConfigurationInclude = {
-    model: AgentConfigurationModel,
-    as: "agent_configuration",
-    attributes: [],
-    required: true,
-    where: auth.isAdmin()
-      ? getAgentWhereClauseAdmin()
-      : await getAgentWhereClauseNonAdmin(),
+  // 4A. Agents for AgentDataSourceConfigurationModel links.
+  const dataSourceAgentConfigurationIds = uniq(
+    dataSourceConfigLinks
+      .map((link) =>
+        link.mcpServerConfigurationId === null
+          ? undefined
+          : mcpConfigById.get(link.mcpServerConfigurationId)
+              ?.agentConfigurationId
+      )
+      .filter((id): id is ModelId => id !== null && id !== undefined)
+  );
+
+  const dataSourceAgents =
+    dataSourceAgentConfigurationIds.length > 0
+      ? await AgentConfigurationModel.findAll({
+          raw: true,
+          attributes: ["id", "sId", "name", "pictureUrl"],
+          where: {
+            ...(auth.isAdmin()
+              ? getAgentWhereClauseAdmin()
+              : await getAgentWhereClauseNonAdmin()),
+            id: { [Op.in]: dataSourceAgentConfigurationIds },
+          },
+        })
+      : [];
+
+  // 4B. Agents for AgentTablesQueryConfigurationTableModel links.
+  const tableAgentConfigurationIds = uniq(
+    tableConfigLinks
+      .map(
+        (link) =>
+          mcpConfigById.get(link.mcpServerConfigurationId)?.agentConfigurationId
+      )
+      .filter((id): id is ModelId => id !== null && id !== undefined)
+  );
+
+  const tableAgents =
+    tableAgentConfigurationIds.length > 0
+      ? await AgentConfigurationModel.findAll({
+          raw: true,
+          attributes: ["id", "sId", "name", "pictureUrl"],
+          where: {
+            status: "active",
+            workspaceId: owner.id,
+            id: { [Op.in]: tableAgentConfigurationIds },
+          },
+        })
+      : [];
+
+  // Step 5: join in memory and build the result.
+  const dataSourceAgentById = new Map(
+    dataSourceAgents.map((agent) => [agent.id, agent])
+  );
+  const tableAgentById = new Map(tableAgents.map((agent) => [agent.id, agent]));
+
+  const result: DataSourcesUsageByAgent = {};
+
+  const pushAgentForDataSourceView = ({
+    dataSourceViewId,
+    agent,
+  }: {
+    dataSourceViewId: ModelId;
+    agent: {
+      sId: string;
+      name: string;
+      pictureUrl: string;
+    };
+  }) => {
+    if (
+      !agent.sId ||
+      agent.sId.length === 0 ||
+      !agent.name ||
+      agent.name.length === 0
+    ) {
+      return;
+    }
+
+    let usage = result[dataSourceViewId];
+    if (!usage) {
+      usage = { count: 0, agents: [] };
+      result[dataSourceViewId] = usage;
+    }
+
+    usage.agents.push({
+      sId: agent.sId,
+      name: agent.name,
+      pictureUrl: agent.pictureUrl,
+    });
   };
 
-  const res = (await Promise.all([
-    AgentDataSourceConfigurationModel.findAll({
-      raw: true,
-      group: ["dataSourceView.id"],
-      where: {
-        workspaceId: owner.id,
-      },
-      attributes: [
-        [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
-        ...agentAggregates,
-      ],
-      include: [
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: DataSourceModel,
-              as: "dataSourceForView",
-              attributes: [],
-              required: true,
-              where: {
-                connectorProvider: connectorProvider,
-              },
-            },
-          ],
-        },
-        {
-          model: AgentMCPServerConfigurationModel,
-          as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [agentConfigurationInclude],
-        },
-      ],
-    }),
-    AgentTablesQueryConfigurationTableModel.findAll({
-      raw: true,
-      group: ["dataSourceView.id"],
-      where: {
-        workspaceId: owner.id,
-      },
-      attributes: [
-        [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
-        ...agentAggregates,
-      ],
-      include: [
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: DataSourceModel,
-              as: "dataSourceForView",
-              attributes: [],
-              required: true,
-              where: {
-                connectorProvider: connectorProvider,
-              },
-            },
-          ],
-        },
-        {
-          model: AgentMCPServerConfigurationModel,
-          as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfigurationModel,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
-        },
-      ],
-    }),
-  ])) as unknown as {
-    dataSourceViewId: ModelId;
-    names: string[];
-    sIds: string[];
-    pictureUrls: string[];
-  }[][];
+  for (const link of dataSourceConfigLinks) {
+    if (link.mcpServerConfigurationId === null) {
+      continue;
+    }
+    const mcpConfig = mcpConfigById.get(link.mcpServerConfigurationId);
+    if (!mcpConfig) {
+      continue;
+    }
+    const agent = dataSourceAgentById.get(mcpConfig.agentConfigurationId);
+    if (!agent) {
+      continue;
+    }
+    pushAgentForDataSourceView({
+      dataSourceViewId: link.dataSourceViewId,
+      agent,
+    });
+  }
 
-  const result = res
-    .flat()
-    .reduce<DataSourcesUsageByAgent>((acc, dsViewConfig) => {
-      let usage = acc[dsViewConfig.dataSourceViewId];
-
-      if (!usage) {
-        usage = {
-          count: 0,
-          agents: [],
-        };
-        acc[dsViewConfig.dataSourceViewId] = usage;
-      }
-
-      const newAgents = dsViewConfig.sIds
-        .map((sId, index) => ({
-          sId,
-          name: dsViewConfig.names[index],
-          pictureUrl: dsViewConfig.pictureUrls[index],
-        }))
-        .filter(
-          (agent) =>
-            agent.sId &&
-            agent.sId.length > 0 &&
-            agent.name &&
-            agent.name.length > 0
-        );
-
-      usage.agents.push(...newAgents);
-      return acc;
-    }, {});
+  for (const link of tableConfigLinks) {
+    const mcpConfig = mcpConfigById.get(link.mcpServerConfigurationId);
+    if (!mcpConfig) {
+      continue;
+    }
+    const agent = tableAgentById.get(mcpConfig.agentConfigurationId);
+    if (!agent) {
+      continue;
+    }
+    pushAgentForDataSourceView({
+      dataSourceViewId: link.dataSourceViewId,
+      agent,
+    });
+  }
 
   Object.values(result).forEach((usage) => {
     if (usage) {
