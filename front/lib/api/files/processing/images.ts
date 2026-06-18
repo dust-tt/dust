@@ -1,19 +1,13 @@
-import config from "@app/lib/api/config";
-import { buildImgproxyUrl } from "@app/lib/api/files/processing/imgproxy";
+import { getImageConverter } from "@app/lib/api/files/processing/image_converter";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress/server";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { extensionsForContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { readableStreamToReadable } from "@app/types/shared/utils/streams";
-import ConvertAPI from "convertapi";
 import imageSize from "image-size";
 import sharp from "sharp";
-import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = 1538;
@@ -33,24 +27,6 @@ function getMaxSizePixels(file: FileResource): number {
   }
 
   return CONVERSATION_IMG_MAX_SIZE_PIXELS;
-}
-
-async function createReadableFromInternalUrl(url: string): Promise<Readable> {
-  const response = await fetch(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`Failed to fetch from URL: ${response.statusText}`);
-  }
-
-  return readableStreamToReadable(response.body);
-}
-
-async function createReadableFromUntrustedUrl(url: string): Promise<Readable> {
-  const response = await untrustedFetch(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`Failed to fetch from URL: ${response.statusText}`);
-  }
-
-  return Readable.fromWeb(response.body);
 }
 
 async function rasterizeSvg(
@@ -81,95 +57,6 @@ async function rasterizeSvg(
   } catch (err) {
     return new Err(
       new Error(`Failed rasterizing SVG: ${normalizeError(err).message}`)
-    );
-  }
-}
-
-async function resizeViaImgproxy(
-  auth: Authenticator,
-  file: FileResource,
-  maxSizePixels: number,
-  originalFormat: string
-): Promise<Result<undefined, Error>> {
-  try {
-    const sourceUrl = await file.getSignedUrlForInlineView(auth);
-    const imgproxyUrl = buildImgproxyUrl({
-      sourceUrl,
-      maxSizePixels,
-      extension: originalFormat,
-    });
-
-    const stream = await createReadableFromInternalUrl(imgproxyUrl);
-    const writeStream = file.getWriteStream({ auth, version: "processed" });
-    await pipeline(stream, writeStream);
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        err: normalizeError(err),
-      },
-      "Failed to resize image."
-    );
-    return new Err(
-      new Error(`Failed resizing image. ${normalizeError(err).message}`)
-    );
-  }
-}
-
-async function resizeViaConvertAPI(
-  auth: Authenticator,
-  file: FileResource,
-  maxSizePixels: number,
-  originalFormat: string
-): Promise<Result<undefined, Error>> {
-  const convertapi = new ConvertAPI(config.getConvertAPIKey());
-  const maxSizeStr = maxSizePixels.toString();
-
-  let result;
-  try {
-    const uploadResult = await convertapi.upload(
-      file.getReadStream({ auth, version: "original" }),
-      `${file.fileName}.${originalFormat}`
-    );
-
-    result = await convertapi.convert(
-      originalFormat,
-      {
-        File: uploadResult,
-        ScaleProportions: true,
-        ImageResolution: "72",
-        ScaleImage: "true",
-        ScaleIfLarger: "true",
-        ImageHeight: maxSizeStr,
-        ImageWidth: maxSizeStr,
-      },
-      originalFormat,
-      30
-    );
-  } catch (e) {
-    return new Err(
-      new Error(`Failed resizing image: ${normalizeError(e).message}`)
-    );
-  }
-
-  try {
-    const stream = await createReadableFromUntrustedUrl(result.file.url);
-    const writeStream = file.getWriteStream({ auth, version: "processed" });
-    await pipeline(stream, writeStream);
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        err: normalizeError(err),
-      },
-      "Failed to resize image."
-    );
-    return new Err(
-      new Error(`Failed resizing image. ${normalizeError(err).message}`)
     );
   }
 }
@@ -242,11 +129,38 @@ async function resizeRasterImage(
     ""
   );
 
-  if (await hasFeatureFlag(auth, "imgproxy_image_resize")) {
-    return resizeViaImgproxy(auth, file, maxSizePixels, originalFormat);
+  const converter = await getImageConverter(auth, logger);
+  const resizeResult = await converter.resize({
+    getSourceUrl: () => file.getSignedUrlForInlineView(auth),
+    getSourceStream: () => file.getReadStream({ auth, version: "original" }),
+    fileName: file.fileName,
+    format: originalFormat,
+    maxSizePixels,
+  });
+
+  if (resizeResult.isErr()) {
+    logger.error(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        err: resizeResult.error,
+      },
+      "Failed to resize image."
+    );
+    return new Err(
+      new Error(`Failed resizing image. ${resizeResult.error.message}`)
+    );
   }
 
-  return resizeViaConvertAPI(auth, file, maxSizePixels, originalFormat);
+  try {
+    const writeStream = file.getWriteStream({ auth, version: "processed" });
+    await pipeline(resizeResult.value, writeStream);
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(
+      new Error(`Failed resizing image. ${normalizeError(err).message}`)
+    );
+  }
 }
 
 export async function processImage(
