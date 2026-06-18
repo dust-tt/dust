@@ -123,7 +123,6 @@ import {
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import { isDevelopment } from "@app/types/shared/env";
 
 // Exhaustive map of flags for each global agent. This is used to control which agents inject
 // per-user dynamic content (like memories) into the prompt context. This approach is not ideal but
@@ -1353,12 +1352,8 @@ function getGlobalAgent({
       agentConfiguration = _getAnalystGlobalAgent({ auth });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
-      // we want only to have it in development
-      if (isDevelopment()) {
-        agentConfiguration = _getNoopAgent();
-        break;
-      }
-      return null;
+      agentConfiguration = _getNoopAgent();
+      break;
     default:
       return null;
   }
@@ -1550,6 +1545,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_LIONEL,
     GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
+    GLOBAL_AGENTS_SID.NOOP,
   ];
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
