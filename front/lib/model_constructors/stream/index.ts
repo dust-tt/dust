@@ -4,6 +4,7 @@ import { AnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/model_cons
 import { GoogleAiStudioGlobalGemini31FlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { GoogleAiStudioGlobalGemini31ProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { GoogleAiStudioGlobalGemini35FlashStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
+import { MistralEuropeCodestralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_codestral";
 import { MistralEuropeMistralLargeStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_large";
 import { MistralEuropeMistralMedium35Stream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_medium_3_5";
 import { MistralEuropeMistralSmallStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_small";
@@ -25,6 +26,7 @@ export const STREAM_ENDPOINTS = {
   [MistralEuropeMistralLargeStream.id]: MistralEuropeMistralLargeStream,
   [MistralEuropeMistralMedium35Stream.id]: MistralEuropeMistralMedium35Stream,
   [MistralEuropeMistralSmallStream.id]: MistralEuropeMistralSmallStream,
+  [MistralEuropeCodestralStream.id]: MistralEuropeCodestralStream,
 } as const satisfies Record<string, StreamEndpointConstructor>;
 
 export type StreamEndpointId = keyof typeof STREAM_ENDPOINTS;
