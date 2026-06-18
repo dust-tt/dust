@@ -125,6 +125,10 @@ export const UPGRADE_REQUEST_CREATED_TAG = "upgrade-request-created" as const;
 export const SEAT_AUTO_UPGRADED_TRIGGER_ID = "seat-auto-upgraded" as const;
 export const SEAT_AUTO_UPGRADED_TAG = "seat-auto-upgraded" as const;
 
+export const MANUAL_ACTION_REQUIRED_TRIGGER_ID =
+  "manual-action-required" as const;
+export const MANUAL_ACTION_REQUIRED_TAG = "manual-action-required" as const;
+
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
   | typeof POD_ADDED_AS_MEMBER_TRIGGER_ID
@@ -135,4 +139,37 @@ export type WorkflowTriggerId =
   | typeof BALANCE_THRESHOLD_REACHED_TRIGGER_ID
   | typeof PROGRAMMATIC_CAP_REACHED_TRIGGER_ID
   | typeof UPGRADE_REQUEST_CREATED_TRIGGER_ID
-  | typeof SEAT_AUTO_UPGRADED_TRIGGER_ID;
+  | typeof SEAT_AUTO_UPGRADED_TRIGGER_ID
+  | typeof MANUAL_ACTION_REQUIRED_TRIGGER_ID;
+
+export const SOUND_NOTIFICATION_OPTIONS = [
+  "Pluck",
+  "Wood",
+  "Skeumorphic",
+  "Game",
+  "Xylophone",
+  "Digital Synth",
+  "Horn",
+  "Bell",
+  "Kalimba",
+  "Marimba",
+  "Tuba",
+] as const;
+
+export type SoundNotificationType = (typeof SOUND_NOTIFICATION_OPTIONS)[number];
+
+export const DEFAULT_SOUND_NOTIFICATION: SoundNotificationType = "Pluck";
+
+export const isSoundNotificationType = (
+  value: unknown
+): value is SoundNotificationType => {
+  return (
+    typeof value === "string" &&
+    (SOUND_NOTIFICATION_OPTIONS as readonly string[]).includes(value)
+  );
+};
+
+export const SOUND_NOTIFICATION_METADATA_KEYS = {
+  enabled: "sound_notification_enabled",
+  sound: "sound_notification_type",
+} as const;

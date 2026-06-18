@@ -5,6 +5,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -291,6 +292,10 @@ async function _runModelAndCreateActionsActivity({
   if (needsApproval) {
     await ConversationResource.markAsActionRequired(auth, {
       conversation: runAgentData.conversation,
+    });
+
+    notifyManualActionRequired(auth, {
+      conversationId: runAgentData.conversation.sId,
     });
   }
 

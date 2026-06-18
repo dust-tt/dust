@@ -1,11 +1,15 @@
 import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
+import { useSoundNotification } from "@app/hooks/useSoundNotification";
 import config from "@app/lib/api/config";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
-import { PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG } from "@app/types/notification_preferences";
+import {
+  MANUAL_ACTION_REQUIRED_TAG,
+  PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG,
+} from "@app/types/notification_preferences";
 import { isString } from "@app/types/shared/utils/general";
 import type { Novu } from "@novu/js";
 import { useEffect } from "react";
@@ -16,6 +20,7 @@ export const useSetupNotifications = () => {
   const { novuClient } = useNovuClient();
   const sendNotification = useSendNotification();
   const { allowBrowserNotification, notify } = useBrowserNotification();
+  const { requestManualActionSound } = useSoundNotification();
 
   useEffect(() => {
     const setupNotifications = async (novuClient: Novu) => {
@@ -33,6 +38,26 @@ export const useSetupNotifications = () => {
             const workspaceId = notification.result.data?.workspaceId;
             if (isString(workspaceId)) {
               void mutate(workspaceAuthContextUrl(workspaceId));
+            }
+            void novuClient.notifications.delete({
+              notificationId: notification.result.id,
+            });
+            return;
+          }
+
+          if (
+            notification.result.tags?.includes(MANUAL_ACTION_REQUIRED_TAG) &&
+            window !== undefined
+          ) {
+            const conversationId = notification.result.data?.conversationId;
+            if (isString(conversationId)) {
+              const isViewingConversation =
+                window.location.pathname.includes(conversationId) &&
+                window.document.hasFocus();
+              if (!isViewingConversation) {
+                requestManualActionSound();
+              }
+              window.dispatchEvent(new ConversationsUpdatedEvent());
             }
             void novuClient.notifications.delete({
               notificationId: notification.result.id,
@@ -112,5 +137,12 @@ export const useSetupNotifications = () => {
         console.error("Failed to setup notifications", { error });
       }
     }
-  }, [allowBrowserNotification, notify, novuClient, push, sendNotification]);
+  }, [
+    allowBrowserNotification,
+    notify,
+    novuClient,
+    push,
+    requestManualActionSound,
+    sendNotification,
+  ]);
 };
