@@ -11,14 +11,14 @@ const enterpriseWorkspace: EndpointFilter = {
     "use_vertex_for_supported_models",
     "anthropic_vertex_fallback",
   ],
-  enterprise: true,
+  isEnterprise: true,
   creditPricing: false,
 };
 
 // A representative non-enterprise workspace with no flags.
 const freeWorkspace: EndpointFilter = {
   featureFlags: [],
-  enterprise: false,
+  isEnterprise: false,
   creditPricing: false,
 };
 
@@ -30,8 +30,8 @@ describe("matchesWhere", () => {
     });
 
     it("ignores a field whose filter is not an object (undefined)", () => {
-      // `enterprise: undefined` is a no-op, not a falsy match.
-      const where: Where<EndpointFilter> = { enterprise: undefined };
+      // `isEnterprise: undefined` is a no-op, not a falsy match.
+      const where: Where<EndpointFilter> = { isEnterprise: undefined };
       expect(matchesWhere(enterpriseWorkspace, where)).toBe(true);
       expect(matchesWhere(freeWorkspace, where)).toBe(true);
     });
@@ -40,26 +40,26 @@ describe("matchesWhere", () => {
   describe("scalar filters (enterprise)", () => {
     it("eq matches the enterprise boolean", () => {
       expect(
-        matchesWhere(enterpriseWorkspace, { enterprise: { eq: true } })
+        matchesWhere(enterpriseWorkspace, { isEnterprise: { eq: true } })
       ).toBe(true);
       expect(
-        matchesWhere(enterpriseWorkspace, { enterprise: { eq: false } })
+        matchesWhere(enterpriseWorkspace, { isEnterprise: { eq: false } })
       ).toBe(false);
-      expect(matchesWhere(freeWorkspace, { enterprise: { eq: false } })).toBe(
+      expect(matchesWhere(freeWorkspace, { isEnterprise: { eq: false } })).toBe(
         true
       );
     });
 
     it("in matches when the value is included", () => {
       expect(
-        matchesWhere(enterpriseWorkspace, { enterprise: { in: [true] } })
+        matchesWhere(enterpriseWorkspace, { isEnterprise: { in: [true] } })
       ).toBe(true);
-      expect(matchesWhere(freeWorkspace, { enterprise: { in: [true] } })).toBe(
-        false
-      );
-      // `enterprise: true` is not in `[false]`, so this excludes it.
       expect(
-        matchesWhere(enterpriseWorkspace, { enterprise: { in: [false] } })
+        matchesWhere(freeWorkspace, { isEnterprise: { in: [true] } })
+      ).toBe(false);
+      // `isEnterprise: true` is not in `[false]`, so this excludes it.
+      expect(
+        matchesWhere(enterpriseWorkspace, { isEnterprise: { in: [false] } })
       ).toBe(false);
     });
 
@@ -258,7 +258,7 @@ describe("matchesWhere", () => {
       expect(
         matchesWhere(enterpriseWorkspace, {
           and: [
-            { enterprise: { eq: true } },
+            { isEnterprise: { eq: true } },
             { featureFlags: { contains: "anthropic_vertex_fallback" } },
           ],
         })
@@ -266,7 +266,7 @@ describe("matchesWhere", () => {
       expect(
         matchesWhere(enterpriseWorkspace, {
           and: [
-            { enterprise: { eq: true } },
+            { isEnterprise: { eq: true } },
             { featureFlags: { contains: "audit_logs" } },
           ],
         })
@@ -280,13 +280,13 @@ describe("matchesWhere", () => {
     it("or requires at least one child to match", () => {
       expect(
         matchesWhere(freeWorkspace, {
-          or: [{ enterprise: { eq: true } }, { enterprise: { eq: false } }],
+          or: [{ isEnterprise: { eq: true } }, { isEnterprise: { eq: false } }],
         })
       ).toBe(true);
       expect(
         matchesWhere(freeWorkspace, {
           or: [
-            { enterprise: { eq: true } },
+            { isEnterprise: { eq: true } },
             { featureFlags: { contains: "audit_logs" } },
           ],
         })
@@ -301,12 +301,12 @@ describe("matchesWhere", () => {
     it("not inverts its child", () => {
       expect(
         matchesWhere(enterpriseWorkspace, {
-          not: { enterprise: { eq: false } },
+          not: { isEnterprise: { eq: false } },
         })
       ).toBe(true);
       expect(
         matchesWhere(enterpriseWorkspace, {
-          not: { enterprise: { eq: true } },
+          not: { isEnterprise: { eq: true } },
         })
       ).toBe(false);
     });
@@ -315,7 +315,7 @@ describe("matchesWhere", () => {
       // (enterprise AND (vertex flag OR audit flag)) AND NOT(deepseek flag)
       const where: Where<EndpointFilter> = {
         and: [
-          { enterprise: { eq: true } },
+          { isEnterprise: { eq: true } },
           {
             or: [
               { featureFlags: { contains: "use_vertex_for_supported_models" } },
@@ -333,7 +333,7 @@ describe("matchesWhere", () => {
       // Field filters and logical operators in the same `where` must all pass.
       expect(
         matchesWhere(enterpriseWorkspace, {
-          enterprise: { eq: true },
+          isEnterprise: { eq: true },
           or: [
             { featureFlags: { contains: "anthropic_vertex_fallback" } },
             { featureFlags: { contains: "audit_logs" } },
@@ -342,7 +342,7 @@ describe("matchesWhere", () => {
       ).toBe(true);
       expect(
         matchesWhere(enterpriseWorkspace, {
-          enterprise: { eq: false },
+          isEnterprise: { eq: false },
           or: [{ featureFlags: { contains: "anthropic_vertex_fallback" } }],
         })
       ).toBe(false);
@@ -353,7 +353,7 @@ describe("matchesWhere", () => {
     // A gated endpoint: only available to enterprise workspaces that have the
     // vertex routing flag enabled.
     const gatedEndpointFilter: Where<EndpointFilter> = {
-      enterprise: { eq: true },
+      isEnterprise: { eq: true },
       featureFlags: { contains: "use_vertex_for_supported_models" },
     };
 
@@ -364,7 +364,7 @@ describe("matchesWhere", () => {
     it("rejects a non-enterprise workspace", () => {
       const enterpriseFlagOnly: EndpointFilter = {
         featureFlags: ["use_vertex_for_supported_models"],
-        enterprise: false,
+        isEnterprise: false,
         creditPricing: false,
       };
       expect(matchesWhere(enterpriseFlagOnly, gatedEndpointFilter)).toBe(false);
@@ -373,7 +373,7 @@ describe("matchesWhere", () => {
     it("rejects an enterprise workspace missing the flag", () => {
       const enterpriseNoFlag: EndpointFilter = {
         featureFlags: ["anthropic_vertex_fallback"],
-        enterprise: true,
+        isEnterprise: true,
         creditPricing: false,
       };
       expect(matchesWhere(enterpriseNoFlag, gatedEndpointFilter)).toBe(false);

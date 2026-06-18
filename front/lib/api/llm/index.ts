@@ -339,7 +339,7 @@ function selectPreferredEndpoint<T extends { region: Region }>(
   const endpoints = getEndpoints(
     {
       featureFlags,
-      enterprise: isEnterpriseOrDust(plan),
+      isEnterprise: isEnterpriseOrDust(plan),
       creditPricing: isCreditPricedPlanPrefix(plan.code),
     },
     {

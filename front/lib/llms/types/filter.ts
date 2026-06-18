@@ -6,7 +6,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export type EndpointFilter = {
   featureFlags: WhitelistableFeature[];
-  enterprise: boolean;
+  isEnterprise: boolean;
   creditPricing: boolean;
 };
 

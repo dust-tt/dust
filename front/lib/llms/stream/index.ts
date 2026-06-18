@@ -16,7 +16,7 @@ export const DUST_STREAM_ENDPOINTS = {
 export function getStreamEndpoints(
   workspaceConfiguration: {
     featureFlags: WhitelistableFeature[];
-    enterprise: boolean;
+    isEnterprise: boolean;
     creditPricing: boolean;
   },
   inputCondition: Where<WorkspaceFilter>
