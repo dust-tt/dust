@@ -18,6 +18,7 @@ interface PublicInteractiveContentHeaderProps {
   conversationUrl: string | null;
   projectUrl: string | null;
   logoUrl?: string | null;
+  showSignUpCta?: boolean;
 }
 
 const UTM_PARAM = `utm_source=public-frames`;
@@ -32,6 +33,7 @@ export function PublicInteractiveContentHeader({
   conversationUrl,
   projectUrl,
   logoUrl,
+  showSignUpCta = false,
 }: PublicInteractiveContentHeaderProps) {
   const staticWebsiteUrl = config.getStaticWebsiteUrl();
   return (
@@ -65,7 +67,7 @@ export function PublicInteractiveContentHeader({
         </div>
 
         <div className="grow-1 flex basis-12 justify-end md:basis-60">
-          {!user && (
+          {!user && showSignUpCta && (
             <Button
               label="Try it yourself"
               href={`${staticWebsiteUrl}/?${UTM_PARAM}`}

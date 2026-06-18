@@ -15,6 +15,7 @@ interface PublicFrameRendererProps {
   fileName?: string;
   hideHeader?: boolean;
   logoUrl?: string | null;
+  showSignUpCta?: boolean;
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
@@ -25,6 +26,7 @@ export function PublicFrameRenderer({
   fileName,
   hideHeader = false,
   logoUrl,
+  showSignUpCta = false,
   shareToken,
   workspaceId,
   vizUrl,
@@ -69,6 +71,7 @@ export function PublicFrameRenderer({
           conversationUrl={conversationUrl}
           projectUrl={projectUrl}
           logoUrl={logoUrl}
+          showSignUpCta={showSignUpCta}
         />
       )}
 

@@ -862,6 +862,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const workspaceId = auth.getNonNullableWorkspace().sId;
     const prefix = `w/${workspaceId}/conversations/${conversation.sId}/files/`;
+    const updatedAt = new Date("2025-01-01T00:00:00.000Z");
     getAllFilesByPrefixMock.mockResolvedValue({
       files: [
         {
@@ -869,7 +870,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
           metadata: {
             contentType: "image/png",
             size: "1024",
-            updated: new Date().toISOString(),
+            updated: updatedAt.toISOString(),
           },
         },
       ],
@@ -885,7 +886,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBe(
       `https://dust.tt/api/w/${workspaceId}` +
-        `/files/path/conversation-${conversation.sId}/photo.png?thumbnail=1`
+        `/files/path/conversation-${conversation.sId}/photo.png?thumbnail=1&v=${updatedAt.getTime()}`
     );
   });
 

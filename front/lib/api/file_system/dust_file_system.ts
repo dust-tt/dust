@@ -601,7 +601,7 @@ export class DustFileSystem {
 
     return (
       `${config.getApiBaseUrl()}/api/w/${workspaceId}` +
-      `/files/path/${encodedPath}?thumbnail=1`
+      `/files/path/${encodedPath}?thumbnail=1&v=${entry.lastModifiedMs}`
     );
   }
 

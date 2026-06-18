@@ -5,6 +5,7 @@ export interface GetShareFrameMetadataResponseBody {
   ogImageUrl: string | null;
   requiresEmailVerification: boolean;
   shareUrl: string;
+  showSignUpCta: boolean;
   title: string;
   vizUrl: string;
   workspaceId: string;
