@@ -599,6 +599,7 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "ukg_ready"
   | "vanta"
   | "productboard"
+  | "workday"
 >();
 
 export const AuthRequiredOutputResourceSchema = z.object({

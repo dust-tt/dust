@@ -33,6 +33,7 @@ export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
   "databricks",
+  "workday",
   "discord",
   "fathom",
   "freshservice",
@@ -64,6 +65,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
   databricks: "Databricks",
+  workday: "Workday",
   discord: "Discord",
   fathom: "Fathom",
   freshservice: "Freshservice",
@@ -112,6 +114,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "ukg_ready_company_id",
   "jira_cloud_url",
   "confluence_cloud_url",
+  "workday_tenant_url"
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -281,6 +284,32 @@ export function getProviderRequiredOAuthCredentialInputs({
         return result;
       }
       return null;
+    case "workday":
+      if (useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          workday_tenant_url: {
+            label: "Workday Tenant URL",
+            value: undefined,
+            helpMessage:
+              "Your Workday Tenant URL (e.g., https://wd2.myworkday.com/your-company).",
+            validator: isValidUrl,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your Workday OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your Workday OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+        };
+        return result;
+      }
+      return null
     case "ukg_ready":
       if (useCase === "personal_actions") {
         // UKG Ready uses PKCE authorization code flow (no client_secret needed)

@@ -36,6 +36,7 @@ import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
+import { WorkdayOAuthProvider } from "@app/lib/api/oauth/providers/workday";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -92,6 +93,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   ukg_ready: new UkgReadyOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
   vanta: new VantaOAuthProvider(),
+  workday: new WorkdayOAuthProvider(),
 };
 
 export function getProviderStrategy(
