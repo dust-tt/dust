@@ -9,8 +9,9 @@ import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balanc
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
 import {
+  clearWorkspaceProgrammaticWarningReached,
   setUserCreditState,
-  setWorkspaceProgrammaticCreditStatus,
+  setWorkspaceProgrammaticWarningReached,
 } from "@app/lib/metronome/user_block";
 import type { LiveUserSeatBalance } from "@app/lib/metronome/user_credit_state_machine";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
@@ -489,6 +490,7 @@ export async function dispatchProgrammaticCapReset({
 }: {
   workspace: WorkspaceResource;
 }): Promise<void> {
+  void clearWorkspaceProgrammaticWarningReached(workspace.sId);
   await transitionProgrammaticCreditState(workspace, {
     type: "programmatic_cap_reset",
   });
@@ -508,10 +510,7 @@ export async function dispatchProgrammaticWarning({
   workspace: WorkspaceResource;
   eventId: string;
 }): Promise<void> {
-  void setWorkspaceProgrammaticCreditStatus(
-    workspace.sId,
-    "active_low_balance"
-  );
+  void setWorkspaceProgrammaticWarningReached(workspace.sId);
   void notifyAdminsProgrammaticCapAboutStatus({
     workspace,
     isBlocked: false,

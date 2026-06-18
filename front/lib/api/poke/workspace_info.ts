@@ -6,6 +6,7 @@ import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_a
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedWorkspaceMetronomeAlerts } from "@app/lib/metronome/alerts/workspace_alerts";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { isWorkspaceProgrammaticWarningReached } from "@app/lib/metronome/user_block";
 import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
@@ -75,6 +76,7 @@ export type PokeWorkspaceInfo = {
   // created by the Metronome setup script and shared across all customers.
   defaultAlerts: DefaultMetronomeAlerts;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
+  programmaticWarningReached: boolean;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeCustomerId: string | null;
   stripeSubscription: PokeStripeSubscriptionWire | null;
@@ -220,6 +222,9 @@ export async function getPokeWorkspaceInfo(
     usageCapAlert,
     defaultAlerts,
     programmaticCreditState: workspaceResource.programmaticCreditState,
+    programmaticWarningReached: await isWorkspaceProgrammaticWarningReached(
+      owner.sId
+    ),
     stripeCustomerId,
     stripeSubscription: stripeSubscription
       ? {

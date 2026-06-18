@@ -285,6 +285,7 @@ export function useWorkspaceUsageStatus({
     userNearCreditLimit: data?.userNearCreditLimit ?? false,
     poolCreditState: data?.poolCreditState ?? "active",
     programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
+    programmaticWarningReached: data?.programmaticWarningReached ?? false,
     balanceThresholdReached: data?.balanceThresholdReached ?? false,
     userBlockedReason: data?.userBlockedReason ?? null,
     canRequestUpgrade: data?.canRequestUpgrade ?? false,

@@ -9,6 +9,7 @@ import {
   isUserAwuWarned,
   isUserBlocked,
   isWorkspaceBalanceThresholdReached,
+  isWorkspaceProgrammaticWarningReached,
 } from "@app/lib/metronome/user_block";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -33,6 +34,7 @@ app.get(
         userNearCreditLimit: false,
         poolCreditState: "active",
         programmaticCreditStatus: "active",
+        programmaticWarningReached: false,
         balanceThresholdReached: false,
         userBlockedReason: null,
         canRequestUpgrade: false,
@@ -44,26 +46,21 @@ app.get(
       poolCreditState,
       userBlockedReason,
       programmaticState,
+      programmaticWarningReached,
       balanceThresholdReached,
     ] = await Promise.all([
       getWorkspaceCreditPoolStatus(workspace.sId),
       isUserBlocked(workspace, user),
       getWorkspaceProgrammaticCreditStatus(workspace.sId),
+      isWorkspaceProgrammaticWarningReached(workspace.sId),
       isWorkspaceBalanceThresholdReached(workspace.sId),
     ]);
 
     const userNearCreditLimit =
       !userBlockedReason && (await isUserAwuWarned(workspace.sId, user.sId));
 
-    let programmaticCreditStatus: ProgrammaticCreditStatus = "active";
-    if (programmaticState === "depleted") {
-      programmaticCreditStatus = "depleted";
-    } else if (
-      programmaticState === "active_low_balance" ||
-      programmaticState === "active_critical_balance"
-    ) {
-      programmaticCreditStatus = "warned";
-    }
+    const programmaticCreditStatus: ProgrammaticCreditStatus =
+      programmaticState === "depleted" ? "depleted" : "active";
 
     const { canRequestUpgrade, hasPendingUpgradeRequest } =
       await getUpgradeRequestAvailabilityForUser(auth, {
@@ -74,6 +71,7 @@ app.get(
       userNearCreditLimit,
       poolCreditState,
       programmaticCreditStatus,
+      programmaticWarningReached,
       balanceThresholdReached,
       userBlockedReason,
       canRequestUpgrade,

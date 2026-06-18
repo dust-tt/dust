@@ -209,8 +209,12 @@ interface WorkspaceUsageStatusBannerProps {
 function WorkspaceUsageStatusBanner({
   owner,
 }: WorkspaceUsageStatusBannerProps) {
-  const { poolCreditState, programmaticCreditStatus, balanceThresholdReached } =
-    useWorkspaceUsageStatus({ owner });
+  const {
+    poolCreditState,
+    programmaticCreditStatus,
+    programmaticWarningReached,
+    balanceThresholdReached,
+  } = useWorkspaceUsageStatus({ owner });
 
   // The low/critical pool states are internal throttling signals and are not
   // surfaced. Admins are alerted when the pool is fully depleted (agents
@@ -238,7 +242,8 @@ function WorkspaceUsageStatusBanner({
   // exhausted budget, so its "cap reached" banner is suppressed. The cap is
   // only fetched when the banner would otherwise show.
   const programmaticStateWouldBanner =
-    isAdmin(owner) && programmaticCreditStatus !== "active";
+    isAdmin(owner) &&
+    (programmaticCreditStatus === "depleted" || programmaticWarningReached);
   const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
     useProgrammaticUsageLimit({
       workspaceId: owner.sId,

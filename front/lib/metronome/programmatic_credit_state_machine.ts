@@ -1,4 +1,7 @@
-import { CRITICAL_BALANCE_OFFSET } from "@app/lib/metronome/alerts/programmatic_cap";
+import {
+  CRITICAL_BALANCE_OFFSET,
+  LOW_BALANCE_OFFSET,
+} from "@app/lib/metronome/alerts/programmatic_cap";
 import { setWorkspaceProgrammaticCreditStatus } from "@app/lib/metronome/user_block";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
@@ -48,6 +51,31 @@ export function expectedProgrammaticCreditStateFromAlerts({
     return "active_critical_balance";
   }
   if (lowInAlarm) {
+    return "active_low_balance";
+  }
+  return "active";
+}
+
+/**
+ * Derives the expected programmatic credit state from live usage vs. the DB
+ * cap — the usage-first equivalent of `expectedProgrammaticCreditStateFromAlerts`.
+ * Thresholds mirror the Metronome alert offsets so the two functions agree.
+ */
+export function expectedProgrammaticCreditStateFromUsage({
+  spentAwuCredits,
+  monthlyCapCredits,
+}: {
+  spentAwuCredits: number;
+  monthlyCapCredits: number;
+}): WorkspaceProgrammaticCreditState {
+  const remaining = monthlyCapCredits - spentAwuCredits;
+  if (remaining <= 0) {
+    return "depleted";
+  }
+  if (remaining <= CRITICAL_BALANCE_OFFSET) {
+    return "active_critical_balance";
+  }
+  if (remaining <= LOW_BALANCE_OFFSET) {
     return "active_low_balance";
   }
   return "active";

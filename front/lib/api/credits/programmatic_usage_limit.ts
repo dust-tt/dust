@@ -2,13 +2,13 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { reconcileProgrammatic } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomeProgrammaticCapAlerts,
   upsertMetronomeProgrammaticCapAlerts,
 } from "@app/lib/metronome/alerts/programmatic_cap";
-import { setProgrammaticCreditStateReconciled } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -130,15 +130,15 @@ export async function syncProgrammaticUsageLimit({
   }
 
   // Reconcile programmaticCreditState immediately so /usage-status reflects the
-  // change without waiting for a Metronome webhook. Cap > 0 → active (fresh
-  // cap, usage hasn't hit it yet); 0 or null → depleted (no access).
+  // change without waiting for a Metronome webhook.
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
   if (workspaceResource) {
-    const targetState =
-      normalizedCapCredits !== null && normalizedCapCredits > 0
-        ? "active"
-        : "depleted";
-    await setProgrammaticCreditStateReconciled(workspaceResource, targetState);
+    await reconcileProgrammatic({
+      workspace: workspaceResource,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
+      execute: true,
+    });
   }
 
   void emitAuditLogEvent({

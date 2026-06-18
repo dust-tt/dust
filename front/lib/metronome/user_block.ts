@@ -52,7 +52,7 @@ export type UserBlockedReason =
   | "user_cap_reached"
   | "no_seat";
 
-export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
+export type ProgrammaticCreditStatus = "active" | "depleted";
 
 export type FairUseAwuCreditsStatus = {
   limit: number;
@@ -71,6 +71,9 @@ export type GetWorkspaceUsageStatusResponseBody = {
   userNearCreditLimit: boolean;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditStatus: ProgrammaticCreditStatus;
+  // True when workspace programmatic usage has crossed WARNING_BALANCE_RATIO of the monthly cap.
+  // Redis-only flag, independent of the throttling states (active_low_balance etc.).
+  programmaticWarningReached: boolean;
   balanceThresholdReached: boolean;
   // Authoritative block reason from isUserBlocked — null means the user can
   // send messages. Replaces the old client-side derivations (noSeat,
@@ -191,6 +194,36 @@ export async function isWorkspaceBalanceThresholdReached(
   const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
     client.get(buildWorkspaceBalanceThresholdReachedKey(workspaceId))
   );
+  return val === "1";
+}
+
+// Workspace programmatic 80% warning — set when the warning alert fires,
+// cleared on cap reset or reconcile. Redis-only; no DB fallback (cold miss
+// reads as false). Drives the banner independently of the throttling states.
+
+function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
+  return `metronome:programmatic_warning:${workspaceId}`;
+}
+
+export async function setWorkspaceProgrammaticWarningReached(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "1");
+}
+
+export async function clearWorkspaceProgrammaticWarningReached(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "0");
+}
+
+export async function isWorkspaceProgrammaticWarningReached(
+  workspaceId: string
+): Promise<boolean> {
+  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticWarningKey(workspaceId))
+  );
+  // Redis miss (null) returns false: prefer not showing the banner over a false positive on cache wipe.
   return val === "1";
 }
 
