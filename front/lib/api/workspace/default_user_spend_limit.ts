@@ -2,6 +2,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export type DefaultUserSpendLimit = {
@@ -277,6 +279,23 @@ export async function setDefaultUserSpendLimit(
   const syncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
   if (syncResult.isErr()) {
     return new Err(syncResult.error);
+  }
+
+  // Reconcile all workspace user credit states against the new cap so that
+  // users previously blocked by the old cap are unblocked immediately rather
+  // than waiting for the next webhook or manual reconcile.
+  const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
+  if (metronomeContractId) {
+    void reconcileWorkspaceUserCreditStates({
+      workspace,
+      metronomeCustomerId,
+      metronomeContractId,
+    }).catch((err) => {
+      logger.error(
+        { workspaceId: workspace.sId, err: normalizeError(err) },
+        "[DefaultUserSpendLimit] set: failed to reconcile user credit states after cap update"
+      );
+    });
   }
 
   logger.info(
