@@ -1,22 +1,16 @@
-// Reasoning efforts Gemini 3.x models accept as a non-null thinking level. The
-// `none` effort is handled separately (a minimal thinking budget with thoughts
-// hidden), since Gemini 3 cannot fully disable thinking. `maximal` maps to the
-// highest native level (HIGH), mirroring the Anthropic sibling; `minimal` and
-// `xhigh` are intentionally unsupported.
-export const GEMINI_SUPPORTED_NON_NULL_REASONING_EFFORTS = [
+// Native Gemini 3.x thinking levels exposed as reasoning efforts. Every Gemini
+// model supports low/medium/high; Flash and Flash-Lite additionally support
+// `minimal`. Gemini always thinks, so there is no `none` effort.
+export const GEMINI_PRO_SUPPORTED_REASONING_EFFORTS = [
   "low",
   "medium",
   "high",
-  "maximal",
 ] as const;
 
-export type GeminiSupportedNonNullReasoningEffort =
-  (typeof GEMINI_SUPPORTED_NON_NULL_REASONING_EFFORTS)[number];
+export const GEMINI_SUPPORTED_REASONING_EFFORTS = [
+  "minimal",
+  ...GEMINI_PRO_SUPPORTED_REASONING_EFFORTS,
+] as const;
 
-export function isGeminiSupportedNonNullReasoningEffort(
-  effort: string
-): effort is GeminiSupportedNonNullReasoningEffort {
-  return GEMINI_SUPPORTED_NON_NULL_REASONING_EFFORTS.some(
-    (supported) => supported === effort
-  );
-}
+export type GeminiSupportedReasoningEffort =
+  (typeof GEMINI_SUPPORTED_REASONING_EFFORTS)[number];

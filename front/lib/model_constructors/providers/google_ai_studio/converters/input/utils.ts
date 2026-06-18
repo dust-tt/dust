@@ -1,10 +1,7 @@
-import {
-  type GEMINI_SUPPORTED_NON_NULL_REASONING_EFFORTS,
-  isGeminiSupportedNonNullReasoningEffort,
-} from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
+import type { GoogleAiStudioInputConfig } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+import type { GeminiSupportedReasoningEffort } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
 import type {
   OutputFormat,
-  Reasoning,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -31,10 +28,6 @@ import type {
   ToolConfig,
 } from "@google/genai";
 import { FunctionCallingConfigMode, ThinkingLevel } from "@google/genai";
-
-// Gemini 3 cannot fully disable thinking, so `none` uses the smallest budget
-// with thoughts hidden. Other efforts map to a native thinking level.
-const NONE_THINKING_BUDGET = 128;
 
 // The per-message leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
@@ -284,16 +277,16 @@ export function forceToolNameToToolConfig(
 }
 
 function effortToThinkingLevel(
-  effort: (typeof GEMINI_SUPPORTED_NON_NULL_REASONING_EFFORTS)[number]
+  effort: GeminiSupportedReasoningEffort
 ): ThinkingLevel {
   switch (effort) {
+    case "minimal":
+      return ThinkingLevel.MINIMAL;
     case "low":
       return ThinkingLevel.LOW;
     case "medium":
       return ThinkingLevel.MEDIUM;
     case "high":
-    // Gemini's highest native level; `maximal` maps here.
-    case "maximal":
       return ThinkingLevel.HIGH;
     default:
       assertNever(effort);
@@ -301,16 +294,10 @@ function effortToThinkingLevel(
 }
 
 export function reasoningToThinkingConfig(
-  reasoning: Reasoning | undefined
+  reasoning: GoogleAiStudioInputConfig["reasoning"]
 ): ThinkingConfig | undefined {
   if (!reasoning) {
     return undefined;
-  }
-  if (
-    reasoning.effort === "none" ||
-    !isGeminiSupportedNonNullReasoningEffort(reasoning.effort)
-  ) {
-    return { thinkingBudget: NONE_THINKING_BUDGET, includeThoughts: false };
   }
   return {
     thinkingLevel: effortToThinkingLevel(reasoning.effort),

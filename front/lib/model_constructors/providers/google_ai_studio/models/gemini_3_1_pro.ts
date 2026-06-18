@@ -1,4 +1,4 @@
-import { GEMINI_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
+import { GEMINI_PRO_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
 import {
   inputConfigSchema,
   temperatureSchema,
@@ -18,12 +18,12 @@ const baseConfig = inputConfigSchema.extend({
   cacheKey: z.undefined(),
 });
 
-// Gemini 3 only exposes `none` plus the native thinking levels (low/medium/high)
-// and strongly recommends `temperature: 1`, so we coerce temperature to 1.
+// Pro supports the low/medium/high thinking levels (no `minimal`) and strongly
+// recommends `temperature: 1`, so we coerce temperature to 1.
 const configSchema = baseConfig.extend({
   reasoning: z
     .object({
-      effort: z.enum([...GEMINI_SUPPORTED_NON_NULL_REASONING_EFFORTS, "none"]),
+      effort: z.enum([...GEMINI_PRO_SUPPORTED_REASONING_EFFORTS]),
     })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
   temperature: temperatureSchema.optional().transform(() => 1 as const),

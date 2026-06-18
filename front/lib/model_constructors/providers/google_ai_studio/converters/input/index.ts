@@ -15,7 +15,7 @@ import {
   userImageMessageToPart,
   userTextMessageToPart,
 } from "@app/lib/model_constructors/providers/google_ai_studio/converters/input/utils";
-import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
+import type { GoogleAiStudioInputConfig } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
 import type {
   Payload,
   SystemTextMessage,
@@ -29,7 +29,7 @@ type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 // fields and composites route through `this`, so an endpoint can override a
 // single leaf.
 export function WithGoogleAiStudioInputConverter<
-  TBase extends AbstractConstructor<Client>,
+  TBase extends AbstractConstructor<Client<GoogleAiStudioInputConfig>>,
 >(Base: TBase) {
   abstract class WithGoogleAiStudioInputConverter
     extends Base
@@ -55,7 +55,7 @@ export function WithGoogleAiStudioInputConverter<
 
     buildRequestPayload(
       payload: Payload,
-      config: InputConfig
+      config: GoogleAiStudioInputConfig
     ): GenerateContentParameters {
       const { conversation } = payload;
       const {
