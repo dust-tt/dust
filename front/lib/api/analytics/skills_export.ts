@@ -28,15 +28,33 @@ export async function fetchSkillExportRows(
   baseQuery: estypes.QueryDslQueryContainer,
   timezone: string
 ): Promise<Result<SkillExportRow[], Error>> {
-  const customSkills = await SkillResource.listByWorkspace(auth, {
+  const activeCustomSkills = await SkillResource.listByWorkspace(auth, {
     status: "active",
     onlyCustom: true,
     withInstructions: false,
     withTools: false,
   });
 
+  const usedSkillsResult = await fetchUsedSkills(baseQuery);
+  if (usedSkillsResult.isErr()) {
+    return new Err(usedSkillsResult.error);
+  }
+
+  const activeCustomSkillIds = new Set(
+    activeCustomSkills.map((skill) => skill.sId)
+  );
+  const usedButNotActiveIds = usedSkillsResult.value.filter(
+    (skillId) => !activeCustomSkillIds.has(skillId)
+  );
+  const rehydratedSkills =
+    usedButNotActiveIds.length > 0
+      ? await SkillResource.fetchByIds(auth, usedButNotActiveIds)
+      : [];
+
+  const allSkills = [...activeCustomSkills, ...rehydratedSkills];
+
   const editorModelIds = [
-    ...new Set(removeNulls(customSkills.map((skill) => skill.editedBy))),
+    ...new Set(removeNulls(allSkills.map((skill) => skill.editedBy))),
   ];
   const editors =
     editorModelIds.length > 0
@@ -46,42 +64,24 @@ export async function fetchSkillExportRows(
     editors.map((editor) => [editor.id, editor.email])
   );
 
-  const rows: SkillExportRow[] = customSkills.map((skill) => {
+  const rows = allSkills.map<SkillExportRow>((skill) => {
+    const isGlobal = !isResourceSId("skill", skill.sId);
     return {
       skillId: skill.sId,
       name: skill.name,
       description: skill.agentFacingDescription,
       editedByEmail:
-        skill.editedBy !== null
+        !isGlobal && skill.editedBy !== null
           ? (emailByEditorModelId.get(skill.editedBy) ?? "")
           : "",
-      createdAt: formatDateFromMillis(skill.createdAt.getTime(), timezone),
-      lastEdit: formatDateFromMillis(skill.updatedAt.getTime(), timezone),
+      createdAt: isGlobal
+        ? ""
+        : formatDateFromMillis(skill.createdAt.getTime(), timezone),
+      lastEdit: isGlobal
+        ? ""
+        : formatDateFromMillis(skill.updatedAt.getTime(), timezone),
     };
   });
-
-  const usedSkillsResult = await fetchUsedSkills(baseQuery);
-  if (usedSkillsResult.isErr()) {
-    return new Err(usedSkillsResult.error);
-  }
-
-  const globalSkillIds = usedSkillsResult.value.filter(
-    (skillId) => !isResourceSId("skill", skillId)
-  );
-
-  if (globalSkillIds.length > 0) {
-    const globalSkills = await SkillResource.fetchByIds(auth, globalSkillIds);
-    for (const skill of globalSkills) {
-      rows.push({
-        skillId: skill.sId,
-        name: skill.name,
-        description: skill.agentFacingDescription,
-        editedByEmail: "",
-        createdAt: "",
-        lastEdit: "",
-      });
-    }
-  }
 
   return new Ok(rows.sort((a, b) => a.name.localeCompare(b.name)));
 }
