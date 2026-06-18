@@ -36,6 +36,7 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "./anthropic";
+import { AUTO_MODEL_CONFIG, AUTO_MODEL_ID } from "./auto";
 // Custom models (generated at build time from GCS, empty in dev).
 import {
   CUSTOM_MODEL_CONFIGS,
@@ -170,6 +171,7 @@ import {
 
 // Static model IDs (compile-time known, used for pricing maps).
 export const STATIC_MODEL_IDS = [
+  AUTO_MODEL_ID,
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
@@ -272,6 +274,7 @@ export const IMAGE_MODEL_IDS = [
 
 export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
+  AUTO_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,

@@ -38,7 +38,7 @@ export function isModelAvailable(
     return false;
   }
 
-  if (plan?.isByok && !isByokProviderId(m.providerId)) {
+  if (plan?.isByok && m.modelId !== "auto" && !isByokProviderId(m.providerId)) {
     return false;
   }
 
@@ -82,7 +82,7 @@ export function isModelEnabled(
 ) {
   return (
     isModelAvailable(m, { featureFlags, plan, regionalModelsOnly, region }) &&
-    whitelistedProviders.has(m.providerId)
+    (m.modelId === "auto" || whitelistedProviders.has(m.providerId))
   );
 }
 

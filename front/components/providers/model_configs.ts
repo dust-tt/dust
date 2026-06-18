@@ -5,6 +5,7 @@ import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_GLM_5P2_MODEL_CONFIG,
@@ -32,6 +33,7 @@ import type { ModelConfig } from "@app/types/assistant/models/types";
 import { GROK_4_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
+  AUTO_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
   GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_4_NANO_MODEL_CONFIG,

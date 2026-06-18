@@ -7,6 +7,10 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import {
+  AUTO_MODEL_CONFIG,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
@@ -62,6 +66,7 @@ export function transformAgentConfigurationToFormData(
 }
 
 const PREFERRED_LARGE_MODEL_IDS: ModelIdType[] = [
+  AUTO_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   GPT_5_5_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
@@ -98,7 +103,7 @@ export function getDefaultAgentFormData({
 }): AgentBuilderFormData {
   // Static fallback — overridden by the useEffect in AgentBuilder once available
   // models are loaded.
-  const defaultModel = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  const defaultModel = AUTO_MODEL_CONFIG;
 
   return {
     agentSettings: {

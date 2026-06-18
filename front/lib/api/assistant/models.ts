@@ -6,6 +6,7 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { isAutoModelId } from "@app/types/assistant/models/auto";
 import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
@@ -136,6 +137,18 @@ export function getLargeWhitelistedModel(
     getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders),
     { forBatch }
   );
+}
+
+export function resolveAutoModel(
+  auth: Authenticator,
+  modelId: string,
+  { forBatch = false }: { forBatch?: boolean } = {}
+): ModelConfigurationType | null {
+  if (!isAutoModelId(modelId)) {
+    return null;
+  }
+
+  return getLargeWhitelistedModel(auth, new Set(), { forBatch });
 }
 
 const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [

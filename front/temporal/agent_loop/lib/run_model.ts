@@ -30,6 +30,7 @@ import {
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
+import { resolveAutoModel } from "@app/lib/api/assistant/models";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import {
@@ -169,7 +170,10 @@ export async function runModel(
 
   localLogger.info("Starting multi-action loop iteration");
 
-  const model = getSupportedModelConfig(agentConfiguration.model);
+  const configuredModel = getSupportedModelConfig(agentConfiguration.model);
+  const model = configuredModel
+    ? resolveAutoModel(auth, configuredModel.modelId) ?? configuredModel
+    : null;
 
   async function publishAgentError(
     error: {

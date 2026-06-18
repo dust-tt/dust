@@ -1,4 +1,7 @@
-import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
+import {
+  getWhitelistedProviders,
+  resolveAutoModel,
+} from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import {
@@ -230,8 +233,13 @@ export async function getLegacyLLM(
 // router when enabled, falling back to the legacy per-provider clients.
 export async function getStreamLLM(
   auth: Authenticator,
-  llmParameters: LLMParameters
+  inputLLMParameters: LLMParameters
 ): Promise<LLM | null> {
+  const llmParameters = resolveAutoLLMParameters(auth, inputLLMParameters);
+  if (!llmParameters) {
+    return null;
+  }
+
   const modelConfig = getModelConfigByModelId(llmParameters.modelId);
   if (!modelConfig) {
     return null;
@@ -261,8 +269,15 @@ export async function getStreamLLM(
 // when enabled, falling back to the legacy per-provider clients.
 export async function getBatchLLM(
   auth: Authenticator,
-  llmParameters: LLMParameters
+  inputLLMParameters: LLMParameters
 ): Promise<LLM | null> {
+  const llmParameters = resolveAutoLLMParameters(auth, inputLLMParameters, {
+    forBatch: true,
+  });
+  if (!llmParameters) {
+    return null;
+  }
+
   const modelConfig = getModelConfigByModelId(llmParameters.modelId);
   if (!modelConfig) {
     return null;
@@ -282,6 +297,27 @@ export async function getBatchLLM(
   const legacyLLM = await getLegacyLLM(auth, llmParameters);
 
   return legacyLLM;
+}
+
+function resolveAutoLLMParameters(
+  auth: Authenticator,
+  llmParameters: LLMParameters,
+  { forBatch = false }: { forBatch?: boolean } = {}
+): LLMParameters | null {
+  const autoResolvedModel = resolveAutoModel(auth, llmParameters.modelId, {
+    forBatch,
+  });
+
+  if (!autoResolvedModel) {
+    return llmParameters;
+  }
+
+  return {
+    ...llmParameters,
+    modelId: autoResolvedModel.modelId,
+    reasoningEffort:
+      llmParameters.reasoningEffort ?? autoResolvedModel.defaultReasoningEffort,
+  };
 }
 
 function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
