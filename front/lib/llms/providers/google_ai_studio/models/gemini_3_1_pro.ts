@@ -7,7 +7,7 @@ export function WithDustGoogleAiStudioGemini31ProConfig<
     static readonly displayName = "Gemini 3.1 Pro";
     static readonly description =
       "Google's Gemini 3.1 Pro model, a state-of-the-art reasoning model with a 1M-token context window.";
-    static readonly defaultReasoningEffort = "high";
+    static readonly defaultReasoningEffort = "low";
     static readonly byok = true;
   }
 
