@@ -73,39 +73,55 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
-// Pre-paid slots remaining for the free seat type (minSeats floor not yet consumed).
-function freeSeatAvailability(info: SeatTypeInfo): number {
+// Pre-paid slots remaining within the seat type's committed floor (minSeats
+// not yet consumed). Meaningful for any seat type, not just free — it's the
+// number the admin can assign without affecting billing.
+function includedSeatsOpen(info: SeatTypeInfo): number {
   return Math.max(0, info.minSeats - info.assignedCount);
 }
 
-function isSeatSelectable(
+// Every seat type present in `seatPlans` is offered by the workspace's
+// contract, so all are selectable in the invite picker — the requested seat
+// is only a hint the backend resolves at acceptance time, falling back
+// rather than billing an unrequested tier. This only flags a paid seat
+// type's hard cap as exhausted, to bias the default selection towards seats
+// likely to succeed and to warn the admin about the current pick.
+function isSeatAtCapacity(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): boolean {
   if (seatType === "free") {
-    return freeSeatAvailability(info) > 0;
+    // Free-seat eligibility depends on the invitee's returning-member status
+    // and workspace-wide free-seat caps, neither knowable at invite time —
+    // never treat it as exhausted here.
+    return false;
   }
-  return info.maxSeats === null || info.assignedCount < info.maxSeats;
+  return info.maxSeats !== null && info.assignedCount >= info.maxSeats;
 }
 
 function seatBadge(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): ReactNode {
-  let label: string;
   if (seatType === "free") {
-    const available = freeSeatAvailability(info);
-    label = `${available} available`;
-  } else {
-    label = formatPriceCents(
-      info.priceCents,
-      info.currency,
-      info.billingFrequency
+    // The committed-floor count is not a reliable proxy for free-seat
+    // eligibility (see `isSeatAtCapacity`), so avoid displaying a number
+    // that could read as a guarantee.
+    return (
+      <span className="text-xs text-foreground dark:text-foreground-night">
+        Free if eligible
+      </span>
     );
   }
+  const openCount = includedSeatsOpen(info);
+  const price = formatPriceCents(
+    info.priceCents,
+    info.currency,
+    info.billingFrequency
+  );
   return (
     <span className="text-xs text-foreground dark:text-foreground-night">
-      {label}
+      {price} · {openCount} included seat{openCount === 1 ? "" : "s"} open
     </span>
   );
 }
@@ -164,12 +180,16 @@ export function InviteEmailButtonWithModal({
     if (seatInitializedRef.current || isSeatPlanLoading || !hasSeatSelection) {
       return;
     }
-    const selectable = seatTypes.filter((s) => {
+    // Prefer seats that aren't at capacity for the default pick — all seat
+    // types are still requestable regardless, this just avoids defaulting to
+    // a choice that's likely to fall back immediately.
+    const notAtCapacity = seatTypes.filter((s) => {
       const info = seatPlans[s];
-      return info && isSeatSelectable(s, info);
+      return info && !isSeatAtCapacity(s, info);
     });
-    const paidSelectable = selectable.filter((s) => s !== "free");
-    const cheapestPaid = paidSelectable.reduce<MembershipSeatType | undefined>(
+    const candidates = notAtCapacity.length > 0 ? notAtCapacity : seatTypes;
+    const paidCandidates = candidates.filter((s) => s !== "free");
+    const cheapestPaid = paidCandidates.reduce<MembershipSeatType | undefined>(
       (min, s) =>
         min === undefined ||
         (seatPlans[s]?.priceCents ?? 0) < (seatPlans[min]?.priceCents ?? 0)
@@ -178,9 +198,9 @@ export function InviteEmailButtonWithModal({
       undefined
     );
     const defaultSeat =
-      selectable.find((s) => s === "free") ??
+      candidates.find((s) => s === "free") ??
       cheapestPaid ??
-      selectable[0] ??
+      candidates[0] ??
       null;
     setSelectedSeatType(defaultSeat);
     setActiveFrequency(
@@ -199,8 +219,9 @@ export function InviteEmailButtonWithModal({
     availableFrequencies,
   ]);
 
-  // Switch billing cadence; keep the selection valid by falling back to the
-  // first selectable tier in the new cadence when the current one isn't offered.
+  // Switch billing cadence; keep the selection valid by falling back to a
+  // tier in the new cadence that isn't at capacity when the current one
+  // isn't offered there.
   function handleSeatFrequencyChange(period: "monthly" | "yearly") {
     let frequency: SeatBillingFrequency;
     switch (period) {
@@ -219,7 +240,7 @@ export function InviteEmailButtonWithModal({
       const nextSeat =
         inFrequency.find((s) => {
           const info = seatPlans[s];
-          return info && isSeatSelectable(s, info);
+          return info && !isSeatAtCapacity(s, info);
         }) ??
         inFrequency[0] ??
         null;
@@ -358,7 +379,7 @@ export function InviteEmailButtonWithModal({
           disabled={disabled}
         />
       </DialogTrigger>
-      <DialogContent size="md">
+      <DialogContent size="md" height={hasSeatSelection ? "xl" : undefined}>
         <DialogHeader>
           <div className="flex flex-col gap-1">
             <DialogTitle>Invite new users</DialogTitle>
@@ -375,6 +396,7 @@ export function InviteEmailButtonWithModal({
               </div>
               <TextArea
                 placeholder="Email addresses, comma separated"
+                minRows={3}
                 value={inviteEmails}
                 onChange={(e) => {
                   setInviteEmails(e.target.value);
@@ -417,7 +439,6 @@ export function InviteEmailButtonWithModal({
                         seatType={seatType}
                         info={info}
                         isSelected={selectedSeatType === seatType}
-                        isDisabled={!isSeatSelectable(seatType, info)}
                         badge={seatBadge(seatType, info)}
                         onClick={() => setSelectedSeatType(seatType)}
                       />

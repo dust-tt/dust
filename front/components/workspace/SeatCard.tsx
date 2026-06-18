@@ -138,7 +138,6 @@ interface SeatCardProps {
   seatType: MembershipSeatType;
   info: SeatTypeInfo;
   isSelected: boolean;
-  isDisabled: boolean;
   badge: React.ReactNode;
   onClick: () => void;
 }
@@ -147,7 +146,6 @@ export function SeatCard({
   seatType,
   info,
   isSelected,
-  isDisabled,
   badge,
   onClick,
 }: SeatCardProps) {
@@ -165,7 +163,7 @@ export function SeatCard({
       variant="primary"
       size="sm"
       selected={isSelected}
-      onClick={isDisabled ? undefined : onClick}
+      onClick={onClick}
       className="w-full flex-col items-stretch gap-2"
     >
       <div className="flex w-full items-center justify-between">
