@@ -1,3 +1,4 @@
+import { sanitizeOAuthRegistrationRequestBody } from "@app/lib/api/mcp_server/oauth_registration";
 import {
   getMcpAuthorizationServers,
   getMcpAuthorizationServerUrl,
@@ -87,10 +88,12 @@ async function proxyOAuthPostRequest(
     headers.set("accept", accept);
   }
 
+  const body = sanitizeOAuthRegistrationRequestBody(await c.req.text());
+
   const response = await fetch(upstreamUrl, {
     method: "POST",
     headers,
-    body: await c.req.text(),
+    body,
   });
 
   const responseHeaders = new Headers();
@@ -99,7 +102,8 @@ async function proxyOAuthPostRequest(
     responseHeaders.set("content-type", responseContentType);
   }
 
-  return new Response(await response.text(), {
+  const responseBody = await response.text();
+  return new Response(responseBody, {
     status: response.status,
     headers: responseHeaders,
   });
