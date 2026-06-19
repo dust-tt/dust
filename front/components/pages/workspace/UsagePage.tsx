@@ -706,9 +706,7 @@ export function UsagePage() {
                       size="xs"
                       defaultValue="members"
                       onValueChange={(v) =>
-                        setMembersTab(
-                          v === "requests" ? "requests" : "members"
-                        )
+                        setMembersTab(v === "requests" ? "requests" : "members")
                       }
                     >
                       <ButtonsSwitch value="members" label="Members" />
