@@ -5388,6 +5388,9 @@
           },
           "404": {
             "description": "The row was not found"
+          },
+          "429": {
+            "description": "Too many pending table updates are queued for this table. Retry later."
           }
         }
       }
@@ -5612,6 +5615,9 @@
           },
           "404": {
             "description": "Data source or workspace not found."
+          },
+          "429": {
+            "description": "Too many pending table updates are queued for this table. Retry later."
           },
           "500": {
             "description": "Internal Server Error."
