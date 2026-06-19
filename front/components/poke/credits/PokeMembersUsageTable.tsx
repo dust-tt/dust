@@ -152,7 +152,7 @@ function makeColumns({
           spendLimitWarningAlertId,
         } = row.original;
         if (spendLimitAwuCredits === null) {
-          return <span>unlimited</span>;
+          return <span>{formatCredits(0)}</span>;
         }
         const sourceLabel = `(${spendLimitSource})`;
         return (
