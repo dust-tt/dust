@@ -48,12 +48,14 @@ processes:
   core:
     command: "cargo watch -x 'run --bin core-api'"
     working_dir: "${DUST_DEV_ROOT}/core"
+    namespace: core
     environment:
       - "CARGO_TERM_COLOR=always"
 
   sqlite-workers:
     command: "cargo watch -x 'run --bin sqlite-worker'"
     working_dir: "${DUST_DEV_ROOT}/core"
+    namespace: core
     environment:
       - "CARGO_TERM_COLOR=always"
       - "CORE_API=http://localhost:3001"
@@ -64,6 +66,7 @@ processes:
   oauth:
     command: "cargo watch -x 'run --bin oauth'"
     working_dir: "${DUST_DEV_ROOT}/core"
+    namespace: core
     environment:
       - "CARGO_TERM_COLOR=always"
       - "RUST_BACKTRACE=1"
@@ -72,6 +75,7 @@ processes:
   sparkle:
     command: "npm run watch"
     working_dir: "${DUST_DEV_ROOT}/sparkle"
+    namespace: sdk-and-sparkle
     readiness_probe:
       exec:
         command: "test -f ${DUST_DEV_ROOT}/sparkle/dist/cjs/index.js"
@@ -81,6 +85,7 @@ processes:
   sdks-js:
     command: "./admin/dev.sh"
     working_dir: "${DUST_DEV_ROOT}/sdks/js"
+    namespace: sdk-and-sparkle
     readiness_probe:
       exec:
         command: "test -f ${DUST_DEV_ROOT}/sdks/js/dist/client.esm.js.map"
@@ -91,6 +96,7 @@ processes:
   migrations:
     command: "npm -w front run migration:apply && npm -w connectors run migration:apply"
     working_dir: "${DUST_DEV_ROOT}"
+    namespace: front
     depends_on:
       sdks-js:
         condition: process_healthy
@@ -98,6 +104,7 @@ processes:
   front-api-hono:
     command: "npm run dev"
     working_dir: "${DUST_DEV_ROOT}/front-api"
+    namespace: front
     depends_on:
       sdks-js:
         condition: process_healthy
@@ -108,7 +115,7 @@ processes:
       - "NODE_OPTIONS=--require=./forbid-next.cjs"
     readiness_probe:
       http_get:
-        host: 127.0.0.1
+        host: localhost
         scheme: http
         port: 3000
         path: "/api/healthz"
@@ -118,6 +125,7 @@ processes:
   front-workers:
     command: "./admin/dev_worker.sh"
     working_dir: "${DUST_DEV_ROOT}/front"
+    namespace: front
     depends_on:
       front-api-hono:
         condition: process_healthy
@@ -125,6 +133,7 @@ processes:
   connectors:
     command: "./admin/dev.sh"
     working_dir: "${DUST_DEV_ROOT}/connectors"
+    namespace: front
     depends_on:
       sdks-js:
         condition: process_healthy
@@ -132,6 +141,7 @@ processes:
   front-spa:
     command: "npm run dev:app"
     working_dir: "${DUST_DEV_ROOT}/front-spa"
+    namespace: front
     depends_on:
       sparkle:
         condition: process_healthy
@@ -139,6 +149,7 @@ processes:
   front-poke:
     command: "npm run dev:poke"
     working_dir: "${DUST_DEV_ROOT}/front-spa"
+    namespace: front
     depends_on:
       sparkle:
         condition: process_healthy
@@ -149,6 +160,7 @@ processes:
   marketing-site:
     command: "npm run dev -- -p 3009"
     working_dir: "${DUST_DEV_ROOT}/marketing"
+    namespace: optional
     disabled: true
     depends_on:
       sparkle:
@@ -157,39 +169,47 @@ processes:
   sparkle-storybook:
     command: "npm run storybook"
     working_dir: "${DUST_DEV_ROOT}/sparkle"
+    namespace: optional
     disabled: true
 
   sparkle-playground:
     command: "npm install && npm run dev"
     working_dir: "${DUST_DEV_ROOT}/sparkle/playground"
+    namespace: optional
     disabled: true
 
   viz:
     command: "npm run dev"
     working_dir: "${DUST_DEV_ROOT}/viz"
+    namespace: optional
     disabled: true
 
   extension:
     command: "npm run dev:chrome"
     working_dir: "${DUST_DEV_ROOT}/extension"
+    namespace: optional
     disabled: true
 
   ngrok:
     # Doc: https://www.notion.so/dust-tt/Runbook-Local-Setup-Slack-2ad003fc529d4144bb0ee61b7fd797c9?source=copy_link#2a728599d941807fb71dccb4addc0234
     command: "ngrok start localhost-via-https"
+    namespace: optional
     disabled: true
 
   firebase-webhook-router:
     command: "docker-compose up --build"
     working_dir: "${DUST_DEV_ROOT}/firebase-functions/webhook-router"
+    namespace: optional
     disabled: true
 
   novu:
     # Doc: https://docs.novu.co/framework/studio
     command: "npx novu@latest dev --port 3000"
+    namespace: optional
     disabled: true
 
   stripe:
     # Doc: https://www.notion.so/dust-tt/Runbook-Local-Dev-setup-720bffc7d67a447184cb957e9471380c?source=copy_link#5814f227351d4d258422e21e8de39c82/
     command: "stripe listen --forward-to localhost:3000/api/stripe/webhook"
+    namespace: optional
     disabled: true
