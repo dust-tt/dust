@@ -376,7 +376,9 @@ export function SubscriptionPage() {
   const isWorkspaceOnProPlan = isProPlan(plan);
   const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
   const canUpsellToBusinessPlan =
-    isWorkspaceOnProPlan && isWorkspaceWhitelistedBusinessPlan;
+    isWorkspaceOnProPlan &&
+    isWorkspaceWhitelistedBusinessPlan &&
+    !isMetronomeCheckout;
 
   const isProcessing =
     isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
@@ -397,6 +399,27 @@ export function SubscriptionPage() {
         day: "numeric",
       })
     : null;
+
+  const migrationDate = (() => {
+    if (!isWorkspaceOnProPlan || !isMetronomeCheckout) {
+      return null;
+    }
+    const periodEndMs = perSeatPricing?.currentPeriodEndMs ?? null;
+    if (periodEndMs === null) {
+      return null;
+    }
+    const d = new Date(periodEndMs);
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + 1);
+    const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, daysInMonth));
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  })();
 
   if (isLoading) {
     return (
@@ -463,6 +486,18 @@ export function SubscriptionPage() {
                   .
                 </>
               )}
+            </ContentMessage>
+          )}
+          {migrationDate && (
+            <ContentMessage
+              title="Your plan will be migrated to the new pricing."
+              variant="warning"
+            >
+              Your current plan will be automatically migrated to the new
+              credit-based pricing on{" "}
+              <span className="font-semibold">{migrationDate}</span>. You can
+              cancel your subscription at any time before that date from the
+              Stripe billing portal below.
             </ContentMessage>
           )}
           {useMetronomePanel ? (

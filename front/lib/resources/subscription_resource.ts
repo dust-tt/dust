@@ -1432,6 +1432,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       seatCurrency: currency,
       billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
       quantity: item.quantity,
+      currentPeriodEndMs: stripeSubscription.current_period_end * 1000,
     };
   }
 

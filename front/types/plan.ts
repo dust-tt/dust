@@ -155,6 +155,7 @@ export type SubscriptionPerSeatPricing = {
   seatCurrency: string;
   billingPeriod: BillingPeriod;
   quantity: number;
+  currentPeriodEndMs: number | null;
 };
 
 export const EnterpriseUpgradeFormSchema = z.object({
