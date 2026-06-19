@@ -14,7 +14,9 @@ import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type CreditGroupBy = "agent" | "user" | "none";
+export type CreditBreakdownBy = "agent" | "user" | "origin";
+
+export type CreditGroupBy = CreditBreakdownBy | "none";
 
 export type CreditUsageRow = {
   groupKey: string;
@@ -117,12 +119,29 @@ function buildCreditQuery(
   };
 }
 
-function groupFieldFor(groupBy: "agent" | "user"): "agent_id" | "user_id" {
+function groupFieldFor(
+  groupBy: CreditBreakdownBy
+): "agent_id" | "user_id" | "context_origin" {
   switch (groupBy) {
     case "agent":
       return "agent_id";
     case "user":
       return "user_id";
+    case "origin":
+      return "context_origin";
+    default:
+      return assertNever(groupBy);
+  }
+}
+
+function fallbackGroupName(groupBy: CreditBreakdownBy): string {
+  switch (groupBy) {
+    case "agent":
+      return "Unknown agent";
+    case "user":
+      return "Programmatic usage";
+    case "origin":
+      return "Unknown source";
     default:
       return assertNever(groupBy);
   }
@@ -130,7 +149,7 @@ function groupFieldFor(groupBy: "agent" | "user"): "agent_id" | "user_id" {
 
 async function resolveGroupNames(
   auth: Authenticator,
-  groupBy: "agent" | "user",
+  groupBy: CreditBreakdownBy,
   ids: string[]
 ): Promise<Map<string, string>> {
   if (ids.length === 0) {
@@ -153,9 +172,46 @@ async function resolveGroupNames(
         ])
       );
     }
+    case "origin":
+      return new Map(ids.map((id) => [id, id]));
     default:
       return assertNever(groupBy);
   }
+}
+
+// Date histogram for the credit timeseries. When `fillWindow` is set, empty
+// buckets are emitted across the whole [startDate, endDate] window so the
+// series spans the full range instead of collapsing to days with data.
+function buildCreditDateHistogram({
+  granularity,
+  timezone,
+  startDate,
+  endDate,
+  fillWindow,
+}: {
+  granularity: "day" | "week" | "month";
+  timezone: string;
+  startDate: string;
+  endDate: string;
+  fillWindow?: boolean;
+}): estypes.AggregationsAggregationContainer["date_histogram"] {
+  const dateHistogram: estypes.AggregationsAggregationContainer["date_histogram"] =
+    {
+      field: "timestamp",
+      calendar_interval: granularity,
+      time_zone: timezone,
+    };
+  if (!fillWindow) {
+    return dateHistogram;
+  }
+  return {
+    ...dateHistogram,
+    min_doc_count: 0,
+    extended_bounds: {
+      min: new Date(startDate).getTime(),
+      max: new Date(endDate).getTime(),
+    },
+  };
 }
 
 // Sums the per-message AWU credits (cost.full_awu) precomputed at index time
@@ -233,9 +289,7 @@ export async function fetchCreditUsage(
 
   const rows: CreditUsageRow[] = ranked.map((row) => ({
     ...row,
-    name:
-      namesById.get(row.groupKey) ??
-      (groupBy === "agent" ? "Unknown agent" : "Programmatic usage"),
+    name: namesById.get(row.groupKey) ?? fallbackGroupName(groupBy),
   }));
 
   return new Ok({ totalCredits, rows });
@@ -253,6 +307,7 @@ export async function fetchCreditTimeseries(
     contextOrigin,
     agentIds,
     userIds,
+    fillWindow,
   }: {
     startDate: string;
     endDate: string;
@@ -261,6 +316,7 @@ export async function fetchCreditTimeseries(
     contextOrigin?: string | string[];
     agentIds?: string[];
     userIds?: string[];
+    fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesPoint[], ElasticsearchError>> {
   const query = buildCreditQuery(auth, {
@@ -274,11 +330,13 @@ export async function fetchCreditTimeseries(
   const result = await searchAnalytics<never, CreditTimeseriesAggs>(query, {
     aggregations: {
       by_date: {
-        date_histogram: {
-          field: "timestamp",
-          calendar_interval: granularity,
-          time_zone: timezone,
-        },
+        date_histogram: buildCreditDateHistogram({
+          granularity,
+          timezone,
+          startDate,
+          endDate,
+          fillWindow,
+        }),
         aggs: { ...creditSubAggs },
       },
     },
@@ -318,16 +376,18 @@ export async function fetchCreditTimeseriesBreakdown(
     contextOrigin,
     agentIds,
     userIds,
+    fillWindow,
   }: {
     startDate: string;
     endDate: string;
     granularity: "day" | "week" | "month";
     timezone: string;
-    breakdownBy: "agent" | "user";
+    breakdownBy: CreditBreakdownBy;
     limit: number;
     contextOrigin?: string | string[];
     agentIds?: string[];
     userIds?: string[];
+    fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesBreakdown, ElasticsearchError>> {
   const ranking = await fetchCreditUsage(auth, {
@@ -365,11 +425,13 @@ export async function fetchCreditTimeseriesBreakdown(
     {
       aggregations: {
         by_date: {
-          date_histogram: {
-            field: "timestamp",
-            calendar_interval: granularity,
-            time_zone: timezone,
-          },
+          date_histogram: buildCreditDateHistogram({
+            granularity,
+            timezone,
+            startDate,
+            endDate,
+            fillWindow,
+          }),
           aggs: {
             ...creditSubAggs,
             by_group: {

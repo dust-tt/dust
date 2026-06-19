@@ -4,6 +4,7 @@ import type {
   AwuUsageGroupByType,
   GetAwuUsageResponse,
 } from "@app/lib/api/analytics/awu_usage";
+import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import type {
   GetMetronomeUsageResponse,
   MetronomeUsageGroupByType,
@@ -686,6 +687,53 @@ export function useAwuUsage({
   }
   const queryString = queryParams.toString();
   const key = `/api/w/${workspaceId}/analytics/awu-usage?${queryString}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    awuUsageData: data,
+    isAwuUsageLoading: !error && !data && !disabled,
+    isAwuUsageError: error,
+    isAwuUsageValidating: isValidating,
+  };
+}
+
+export function useAwuUsageFromAnalytics({
+  workspaceId,
+  groupBy,
+  groupByCount,
+  granularity,
+  days,
+  disabled,
+}: {
+  workspaceId: string;
+  groupBy?: "agent" | "user" | "origin";
+  groupByCount?: number;
+  granularity?: "day" | "week" | "month";
+  days?: number;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<AwuUsageAnalyticsResponse> = fetcher;
+
+  const queryParams = new URLSearchParams();
+  if (groupBy) {
+    queryParams.set("groupBy", groupBy);
+  }
+  if (groupByCount !== undefined) {
+    queryParams.set("groupByCount", groupByCount.toString());
+  }
+  if (granularity) {
+    queryParams.set("granularity", granularity);
+  }
+  if (days !== undefined) {
+    queryParams.set("days", days.toString());
+  }
+  const queryString = queryParams.toString();
+  const key = `/api/w/${workspaceId}/analytics/awu-usage-analytics?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,
