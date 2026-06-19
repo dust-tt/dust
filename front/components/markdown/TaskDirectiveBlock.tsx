@@ -1,9 +1,11 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
 import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
 import type { GetWorkspacePodTaskResponseBody } from "@app/lib/api/projects/tasks";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
+  usePodMetadata,
   useStartPodTaskConversation,
   useWorkspacePodTask,
 } from "@app/lib/swr/pods";
@@ -92,6 +94,12 @@ function TaskMarkdownPopoverStartChrome({
   const doStart = useStartPodTaskConversation({ owner, podId: podId });
   const [isStarting, setIsStarting] = useState(false);
 
+  const { hasFeature } = useFeatureFlags();
+  const { podMetadata } = usePodMetadata({ workspaceId: owner.sId, podId });
+  const defaultAgentId = hasFeature("pod_default_agent")
+    ? (podMetadata?.defaultAgentId ?? null)
+    : null;
+
   const hasConversationLink =
     (task.status === "in_progress" || task.status === "done") &&
     !!task.conversationId;
@@ -114,6 +122,7 @@ function TaskMarkdownPopoverStartChrome({
       isFirstOnboardingTask={false}
       context="conversation"
       defaultGoToConversation={false}
+      defaultAgentId={defaultAgentId}
       triggerClassName="shrink-0"
       triggerSize={triggerSize}
       onStart={async (opts) => {

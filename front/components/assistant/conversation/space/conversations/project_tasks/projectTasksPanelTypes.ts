@@ -23,6 +23,7 @@ export type PodTasksPanelData = {
   combinedGroupedTasksByUser: CombinedGroupedTasksByUser;
   activeAgents: LightAgentConfigurationType[];
   isAgentsLoading: boolean;
+  defaultAgentId: string | null;
   agentNameById: Map<string, string>;
   newItemKeys: Set<string>;
   doneFlashKeys: Set<string>;

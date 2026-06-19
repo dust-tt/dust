@@ -9,11 +9,11 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { resolvePodDefaultAgentId } from "@app/lib/api/projects/default_agent";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeProjectTaskDirective } from "@app/lib/project_task/format";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { APIErrorType } from "@app/types/error";
 import type { PodTaskSourceInfo, PodTaskType } from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
@@ -274,12 +274,18 @@ export async function startAgentForProjectTask(
     "\n\n" +
     "Read the attached file in full for more instructions.";
 
+  // When the caller didn't pick an agent, kick off with the pod's default
+  // agent instead of hardcoded @dust, so the configured default applies to
+  // task conversations the same way it does to new conversations.
+  const resolvedAgentConfigurationId =
+    agentConfigurationId ?? (await resolvePodDefaultAgentId(auth, space));
+
   const messageRes = await postUserMessage(auth, {
     conversation,
     content,
     mentions: [
       {
-        configurationId: agentConfigurationId ?? GLOBAL_AGENTS_SID.DUST,
+        configurationId: resolvedAgentConfigurationId,
       },
     ],
     context: {
