@@ -249,8 +249,8 @@ export function PodTaskStartWorkingDropdown({
                 size="xs"
                 onItemClick={(agent) => setSelectedStartAgent(agent)}
                 pickerButton={
-                  <button
-                    type="button"
+                  <div
+                    role="button"
                     aria-label={`Selected agent: ${selectedStartAgent?.name ?? "Agent"}`}
                     className={cn(
                       "inline-flex box-border max-w-full min-w-0 items-center rounded-lg h-7 heading-xs px-2 gap-1.5 text-primary-900 dark:text-primary-900-night transition-colors duration-200",
@@ -296,7 +296,7 @@ export function PodTaskStartWorkingDropdown({
                       size="xs"
                       className="-mr-1 text-faint dark:text-faint-night"
                     />
-                  </button>
+                  </div>
                 }
               />
             </div>
