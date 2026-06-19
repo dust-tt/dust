@@ -85,7 +85,13 @@ const kit = vi.hoisted(() => {
         },
       };
     };
-  return { state, makeClient, makeGoogleClient, makeOpenAIClient, freshCaptures };
+  return {
+    state,
+    makeClient,
+    makeGoogleClient,
+    makeOpenAIClient,
+    freshCaptures,
+  };
 });
 
 vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
