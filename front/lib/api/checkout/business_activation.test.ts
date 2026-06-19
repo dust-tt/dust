@@ -144,9 +144,7 @@ vi.mock("@app/lib/plans/billing_currency", () => ({
 }));
 
 vi.mock("@app/lib/plans/plan_codes", () => ({
-  CREDIT_PRICED_FREE_PLAN_CODE: "CP_FREE_PLAN",
   CREDIT_PRICED_BUSINESS_PLAN_CODE: "CP_BUSINESS_PLAN",
-  FREE_NO_PLAN_CODE: "FREE_NO_PLAN",
   isFreePlan: (code: string) =>
     code === "CP_FREE_PLAN" || code === "FREE_NO_PLAN",
 }));
@@ -180,13 +178,16 @@ vi.mock("@app/lib/plans/stripe", () => ({
   setStripeCustomerDefaultPaymentMethod: vi.fn(),
 }));
 
-vi.mock("@app/logger/logger", () => ({
-  default: {
+vi.mock("@app/logger/logger", () => {
+  const logger = {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-  },
-}));
+    child: vi.fn(),
+  };
+  logger.child.mockReturnValue(logger);
+  return { default: logger };
+});
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -221,7 +222,6 @@ const CHECKOUT_PAYMENT_PENDING = {
   planCode: "CP_BUSINESS_PLAN",
   uniquenessKey: "key",
   createdAtMs: 1000000,
-  previousSubscriptionSId: "sub_free",
   previousMetronomeContractId: "previous-contract-id",
 };
 
@@ -278,7 +278,6 @@ describe("createPaymentGatedBusinessActivation", () => {
     expect(result.isOk()).toBe(true);
     expect(mockSetCheckoutPaymentPending).toHaveBeenCalledWith(
       expect.objectContaining({
-        previousSubscriptionSId: "sub_free",
         previousMetronomeContractId: "previous-contract-id",
       })
     );
