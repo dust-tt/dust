@@ -5,9 +5,6 @@ import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stre
 export class AgentPlatformEuropeClaudeHaikuFourDotFiveStream extends WithAnthropicClaudeHaikuFourDotFiveConfig(
   AgentPlatformStream
 ) {
-  // Vertex expects the dated id; our canonical `modelId` is the dateless alias.
-  static readonly providerModelId = "claude-haiku-4-5@20251001";
-
   // Vertex regional/multi-region endpoints add a 10% premium over global.
   // https://platform.claude.com/docs/en/about-claude/pricing
   static readonly tokenPricing = {

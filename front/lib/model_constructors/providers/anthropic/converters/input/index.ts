@@ -1,6 +1,7 @@
 import type {
   MessageCreateParamsNonStreaming,
   MessageParam,
+  Model,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@app/lib/model_constructors/client";
@@ -25,6 +26,7 @@ import type {
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
@@ -49,6 +51,7 @@ export function WithAnthropicInputConverter<
     assistantToolCallRequestToToolUseBlock =
       assistantToolCallRequestToToolUseBlock;
     reasoningToThinkingConfig = reasoningToThinkingConfig;
+    modelIdToApiModelId = (modelId: ModelId): Model => modelId;
 
     conversationToMessages(
       conversation: Payload["conversation"]
@@ -82,7 +85,7 @@ export function WithAnthropicInputConverter<
       };
 
       return {
-        model: this.constructor.providerModelId ?? this.constructor.modelId,
+        model: this.modelIdToApiModelId(this.constructor.modelId),
         max_tokens: this.constructor.maxOutputTokens,
         messages: this.conversationToMessages(conversation),
         system: this.systemMessagesToSystemParam(conversation.system),
