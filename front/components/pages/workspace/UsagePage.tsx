@@ -71,6 +71,10 @@ import {
   PieChart01,
   SearchInput,
   Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
@@ -686,84 +690,93 @@ export function UsagePage() {
           </Page.Vertical>
         )}
 
-        <Page.Vertical gap="md" align="stretch">
-          <Page.H variant="h4">Settings</Page.H>
-          <div className="flex flex-col gap-10">
-            <UsageSettingsCard
-              workspaceId={owner.sId}
-              readOnly={isReadOnly}
-              hasPool={hasPool}
-            />
-            <LockedSection
-              locked={!isAwuPoolSummaryLoading && !hasPool}
-              className="flex flex-col gap-10"
-            >
-              <UsageProgrammaticLimitCard
-                workspaceId={owner.sId}
-                readOnly={isReadOnly}
-              />
-              <UsageNotificationsCard
-                workspaceId={owner.sId}
-                readOnly={isReadOnly}
-              />
-            </LockedSection>
-          </div>
-        </Page.Vertical>
+        <Tabs defaultValue="members">
+          <TabsList className="mb-4">
+            <TabsTrigger value="members" label="Members" />
+            <TabsTrigger value="settings" label="Settings" />
+          </TabsList>
 
-        <Page.Vertical gap="sm" align="stretch">
-          <Page.H variant="h4">Members</Page.H>
-          {searchAndInviteRow}
-          {isWorkspaceAdmin ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-row items-center justify-between gap-2">
-                <ButtonsSwitchList
-                  size="xs"
-                  defaultValue="members"
-                  onValueChange={(v) =>
-                    setMembersTab(v === "requests" ? "requests" : "members")
-                  }
-                >
-                  <ButtonsSwitch value="members" label="Members" />
-                  <ButtonsSwitch
-                    value="requests"
-                    label="Requests"
-                    isCounter
-                    counterValue={
-                      filteredUpgradeRequests.length > 0
-                        ? String(filteredUpgradeRequests.length)
-                        : undefined
-                    }
-                  />
-                </ButtonsSwitchList>
-                {membersTab === "members" && seatFilterDropdown}
-              </div>
-              <div className="pt-2">
-                {membersTab === "members" ? (
-                  membersTable
-                ) : (
-                  <UpgradeRequestsTable
-                    requests={filteredUpgradeRequests}
-                    isLoading={isUpgradeRequestsLoading}
-                    seatPlans={seatPlans}
-                    pendingRequestIds={resolvingRequestIds}
-                    onUpgradePlan={handleUpgradePlanRequest}
-                    onEditLimit={handleEditLimitRequest}
-                    onDeny={handleDenyRequest}
-                  />
-                )}
-              </div>
-            </div>
-          ) : (
-            <>
-              {seatFilterDropdown && (
-                <div className="flex flex-row justify-end">
-                  {seatFilterDropdown}
+          <TabsContent value="members">
+            <Page.Vertical gap="sm" align="stretch">
+              {searchAndInviteRow}
+              {isWorkspaceAdmin ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-row items-center justify-between gap-2">
+                    <ButtonsSwitchList
+                      size="xs"
+                      defaultValue="members"
+                      onValueChange={(v) =>
+                        setMembersTab(
+                          v === "requests" ? "requests" : "members"
+                        )
+                      }
+                    >
+                      <ButtonsSwitch value="members" label="Members" />
+                      <ButtonsSwitch
+                        value="requests"
+                        label="Requests"
+                        isCounter
+                        counterValue={
+                          filteredUpgradeRequests.length > 0
+                            ? String(filteredUpgradeRequests.length)
+                            : undefined
+                        }
+                      />
+                    </ButtonsSwitchList>
+                    {membersTab === "members" && seatFilterDropdown}
+                  </div>
+                  <div className="pt-2">
+                    {membersTab === "members" ? (
+                      membersTable
+                    ) : (
+                      <UpgradeRequestsTable
+                        requests={filteredUpgradeRequests}
+                        isLoading={isUpgradeRequestsLoading}
+                        seatPlans={seatPlans}
+                        pendingRequestIds={resolvingRequestIds}
+                        onUpgradePlan={handleUpgradePlanRequest}
+                        onEditLimit={handleEditLimitRequest}
+                        onDeny={handleDenyRequest}
+                      />
+                    )}
+                  </div>
                 </div>
+              ) : (
+                <>
+                  {seatFilterDropdown && (
+                    <div className="flex flex-row justify-end">
+                      {seatFilterDropdown}
+                    </div>
+                  )}
+                  {membersTable}
+                </>
               )}
-              {membersTable}
-            </>
-          )}
-        </Page.Vertical>
+            </Page.Vertical>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="flex flex-col gap-10">
+              <UsageSettingsCard
+                workspaceId={owner.sId}
+                readOnly={isReadOnly}
+                hasPool={hasPool}
+              />
+              <LockedSection
+                locked={!isAwuPoolSummaryLoading && !hasPool}
+                className="flex flex-col gap-10"
+              >
+                <UsageProgrammaticLimitCard
+                  workspaceId={owner.sId}
+                  readOnly={isReadOnly}
+                />
+                <UsageNotificationsCard
+                  workspaceId={owner.sId}
+                  readOnly={isReadOnly}
+                />
+              </LockedSection>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {inviteBlockedPopupReason && (
