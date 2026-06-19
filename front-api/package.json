@@ -6,7 +6,7 @@
     "dev": "tsx esbuild.dev.ts",
     "build": "tsx esbuild.production.ts",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
-    "test:ci": "vitest --reporter=junit --watch=false --test-timeout=30000",
+    "test:ci": "vitest --watch=false --test-timeout=30000",
     "lint:swagger-annotations": "BAD_FILES=$(grep -rlE 'app\\.(get|post|patch|put|delete)\\(' routes --include='*.ts' | grep -v '\\.test\\.ts$' | xargs grep -rL '@swagger\\|@ignoreswagger'); if [ -n \"$BAD_FILES\" ]; then echo \"Error: The following API route files register a handler but are missing the @swagger or @ignoreswagger annotation:\"; echo \"$BAD_FILES\"; exit 1; else echo \"Swagger annotation check: OK.\"; exit 0; fi",
     "docs": "tsx scripts/generate-swagger.ts 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
@@ -38,6 +38,7 @@
     "@types/jsonwebtoken": "^9.0.2",
     "@types/swagger-jsdoc": "^6.0.4",
     "esbuild": "^0.27.3",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "vitest": "^4.0.16"
   }
 }
