@@ -202,7 +202,7 @@ export function toFunctionTool(tool: ToolSpecification): FunctionTool {
     type: "function",
     name: tool.name,
     description: tool.description,
-    strict: true,
+    strict: false,
     parameters: { type: "object", ...tool.inputSchema },
   };
 }
