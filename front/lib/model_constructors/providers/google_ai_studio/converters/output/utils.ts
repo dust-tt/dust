@@ -137,10 +137,12 @@ export function functionCallToToolCallEvent(
     type: "tool_call",
     content: { id, name, arguments: args },
     // Gemini 3 requires the thought signature to be echoed back in subsequent
-    // requests, so carry it on the tool call's metadata.
+    // requests, so carry it on the tool call's metadata. The signature is
+    // carried under the generic `signature` key (matching reasoning events and
+    // other providers); the transition layer persists it as `thoughtSignature`.
     metadata: {
       ...metadata,
-      ...(thoughtSignature ? { content: { thoughtSignature } } : {}),
+      ...(thoughtSignature ? { content: { signature: thoughtSignature } } : {}),
     },
   };
 }
@@ -498,7 +500,7 @@ export async function* rawOutputToEvents(
     metadata: {
       ...metadata,
       ...(acc.thoughtSignature
-        ? { content: { thoughtSignature: acc.thoughtSignature } }
+        ? { content: { signature: acc.thoughtSignature } }
         : {}),
     },
   };
