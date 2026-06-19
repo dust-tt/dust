@@ -1336,6 +1336,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         )
       );
     });
+    // `makeNew` registers invalidation via invalidateCacheAfterCommit (fire-and-
+    // forget). Await it explicitly here so callers that immediately read the
+    // subscription cache (e.g. syncMetronomeSeatCountForWorkspace after a
+    // checkout activation) see the new subscription rather than the stale one.
+    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
   }
 
   /**
