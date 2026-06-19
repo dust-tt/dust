@@ -399,6 +399,7 @@ export function UsagePage() {
 
   const { billingCycleStartDay } = useCreditPurchaseInfo({
     workspaceId: owner.sId,
+    disabled: !isReadOnly,
   });
 
   // Legacy contracts have no pool credits or commits, so the pool summary's
