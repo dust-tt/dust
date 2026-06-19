@@ -5,6 +5,7 @@ import { AnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/model_cons
 import { AnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_sonnet_four_dot_six";
 import { GoogleAiStudioGlobalGemini31ProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { OpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_five";
+import { OpenAIResponsesGlobalGptFiveDotFourNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four_nano";
 
 export const STREAM_ENDPOINTS = {
   [AnthropicGlobalClaudeSonnetFourDotSixStream.id]:
@@ -17,6 +18,8 @@ export const STREAM_ENDPOINTS = {
     GoogleAiStudioGlobalGemini31ProStream,
   [OpenAIResponsesGlobalGptFiveDotFiveStream.id]:
     OpenAIResponsesGlobalGptFiveDotFiveStream,
+  [OpenAIResponsesGlobalGptFiveDotFourNanoStream.id]:
+    OpenAIResponsesGlobalGptFiveDotFourNanoStream,
   [AgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     AgentPlatformEuropeClaudeHaikuFourDotFiveStream,
 } as const satisfies Record<string, StreamEndpointConstructor>;

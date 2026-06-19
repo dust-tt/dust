@@ -5,6 +5,7 @@ import { DustAnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/llms/s
 import { DustAnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_sonnet_four_dot_six";
 import { DustGoogleAiStudioGlobalGemini31ProStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { DustOpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_five";
+import { DustOpenAIResponsesGlobalGptFiveDotFourNanoStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_four_nano";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import type {
   EndpointConfig,
@@ -24,6 +25,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustGoogleAiStudioGlobalGemini31ProStream,
   [DustOpenAIResponsesGlobalGptFiveDotFiveStream.id]:
     DustOpenAIResponsesGlobalGptFiveDotFiveStream,
+  [DustOpenAIResponsesGlobalGptFiveDotFourNanoStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotFourNanoStream,
   [DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
