@@ -1,5 +1,8 @@
 import { GEMINI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
-import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
+import {
+  inputConfigSchema,
+  temperatureSchema,
+} from "@app/lib/model_constructors/types/input/configuration";
 import { z } from "zod";
 
 // Provider-wide input config: the widest reasoning contract any Gemini model
@@ -11,6 +14,8 @@ export const googleAiStudioConfigSchema = inputConfigSchema.extend({
       effort: z.enum(GEMINI_SUPPORTED_REASONING_EFFORTS),
     })
     .optional(),
+  cacheKey: z.undefined(),
+  temperature: temperatureSchema.optional().transform(() => 1 as const),
 });
 
 export type GoogleAiStudioInputConfig = z.infer<

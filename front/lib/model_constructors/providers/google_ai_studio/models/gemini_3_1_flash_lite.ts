@@ -1,9 +1,20 @@
-import {
-  GEMINI_3_CONTEXT_SIZE,
-  GEMINI_3_MAX_OUTPUT_TOKENS,
-  geminiV3ConfigSchema,
-} from "@app/lib/model_constructors/providers/google_ai_studio/models/shared";
+import { googleAiStudioConfigSchema } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+import { GEMINI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
 import { GEMINI_3_1_FLASH_LITE_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { z } from "zod";
+
+export const CONTEXT_SIZE = 1_000_000;
+export const MAX_OUTPUT_TOKENS = 65_536;
+
+const DEFAULT_REASONING_EFFORT = "minimal";
+
+export const configSchema = googleAiStudioConfigSchema.extend({
+  reasoning: z
+    .object({
+      effort: z.enum(GEMINI_SUPPORTED_REASONING_EFFORTS),
+    })
+    .default({ effort: DEFAULT_REASONING_EFFORT }),
+});
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig<
@@ -14,10 +25,10 @@ export function WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig<
   abstract class GoogleAiStudioGeminiThreeDotOneFlashLite extends Base {
     static readonly modelId = GEMINI_3_1_FLASH_LITE_MODEL_ID;
 
-    static readonly configSchema = geminiV3ConfigSchema;
+    static readonly configSchema = configSchema;
 
-    static readonly contextSize = GEMINI_3_CONTEXT_SIZE;
-    static readonly maxOutputTokens = GEMINI_3_MAX_OUTPUT_TOKENS;
+    static readonly contextSize = CONTEXT_SIZE;
+    static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
   return GoogleAiStudioGeminiThreeDotOneFlashLite;
