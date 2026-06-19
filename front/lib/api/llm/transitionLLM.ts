@@ -62,6 +62,16 @@ import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/ty
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+// Global agents that route their conversation through headroom compression. Each
+// is an exact clone of a non-compressing agent (@dust -> @dust-c, deep-dive ->
+// deep-dive-c) and only exists when the headroom_compression flag is enabled
+// (see getGlobalAgents), so compression is their only difference from the
+// original. The system prompt is intentionally left intact.
+const COMPRESSION_ENABLED_AGENT_IDS: ReadonlySet<string> = new Set([
+  GLOBAL_AGENTS_SID.DUST_C,
+  GLOBAL_AGENTS_SID.DEEP_DIVE_C,
+]);
+
 /**
  * Maps old reasoning effort values to the new model's effort values.
  */
@@ -567,13 +577,12 @@ export class StreamEndpointTransition extends BaseTransition {
   ) {
     const { conversation } = this.buildPayload(streamParameters);
 
-    // Compression is opt-in per agent: only the @dust-c global agent routes its
-    // conversation through the local headroom-ai proxy. @dust and every other
-    // agent are left untouched, so compression is @dust-c's only difference from
-    // @dust. @dust-c only exists when the headroom_compression flag is enabled
-    // (see getGlobalAgents). The system prompt is intentionally left intact.
+    // Compression is opt-in per agent: only the compression-enabled clones (e.g.
+    // @dust-c, deep-dive-c) route their conversation through the local headroom-ai
+    // proxy. Their originals and every other agent are left untouched.
     let messages = conversation.messages;
-    if (this.context?.agentConfigurationId === GLOBAL_AGENTS_SID.DUST_C) {
+    const agentId = this.context?.agentConfigurationId;
+    if (agentId && COMPRESSION_ENABLED_AGENT_IDS.has(agentId)) {
       const compression = await compressConversationMessages(
         conversation.messages,
         {

@@ -2,6 +2,7 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { WEB_SEARCH_BROWSE_ACTION_DESCRIPTION } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
+  DEEP_DIVE_C_NAME,
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
@@ -606,6 +607,25 @@ export function _getDeepDiveGlobalAgent(
     // so it no longer needs to be listed here.
     skills: ["frames", "discover_skills", "skill-authoring"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+  };
+}
+
+// Exact clone of deep-dive (same model, instructions, tools, sub-agents, plan
+// gating). The only difference is that deep-dive-c routes its conversation
+// through headroom compression, gated on the agent id in StreamEndpointTransition.
+// Gated behind the headroom_compression feature flag in getGlobalAgents.
+export function _getDeepDiveCGlobalAgent(
+  auth: Authenticator,
+  args: Parameters<typeof _getDeepDiveGlobalAgent>[1]
+): AgentConfigurationType | null {
+  const deepDive = _getDeepDiveGlobalAgent(auth, args);
+  if (!deepDive) {
+    return null;
+  }
+  return {
+    ...deepDive,
+    sId: GLOBAL_AGENTS_SID.DEEP_DIVE_C,
+    name: DEEP_DIVE_C_NAME,
   };
 }
 
