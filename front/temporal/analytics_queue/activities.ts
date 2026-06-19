@@ -240,7 +240,11 @@ export async function storeAgentAnalytics(
     timestamp: new Date(agentMessageRow.createdAt).toISOString(),
     tokens,
     tools_used: toolsUsed,
-    user_id: userModel?.sId ?? "unknown",
+    // Fall back to the authenticated user when the UserMessage row has no
+    // associated user (doNotAssociateUser messages like pod_manager
+    // sub-conversations), matching the Metronome usage path so analytics stays
+    // attributable instead of landing in "unknown".
+    user_id: userModel?.sId ?? auth.user()?.sId ?? "unknown",
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
     version: agentMessageRow.version.toString(),
