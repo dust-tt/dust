@@ -1,11 +1,18 @@
-import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
+import {
+  BillingPeriodSwitch,
+  PaidPlanCards,
+  type PaidPlanTier,
+} from "@app/components/pages/onboarding/SubscriptionPlans";
 import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { getPriceAsString } from "@app/lib/client/subscription";
+import {
+  getPriceAsString,
+  useIsMetronomeCheckout,
+} from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -189,8 +196,9 @@ function CancelFreeTrialDialog({
 
 export function SubscriptionPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
+  const { subscription, user: authUser } = useAuth();
   const useMetronomePanel = isSubscriptionMetronomeBilled(subscription);
+  const isMetronomeCheckout = useIsMetronomeCheckout();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const type = useSearchParam("type");
@@ -249,6 +257,19 @@ export function SubscriptionPage() {
         `/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}`
       );
     });
+
+  const { submit: handleSubscribeMetronome } = useSubmitFunction(
+    async (seatType: PaidPlanTier) => {
+      const query = new URLSearchParams({
+        seatType,
+        billingPeriod,
+        targetUserId: authUser.sId,
+      });
+      await router.push(
+        `/w/${owner.sId}/subscription/checkout?${query.toString()}`
+      );
+    }
+  );
 
   const {
     submit: handleGoToStripePortal,
@@ -582,27 +603,52 @@ export function SubscriptionPage() {
               )}
               {displayPricingTable && (
                 <div className="pt-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <Page.H variant="h5">Choose a plan</Page.H>
-                      <Page.P>Pick a plan that best suits your team.</Page.P>
-                    </div>
-                    {!isWorkspaceWhitelistedBusinessPlan && (
-                      <BillingPeriodSwitch
-                        defaultValue={billingPeriod}
-                        size="xs"
-                        onValueChange={setBillingPeriod}
-                      />
-                    )}
-                  </div>
-                  <div className="pt-4">
-                    <SubscriptionPlanCards
-                      billingPeriod={billingPeriod}
-                      onSubscribe={handleSubscribePlan}
-                      isProcessing={isProcessing}
-                      owner={owner}
-                    />
-                  </div>
+                  {isMetronomeCheckout ? (
+                    <>
+                      <div className="flex items-start justify-between gap-4">
+                        <Page.H variant="h5">Choose a plan</Page.H>
+                        <BillingPeriodSwitch
+                          defaultValue={billingPeriod}
+                          size="xs"
+                          onValueChange={setBillingPeriod}
+                        />
+                      </div>
+                      <div className="flex w-full flex-col gap-4 pt-4 sm:flex-row">
+                        <PaidPlanCards
+                          billingPeriod={billingPeriod}
+                          onSubscribe={(seatType) =>
+                            void handleSubscribeMetronome(seatType)
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <Page.H variant="h5">Choose a plan</Page.H>
+                          <Page.P>
+                            Pick a plan that best suits your team.
+                          </Page.P>
+                        </div>
+                        {!isWorkspaceWhitelistedBusinessPlan && (
+                          <BillingPeriodSwitch
+                            defaultValue={billingPeriod}
+                            size="xs"
+                            onValueChange={setBillingPeriod}
+                          />
+                        )}
+                      </div>
+                      <div className="pt-4">
+                        <SubscriptionPlanCards
+                          billingPeriod={billingPeriod}
+                          onSubscribe={handleSubscribePlan}
+                          isProcessing={isProcessing}
+                          owner={owner}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </>
