@@ -40,10 +40,7 @@ export abstract class GoogleAiStudioStream extends WithGoogleAiStudioInputConver
   async *streamRaw(
     input: GenerateContentParameters
   ): AsyncGenerator<GenerateContentResponse> {
-    const stream = await this.client.models.generateContentStream(input);
-    for await (const chunk of stream) {
-      yield chunk;
-    }
+    yield* await this.client.models.generateContentStream(input);
   }
 
   async *rawStreamOutputToEvents(
