@@ -405,6 +405,12 @@ function TaskDirectiveChipInner({
           className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04] dark:border-border-night/70 dark:ring-white/[0.06]"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
+          {/*
+            Visibility-gated mount: the popover content (and all its SWR hooks —
+            useWorkspacePodTask, useUnifiedAgentConfigurations, usePodMetadata,
+            useStartPodTaskConversation) only exists in the tree while `open` is true,
+            so no `disabled` flag is needed on those hooks — they never run while closed.
+          */}
           {open ? (
             <TaskDirectivePopoverContent owner={owner} taskSId={sId} />
           ) : null}
