@@ -18,6 +18,8 @@ export class LightWorkspaceFactory {
       segmentation: null,
       whiteListedProviders: null,
       defaultEmbeddingProvider: null,
+      defaultModelId: null,
+      backupModelId: null,
       regionalModelsOnly: false,
       metadata: {},
       sharingPolicy: "workspace_only",

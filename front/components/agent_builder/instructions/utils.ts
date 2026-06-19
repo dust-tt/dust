@@ -2,6 +2,7 @@ import {
   CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import { isAutoModel } from "@app/types/assistant/models/dust";
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
@@ -60,9 +61,16 @@ export interface ModelCategories {
 export function getModelsCategorization(
   models: ModelConfigurationType[]
 ): ModelCategories {
+  // The "auto" sentinel is surfaced first, above the best-performing models,
+  // and never grouped under a provider.
+  const autoModel = models.find(isAutoModel);
+  const nonAutoModels = autoModel
+    ? models.filter((m) => !isAutoModel(m))
+    : models;
+
   // Use existing categorization to separate best performing models
   const { bestPerformingModelConfigs, otherModelConfigs } =
-    categorizeModels(models);
+    categorizeModels(nonAutoModels);
 
   // Group remaining models by provider and separate recent vs older
   const providerGroups = new Map<
@@ -87,7 +95,9 @@ export function getModelsCategorization(
   }
 
   return {
-    bestGeneralModels: bestPerformingModelConfigs,
+    bestGeneralModels: autoModel
+      ? [autoModel, ...bestPerformingModelConfigs]
+      : bestPerformingModelConfigs,
     providerGroups,
   };
 }

@@ -1,3 +1,4 @@
+import { validateWorkspaceModelSettings } from "@app/lib/api/assistant/models";
 import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditLogTarget,
@@ -111,6 +112,15 @@ const WorkspaceProvidersUpdateBodySchema = z.object({
   defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
 });
 
+const WorkspaceModelSettingsUpdateBodySchema = z.object({
+  // modelId of the workspace default model used by the "auto" tier; null clears
+  // it (falls back to the Dust default).
+  defaultModelId: z.string().nullable(),
+  // modelId of the workspace backup model used on provider outages; null clears
+  // it.
+  backupModelId: z.string().nullable(),
+});
+
 const WorkspaceWorkOSUpdateBodySchema = z.object({
   workOSOrganizationId: z.string().nullable(),
 });
@@ -200,6 +210,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
+  WorkspaceModelSettingsUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
   WorkspaceSharingPolicyUpdateBodySchema,
@@ -390,6 +401,38 @@ app.post(
       });
       owner.whiteListedProviders = body.whiteListedProviders;
       owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
+    } else if ("defaultModelId" in body && "backupModelId" in body) {
+      const validationRes = await validateWorkspaceModelSettings(auth, {
+        defaultModelId: body.defaultModelId,
+        backupModelId: body.backupModelId,
+      });
+      if (validationRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: validationRes.error.message,
+          },
+        });
+      }
+
+      await workspace.updateWorkspaceSettings({
+        defaultModelId: body.defaultModelId,
+        backupModelId: body.backupModelId,
+      });
+      owner.defaultModelId = body.defaultModelId;
+      owner.backupModelId = body.backupModelId;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.model_settings_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          default_model_id: String(body.defaultModelId),
+          backup_model_id: String(body.backupModelId),
+        },
+      });
     } else if ("workOSOrganizationId" in body) {
       await workspace.updateWorkspaceSettings({
         workOSOrganizationId: body.workOSOrganizationId,

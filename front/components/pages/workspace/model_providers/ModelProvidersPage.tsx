@@ -1,6 +1,7 @@
 import { ModelProvidersPageContent } from "@app/components/pages/workspace/model_providers/ModelProvidersPageContent";
+import { WorkspaceModelSettings } from "@app/components/pages/workspace/model_providers/WorkspaceModelSettings";
 import { useProvidersSelection } from "@app/hooks/useProvidersSelection";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspace as useWorkspaceDetails } from "@app/lib/swr/workspaces";
 import { Brain, Page, Spinner } from "@dust-tt/sparkle";
 
@@ -8,6 +9,7 @@ export function ModelProvidersPage() {
   const owner = useWorkspace();
   const { workspace, isWorkspaceValidating, mutateWorkspace } =
     useWorkspaceDetails({ owner });
+  const { hasFeature } = useFeatureFlags();
   const { providersSelection, toggleProvider, selectAllProviders } =
     useProvidersSelection(workspace, owner, mutateWorkspace);
 
@@ -34,6 +36,13 @@ export function ModelProvidersPage() {
           onToggleProvider={toggleProvider}
           onSelectAllProviders={selectAllProviders}
         />
+        {hasFeature("auto_model_tier") && (
+          <WorkspaceModelSettings
+            owner={owner}
+            workspace={workspace}
+            mutateWorkspace={mutateWorkspace}
+          />
+        )}
       </Page.Vertical>
     </Page.Vertical>
   );

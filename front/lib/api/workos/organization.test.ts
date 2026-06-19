@@ -48,6 +48,8 @@ function makeWorkspace(
     segmentation: null,
     whiteListedProviders: null,
     defaultEmbeddingProvider: null,
+    defaultModelId: null,
+    backupModelId: null,
     regionalModelsOnly: false,
     workOSOrganizationId: "org_123",
     metadata: null,

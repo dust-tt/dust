@@ -34,6 +34,12 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare subscriptions: NonAttribute<SubscriptionModel[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  // modelId of the workspace default model used by the "auto" tier (null => Dust
+  // default). Validated in lib/api; stored as a free-form modelId string.
+  declare defaultModelId: string | null;
+  // modelId of the workspace backup model used as a cross-provider fallback on
+  // provider outages (null => no backup). Validated in lib/api.
+  declare backupModelId: string | null;
   declare metadata: Record<string, string | number | boolean | object> | null;
   declare sharingPolicy: CreationOptional<WorkspaceSharingPolicy>;
   declare conversationsRetentionDays: number | null;
@@ -109,6 +115,16 @@ WorkspaceModel.init(
       validate: {
         isIn: [modelProviders],
       },
+    },
+    defaultModelId: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+      allowNull: true,
+    },
+    backupModelId: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+      allowNull: true,
     },
     metadata: {
       type: DataTypes.JSONB,

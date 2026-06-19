@@ -27,7 +27,10 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
-import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
+import {
+  isProviderWhitelisted,
+  resolveAgentModelConfiguration,
+} from "@app/lib/api/assistant/models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -63,7 +66,6 @@ import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/proje
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import {
   getWorkspaceCreditPoolStatus,
@@ -791,7 +793,12 @@ export async function postUserMessage(
       });
     }
 
-    const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
+    // Resolve "auto" to the concrete model the agent will actually run, so the
+    // availability check reflects the real model rather than the sentinel.
+    const supportedModelConfig = resolveAgentModelConfiguration(
+      auth,
+      agentConfig.model
+    )?.modelConfig;
     if (
       supportedModelConfig &&
       !isModelAvailable(supportedModelConfig, {

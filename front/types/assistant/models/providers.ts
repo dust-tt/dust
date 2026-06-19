@@ -18,6 +18,9 @@ export const MODEL_PROVIDER_IDS = [
   "fireworks",
   "xai",
   "noop",
+  // Meta-provider for the "auto" sentinel model; never reaches an inference
+  // provider (resolved to a concrete model at runtime).
+  "dust",
 ] as const;
 
 export const BYOK_MODEL_PROVIDER_IDS = [
@@ -48,6 +51,8 @@ export function getProviderDisplayName(
       return "xAI";
     case "noop":
       return "noop";
+    case "dust":
+      return "Auto";
     default:
       return providerId;
   }

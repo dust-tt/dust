@@ -24,6 +24,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "fireworks"
   | "xai"
   | "noop"
+  | "dust" // meta-provider for the "auto" sentinel model
 >();
 
 export type KnownModelLLMId =
@@ -99,7 +100,8 @@ export type KnownModelLLMId =
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
-  | "noop"; // Noop
+  | "noop" // Noop
+  | "auto"; // Auto: Dust-managed runtime model selection
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
@@ -732,6 +734,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_dust_apps"
   | "netsuite_mcp"
   | "noop_model_feature"
+  | "auto_model_tier"
   | "notion_private_integration"
   | "allow_old_notion_mcp"
   | "openai_o1_feature"

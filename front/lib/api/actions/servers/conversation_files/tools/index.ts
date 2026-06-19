@@ -25,8 +25,8 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversationDataSourceViews } from "@app/lib/api/assistant/jit/utils";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { resolveAgentModelConfiguration } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   CONTENT_OUTDATED_MSG,
   getContentFragmentFromAttachmentFile,
@@ -140,9 +140,10 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     }
 
     const conversation = agentLoopContext.runContext.conversation;
-    const model = getSupportedModelConfig(
+    const model = resolveAgentModelConfiguration(
+      auth,
       agentLoopContext.runContext.agentConfiguration.model
-    );
+    )?.modelConfig;
     if (!model) {
       return new Err(new MCPError("Model configuration not found"));
     }

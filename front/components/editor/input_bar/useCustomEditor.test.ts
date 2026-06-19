@@ -18,6 +18,8 @@ describe("buildEditorExtensions", () => {
     segmentation: null,
     whiteListedProviders: null,
     defaultEmbeddingProvider: null,
+    defaultModelId: null,
+    backupModelId: null,
     metadata: null,
     metronomeCustomerId: null,
     sharingPolicy: "all_scopes",

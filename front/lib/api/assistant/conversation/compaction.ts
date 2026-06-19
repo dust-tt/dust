@@ -3,6 +3,7 @@ import {
   getNextConversationMessageRank,
 } from "@app/lib/api/assistant/conversation/lock";
 import { createCompactionMessage } from "@app/lib/api/assistant/conversation/messages";
+import { resolveAgentModelConfiguration } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -188,12 +189,25 @@ export async function compactConversation(
     { conversationId: conversation.sId }
   );
 
+  // Compaction can't run on the "auto" sentinel — resolve it to the concrete
+  // workspace default model before launching the workflow.
+  const resolved = resolveAgentModelConfiguration(auth, {
+    ...model,
+    temperature: 0,
+  });
+  const effectiveModel: SupportedModel = resolved
+    ? {
+        providerId: resolved.modelConfig.providerId,
+        modelId: resolved.modelConfig.modelId,
+      }
+    : model;
+
   void launchCompactionWorkflow({
     auth,
     conversationId: conversation.sId,
     compactionMessageId: compactionMessage.sId,
     compactionMessageVersion: compactionMessage.version,
-    model,
+    model: effectiveModel,
     sourceConversation,
   });
 

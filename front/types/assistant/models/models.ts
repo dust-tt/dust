@@ -42,6 +42,7 @@ import {
   CUSTOM_MODEL_IDS,
 } from "./custom_models.generated";
 import { DEEPSEEK_CHAT_MODEL_CONFIG, DEEPSEEK_CHAT_MODEL_ID } from "./deepseek";
+import { AUTO_MODEL_CONFIG, AUTO_MODEL_ID } from "./dust";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
@@ -247,8 +248,15 @@ export const STATIC_MODEL_IDS = [
 // Type for static model IDs only (excludes custom models from GCS).
 export type StaticModelIdType = (typeof STATIC_MODEL_IDS)[number];
 
-// Combined model IDs: static + custom (custom models generated at build time from GCS).
-export const MODEL_IDS = [...STATIC_MODEL_IDS, ...CUSTOM_MODEL_IDS] as const;
+// Combined model IDs: static + the "auto" sentinel + custom (custom models
+// generated at build time from GCS). "auto" is intentionally NOT in
+// STATIC_MODEL_IDS: it never reaches a provider and must not require a pricing
+// entry (CURRENT_MODEL_PRICING is keyed by StaticModelIdType).
+export const MODEL_IDS = [
+  ...STATIC_MODEL_IDS,
+  AUTO_MODEL_ID,
+  ...CUSTOM_MODEL_IDS,
+] as const;
 
 export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
@@ -343,6 +351,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_4_1_FAST_REASONING_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   NOOP_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
   // Custom models (generated at build time from GCS).
   ...CUSTOM_MODEL_CONFIGS,
 ];

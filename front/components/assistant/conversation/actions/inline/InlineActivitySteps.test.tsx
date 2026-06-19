@@ -35,6 +35,8 @@ const mockOwner: WorkspaceType = {
   segmentation: null,
   whiteListedProviders: null,
   defaultEmbeddingProvider: null,
+  defaultModelId: null,
+  backupModelId: null,
   sharingPolicy: "workspace_only",
   metronomeCustomerId: null,
   regionalModelsOnly: false,

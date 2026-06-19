@@ -52,6 +52,9 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   noop: {
     light: DustLogo,
   },
+  dust: {
+    light: DustLogo,
+  },
 };
 
 export const getModelProviderLogo = (

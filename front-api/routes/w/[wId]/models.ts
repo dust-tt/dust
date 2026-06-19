@@ -5,6 +5,7 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import { filterEnabledModels } from "@app/lib/assistant";
 import { getFeatureFlags } from "@app/lib/auth";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/dust";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -21,8 +22,13 @@ app.get("/", async (ctx): HandlerResult<GetEnabledModelsResponseType> => {
   const region = regionConfig.getCurrentRegion();
   const whitelistedProviders = getWhitelistedProviders(auth);
 
-  // Include both standard models and custom models (from GCS at build time).
-  const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
+  // Include the "auto" sentinel (gated by the auto_model_tier feature flag via
+  // filterEnabledModels), standard models, and custom models (from GCS).
+  const allUsedModels = [
+    AUTO_MODEL_CONFIG,
+    ...USED_MODEL_CONFIGS,
+    ...CUSTOM_MODEL_CONFIGS,
+  ];
   const models = filterEnabledModels(allUsedModels, {
     featureFlags,
     plan,

@@ -21,6 +21,8 @@ export function renderLightWorkspaceType({
 }): LightWorkspaceType {
   return {
     defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
+    defaultModelId: workspace.defaultModelId,
+    backupModelId: workspace.backupModelId,
     id: workspace.id,
     metadata: workspace.metadata,
     name: workspace.name,

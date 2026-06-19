@@ -983,6 +983,8 @@ export class Authenticator {
           workOSOrganizationId: this._workspace.workOSOrganizationId,
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
+          defaultModelId: this._workspace.defaultModelId,
+          backupModelId: this._workspace.backupModelId,
           metadata: this._workspace.metadata,
           metronomeCustomerId: this._workspace.metronomeCustomerId ?? null,
           sharingPolicy: this._workspace.sharingPolicy ?? "all_scopes",

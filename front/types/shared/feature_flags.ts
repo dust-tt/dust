@@ -160,6 +160,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
   },
+  auto_model_tier: {
+    description:
+      "Access to the Auto model tier (runtime-selected default model with outage backup) in the agent builder",
+    stage: "on_demand",
+  },
   gemini_3_1_pro_feature: {
     description: "Access to Gemini 3.1 Pro model in the agent builder",
     stage: "on_demand",

@@ -12,6 +12,7 @@ export const ALL_PROVIDERS_SELECTED: ProvidersSelection = {
   fireworks: true,
   xai: true,
   noop: true,
+  dust: true,
 };
 
 export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
@@ -24,6 +25,7 @@ export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
   fireworks: false,
   xai: false,
   noop: false,
+  dust: false,
 };
 
 export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
@@ -36,4 +38,5 @@ export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
   fireworks: "Fireworks",
   xai: "xAI",
   noop: "noop",
+  dust: "Auto",
 };

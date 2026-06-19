@@ -74,6 +74,8 @@ type CachedWorkspaceData = {
   workOSOrganizationId: string | null;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  defaultModelId: string | null;
+  backupModelId: string | null;
   metadata: Record<string, string | number | boolean | object> | null;
   sharingPolicy: WorkspaceSharingPolicy;
   conversationsRetentionDays: number | null;
@@ -211,6 +213,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       workOSOrganizationId: workspace.workOSOrganizationId,
       whiteListedProviders: whiteListedProviders,
       defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
+      defaultModelId: workspace.defaultModelId,
+      backupModelId: workspace.backupModelId,
       metadata: workspace.metadata,
       sharingPolicy: workspace.sharingPolicy,
       conversationsRetentionDays: workspace.conversationsRetentionDays,
@@ -254,6 +258,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       workOSOrganizationId: data.workOSOrganizationId,
       whiteListedProviders: data.whiteListedProviders,
       defaultEmbeddingProvider: data.defaultEmbeddingProvider,
+      defaultModelId: data.defaultModelId,
+      backupModelId: data.backupModelId,
       metadata: data.metadata,
       sharingPolicy: data.sharingPolicy,
       conversationsRetentionDays: data.conversationsRetentionDays,
@@ -542,6 +548,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         | "regionalModelsOnly"
         | "whiteListedProviders"
         | "defaultEmbeddingProvider"
+        | "defaultModelId"
+        | "backupModelId"
         | "workOSOrganizationId"
         | "metadata"
         | "sharingPolicy"

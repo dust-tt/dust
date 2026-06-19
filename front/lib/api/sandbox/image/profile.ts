@@ -24,6 +24,9 @@ export function providerToProfile(
     case "xai":
     case "fireworks":
     case "noop":
+    // "dust" (the "auto" sentinel) resolves to a concrete model before any
+    // provider call, so this branch is never actually reached for it.
+    case "dust":
       return "anthropic";
     default:
       assertNever(providerId);

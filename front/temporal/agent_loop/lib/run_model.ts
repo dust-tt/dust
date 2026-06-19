@@ -30,6 +30,7 @@ import {
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
+import { resolveAgentModelConfiguration } from "@app/lib/api/assistant/models";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import {
@@ -52,7 +53,6 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -69,7 +69,10 @@ import {
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
-import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
+import {
+  RUN_MODEL_MAX_RETRIES,
+  RUN_MODEL_PRIMARY_ATTEMPTS,
+} from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
@@ -169,7 +172,20 @@ export async function runModel(
 
   localLogger.info("Starting multi-action loop iteration");
 
-  const model = getSupportedModelConfig(agentConfiguration.model);
+  // Fail over to the workspace backup model once the primary has exhausted its
+  // allotted attempts. Temporal re-runs this activity from the top on retry, so
+  // we derive the failover purely from the attempt counter — no extra state.
+  const currentAttempt = Context.current().info.attempt;
+  const useBackup = currentAttempt > RUN_MODEL_PRIMARY_ATTEMPTS;
+
+  const resolvedModel = resolveAgentModelConfiguration(
+    auth,
+    agentConfiguration.model,
+    { useBackup }
+  );
+  const model = resolvedModel?.modelConfig ?? null;
+  const effectiveModel =
+    resolvedModel?.effectiveModel ?? agentConfiguration.model;
 
   async function publishAgentError(
     error: {
@@ -536,11 +552,13 @@ export async function runModel(
 
   const llm = await getStreamLLM(auth, {
     credentials,
-    modelId: model.modelId,
-    temperature: agentConfiguration.model.temperature,
-    reasoningEffort: agentConfiguration.model.reasoningEffort,
-    responseFormat: agentConfiguration.model.responseFormat,
-    metaData: agentConfiguration.model.metaData,
+    // Use the resolved model: "auto" is mapped to the workspace default (or the
+    // backup on failover), with the reasoning effort clamped to what it supports.
+    modelId: effectiveModel.modelId,
+    temperature: effectiveModel.temperature,
+    reasoningEffort: effectiveModel.reasoningEffort,
+    responseFormat: effectiveModel.responseFormat,
+    metaData: effectiveModel.metaData,
     context: traceContext,
     omittedThinking: agentConfiguration.omittedThinking,
     // Custom trace input: show only the last user message instead of full conversation.
@@ -582,7 +600,10 @@ export async function runModel(
 
   localLogger.info(
     {
+      requestedModelId: agentConfiguration.model.modelId,
       modelId: model.modelId,
+      usingBackupModel: useBackup,
+      attempt: currentAttempt,
       messageCount:
         modelConversationRes.value.modelConversation.messages.length,
       toolCount: specifications.length,

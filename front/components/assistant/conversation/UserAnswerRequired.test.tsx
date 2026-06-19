@@ -155,6 +155,8 @@ const owner: LightWorkspaceType = {
   segmentation: null,
   whiteListedProviders: null,
   defaultEmbeddingProvider: null,
+  defaultModelId: null,
+  backupModelId: null,
   regionalModelsOnly: false,
   sharingPolicy: "workspace_only",
   metronomeCustomerId: null,

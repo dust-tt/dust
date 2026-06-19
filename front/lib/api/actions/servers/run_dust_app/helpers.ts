@@ -13,12 +13,12 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { resolveAgentModelConfiguration } from "@app/lib/api/assistant/models";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { Authenticator } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import type { BlockRunConfig, SpecificationBlockType } from "@app/types/app";
@@ -289,9 +289,10 @@ export async function prepareParamsWithHistory(
   if (
     schema?.some((s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
   ) {
-    const model = getSupportedModelConfig(
+    const model = resolveAgentModelConfiguration(
+      auth,
       agentLoopRunContext.agentConfiguration.model
-    );
+    )?.modelConfig;
 
     if (model) {
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;

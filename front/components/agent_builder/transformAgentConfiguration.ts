@@ -7,6 +7,7 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import { isAutoModel } from "@app/types/assistant/models/dust";
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
@@ -77,6 +78,12 @@ const PREFERRED_LARGE_MODEL_IDS: ModelIdType[] = [
 export function getDefaultModel(
   availableModels: ModelConfigurationType[]
 ): ModelConfigurationType {
+  // Prefer the "auto" tier when available to the workspace.
+  const autoModel = availableModels.find(isAutoModel);
+  if (autoModel) {
+    return autoModel;
+  }
+
   for (const modelId of PREFERRED_LARGE_MODEL_IDS) {
     const model = availableModels.find((m) => m.modelId === modelId);
     if (model) {

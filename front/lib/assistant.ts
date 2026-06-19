@@ -3,6 +3,7 @@ import {
   isEnterprisePlanPrefix,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
+import { isAutoModel } from "@app/types/assistant/models/dust";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -38,7 +39,9 @@ export function isModelAvailable(
     return false;
   }
 
-  if (plan?.isByok && !isByokProviderId(m.providerId)) {
+  // The "auto" sentinel resolves to a concrete (BYOK-validated) model at
+  // runtime, so it is exempt from the BYOK provider check here.
+  if (plan?.isByok && !isAutoModel(m) && !isByokProviderId(m.providerId)) {
     return false;
   }
 

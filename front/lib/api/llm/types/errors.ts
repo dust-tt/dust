@@ -243,6 +243,8 @@ const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
   xai: "xAI",
   google_ai_studio: "Google AI Studio",
   noop: "Noop",
+  // Meta-provider; resolved to a concrete model before any provider call.
+  dust: "Auto",
 };
 
 /**

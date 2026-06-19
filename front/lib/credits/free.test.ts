@@ -71,6 +71,8 @@ function makeWorkspace(
     segmentation: null,
     whiteListedProviders: null,
     defaultEmbeddingProvider: null,
+    defaultModelId: null,
+    backupModelId: null,
     regionalModelsOnly: false,
     metadata: null,
     metronomeCustomerId: null,

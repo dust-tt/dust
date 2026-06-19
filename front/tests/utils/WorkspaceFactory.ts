@@ -21,6 +21,8 @@ import { expect } from "vitest";
 interface WorkspaceOverrides {
   whiteListedProviders?: ModelProviderIdType[] | null;
   metronomeCustomerId?: string | null;
+  defaultModelId?: string | null;
+  backupModelId?: string | null;
 }
 
 export class WorkspaceFactory {
@@ -104,6 +106,12 @@ export class WorkspaceFactory {
       metronomeCustomerId: overrides?.metronomeCustomerId ?? null,
       ...(overrides?.whiteListedProviders !== undefined && {
         whiteListedProviders: overrides.whiteListedProviders,
+      }),
+      ...(overrides?.defaultModelId !== undefined && {
+        defaultModelId: overrides.defaultModelId,
+      }),
+      ...(overrides?.backupModelId !== undefined && {
+        backupModelId: overrides.backupModelId,
       }),
     });
 

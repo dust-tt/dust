@@ -85,6 +85,7 @@ export const AUDIT_ACTIONS = [
   "workspace.audit_logs_updated",
   "workspace.default_user_spend_limit_updated",
   "workspace.programmatic_usage_limit_updated",
+  "workspace.model_settings_updated",
   "workspace_branding.asset_promoted",
   "workspace_branding.asset_deleted",
   // SCIM / Directory Sync.

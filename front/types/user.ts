@@ -68,6 +68,12 @@ export type LightWorkspaceType = {
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  // modelId of the workspace default model used by the "auto" tier (null => Dust
+  // default).
+  defaultModelId: string | null;
+  // modelId of the workspace backup model used as a cross-provider fallback on
+  // provider outages (null => no backup).
+  backupModelId: string | null;
   regionalModelsOnly: boolean;
   metadata?: {
     [key: string]: string | number | boolean | object | undefined;
