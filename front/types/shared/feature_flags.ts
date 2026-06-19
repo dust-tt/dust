@@ -335,6 +335,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Resize uploaded raster images via imgproxy instead of ConvertAPI",
     stage: "dust_only",
   },
+  headroom_compression: {
+    description:
+      "Compress conversation messages through the local headroom-ai proxy before sending them to the LLM (new router, streaming path only).",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

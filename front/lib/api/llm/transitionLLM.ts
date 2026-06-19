@@ -1,3 +1,4 @@
+import { compressConversationMessages } from "@app/lib/api/llm/headroom";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResult } from "@app/lib/api/llm/types/batch";
 import {
@@ -22,7 +23,7 @@ import {
   extractEncryptedContentFromMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import type {
   BatchEndpoint,
@@ -554,9 +555,27 @@ export class StreamEndpointTransition extends BaseTransition {
     };
   }
 
-  protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
+  protected async buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters
+  ) {
+    const { conversation } = this.buildPayload(streamParameters);
+
+    // Optionally route the conversation turns through the local headroom-ai
+    // proxy to compress them before dispatch. Gated by a feature flag and scoped
+    // to the streaming surface; the system prompt is intentionally left intact to
+    // preserve agent behavior.
+    const messages = (await hasFeatureFlag(
+      this.authenticator,
+      "headroom_compression"
+    ))
+      ? await compressConversationMessages(conversation.messages, {
+          modelId: this.modelId,
+          workspaceId: this.authenticator.getNonNullableWorkspace().sId,
+        })
+      : conversation.messages;
+
     return this.model.buildRequestPayload(
-      this.buildPayload(streamParameters),
+      { conversation: { ...conversation, messages } },
       this.buildConfig(streamParameters, this.model.constructor.configSchema)
     );
   }

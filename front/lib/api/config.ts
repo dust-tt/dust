@@ -238,6 +238,14 @@ const config = {
   getVizJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("VIZ_JWT_SECRET");
   },
+  // Base URL of the local headroom-ai compression proxy. The headroom-ai client
+  // delegates compression to this proxy; defaults to the local proxy port.
+  getHeadroomProxyUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("HEADROOM_PROXY_URL") ??
+      "http://localhost:8787"
+    );
+  },
   getAcademyJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_ACADEMY_JWT_SECRET");
   },
