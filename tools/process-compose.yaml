@@ -145,6 +145,8 @@ processes:
     depends_on:
       sparkle:
         condition: process_healthy
+      sdks-js:
+        condition: process_healthy
 
   front-poke:
     command: "npm run dev:poke"
@@ -152,6 +154,8 @@ processes:
     namespace: front
     depends_on:
       sparkle:
+        condition: process_healthy
+      sdks-js:
         condition: process_healthy
 
   # --- Optional services --------------------------------------------------
