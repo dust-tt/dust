@@ -7,8 +7,6 @@ import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_moun
 import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
-  getProjectFilesBasePath,
-  toProjectMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -121,19 +119,6 @@ export async function renameGCSMountFile(
     await bucket.copyFile(oldGcsPath, newGcsPath);
     await bucket.delete(oldGcsPath);
 
-    // Mirror the rename on the projects/ side for pod files. We copy from the new canonical
-    // pods/ path (instead of an old projects/ path that may not exist).
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const oldProjectsPath = `${projectsPrefix}${relativeFilePath}`;
-      const newProjectsPath = `${projectsPrefix}${dir}${newFileName}`;
-      await bucket.copyFile(newGcsPath, newProjectsPath);
-      await bucket.delete(oldProjectsPath, { ignoreNotFound: true });
-    }
-
     return new Ok({ newGcsPath });
   } catch (err) {
     return new Err(normalizeError(err));
@@ -187,22 +172,6 @@ export async function renameGCSMountDirectory(
       await bucket.copyFile(obj.name, destPath);
     }
     await bucket.deleteByPrefix(oldDirPrefix);
-
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const oldProjectsDirPrefix = `${projectsPrefix}${normalized}/`;
-      for (const obj of objects) {
-        const newPodsPath = obj.name.replace(oldDirPrefix, newDirPrefix);
-        const newProjectsPath = toProjectMountFilePath(newPodsPath);
-        if (newProjectsPath) {
-          await bucket.copyFile(newPodsPath, newProjectsPath);
-        }
-      }
-      await bucket.deleteByPrefix(oldProjectsDirPrefix);
-    }
 
     return new Ok({ newRelativeDirPath });
   } catch (err) {
@@ -263,29 +232,11 @@ export async function deleteGCSMountFile(
       if (isDirectoryDelete) {
         await bucket.deleteByPrefix(dirGcsPrefix);
 
-        if (scope.useCase === "pod") {
-          const projectPrefix = getProjectFilesBasePath({
-            workspaceId: owner.sId,
-            projectId: scope.podId,
-          });
-          await bucket.deleteByPrefix(`${projectPrefix}${normalized}/`);
-        }
-
         return new Ok(undefined);
       }
     }
 
     await bucket.delete(gcsPath, { ignoreNotFound: true });
-
-    // Mirror delete on the projects/ side for pod files.
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const projectsGcsPath = `${projectsPrefix}${normalized}`;
-      await bucket.delete(projectsGcsPath, { ignoreNotFound: true });
-    }
 
     return new Ok(undefined);
   } catch (err) {
@@ -314,16 +265,6 @@ export async function copyMountFile(
 
   try {
     await bucket.copyFile(sourceGcsPath, destGcsPath);
-
-    // Mirror the destination write on the projects/ side for pod files (double-write counterpart).
-    if (dest.scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: dest.scope.podId,
-      });
-      const destProjectsPath = `${projectsPrefix}${dest.relativeFilePath}`;
-      await bucket.copyFile(sourceGcsPath, destProjectsPath);
-    }
 
     return new Ok(undefined);
   } catch (err) {
@@ -566,44 +507,12 @@ export async function moveFile(
 ): Promise<Result<void, Error>> {
   const destGcsPath = `${resolvePrefix(auth.getNonNullableWorkspace(), destScope)}${destRelativeFilePath}`;
 
-  // Normalize legacy `projects/` source paths to their `pods/` counterpart. The GSC migration guarantees the `pods/` copy exists for all files, so this ensures the move works regardless of whether the source path has been backfilled.
-  const normalizedSourceGcsPath = sourceGcsPath.replace("/projects/", "/pods/");
-
   const moveRes = await moveGCSMountFile({
-    sourceGcsPath: normalizedSourceGcsPath,
+    sourceGcsPath,
     destGcsPath,
   });
   if (moveRes.isErr()) {
     return moveRes;
-  }
-
-  // Dual-write to the projects/ side. Copy from the new canonical so this works even when
-  // the source had no pre-existing projects/ mirror.
-  const bucket = getPrivateUploadBucket();
-  if (destScope.useCase === "pod") {
-    const projectsPrefix = getProjectFilesBasePath({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      projectId: destScope.podId,
-    });
-    const destProjectsPath = `${projectsPrefix}${destRelativeFilePath}`;
-    try {
-      await bucket.copyFile(destGcsPath, destProjectsPath);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
-  }
-
-  // Clean up the projects/ mirror of the source if the source was a pod mount path.
-  const sourceProjectsPath = toProjectMountFilePath(normalizedSourceGcsPath);
-  if (sourceProjectsPath) {
-    try {
-      await bucket.delete(sourceProjectsPath, { ignoreNotFound: true });
-    } catch (err) {
-      logger.error(
-        { sourceProjectsPath, err: normalizeError(err) },
-        "moveFile: source projects/ mirror delete failed after successful move"
-      );
-    }
   }
 
   if (file) {

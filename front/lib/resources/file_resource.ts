@@ -17,7 +17,6 @@ import {
   isLegacyScopedPath,
   makeProcessedMountFileName,
   resolveCanonicalScopedPath,
-  toProjectMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import {
   getProcessedContentType,
@@ -1020,22 +1019,11 @@ export class FileResource extends BaseResource<FileModel> {
     // The mount path becomes the sole live version, and the canonical path stays as the immutable
     // original.
     if (this.mountFilePath) {
-      const podsMountFilePath = this.normalizeMountFilePath(this.mountFilePath);
       await getPrivateUploadBucket().uploadRawContentToBucket({
         content,
         contentType: this.contentType,
-        filePath: podsMountFilePath,
+        filePath: this.mountFilePath,
       });
-
-      // Double-write to the projects/ path for pod mount paths.
-      const projectsMountFilePath = toProjectMountFilePath(podsMountFilePath);
-      if (projectsMountFilePath) {
-        await getPrivateUploadBucket().uploadRawContentToBucket({
-          content,
-          contentType: this.contentType,
-          filePath: projectsMountFilePath,
-        });
-      }
     }
 
     // Increment version after successful upload and mark as ready
@@ -1239,15 +1227,6 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
-   * Translate rows that still point to `projects/`. The gcs migration guaranteed the `pods/`
-   * copy exists for all such files. This translation can be removed once the DB
-   * migration is complete.
-   */
-  private normalizeMountFilePath(path: string): string {
-    return path.replace("/projects/", "/pods/");
-  }
-
-  /**
    * Copy the file's original (and processed if it exists) versions to its already-claimed mount
    * path for gcsfuse mounting. The path is conversation- or project-scoped depending on the use
    * case, and must have been persisted via claimMountFilePath() first.
@@ -1267,12 +1246,6 @@ export class FileResource extends BaseResource<FileModel> {
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
     await bucket.copyFile(srcOriginalPath, mountFilePath);
 
-    // Double-write to the projects/ path for pod mount paths.
-    const projectsMountFilePath = toProjectMountFilePath(mountFilePath);
-    if (projectsMountFilePath) {
-      await bucket.copyFile(srcOriginalPath, projectsMountFilePath);
-    }
-
     // Copy processed version only if this file type has real processing.
     if (this.getContentVersion() === "processed") {
       const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
@@ -1281,25 +1254,15 @@ export class FileResource extends BaseResource<FileModel> {
         processedContentType: getProcessedContentType(this.contentType),
       });
       await bucket.copyFile(srcProcessedPath, processedMountPath);
-
-      const processedProjectsMountPath =
-        toProjectMountFilePath(processedMountPath);
-      if (processedProjectsMountPath) {
-        await bucket.copyFile(srcProcessedPath, processedProjectsMountPath);
-      }
     }
   }
 
   private async isMountFilePathTaken(mountFilePath: string): Promise<boolean> {
-    // Check both `pods/` (new) and `projects/` forms so a new file cannot collide
-    // with the disambiguated name of an old DB row whose mountFilePath still lives under
-    // `projects/`.
-    const legacyMountFilePath = mountFilePath.replace("/pods/", "/projects/");
     const existing = await FileResource.model.findOne({
       attributes: ["id"],
       where: {
         workspaceId: this.workspaceId,
-        mountFilePath: { [Op.in]: [mountFilePath, legacyMountFilePath] },
+        mountFilePath,
         id: { [Op.ne]: this.id },
       },
     });
@@ -1312,14 +1275,7 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     const bucket = getPrivateUploadBucket();
-    const gcsMountFilePath = this.normalizeMountFilePath(this.mountFilePath);
-    await bucket.delete(gcsMountFilePath, { ignoreNotFound: true });
-
-    // Mirror delete on the projects/ side for pod files (double-write counterpart).
-    const projectsMountFilePath = toProjectMountFilePath(gcsMountFilePath);
-    if (projectsMountFilePath) {
-      await bucket.delete(projectsMountFilePath, { ignoreNotFound: true });
-    }
+    await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
 
     if (
       this.useCaseMetadata?.skipFileProcessing === true ||
@@ -1330,19 +1286,13 @@ export class FileResource extends BaseResource<FileModel> {
 
     // Only delete processed mount file if this file type has real processing.
     const processedMountPath = makeProcessedMountFileName({
-      mountFilePath: gcsMountFilePath,
+      mountFilePath: this.mountFilePath,
       processedContentType: getProcessedContentType(
         this.contentType,
         this.useCase
       ),
     });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
-
-    const processedProjectsMountPath =
-      toProjectMountFilePath(processedMountPath);
-    if (processedProjectsMountPath) {
-      await bucket.delete(processedProjectsMountPath, { ignoreNotFound: true });
-    }
   }
 
   static async bulkSetUseCaseMetadata(
