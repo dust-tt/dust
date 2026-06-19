@@ -23,6 +23,7 @@ export interface TreeProps {
   children?: ReactNode;
   isBoxed?: boolean;
   isLoading?: boolean;
+  overflowVisible?: boolean;
   tailwindIconTextColor?: string;
   variant?: "navigator" | "finder";
   className?: string;
@@ -32,6 +33,7 @@ export function Tree({
   children,
   isLoading,
   isBoxed = false,
+  overflowVisible = false,
   tailwindIconTextColor,
   variant = "finder",
   className,
@@ -60,7 +62,8 @@ export function Tree({
     <>
       <div
         className={cn(
-          "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
+          "s-flex s-flex-col s-gap-0.5",
+          overflowVisible ? "s-overflow-visible" : "s-overflow-hidden",
           isBoxed &&
             "s-rounded-xl s-border s-border-border s-bg-muted-background s-px-3 s-py-2 dark:s-border-border-night dark:s-bg-muted-background-night",
           className
@@ -217,21 +220,35 @@ Tree.Item = React.forwardRef<
             className
           )}
           onClick={
-            onItemClick ||
-            ((e) => {
-              // Skip if click on checkbox or any button
-              if (
-                e.target instanceof HTMLElement &&
-                e.target.tagName !== "BUTTON"
-              ) {
-                e.stopPropagation();
-                if (checkbox?.onCheckedChange) {
-                  checkbox.onCheckedChange?.(!checkbox.checked);
-                } else if (canExpand) {
-                  effectiveOnChevronClick();
+            onItemClick
+              ? (e) => {
+                  if (
+                    e.target instanceof HTMLElement &&
+                    (e.target.closest('[role="checkbox"]') ||
+                      e.target.tagName === "BUTTON")
+                  ) {
+                    return;
+                  }
+                  e.stopPropagation();
+                  onItemClick();
                 }
-              }
-            })
+              : (e) => {
+                  if (!(e.target instanceof HTMLElement)) {
+                    return;
+                  }
+                  if (
+                    e.target.tagName === "BUTTON" ||
+                    e.target.closest('[role="checkbox"]')
+                  ) {
+                    return;
+                  }
+                  e.stopPropagation();
+                  if (checkbox?.onCheckedChange) {
+                    checkbox.onCheckedChange?.(!checkbox.checked);
+                  } else if (canExpand) {
+                    effectiveOnChevronClick();
+                  }
+                }
           }
         >
           {type === "node" && (

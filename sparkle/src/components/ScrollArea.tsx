@@ -9,7 +9,7 @@ interface ScrollAreaProps
   orientation?: "vertical" | "horizontal";
   scrollBarClassName?: string;
   viewportClassName?: string;
-  viewportRef?: React.RefObject<HTMLDivElement>;
+  viewportRef?: React.Ref<HTMLDivElement>;
 }
 
 const ScrollArea = React.forwardRef<
