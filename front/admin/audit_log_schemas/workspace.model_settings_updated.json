@@ -1,0 +1,10 @@
+{
+  "action": "workspace.model_settings_updated",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "default_model_id": "string",
+    "backup_model_id": "string"
+  }
+}
