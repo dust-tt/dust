@@ -866,10 +866,13 @@ export async function createMetronomeContract({
   }
 
   if (enableStripeBilling) {
-    addStripeMetronomeBillingConfig({
+    const billingResult = await addStripeMetronomeBillingConfig({
       metronomeCustomerId,
       metronomeContractId: contractId,
     });
+    if (billingResult.isErr()) {
+      return new Err(billingResult.error);
+    }
   }
 
   const customFieldsResult = await setMetronomeContractCustomFields({
