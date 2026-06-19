@@ -108,6 +108,11 @@ function buildSystemBlocks(
   if (instructionsText) {
     // If we have conditional JIT tools, we expect more variability in the instructions, so we keep
     // the default ephemeral cache. Otherwise, we can set a longer TTL to maximize cache hits.
+    //
+    // TODO: the tool directives and available-servers overview (the main source of JIT-driven
+    // variability in this block) now live in the shared-context block instead, so this downgrade
+    // should eventually be removable in favor of always using the 1h TTL, once we validate that no
+    // other conditional-JIT content remains in the instructions block.
     const ttl: "1h" | undefined = hasConditionalJITTools ? undefined : "1h";
     system.push({
       type: "text",
