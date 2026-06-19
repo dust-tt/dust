@@ -328,11 +328,15 @@ function flushAccumulated(
 ): ModelResponseEvent[] {
   const events: ModelResponseEvent[] = [];
   if (acc.reasoningParts) {
-    // The turn's thought signature is carried on the success metadata (see
-    // rawOutputToEvents), not per reasoning block.
+    // Carry the turn's thought signature on the reasoning block so it is
+    // persisted with it and echoed back on replay. Gemini emits the signature
+    // on the thinking (or a trailing) part ahead of the function call, so it is
+    // captured in `acc.thoughtSignature` by the time we flush. Dropping it here
+    // makes Gemini reject the replayed turn as a corrupted thought signature.
     const event = converters.accumulatedReasoningToReasoningEvent(
       metadata,
-      acc.reasoningParts
+      acc.reasoningParts,
+      acc.thoughtSignature
     );
     aggregated.push(event);
     events.push(event);
