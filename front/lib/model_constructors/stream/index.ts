@@ -13,6 +13,7 @@ import { OpenAIResponsesGlobalGptFiveDotFourMiniStream } from "@app/lib/model_co
 import { OpenAIResponsesGlobalGptFiveDotFourNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four_nano";
 import { OpenAIResponsesGlobalGptFiveDotOneStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_one";
 import { OpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_two";
+import { OpenAIResponsesGlobalGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_mini";
 
 export const STREAM_ENDPOINTS = {
   [AnthropicGlobalClaudeSonnetFourDotSixStream.id]:
@@ -38,6 +39,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIResponsesGlobalGptFiveDotFourMiniStream,
   [OpenAIResponsesGlobalGptFiveDotFourNanoStream.id]:
     OpenAIResponsesGlobalGptFiveDotFourNanoStream,
+  [OpenAIResponsesGlobalGptFiveMiniStream.id]:
+    OpenAIResponsesGlobalGptFiveMiniStream,
   [AgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     AgentPlatformEuropeClaudeHaikuFourDotFiveStream,
   [GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream.id]:
