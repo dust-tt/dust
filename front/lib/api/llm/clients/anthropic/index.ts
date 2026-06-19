@@ -19,7 +19,7 @@ import {
 } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
   toMessage,
-  toTool,
+  toToolsParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
 import {
   handleError,
@@ -68,15 +68,6 @@ const CACHE_DIAGNOSTICS_BETA_HEADER = "cache-diagnosis-2026-04-07";
 type AnthropicStreamPayload = BetaMessageStreamParams & {
   fallbacks?: { model: string }[];
 };
-
-// Tool search lets the model discover deferred (cold) tools on demand without
-// loading their schemas into the cached prefix. It's injected only when at least
-// one tool is deferred. bm25 uses natural-language queries, which match well
-// across diverse MCP tool names and descriptions.
-const TOOL_SEARCH_TOOL = {
-  type: "tool_search_tool_bm25_20251119",
-  name: "tool_search_tool_bm25",
-} as const;
 
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
@@ -227,30 +218,13 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       hasConditionalJITTools,
     });
 
-    const tools = specifications.map((spec) => {
-      const tool = toTool(spec);
-      // A force-called tool must be loaded (non-deferred): the model cannot be
-      // forced to call a tool it would first have to discover via tool search.
-      if (tool.defer_loading && spec.name === forceToolCall) {
-        return { ...tool, defer_loading: false };
-      }
-      return tool;
-    });
-
-    // When any tool is deferred, expose the tool search tool so the model can
-    // discover cold tools on demand. Anthropic requires at least one
-    // non-deferred tool, and the hot tools (and any forced tool) satisfy that.
-    const toolsWithSearch = tools.some((t) => t.defer_loading)
-      ? [TOOL_SEARCH_TOOL, ...tools]
-      : tools;
-
     return {
       model: this.modelId,
       ...thinkingConfig,
       system,
       messages,
       temperature: this.temperature ?? undefined,
-      tools: toolsWithSearch,
+      tools: toToolsParam(specifications, forceToolCall),
       max_tokens: this.modelConfig.generationTokensCount,
       tool_choice: toToolChoiceParam(specifications, forceToolCall),
     };
