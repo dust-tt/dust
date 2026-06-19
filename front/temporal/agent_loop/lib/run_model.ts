@@ -621,6 +621,9 @@ export async function runModel(
     modelConversationRes,
     conversation,
     hasConditionalJITTools,
+    cacheDiagnosticsEnabled: featureFlags.includes(
+      "anthropic_cache_diagnostics"
+    ),
     userMessage,
     specifications,
     flushParserTokens,

@@ -13,7 +13,7 @@ import type {
   BatchResultWithRunIds,
   BatchStatus,
 } from "@app/lib/api/llm/types/batch";
-import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import type { LLMEvent, TokenUsage } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
@@ -39,6 +39,36 @@ import { type LangfuseGeneration, startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
 import pickBy from "lodash/pickBy";
 import startCase from "lodash/startCase";
+
+// Emit prompt-cache token magnitudes as Datadog distributions, tagged with the
+// same metricTags as the other llm.* metrics (model_id, inference_provider,
+// operation_type, ...). Slicing cache_creation vs cache_read by these tags
+// surfaces where prefixes are not being reused: a high cache_creation relative
+// to cache_read points at prefixes that keep changing between calls (e.g. tools
+// or system varying across agent-loop steps), and uncached_input flags traffic
+// that never benefits from caching at all (e.g. Vertex, which lacks automatic
+// caching). This is provider-agnostic: it reports whatever the client populated.
+function trackCacheTokenMetrics(
+  tokenUsage: TokenUsage,
+  metricTags: string[]
+): void {
+  const statsd = getStatsDClient();
+  statsd.distribution(
+    "llm.cache_read_tokens",
+    tokenUsage.cachedTokens ?? 0,
+    metricTags
+  );
+  statsd.distribution(
+    "llm.cache_creation_tokens",
+    tokenUsage.cacheCreationTokens ?? 0,
+    metricTags
+  );
+  statsd.distribution(
+    "llm.uncached_input_tokens",
+    tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
+    metricTags
+  );
+}
 
 export abstract class LLM<TPayload = unknown> {
   protected modelId: ModelIdType;
@@ -205,6 +235,10 @@ export abstract class LLM<TPayload = unknown> {
       `inference_provider:${this.metadata.inferenceProvider}`,
       ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
       `operation_type:${this.context.operationType}`,
+      // Conditional JIT tools make the tools array (and thus the cached prefix)
+      // vary between calls and downgrade the instructions cache TTL from 1h to
+      // 5min, so we tag it to isolate its impact on the cache_* metrics below.
+      `has_conditional_jit_tools:${streamParameters.hasConditionalJITTools ?? false}`,
     ];
 
     getStatsDClient().increment("llm_interaction.count", 1, metricTags);
@@ -299,6 +333,7 @@ export abstract class LLM<TPayload = unknown> {
         }
 
         if (tokenUsage) {
+          trackCacheTokenMetrics(tokenUsage, metricTags);
           this.generation.update({
             usageDetails: {
               // Report the uncached input tokens if provider supports it.
@@ -623,6 +658,7 @@ export abstract class LLM<TPayload = unknown> {
       }
 
       if (tokenUsage) {
+        trackCacheTokenMetrics(tokenUsage, metricTags);
         generation.update({
           usageDetails: {
             input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,

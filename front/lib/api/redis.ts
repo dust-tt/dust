@@ -53,6 +53,7 @@ export type RedisUsageTagsType =
   | "agent_recent_authors"
   | "agent_usage"
   | "assistant_generation"
+  | "cache_diagnostics"
   | "cache_with_redis"
   | "cancel_message_generation"
   | "conversation_events"

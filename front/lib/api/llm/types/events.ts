@@ -10,10 +10,18 @@ export type Text = {
   text: string;
 };
 
+// Prompt-cache diagnostics: why the cache prefix could not be reused vs. the
+// previous request. `type` is the reason. `cacheMissedInputTokens` is the
+// estimated lost-cache magnitude (only present on the `*_changed` reasons).
+export interface CacheMissReason {
+  type: string;
+  cacheMissedInputTokens?: number;
+}
+
 // Provider response identification event
 export interface ResponseIdEvent {
   type: "interaction_id";
-  content: { modelInteractionId: string };
+  content: { modelInteractionId: string; cacheMissReason?: CacheMissReason };
   metadata: LLMClientMetadata;
 }
 

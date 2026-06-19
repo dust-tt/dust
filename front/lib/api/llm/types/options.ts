@@ -139,6 +139,13 @@ export interface LLMStreamParameters {
    */
   forceToolCall?: ForceToolCall;
   omittedThinking?: boolean;
+  /**
+   * Opt into Anthropic prompt-cache diagnostics (Anthropic direct only). Tri-state:
+   * - `undefined`: feature off, send nothing.
+   * - `null`: feature on, first call with no prior to compare against.
+   * - `string`: feature on, the previous response id to compare this request against.
+   */
+  previousMessageId?: string | null;
 }
 
 export interface LLMStreamMetadata {

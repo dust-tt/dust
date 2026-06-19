@@ -1,7 +1,12 @@
+import {
+  getPreviousMessageId,
+  setPreviousMessageId,
+} from "@app/lib/api/llm/cache_diagnostics";
 import type { LLM } from "@app/lib/api/llm/llm";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type {
   GetOutputRequestParams,
@@ -234,6 +239,7 @@ export async function getOutputFromLLMStream(
     modelConversationRes,
     conversation,
     hasConditionalJITTools,
+    cacheDiagnosticsEnabled,
     specifications,
     flushParserTokens,
     contentParser,
@@ -267,12 +273,25 @@ export async function getOutputFromLLMStream(
     return makeLLMTimeoutResponse("activity");
   }
 
+  // Prompt-cache diagnostics: thread the previous step's response id so Anthropic
+  // can report why the cache prefix diverged. Keyed by conversation and agent in
+  // Redis so the chain survives across steps and user turns. `null` (no prior, or
+  // expired) is still a valid opt-in value. `undefined` keeps the feature off.
+  const cacheDiagnosticsKey = {
+    conversationId: conversation.sId,
+    agentConfigurationId: agentConfiguration.sId,
+  };
+  const previousMessageId = cacheDiagnosticsEnabled
+    ? await getPreviousMessageId(cacheDiagnosticsKey)
+    : undefined;
+
   const events = llm.stream(
     {
       conversation: modelConversationRes.value.modelConversation,
       hasConditionalJITTools,
       prompt,
       specifications,
+      previousMessageId,
     },
     {
       conversationId: conversation.sId,
@@ -471,6 +490,32 @@ export async function getOutputFromLLMStream(
           metadata: event.metadata,
         });
         generation += event.content.text;
+      }
+
+      if (event.type === "interaction_id") {
+        if (cacheDiagnosticsEnabled) {
+          const { modelInteractionId, cacheMissReason } = event.content;
+
+          // Store this response id so the next step/turn can compare against it.
+          await setPreviousMessageId(cacheDiagnosticsKey, modelInteractionId);
+
+          if (cacheMissReason) {
+            logger.info(
+              {
+                ...logContext,
+                modelInteractionId,
+                cacheMissReasonType: cacheMissReason.type,
+                cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
+              },
+              "[LLM stream] prompt cache miss"
+            );
+            getStatsDClient().increment("llm.cache_miss_reason.count", 1, [
+              `model_id:${model.modelId}`,
+              `reason:${cacheMissReason.type}`,
+            ]);
+          }
+        }
+        continue;
       }
 
       if (event.type === "token_usage") {

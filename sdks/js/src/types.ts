@@ -701,6 +701,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_shrink_wrap"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "anthropic_cache_diagnostics"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
