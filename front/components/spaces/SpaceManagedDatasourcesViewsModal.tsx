@@ -137,7 +137,7 @@ export default function SpaceManagedDataSourcesViewsModal({
         dataSourceViewsAndInternalIds.map(
           ({ dataSourceView, internalIds }) => ({
             dsvId: dataSourceView.sId,
-            internalIds: [...internalIds].sort(),
+            internalIds: internalIds.toSorted(),
           })
         )
       ),

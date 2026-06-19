@@ -61,16 +61,23 @@ export const InfiniteScroll = ({
   const hasMoreRef = useRef(hasMore);
   hasMoreRef.current = hasMore;
 
+  const scrollRootRef = useRef(scrollRoot);
+  scrollRootRef.current = scrollRoot;
+
+  const bottomMarginRef = useRef(bottomMargin);
+  bottomMarginRef.current = bottomMargin;
+
   const checkScrollPosition = useCallback(() => {
-    if (!scrollRoot || !hasMoreRef.current) {
+    const root = scrollRootRef.current;
+    if (!root || !hasMoreRef.current) {
       return;
     }
 
-    const { scrollTop, scrollHeight, clientHeight } = scrollRoot;
-    if (scrollHeight - scrollTop - clientHeight <= bottomMargin) {
+    const { scrollTop, scrollHeight, clientHeight } = root;
+    if (scrollHeight - scrollTop - clientHeight <= bottomMarginRef.current) {
       void nextPageRef.current();
     }
-  }, [scrollRoot, bottomMargin]);
+  }, []);
 
   useEffect(() => {
     if (!scrollRoot) {

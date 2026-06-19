@@ -20,6 +20,7 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -82,6 +83,7 @@ function SearchWarningMessage({
         />
       );
     default:
+      assertNeverAndIgnore(warningCode);
       return null;
   }
 }
