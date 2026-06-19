@@ -166,9 +166,11 @@ jobs:
           HAS=$(echo "$EU" "$US" | jq -s 'map(.hasMissing) | any')
           SUMMARY=$(echo "$EU" "$US" | jq -s -c 'map({(.region): .missing}) | add')
           COUNT=$(echo "$EU" "$US" | jq -s '[.[].buildMatrix | length] | add')
-          echo "has-missing=$HAS" >> "$GITHUB_OUTPUT"
-          echo "missing-summary=$SUMMARY" >> "$GITHUB_OUTPUT"
-          echo "planned-builds=$COUNT" >> "$GITHUB_OUTPUT"
+          {
+            echo "has-missing=$HAS"
+            echo "missing-summary=$SUMMARY"
+            echo "planned-builds=$COUNT"
+          } >> "$GITHUB_OUTPUT"
           if [ "$HAS" == "true" ]; then
             echo "built=$COUNT" >> "$GITHUB_OUTPUT"
           else
@@ -177,15 +179,19 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Sandbox Image Check Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Sandbox Image Check Summary"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ steps.count.outputs.has-missing }}" == "true" ]; then
-            echo "Built **${{ steps.count.outputs.planned-builds }}** image(s) across EU and US E2B (sequential per region)." >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "### Missing by region (before build):" >> "$GITHUB_STEP_SUMMARY"
-            echo '```json' >> "$GITHUB_STEP_SUMMARY"
-            echo '${{ steps.count.outputs.missing-summary }}' >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "Built **${{ steps.count.outputs.planned-builds }}** image(s) across EU and US E2B (sequential per region)."
+              echo ""
+              echo "### Missing by region (before build):"
+              echo '```json'
+              echo '${{ steps.count.outputs.missing-summary }}'
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "All required sandbox images already exist in both regions" >> "$GITHUB_STEP_SUMMARY"
           fi

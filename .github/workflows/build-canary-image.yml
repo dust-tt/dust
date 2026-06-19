@@ -17,7 +17,6 @@ on:
         description: "Name of the component to build"
         required: true
         type: choice
-        default:
         options:
           - connectors
           - core
@@ -53,10 +52,10 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Get short sha
         id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
       - name: Get long sha
         id: long_sha
-        run: echo "long_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        run: echo "long_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   notify-start:
     needs: [prepare]
@@ -85,9 +84,9 @@ jobs:
       - id: set-matrix
         run: |
           if [ "${{ inputs.regions }}" = "all" ]; then
-            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
+            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> "$GITHUB_OUTPUT"
           else
-            echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
+            echo "matrix=[\"${{ inputs.regions }}\"]" >> "$GITHUB_OUTPUT"
           fi
 
   build:
@@ -110,9 +109,9 @@ jobs:
         id: project
         run: |
           if [ "${{ matrix.region }}" = "us-central1" ]; then
-            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
           else
-            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build Image

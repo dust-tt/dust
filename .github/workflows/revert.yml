@@ -32,19 +32,11 @@ on:
           - prodbox
           - viz
         required: true
-    secrets:
-      SLACK_CHANNEL_ID:
-        required: true
-      SLACK_BOT_TOKEN:
-        required: true
-      INFRA_DISPATCH_APP_ID:
-        required: true
-      INFRA_DISPATCH_APP_PRIVATE_KEY:
-        required: true
-      GCLOUD_US_PROJECT_ID:
-        required: true
-      GCLOUD_EU_PROJECT_ID:
-        required: true
+      enforce_main:
+        description: "Require revert to run from main branch"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -89,9 +81,9 @@ jobs:
       - id: set-matrix
         run: |
           if [ "${{ inputs.regions }}" = "all" ]; then
-            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> $GITHUB_OUTPUT
+            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> "$GITHUB_OUTPUT"
           else
-            echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
+            echo "matrix=[\"${{ inputs.regions }}\"]" >> "$GITHUB_OUTPUT"
           fi
 
   validate-image:
@@ -111,9 +103,9 @@ jobs:
         id: project
         run: |
           if [ "${{ matrix.region }}" = "us-central1" ]; then
-            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
           else
-            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
           fi
 
       - id: "auth"
@@ -143,7 +135,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Image tag '${{ inputs.image_tag }}' exists in ${{ matrix.region }} registry" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Image tag '${{ inputs.image_tag }}' exists in ${{ matrix.region }} registry" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Notify Failure
         if: failure()
