@@ -1,4 +1,4 @@
-export function WithDustGoogleAiStudioGemini31FlashLiteConfig<
+export function WithDustGoogleAiStudioGeminiThreeDotOneFlashLiteConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
