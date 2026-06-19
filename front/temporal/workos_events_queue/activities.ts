@@ -1086,11 +1086,12 @@ async function handleCreateOrUpdateWorkOSUser(
   }
   const workOSUser = workOSUserRes.value;
 
+  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+
   // Entra (and other IdPs) disable users via SCIM PATCH active=false, which WorkOS translates
   // into dsync.user.updated with state='inactive' rather than dsync.user.deleted. Treat this
   // the same as deletion: revoke membership and remove from all groups.
   if (eventData.state === "inactive") {
-    const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
     if (!user) {
       logger.info(
         { workspaceId: workspace.sId, workOSUserId: workOSUser.id },
@@ -1106,8 +1107,6 @@ async function handleCreateOrUpdateWorkOSUser(
     );
     return;
   }
-
-  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
   const externalUser: ExternalUser = {
     email: workOSUser.email,
     email_verified: true,
