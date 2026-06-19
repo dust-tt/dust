@@ -92,6 +92,9 @@ export type MemberUsageType = {
   consumedFromPoolAwuCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
   billingFrequency: BillingFrequency | null;
+  // ISO timestamp of when the seat credit resets (= next billing period start).
+  // Null for free seats (lifetime grant) or when no billing period is available.
+  nextCreditResetAt: string | null;
   // Set when a future seat change is scheduled (e.g. at the next credit refresh).
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
@@ -432,7 +435,7 @@ async function fetchEffectivePerUserSpendLimits({
 }: {
   metronomeCustomerId: string | null;
   workspaceId: string;
-  defaultPoolCapAwuCredits: number | null;
+  defaultPoolCapAwuCredits: number;
   includeAlertLinks: boolean;
 }): Promise<{
   perUserOverrideAlerts: Map<string, MetronomeCapAlertIds>;
@@ -480,11 +483,9 @@ async function fetchEffectivePerUserSpendLimits({
   const defaultCapAwuCreditsBySeatType: Partial<
     Record<NormalizedPoolLimitSeatType, number>
   > = {};
-  if (defaultPoolCapAwuCredits !== null) {
-    for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
-      defaultCapAwuCreditsBySeatType[seatType] =
-        defaultPoolCapAwuCredits + (seatAllowanceBySeatType[seatType] ?? 0);
-    }
+  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
+    defaultCapAwuCreditsBySeatType[seatType] =
+      defaultPoolCapAwuCredits + (seatAllowanceBySeatType[seatType] ?? 0);
   }
 
   return {
@@ -570,7 +571,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId: string;
   seatType: MembershipSeatType | null | undefined;
   poolCapOverrideAwuCredits: number | null;
-  defaultPoolCapAwuCredits: number | null;
+  defaultPoolCapAwuCredits: number;
 }): Promise<number | null> {
   const contract = metronomeCustomerId
     ? await getActiveContract(workspaceId)
@@ -671,7 +672,7 @@ export async function getMemberUsage({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
       defaultPoolCapAwuCredits:
-        creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
+        creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
       includeAlertLinks: false,
     }),
   ]);
@@ -736,6 +737,7 @@ export async function getMemberUsage({
       billingFrequency:
         seatData?.billingFrequency ??
         deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
+      nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
       scheduledSeatType: null,
       scheduledSeatChangeAt: null,
       spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
@@ -872,7 +874,7 @@ export async function getMembersUsage({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
       defaultPoolCapAwuCredits:
-        creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
+        creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
       includeAlertLinks,
     }),
     // Free-seat balance-alert ids (low + empty) for deep-linking — poke-only,
@@ -1006,6 +1008,7 @@ export async function getMembersUsage({
         billingFrequency:
           seatData?.billingFrequency ??
           deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
+        nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({

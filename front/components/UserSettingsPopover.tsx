@@ -5,17 +5,12 @@ import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTa
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import {
-  useAwuPoolSummary,
-  useCreditPurchaseInfo,
-  useMyUsage,
-  useSeatPlan,
-} from "@app/lib/swr/credits";
+import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import {
   usePatchUser,
   usePendingInvitations,
@@ -144,18 +139,9 @@ interface UsageSectionProps {
 
 function UsageSection({ owner, onClose }: UsageSectionProps) {
   const { isAdmin, subscription } = useAuth();
-  const { isCreditPurchaseInfoLoading, billingCycleStartDay } =
-    useCreditPurchaseInfo({
-      workspaceId: owner.sId,
-    });
-  const {
-    totalRemainingCredits,
-    totalActiveCredits,
-    overageCredits,
-    isAwuPoolSummaryLoading,
-    isAwuPoolSummaryError,
-  } = useAwuPoolSummary({ workspaceId: owner.sId });
-  const { myUsage, isMyUsageLoading } = useMyUsage({ workspaceId: owner.sId });
+  const { myUsage, nextCreditResetAt, isMyUsageLoading } = useMyUsage({
+    workspaceId: owner.sId,
+  });
   const { seatPlans } = useSeatPlan({ workspaceId: owner.sId });
 
   const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
@@ -167,30 +153,11 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
     (myUsage?.seatType ? seatPlans[myUsage.seatType]?.name : null) ??
     subscription.plan.name;
 
-  const isLoading =
-    isAwuPoolSummaryLoading || isCreditPurchaseInfoLoading || isMyUsageLoading;
-  const totalConsumedCredits = Math.max(
-    0,
-    totalActiveCredits - totalRemainingCredits
-  );
-  const workspaceConsumedPercentage =
-    totalActiveCredits > 0
-      ? Math.min((totalConsumedCredits / totalActiveCredits) * 100, 100)
-      : 0;
+  const isLoading = isMyUsageLoading;
 
-  // User-level usage: prefer the total spend cap when set, otherwise use the
-  // seat allocation. The numerator must match the denominator choice.
-  const userLimit =
-    myUsage?.spendLimitAwuCredits ?? myUsage?.memberUsageLimit ?? null;
-  const userConsumed =
-    myUsage?.spendLimitAwuCredits != null
-      ? myUsage.consumedAwuCredits
-      : (myUsage?.consumedFromAllowanceAwuCredits ?? 0);
-  const hasPersonalUsage = userLimit !== null;
-  const userConsumedPercentage =
-    hasPersonalUsage && userLimit > 0
-      ? Math.min((userConsumed / userLimit) * 100, 100)
-      : 0;
+  const hasPersonalUsage =
+    (myUsage?.spendLimitAwuCredits ?? myUsage?.memberUsageLimit ?? null) !==
+    null;
 
   return (
     <SectionContent
@@ -220,63 +187,41 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
           <div className="flex justify-center py-2">
             <Spinner size="sm" />
           </div>
-        ) : isAwuPoolSummaryError ? (
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Failed to load credits data.
-          </p>
         ) : (
           <div className="flex flex-col gap-3">
-            {hasPersonalUsage && userLimit !== null ? (
+            {hasPersonalUsage ? (
               <>
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                      Your Credits
-                    </span>
-                    {billingCycleStartDay !== null && (
-                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                        Resets every {ordinalDay(billingCycleStartDay)} of the
-                        month
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                    {formatCredits(userConsumed)} / {formatCredits(userLimit)}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
-                  <div
-                    className="h-full bg-highlight transition-all dark:bg-highlight-night"
-                    style={{ width: `${userConsumedPercentage}%` }}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-0.5">
                   <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    Workspace Credits Pool
+                    Your Credits
                   </span>
-                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                    {formatCredits(totalConsumedCredits)} /{" "}
-                    {formatCredits(totalActiveCredits)}
-                  </span>
+                  {nextCreditResetAt &&
+                    (() => {
+                      const d = new Date(nextCreditResetAt);
+                      const month = d.toLocaleDateString("en-US", {
+                        month: "long",
+                        timeZone: "UTC",
+                      });
+                      return (
+                        <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                          Resets on {month} {ordinalDay(d.getUTCDate())}
+                        </span>
+                      );
+                    })()}
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
-                  <div
-                    className="h-full bg-highlight transition-all dark:bg-highlight-night"
-                    style={{ width: `${workspaceConsumedPercentage}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {overageCredits !== null && overageCredits > 0 ? (
-                    <span>{formatCredits(overageCredits)} overage credits</span>
-                  ) : (
-                    <span />
-                  )}
-                </div>
+                <AwuUsageBar
+                  consumed={myUsage?.consumedAwuCredits ?? 0}
+                  consumedFromAllowance={
+                    myUsage?.consumedFromAllowanceAwuCredits ?? 0
+                  }
+                  consumedFromPool={myUsage?.consumedFromPoolAwuCredits ?? 0}
+                  memberUsageLimit={myUsage?.memberUsageLimit ?? null}
+                  effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
+                  seatType={myUsage?.seatType ?? null}
+                  isTotalAllowedUsagePending={false}
+                />
               </>
-            )}
+            ) : null}
           </div>
         )}
       </section>

@@ -346,6 +346,7 @@ export function useMyUsage({
 
   return {
     myUsage: data?.member ?? null,
+    nextCreditResetAt: data?.member?.nextCreditResetAt ?? null,
     isMyUsageLoading: !error && !data && !disabled,
     isMyUsageError: error,
   };

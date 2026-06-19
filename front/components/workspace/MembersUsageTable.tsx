@@ -10,9 +10,7 @@ import {
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
-import { useDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import {
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
@@ -103,7 +101,7 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   );
 }
 
-interface AwuUsageBarProps {
+export interface AwuUsageBarProps {
   consumed: number;
   // Of `consumed`, the part drawn from the seat allowance vs. the workspace
   // pool (+ overage). Provided by the API so the bar doesn't re-derive the
@@ -111,38 +109,32 @@ interface AwuUsageBarProps {
   consumedFromAllowance: number;
   consumedFromPool: number;
   memberUsageLimit: number | null;
-  limit: number | null;
+  // The fully-resolved spend cap from `spendLimitAwuCredits` (member override or
+  // workspace default, both including seat allowance). Always non-null for seated
+  // users — workspace default pool cap treats null as 0 (seat-only). Pass `?? 0`
+  // as a TypeScript guard only.
+  effectiveLimit: number;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
 }
 
-function AwuUsageBar({
+export function AwuUsageBar({
   consumed,
   consumedFromAllowance,
   consumedFromPool,
   memberUsageLimit,
-  limit,
+  effectiveLimit,
   seatType,
   isTotalAllowedUsagePending: isPending,
 }: AwuUsageBarProps) {
-  const { sId: workspaceId } = useWorkspace();
-  const { defaultUserSpendLimit } = useDefaultUserSpendLimit({ workspaceId });
-
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
-
-  // When no Metronome cap alert exists for this user (`limit` is null), fall
-  // back to displaying the workspace default: seat allowance + default pool.
-  const effectiveLimit =
-    limit ??
-    (defaultUserSpendLimit?.awuCredits != null
-      ? allowance + defaultUserSpendLimit.awuCredits
-      : null);
-
+  // Uncapped is not a real product state: fall back to seat allowance when no
+  // explicit spend limit is configured (no pool access).
   // The bar splits consumption into seat → pool → overage:
   //   seat consumed · seat remaining · pool consumed · pool remaining · overage
-  // `poolLimit` is the headroom on top of the seat allowance (null = uncapped).
-  // A seat with no pool (poolLimit === 0, e.g. free) shows no pool section —
+  // `poolLimit` is the headroom above the seat allowance (0 = seat-only, e.g. free).
+  // A seat with no pool (poolLimit === 0) shows no pool section —
   // any spend beyond the seat allowance is overage. Zero-width sections are
   // skipped. `pool remaining` is omitted when uncapped (no finite headroom).
   const seatConsumed = consumedFromAllowance;
@@ -298,7 +290,7 @@ function AwuUsageBar({
           <Spinner size="xs" />
         ) : (
           <span>
-            {effectiveLimit === null ? "∞" : formatCredits(effectiveLimit)}
+            {effectiveLimit !== null ? formatCredits(effectiveLimit) : "—"}
           </span>
         )}
       </div>
@@ -371,7 +363,7 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
         }
         consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
         memberUsageLimit={info.row.original.memberUsageLimit}
-        limit={info.row.original.spendLimitAwuCredits}
+        effectiveLimit={info.row.original.spendLimitAwuCredits ?? 0}
         seatType={info.row.original.seatType}
         isTotalAllowedUsagePending={
           info.row.original.isTotalAllowedUsagePending

@@ -97,6 +97,7 @@ function memberFromUpgradeRequest(
     consumedFromAllowanceAwuCredits: 0,
     consumedFromPoolAwuCredits: 0,
     billingFrequency: null,
+    nextCreditResetAt: null,
     scheduledSeatType: null,
     scheduledSeatChangeAt: null,
     spendLimitAwuCredits: null,
