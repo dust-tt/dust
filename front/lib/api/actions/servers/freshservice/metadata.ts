@@ -189,6 +189,20 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
   },
 
+  // Service request items
+  list_ticket_requested_items: {
+    description:
+      "Lists the service request items nested under a Service Request ticket. Returns each item's metadata along with its custom fields. Use this after get_ticket when the ticket is a Service Request and you need values from custom fields on the nested items.",
+    schema: {
+      ticket_id: z.number().describe("The ID of the ticket"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice ticket requested items",
+      done: "List Freshservice ticket requested items",
+    },
+  },
+
   // Ticket tasks
   list_ticket_tasks: {
     description: "Lists all tasks associated with a ticket",

@@ -155,6 +155,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_solution_categories": "never_ask",
     "list_solution_folders": "never_ask",
     "list_ticket_approvals": "never_ask",
+    "list_ticket_requested_items": "never_ask",
     "list_ticket_tasks": "never_ask",
     "list_tickets": "never_ask",
     "request_service_approval": "low",
