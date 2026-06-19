@@ -1,4 +1,3 @@
-import type { GoogleAiStudioInputConfig } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
 import type { GeminiSupportedReasoningEffort } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
 import type {
   OutputFormat,
@@ -26,7 +25,6 @@ import type {
   FunctionDeclaration,
   Part,
   SchemaUnion,
-  ThinkingConfig,
   ToolConfig,
 } from "@google/genai";
 import { FunctionCallingConfigMode, ThinkingLevel } from "@google/genai";
@@ -328,7 +326,7 @@ export function forceToolNameToToolConfig(
     : undefined;
 }
 
-function effortToThinkingLevel(
+export function effortToThinkingLevel(
   effort: GeminiSupportedReasoningEffort
 ): ThinkingLevel {
   switch (effort) {
@@ -343,16 +341,4 @@ function effortToThinkingLevel(
     default:
       assertNever(effort);
   }
-}
-
-export function reasoningToThinkingConfig(
-  reasoning: GoogleAiStudioInputConfig["reasoning"]
-): ThinkingConfig | undefined {
-  if (!reasoning) {
-    return undefined;
-  }
-  return {
-    thinkingLevel: effortToThinkingLevel(reasoning.effort),
-    includeThoughts: true,
-  };
 }

@@ -55,7 +55,8 @@ export interface OutputEventConverters {
     metadata: EndpointMetadata,
     id: string,
     name: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    thoughtSignature?: string
   ): ToolCallEvent;
   usageToTokenUsageEvent(
     metadata: EndpointMetadata,
@@ -129,12 +130,18 @@ export function functionCallToToolCallEvent(
   metadata: EndpointMetadata,
   id: string,
   name: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  thoughtSignature?: string
 ): ToolCallEvent {
   return {
     type: "tool_call",
     content: { id, name, arguments: args },
-    metadata,
+    // Gemini 3 requires the thought signature to be echoed back in subsequent
+    // requests, so carry it on the tool call's metadata.
+    metadata: {
+      ...metadata,
+      ...(thoughtSignature ? { content: { thoughtSignature } } : {}),
+    },
   };
 }
 
@@ -319,10 +326,11 @@ function flushAccumulated(
 ): ModelResponseEvent[] {
   const events: ModelResponseEvent[] = [];
   if (acc.reasoningParts) {
+    // The turn's thought signature is carried on the success metadata (see
+    // rawOutputToEvents), not per reasoning block.
     const event = converters.accumulatedReasoningToReasoningEvent(
       metadata,
-      acc.reasoningParts,
-      acc.thoughtSignature
+      acc.reasoningParts
     );
     aggregated.push(event);
     events.push(event);
@@ -370,7 +378,8 @@ function partToEvents(
       metadata,
       callId,
       name,
-      args ?? {}
+      args ?? {},
+      part.thoughtSignature
     );
     aggregated.push(toolCallEvent);
     events.push(toolCallEvent);
@@ -378,12 +387,15 @@ function partToEvents(
     return events;
   }
 
-  if (!part.text) {
-    return [];
-  }
-
+  // Gemini 3 emits the turn's thought signature on a trailing part that often
+  // carries no text (alongside the STOP finish reason), so capture it before
+  // the empty-text early return below.
   if (part.thoughtSignature) {
     acc.thoughtSignature = part.thoughtSignature;
+  }
+
+  if (!part.text) {
+    return [];
   }
 
   if (part.thought) {
@@ -476,5 +488,18 @@ export async function* rawOutputToEvents(
   }
 
   yield converters.usageToTokenUsageEvent(metadata, usage);
-  yield { type: "success", content: { aggregated }, metadata };
+  // Gemini 3 returns a single turn-level thought signature (emitted on a
+  // trailing part with the STOP finish reason). The final text has no message
+  // slot to carry it and the turn may not include any reasoning, so carry it on
+  // the success metadata to be echoed back on the next request.
+  yield {
+    type: "success",
+    content: { aggregated },
+    metadata: {
+      ...metadata,
+      ...(acc.thoughtSignature
+        ? { content: { thoughtSignature: acc.thoughtSignature } }
+        : {}),
+    },
+  };
 }

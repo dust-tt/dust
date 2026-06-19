@@ -5,9 +5,9 @@ import {
   assistantToolCallRequestToPart,
   type ContentBlockConverters,
   conversationToContents,
+  effortToThinkingLevel,
   forceToolNameToToolConfig,
   outputFormatToResponseSchema,
-  reasoningToThinkingConfig,
   systemMessagesToSystemInstruction,
   systemMessageToPart,
   toFunctionDeclaration,
@@ -83,7 +83,12 @@ export function WithGoogleAiStudioInputConverter<
               ? [{ functionDeclarations: tools.map(toFunctionDeclaration) }]
               : undefined,
           toolConfig: forceToolNameToToolConfig(tools, forceTool),
-          thinkingConfig: reasoningToThinkingConfig(reasoning),
+          thinkingConfig: {
+            includeThoughts: true,
+            thinkingLevel: reasoning
+              ? effortToThinkingLevel(reasoning.effort)
+              : undefined,
+          },
           maxOutputTokens: this.constructor.maxOutputTokens,
           ...(outputFormat
             ? {
