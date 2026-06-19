@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import {
   _getArchivedBrowserSummaryAgent,
+  _getDeepDiveCGlobalAgent,
   _getDeepDiveGlobalAgent,
   _getDustTaskGlobalAgent,
   _getPlanningAgent,
@@ -481,6 +482,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DEEP_DIVE]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DEEP_DIVE_C]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
@@ -1338,6 +1345,15 @@ function getGlobalAgent({
         excludeProviders,
       });
       break;
+    case GLOBAL_AGENTS_SID.DEEP_DIVE_C:
+      agentConfiguration = _getDeepDiveCGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasSandbox,
+        excludeProviders,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
       agentConfiguration = _getDustTaskGlobalAgent(auth, {
         settings,
@@ -1492,7 +1508,9 @@ export async function getGlobalAgents(
 
   if (!flags.includes("headroom_compression")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_C
+      (sId) =>
+        sId !== GLOBAL_AGENTS_SID.DUST_C &&
+        sId !== GLOBAL_AGENTS_SID.DEEP_DIVE_C
     );
   }
   if (!flags.includes("openai_o1_feature")) {

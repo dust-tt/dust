@@ -337,9 +337,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   headroom_compression: {
     description:
-      "Enable the @dust-c global agent: a copy of @dust that compresses its " +
-      "conversation through the local headroom-ai proxy before sending it to " +
-      "the LLM (new router, streaming path only).",
+      "Enable the headroom compression global agents (@dust-c, deep-dive-c): " +
+      "copies of @dust / deep-dive that compress their conversation through the " +
+      "local headroom-ai proxy before sending it to the LLM (new router, " +
+      "streaming path only).",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

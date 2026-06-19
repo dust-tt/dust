@@ -1,4 +1,5 @@
 import {
+  DEEP_DIVE_C_NAME,
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
@@ -697,6 +698,15 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
         name: DEEP_DIVE_NAME,
+        description: DEEP_DIVE_DESC,
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DEEP_DIVE_C:
+      // Identical to deep-dive; the only difference is that deep-dive-c
+      // compresses its conversation via headroom (see StreamEndpointTransition).
+      return {
+        sId: GLOBAL_AGENTS_SID.DEEP_DIVE_C,
+        name: DEEP_DIVE_C_NAME,
         description: DEEP_DIVE_DESC,
         pictureUrl: DUST_AVATAR_URL,
       };
