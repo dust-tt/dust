@@ -7,6 +7,7 @@ export class GoogleAiStudioGlobalGemini31ProStream extends WithGoogleAiStudioGem
   GoogleAiStudioStream
 ) {
   // https://ai.google.dev/gemini-api/docs/pricing (verify before launch).
+  //TODO(new-llm): implement progressive token billing
   static readonly tokenPricing = {
     cacheCreated: 4.5,
     cacheHit: 0.4,
