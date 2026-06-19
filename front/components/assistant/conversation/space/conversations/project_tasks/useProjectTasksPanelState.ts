@@ -42,6 +42,7 @@ import {
   type PodTaskStatus,
   type PodTaskType,
 } from "@app/types/project_task";
+import { getWorkspaceDefaultAgentId } from "@app/types/user";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export function usePodTasksPanelState({
@@ -105,6 +106,21 @@ export function usePodTasksPanelState({
     agents.sort(compareAgentsForSort);
     return agents;
   }, [agentConfigurations]);
+
+  const { hasFeature } = useFeatureFlags();
+  const { podMetadata } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId,
+  });
+  const hasWorkspaceDefaultAgent = hasFeature("workspace_default_agent");
+  const workspaceDefaultAgentId = hasWorkspaceDefaultAgent
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
+  const podDefaultAgentId =
+    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgent
+      ? (podMetadata?.defaultAgentId ?? null)
+      : null;
+  const defaultAgentId = podDefaultAgentId ?? workspaceDefaultAgentId;
 
   const { hasFeature } = useFeatureFlags();
   const { podMetadata } = usePodMetadata({ workspaceId: owner.sId, podId });
