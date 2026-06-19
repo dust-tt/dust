@@ -660,6 +660,15 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_C:
+      // Identical to @dust; the only difference is that @dust-c compresses its
+      // conversation via headroom (see StreamEndpointTransition).
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_C,
+        name: "dust-c",
+        description: "An agent with context on your company data.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_HIGH:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_HIGH,

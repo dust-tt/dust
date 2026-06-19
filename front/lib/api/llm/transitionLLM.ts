@@ -23,7 +23,7 @@ import {
   extractEncryptedContentFromMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
 import type {
   BatchEndpoint,
@@ -57,6 +57,7 @@ import type {
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -566,12 +567,13 @@ export class StreamEndpointTransition extends BaseTransition {
   ) {
     const { conversation } = this.buildPayload(streamParameters);
 
-    // Optionally route the conversation turns through the local headroom-ai
-    // proxy to compress them before dispatch. Gated by a feature flag and scoped
-    // to the streaming surface; the system prompt is intentionally left intact to
-    // preserve agent behavior.
+    // Compression is opt-in per agent: only the @dust-c global agent routes its
+    // conversation through the local headroom-ai proxy. @dust and every other
+    // agent are left untouched, so compression is @dust-c's only difference from
+    // @dust. @dust-c only exists when the headroom_compression flag is enabled
+    // (see getGlobalAgents). The system prompt is intentionally left intact.
     let messages = conversation.messages;
-    if (await hasFeatureFlag(this.authenticator, "headroom_compression")) {
+    if (this.context?.agentConfigurationId === GLOBAL_AGENTS_SID.DUST_C) {
       const compression = await compressConversationMessages(
         conversation.messages,
         {
