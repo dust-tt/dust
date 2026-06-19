@@ -1027,6 +1027,7 @@ export { default as Star04 } from "./Star04";
 export { default as Star05 } from "./Star05";
 export { default as Star06 } from "./Star06";
 export { default as Star07 } from "./Star07";
+export { default as StarFilled } from "./StarFilled";
 export { default as Stars01 } from "./Stars01";
 export { default as Stars02 } from "./Stars02";
 export { default as Stars03 } from "./Stars03";
