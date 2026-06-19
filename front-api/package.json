@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
+    "@novu/framework": "^2.11.1",
     "umzug": "3.8.3",
     "@hono/mcp": "^0.3.0",
     "@hono/node-server": "^1.19.10",
