@@ -23,7 +23,7 @@ const baseConfig = inputConfigSchema.extend({
 const configSchema = baseConfig.extend({
   reasoning: z
     .object({
-      effort: z.enum([...GEMINI_PRO_SUPPORTED_REASONING_EFFORTS]),
+      effort: z.enum(GEMINI_PRO_SUPPORTED_REASONING_EFFORTS),
     })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
   temperature: temperatureSchema.optional().transform(() => 1 as const),

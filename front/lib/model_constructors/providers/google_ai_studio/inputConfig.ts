@@ -8,7 +8,7 @@ import { z } from "zod";
 export const googleAiStudioConfigSchema = inputConfigSchema.extend({
   reasoning: z
     .object({
-      effort: z.enum([...GEMINI_SUPPORTED_REASONING_EFFORTS]),
+      effort: z.enum(GEMINI_SUPPORTED_REASONING_EFFORTS),
     })
     .optional(),
 });
