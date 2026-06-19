@@ -72,6 +72,11 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   declare cachedTokens: number | null;
   declare cacheCreationTokens: number | null;
 
+  // Headroom compression accounting (null when compression was not applied).
+  // These are headroom tokenizer estimates, not the provider's billed counts.
+  declare compressionInputTokens: number | null;
+  declare compressionSavedTokens: number | null;
+
   declare costMicroUsd: number;
   declare isBatch: boolean;
 }
@@ -100,6 +105,16 @@ RunUsageModel.init(
       allowNull: true,
     },
     cacheCreationTokens: {
+      type: DataTypes.INTEGER,
+      defaultValue: null,
+      allowNull: true,
+    },
+    compressionInputTokens: {
+      type: DataTypes.INTEGER,
+      defaultValue: null,
+      allowNull: true,
+    },
+    compressionSavedTokens: {
       type: DataTypes.INTEGER,
       defaultValue: null,
       allowNull: true,
