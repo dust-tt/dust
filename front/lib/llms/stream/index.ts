@@ -3,8 +3,8 @@ import { DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream } from "@app/lib/ll
 import { DustAgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { DustAnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
 import { DustAnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_sonnet_four_dot_six";
-import { DustGoogleAiStudioGlobalGemini31ProStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
-import { DustGoogleAiStudioGlobalGemini35FlashStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
+import { DustGoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
+import { DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
 import { DustOpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import type {
@@ -21,10 +21,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicGlobalClaudeOpusFourDotEightStream,
   [DustAgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
     DustAgentPlatformEuropeClaudeSonnetFourDotSixStream,
-  [DustGoogleAiStudioGlobalGemini31ProStream.id]:
-    DustGoogleAiStudioGlobalGemini31ProStream,
-  [DustGoogleAiStudioGlobalGemini35FlashStream.id]:
-    DustGoogleAiStudioGlobalGemini35FlashStream,
+  [DustGoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
+    DustGoogleAiStudioGlobalGeminiThreeDotOneProStream,
+  [DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashStream.id]:
+    DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashStream,
   [DustOpenAIResponsesGlobalGptFiveDotFiveStream.id]:
     DustOpenAIResponsesGlobalGptFiveDotFiveStream,
   [DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:

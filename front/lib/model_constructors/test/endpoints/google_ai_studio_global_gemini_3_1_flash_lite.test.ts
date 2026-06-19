@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { GoogleAiStudioGlobalGemini31FlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
+import { GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import {
   INPUT_CONFIGURATION_ERROR,
   SUCCESS,
@@ -10,7 +10,7 @@ import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
 const setup: StreamSetup = {
   createInstance: () =>
-    new GoogleAiStudioGlobalGemini31FlashLiteStream({
+    new GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream({
       GOOGLE_AI_STUDIO_API_KEY:
         process.env.DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY ?? "",
     }),
@@ -74,4 +74,7 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/google_ai_studio_global_gemini_3_1_flash_lite.test.ts
-runStreamEndpointTests(GoogleAiStudioGlobalGemini31FlashLiteStream, setup);
+runStreamEndpointTests(
+  GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream,
+  setup
+);

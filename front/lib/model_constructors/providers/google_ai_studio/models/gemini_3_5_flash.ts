@@ -6,12 +6,12 @@ import {
 import { GEMINI_3_5_FLASH_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 // Mixin carrying shared config; runtime base differs per surface.
-export function WithGoogleAiStudioGemini35FlashConfig<
+export function WithGoogleAiStudioGeminiThreeDotFiveFlashConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class GoogleAiStudioGemini35Flash extends Base {
+  abstract class GoogleAiStudioGeminiThreeDotFiveFlash extends Base {
     static readonly modelId = GEMINI_3_5_FLASH_MODEL_ID;
 
     static readonly configSchema = geminiV3ConfigSchema;
@@ -20,5 +20,5 @@ export function WithGoogleAiStudioGemini35FlashConfig<
     static readonly maxOutputTokens = GEMINI_3_MAX_OUTPUT_TOKENS;
   }
 
-  return GoogleAiStudioGemini35Flash;
+  return GoogleAiStudioGeminiThreeDotFiveFlash;
 }

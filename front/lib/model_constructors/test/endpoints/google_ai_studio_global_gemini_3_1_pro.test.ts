@@ -1,13 +1,13 @@
 // @vitest-environment node
 
-import { GoogleAiStudioGlobalGemini31ProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
+import { GoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
 const setup: StreamSetup = {
   createInstance: () =>
-    new GoogleAiStudioGlobalGemini31ProStream({
+    new GoogleAiStudioGlobalGeminiThreeDotOneProStream({
       GOOGLE_AI_STUDIO_API_KEY:
         process.env.DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY ?? "",
     }),
@@ -69,4 +69,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/google_ai_studio_global_gemini_3_1_pro.test.ts
-runStreamEndpointTests(GoogleAiStudioGlobalGemini31ProStream, setup);
+runStreamEndpointTests(GoogleAiStudioGlobalGeminiThreeDotOneProStream, setup);

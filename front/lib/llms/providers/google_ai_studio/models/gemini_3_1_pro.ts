@@ -1,9 +1,9 @@
-export function WithDustGoogleAiStudioGemini31ProConfig<
+export function WithDustGoogleAiStudioGeminiThreeDotOneProConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class DustGoogleAiStudioGemini31Pro extends Base {
+  abstract class DustGoogleAiStudioGeminiThreeDotOnePro extends Base {
     static readonly displayName = "Gemini 3.1 Pro (Preview)";
     static readonly description =
       "Google's latest powerful model with enhanced reasoning (1m context).";
@@ -11,5 +11,5 @@ export function WithDustGoogleAiStudioGemini31ProConfig<
     static readonly byok = true;
   }
 
-  return DustGoogleAiStudioGemini31Pro;
+  return DustGoogleAiStudioGeminiThreeDotOnePro;
 }

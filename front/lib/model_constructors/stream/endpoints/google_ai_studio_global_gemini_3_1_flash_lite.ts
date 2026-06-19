@@ -1,9 +1,9 @@
-import { WithGoogleAiStudioGemini31FlashLiteConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_flash_lite";
+import { WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_1_flash_lite";
 import { GoogleAiStudioStream } from "@app/lib/model_constructors/stream/clients/google_ai_studio";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class GoogleAiStudioGlobalGemini31FlashLiteStream extends WithGoogleAiStudioGemini31FlashLiteConfig(
+export class GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream extends WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig(
   GoogleAiStudioStream
 ) {
   // https://ai.google.dev/gemini-api/docs/pricing (verify before launch).
@@ -19,4 +19,4 @@ export class GoogleAiStudioGlobalGemini31FlashLiteStream extends WithGoogleAiStu
   static readonly id = this.buildId();
 }
 
-GoogleAiStudioGlobalGemini31FlashLiteStream satisfies StreamEndpointConstructor;
+GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream satisfies StreamEndpointConstructor;
