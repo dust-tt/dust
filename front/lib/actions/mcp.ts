@@ -254,7 +254,8 @@ const MAX_DESCRIPTION_LENGTH = 1024;
  * Builds a tool specification for the given MCP action configuration.
  */
 export function buildToolSpecification(
-  actionConfiguration: MCPToolConfigurationType
+  actionConfiguration: MCPToolConfigurationType,
+  { deferLoading }: { deferLoading?: boolean } = {}
 ): AgentActionSpecification {
   // Internal tools: hide required tool-input configuration from the model.
   // External/client tools: black-box — pass the schema through as-is.
@@ -269,6 +270,7 @@ export function buildToolSpecification(
     description:
       actionConfiguration.description?.slice(0, MAX_DESCRIPTION_LENGTH) ?? "",
     inputSchema,
+    ...(deferLoading ? { deferLoading: true } : {}),
   };
 }
 

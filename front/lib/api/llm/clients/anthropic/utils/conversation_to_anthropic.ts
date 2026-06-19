@@ -270,5 +270,9 @@ export function toTool(tool: AgentActionSpecification): Tool {
     // See https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
     eager_input_streaming: true,
     input_schema: { ...tool.inputSchema, type: "object" },
+    // Deferred (cold) tools are kept out of the cached prefix and loaded on
+    // demand via the tool search tool. Only set when true so non-deferred tools
+    // serialize identically to before (stable prefix bytes).
+    ...(tool.deferLoading ? { defer_loading: true } : {}),
   };
 }

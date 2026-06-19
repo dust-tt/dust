@@ -1264,6 +1264,22 @@ export function isAutoInternalMCPServerName(
   );
 }
 
+// A "hot" tool is one served by a default-attached internal MCP server (an
+// `auto` / `auto_hidden_builder` server, present from the first agent-loop step).
+// These stay non-deferred so they form a stable, cacheable tools prefix. Every
+// other tool (`manual` internal servers, remote servers, client-side tools, and
+// anything enabled mid-run via discover_tools) is cold and gets deferred behind
+// Anthropic's tool search, so it appends inline on discovery instead of mutating
+// the prefix. `mcpServerName` on a tool config is a bare string (only internal
+// server-side configs carry an internal name), so guard the name before the
+// availability lookup.
+export function isHotMCPServerName(mcpServerName: string): boolean {
+  return (
+    isInternalMCPServerName(mcpServerName) &&
+    isAutoInternalMCPServerName(mcpServerName)
+  );
+}
+
 export function getAvailabilityOfInternalMCPServerByName(
   name: InternalMCPServerNameType
 ): MCPServerAvailability {
