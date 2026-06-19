@@ -118,6 +118,7 @@ interface InviteEmailButtonWithModalProps {
   perSeatPricing: SubscriptionPerSeatPricing | null;
   onInviteClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
+  isFreePlan?: boolean;
 }
 
 export function InviteEmailButtonWithModal({
@@ -126,6 +127,7 @@ export function InviteEmailButtonWithModal({
   perSeatPricing,
   onInviteClick,
   disabled = false,
+  isFreePlan = false,
 }: InviteEmailButtonWithModalProps) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const { inviteEmailsList, emailError } =
@@ -141,10 +143,12 @@ export function InviteEmailButtonWithModal({
     workspaceId: owner.sId,
     disabled: !open,
   });
-  const seatTypes = useMemo(
-    () => sortSeatTypes(Object.keys(seatPlans).filter(isMembershipSeatType)),
-    [seatPlans]
-  );
+  const seatTypes = useMemo(() => {
+    const all = sortSeatTypes(
+      Object.keys(seatPlans).filter(isMembershipSeatType)
+    );
+    return isFreePlan ? all.filter((s) => s === "free") : all;
+  }, [seatPlans, isFreePlan]);
   const seatTypesByFrequency = useMemo(
     () => groupSeatTypesByFrequency(seatTypes, seatPlans),
     [seatTypes, seatPlans]
