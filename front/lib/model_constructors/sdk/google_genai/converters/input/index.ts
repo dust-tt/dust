@@ -1,4 +1,5 @@
 import type { Client } from "@app/lib/model_constructors/client";
+import type { GoogleAiStudioInputConfig } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
 import {
   assistantReasoningMessageToPart,
   assistantTextMessageToPart,
@@ -14,8 +15,7 @@ import {
   toolCallResultMessageToContent,
   userImageMessageToPart,
   userTextMessageToPart,
-} from "@app/lib/model_constructors/providers/google_ai_studio/converters/input/utils";
-import type { GoogleAiStudioInputConfig } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+} from "@app/lib/model_constructors/sdk/google_genai/converters/input/utils";
 import type {
   Payload,
   SystemTextMessage,
@@ -28,10 +28,10 @@ type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 // `generateContentStream` request shape. Leaf converters are bound as class
 // fields and composites route through `this`, so an endpoint can override a
 // single leaf.
-export function WithGoogleAiStudioInputConverter<
+export function WithGoogleGenAIInputConverter<
   TBase extends AbstractConstructor<Client<GoogleAiStudioInputConfig>>,
 >(Base: TBase) {
-  abstract class WithGoogleAiStudioInputConverter
+  abstract class WithGoogleGenAIInputConverter
     extends Base
     implements ContentBlockConverters
   {
@@ -101,5 +101,5 @@ export function WithGoogleAiStudioInputConverter<
     }
   }
 
-  return WithGoogleAiStudioInputConverter;
+  return WithGoogleGenAIInputConverter;
 }

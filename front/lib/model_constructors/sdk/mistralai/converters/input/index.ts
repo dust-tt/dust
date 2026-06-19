@@ -1,9 +1,10 @@
 import type { Client } from "@app/lib/model_constructors/client";
+import type { MistralInputConfig } from "@app/lib/model_constructors/providers/mistral/inputConfig";
 import {
   assistantReasoningMessageToMessage,
   assistantTextMessageToMessage,
   assistantToolCallRequestToMessage,
-  conversationToMistralMessages,
+  conversationToMistralAIMessages,
   forceToolNameToToolChoice,
   type MistralMessageConverters,
   outputFormatToResponseFormat,
@@ -12,8 +13,7 @@ import {
   toTool,
   userImageMessageToMessage,
   userTextMessageToMessage,
-} from "@app/lib/model_constructors/providers/mistral/converters/input/utils";
-import type { MistralInputConfig } from "@app/lib/model_constructors/providers/mistral/inputConfig";
+} from "@app/lib/model_constructors/sdk/mistralai/converters/input/utils";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import type { ChatCompletionStreamRequest } from "@mistralai/mistralai/models/components";
 
@@ -22,10 +22,10 @@ type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 // Turns our provider-agnostic conversation/config into the Mistral
 // `chat.stream` request shape. Leaf converters are bound as class fields and the
 // composite routes through `this`, so an endpoint can override a single leaf.
-export function WithMistralInputConverter<
+export function WithMistralAIInputConverter<
   TBase extends AbstractConstructor<Client<MistralInputConfig>>,
 >(Base: TBase) {
-  abstract class WithMistralInputConverter
+  abstract class WithMistralAIInputConverter
     extends Base
     implements MistralMessageConverters
   {
@@ -55,7 +55,7 @@ export function WithMistralInputConverter<
       // the model supports it — non-reasoning models drop it in their schema.
       return {
         model: this.constructor.modelId,
-        messages: conversationToMistralMessages(conversation, this),
+        messages: conversationToMistralAIMessages(conversation, this),
         temperature,
         tools: tools.map(toTool),
         toolChoice: forceToolNameToToolChoice(tools, forceTool),
@@ -67,5 +67,5 @@ export function WithMistralInputConverter<
     }
   }
 
-  return WithMistralInputConverter;
+  return WithMistralAIInputConverter;
 }

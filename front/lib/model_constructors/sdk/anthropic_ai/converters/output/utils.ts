@@ -15,7 +15,7 @@ import type {
   RawMessageStartEvent,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { parseToolArguments } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
+import { parseToolArguments } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,

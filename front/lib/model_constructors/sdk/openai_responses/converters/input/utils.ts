@@ -231,7 +231,7 @@ export function outputFormatToResponseFormat(
   };
 }
 
-export function reasoningToOpenAIReasoning(
+export function reasoningToOpenAIResponsesReasoning(
   reasoning: Reasoning | undefined
 ): OpenAIReasoning | undefined {
   if (!reasoning) {

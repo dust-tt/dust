@@ -1,7 +1,7 @@
-import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/providers/openai/converters/input";
-import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/providers/openai/converters/output";
-import { rawOutputToEvents } from "@app/lib/model_constructors/providers/openai/converters/output/utils";
 import { OPENAI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/openai/reasoning_efforts";
+import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
+import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";

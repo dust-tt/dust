@@ -2,41 +2,40 @@ import type { Client } from "@app/lib/model_constructors/client";
 import {
   accumulatedReasoningToReasoningEvent,
   accumulatedTextToTextEvent,
-  argumentsDeltaToToolCallDeltaEvent,
+  finishReasonToErrorEvent,
   functionCallToToolCallEvent,
   functionCallToToolCallStartedEvent,
   type OutputEventConverters,
-  reasoningSummaryDeltaToReasoningDeltaEvent,
-  responseCreatedToResponseIdEvent,
+  reasoningDeltaToReasoningDeltaEvent,
+  responseIdToResponseIdEvent,
   streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
   usageToTokenUsageEvent,
-} from "@app/lib/model_constructors/providers/openai/converters/output/utils";
+} from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
-// Binds the OpenAI leaf output converters onto a client as class fields (an
+// Binds the Gemini leaf output converters onto a client as class fields (an
 // endpoint can override a single leaf by re-declaring its field). The composite
 // is per-surface, so each supplies its own `rawOutputToEvents`.
-export function WithOpenAIResponsesOutputConverter<
+export function WithGoogleGenAIOutputConverter<
   TBase extends AbstractConstructor<Client>,
 >(Base: TBase) {
-  abstract class WithOpenAIResponsesOutputConverter
+  abstract class WithGoogleGenAIOutputConverter
     extends Base
     implements OutputEventConverters
   {
-    responseCreatedToResponseIdEvent = responseCreatedToResponseIdEvent;
+    responseIdToResponseIdEvent = responseIdToResponseIdEvent;
     textDeltaToTextDeltaEvent = textDeltaToTextDeltaEvent;
-    reasoningSummaryDeltaToReasoningDeltaEvent =
-      reasoningSummaryDeltaToReasoningDeltaEvent;
-    functionCallToToolCallStartedEvent = functionCallToToolCallStartedEvent;
-    argumentsDeltaToToolCallDeltaEvent = argumentsDeltaToToolCallDeltaEvent;
+    reasoningDeltaToReasoningDeltaEvent = reasoningDeltaToReasoningDeltaEvent;
     accumulatedTextToTextEvent = accumulatedTextToTextEvent;
     accumulatedReasoningToReasoningEvent = accumulatedReasoningToReasoningEvent;
+    functionCallToToolCallStartedEvent = functionCallToToolCallStartedEvent;
     functionCallToToolCallEvent = functionCallToToolCallEvent;
     usageToTokenUsageEvent = usageToTokenUsageEvent;
+    finishReasonToErrorEvent = finishReasonToErrorEvent;
     streamErrorToErrorEvent = streamErrorToErrorEvent;
   }
 
-  return WithOpenAIResponsesOutputConverter;
+  return WithGoogleGenAIOutputConverter;
 }

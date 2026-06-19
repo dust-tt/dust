@@ -4,7 +4,7 @@ import type {
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import type { MessageBlockConverters } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
+import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   assistantMessageToContentBlocks,
   assistantReasoningMessageToThinkingBlocks,
@@ -19,11 +19,11 @@ import {
   systemMessagesToSystemParam,
   systemMessageToTextBlock,
   toolCallResultMessageToToolResultBlock,
-  toolSpecToAnthropicTool,
+  toolSpecToAnthropicAITool,
   userImageMessageToImageBlock,
   userMessageToContentBlocks,
   userTextMessageToTextBlock,
-} from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import type {
   OutputFormat,
   ToolSpecification,
@@ -600,7 +600,7 @@ describe("outputFormatToOutputConfig", () => {
   });
 });
 
-describe("toolSpecToAnthropicTool", () => {
+describe("toolSpecToAnthropicAITool", () => {
   it("converts a tool spec, merging the object type into the input schema", () => {
     const tool: ToolSpecification = {
       name: "search",
@@ -610,7 +610,7 @@ describe("toolSpecToAnthropicTool", () => {
         required: ["q"],
       },
     };
-    expect(toolSpecToAnthropicTool(tool)).toEqual({
+    expect(toolSpecToAnthropicAITool(tool)).toEqual({
       name: "search",
       description: "Search things",
       eager_input_streaming: true,
@@ -630,7 +630,7 @@ describe("toolSpecToAnthropicTool", () => {
     };
     // The spread places inputSchema.type after the literal, so it wins; this
     // documents the merge order rather than asserting a guarantee.
-    expect(toolSpecToAnthropicTool(tool).input_schema.type).toBe("string");
+    expect(toolSpecToAnthropicAITool(tool).input_schema.type).toBe("string");
   });
 });
 

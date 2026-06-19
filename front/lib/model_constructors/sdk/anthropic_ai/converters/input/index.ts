@@ -5,6 +5,7 @@ import type {
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@app/lib/model_constructors/client";
+import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
   assistantReasoningMessageToThinkingBlocks,
   assistantTextMessageToTextBlock,
@@ -17,11 +18,10 @@ import {
   systemMessagesToSystemParam,
   systemMessageToTextBlock,
   toolCallResultMessageToToolResultBlock,
-  toolSpecToAnthropicTool,
+  toolSpecToAnthropicAITool,
   userImageMessageToImageBlock,
   userTextMessageToTextBlock,
-} from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
-import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import type {
   Payload,
   SystemTextMessage,
@@ -33,10 +33,10 @@ type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 // Turns our provider-agnostic conversation/config into the Anthropic Messages
 // API request shape. Leaf converters are bound as class fields and composites
 // route through `this`, so an endpoint can override a single leaf.
-export function WithAnthropicInputConverter<
+export function WithAnthropicAIInputConverter<
   TBase extends AbstractConstructor<Client<AnthropicInputConfig>>,
 >(Base: TBase) {
-  abstract class WithAnthropicInputConverter
+  abstract class WithAnthropicAIInputConverter
     extends Base
     implements MessageBlockConverters
   {
@@ -90,7 +90,7 @@ export function WithAnthropicInputConverter<
         messages: this.conversationToMessages(conversation),
         system: this.systemMessagesToSystemParam(conversation.system),
         thinking: thinkingConfig.thinking,
-        tools: tools.map((tool) => toolSpecToAnthropicTool(tool)),
+        tools: tools.map((tool) => toolSpecToAnthropicAITool(tool)),
         tool_choice: forceToolNameToToolChoice(tools, forceTool),
         temperature,
         ...(Object.keys(outputConfig).length > 0
@@ -100,5 +100,5 @@ export function WithAnthropicInputConverter<
     }
   }
 
-  return WithAnthropicInputConverter;
+  return WithAnthropicAIInputConverter;
 }

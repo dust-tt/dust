@@ -13,17 +13,17 @@ import {
   streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
   toolUseBlockStartToToolCallStartedEvent,
-} from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
 // Binds the Anthropic leaf output converters onto a client as class fields (an
 // endpoint can override a single leaf by re-declaring its field). The composite
 // is per-surface, so each supplies its own `rawOutputToEvents`.
-export function WithAnthropicOutputConverter<
+export function WithAnthropicAIOutputConverter<
   TBase extends AbstractConstructor<Client>,
 >(Base: TBase) {
-  abstract class WithAnthropicOutputConverter
+  abstract class WithAnthropicAIOutputConverter
     extends Base
     implements OutputEventConverters
   {
@@ -42,5 +42,5 @@ export function WithAnthropicOutputConverter<
     streamErrorToErrorEvent = streamErrorToErrorEvent;
   }
 
-  return WithAnthropicOutputConverter;
+  return WithAnthropicAIOutputConverter;
 }

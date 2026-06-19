@@ -7,14 +7,14 @@ import {
   forceToolToToolChoice,
   type MessageItemConverters,
   outputFormatToResponseFormat,
-  reasoningToOpenAIReasoning,
+  reasoningToOpenAIResponsesReasoning,
   systemMessagesToInputItems,
   systemMessageToInputItem,
   toFunctionTool,
   toolCallResultMessageToInputItem,
   userImageMessageToInputItem,
   userTextMessageToInputItem,
-} from "@app/lib/model_constructors/providers/openai/converters/input/utils";
+} from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   Payload,
@@ -71,7 +71,7 @@ export function WithOpenAIResponsesInputConverter<
         outputFormat,
       } = config;
 
-      const reasoningConfig = reasoningToOpenAIReasoning(reasoning);
+      const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
 
       return {
         model: this.constructor.modelId,

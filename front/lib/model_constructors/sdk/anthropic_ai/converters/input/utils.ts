@@ -252,7 +252,7 @@ export function outputFormatToOutputConfig(outputFormat: OutputFormat): {
   };
 }
 
-export function toolSpecToAnthropicTool(tool: ToolSpecification): Tool {
+export function toolSpecToAnthropicAITool(tool: ToolSpecification): Tool {
   return {
     name: tool.name,
     description: tool.description,

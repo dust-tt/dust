@@ -183,7 +183,7 @@ function assistantMessageToMessage(
   }
 }
 
-export function conversationToMistralMessages(
+export function conversationToMistralAIMessages(
   conversation: BaseConversation,
   converters: MistralMessageConverters
 ): MistralMessage[] {

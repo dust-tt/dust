@@ -15,7 +15,7 @@ import type {
   RawMessageStartEvent,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import type { OutputEventConverters } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
+import type { OutputEventConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import {
   accumulatedReasoningToReasoningEvent,
   accumulatedTextToTextEvent,
@@ -37,7 +37,7 @@ import {
   streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
   toolUseBlockStartToToolCallStartedEvent,
-} from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { describe, expect, it, vi } from "vitest";
