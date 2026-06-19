@@ -13,9 +13,9 @@ import {
   listCustomerPerUserCreditBalances,
   listCustomerPerUserCreditUserIds,
   listMetronomeSeatBalances,
-  revokePerUserCustomerCredit,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
+  voidPerUserCustomerCreditBalance,
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_FREE_SEAT_CREDIT,
@@ -646,16 +646,18 @@ async function revokeFreeSeatCreditsForExFreeUsers({
 
   await concurrentExecutor(
     toRevoke,
-    async ([userId, { creditIds }]) => {
-      for (const creditId of creditIds) {
-        const revokeResult = await revokePerUserCustomerCredit({
+    async ([userId, { creditSegments }]) => {
+      for (const { creditId, segmentId, balanceAwu } of creditSegments) {
+        const voidResult = await voidPerUserCustomerCreditBalance({
           metronomeCustomerId,
           creditId,
+          segmentId,
+          balanceAwu,
         });
-        if (revokeResult.isErr()) {
+        if (voidResult.isErr()) {
           logger.error(
-            { workspaceId, userId, creditId, error: revokeResult.error },
-            "[Metronome] Failed to revoke ex-free-seat credit"
+            { workspaceId, userId, creditId, error: voidResult.error },
+            "[Metronome] Failed to void ex-free-seat credit balance"
           );
         }
       }

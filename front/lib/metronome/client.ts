@@ -2626,21 +2626,25 @@ export async function listCustomerPerUserCreditUserIds({
  * by user sId (from the `DUST_PER_USER_CREDIT_USER` custom field). Only active
  * (not yet expired or archived) credits are included.
  */
+export type PerUserCreditBalance = {
+  creditIds: string[];
+  balanceAwu: number;
+  startingBalanceAwu: number;
+  // Segments needed to zero a credit's balance via addManualBalanceEntry.
+  creditSegments: Array<{
+    creditId: string;
+    segmentId: string;
+    balanceAwu: number;
+  }>;
+};
+
 export async function listCustomerPerUserCreditBalances({
   metronomeCustomerId,
   contractCreditType,
 }: {
   metronomeCustomerId: string;
   contractCreditType: ContractCreditType;
-}): Promise<
-  Result<
-    Map<
-      string,
-      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
-    >,
-    Error
-  >
-> {
+}): Promise<Result<Map<string, PerUserCreditBalance>, Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok(new Map());
   }
@@ -2648,10 +2652,7 @@ export async function listCustomerPerUserCreditBalances({
   const client = getMetronomeClient();
 
   try {
-    const byUser = new Map<
-      string,
-      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
-    >();
+    const byUser = new Map<string, PerUserCreditBalance>();
     for await (const entry of client.v1.customers.credits.list({
       customer_id: metronomeCustomerId,
       include_balance: true,
@@ -2670,15 +2671,28 @@ export async function listCustomerPerUserCreditBalances({
       ) {
         continue;
       }
-      const startingBalanceAwu = (
-        entry.access_schedule?.schedule_items ?? []
-      ).reduce((sum, item) => sum + item.amount, 0);
+      const scheduleItems = entry.access_schedule?.schedule_items ?? [];
+      const startingBalanceAwu = scheduleItems.reduce(
+        (sum, item) => sum + item.amount,
+        0
+      );
+      const entryBalance = entry.balance ?? 0;
       const existing = byUser.get(userId);
       byUser.set(userId, {
         creditIds: [...(existing?.creditIds ?? []), entry.id],
-        balanceAwu: (existing?.balanceAwu ?? 0) + (entry.balance ?? 0),
+        balanceAwu: (existing?.balanceAwu ?? 0) + entryBalance,
         startingBalanceAwu:
           (existing?.startingBalanceAwu ?? 0) + startingBalanceAwu,
+        creditSegments: [
+          ...(existing?.creditSegments ?? []),
+          ...scheduleItems
+            .filter((item) => item.id)
+            .map((item) => ({
+              creditId: entry.id,
+              segmentId: item.id,
+              balanceAwu: entryBalance,
+            })),
+        ],
       });
     }
     return new Ok(byUser);
@@ -2693,21 +2707,49 @@ export async function listCustomerPerUserCreditBalances({
 }
 
 /**
- * Revoke a per-user customer credit by setting its end date to now. The
- * uniqueness key is untouched so the user can never re-claim the same credit.
+ * Zero out a customer-level per-user credit by debiting its entire remaining
+ * balance via a manual ledger entry. Used when revoking free-seat credits:
+ * `updateEndDate` requires an hour-boundary timestamp which is never "now",
+ * so we drain the balance instead of setting an end date.
+ *
+ * No-ops when balance is 0. Does NOT touch the credit's end date — the credit
+ * still exists but is drained and cannot be consumed.
  */
-export async function revokePerUserCustomerCredit({
+export async function voidPerUserCustomerCreditBalance({
   metronomeCustomerId,
   creditId,
+  segmentId,
+  balanceAwu,
 }: {
   metronomeCustomerId: string;
   creditId: string;
+  segmentId: string;
+  balanceAwu: number;
 }): Promise<Result<void, Error>> {
-  return updateMetronomeCreditEndDate({
-    metronomeCustomerId,
-    creditId,
-    accessEndingBefore: new Date().toISOString(),
-  });
+  if (balanceAwu <= 0) {
+    return new Ok(undefined);
+  }
+  try {
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
+      id: creditId,
+      customer_id: metronomeCustomerId,
+      segment_id: segmentId,
+      amount: -balanceAwu,
+      reason: "Free seat revoked on upgrade — balance drained",
+    });
+    logger.info(
+      { metronomeCustomerId, creditId, segmentId, balanceAwu },
+      "[Metronome] Per-user free credit balance voided"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, creditId, segmentId, balanceAwu },
+      "[Metronome] Failed to void per-user free credit balance"
+    );
+    return new Err(error);
+  }
 }
 
 /**
