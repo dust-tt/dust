@@ -509,10 +509,26 @@ export async function getOutputFromLLMStream(
               },
               "[LLM stream] prompt cache miss"
             );
-            getStatsDClient().increment("llm.cache_miss_reason.count", 1, [
+            const reasonTags = [
               `model_id:${model.modelId}`,
               `reason:${cacheMissReason.type}`,
-            ]);
+            ];
+            // Count: how often each reason occurs.
+            getStatsDClient().increment(
+              "llm.cache_miss_reason.count",
+              1,
+              reasonTags
+            );
+            // Weighted by lost-cache tokens: which reason actually costs the most,
+            // not just which happens most. Only the `*_changed` reasons carry this
+            // (the inconclusive ones have no diverged prefix to measure).
+            if (cacheMissReason.cacheMissedInputTokens !== undefined) {
+              getStatsDClient().distribution(
+                "llm.cache_miss_reason.missed_input_tokens",
+                cacheMissReason.cacheMissedInputTokens,
+                reasonTags
+              );
+            }
           }
         }
         continue;
