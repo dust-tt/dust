@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
+import type { CompressionUsage } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -55,6 +56,33 @@ function recordCompressionMetrics(
       tags
     );
   }
+}
+
+// Emit the per-agent-loop compression rollup (summed across every LLM call in
+// the loop) to Datadog. Called once when the agentic loop finalizes; no-ops when
+// the loop had no compression. Untagged by model on purpose — a loop is a single
+// aggregate and may span more than one model.
+export function recordLoopCompressionMetrics({
+  inputTokens,
+  savedTokens,
+}: CompressionUsage): void {
+  if (inputTokens <= 0) {
+    return;
+  }
+
+  const client = getStatsDClient();
+  client.distribution(
+    `${HEADROOM_METRIC_PREFIX}.loop.tokens_before`,
+    inputTokens
+  );
+  client.distribution(
+    `${HEADROOM_METRIC_PREFIX}.loop.tokens_saved`,
+    savedTokens
+  );
+  client.distribution(
+    `${HEADROOM_METRIC_PREFIX}.loop.ratio`,
+    savedTokens / inputTokens
+  );
 }
 
 // Maps Dust internal model ids to the model names headroom-ai / LiteLLM expect
@@ -263,9 +291,9 @@ interface CompressConversationOptions {
 export async function compressConversationMessages(
   messages: BaseMessage[],
   { modelId, workspaceId }: CompressConversationOptions
-): Promise<BaseMessage[]> {
+): Promise<{ messages: BaseMessage[]; usage: CompressionUsage | null }> {
   if (messages.length === 0) {
-    return messages;
+    return { messages, usage: null };
   }
 
   const openAIMessages = messages.map(baseMessageToOpenAI);
@@ -299,7 +327,7 @@ export async function compressConversationMessages(
         "[headroom] Skipping compression: result is not a 1:1 message array."
       );
       recordCompressionMetrics(modelId, "skipped");
-      return messages;
+      return { messages, usage: null };
     }
 
     const rewritten = messages.map((message, i) => {
@@ -329,13 +357,19 @@ export async function compressConversationMessages(
     );
     recordCompressionMetrics(modelId, "applied", result);
 
-    return rewritten;
+    return {
+      messages: rewritten,
+      usage: {
+        inputTokens: result.tokensBefore,
+        savedTokens: result.tokensSaved,
+      },
+    };
   } catch (err) {
     logger.error(
       { workspaceId, modelId, err: normalizeError(err) },
       "[headroom] Compression failed; using uncompressed messages."
     );
     recordCompressionMetrics(modelId, "error");
-    return messages;
+    return { messages, usage: null };
   }
 }

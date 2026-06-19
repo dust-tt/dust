@@ -1,6 +1,7 @@
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import { recordLoopCompressionMetrics } from "@app/lib/api/llm/headroom";
 import type { Authenticator } from "@app/lib/auth";
 import {
   intelligenceAwuFromRunUsages,
@@ -90,6 +91,33 @@ export async function computeAndStoreAgentMessageCredits(
     fetchRunUsagesForAgentMessage(auth, runIds),
     AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
   ]);
+
+  // Roll up headroom compression across every LLM call in the loop. Summing
+  // per-call mirrors how prompt tokens are summed (each turn re-sends the
+  // growing context), so this is the loop's total input-token saving.
+  const compressionInputTokens = runUsages.reduce(
+    (sum, usage) => sum + (usage.compressionInputTokens ?? 0),
+    0
+  );
+  const compressionSavedTokens = runUsages.reduce(
+    (sum, usage) => sum + (usage.compressionSavedTokens ?? 0),
+    0
+  );
+  if (compressionInputTokens > 0) {
+    recordLoopCompressionMetrics({
+      inputTokens: compressionInputTokens,
+      savedTokens: compressionSavedTokens,
+    });
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId,
+        compressionInputTokens,
+        compressionSavedTokens,
+      },
+      "[headroom] Agent loop compression totals."
+    );
+  }
 
   const costCredits = computeAgentMessageCredits({
     runUsages,

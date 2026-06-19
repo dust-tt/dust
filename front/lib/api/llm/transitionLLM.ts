@@ -51,6 +51,7 @@ import type {
   ToolCallEvent as NewToolCallEvent,
   NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
+import type { CompressionUsage } from "@app/lib/resources/run_resource";
 import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,
@@ -539,6 +540,11 @@ abstract class BaseTransition extends LLM {
 export class StreamEndpointTransition extends BaseTransition {
   private model: StreamEndpoint;
 
+  // Headroom compression usage from the most recent buildStreamRequestPayload,
+  // surfaced to the run usage row via getCompressionUsage() so it persists per
+  // call and rolls up per agent loop.
+  private compressionUsage: CompressionUsage | null = null;
+
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters,
@@ -564,20 +570,27 @@ export class StreamEndpointTransition extends BaseTransition {
     // proxy to compress them before dispatch. Gated by a feature flag and scoped
     // to the streaming surface; the system prompt is intentionally left intact to
     // preserve agent behavior.
-    const messages = (await hasFeatureFlag(
-      this.authenticator,
-      "headroom_compression"
-    ))
-      ? await compressConversationMessages(conversation.messages, {
+    let messages = conversation.messages;
+    if (await hasFeatureFlag(this.authenticator, "headroom_compression")) {
+      const compression = await compressConversationMessages(
+        conversation.messages,
+        {
           modelId: this.modelId,
           workspaceId: this.authenticator.getNonNullableWorkspace().sId,
-        })
-      : conversation.messages;
+        }
+      );
+      messages = compression.messages;
+      this.compressionUsage = compression.usage;
+    }
 
     return this.model.buildRequestPayload(
       { conversation: { ...conversation, messages } },
       this.buildConfig(streamParameters, this.model.constructor.configSchema)
     );
+  }
+
+  protected getCompressionUsage(): CompressionUsage | null {
+    return this.compressionUsage;
   }
 
   protected async *sendRequest(payload: unknown): AsyncGenerator<LLMEvent> {

@@ -23,7 +23,10 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import type { RunUsageType } from "@app/lib/resources/run_resource";
+import type {
+  CompressionUsage,
+  RunUsageType,
+} from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -338,7 +341,10 @@ export abstract class LLM<TPayload = unknown> {
             this.authenticator,
             buffer.runTokenUsage,
             this.modelId,
-            { inferenceRegion: this.metadata.inferenceRegion }
+            {
+              inferenceRegion: this.metadata.inferenceRegion,
+              compression: this.getCompressionUsage(),
+            }
           );
         }
 
@@ -674,6 +680,14 @@ export abstract class LLM<TPayload = unknown> {
    * Called after the stream completes; returned entries are recorded via recordRunUsage.
    */
   protected getSimulatedRunUsages(): RunUsageType[] | null {
+    return null;
+  }
+
+  /**
+   * Override to attach compression accounting (e.g. headroom) to the run usage
+   * row recorded for this call. Returns null when no compression was applied.
+   */
+  protected getCompressionUsage(): CompressionUsage | null {
     return null;
   }
 

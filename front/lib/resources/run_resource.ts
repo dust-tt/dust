@@ -47,6 +47,7 @@ export type FetchRunOptions<T extends boolean> = {
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RunResource extends ReadonlyAttributesType<RunModel> {}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RunResource extends BaseResource<RunModel> {
   static model: ModelStatic<RunModel> = RunModel;
@@ -200,6 +201,8 @@ export class RunResource extends BaseResource<RunModel> {
       providerId: usage.providerId as ModelProviderIdType,
       cachedTokens: usage.cachedTokens,
       cacheCreationTokens: usage.cacheCreationTokens,
+      compressionInputTokens: usage.compressionInputTokens,
+      compressionSavedTokens: usage.compressionSavedTokens,
       costMicroUsd: usage.costMicroUsd,
       isBatch: usage.isBatch,
     }));
@@ -323,6 +326,8 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens,
+          compressionInputTokens,
+          compressionSavedTokens,
           costMicroUsd,
           isBatch,
         }) => ({
@@ -334,6 +339,8 @@ export class RunResource extends BaseResource<RunModel> {
           completionTokens,
           cachedTokens,
           cacheCreationTokens: cacheCreationTokens ?? null,
+          compressionInputTokens: compressionInputTokens ?? null,
+          compressionSavedTokens: compressionSavedTokens ?? null,
           costMicroUsd,
           isBatch,
         })
@@ -386,7 +393,12 @@ export class RunResource extends BaseResource<RunModel> {
     {
       isBatch = false,
       inferenceRegion = "global",
-    }: { isBatch?: boolean; inferenceRegion?: InferenceRegionType } = {}
+      compression,
+    }: {
+      isBatch?: boolean;
+      inferenceRegion?: InferenceRegionType;
+      compression?: CompressionUsage | null;
+    } = {}
   ) {
     const modelConfig = getModelConfigByModelId(modelId);
 
@@ -413,6 +425,8 @@ export class RunResource extends BaseResource<RunModel> {
         modelId: modelConfig.modelId,
         promptTokens: usage.inputTokens,
         providerId: modelConfig.providerId,
+        compressionInputTokens: compression?.inputTokens ?? null,
+        compressionSavedTokens: compression?.savedTokens ?? null,
         costMicroUsd: usageCostMicroUsd,
         isBatch,
       },
@@ -445,6 +459,17 @@ export interface RunUsageType {
   cachedTokens: number | null;
   // Optional: tokens spent writing to cache (e.g., Anthropic cache creation)
   cacheCreationTokens?: number | null;
+  // Headroom compression accounting (null when compression was not applied).
+  // Estimates from headroom's tokenizer, not the provider's billed counts.
+  compressionInputTokens?: number | null;
+  compressionSavedTokens?: number | null;
   costMicroUsd: number;
   isBatch: boolean;
+}
+
+// Per-LLM-call headroom compression usage, plumbed from the LLM layer into the
+// run usage row so it rolls up per agent loop.
+export interface CompressionUsage {
+  inputTokens: number;
+  savedTokens: number;
 }
