@@ -8,6 +8,7 @@ import { DustGoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/llm
 import { DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
 import { DustOpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { DustOpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_four";
+import { DustOpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_two";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import type {
   EndpointConfig,
@@ -31,6 +32,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIResponsesGlobalGptFiveDotFiveStream,
   [DustOpenAIResponsesGlobalGptFiveDotFourStream.id]:
     DustOpenAIResponsesGlobalGptFiveDotFourStream,
+  [DustOpenAIResponsesGlobalGptFiveDotTwoStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotTwoStream,
   [DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream,
   [DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream.id]:
