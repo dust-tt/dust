@@ -62,6 +62,7 @@ export function VerifyPage() {
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const lastAutoSubmittedCodeRef = useRef<string | null>(null);
 
   // Initialize countryCode once data is loaded.
   useEffect(() => {
@@ -173,8 +174,6 @@ export function VerifyPage() {
     setResendCooldown(RESEND_COOLDOWN_SECONDS);
     setStep("code");
   };
-
-  const lastAutoSubmittedCodeRef = useRef<string | null>(null);
 
   const verifyCode = useCallback(
     async (fullCode: string) => {
