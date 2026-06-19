@@ -1,5 +1,9 @@
-import { getImageConverter } from "@app/lib/api/files/processing/image_converter";
+import {
+  ConvertApiImageConverter,
+  ImgproxyImageConverter,
+} from "@app/lib/api/files/processing/image_converter";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { extensionsForContentType } from "@app/types/files";
@@ -124,19 +128,19 @@ async function resizeRasterImage(
     );
   }
 
-  const originalFormat = extensionsForContentType(file.contentType)[0].replace(
-    ".",
-    ""
-  );
+  const format = extensionsForContentType(file.contentType)[0].replace(".", "");
+  const resizeOptions = { format, maxSizePixels };
 
-  const converter = await getImageConverter(auth, logger);
-  const resizeResult = await converter.resize({
-    getSourceUrl: () => file.getSignedUrlForInlineView(auth),
-    getSourceStream: () => file.getReadStream({ auth, version: "original" }),
-    fileName: file.fileName,
-    format: originalFormat,
-    maxSizePixels,
-  });
+  const resizeResult = (await hasFeatureFlag(auth, "imgproxy_image_resize"))
+    ? await new ImgproxyImageConverter().resizeFromUrl(
+        await file.getSignedUrlForInlineView(auth),
+        resizeOptions
+      )
+    : await new ConvertApiImageConverter().resizeFromStream(
+        file.getReadStream({ auth, version: "original" }),
+        file.fileName,
+        resizeOptions
+      );
 
   if (resizeResult.isErr()) {
     logger.error(

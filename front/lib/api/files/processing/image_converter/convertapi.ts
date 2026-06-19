@@ -1,9 +1,6 @@
 import config from "@app/lib/api/config";
-import type { ResizeImageInput } from "@app/lib/api/files/processing/image_converter/base";
-import {
-  ImageConverter,
-  ImageConverterError,
-} from "@app/lib/api/files/processing/image_converter/base";
+import type { ResizeOptions } from "@app/lib/api/files/processing/image_converter/base";
+import { ImageConverterError } from "@app/lib/api/files/processing/image_converter/base";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -13,20 +10,21 @@ import { Readable } from "stream";
 
 const CONVERT_TIMEOUT_SECONDS = 30;
 
-export class ConvertApiImageConverter extends ImageConverter {
-  async resize({
-    getSourceStream,
-    fileName,
-    format,
-    maxSizePixels,
-  }: ResizeImageInput): Promise<Result<Readable, ImageConverterError>> {
+// TODO: remove this converter (and resizeFromStream) once imgproxy fully replaces ConvertAPI.
+export class ConvertApiImageConverter {
+  // ConvertAPI uploads the source bytes, so it resizes from a readable stream.
+  async resizeFromStream(
+    sourceStream: Readable,
+    fileName: string,
+    { format, maxSizePixels }: ResizeOptions
+  ): Promise<Result<Readable, ImageConverterError>> {
     const convertapi = new ConvertAPI(config.getConvertAPIKey());
     const maxSizeStr = maxSizePixels.toString();
 
     let result;
     try {
       const uploadResult = await convertapi.upload(
-        getSourceStream(),
+        sourceStream,
         `${fileName}.${format}`
       );
 

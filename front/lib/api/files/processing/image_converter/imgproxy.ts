@@ -1,9 +1,6 @@
 import config from "@app/lib/api/config";
-import type { ResizeImageInput } from "@app/lib/api/files/processing/image_converter/base";
-import {
-  ImageConverter,
-  ImageConverterError,
-} from "@app/lib/api/files/processing/image_converter/base";
+import type { ResizeOptions } from "@app/lib/api/files/processing/image_converter/base";
+import { ImageConverterError } from "@app/lib/api/files/processing/image_converter/base";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -37,14 +34,13 @@ function buildImgproxyUrl({
   return `${config.getImgproxyUrl()}/${signature}${path}`;
 }
 
-export class ImgproxyImageConverter extends ImageConverter {
-  async resize({
-    getSourceUrl,
-    format,
-    maxSizePixels,
-  }: ResizeImageInput): Promise<Result<Readable, ImageConverterError>> {
+export class ImgproxyImageConverter {
+  // imgproxy fetches the source itself, so it resizes from a (signed) URL.
+  async resizeFromUrl(
+    sourceUrl: string,
+    { format, maxSizePixels }: ResizeOptions
+  ): Promise<Result<Readable, ImageConverterError>> {
     try {
-      const sourceUrl = await getSourceUrl();
       const imgproxyUrl = buildImgproxyUrl({
         sourceUrl,
         maxSizePixels,
