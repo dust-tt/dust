@@ -10,6 +10,7 @@ import { OpenAIResponsesGlobalGptFiveStream } from "@app/lib/model_constructors/
 import { OpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { OpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four";
 import { OpenAIResponsesGlobalGptFiveDotFourMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four_mini";
+import { OpenAIResponsesGlobalGptFiveDotFourNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four_nano";
 import { OpenAIResponsesGlobalGptFiveDotOneStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_one";
 import { OpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_two";
 
@@ -35,6 +36,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIResponsesGlobalGptFiveDotOneStream,
   [OpenAIResponsesGlobalGptFiveDotFourMiniStream.id]:
     OpenAIResponsesGlobalGptFiveDotFourMiniStream,
+  [OpenAIResponsesGlobalGptFiveDotFourNanoStream.id]:
+    OpenAIResponsesGlobalGptFiveDotFourNanoStream,
   [AgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     AgentPlatformEuropeClaudeHaikuFourDotFiveStream,
   [GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream.id]:

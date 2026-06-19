@@ -10,6 +10,7 @@ import { DustOpenAIResponsesGlobalGptFiveStream } from "@app/lib/llms/stream/end
 import { DustOpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { DustOpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_four";
 import { DustOpenAIResponsesGlobalGptFiveDotFourMiniStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_four_mini";
+import { DustOpenAIResponsesGlobalGptFiveDotFourNanoStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_four_nano";
 import { DustOpenAIResponsesGlobalGptFiveDotOneStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_one";
 import { DustOpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_two";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
@@ -43,6 +44,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIResponsesGlobalGptFiveDotOneStream,
   [DustOpenAIResponsesGlobalGptFiveDotFourMiniStream.id]:
     DustOpenAIResponsesGlobalGptFiveDotFourMiniStream,
+  [DustOpenAIResponsesGlobalGptFiveDotFourNanoStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotFourNanoStream,
   [DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream,
   [DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream.id]:
