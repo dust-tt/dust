@@ -53,6 +53,7 @@ export function isSupportingResponseFormat(modelId: ModelIdType) {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  DUST_C = "dust-c",
   DUST_OMITTED = "dust-omitted",
   DUST_HIGH = "dust-high",
   DUST_HIGH_OMITTED = "dust-high-omitted",
@@ -218,6 +219,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 // Not exhaustive.
 const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.DUST_C,
   GLOBAL_AGENTS_SID.DEEP_DIVE,
   GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
   GLOBAL_AGENTS_SID.GPT5,

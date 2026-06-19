@@ -500,6 +500,24 @@ export function _getDustGlobalAgent(
   });
 }
 
+// Exact clone of @dust (same model, reasoning effort, instructions, tools). The
+// only difference is that @dust-c routes its conversation through headroom
+// compression, gated on the agent id in StreamEndpointTransition. Gated behind
+// the headroom_compression feature flag in getGlobalAgents.
+export function _getDustCGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_C,
+    name: "dust-c",
+    preferredModelConfiguration: args.preferGpt55DefaultModel
+      ? GPT_5_5_MODEL_CONFIG
+      : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
 export function _getDustHighGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs

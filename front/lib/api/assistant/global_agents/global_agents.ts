@@ -22,6 +22,7 @@ import {
   _getDustAntHighOmittedGlobalAgent,
   _getDustAntMediumGlobalAgent,
   _getDustAntMediumOmittedGlobalAgent,
+  _getDustCGlobalAgent,
   _getDustDeepseekGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlmGlobalAgent,
@@ -138,6 +139,12 @@ const GLOBAL_AGENT_FLAGS: Record<
   }
 > = {
   [GLOBAL_AGENTS_SID.DUST]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_C]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -941,6 +948,17 @@ function getGlobalAgent({
         preferGpt55DefaultModel,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_C:
+      agentConfiguration = _getDustCGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+        excludeProviders,
+        preferGpt55DefaultModel,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_HIGH:
       agentConfiguration = _getDustHighGlobalAgent(auth, {
         settings,
@@ -1472,6 +1490,11 @@ export async function getGlobalAgents(
 
   const flags = await getFeatureFlags(auth);
 
+  if (!flags.includes("headroom_compression")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_C
+    );
+  }
   if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1
