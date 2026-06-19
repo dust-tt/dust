@@ -244,8 +244,6 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       ? [TOOL_SEARCH_TOOL, ...tools]
       : tools;
 
-    console.log(">> toolsWithSearch", toolsWithSearch);
-
     return {
       model: this.modelId,
       ...thinkingConfig,
@@ -321,12 +319,6 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     payload: BetaMessageStreamParams
   ): AsyncGenerator<LLMEvent> {
     try {
-      // DEBUG: dump the exact payload sent to Anthropic (tools + defer_loading).
-      // Remove before shipping.
-      // console.log(
-      //   "[anthropic][debug] request payload",
-      //   JSON.stringify(payload, null, 2)
-      // );
       const events = this.inferenceClient.beta.messages.stream(payload);
 
       yield* streamLLMEvents(events, this.metadata);
