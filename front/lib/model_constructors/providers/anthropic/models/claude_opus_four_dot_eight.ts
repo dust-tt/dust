@@ -4,7 +4,7 @@ import {
   inputConfigSchema,
   temperatureSchema,
 } from "@app/lib/model_constructors/types/input/configuration";
-import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { CLAUDE_OPUS_4_8_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import { z } from "zod";
 
@@ -14,6 +14,8 @@ const MAX_OUTPUT_TOKENS = 64_000;
 
 const baseConfig = inputConfigSchema.extend({
   cacheKey: z.undefined(),
+  // Opus 4.8 rejects any explicit temperature !== 1.
+  temperature: temperatureSchema.optional().transform(() => 1 as const),
 });
 
 const configSchema = z.union([
@@ -24,32 +26,28 @@ const configSchema = z.union([
       })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
     forceTool: z.undefined(),
-    // Reasoning requires temperature=1.
-    temperature: temperatureSchema.optional().transform(() => 1 as const),
   }),
   baseConfig.extend({
     reasoning: z.object({ effort: z.literal("none") }),
-    temperature: temperatureSchema.optional().default(1),
   }),
 ]);
 
-export type ClaudeSonnetFourDotSix = z.infer<typeof configSchema>;
+export type ClaudeOpusFourDotEight = z.infer<typeof configSchema>;
 
-// Mixin carrying shared config; runtime base differs per surface.
-export function WithAnthropicClaudeSonnetFourDotSixConfig<
+export function WithAnthropicClaudeOpusFourDotEightConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class AnthropicClaudeSonnetFourDotSix extends Base {
+  abstract class AnthropicClaudeOpusFourDotEight extends Base {
     // Narrow `Client`'s `["constructor"]` to this model's precise config so the
-    // instance type carries `ClaudeSonnetFourDotSix` (not the wide `InputConfig`).
-    declare ["constructor"]: BaseEndpointConfiguration<ClaudeSonnetFourDotSix>;
+    // instance type carries `ClaudeOpusFourDotEight` (not the wide `InputConfig`).
+    declare ["constructor"]: BaseEndpointConfiguration<ClaudeOpusFourDotEight>;
 
-    static readonly modelId = CLAUDE_SONNET_4_6_MODEL_ID;
+    static readonly modelId = CLAUDE_OPUS_4_8_MODEL_ID;
 
     static readonly configSchema: z.ZodType<
-      ClaudeSonnetFourDotSix,
+      ClaudeOpusFourDotEight,
       z.ZodTypeDef,
       unknown
     > = configSchema;
@@ -58,5 +56,5 @@ export function WithAnthropicClaudeSonnetFourDotSixConfig<
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
   }
 
-  return AnthropicClaudeSonnetFourDotSix;
+  return AnthropicClaudeOpusFourDotEight;
 }
