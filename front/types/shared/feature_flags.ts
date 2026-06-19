@@ -16,7 +16,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   anthropic_cache_diagnostics: {
     description:
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
-    stage: "on_demand",
+    stage: "dust_only",
   },
   use_vertex_for_supported_models: {
     description:
