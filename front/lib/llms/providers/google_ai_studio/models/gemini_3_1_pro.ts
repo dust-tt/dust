@@ -6,7 +6,7 @@ export function WithDustGoogleAiStudioGemini31ProConfig<
   abstract class DustGoogleAiStudioGemini31Pro extends Base {
     static readonly displayName = "Gemini 3.1 Pro (Preview)";
     static readonly description =
-      "Google's Gemini 3.1 Pro model, a state-of-the-art reasoning model with a 1M-token context window.";
+      "Google's latest powerful model with enhanced reasoning (1m context).";
     static readonly defaultReasoningEffort = "low";
     static readonly byok = true;
   }

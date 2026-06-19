@@ -4,8 +4,9 @@ export function WithDustMistralCodestralConfig<
   ) => object,
 >(Base: TBase) {
   abstract class DustMistralCodestral extends Base {
-    static readonly displayName = "Codestral";
-    static readonly description = "Mistral's code model (128k context).";
+    static readonly displayName = "Mistral Codestral";
+    static readonly description =
+      "Mistral's `codestral` model, specifically designed and optimized for code generation tasks.";
     // Codestral is a non-reasoning model.
     static readonly defaultReasoningEffort = "none";
     static readonly byok = true;

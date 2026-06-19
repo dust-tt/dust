@@ -6,7 +6,7 @@ export function WithDustMistralMedium35Config<
   abstract class DustMistralMedium35 extends Base {
     static readonly displayName = "Mistral Medium 3.5";
     static readonly description =
-      "Mistral's medium reasoning model (256k context).";
+      "Mistral's `medium 3.5` model, multimodal and optimized for agentic and coding use cases (256k context).";
     static readonly defaultReasoningEffort = "none";
     static readonly byok = true;
   }

@@ -6,7 +6,7 @@ export function WithDustGoogleAiStudioGemini31FlashLiteConfig<
   abstract class DustGoogleAiStudioGemini31FlashLite extends Base {
     static readonly displayName = "Gemini 3.1 Flash Lite";
     static readonly description =
-      "Google's latest lightweight model with a 1M-token context window.";
+      "Google's latest lightweight large context model (1m context).";
     // Mirrors the legacy default reasoning effort ("light" → "low").
     static readonly defaultReasoningEffort = "low";
     static readonly byok = true;
