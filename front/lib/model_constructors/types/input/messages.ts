@@ -26,6 +26,7 @@ export type BaseToolCallResultMessage = {
   type: "tool_call_result";
   content: {
     callId: string;
+    toolName: string;
     parts: ToolCallResultPart[];
     isError: boolean;
   };

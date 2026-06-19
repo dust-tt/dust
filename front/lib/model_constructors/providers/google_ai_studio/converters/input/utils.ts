@@ -139,6 +139,7 @@ export async function toolCallResultMessageToContent(
       {
         functionResponse: {
           id: message.content.callId,
+          name: message.content.toolName,
           response: message.content.isError ? { error: output } : { output },
         },
       },

@@ -235,6 +235,7 @@ describe("toolCallResultMessageToToolResultBlock", () => {
       type: "tool_call_result",
       content: {
         callId: "call_1",
+        toolName: "tool_1",
         parts: [
           { type: "text", text: "result text" },
           { type: "image_url", url: "https://example.com/img.png" },
@@ -259,7 +260,7 @@ describe("toolCallResultMessageToToolResultBlock", () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
-      content: { callId: "call_err", parts: [], isError: true },
+      content: { callId: "call_err", toolName: "tool_err", parts: [], isError: true },
     };
     expect(toolCallResultMessageToToolResultBlock(message)).toEqual({
       type: "tool_result",
@@ -273,7 +274,7 @@ describe("toolCallResultMessageToToolResultBlock", () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
-      content: { callId: "call_ok", parts: [], isError: false },
+      content: { callId: "call_ok", toolName: "tool_ok", parts: [], isError: false },
     };
     expect(toolCallResultMessageToToolResultBlock(message)).not.toHaveProperty(
       "is_error"
@@ -284,7 +285,7 @@ describe("toolCallResultMessageToToolResultBlock", () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
-      content: { callId: "call_c", parts: [], isError: false },
+      content: { callId: "call_c", toolName: "tool_c", parts: [], isError: false },
       cache: "short",
     };
     expect(toolCallResultMessageToToolResultBlock(message)).toMatchObject({
@@ -296,7 +297,7 @@ describe("toolCallResultMessageToToolResultBlock", () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
-      content: { callId: "call_empty", parts: [], isError: false },
+      content: { callId: "call_empty", toolName: "tool_empty", parts: [], isError: false },
     };
     expect(toolCallResultMessageToToolResultBlock(message).content).toEqual([]);
   });
@@ -406,7 +407,7 @@ describe("userMessageToContentBlocks", () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
-      content: { callId: "c", parts: [], isError: false },
+      content: { callId: "c", toolName: "t", parts: [], isError: false },
     };
     userMessageToContentBlocks(message, stub);
     expect(stub.toolCallResultMessageToToolResultBlock).toHaveBeenCalledWith(
