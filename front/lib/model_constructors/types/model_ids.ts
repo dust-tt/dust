@@ -1,5 +1,6 @@
 export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
 export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
+export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
 export const GPT_5_2_MODEL_ID = "gpt-5.2" as const;
 export const GPT_5_MODEL_ID = "gpt-5" as const;
 export const GPT_5_1_MODEL_ID = "gpt-5.1" as const;
@@ -21,6 +22,7 @@ export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
 export const MODEL_IDS = [
   GPT_5_5_MODEL_ID,
   GPT_5_4_MODEL_ID,
+  GPT_5_4_MINI_MODEL_ID,
   GPT_5_2_MODEL_ID,
   GPT_5_MODEL_ID,
   GPT_5_1_MODEL_ID,
