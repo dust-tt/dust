@@ -15,6 +15,7 @@ export const googleAiStudioConfigSchema = inputConfigSchema.extend({
     })
     .optional(),
   cacheKey: z.undefined(),
+  // Not required but strongly recommended by Google for Gemini 3
   temperature: temperatureSchema.optional().transform(() => 1 as const),
 });
 
