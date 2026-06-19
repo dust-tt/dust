@@ -73,9 +73,9 @@ export function PodSettingsTab({
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
-  const hasWorkspaceDefaultAgent = hasFeature("workspace_default_agent");
+  const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   const isDefaultAgentEnabled =
-    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgent;
+    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgentFeature;
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -97,11 +97,11 @@ export function PodSettingsTab({
     agentConfigurations.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ?? null;
   // When the pod has no default set, new conversations inherit the workspace
   // default agent (then @dust).
-  const workspaceDefaultAgentId = hasWorkspaceDefaultAgent
+  const workspaceDefaultAgentId = hasWorkspaceDefaultAgentFeature
     ? getWorkspaceDefaultAgentId(owner)
     : null;
   const isInheritingWorkspaceDefault =
-    hasWorkspaceDefaultAgent && !podMetadata?.defaultAgentId;
+    hasWorkspaceDefaultAgentFeature && !podMetadata?.defaultAgentId;
   const resolvedDefaultAgentId =
     podMetadata?.defaultAgentId ?? workspaceDefaultAgentId;
   // Fall back to @dust when the default agent isn't available to the
@@ -429,7 +429,7 @@ export function PodSettingsTab({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               The agent pre-selected when anyone starts a new conversation in
               this Pod.{" "}
-              {hasWorkspaceDefaultAgent
+              {hasWorkspaceDefaultAgentFeature
                 ? "When unset, it inherits the workspace default agent."
                 : "Defaults to @dust."}
             </p>
@@ -446,15 +446,16 @@ export function PodSettingsTab({
                   {/* Clearing the pod default reverts to inheriting the
                       workspace default. Only shown when the workspace-default
                       feature is on and an explicit pod default is set. */}
-                  {hasWorkspaceDefaultAgent && podMetadata?.defaultAgentId && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={XCircle}
-                      tooltip="Reset to workspace default"
-                      onClick={() => void saveDefaultAgent(null)}
-                    />
-                  )}
+                  {hasWorkspaceDefaultAgentFeature &&
+                    podMetadata?.defaultAgentId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={XCircle}
+                        tooltip="Reset to workspace default"
+                        onClick={() => void saveDefaultAgent(null)}
+                      />
+                    )}
                 </>
               ) : (
                 renderDefaultAgentPill(false)

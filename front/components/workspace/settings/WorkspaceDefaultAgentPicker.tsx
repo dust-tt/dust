@@ -7,6 +7,8 @@ import type { WorkspaceType } from "@app/types/user";
 import { Avatar, Button, ContextItem, Robot } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
+const ROBOT_VISUAL = <Robot className="h-6 w-6" />;
+
 interface WorkspaceDefaultAgentPickerProps {
   owner: WorkspaceType;
 }
@@ -55,7 +57,7 @@ export function WorkspaceDefaultAgentPicker({
     <ContextItem
       title="Default agent"
       subElement="The agent pre-selected when anyone starts a new conversation in this workspace."
-      visual={<Robot className="h-6 w-6" />}
+      visual={ROBOT_VISUAL}
       hasSeparatorIfLast={true}
       action={
         <AgentPicker
