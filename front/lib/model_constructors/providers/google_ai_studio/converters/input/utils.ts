@@ -228,15 +228,6 @@ function assistantMessageToContent(
   }
 }
 
-function isFunctionResponseContent(content: Content): boolean {
-  const parts = content.parts ?? [];
-  return (
-    content.role === "user" &&
-    parts.length > 0 &&
-    parts.every((part) => part.functionResponse !== undefined)
-  );
-}
-
 export async function conversationToContents(
   conversation: BaseConversation,
   converters: ContentBlockConverters
@@ -260,16 +251,21 @@ export async function conversationToContents(
     { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
   );
 
-  // Merge consecutive function-response turns into one user turn: Gemini
-  // requires the functionResponse part count to match the functionCall count of
-  // the preceding model turn.
+  // Merge consecutive same-role turns into a single Content. This serves two
+  // purposes:
+  // - Function-response turns: Gemini requires the functionResponse part count
+  //   to match the functionCall count of the preceding model turn.
+  // - Model turns: a single assistant turn is split into one BaseMessage per
+  //   content block (reasoning, tool call, text), so they arrive here as
+  //   separate model Contents. Gemini computes the tool call's thoughtSignature
+  //   over the whole turn (e.g. reasoning followed by the functionCall), so the
+  //   parts must be replayed together in one Content or the signature is
+  //   rejected as corrupted.
+  // Consecutive same-role Contents only arise from one logical turn being split:
+  // distinct assistant turns are always separated by a tool-result/user turn.
   return contents.reduce<Content[]>((merged, content) => {
     const previous = merged[merged.length - 1];
-    if (
-      previous &&
-      isFunctionResponseContent(previous) &&
-      isFunctionResponseContent(content)
-    ) {
+    if (previous && previous.role === content.role) {
       return [
         ...merged.slice(0, -1),
         {
