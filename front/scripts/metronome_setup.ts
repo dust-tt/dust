@@ -21,6 +21,7 @@ import {
   CONTRACT_CREDIT_TYPE_POOL,
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
+  HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
   MAX_SEAT_MONTHLY_AWU_CREDITS,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
@@ -1448,6 +1449,7 @@ const CUSTOM_FIELD_KEYS: Array<{
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
   { entity: "contract", key: PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY },
+  { entity: "contract", key: HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY },
   // Stamped on individual contract_credit instances to identify excess
   // recurring credits ("excess") vs. workspace-pool credits ("pool"). Lets
   // the default ContractCredit-balance alerts filter on value="pool" to
