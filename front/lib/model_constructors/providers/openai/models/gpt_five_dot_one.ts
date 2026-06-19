@@ -10,17 +10,12 @@ import { z } from "zod";
 // https://developers.openai.com/api/docs/models/gpt-5.1
 const CONTEXT_SIZE = 400_000;
 const MAX_OUTPUT_TOKENS = 128_000;
-const DEFAULT_REASONING_EFFORT = "medium";
+const DEFAULT_REASONING_EFFORT = "none";
 
-// gpt-5.1 accepts none/low/medium/high/xhigh. "minimal" and the universal
-// "maximal" are unsupported and surface as an input configuration error.
-const GPT_5_1_REASONING_EFFORTS = [
-  "none",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-] as const;
+// gpt-5.1 accepts none/low/medium/high (matching the legacy router). "minimal",
+// "xhigh" and the universal "maximal" are unsupported and surface as an input
+// configuration error.
+const GPT_5_1_REASONING_EFFORTS = ["none", "low", "medium", "high"] as const;
 
 // gpt-5.1 rejects temperature entirely (unlike gpt-5.5 which allows it with reasoning: none).
 const configSchema = inputConfigSchema.extend({

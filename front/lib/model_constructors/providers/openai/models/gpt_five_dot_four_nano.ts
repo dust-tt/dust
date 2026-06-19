@@ -10,28 +10,25 @@ import { z } from "zod";
 // https://developers.openai.com/api/docs/models/gpt-5.4-nano
 const CONTEXT_SIZE = 400_000;
 const MAX_OUTPUT_TOKENS = 128_000;
-const DEFAULT_REASONING_EFFORT = "medium";
+const DEFAULT_REASONING_EFFORT = "none";
 
-// gpt-5.4-nano accepts none/low/medium/high/xhigh. "minimal" and the universal
-// "maximal" are unsupported and surface as an input configuration error.
-const GPT_5_4_NANO_REASONING_EFFORTS = [
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-] as const;
+// gpt-5.4-nano accepts none/low/medium/high (matching the legacy router).
+// "minimal", "xhigh" and the universal "maximal" are unsupported and surface as
+// an input configuration error.
+const GPT_5_4_NANO_REASONING_EFFORTS = ["low", "medium", "high"] as const;
 
 const configSchema = z.union([
+  // Reasoning off is the default; the Responses API then allows a temperature.
   inputConfigSchema.extend({
     reasoning: z
-      .object({ effort: z.enum(GPT_5_4_NANO_REASONING_EFFORTS) })
+      .object({ effort: z.literal("none") })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
-    // The Responses API rejects an explicit temperature while reasoning is on.
-    temperature: temperatureSchema.optional().transform(() => undefined),
-  }),
-  inputConfigSchema.extend({
-    reasoning: z.object({ effort: z.literal("none") }),
     temperature: temperatureSchema.optional(),
+  }),
+  // Reasoning on: the Responses API rejects an explicit temperature.
+  inputConfigSchema.extend({
+    reasoning: z.object({ effort: z.enum(GPT_5_4_NANO_REASONING_EFFORTS) }),
+    temperature: temperatureSchema.optional().transform(() => undefined),
   }),
 ]);
 

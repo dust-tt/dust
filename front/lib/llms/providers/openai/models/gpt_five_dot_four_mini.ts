@@ -7,7 +7,7 @@ export function WithDustGptFiveDotFourMiniConfig<
     static readonly displayName = "GPT-5.4 Mini";
     static readonly description =
       "OpenAI's faster, cost-efficient GPT-5.4 for well-defined tasks (400k context).";
-    static readonly defaultReasoningEffort = "medium";
+    static readonly defaultReasoningEffort = "none";
     static readonly byok = true;
   }
 

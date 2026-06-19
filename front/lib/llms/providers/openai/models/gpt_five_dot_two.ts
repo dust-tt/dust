@@ -7,7 +7,7 @@ export function WithDustGptFiveDotTwoConfig<
     static readonly displayName = "GPT-5.2";
     static readonly description =
       "OpenAI's GPT-5.2 reasoning model for complex reasoning tasks (400k context).";
-    static readonly defaultReasoningEffort = "medium";
+    static readonly defaultReasoningEffort = "none";
     static readonly byok = true;
   }
 
