@@ -33,11 +33,6 @@ const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
 
 const PutUserSpendLimitResponseSchema = z.object({
   limit: SpendLimitResponseSchema,
-  transitionedTo: z.union([
-    z.literal("reached"),
-    z.literal("resolved"),
-    z.null(),
-  ]),
 });
 
 type PaginationParams = {
