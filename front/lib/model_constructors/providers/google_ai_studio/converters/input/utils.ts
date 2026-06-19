@@ -41,6 +41,7 @@ const GOOGLE_AI_STUDIO_SUPPORTED_IMAGE_MIME_TYPES = [
 ];
 
 const IMAGE_LOAD_FAILED_TEXT = "Attachment: image could not be loaded.";
+const UNSUPPORTED_MIME_TYPE_MESSAGE = "Image mime type is not supported.";
 
 // Conversion fans out to external image fetches; bound the concurrency.
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
@@ -58,7 +59,7 @@ async function imageUrlToPart(url: string): Promise<Part> {
 
   const { mediaType, data } = fetchResult;
   if (!GOOGLE_AI_STUDIO_SUPPORTED_IMAGE_MIME_TYPES.includes(mediaType)) {
-    return { text: IMAGE_LOAD_FAILED_TEXT };
+    return { text: UNSUPPORTED_MIME_TYPE_MESSAGE };
   }
 
   return { inlineData: { mimeType: mediaType, data } };
