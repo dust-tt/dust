@@ -3,7 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { WARNING_BALANCE_RATIO } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
-  listContractPerUserCreditBalances,
+  listCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import { CONTRACT_CREDIT_TYPE_FREE_SEAT } from "@app/lib/metronome/constants";
@@ -450,9 +450,8 @@ export async function reconcileWorkspaceUserCreditStates({
   // free user with credit remaining lands on `user_seat` (not `on_pool`) and is
   // moved to `capped` once exhausted. A read failure leaves the map empty —
   // free users then fall back to the seat-balance path (null) as before.
-  const perUserCreditBalancesResult = await listContractPerUserCreditBalances({
+  const perUserCreditBalancesResult = await listCustomerPerUserCreditBalances({
     metronomeCustomerId,
-    metronomeContractId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (perUserCreditBalancesResult.isErr()) {

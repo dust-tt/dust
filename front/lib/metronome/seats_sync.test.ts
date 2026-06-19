@@ -16,7 +16,7 @@ const {
   mockListPerUserCreditUserIds,
   mockListPerUserCreditBalances,
   mockAddPerUserCredit,
-  mockArchiveContractCredit,
+  mockRevokePerUserCustomerCredit,
   mockUpsertPerUserCreditAlerts,
   mockClearPerUserCreditAlerts,
   mockListSeatBalances,
@@ -32,7 +32,7 @@ const {
   mockListPerUserCreditUserIds: vi.fn(),
   mockListPerUserCreditBalances: vi.fn(),
   mockAddPerUserCredit: vi.fn(),
-  mockArchiveContractCredit: vi.fn(),
+  mockRevokePerUserCustomerCredit: vi.fn(),
   mockUpsertPerUserCreditAlerts: vi.fn(),
   mockClearPerUserCreditAlerts: vi.fn(),
   mockListSeatBalances: vi.fn(),
@@ -45,10 +45,10 @@ vi.mock("@app/lib/metronome/client", () => ({
   updateSubscriptionSeats: mockUpdateSubscriptionSeats,
   getMetronomeSubscriptionSeatState: mockGetSeatState,
   getMetronomeSubscriptionAssignedSeatIds: mockGetAssignedSeatIds,
-  listContractPerUserCreditUserIds: mockListPerUserCreditUserIds,
-  listContractPerUserCreditBalances: mockListPerUserCreditBalances,
-  addPerUserCreditToContract: mockAddPerUserCredit,
-  archiveContractCredit: mockArchiveContractCredit,
+  listCustomerPerUserCreditUserIds: mockListPerUserCreditUserIds,
+  listCustomerPerUserCreditBalances: mockListPerUserCreditBalances,
+  addPerUserCreditToCustomer: mockAddPerUserCredit,
+  revokePerUserCustomerCredit: mockRevokePerUserCustomerCredit,
   // Seat-credit transfer path (no-op in these tests: empty balances ⇒ no
   // transfers ⇒ the segment-find / adjust helpers are never reached).
   listMetronomeSeatBalances: mockListSeatBalances,
@@ -117,7 +117,7 @@ describe("syncSeatCount min clamping", () => {
     mockListPerUserCreditUserIds.mockResolvedValue(new Ok(new Set()));
     mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
     mockAddPerUserCredit.mockResolvedValue(new Ok(null));
-    mockArchiveContractCredit.mockResolvedValue(new Ok(undefined));
+    mockRevokePerUserCustomerCredit.mockResolvedValue(new Ok(undefined));
     mockUpsertPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
     mockClearPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
     // No seat balances / assignments ⇒ the credit-transfer reconciliation

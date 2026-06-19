@@ -14,7 +14,7 @@ import {
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import {
-  listContractPerUserCreditBalances,
+  listCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import {
@@ -312,9 +312,8 @@ async function fetchSeatBalancesForMembersTable({
   // balance: a user who switched free → pro/max still has a leftover free
   // credit, and it must not overwrite their (real) pro/max seat balance.
   // Degrades silently on read failure.
-  const perUserCreditBalances = await listContractPerUserCreditBalances({
+  const perUserCreditBalances = await listCustomerPerUserCreditBalances({
     metronomeCustomerId,
-    metronomeContractId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (perUserCreditBalances.isOk()) {

@@ -3,17 +3,17 @@ import {
   upsertPerUserCreditBalanceAlerts,
 } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import {
-  addPerUserCreditToContract,
+  addPerUserCreditToCustomer,
   adjustSeatCreditBalances,
-  archiveContractCredit,
   findSeatCreditSegmentForPeriod,
   getMetronomeContractById,
   getMetronomeSeatActiveSince,
   getMetronomeSubscriptionAssignedSeatIds,
   getMetronomeSubscriptionSeatState,
-  listContractPerUserCreditBalances,
-  listContractPerUserCreditUserIds,
+  listCustomerPerUserCreditBalances,
+  listCustomerPerUserCreditUserIds,
   listMetronomeSeatBalances,
+  revokePerUserCustomerCredit,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
@@ -57,7 +57,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { addYears } from "date-fns";
 
 /**
  * Returns true if the contract is seat-billed (any subscription should be
@@ -510,29 +509,27 @@ export async function remapMembershipSeatTypesForContract({
 // The free seat AWU grant is anchored on per-seat first-appearance, not on a
 // recurring schedule: a recurring INDIVIDUAL credit either refills every period
 // or closes its issuance window, so it can't grant "once per seat, ever,
-// whenever the seat is assigned". Instead we grant a standalone contract credit
+// whenever the seat is assigned". Instead we grant a standalone customer credit
 // scoped to the user via a `user_id` presentation specifier, idempotent on
-// (workspaceId, userId), valid for one year from the grant.
+// (workspaceId, userId). Customer credits survive contract transitions
+// automatically — no carry-over needed, no expiry.
 //
 // `syncSeatCount` runs on every membership change and reconciles full state, so
 // it calls this for ALL currently-free users on each sync. We first list the
-// contract's existing per-user credits and skip users already granted — so a
-// steady-state sync makes a single read instead of one edit call per free user.
+// customer's existing per-user credits and skip users already granted — so a
+// steady-state sync makes a single read instead of one API call per free user.
 // The grant's `uniqueness_key` still guards against double-granting on the race
 // between the read and a concurrent sync (a 409 returns `Ok(null)`). Listing
-// includes expired/archived credits so a lapsed grant is not re-issued. This
-// self-heals a grant that failed on a previous sync — a delta-only grant could
-// miss a user permanently once their seat is assigned. Best-effort: a failure
-// is logged but never fails (and retries) the seat reconciliation.
+// includes archived credits so a past grant is not re-issued. This self-heals a
+// grant that failed on a previous sync. Best-effort: a failure is logged but
+// never fails (and retries) the seat reconciliation.
 async function grantFreeSeatCredits({
   metronomeCustomerId,
-  contractId,
   workspaceId,
   userIds,
   startingAt,
 }: {
   metronomeCustomerId: string;
-  contractId: string;
   workspaceId: string;
   userIds: string[];
   startingAt: Date;
@@ -543,15 +540,14 @@ async function grantFreeSeatCredits({
 
   // Skip users that already have a credit. On a read failure we fall back to
   // attempting every user — the grant is still idempotent via its uniqueness
-  // key, so we never double-grant, only make redundant (no-op) edit calls.
-  const alreadyGranted = await listContractPerUserCreditUserIds({
+  // key, so we never double-grant, only make redundant (no-op) API calls.
+  const alreadyGranted = await listCustomerPerUserCreditUserIds({
     metronomeCustomerId,
-    metronomeContractId: contractId,
     creditName: FREE_SEAT_CREDIT_NAME,
   });
   if (alreadyGranted.isErr()) {
     logger.warn(
-      { workspaceId, contractId, error: alreadyGranted.error },
+      { workspaceId, error: alreadyGranted.error },
       "[Metronome] Could not list existing free seat credits; attempting all grants (idempotent)"
     );
   }
@@ -564,9 +560,8 @@ async function grantFreeSeatCredits({
   await concurrentExecutor(
     toGrant,
     async (userId) => {
-      const result = await addPerUserCreditToContract({
+      const result = await addPerUserCreditToCustomer({
         metronomeCustomerId,
-        metronomeContractId: contractId,
         productId: getProductSeatSubscriptionCreditsId(),
         creditTypeId: getCreditTypeAwuId(),
         contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
@@ -574,18 +569,16 @@ async function grantFreeSeatCredits({
         userId,
         productTags: [USAGE_TAG],
         startingAt,
-        endingBefore: addYears(startingAt, 1),
         name: FREE_SEAT_CREDIT_NAME,
         priority: AWU_PRIORITY_FREE_SEAT_CREDIT,
-        // Scope the key to the contract, not just the workspace+user: each
-        // contract holds its own credit, so a switch-contract must be able to
-        // grant a fresh credit on the new contract. A workspace+user key would
-        // collide with the prior contract's grant and 422.
-        uniquenessKey: `free-seat-credit:${contractId}:${userId}`,
+        // Workspace+user scoped: customer credits survive across contracts, so
+        // there is no need to scope per-contract. A given user in a workspace
+        // gets exactly one lifetime free credit regardless of contract changes.
+        uniquenessKey: `free-seat-credit:${workspaceId}:${userId}`,
       });
       if (result.isErr()) {
         logger.error(
-          { workspaceId, contractId, userId, error: result.error },
+          { workspaceId, userId, error: result.error },
           "[Metronome] Failed to grant free seat credit"
         );
       }
@@ -610,7 +603,7 @@ async function grantFreeSeatCredits({
       });
       if (alertResult.isErr()) {
         logger.error(
-          { workspaceId, contractId, userId, error: alertResult.error },
+          { workspaceId, userId, error: alertResult.error },
           "[Metronome] Failed to upsert per-user free credit alerts"
         );
       }
@@ -620,29 +613,26 @@ async function grantFreeSeatCredits({
 }
 
 // Revoke free-seat credits for users who once had one but are no longer on a
-// free seat (e.g. upgraded to pro): archive the now-stale credit so it stops
-// drawing against their usage, and drop its low/empty alerts. The grant's
-// uniqueness key is left untouched (archive is a separate edit), so the user can
-// never re-claim a free credit on this contract. Best-effort; runs each sync.
+// free seat (e.g. upgraded to pro): end the credit early so it stops drawing
+// against their usage, and drop its low/empty alerts. The grant's uniqueness key
+// is untouched so the user can never re-claim the same credit. Best-effort; runs
+// each sync.
 async function revokeFreeSeatCreditsForExFreeUsers({
   metronomeCustomerId,
-  contractId,
   workspaceId,
   currentFreeUserIds,
 }: {
   metronomeCustomerId: string;
-  contractId: string;
   workspaceId: string;
   currentFreeUserIds: Set<string>;
 }): Promise<void> {
-  const activeCreditsResult = await listContractPerUserCreditBalances({
+  const activeCreditsResult = await listCustomerPerUserCreditBalances({
     metronomeCustomerId,
-    metronomeContractId: contractId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (activeCreditsResult.isErr()) {
     logger.warn(
-      { workspaceId, contractId, error: activeCreditsResult.error },
+      { workspaceId, error: activeCreditsResult.error },
       "[Metronome] Could not list per-user credits to revoke; skipping"
     );
     return;
@@ -658,21 +648,14 @@ async function revokeFreeSeatCreditsForExFreeUsers({
     toRevoke,
     async ([userId, { creditIds }]) => {
       for (const creditId of creditIds) {
-        const archiveResult = await archiveContractCredit({
+        const revokeResult = await revokePerUserCustomerCredit({
           metronomeCustomerId,
-          metronomeContractId: contractId,
           creditId,
         });
-        if (archiveResult.isErr()) {
+        if (revokeResult.isErr()) {
           logger.error(
-            {
-              workspaceId,
-              contractId,
-              userId,
-              creditId,
-              error: archiveResult.error,
-            },
-            "[Metronome] Failed to archive ex-free-seat credit"
+            { workspaceId, userId, creditId, error: revokeResult.error },
+            "[Metronome] Failed to revoke ex-free-seat credit"
           );
         }
       }
@@ -683,7 +666,7 @@ async function revokeFreeSeatCreditsForExFreeUsers({
       });
       if (clearResult.isErr()) {
         logger.error(
-          { workspaceId, contractId, userId, error: clearResult.error },
+          { workspaceId, userId, error: clearResult.error },
           "[Metronome] Failed to clear ex-free-seat credit alerts"
         );
       }
@@ -1508,14 +1491,12 @@ export async function syncSeatCount({
     const currentFreeUserIds = new Set(desiredSIdsAt("free", baseMs));
     await grantFreeSeatCredits({
       metronomeCustomerId,
-      contractId,
       workspaceId: workspace.sId,
       userIds: [...currentFreeUserIds],
       startingAt: new Date(baseMs),
     });
     await revokeFreeSeatCreditsForExFreeUsers({
       metronomeCustomerId,
-      contractId,
       workspaceId: workspace.sId,
       currentFreeUserIds,
     });
