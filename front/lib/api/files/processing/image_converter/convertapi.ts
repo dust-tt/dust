@@ -1,6 +1,9 @@
 import config from "@app/lib/api/config";
 import type { ResizeOptions } from "@app/lib/api/files/processing/image_converter/base";
-import { ImageConverterError } from "@app/lib/api/files/processing/image_converter/base";
+import {
+  ImageConverter,
+  ImageConverterError,
+} from "@app/lib/api/files/processing/image_converter/base";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -10,8 +13,8 @@ import { Readable } from "stream";
 
 const CONVERT_TIMEOUT_SECONDS = 30;
 
-// TODO: remove this converter (and resizeFromStream) once imgproxy fully replaces ConvertAPI.
-export class ConvertApiImageConverter {
+// TODO: remove this converter once imgproxy fully replaces ConvertAPI.
+export class ConvertApiImageConverter extends ImageConverter {
   // ConvertAPI uploads the source bytes, so it resizes from a readable stream.
   async resizeFromStream(
     sourceStream: Readable,
