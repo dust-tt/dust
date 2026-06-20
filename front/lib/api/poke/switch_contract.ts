@@ -210,22 +210,50 @@ function validatePlanPackageCompat(
 }
 
 /**
- * First-period proration for a seat commitment. The seat billing period is
- * anchored to the 1st of the contract-start month; when the contract starts
- * mid-period the slice already elapsed (1st of month → contract start) is
- * removed from the granted credit.
+ * First-period seat commitment bounds.
  *
- * Returns the remaining `fraction` of the period (computed at hour
- * granularity) and `periodEnd` — the next 1st-of-month boundary the commit
- * should end before, so the prorated credit covers exactly the partial term.
+ * - `contract_start_date` anchor: billing periods run from the contract start,
+ *   so the first period is always full. Returns fraction=1 and periodEnd one
+ *   period after `startingAt`.
+ * - `first_billing_period` anchor: billing periods align to calendar month
+ *   boundaries (1st → 1st). The first period is a partial stub from contract
+ *   start to the next 1st-of-month. Returns the remaining fraction and the
+ *   next 1st-of-month as periodEnd.
  */
-function firstPeriodProration(
+function firstPeriodCommitment(
   startingAt: Date,
-  frequency: "MONTHLY" | "ANNUAL"
+  frequency: "MONTHLY" | "ANNUAL",
+  billingAnchor: "contract_start_date" | "first_billing_period"
 ): { fraction: number; periodEnd: Date } {
-  const HOUR_MS = 60 * 60 * 1000;
   const year = startingAt.getUTCFullYear();
   const month = startingAt.getUTCMonth();
+  if (billingAnchor === "contract_start_date") {
+    const hh = startingAt.getUTCHours();
+    const mm = startingAt.getUTCMinutes();
+    const ss = startingAt.getUTCSeconds();
+
+    // Clamp day to the last day of the target month to avoid overflow:
+    // e.g. Jan 31 + 1 month must land on Feb 28/29, not Mar 3.
+    const clampToMonth = (y: number, m: number, d: number): number =>
+      Math.min(d, new Date(Date.UTC(y, m + 1, 0)).getUTCDate());
+
+    const [ty, tm] =
+      frequency === "ANNUAL" ? [year + 1, month] : [year, month + 1];
+    const periodEnd = new Date(
+      Date.UTC(
+        ty,
+        tm,
+        clampToMonth(ty, tm, startingAt.getUTCDate()),
+        hh,
+        mm,
+        ss
+      )
+    );
+    return { fraction: 1, periodEnd };
+  }
+
+  // first_billing_period: prorate from contract start to next 1st-of-month.
+  const HOUR_MS = 60 * 60 * 1000;
   const periodStartMs = Date.UTC(year, month, 1);
   const periodEndMs =
     frequency === "ANNUAL"
@@ -767,11 +795,9 @@ export async function switchContract({
 
       // One-off seat commitment: grant `minSeats * rate` of contract credit
       // (the list value of the committed seats), invoiced at the negotiated
-      // `commitmentPrice`. Not recurring — renegotiated at renewal. The access
-      // credit is prorated to the first partial period (the slice from the 1st
-      // of the month to the contract start is removed) and ends at the next
-      // 1st-of-month boundary. `rateNative`/`commitmentPriceNative` are already
-      // in the contract's fiat unit (matching the fiat credit type).
+      // `commitmentPrice`. Not recurring — renegotiated at renewal.
+      // `rateNative`/`commitmentPriceNative` are already in the contract's fiat
+      // unit (matching the fiat credit type).
       if (
         seat.selected &&
         seat.commitmentPrice &&
@@ -782,13 +808,13 @@ export async function switchContract({
         pkgSeat
       ) {
         const fiatCreditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency];
-        const { fraction, periodEnd } = firstPeriodProration(
+        const { fraction, periodEnd } = firstPeriodCommitment(
           alignedStart,
-          billingFrequency
+          billingFrequency,
+          pkg.billingAnchor
         );
-        // Access credit (the committed seats' list value) and the negotiated
-        // invoice price, both in the contract's fiat unit (cents for USD, whole
-        // units for EUR — the unit the fiat credit type expects).
+        // Access credit prorated by the billing anchor: full period for
+        // contract_start_date (fraction=1), partial stub for first_billing_period.
         const accessAmountNative =
           Math.round(seat.minSeats * rateNative * fraction * 100) / 100;
         const seatInvoiceScheduleItems = buildInvoiceScheduleItems({

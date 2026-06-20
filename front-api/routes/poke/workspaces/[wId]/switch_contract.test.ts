@@ -215,6 +215,7 @@ beforeEach(() => {
         tier: "enterprise",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
       {
         id: PRO_PACKAGE_ID,
@@ -223,6 +224,7 @@ beforeEach(() => {
         tier: "pro",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
       {
         id: BUSINESS_PACKAGE_ID,
@@ -231,6 +233,7 @@ beforeEach(() => {
         tier: "business",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
     ])
   );

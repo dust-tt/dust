@@ -485,6 +485,7 @@ export interface MetronomePackageSummary {
   tier: MetronomePackageTier;
   currency: SupportedCurrency;
   seats: PackageSeatConfig[];
+  billingAnchor: "contract_start_date" | "first_billing_period";
 }
 
 /**
@@ -674,6 +675,9 @@ export async function listMetronomePackages(): Promise<
         tier,
         currency: classifyMetronomePackageCurrencyByName(name),
         seats: seatConfigsFromPackageOverrides(pkg.overrides, productSeatTypes),
+        // billing_anchor_date is not exposed on PackageListResponse; default to
+        // contract_start_date which all current packages use.
+        billingAnchor: "contract_start_date" as const,
       });
     }
     packages.sort(comparePackagesForDisplay);
