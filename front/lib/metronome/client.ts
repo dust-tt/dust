@@ -2582,10 +2582,10 @@ export async function addPerUserCreditToCustomer({
  */
 export async function listCustomerPerUserCreditUserIds({
   metronomeCustomerId,
-  creditName,
+  contractCreditType,
 }: {
   metronomeCustomerId: string;
-  creditName: string;
+  contractCreditType: ContractCreditType;
 }): Promise<Result<Set<string>, Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok(new Set());
@@ -2600,7 +2600,11 @@ export async function listCustomerPerUserCreditUserIds({
       include_balance: false,
       include_archived: true,
     })) {
-      if (entry.contract || entry.name !== creditName) {
+      if (
+        entry.contract ||
+        entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
+          contractCreditType
+      ) {
         continue;
       }
       for (const specifier of entry.specifiers ?? []) {
@@ -2693,8 +2697,11 @@ export async function listCustomerPerUserCreditBalances({
 }
 
 /**
- * Revoke a per-user customer credit by setting its end date to now. The
- * uniqueness key is untouched so the user can never re-claim the same credit.
+ * Revoke a per-user customer credit by setting its end date to the next round
+ * hour. Metronome requires hour-aligned timestamps; ceiling to the next hour is
+ * safe here because the credit is keyed on the free-seat Metronome user id
+ * ("free-<sId>") and no new usage events will be emitted for that id once the
+ * user has left the free seat.
  */
 export async function revokePerUserCustomerCredit({
   metronomeCustomerId,
@@ -2706,7 +2713,7 @@ export async function revokePerUserCustomerCredit({
   return updateMetronomeCreditEndDate({
     metronomeCustomerId,
     creditId,
-    accessEndingBefore: new Date().toISOString(),
+    accessEndingBefore: ceilToHourISO(new Date()),
   });
 }
 

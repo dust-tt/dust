@@ -28,9 +28,11 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -267,6 +269,23 @@ export async function emitMetronomeUsageEventsActivity(
   const userId =
     userMessageRow?.userMessage?.user?.sId ?? auth.user()?.sId ?? null;
 
+  // Determine if the user holds a free seat. Free-seat events use a prefixed
+  // user_id ("free-<sId>") so Metronome's free-credit specifier only drains
+  // against those events, keeping free credit consumption decoupled from the
+  // user's regular billable usage.
+  let isFreeSeatedUser = false;
+  if (userId) {
+    const userResource = await UserResource.fetchById(userId);
+    if (userResource) {
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: userResource,
+          workspace: renderLightWorkspaceType({ workspace }),
+        });
+      isFreeSeatedUser = membership?.seatType === "free";
+    }
+  }
+
   // Sub-agent messages have agenticMessageType set (e.g. "run_agent", "agent_handover").
   // agenticOriginMessageId is the sId of the parent agent message that spawned this one.
   const userMessage = userMessageRow?.userMessage;
@@ -378,6 +397,7 @@ export async function emitMetronomeUsageEventsActivity(
     isByok,
     conversationId,
     userId,
+    isFreeSeatedUser,
     agentMessageId,
     agentId,
     subAgentId,
@@ -397,6 +417,7 @@ export async function emitMetronomeUsageEventsActivity(
     workspaceId: workspace.sId,
     conversationId,
     userId,
+    isFreeSeatedUser,
     agentMessageId,
     agentId,
     subAgentId,

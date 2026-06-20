@@ -7,6 +7,7 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
 import {
+  toFreeMetronomeUserId,
   USAGE_TYPE_FREE,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
@@ -290,6 +291,7 @@ export function buildLlmUsageEvents({
   isByok,
   conversationId,
   userId,
+  isFreeSeatedUser,
   agentMessageId,
   agentId,
   subAgentId,
@@ -308,6 +310,7 @@ export function buildLlmUsageEvents({
   isByok: boolean;
   conversationId: string;
   userId: string | null;
+  isFreeSeatedUser: boolean;
   agentMessageId: string;
   agentId: string | null;
   subAgentId: string | null;
@@ -366,7 +369,11 @@ export function buildLlmUsageEvents({
     timestamp,
     properties: {
       workspace_id: workspaceId,
-      user_id: userId ?? "unknown",
+      user_id: userId
+        ? isFreeSeatedUser
+          ? toFreeMetronomeUserId(userId)
+          : userId
+        : "unknown",
       is_byok: isByok ? "true" : "false",
       agent_message_id: agentMessageId,
       conversation_id: conversationId,
@@ -421,6 +428,7 @@ export function buildToolUseEvents({
   workspaceId,
   conversationId,
   userId,
+  isFreeSeatedUser,
   agentMessageId,
   agentId,
   subAgentId,
@@ -438,6 +446,7 @@ export function buildToolUseEvents({
   workspaceId: string;
   conversationId: string;
   userId: string | null;
+  isFreeSeatedUser: boolean;
   agentMessageId: string;
   agentId: string | null;
   subAgentId: string | null;
@@ -486,7 +495,11 @@ export function buildToolUseEvents({
       timestamp,
       properties: {
         workspace_id: workspaceId,
-        user_id: userId ?? "unknown",
+        user_id: userId
+          ? isFreeSeatedUser
+            ? toFreeMetronomeUserId(userId)
+            : userId
+          : "unknown",
         agent_message_id: agentMessageId,
         conversation_id: conversationId,
         agent_id: agentId ?? "unknown",

@@ -169,6 +169,28 @@ export const FOREVER_ENDING_BEFORE = new Date("2999-01-01T00:00:00.000Z");
 export const PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY =
   "DUST_PER_USER_CREDIT_USER";
 
+// Prefix applied to user sIds when emitting Metronome usage events for users on
+// a free seat, and when creating their per-user credits and alerts. This
+// decorrelates free-seat credit consumption from regular usage: the free credit
+// specifier filters on `presentation_group_values.user_id = "free-<sId>"`, so
+// it only drains against events emitted with that exact value.
+export const FREE_SEAT_METRONOME_USER_ID_PREFIX = "free-";
+
+export function toFreeMetronomeUserId(sId: string): string {
+  return `${FREE_SEAT_METRONOME_USER_ID_PREFIX}${sId}`;
+}
+
+// Strip the free-seat prefix from a Metronome user id to recover the raw sId.
+// Returns null when the value doesn't carry the prefix (i.e. not a free-seat id).
+export function fromFreeMetronomeUserId(
+  metronomeUserId: string
+): string | null {
+  if (metronomeUserId.startsWith(FREE_SEAT_METRONOME_USER_ID_PREFIX)) {
+    return metronomeUserId.slice(FREE_SEAT_METRONOME_USER_ID_PREFIX.length);
+  }
+  return null;
+}
+
 // Pricing/billable-metric group key that splits AWU usage into "user",
 // "programmatic", and "free" slices. Emitted on every usage event and used
 // by pricing rules, per-user reporting, and spend-threshold alerts.

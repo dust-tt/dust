@@ -21,8 +21,10 @@ import {
   AWU_PRIORITY_FREE_SEAT_CREDIT,
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   FREE_SEAT_LIFETIME_AWU_CREDITS,
+  fromFreeMetronomeUserId,
   getCreditTypeAwuId,
   getProductSeatSubscriptionCreditsId,
+  toFreeMetronomeUserId,
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
@@ -543,7 +545,7 @@ async function grantFreeSeatCredits({
   // key, so we never double-grant, only make redundant (no-op) API calls.
   const alreadyGranted = await listCustomerPerUserCreditUserIds({
     metronomeCustomerId,
-    creditName: FREE_SEAT_CREDIT_NAME,
+    contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (alreadyGranted.isErr()) {
     logger.warn(
@@ -554,22 +556,27 @@ async function grantFreeSeatCredits({
   const grantedUserIds = alreadyGranted.isOk()
     ? alreadyGranted.value
     : new Set<string>();
-  const toGrant = userIds.filter((userId) => !grantedUserIds.has(userId));
+  // Credits are stored in Metronome with the free-prefixed user id; compare
+  // against the same form so already-granted users are skipped correctly.
+  const toGrant = userIds.filter(
+    (userId) => !grantedUserIds.has(toFreeMetronomeUserId(userId))
+  );
 
   // Grant the credit only for users that don't have one yet.
   await concurrentExecutor(
     toGrant,
     async (userId) => {
+      const freeMetronomeId = toFreeMetronomeUserId(userId);
       const result = await addPerUserCreditToCustomer({
         metronomeCustomerId,
         productId: getProductSeatSubscriptionCreditsId(),
         creditTypeId: getCreditTypeAwuId(),
         contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
         amount: FREE_SEAT_LIFETIME_AWU_CREDITS,
-        userId,
+        userId: freeMetronomeId,
         productTags: [USAGE_TAG],
         startingAt,
-        name: FREE_SEAT_CREDIT_NAME,
+        name: `${FREE_SEAT_CREDIT_NAME} ${userId}`,
         priority: AWU_PRIORITY_FREE_SEAT_CREDIT,
         // Workspace+user scoped: customer credits survive across contracts, so
         // there is no need to scope per-contract. A given user in a workspace
@@ -598,7 +605,7 @@ async function grantFreeSeatCredits({
       const alertResult = await upsertPerUserCreditBalanceAlerts({
         metronomeCustomerId,
         workspaceId,
-        userId,
+        userId: toFreeMetronomeUserId(userId),
         allowanceAwu: FREE_SEAT_LIFETIME_AWU_CREDITS,
       });
       if (alertResult.isErr()) {
@@ -637,8 +644,13 @@ async function revokeFreeSeatCreditsForExFreeUsers({
     );
     return;
   }
+  // Only process new-format credits (keyed by "free-<sId>"); old-format credits
+  // (plain sId) are ignored — they will eventually expire naturally.
   const toRevoke = [...activeCreditsResult.value.entries()].filter(
-    ([userId]) => !currentFreeUserIds.has(userId)
+    ([metronomeUserId]) => {
+      const rawUserId = fromFreeMetronomeUserId(metronomeUserId);
+      return rawUserId !== null && !currentFreeUserIds.has(rawUserId);
+    }
   );
   if (toRevoke.length === 0) {
     return;

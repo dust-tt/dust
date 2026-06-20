@@ -21,6 +21,7 @@ import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   FREE_SEAT_LIFETIME_AWU_CREDITS,
   getCreditTypeAwuId,
+  toFreeMetronomeUserId,
 } from "@app/lib/metronome/constants";
 import {
   fetchPerUserAwuUsage,
@@ -577,6 +578,8 @@ export async function fetchRemainingCapCreditsPercentageForUser({
     : null;
   const metronomeContractId = contract?.id ?? null;
 
+  const metronomeUserId =
+    seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
   const [
     perUserTotalConsumedCredits,
     { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
@@ -584,7 +587,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId,
       metronomeContractId,
-      userIds: [userId],
+      userIds: [metronomeUserId],
     }),
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId,
@@ -618,7 +621,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
     return null;
   }
 
-  const consumed = perUserTotalConsumedCredits.get(userId) ?? 0;
+  const consumed = perUserTotalConsumedCredits.get(metronomeUserId) ?? 0;
   return Math.max(0, (spendLimitAwuCredits - consumed) / spendLimitAwuCredits);
 }
 
@@ -661,7 +664,9 @@ export async function getMemberUsage({
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
-      userIds: [userId],
+      // Include both forms; seat type is resolved from the membership fetched
+      // in the same Promise.all, so the correct key is picked after resolution.
+      userIds: [userId, toFreeMetronomeUserId(userId)],
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
@@ -685,7 +690,10 @@ export async function getMemberUsage({
     return { member: null };
   }
 
-  const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
+  const metronomeUserId =
+    membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
+  const totalConsumedCredits =
+    perUserTotalConsumedCredits.get(metronomeUserId) ?? 0;
   const seatData = seatDataByUserId.get(userId);
   const awuAllocation = seatData?.awuAllocation ?? 0;
 
@@ -856,7 +864,9 @@ export async function getMembersUsage({
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
-      userIds: users.map((u) => u.sId),
+      // Include both the raw sId and the free-prefixed form: free-seat users'
+      // usage is keyed by the prefixed id in Metronome, regular users by sId.
+      userIds: users.flatMap((u) => [u.sId, toFreeMetronomeUserId(u.sId)]),
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
@@ -924,7 +934,11 @@ export async function getMembersUsage({
       return [];
     }
     const userId = u.sId;
-    const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
+    // Free-seat users' usage is stored under the prefixed Metronome user id.
+    const metronomeUserId =
+      membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
+    const totalConsumedCredits =
+      perUserTotalConsumedCredits.get(metronomeUserId) ?? 0;
     const seatData = seatDataByUserId.get(userId);
     const awuAllocation = seatData?.awuAllocation ?? 0;
     const scheduled = scheduledByUserId.get(membership.userId);
@@ -982,10 +996,11 @@ export async function getMembersUsage({
       : null;
 
     // Free-seat balance-alert deep links (poke-only). Only free seats have
-    // these per-user credit-balance alerts.
+    // these per-user credit-balance alerts. Alerts are keyed by the
+    // free-prefixed Metronome user id.
     const freeCreditAlerts =
       membership.seatType === "free"
-        ? (freeCreditAlertIds?.get(userId) ?? null)
+        ? (freeCreditAlertIds?.get(metronomeUserId) ?? null)
         : null;
 
     return [
@@ -999,7 +1014,9 @@ export async function getMembersUsage({
         seatType: membership.seatType ?? null,
         memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
         seatBalanceAwu:
-          awuAllocation > 0 ? (seatBalanceByUserId.get(userId) ?? null) : null,
+          awuAllocation > 0
+            ? (seatBalanceByUserId.get(metronomeUserId) ?? null)
+            : null,
         consumedAwuCredits: totalConsumedCredits,
         consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits,
