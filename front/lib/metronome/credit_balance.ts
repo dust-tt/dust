@@ -31,7 +31,7 @@ export const getCachedSeatCredits = cacheWithRedis(
 async function fetchPoolCredits(
   workspaceId: string,
   metronomeCustomerId: string
-): Promise<number> {
+): Promise<number | null> {
   const result = await getNetBalance(metronomeCustomerId, {
     creditTypeId: getCreditTypeAwuId(),
   });
@@ -40,17 +40,16 @@ async function fetchPoolCredits(
       { workspaceId, metronomeCustomerId, error: result.error },
       "[Metronome CreditCache] Failed to fetch balances — allowing usage"
     );
-    // Fail-open: return a positive value so we don't block the user.
-    return 1;
+    return null;
   }
 
   return result.value;
 }
 
-const getCachedPoolCredits = cacheWithRedis(
+export const getCachedPoolCredits = cacheWithRedis(
   fetchPoolCredits,
   (workspaceId) => workspaceId,
-  { ttlMs: CACHE_TTL_MS }
+  { ttlMs: CACHE_TTL_MS, cacheNullValues: false }
 );
 
 // ---------------------------------------------------------------------------

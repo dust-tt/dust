@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
+import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
@@ -99,6 +100,15 @@ const { publishDeferredEventsActivity } = proxyActivities<
   typeof publishDeferredEventsActivities
 >({
   startToCloseTimeout: "2 minutes",
+});
+
+const { checkCreditsActivity } = proxyActivities<
+  typeof creditCheckActivities
+>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
 });
 
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
@@ -293,6 +303,21 @@ export async function agentLoopWorkflow({
         }
 
         if (!shouldContinue || gracefulStopRequested) {
+          break;
+        }
+
+        const creditCheckResult = await checkCreditsActivity(
+          authType,
+          {
+            agentLoopArgs: {
+              ...agentLoopArgs,
+              initialStartTime,
+            },
+            runIds,
+            step: currentStep,
+          }
+        );
+        if (creditCheckResult.shouldStop) {
           break;
         }
       }

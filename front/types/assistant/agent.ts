@@ -256,6 +256,7 @@ export const AgentErrorCategories = [
   "stream_error",
   "unknown_error",
   "invalid_response_format_configuration",
+  "credits_exhausted",
 ] as const;
 
 export type AgentErrorCategory = (typeof AgentErrorCategories)[number];
