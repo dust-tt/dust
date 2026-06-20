@@ -102,9 +102,7 @@ const { publishDeferredEventsActivity } = proxyActivities<
   startToCloseTimeout: "2 minutes",
 });
 
-const { checkCreditsActivity } = proxyActivities<
-  typeof creditCheckActivities
->({
+const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   startToCloseTimeout: "2 minutes",
   retry: {
     maximumAttempts: 3,
@@ -141,6 +139,7 @@ const { compactionCleanupActivity } = proxyActivities<
 const {
   finalizeSuccessfulAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
+  finalizeCreditStoppedAgentLoopActivity,
   finalizeCancelledAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
@@ -231,6 +230,11 @@ export async function agentLoopWorkflow({
     gracefulStopRequested = true;
   });
 
+  // Credit stop: the per-step gate found the workspace pool exhausted. Mirrors the other terminal
+  // reasons (explicit flag → dedicated finalize) rather than breaking into the success path.
+  let creditStopRequested = false;
+  let creditStopReason: "credits_exhausted" | null = null;
+
   const runIds: string[] = [];
 
   try {
@@ -306,18 +310,16 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        const creditCheckResult = await checkCreditsActivity(
-          authType,
-          {
-            agentLoopArgs: {
-              ...agentLoopArgs,
-              initialStartTime,
-            },
-            runIds,
-            step: currentStep,
-          }
-        );
+        const creditCheckResult = await checkCreditsActivity(authType, {
+          agentLoopArgs: {
+            ...agentLoopArgs,
+            initialStartTime,
+          },
+          runIds,
+        });
         if (creditCheckResult.shouldStop) {
+          creditStopRequested = true;
+          creditStopReason = creditCheckResult.reason;
           break;
         }
       }
@@ -348,6 +350,12 @@ export async function agentLoopWorkflow({
           await finalizeGracefullyStoppedAgentLoopActivity(
             authType,
             argsWithRunIds
+          );
+        } else if (creditStopRequested && creditStopReason) {
+          await finalizeCreditStoppedAgentLoopActivity(
+            authType,
+            argsWithRunIds,
+            { reason: creditStopReason, step: currentStep }
           );
         } else {
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);

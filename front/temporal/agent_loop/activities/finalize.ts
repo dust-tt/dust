@@ -10,6 +10,7 @@ import {
   finalizeGracefulStop,
   finalizeInterruption,
   notifyWorkflowError,
+  updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotification } from "@app/temporal/agent_loop/activities/notification";
@@ -19,6 +20,13 @@ import {
   launchTrackProgrammaticUsage,
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { getAgentLoopDataWithAuth } from "@app/types/assistant/agent_run";
+
+const CREDITS_EXHAUSTED_ERROR_TITLE = "Workspace out of credits";
+const CREDITS_EXHAUSTED_ERROR_MESSAGE_ADMIN =
+  "Your workspace has run out of credits. Please purchase more credits to continue using Dust.";
+const CREDITS_EXHAUSTED_ERROR_MESSAGE_MEMBER =
+  "Your workspace has run out of credits. Please contact your administrator to purchase more credits.";
 
 export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
@@ -116,6 +124,71 @@ export async function finalizeCancelledAgentLoopActivity(
       auth,
       agentLoopArgs,
       "Agent execution was cancelled."
+    ),
+  ]);
+}
+
+/**
+ * Stage 1 credit stop. Mirrors the errored finalize's shape (own flag → own dedicated finalize)
+ * but publishes the retryable `credits_exhausted` agent error instead of a generic workflow
+ * failure, so the user gets the "out of credits" message + Retry rather than a critical error.
+ *
+ * The terminal event is published HERE, not in the per-step gate activity: that keeps the gate a
+ * pure decision and makes this the single place the stop is finalized — and the publish is
+ * single-shot-guarded (markAgentMessageAsFailed no-ops if the message already left `created`), so
+ * a finalize retry can't double-publish.
+ */
+export async function finalizeCreditStoppedAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  { reason, step }: { reason: "credits_exhausted"; step: number }
+): Promise<void> {
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  const runAgentDataRes = await getAgentLoopDataWithAuth(auth, agentLoopArgs);
+  if (runAgentDataRes.isOk()) {
+    const { agentConfiguration, agentMessage, conversation } =
+      runAgentDataRes.value;
+    const message = auth.isAdmin()
+      ? CREDITS_EXHAUSTED_ERROR_MESSAGE_ADMIN
+      : CREDITS_EXHAUSTED_ERROR_MESSAGE_MEMBER;
+
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: reason,
+          message,
+          metadata: {
+            category: reason,
+            errorTitle: CREDITS_EXHAUSTED_ERROR_TITLE,
+          },
+        },
+        runIds: agentLoopArgs.dustRunIds ?? [],
+      },
+      agentMessage,
+      conversation,
+      step,
+    });
+  }
+
+  await Promise.all([
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+    }),
+    sendEmailReplyOnError(
+      auth,
+      agentLoopArgs,
+      auth.isAdmin()
+        ? CREDITS_EXHAUSTED_ERROR_MESSAGE_ADMIN
+        : CREDITS_EXHAUSTED_ERROR_MESSAGE_MEMBER
     ),
   ]);
 }

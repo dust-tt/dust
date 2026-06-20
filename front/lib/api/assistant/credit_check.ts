@@ -15,7 +15,7 @@ const DO_NOT_STOP: CreditCheckResult = { shouldStop: false, reason: null };
 /**
  * Determines whether the agent loop should stop because the workspace's
  * credit pool is exhausted. Fails open, non-blocking for callers.
- * 
+ *
  * We do not yet emit per-step usage events (TODO: Issue #8715).
  *
  * We can therefore just read the pool balance each step and subtract this message's locally-recorded run usage so far.
@@ -65,6 +65,15 @@ export async function checkPoolCreditGate(
   return DO_NOT_STOP;
 }
 
+// Stage 1 counts only intelligence (LLM) AWU, not tool AWU — `RunUsageModel` holds LLM run usage,
+// tool costs are tracked separately. The pool balance includes all AWU, so on tool-heavy messages
+// this slightly under-counts the message's own spend and stops a touch late. Acceptable for a soft
+// bound; the per-step-emission stage will need the full cost anyway.
+//
+// Re-summing all accumulated runIds every step is O(steps²) DB work, bounded by
+// MAX_STEPS_USE_PER_RUN_LIMIT (64) on indexed lookups. A running accumulator would make it linear
+// but has to live in (replay-carried) workflow state; deferred until the per-step-emission stage
+// restructures this.
 async function computeLocalRunUsageAwu(
   auth: Authenticator,
   runIds: string[]
