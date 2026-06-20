@@ -21,10 +21,13 @@ vi.mock("@app/lib/api/assistant/credit_check", () => ({
   checkPoolCreditGate: mockCheckPoolCreditGate,
 }));
 
+// Minimal stand-ins for the agent-loop-data shapes the activity reads. These are class/branded
+// instances that can't be built structurally, so `as never` is the standard test-mock escape used
+// across the suite; the gate itself is mocked, so only `agentMessage.sId`/`agentMessageId` matter.
 const FAKE_AUTH = {
   getNonNullableWorkspace: () => ({ sId: "ws_test" }),
 } as never;
-const FAKE_AGENT_MESSAGE = { sId: "msg_test" } as never;
+const FAKE_AGENT_MESSAGE = { sId: "msg_test", agentMessageId: 42 } as never;
 
 function mockSuccessfulAgentLoopData() {
   mockGetAgentLoopData.mockResolvedValue(
@@ -90,7 +93,9 @@ describe("checkCreditsActivity (pure decision)", () => {
 
     expect(mockCheckPoolCreditGate).toHaveBeenCalledWith(FAKE_AUTH, {
       agentMessageId: "msg_test",
+      agentMessageModelId: 42,
       runIds: ["run1"],
+      isFreeUsage: false,
     });
   });
 

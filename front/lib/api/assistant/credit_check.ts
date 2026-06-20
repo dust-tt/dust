@@ -1,10 +1,12 @@
+import { computeAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
 import type { Authenticator } from "@app/lib/auth";
 import { getCachedPoolCredits } from "@app/lib/metronome/credit_balance";
-import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
 import { getWorkspaceCreditPoolStatus } from "@app/lib/metronome/user_block";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export type CreditCheckResult =
   | { shouldStop: false; reason: null }
@@ -25,10 +27,14 @@ export async function checkPoolCreditGate(
   auth: Authenticator,
   {
     agentMessageId,
+    agentMessageModelId,
     runIds,
+    isFreeUsage,
   }: {
     agentMessageId: string;
+    agentMessageModelId: ModelId;
     runIds: string[];
+    isFreeUsage: boolean;
   }
 ): Promise<CreditCheckResult> {
   const owner = auth.getNonNullableWorkspace();
@@ -57,35 +63,48 @@ export async function checkPoolCreditGate(
     return DO_NOT_STOP;
   }
 
-  const localUsageAwu = await computeLocalRunUsageAwu(auth, runIds);
-  if (poolBalanceAwu - localUsageAwu <= 0) {
+  const localSpendAwu = await computeLocalSpendAwu(auth, {
+    agentMessageModelId,
+    runIds,
+    isFreeUsage,
+  });
+  if (poolBalanceAwu - localSpendAwu <= 0) {
     return { shouldStop: true, reason: "credits_exhausted" };
   }
 
   return DO_NOT_STOP;
 }
 
-// Stage 1 counts only intelligence (LLM) AWU, not tool AWU — `RunUsageModel` holds LLM run usage,
-// tool costs are tracked separately. The pool balance includes all AWU, so on tool-heavy messages
-// this slightly under-counts the message's own spend and stops a touch late. Acceptable for a soft
-// bound; the per-step-emission stage will need the full cost anyway.
+// Full AWU this message has spent so far.
 //
-// Re-summing all accumulated runIds every step is O(steps²) DB work, bounded by
-// MAX_STEPS_USE_PER_RUN_LIMIT (64) on indexed lookups. A running accumulator would make it linear
-// but has to live in (replay-carried) workflow state; deferred until the per-step-emission stage
-// restructures this.
-async function computeLocalRunUsageAwu(
+// Re-summing every step is O(steps²) DB work.
+// A running accumulator would make it linear but has to live in (replay-carried) workflow
+// state; deferred until the per-step-emission stage restructures this.
+async function computeLocalSpendAwu(
   auth: Authenticator,
-  runIds: string[]
+  {
+    agentMessageModelId,
+    runIds,
+    isFreeUsage,
+  }: { agentMessageModelId: ModelId; runIds: string[]; isFreeUsage: boolean }
 ): Promise<number> {
-  if (runIds.length === 0) {
-    return 0;
-  }
+  const [runUsages, mcpActions] = await Promise.all([
+    runIds.length === 0
+      ? []
+      : RunResource.listByDustRunIds(auth, { dustRunIds: runIds }).then(
+          (runs) => RunResource.listRunUsagesForRuns(auth, { runs })
+        ),
+    AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
+  ]);
 
-  const runs = await RunResource.listByDustRunIds(auth, {
-    dustRunIds: runIds,
-  });
-  const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
-
-  return intelligenceAwuFromRunUsages(runUsages);
+  return (
+    computeAgentMessageCredits({
+      runUsages,
+      actions: mcpActions.map((action) => ({
+        internalMCPServerName: action.metadata.internalMCPServerName,
+        status: action.status,
+      })),
+      isFreeUsage,
+    }) ?? 0
+  );
 }

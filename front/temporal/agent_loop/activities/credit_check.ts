@@ -3,19 +3,17 @@ import {
   checkPoolCreditGate,
 } from "@app/lib/api/assistant/credit_check";
 import type { AuthenticatorType } from "@app/lib/auth";
+import { isFreeOrigin } from "@app/lib/metronome/events";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 
-// Stage 1: pure decision of whether the agent loop should stop because the workspace's credit pool
-// is exhausted. Deliberately publishes nothing and has no side effect — the workflow owns the
-// terminal finalize (finalizeCreditStoppedAgentLoopActivity) so the stop is published exactly once,
-// the same flag + dedicated-finalize shape as graceful stop / cancel / interrupt. Keeping this pure
-// also makes the activity safe to retry.
-// TODO (Issue #8715): iterate toward (1) a resumable pause the user can continue from, and
-// (2) per-user usage-limit checks in addition to the workspace pool.
+// Decision of whether the agent loop should stop because the workspace's credit pool
+// is exhausted.
+//
+// TODO (Issue #8715): Per-user usage-limit checks in addition to the workspace pool.
 export async function checkCreditsActivity(
   authType: AuthenticatorType,
   {
@@ -34,8 +32,11 @@ export async function checkCreditsActivity(
   }
 
   const { auth, agentMessage } = runAgentDataRes.value;
+  const origin = agentLoopArgs.userMessageOrigin;
   return checkPoolCreditGate(auth, {
     agentMessageId: agentMessage.sId,
+    agentMessageModelId: agentMessage.agentMessageId,
     runIds,
+    isFreeUsage: origin != null && isFreeOrigin(origin),
   });
 }

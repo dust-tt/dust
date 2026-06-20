@@ -230,10 +230,8 @@ export async function agentLoopWorkflow({
     gracefulStopRequested = true;
   });
 
-  // Credit stop: the per-step gate found the workspace pool exhausted. Mirrors the other terminal
-  // reasons (explicit flag → dedicated finalize) rather than breaking into the success path.
+  // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
-  let creditStopReason: "credits_exhausted" | null = null;
 
   const runIds: string[] = [];
 
@@ -319,7 +317,6 @@ export async function agentLoopWorkflow({
         });
         if (creditCheckResult.shouldStop) {
           creditStopRequested = true;
-          creditStopReason = creditCheckResult.reason;
           break;
         }
       }
@@ -351,11 +348,10 @@ export async function agentLoopWorkflow({
             authType,
             argsWithRunIds
           );
-        } else if (creditStopRequested && creditStopReason) {
+        } else if (creditStopRequested) {
           await finalizeCreditStoppedAgentLoopActivity(
             authType,
-            argsWithRunIds,
-            { reason: creditStopReason, step: currentStep }
+            argsWithRunIds
           );
         } else {
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
