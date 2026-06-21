@@ -65,11 +65,11 @@ const USAGE_TYPE_LABELS: Record<string, string> = {
 
 // Human-readable labels for the "tool_category" grouping. Besides the real
 // tool_category values, it carries a synthetic "llm" bucket for all LLM usage,
-// so the breakdown reads LLM / Basic tools / Advanced tools.
+// so the breakdown reads Tokens / Basic actions / Advanced actions.
 const TOOL_CATEGORY_LABELS: Record<string, string> = {
-  llm: "LLM",
-  basic: "Basic tools",
-  advanced: "Advanced tools",
+  llm: "Tokens",
+  basic: "Basic actions",
+  advanced: "Advanced actions",
 };
 
 // Synthetic bucket key for the LLM slice of the tool_category grouping.
