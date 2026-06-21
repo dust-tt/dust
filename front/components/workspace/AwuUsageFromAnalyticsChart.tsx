@@ -285,7 +285,8 @@ function CreditTooltip(
   const allKeys = groups.map((g) => g.groupKey);
   const rows = payload
     .filter(
-      (p) => p.value != null && typeof p.value === "number" && p.value > 0
+      (p): p is typeof p & { value: number } =>
+        p.value != null && typeof p.value === "number" && p.value > 0
     )
     .map((p) => {
       const groupKey = p.name ?? "";
@@ -297,7 +298,7 @@ function CreditTooltip(
       }
       return {
         label,
-        value: `${formatCredits(p.value as number)} credits`,
+        value: `${formatCredits(p.value)} credits`,
         colorClassName: getColorClassName(groupBy, groupKey, allKeys),
       };
     });
