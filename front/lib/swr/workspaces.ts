@@ -710,7 +710,7 @@ export function useAwuUsageFromAnalytics({
   disabled,
 }: {
   workspaceId: string;
-  groupBy?: "agent" | "user" | "origin";
+  groupBy?: "usage_type" | "agent" | "user" | "origin";
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;

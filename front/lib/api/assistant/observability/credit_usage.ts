@@ -6,6 +6,7 @@ import {
   formatDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
+import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { FREE_ORIGINS } from "@app/lib/metronome/events";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -73,6 +74,23 @@ export type CreditTimeseriesBreakdownPoint = {
 export type CreditTimeseriesBreakdown = {
   groups: { groupKey: string; name: string }[];
   points: CreditTimeseriesBreakdownPoint[];
+};
+
+export type CreditUsageTypePoint = {
+  timestamp: number;
+  date: string;
+  userCredits: number;
+  programmaticCredits: number;
+};
+
+type UsageTypeDateBucket = {
+  key: number;
+  user?: CreditSlice;
+  programmatic?: CreditSlice;
+};
+
+type CreditUsageTypeAggs = {
+  by_date?: estypes.AggregationsMultiBucketAggregateBase<UsageTypeDateBucket>;
 };
 
 const creditSubAggs = {
@@ -356,6 +374,86 @@ export async function fetchCreditTimeseries(
       timestamp: bucket.key,
       date: formatDateFromMillis(bucket.key, timezone),
       totalCredits: totalCreditsFromSlice(bucket),
+    }))
+  );
+}
+
+// Credits over time split by usage type: Programmatic (API key / programmatic
+// origin, per getProgrammaticUsageFilterClause) vs User (everything else).
+// usage_type isn't a stored field, so it's derived with filter sub-aggs. Free
+// usage is already out of scope, so the two series partition the total. Same
+// source and scope as fetchCreditTimeseries.
+export async function fetchCreditTimeseriesByUsageType(
+  auth: Authenticator,
+  {
+    startDate,
+    endDate,
+    granularity,
+    timezone,
+    contextOrigin,
+    agentIds,
+    userIds,
+    fillWindow,
+  }: {
+    startDate: string;
+    endDate: string;
+    granularity: "day" | "week" | "month";
+    timezone: string;
+    contextOrigin?: string | string[];
+    agentIds?: string[];
+    userIds?: string[];
+    fillWindow?: boolean;
+  }
+): Promise<Result<CreditUsageTypePoint[], ElasticsearchError>> {
+  const query = buildCreditQuery(auth, {
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+  });
+
+  const programmaticFilter = getProgrammaticUsageFilterClause();
+
+  const result = await searchAnalytics<never, CreditUsageTypeAggs>(query, {
+    aggregations: {
+      by_date: {
+        date_histogram: buildCreditDateHistogram({
+          granularity,
+          timezone,
+          startDate,
+          endDate,
+          fillWindow,
+        }),
+        aggs: {
+          programmatic: {
+            filter: programmaticFilter,
+            aggs: { ...creditSubAggs },
+          },
+          user: {
+            filter: { bool: { must_not: [programmaticFilter] } },
+            aggs: { ...creditSubAggs },
+          },
+        },
+      },
+    },
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const buckets = bucketsToArray<UsageTypeDateBucket>(
+    result.value.aggregations?.by_date?.buckets
+  );
+
+  return new Ok(
+    buckets.map((bucket) => ({
+      timestamp: bucket.key,
+      date: formatDateFromMillis(bucket.key, timezone),
+      userCredits: totalCreditsFromSlice(bucket.user ?? {}),
+      programmaticCredits: totalCreditsFromSlice(bucket.programmatic ?? {}),
     }))
   );
 }

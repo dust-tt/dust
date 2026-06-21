@@ -22,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
@@ -32,13 +32,14 @@ interface AwuUsageFromAnalyticsChartProps {
 }
 
 type Granularity = "day" | "week" | "month";
-type AnalyticsGroupBy = "agent" | "user" | "origin";
+type AnalyticsGroupBy = "usage_type" | "agent" | "user" | "origin";
 
 const GROUP_BY_OPTIONS: {
   value: AnalyticsGroupBy | undefined;
   label: string;
 }[] = [
   { value: undefined, label: "Total" },
+  { value: "usage_type", label: "By Usage Type" },
   { value: "agent", label: "By Agent" },
   { value: "user", label: "By User" },
   { value: "origin", label: "By Source" },
@@ -87,6 +88,29 @@ export function AwuUsageFromAnalyticsChart({
     undefined
   );
   const [groupByCount, setGroupByCount] = useState<number>(5);
+  // Legend-driven drilldown: when non-null, only these series are shown.
+  const [enabledKeys, setEnabledKeys] = useState<string[] | null>(null);
+
+  const handleGroupByChange = (value: AnalyticsGroupBy | undefined) => {
+    setGroupBy(value);
+    setEnabledKeys(null);
+  };
+
+  const handleGroupByCountChange = (value: number) => {
+    setGroupByCount(value);
+    setEnabledKeys(null);
+  };
+
+  const toggleGroup = useCallback((key: string) => {
+    setEnabledKeys((prev) => {
+      const current = prev ?? [];
+      if (current.includes(key)) {
+        const next = current.filter((k) => k !== key);
+        return next.length === 0 ? null : next;
+      }
+      return [...current, key];
+    });
+  }, []);
 
   const { awuUsageData, isAwuUsageLoading, isAwuUsageError } =
     useAwuUsageFromAnalytics({
@@ -100,6 +124,17 @@ export function AwuUsageFromAnalyticsChart({
   const groups = useMemo(() => awuUsageData?.groups ?? [], [awuUsageData]);
   const points = useMemo(() => awuUsageData?.points ?? [], [awuUsageData]);
   const allKeys = useMemo(() => groups.map((g) => g.groupKey), [groups]);
+
+  // Intersect the drilldown selection with the keys actually returned: a series
+  // that drops out of the top-N (e.g. after a period change) must not blank the
+  // chart, so an empty intersection falls back to showing everything.
+  const effectiveEnabledKeys = useMemo(() => {
+    if (!enabledKeys) {
+      return null;
+    }
+    const available = enabledKeys.filter((key) => allKeys.includes(key));
+    return available.length > 0 ? available : null;
+  }, [enabledKeys, allKeys]);
 
   const chartData = useMemo(
     () =>
@@ -119,13 +154,29 @@ export function AwuUsageFromAnalyticsChart({
         ) {
           label = USER_MESSAGE_ORIGIN_LABELS[group.groupKey].label;
         }
+        const canFilter =
+          !!groupBy &&
+          group.groupKey !== "others" &&
+          group.groupKey !== "total";
         return {
           key: group.groupKey,
           label,
           colorClassName: getColorClassName(groupBy, group.groupKey, allKeys),
+          onClick: canFilter ? () => toggleGroup(group.groupKey) : undefined,
+          isActive:
+            !effectiveEnabledKeys ||
+            effectiveEnabledKeys.includes(group.groupKey),
         };
       }),
-    [groups, groupBy, allKeys]
+    [groups, groupBy, allKeys, effectiveEnabledKeys, toggleGroup]
+  );
+
+  const visibleKeys = useMemo(
+    () =>
+      allKeys.filter(
+        (key) => !effectiveEnabledKeys || effectiveEnabledKeys.includes(key)
+      ),
+    [allKeys, effectiveEnabledKeys]
   );
 
   return (
@@ -138,6 +189,14 @@ export function AwuUsageFromAnalyticsChart({
       }
       additionalControls={
         <div className="flex items-center gap-2">
+          {effectiveEnabledKeys && (
+            <Button
+              label="Clear filters"
+              size="xs"
+              variant="ghost"
+              onClick={() => setEnabledKeys(null)}
+            />
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -177,7 +236,7 @@ export function AwuUsageFromAnalyticsChart({
                 <DropdownMenuItem
                   key={o.value ?? "total"}
                   label={o.label}
-                  onClick={() => setGroupBy(o.value)}
+                  onClick={() => handleGroupByChange(o.value)}
                 />
               ))}
             </DropdownMenuContent>
@@ -197,7 +256,7 @@ export function AwuUsageFromAnalyticsChart({
                   <DropdownMenuItem
                     key={value}
                     label={`Top ${value}`}
-                    onClick={() => setGroupByCount(value)}
+                    onClick={() => handleGroupByCountChange(value)}
                   />
                 ))}
               </DropdownMenuContent>
@@ -252,7 +311,7 @@ export function AwuUsageFromAnalyticsChart({
             boxShadow: "none",
           }}
         />
-        {allKeys.map((groupKey) => (
+        {visibleKeys.map((groupKey) => (
           <Bar
             key={groupKey}
             dataKey={groupKey}

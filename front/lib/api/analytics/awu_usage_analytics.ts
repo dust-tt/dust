@@ -2,6 +2,7 @@ import type { CreditBreakdownBy } from "@app/lib/api/assistant/observability/cre
 import {
   fetchCreditTimeseries,
   fetchCreditTimeseriesBreakdown,
+  fetchCreditTimeseriesByUsageType,
 } from "@app/lib/api/assistant/observability/credit_usage";
 import { daysToInstantRange } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -10,11 +11,15 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
-const ANALYTICS_GROUP_BY_KEYS = [
+const TERMS_GROUP_BY_KEYS = [
   "agent",
   "user",
   "origin",
 ] as const satisfies readonly CreditBreakdownBy[];
+
+// usage_type is derived (no stored field): User vs Programmatic, split on
+// user_id. The other groupings map directly to CreditBreakdownBy.
+const ANALYTICS_GROUP_BY_KEYS = ["usage_type", ...TERMS_GROUP_BY_KEYS] as const;
 
 export const AwuUsageAnalyticsQuerySchema = z.object({
   groupBy: z.enum(ANALYTICS_GROUP_BY_KEYS).optional(),
@@ -79,6 +84,36 @@ export async function getAwuUsageFromAnalytics(
     return new Ok({
       granularity,
       groups: [{ groupKey: "total", name: "Total usage" }],
+      points,
+    });
+  }
+
+  if (groupBy === "usage_type") {
+    const result = await fetchCreditTimeseriesByUsageType(auth, {
+      startDate,
+      endDate,
+      granularity,
+      timezone: "UTC",
+      fillWindow: true,
+    });
+    if (result.isErr()) {
+      return new Err(toError(result.error));
+    }
+
+    const points: AwuUsageAnalyticsPoint[] = result.value.map((point) => ({
+      timestamp: point.timestamp,
+      values: {
+        user: point.userCredits,
+        programmatic: point.programmaticCredits,
+      },
+    }));
+
+    return new Ok({
+      granularity,
+      groups: [
+        { groupKey: "user", name: "User" },
+        { groupKey: "programmatic", name: "Programmatic" },
+      ],
       points,
     });
   }
