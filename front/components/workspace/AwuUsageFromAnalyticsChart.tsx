@@ -283,25 +283,24 @@ function CreditTooltip(
   }
 
   const allKeys = groups.map((g) => g.groupKey);
-  const rows = payload
-    .filter(
-      (p): p is typeof p & { value: number } =>
-        p.value != null && typeof p.value === "number" && p.value > 0
-    )
-    .map((p) => {
-      const groupKey = p.name ?? "";
-      let label = groups.find((g) => g.groupKey === groupKey)?.name ?? groupKey;
-      if (groupKey === "others") {
-        label = OTHER_LABEL.label;
-      } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
-        label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
-      }
-      return {
-        label,
-        value: `${formatCredits(p.value)} credits`,
-        colorClassName: getColorClassName(groupBy, groupKey, allKeys),
-      };
+  const rows: { label: string; value: string; colorClassName: string }[] = [];
+  for (const p of payload) {
+    if (p.value == null || typeof p.value !== "number" || p.value <= 0) {
+      continue;
+    }
+    const groupKey = p.name ?? "";
+    let label = groups.find((g) => g.groupKey === groupKey)?.name ?? groupKey;
+    if (groupKey === "others") {
+      label = OTHER_LABEL.label;
+    } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
+      label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
+    }
+    rows.push({
+      label,
+      value: `${formatCredits(p.value)} credits`,
+      colorClassName: getColorClassName(groupBy, groupKey, allKeys),
     });
+  }
 
   if (rows.length === 0) {
     return null;
