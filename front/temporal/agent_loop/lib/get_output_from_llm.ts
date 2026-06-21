@@ -504,6 +504,7 @@ export async function getOutputFromLLMStream(
               {
                 ...logContext,
                 modelInteractionId,
+                previousMessageId,
                 cacheMissReasonType: cacheMissReason.type,
                 cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
               },
