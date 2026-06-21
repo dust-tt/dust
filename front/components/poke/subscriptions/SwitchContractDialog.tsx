@@ -195,19 +195,18 @@ export default function SwitchContractDialog({
   } = usePokeMetronomePackages({ disabled: !open });
   const router = useAppRouter();
 
-  // Default datetime seeded into the enterprise startingAt field: the next
-  // local hour boundary (≥1h from now). The operator may freely change it to
-  // any moment, including the past — there is no enforced minimum.
-  const defaultStartingAtLocal = useMemo(() => {
-    const d = new Date(Date.now() + 60 * 60 * 1000);
-    if (d.getMinutes() > 0 || d.getSeconds() > 0 || d.getMilliseconds() > 0) {
-      d.setHours(d.getHours() + 1);
-    }
-    d.setMinutes(0, 0, 0);
+  // Default datetime seeded into the enterprise startingAt field: midnight UTC
+  // of the day after today. The operator may freely change it to any moment,
+  // including the past — there is no enforced minimum.
+  const defaultStartingAtUTC = useMemo(() => {
+    const now = new Date();
+    const d = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+    );
     const pad = (n: number) => String(n).padStart(2, "0");
     return (
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-      `T${pad(d.getHours())}:00`
+      `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
+      `T00:00`
     );
   }, []);
 
@@ -360,7 +359,7 @@ export default function SwitchContractDialog({
       form.setValue("startMode", "select");
     } else if (selectedTier === "enterprise") {
       form.setValue("planCode", "");
-      form.setValue("startingAt", defaultStartingAtLocal);
+      form.setValue("startingAt", defaultStartingAtUTC);
       form.setValue("startMode", "select");
     } else if (selectedTier === "free") {
       form.setValue("planCode", CREDIT_PRICED_FREE_PLAN_CODE);
@@ -371,9 +370,23 @@ export default function SwitchContractDialog({
       form.setValue("paygEnabled", false);
       form.setValue("usageCapCredits", undefined);
     }
-  }, [selectedTier, selectedName, form, defaultStartingAtLocal]);
+  }, [selectedTier, selectedName, form, defaultStartingAtUTC]);
 
   const startMode = form.watch("startMode");
+  const startingAt = form.watch("startingAt");
+  const startingAtLocalLabel = useMemo(() => {
+    if (!startingAt) {
+      return null;
+    }
+    const d = new Date(startingAt + ":00Z");
+    if (isNaN(d.getTime())) {
+      return null;
+    }
+    return d.toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  }, [startingAt]);
 
   // 1st of the current month at 00:00 UTC — the "retroactive" anchor. Computed
   // as an ISO string sent verbatim to the server (no datetime-local conversion).
@@ -494,9 +507,10 @@ export default function SwitchContractDialog({
         if (values.startMode === "retroactive_first_of_month") {
           cleaned.startingAt = retroactiveFirstOfMonthISO;
         } else if (values.startMode === "select" && values.startingAt) {
-          // datetime-local strings have no timezone — convert to ISO so the
-          // server's Date.parse is unambiguous.
-          cleaned.startingAt = new Date(values.startingAt).toISOString();
+          // datetime-local has no timezone — append Z to interpret as UTC.
+          cleaned.startingAt = new Date(
+            values.startingAt + ":00Z"
+          ).toISOString();
         }
       }
       // Seats: every seat the package knows about, each carrying its `selected`
@@ -718,14 +732,21 @@ export default function SwitchContractDialog({
                       options={startModeOptions}
                     />
                     {startMode === "select" && (
-                      <InputField
-                        control={form.control}
-                        name="startingAt"
-                        title="Starts At (local time, on the hour — past allowed)"
-                        type="datetime-local"
-                        step={3600}
-                        transformValue={snapDatetimeLocalToHour}
-                      />
+                      <div>
+                        <InputField
+                          control={form.control}
+                          name="startingAt"
+                          title="Starts At (UTC — prefer midnight, past allowed)"
+                          type="datetime-local"
+                          step={3600}
+                          transformValue={snapDatetimeLocalToHour}
+                        />
+                        {startingAtLocalLabel && (
+                          <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                            Local time: {startingAtLocalLabel}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </>
                 )}
