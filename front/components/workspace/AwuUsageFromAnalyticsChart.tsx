@@ -283,13 +283,14 @@ function CreditTooltip(
   }
 
   const allKeys = groups.map((g) => g.groupKey);
+  const groupNameByKey = new Map(groups.map((g) => [g.groupKey, g.name]));
   const rows: { label: string; value: string; colorClassName: string }[] = [];
   for (const p of payload) {
     if (p.value == null || typeof p.value !== "number" || p.value <= 0) {
       continue;
     }
     const groupKey = p.name ?? "";
-    let label = groups.find((g) => g.groupKey === groupKey)?.name ?? groupKey;
+    let label = groupNameByKey.get(groupKey) ?? groupKey;
     if (groupKey === "others") {
       label = OTHER_LABEL.label;
     } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
