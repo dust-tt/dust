@@ -1,4 +1,3 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   fetchAgentCostStats,
@@ -91,19 +90,23 @@ export async function fetchTopAgents(
     return new Ok([]);
   }
 
-  const cutoff = startDate
-    ? new Date(startDate)
-    : new Date(
-        Date.now() - (days ?? DEFAULT_PERIOD_DAYS) * 24 * 60 * 60 * 1000
-      );
-
-  const [agents, costStatsMap] = await Promise.all([
+  const [agents, costStatsResult] = await Promise.all([
     getAgentConfigurations(auth, {
       agentIds: bucketAgentIds,
       variant: "extra_light",
     }),
-    fetchAgentCostStats(owner, bucketAgentIds, cutoff),
+    fetchAgentCostStats(auth, {
+      agentIds: bucketAgentIds,
+      days,
+      startDate,
+      endDate,
+    }),
   ]);
+
+  if (costStatsResult.isErr()) {
+    return costStatsResult;
+  }
+  const costStatsMap = costStatsResult.value;
 
   const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
 

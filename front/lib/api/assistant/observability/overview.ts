@@ -1,10 +1,10 @@
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
-import { QueryTypes } from "sequelize";
 
 export type AgentCostStats = {
   totalCostCredits: number | null;
@@ -18,7 +18,6 @@ export type AgentOverview = {
   messageCount: number;
   positiveFeedbacks: number;
   negativeFeedbacks: number;
-  costs: AgentCostStats;
 };
 
 type OverviewAggs = {
@@ -80,11 +79,6 @@ export async function fetchAgentOverview(
     negativeFeedbacks: Math.round(
       aggs?.feedbacks?.recent?.down?.doc_count ?? 0
     ),
-    costs: {
-      totalCostCredits: null,
-      avgCostCredits: null,
-      medianCostCredits: null,
-    },
   });
 }
 
@@ -94,61 +88,94 @@ const EMPTY_COST_STATS: AgentCostStats = {
   medianCostCredits: null,
 };
 
-// Returns cost stats (total, avg, median credits) per agent for the given time
-// window. Accepts a list so the same query backs both the single-agent Insights
-// tab and the multi-agent Top Agents table.
+type KeyedTDigestPercentiles = Omit<
+  estypes.AggregationsTDigestPercentilesAggregate,
+  "values"
+> & {
+  values: Record<string, number | null>;
+};
+
+type CostAgentBucket = {
+  key: string;
+  total_cost?: estypes.AggregationsSumAggregate;
+  avg_cost?: estypes.AggregationsAvgAggregate;
+  median_cost?: KeyedTDigestPercentiles;
+};
+
+type AgentCostStatsAggs = {
+  by_agent?: estypes.AggregationsMultiBucketAggregateBase<CostAgentBucket>;
+};
+
 export async function fetchAgentCostStats(
-  workspace: LightWorkspaceType,
-  agentIds: string[],
-  cutoff: Date,
-  version?: number
-): Promise<Map<string, AgentCostStats>> {
+  auth: Authenticator,
+  {
+    agentIds,
+    days,
+    startDate,
+    endDate,
+    version,
+  }: {
+    agentIds: string[];
+    days?: number;
+    startDate?: string;
+    endDate?: string;
+    version?: string;
+  }
+): Promise<Result<Map<string, AgentCostStats>, ElasticsearchError>> {
   if (agentIds.length === 0) {
-    return new Map();
+    return new Ok(new Map());
   }
 
-  const versionClause =
-    version !== undefined ? `AND "agentConfigurationVersion" = :version` : "";
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    agentIds,
+    days,
+    startDate,
+    endDate,
+    version,
+  });
 
-  // biome-ignore lint/plugin/noRawSql: PERCENTILE_CONT with GROUP BY has no Sequelize aggregate equivalent.
-  const rows = await frontSequelize.query<{
-    agent_configuration_id: string;
-    total_cost_credits: number | null;
-    avg_cost_credits: number | null;
-    median_cost_credits: number | null;
-  }>(
-    `SELECT
-      "agentConfigurationId" AS agent_configuration_id,
-      SUM("costCredits")::float AS total_cost_credits,
-      AVG("costCredits")::float AS avg_cost_credits,
-      PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY "costCredits")::float AS median_cost_credits
-    FROM agent_messages
-    WHERE "workspaceId" = :workspaceId
-      AND "agentConfigurationId" IN (:agentIds)
-      AND "createdAt" >= :cutoff
-      AND "costCredits" IS NOT NULL
-      ${versionClause}
-    GROUP BY "agentConfigurationId"`,
-    {
-      type: QueryTypes.SELECT,
-      replacements: {
-        workspaceId: workspace.id,
-        agentIds,
-        cutoff,
-        version,
+  const query: estypes.QueryDslQueryContainer = {
+    bool: {
+      filter: [baseQuery, { range: { "cost.full_awu": { gt: 0 } } }],
+    },
+  };
+
+  const result = await searchAnalytics<never, AgentCostStatsAggs>(query, {
+    aggregations: {
+      by_agent: {
+        terms: { field: "agent_id", size: agentIds.length },
+        aggs: {
+          total_cost: { sum: { field: "cost.full_awu" } },
+          avg_cost: { avg: { field: "cost.full_awu" } },
+          median_cost: {
+            percentiles: { field: "cost.full_awu", percents: [50] },
+          },
+        },
       },
-    }
+    },
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const buckets = bucketsToArray<CostAgentBucket>(
+    result.value.aggregations?.by_agent?.buckets
   );
 
-  return new Map(
-    rows.map((row) => [
-      row.agent_configuration_id,
-      {
-        totalCostCredits: row.total_cost_credits,
-        avgCostCredits: row.avg_cost_credits,
-        medianCostCredits: row.median_cost_credits,
-      },
-    ])
+  return new Ok(
+    new Map(
+      buckets.map((bucket) => [
+        String(bucket.key),
+        {
+          totalCostCredits: bucket.total_cost?.value ?? null,
+          avgCostCredits: bucket.avg_cost?.value ?? null,
+          medianCostCredits: bucket.median_cost?.values?.["50.0"] ?? null,
+        },
+      ])
+    )
   );
 }
 

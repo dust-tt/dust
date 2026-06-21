@@ -59,17 +59,18 @@ app.get(
       version,
     });
 
-    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-    const [overview, costStatsMap] = await Promise.all([
+    const [overview, costStatsResult] = await Promise.all([
       fetchAgentOverview(baseQuery, days),
-      fetchAgentCostStats(
-        owner,
-        [assistant.sId],
-        cutoff,
-        version !== undefined ? Number(version) : undefined
-      ),
+      fetchAgentCostStats(auth, {
+        agentIds: [assistant.sId],
+        days,
+        version,
+      }),
     ]);
-    const costs = getAgentCostStats(costStatsMap, assistant.sId);
+    const costs = getAgentCostStats(
+      costStatsResult.isOk() ? costStatsResult.value : new Map(),
+      assistant.sId
+    );
 
     if (overview.isErr()) {
       return apiError(ctx, {
