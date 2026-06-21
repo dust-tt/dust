@@ -72,7 +72,6 @@ function ProfileOnboardingDialogContent({
     <Dialog open>
       <DialogContent
         size="2xl"
-        height="2xl"
         isAlertDialog
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
