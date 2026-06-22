@@ -42,6 +42,9 @@ const kit = vi.hoisted(() => {
   const emptyStream = () => (async function* () {})();
   const freshCaptures = () => ({
     anthropic: { ga: [] as unknown[], beta: [] as unknown[] },
+    google: [] as unknown[],
+    openai: [] as unknown[],
+    openai_chat: [] as unknown[],
   });
   const state = { captures: freshCaptures() };
   const makeClient = () =>
@@ -61,12 +64,58 @@ const kit = vi.hoisted(() => {
         },
       };
     };
-  return { state, makeClient, freshCaptures };
+  // Both the legacy and new Google routers call `models.generateContentStream`,
+  // which the SDK exposes as async — return a resolved async iterator.
+  const makeGoogleClient = () =>
+    class {
+      models = {
+        generateContentStream: (input: unknown) => {
+          state.captures.google.push(input);
+          return Promise.resolve(emptyStream());
+        },
+      };
+    };
+  // The default client serves both `responses.create` (OpenAI Responses) and
+  // `chat.completions.create` (Fireworks); one bucket per surface.
+  const makeOpenAIClient = () =>
+    class {
+      responses = {
+        create: (input: unknown) => {
+          state.captures.openai.push(input);
+          return emptyStream();
+        },
+      };
+      chat = {
+        completions: {
+          create: (input: unknown) => {
+            state.captures.openai_chat.push(input);
+            return emptyStream();
+          },
+        },
+      };
+    };
+  return {
+    state,
+    makeClient,
+    makeGoogleClient,
+    makeOpenAIClient,
+    freshCaptures,
+  };
 });
 
 vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@anthropic-ai/sdk")>();
   return { ...actual, default: kit.makeClient() };
+});
+
+vi.mock("@google/genai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@google/genai")>();
+  return { ...actual, GoogleGenAI: kit.makeGoogleClient() };
+});
+
+vi.mock("openai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("openai")>();
+  return { ...actual, default: kit.makeOpenAIClient() };
 });
 
 async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {

@@ -643,8 +643,10 @@ export async function updateMembershipSeatAndTrack({
     return new Err({ type: "free_seat_not_allowed" });
   }
 
-  // Enforce the per-seat-type hard cap. Assigning to `none` (removing a seat)
-  // is always allowed. Same-type noops are also allowed (no net change).
+  // Enforce the per-seat-type hard cap (`maxSeats`). Assigning to `none`
+  // (removing a seat) is always allowed. Same-type noops are also allowed (no
+  // net change). This cap is never bypassed — committed seat counts (`minSeats`)
+  // are not enforced here, so exceeding the commitment is already permitted.
   if (newSeatType !== "none" && newSeatType !== previousSeatType) {
     const seatLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
       workspace,

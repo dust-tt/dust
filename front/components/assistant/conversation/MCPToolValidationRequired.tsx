@@ -105,8 +105,8 @@ const MCP_TOOL_OVERRIDES: Partial<
         if (!isPodManagerUpdateMembersInput(inputs)) {
           return `Allow ${asDisplayName(agentName)} to update Pod members?`;
         }
-        const addCount = inputs.addMemberIds?.length ?? 0;
-        const removeCount = inputs.removeMemberIds?.length ?? 0;
+        const addCount = Object.keys(inputs.membersToAdd ?? {}).length;
+        const removeCount = inputs.membersToRemove?.length ?? 0;
         const parts: string[] = [];
         if (addCount > 0) {
           parts.push(`add ${addCount}`);
@@ -114,7 +114,7 @@ const MCP_TOOL_OVERRIDES: Partial<
         if (removeCount > 0) {
           parts.push(`remove ${removeCount}`);
         }
-        return `Allow ${asDisplayName(agentName)} to ${parts.join(" and ")} Pod member${addCount + removeCount === 1 ? "" : "s"}?`;
+        return `Allow ${asDisplayName(agentName)} to ${parts.join(" and ")} Pod user${addCount + removeCount === 1 ? "" : "s"}?`;
       },
       alwaysAllowLabel: (agentName) =>
         `Always allow ${asDisplayName(agentName)} to update Pod members`,

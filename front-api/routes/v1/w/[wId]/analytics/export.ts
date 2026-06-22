@@ -23,15 +23,16 @@
  *           - "usage_metrics": Messages, conversations, and active users over time.
  *           - "active_users": Daily, weekly, and monthly active user counts.
  *           - "source": Message volume by context origin (web, slack, etc.).
- *           - "agents": Top agents by message count.
- *           - "users": Top users by message count.
+ *           - "agents": Top agents by message count, including credits.
+ *           - "users": Top users by message count, including credits.
+ *           - "skills": Skill metadata catalog.
  *           - "skill_usage": Skill executions and unique users over time.
  *           - "tool_usage": Tool executions and unique users over time.
  *           - "messages": Detailed message-level logs.
  *           - "feedback": Detailed message-level feedback (thumbs, content, conversation URL).
  *         schema:
  *           type: string
- *           enum: [usage_metrics, active_users, source, agents, users, skill_usage, tool_usage, messages, feedback]
+ *           enum: [usage_metrics, active_users, source, agents, users, skills, skill_usage, tool_usage, messages, feedback]
  *       - in: query
  *         name: startDate
  *         required: true

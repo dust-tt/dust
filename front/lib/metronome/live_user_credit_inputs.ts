@@ -11,7 +11,7 @@
 // reconcile module back.
 
 import {
-  listContractPerUserCreditBalances,
+  listCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import {
@@ -94,42 +94,39 @@ export async function fetchLiveUserCreditInputs({
   // contract credit instead (not a seat balance), so read that.
   let seatBalanceAwu: number | null = null;
   let seatStartingBalanceAwu: number | null = null;
-  if (metronomeContractId) {
-    if (seatType === "free") {
-      const creditBalancesResult = await listContractPerUserCreditBalances({
-        metronomeCustomerId,
-        metronomeContractId,
-        contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
-      });
-      if (creditBalancesResult.isErr()) {
-        return new Err(
-          new Error(
-            `Failed to read per-user credit balances: ${creditBalancesResult.error.message}`
-          )
-        );
-      }
-      const credit = creditBalancesResult.value.get(userId);
-      if (credit) {
-        seatBalanceAwu = credit.balanceAwu;
-        seatStartingBalanceAwu = credit.startingBalanceAwu;
-      }
-    } else {
-      const seatBalancesResult = await listMetronomeSeatBalances({
-        metronomeCustomerId,
-        metronomeContractId,
-      });
-      if (seatBalancesResult.isErr()) {
-        return new Err(
-          new Error(
-            `Failed to read seat balances: ${seatBalancesResult.error.message}`
-          )
-        );
-      }
-      const seat = awuSeatBalanceForUser(seatBalancesResult.value, userId);
-      if (seat) {
-        seatBalanceAwu = seat.balanceAwu;
-        seatStartingBalanceAwu = seat.startingBalanceAwu;
-      }
+  if (seatType === "free") {
+    const creditBalancesResult = await listCustomerPerUserCreditBalances({
+      metronomeCustomerId,
+      contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
+    });
+    if (creditBalancesResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to read per-user credit balances: ${creditBalancesResult.error.message}`
+        )
+      );
+    }
+    const credit = creditBalancesResult.value.get(userId);
+    if (credit) {
+      seatBalanceAwu = credit.balanceAwu;
+      seatStartingBalanceAwu = credit.startingBalanceAwu;
+    }
+  } else if (metronomeContractId) {
+    const seatBalancesResult = await listMetronomeSeatBalances({
+      metronomeCustomerId,
+      metronomeContractId,
+    });
+    if (seatBalancesResult.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to read seat balances: ${seatBalancesResult.error.message}`
+        )
+      );
+    }
+    const seat = awuSeatBalanceForUser(seatBalancesResult.value, userId);
+    if (seat) {
+      seatBalanceAwu = seat.balanceAwu;
+      seatStartingBalanceAwu = seat.startingBalanceAwu;
     }
   }
 

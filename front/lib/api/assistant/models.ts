@@ -8,8 +8,8 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_1_PRO_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import {
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
@@ -157,7 +157,7 @@ function _getSmallWhitelistedModel(
 const ORDERED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
+  GEMINI_3_1_PRO_MODEL_CONFIG,
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 ];

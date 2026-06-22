@@ -701,6 +701,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_shrink_wrap"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "anthropic_cache_diagnostics"
+  | "anthropic_tool_search"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
@@ -726,6 +728,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "gpt_image_2_feature"
   | "hootl_subscriptions"
   | "http_client_tool"
+  | "imgproxy_image_resize"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
@@ -761,6 +764,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"
+  | "new_analytics_page"
   | "workspace_analytics"
   | "xai_feature"
   | "conversations_slack_notifications"
@@ -778,6 +782,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_new_llm_router"
   | "live_speech_to_text"
   | "force_us_api_url"
+  | "workspace_default_agent"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3035,6 +3040,7 @@ const AnalyticsExportTableSchema = z.enum([
   "source",
   "agents",
   "users",
+  "skills",
   "skill_usage",
   "tool_usage",
   "messages",

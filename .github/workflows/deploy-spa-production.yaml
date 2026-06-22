@@ -49,7 +49,7 @@ jobs:
             echo "::error::No version ID provided for ${{ matrix.app }}. Cannot promote without an explicit version ID."
             exit 1
           fi
-          echo "id=${VERSION_ID}" >> $GITHUB_OUTPUT
+          echo "id=${VERSION_ID}" >> "$GITHUB_OUTPUT"
           echo "Promoting version: ${VERSION_ID}"
 
       - name: Promote version to production

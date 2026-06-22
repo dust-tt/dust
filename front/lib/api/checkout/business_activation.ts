@@ -4,6 +4,7 @@ import {
   isMetronomeBillingEnabled,
   restoreWorkspaceAfterSubscription,
 } from "@app/lib/api/subscription";
+import { ensureWorkOSOrganizationForPaidPlan } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import {
   type CheckoutPayment,
@@ -14,6 +15,7 @@ import {
   setCheckoutPaymentPending,
 } from "@app/lib/credits/checkout_payment_status";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
+import { emitSubscriptionChangedAuditEvent } from "@app/lib/metronome/audit";
 import {
   addPaymentGatedCommitToContract,
   floorToHourISO,
@@ -32,7 +34,7 @@ import {
 } from "@app/lib/metronome/constants";
 import {
   ensureMetronomeCustomerForWorkspace,
-  provisionMetronomeContract,
+  provisionPaymentGatedActivationContract,
 } from "@app/lib/metronome/contracts";
 import {
   createCouponCredit,
@@ -46,8 +48,7 @@ import {
 } from "@app/lib/plans/billing_currency";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  CREDIT_PRICED_FREE_PLAN_CODE,
-  FREE_NO_PLAN_CODE,
+  isFreePlan,
 } from "@app/lib/plans/plan_codes";
 import {
   getStripeClient,
@@ -152,15 +153,10 @@ export async function createPaymentGatedBusinessActivation({
     validCurrency
   );
 
-  // Step 1: workspace must be on CP_FREE_PLAN.
+  // Step 1: workspace must be on a free plan.
   const activeSubscription =
     await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-  const planCode = activeSubscription?.getPlan().code;
-  if (
-    !activeSubscription ||
-    (planCode !== CREDIT_PRICED_FREE_PLAN_CODE &&
-      planCode !== FREE_NO_PLAN_CODE)
-  ) {
+  if (!activeSubscription || !isFreePlan(activeSubscription.getPlan().code)) {
     return new Err({ type: "not_on_free_plan" });
   }
 
@@ -180,9 +176,17 @@ export async function createPaymentGatedBusinessActivation({
   // Step 3: provision Business Metronome contract.
   // The PAYMENT_GATE_TYPE custom field tells the contract.start webhook to skip
   // the automatic subscription swap — payment_gate.payment_status handles it.
+  // We use the dedicated helper that does NOT sunset overlapping contracts so the
+  // current free contract remains live until payment succeeds.
   const now = new Date(floorToHourISO(new Date()));
   const uniquenessKey = `subscription-activation-${workspace.sId}-${setupSessionId}`;
-  const contractResult = await provisionMetronomeContract({
+
+  // Snapshot the current Metronome contract so the success handler can validate
+  // the workspace state hasn't changed and can end the exact previous contract.
+  const previousMetronomeContractId =
+    activeSubscription.metronomeContractId ?? undefined;
+
+  const contractResult = await provisionPaymentGatedActivationContract({
     metronomeCustomerId,
     workspace: lightWorkspace,
     packageAlias: resolvedPackageAlias,
@@ -193,7 +197,6 @@ export async function createPaymentGatedBusinessActivation({
       [PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY]:
         PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
     },
-    enableSeatSync: false,
   });
   if (contractResult.isErr()) {
     return new Err({
@@ -268,6 +271,7 @@ export async function createPaymentGatedBusinessActivation({
     couponCode,
     couponRedemptionId: pendingRedemption?.sId,
     uniquenessKey,
+    previousMetronomeContractId,
   });
 
   // Step 6: zero-amount fast path — no invoice to create, activate immediately.
@@ -343,6 +347,24 @@ export async function createPaymentGatedBusinessActivation({
       contractId: metronomeContractId,
       errorMessage: commitResult.error.message,
     });
+    // End the activation contract since no payment webhook will arrive to clean
+    // it up. The previous free contract is NOT touched here.
+    const endResult = await scheduleMetronomeContractEnd({
+      metronomeCustomerId,
+      contractId: metronomeContractId,
+      endingBefore: new Date(floorToHourISO(new Date())),
+    });
+    if (endResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          metronomeCustomerId,
+          metronomeContractId,
+          error: endResult.error.message,
+        },
+        "[Business Activation] Failed to end activation contract after commit failure — manual cleanup may be required"
+      );
+    }
     return new Err({
       type: "metronome_error",
       message: commitResult.error.message,
@@ -467,7 +489,7 @@ export async function handleSubscriptionActivationSuccess({
     }
   }
 
-  // Switch workspace DB subscription from CP_FREE_PLAN to CP_BUSINESS_PLAN.
+  // Switch workspace DB subscription to CP_BUSINESS_PLAN.
   const activeSubscription =
     await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
   if (!activeSubscription) {
@@ -477,11 +499,73 @@ export async function handleSubscriptionActivationSuccess({
     );
     return;
   }
+
+  // Snapshot validation: ensure the Metronome contract on the active subscription
+  // still matches what was captured at checkout time. If another checkout already
+  // swapped the workspace to a paid contract, or an admin changed the free
+  // contract, the IDs won't match and we abort.
+  const contractMismatch =
+    activeSubscription.metronomeContractId !==
+    (checkoutPayment.previousMetronomeContractId ?? null);
+  if (contractMismatch) {
+    logger.error(
+      {
+        panic: true,
+        workspaceId: workspace.sId,
+        contractId,
+        currentMetronomeContractId: activeSubscription.metronomeContractId,
+        expectedMetronomeContractId:
+          checkoutPayment.previousMetronomeContractId,
+      },
+      "[Business Activation] Subscription mismatch during activation — another change occurred, ending activation contract"
+    );
+    await markCheckoutPaymentFailed({
+      workspaceId: workspace.sId,
+      contractId,
+      errorMessage:
+        "Subscription changed during activation — activation contract ended",
+    });
+    const endMismatchResult = await scheduleMetronomeContractEnd({
+      metronomeCustomerId: checkoutPayment.metronomeCustomerId,
+      contractId,
+      endingBefore: new Date(floorToHourISO(new Date())),
+    });
+    if (endMismatchResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          contractId,
+          error: endMismatchResult.error.message,
+        },
+        "[Business Activation] Failed to end activation contract on subscription mismatch — manual cleanup may be required"
+      );
+    }
+    return;
+  }
+
+  const previousPlanCode = activeSubscription.getPlan().code;
+
   await activeSubscription.swapMetronomeContract({
     metronomeContractId: contractId,
     planCode: checkoutPayment.planCode,
   });
   await invalidateContractCache(workspace.sId);
+
+  // Restore workspace (unblock connectors, triggers, cancel scrub).
+  await restoreWorkspaceAfterSubscription(auth);
+
+  emitSubscriptionChangedAuditEvent({
+    auth,
+    planCode: checkoutPayment.planCode,
+    previousPlanCode,
+    metronomeContractId: contractId,
+  });
+
+  await ensureWorkOSOrganizationForPaidPlan({
+    workspace: lightWorkspace,
+    planCode: checkoutPayment.planCode,
+    contractId,
+  });
 
   logger.info(
     { workspaceId: workspace.sId, contractId },
@@ -548,15 +632,37 @@ export async function handleSubscriptionActivationSuccess({
     }
   }
 
-  // Restore workspace (unblock connectors, triggers, cancel scrub).
-  await restoreWorkspaceAfterSubscription(auth);
-
   // Mark Redis activation succeeded.
   await markCheckoutPaymentSucceeded({
     workspaceId: workspace.sId,
     contractId,
     invoiceId,
   });
+
+  // End the previous free contract now that the workspace has been swapped to
+  // the paid activation contract. We do this after the DB swap and Redis mark so
+  // the workspace is never left in an unactivated state if this step fails.
+  if (
+    checkoutPayment.previousMetronomeContractId &&
+    checkoutPayment.previousMetronomeContractId !== contractId
+  ) {
+    const endPreviousResult = await scheduleMetronomeContractEnd({
+      metronomeCustomerId: checkoutPayment.metronomeCustomerId,
+      contractId: checkoutPayment.previousMetronomeContractId,
+      endingBefore: new Date(floorToHourISO(new Date())),
+    });
+    if (endPreviousResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          previousMetronomeContractId:
+            checkoutPayment.previousMetronomeContractId,
+          error: endPreviousResult.error.message,
+        },
+        "[Business Activation] Failed to end previous free contract after activation — manual cleanup may be required"
+      );
+    }
+  }
 
   logger.info(
     { workspaceId: workspace.sId, contractId, invoiceId },

@@ -4,6 +4,7 @@ import type {
   AwuUsageGroupByType,
   GetAwuUsageResponse,
 } from "@app/lib/api/analytics/awu_usage";
+import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import type {
   GetMetronomeUsageResponse,
   MetronomeUsageGroupByType,
@@ -17,6 +18,7 @@ import type {
   GetWorkspaceTopUsersResponse,
 } from "@app/lib/api/analytics/workspace_analytics";
 import type { GetWorkspaceActiveUsersResponse } from "@app/lib/api/assistant/observability/active_users_metrics";
+import type { GetAgentCreditsResponse } from "@app/lib/api/assistant/observability/agent_credits";
 import type { GetWorkspaceContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/lib/api/assistant/observability/messages_metrics";
 import type { GetWorkspaceSkillsResponse } from "@app/lib/api/assistant/observability/skill_usage";
@@ -24,6 +26,7 @@ import type {
   GetWorkspaceToolsResponse,
   GetWorkspaceToolUsageResponse,
 } from "@app/lib/api/assistant/observability/tool_usage";
+import type { GetUserCreditsResponse } from "@app/lib/api/assistant/observability/user_credits";
 import type {
   GetNoWorkspaceAuthContextResponseType,
   GetWorkspaceAuthContextResponseType,
@@ -460,6 +463,68 @@ export function useWorkspaceTopUsers({
   };
 }
 
+export function useWorkspaceUserCredits({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  limit = 100,
+  search,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  limit?: number;
+  search?: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetUserCreditsResponse> = fetcher;
+  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+  const key = `/api/w/${workspaceId}/analytics/user-credits?days=${days}&limit=${limit}${searchParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    userCredits: data?.users ?? emptyArray(),
+    isUserCreditsLoading: !error && !data && !disabled,
+    isUserCreditsError: error,
+    isUserCreditsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceAgentCredits({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  limit = 100,
+  search,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  limit?: number;
+  search?: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetAgentCreditsResponse> = fetcher;
+  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+  const key = `/api/w/${workspaceId}/analytics/agent-credits?days=${days}&limit=${limit}${searchParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    agentCredits: data?.agents ?? emptyArray(),
+    isAgentCreditsLoading: !error && !data && !disabled,
+    isAgentCreditsError: error,
+    isAgentCreditsValidating: isValidating,
+  };
+}
+
 export function useWorkspaceTopAgents({
   workspaceId,
   days = DEFAULT_PERIOD_DAYS,
@@ -686,6 +751,53 @@ export function useAwuUsage({
   }
   const queryString = queryParams.toString();
   const key = `/api/w/${workspaceId}/analytics/awu-usage?${queryString}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    awuUsageData: data,
+    isAwuUsageLoading: !error && !data && !disabled,
+    isAwuUsageError: error,
+    isAwuUsageValidating: isValidating,
+  };
+}
+
+export function useAwuUsageFromAnalytics({
+  workspaceId,
+  groupBy,
+  groupByCount,
+  granularity,
+  days,
+  disabled,
+}: {
+  workspaceId: string;
+  groupBy?: "usage_type" | "agent" | "user" | "origin";
+  groupByCount?: number;
+  granularity?: "day" | "week" | "month";
+  days?: number;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<AwuUsageAnalyticsResponse> = fetcher;
+
+  const queryParams = new URLSearchParams();
+  if (groupBy) {
+    queryParams.set("groupBy", groupBy);
+  }
+  if (groupByCount !== undefined) {
+    queryParams.set("groupByCount", groupByCount.toString());
+  }
+  if (granularity) {
+    queryParams.set("granularity", granularity);
+  }
+  if (days !== undefined) {
+    queryParams.set("days", days.toString());
+  }
+  const queryString = queryParams.toString();
+  const key = `/api/w/${workspaceId}/analytics/awu-usage-analytics?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

@@ -23,7 +23,7 @@ import {
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import { ensureWorkOSOrganizationForPaidPlan } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import {
   markAwuPurchaseAttemptFailed,
@@ -59,6 +59,7 @@ import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_EXCESS,
   CONTRACT_CREDIT_TYPE_POOL,
+  fromFreeMetronomeUserId,
   getCreditTypeAwuId,
   getProductExcessCreditsId,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
@@ -76,7 +77,6 @@ import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -229,7 +229,7 @@ async function stampContractCreditType({
     }
 
     // Per-user free-seat credits are stamped "free_seat" at creation (see
-    // `addPerUserCreditToContract`), so they hit the already-stamped early
+    // `addPerUserCreditToCustomer`), so they hit the already-stamped early
     // return above and are never re-stamped "pool" here.
 
     if (credit.product.id === getProductExcessCreditsId()) {
@@ -538,40 +538,6 @@ export async function handleFreeCreditSegmentGrant({
   );
 
   return new Ok(undefined);
-}
-
-// Ensure the workspace has a WorkOS organization once it lands on a paid plan
-// via `contract.start`. Idempotent — `switch_contract` already runs this on
-// the synchronous path, but the webhook covers contracts created outside that
-// flow (manual provisioning, legacy migrations). Failures are logged but do
-// not fail the webhook: the contract is already active and the org can be
-// created later by the `/w/[wId]/domains` endpoint or a re-trigger.
-async function ensureWorkOSOrganizationForPaidPlan({
-  workspace,
-  planCode,
-  contractId,
-}: {
-  workspace: WorkspaceResource;
-  planCode: string;
-  contractId: string;
-}): Promise<void> {
-  if (isFreePlan(planCode)) {
-    return;
-  }
-  const workosResult = await getOrCreateWorkOSOrganization(
-    renderLightWorkspaceType({ workspace })
-  );
-  if (workosResult.isErr()) {
-    logger.error(
-      {
-        contractId,
-        planCode,
-        workspaceId: workspace.sId,
-        err: workosResult.error,
-      },
-      "[Metronome Webhook] contract.start: failed to provision WorkOS organization"
-    );
-  }
 }
 
 type SpendThresholdEvent = Extract<
@@ -1038,13 +1004,17 @@ export async function processMetronomeWebhook({
     // `threshold === 0` → exhausted (→ capped), else → near-limit flag set.
     case "alerts.low_remaining_contract_credit_balance_reached": {
       const { alert_id: alertId, threshold } = event.properties;
-      const userId = await resolvePerUserCreditAlertUserId({
+      const metronomeUserId = await resolvePerUserCreditAlertUserId({
         metronomeCustomerId: event.properties.customer_id,
         alertId,
       });
-      if (!userId || threshold === null || threshold === undefined) {
+      if (!metronomeUserId || threshold === null || threshold === undefined) {
         break;
       }
+      // Alerts are keyed by the free-prefixed Metronome user id; strip the
+      // prefix to recover the raw sId used everywhere else.
+      const userId =
+        fromFreeMetronomeUserId(metronomeUserId) ?? metronomeUserId;
       if (threshold === 0) {
         await dispatchSeatBalanceExhausted({ workspace, userId });
         logger.info(
@@ -1065,13 +1035,17 @@ export async function processMetronomeWebhook({
       break;
     }
     case "alerts.low_remaining_contract_credit_balance_resolved": {
-      const userId = await resolvePerUserCreditAlertUserId({
+      const metronomeUserId = await resolvePerUserCreditAlertUserId({
         metronomeCustomerId: event.properties.customer_id,
         alertId: event.properties.alert_id,
       });
-      if (!userId) {
+      if (!metronomeUserId) {
         break;
       }
+      // Alerts are keyed by the free-prefixed Metronome user id; strip the
+      // prefix to recover the raw sId used everywhere else.
+      const userId =
+        fromFreeMetronomeUserId(metronomeUserId) ?? metronomeUserId;
       void setUserNearLimit(workspace.sId, userId, false);
       await dispatchSeatBalanceResolved({ workspace, userId });
       logger.info(
@@ -1536,7 +1510,7 @@ export async function processMetronomeWebhook({
         );
         await restoreWorkspaceAfterSubscription(auth);
         await ensureWorkOSOrganizationForPaidPlan({
-          workspace,
+          workspace: renderLightWorkspaceType({ workspace }),
           planCode: targetPlan.code,
           contractId,
         });
@@ -1597,7 +1571,7 @@ export async function processMetronomeWebhook({
       });
 
       await ensureWorkOSOrganizationForPaidPlan({
-        workspace,
+        workspace: renderLightWorkspaceType({ workspace }),
         planCode: targetPlan.code,
         contractId,
       });

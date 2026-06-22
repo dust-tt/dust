@@ -3,7 +3,7 @@ name: Run DangerJS
 on:
   pull_request:
     branches: [ main ]
-    types: [ edited, labeled, opened, pushed, reopened, synchronize ]
+    types: [ edited, labeled, opened, reopened, synchronize ]
 
 permissions:
   contents: read
@@ -41,15 +41,15 @@ jobs:
 
           PATHS_STRING="${MONITORED_PATHS[*]}"
 
-          CHANGED_FILES=$(git diff --name-only origin/main ${{ github.sha }} -- ${MONITORED_PATHS[@]})
+          CHANGED_FILES=$(git diff --name-only origin/main ${{ github.sha }} -- "${MONITORED_PATHS[@]}")
           if [ -n "$CHANGED_FILES" ]; then
             echo "Changed files found:"
             echo "$CHANGED_FILES"
-            echo "run_danger=true" >> $GITHUB_OUTPUT
+            echo "run_danger=true" >> "$GITHUB_OUTPUT"
             echo "::warning ::Files in ${PATHS_STRING} have been modified."
           else
             echo "No changed files found."
-            echo "run_danger=false" >> $GITHUB_OUTPUT
+            echo "run_danger=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Setup Node Dependencies
@@ -82,21 +82,15 @@ jobs:
           echo "Checking for changed activity files in connectors..."
 
           # Define monitored paths for connectors
-          CONNECTORS_MONITORED_PATHS=(
-            'connectors/src/connectors/*/temporal/activities.ts'
-          )
-
-          PATHS_STRING="${CONNECTORS_MONITORED_PATHS[*]}"
-
           CHANGED_FILES=$(git diff --name-only origin/main ${{ github.sha }} | grep -E 'connectors/src/.*/temporal/activities\.ts$' || true)
           if [ -n "$CHANGED_FILES" ]; then
             echo "Changed activity files found:"
             echo "$CHANGED_FILES"
-            echo "run_danger=true" >> $GITHUB_OUTPUT
+            echo "run_danger=true" >> "$GITHUB_OUTPUT"
             echo "::warning ::Activity files in connectors have been modified."
           else
             echo "No changed activity files found."
-            echo "run_danger=false" >> $GITHUB_OUTPUT
+            echo "run_danger=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Setup Node Dependencies

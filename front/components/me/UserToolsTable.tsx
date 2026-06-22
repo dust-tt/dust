@@ -173,7 +173,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         header: "",
         accessorKey: "actions",
         cell: ({ row }) => (
-          <DropdownMenu modal={false}>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 icon={DotsHorizontal}

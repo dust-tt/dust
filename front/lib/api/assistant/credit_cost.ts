@@ -3,7 +3,8 @@ import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  intelligenceAwuFromRunUsages,
+  computeRunKey,
+  intelligenceAwuFromRunUsagesGroupedByRunKey,
   isFreeOrigin,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
@@ -28,7 +29,7 @@ export function computeAgentMessageCredits({
   actions,
   isFreeUsage = false,
 }: {
-  runUsages: RunUsageType[];
+  runUsages: (RunUsageType & { runKey: string | null })[];
   actions: CreditActionMinimalInput[];
   isFreeUsage?: boolean;
 }): number | null {
@@ -44,8 +45,12 @@ export function computeAgentMessageCredits({
     return 0;
   }
 
+  // Intelligence cost is ceiled per agent-loop execution (runKey) to match the
+  // per-execution Metronome events. Tool cost has no ceiling (fixed 1/3 per
+  // action), so it is grouping-invariant and stays message-level.
   return (
-    intelligenceAwuFromRunUsages(runUsages) + toolAwuFromActions(finalActions)
+    intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages) +
+    toolAwuFromActions(finalActions)
   );
 }
 
@@ -61,10 +66,18 @@ export function computeAgentMessageCredits({
  * Computes from the message's full accumulated runIds + all final-status actions (the message-level
  * total), so re-runs (interrupt/resume) overwrite the stored value with the complete cost. Only
  * persists for statuses we track for billing, matching the Metronome gate.
+ *
+ * Before recomputing, this execution's runs are tagged with their runKey (from `dustRunIds`) so the
+ * intelligence cost is ceiled per agent-loop execution — exactly matching the per-execution
+ * Metronome events. Tagging is idempotent (same runIds → same runKey), so it stays overwrite-safe
+ * across Temporal retries.
  */
 export async function computeAndStoreAgentMessageCredits(
   auth: Authenticator,
-  { agentMessageId }: { agentMessageId: string }
+  {
+    agentMessageId,
+    dustRunIds,
+  }: { agentMessageId: string; dustRunIds?: string[] }
 ): Promise<number | null> {
   const creditContext =
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
@@ -84,6 +97,17 @@ export async function computeAndStoreAgentMessageCredits(
 
   if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
     return null;
+  }
+
+  // Tag this execution's runs with their runKey before recomputing, so the
+  // recompute (which reads the message's full accumulated runIds) ceils each
+  // execution's intelligence cost independently. Prior executions tagged their
+  // own runs in their own finalize.
+  if (dustRunIds && dustRunIds.length > 0) {
+    await RunResource.setRunKeyForDustRunIds(auth, {
+      dustRunIds,
+      runKey: computeRunKey(dustRunIds),
+    });
   }
 
   const [runUsages, actions] = await Promise.all([
@@ -140,7 +164,7 @@ export async function computeAndStoreAgentMessageCredits(
 async function fetchRunUsagesForAgentMessage(
   auth: Authenticator,
   runIds: string[] | null
-): Promise<RunUsageType[]> {
+): Promise<(RunUsageType & { runKey: string | null })[]> {
   const dustRunIds = [...new Set(runIds ?? [])];
   if (dustRunIds.length === 0) {
     return [];

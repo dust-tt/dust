@@ -55,7 +55,7 @@ jobs:
               NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0"
             fi
           fi
-          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -96,8 +96,10 @@ jobs:
       - name: Summary
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          echo "## Sandbox Bedrock Release" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Released **${VERSION}**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Image: \`us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx/dust-sbx-bedrock:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Sandbox Bedrock Release"
+            echo ""
+            echo "Released **${VERSION}**"
+            echo ""
+            echo "Image: \`us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx/dust-sbx-bedrock:${VERSION}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

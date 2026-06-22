@@ -140,6 +140,7 @@ export function WorkspacePage() {
     usageCapAlert,
     defaultAlerts,
     programmaticCreditState,
+    programmaticWarningReached,
     stripeSubscription,
     stripeCustomerId,
     subscriptions,
@@ -357,6 +358,7 @@ export function WorkspacePage() {
                   stripeSubscription={stripeSubscription}
                   poolCreditState={poolCreditState}
                   programmaticCreditState={programmaticCreditState}
+                  programmaticWarningReached={programmaticWarningReached}
                   creditUsageConfig={creditUsageConfig}
                   poolAlert={poolAlert}
                   programmaticAlerts={programmaticAlerts}

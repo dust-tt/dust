@@ -793,6 +793,107 @@ describe("SpaceResource", () => {
           const editorIds = editors.map((m) => m.sId);
           expect(editorIds).toContain(editorUser.sId);
         });
+
+        it("should no-op when adding an existing editor as a member", async () => {
+          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
+            user: editorUser.toJSON(),
+          });
+
+          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            editorUser.sId,
+            workspace.sId
+          );
+          const reloadedSpace = await SpaceResource.fetchById(
+            editorAuth,
+            projectSpace.sId
+          );
+
+          const addMembersRes = await reloadedSpace!.addMembers(editorAuth, {
+            userIds: [editorUser.sId],
+          });
+
+          expect(addMembersRes.isOk()).toBe(true);
+          if (addMembersRes.isOk()) {
+            expect(addMembersRes.value).toHaveLength(0);
+          }
+
+          const memberGroupMembers =
+            await projectMemberGroup.getActiveMembers(adminAuth);
+          expect(
+            memberGroupMembers.some((member) => member.sId === editorUser.sId)
+          ).toBe(false);
+
+          const editorGroupMembers =
+            await projectEditorGroup.getActiveMembers(adminAuth);
+          expect(
+            editorGroupMembers.some((member) => member.sId === editorUser.sId)
+          ).toBe(true);
+        });
+
+        it("should promote a member to editor and remove them from members", async () => {
+          await projectMemberGroup.dangerouslyAddMember(adminAuth, {
+            user: memberUser.toJSON(),
+          });
+          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
+            user: editorUser.toJSON(),
+          });
+
+          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            editorUser.sId,
+            workspace.sId
+          );
+          const reloadedSpace = await SpaceResource.fetchById(
+            editorAuth,
+            projectSpace.sId
+          );
+
+          const addEditorsRes = await reloadedSpace!.addEditors(editorAuth, {
+            userIds: [memberUser.sId],
+          });
+
+          expect(addEditorsRes.isOk()).toBe(true);
+
+          const memberGroupMembers =
+            await projectMemberGroup.getActiveMembers(adminAuth);
+          expect(
+            memberGroupMembers.some((member) => member.sId === memberUser.sId)
+          ).toBe(false);
+
+          const editorGroupMembers =
+            await projectEditorGroup.getActiveMembers(adminAuth);
+          expect(
+            editorGroupMembers.some((member) => member.sId === memberUser.sId)
+          ).toBe(true);
+        });
+
+        it("should reject removing the last editor", async () => {
+          await projectEditorGroup.dangerouslyAddMember(adminAuth, {
+            user: editorUser.toJSON(),
+          });
+
+          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            editorUser.sId,
+            workspace.sId
+          );
+          const reloadedSpace = await SpaceResource.fetchById(
+            editorAuth,
+            projectSpace.sId
+          );
+
+          const removeEditorsRes = await reloadedSpace!.removeEditors(
+            editorAuth,
+            {
+              userIds: [editorUser.sId],
+            }
+          );
+
+          expect(removeEditorsRes.isErr()).toBe(true);
+          if (removeEditorsRes.isErr()) {
+            expect(removeEditorsRes.error.code).toBe(
+              "group_requirements_not_met"
+            );
+          }
+        });
       });
 
       describe("with provisioned groups", () => {

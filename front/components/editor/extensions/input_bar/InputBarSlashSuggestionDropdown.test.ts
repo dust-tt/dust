@@ -1,113 +1,186 @@
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import {
+  ADD_CAPABILITY_SLASH_COMMAND_ACTION,
+  INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION,
+  INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
+  isRunCommandSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { describe, expect, it } from "vitest";
 
-import { filterInputBarSlashSuggestions } from "./InputBarSlashSuggestionDropdown";
-import { INPUT_BAR_SLASH_COMMANDS } from "./InputBarSlashSuggestionTypes";
+import { buildInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
+import {
+  getAvailableInputBarSlashCommands,
+  INPUT_BAR_SLASH_COMMANDS,
+  type InputBarSlashCommand,
+} from "./InputBarSlashSuggestionTypes";
 
-describe("filterInputBarSlashSuggestions", () => {
-  it("filters capabilities by name only", async () => {
-    const { auth, globalSpace, workspace } =
-      await createPrivateApiMockRequest();
-    const skill = await SkillFactory.create(auth, {
-      name: "Summarize",
-      userFacingDescription: "Search spreadsheets and documents.",
-    });
-    const calendarServer = await RemoteMCPServerFactory.create(workspace, {
-      name: "Calendar",
-      description: "Search spreadsheets and documents.",
-    });
-    const calendarServerView = await MCPServerViewFactory.create(
-      workspace,
-      calendarServer.sId,
-      globalSpace
-    );
+const ALL_COMMANDS = getAvailableInputBarSlashCommands({
+  hasAttachment: true,
+  hasConversation: true,
+});
 
-    const result = filterInputBarSlashSuggestions({
-      commands: [],
-      query: "spreadsheet",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [calendarServerView.toJSON()],
-      skills: [skill.toJSON(auth)],
-    });
+function getInputBarSlashCommandItemId(item: SlashCommand): string {
+  if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
+    return item.data.command.id;
+  }
 
-    expect(result).toEqual([]);
-  });
+  return item.id;
+}
 
-  it("orders non-substring matches by fuzzy relevance", async () => {
-    const { auth } = await createPrivateApiMockRequest();
-    const generateDailyReportSkill = await SkillFactory.create(auth, {
-      name: "Generate Daily Report",
-      userFacingDescription: "",
-    });
-    const googleDriveSkill = await SkillFactory.create(auth, {
-      name: "Google Drive",
-      userFacingDescription: "",
-    });
-
-    const result = filterInputBarSlashSuggestions({
-      commands: [],
-      query: "gd",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [],
-      skills: [
-        generateDailyReportSkill.toJSON(auth),
-        googleDriveSkill.toJSON(auth),
-      ],
-    });
-
+describe("getAvailableInputBarSlashCommands", () => {
+  it("includes upload file when attachments are enabled", () => {
     expect(
-      result.map((capability) =>
-        capability.kind === "skill" ? capability.skill.name : ""
-      )
-    ).toEqual(["Google Drive", "Generate Daily Report"]);
+      getAvailableInputBarSlashCommands({
+        hasAttachment: true,
+        hasConversation: false,
+      }).map((command) => command.id)
+    ).toEqual(["upload-file"]);
   });
 
-  it("lists commands ahead of capabilities", async () => {
-    const { auth } = await createPrivateApiMockRequest();
-    const skill = await SkillFactory.create(auth, {
-      name: "Aardvark Facts",
-      userFacingDescription: "",
-    });
+  it("includes compact only when a conversation exists", () => {
+    expect(
+      getAvailableInputBarSlashCommands({
+        hasAttachment: true,
+        hasConversation: true,
+      }).map((command) => command.id)
+    ).toEqual(["upload-file", "compact"]);
+  });
+});
 
-    const result = filterInputBarSlashSuggestions({
-      commands: INPUT_BAR_SLASH_COMMANDS,
+describe("buildInputBarSlashCommandItems", () => {
+  it("always includes the add capability command", () => {
+    const result = buildInputBarSlashCommandItems({
+      commands: [],
+      includeAttachKnowledge: false,
+      includeSelectContextFile: false,
       query: "",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [],
-      skills: [skill.toJSON(auth)],
     });
 
-    expect(result.map((capability) => capability.kind)).toEqual([
-      "command",
-      "skill",
+    expect(result.map((item) => item.action)).toEqual([
+      ADD_CAPABILITY_SLASH_COMMAND_ACTION,
     ]);
   });
 
-  it("filters commands by the query", async () => {
-    const result = filterInputBarSlashSuggestions({
-      commands: INPUT_BAR_SLASH_COMMANDS,
-      query: "comp",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [],
-      skills: [],
+  it("lists commands in INPUT_BAR_SLASH_COMMAND_ORDER", () => {
+    const result = buildInputBarSlashCommandItems({
+      commands: ALL_COMMANDS,
+      includeAttachKnowledge: true,
+      includeSelectContextFile: true,
+      query: "",
     });
 
+    expect(result.map(getInputBarSlashCommandItemId)).toEqual([
+      "compact",
+      "add-capability",
+      "reference-file",
+      "upload-file",
+      "attach-knowledge",
+    ]);
+  });
+
+  it("excludes reference file when includeSelectContextFile is false", () => {
     expect(
-      result.map((capability) =>
-        capability.kind === "command" ? capability.command.id : ""
-      )
-    ).toEqual(["compact"]);
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: false,
+        query: "",
+      }).map(getInputBarSlashCommandItemId)
+    ).toEqual(["compact", "add-capability", "upload-file", "attach-knowledge"]);
 
     expect(
-      filterInputBarSlashSuggestions({
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: false,
+        query: "reference",
+      })
+    ).toEqual([]);
+  });
+
+  it("excludes attach knowledge when includeAttachKnowledge is false", () => {
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        includeSelectContextFile: true,
+        query: "",
+      }).map(getInputBarSlashCommandItemId)
+    ).toEqual(["compact", "add-capability", "reference-file", "upload-file"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        includeSelectContextFile: true,
+        query: "knowledge",
+      })
+    ).toEqual([]);
+  });
+
+  it("filters commands by the query", () => {
+    const result = buildInputBarSlashCommandItems({
+      commands: ALL_COMMANDS,
+      includeAttachKnowledge: true,
+      includeSelectContextFile: true,
+      query: "compact",
+    });
+
+    expect(result.map(getInputBarSlashCommandItemId)).toEqual(["compact"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
         commands: INPUT_BAR_SLASH_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: true,
+        query: "upload",
+      }).map(getInputBarSlashCommandItemId)
+    ).toEqual(["upload-file"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: true,
+        query: "knowledge",
+      }).map((item) => item.action)
+    ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: true,
+        query: "reference",
+      }).map((item) => item.action)
+    ).toEqual([INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: true,
         query: "zzz",
-        selectedMCPServerViewIds: new Set(),
-        serverViews: [],
-        skills: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("filters add capability by the query", () => {
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: [],
+        includeAttachKnowledge: false,
+        includeSelectContextFile: false,
+        query: "cap",
+      }).map((item) => item.label)
+    ).toEqual(["Add capability"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: [],
+        includeAttachKnowledge: false,
+        includeSelectContextFile: false,
+        query: "zzz",
       })
     ).toEqual([]);
   });

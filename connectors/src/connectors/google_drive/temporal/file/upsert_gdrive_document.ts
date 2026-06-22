@@ -14,6 +14,7 @@ import type {
   GoogleDriveObjectType,
   ModelId,
 } from "@connectors/types";
+import { stripNullBytes } from "@connectors/types";
 import type { OAuth2Client } from "googleapis-common";
 
 export async function upsertGdriveDocument(
@@ -28,9 +29,11 @@ export async function upsertGdriveDocument(
   startSyncTs: number,
   isBatchSync: boolean
 ): Promise<number | undefined> {
+  const title = stripNullBytes(file.name);
+
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: file.name,
+    title,
     updatedAt: file.updatedAtMs ? new Date(file.updatedAtMs) : undefined,
     createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
     lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
@@ -45,7 +48,7 @@ export async function upsertGdriveDocument(
     throw new Error("documentContent is undefined");
   }
 
-  const tags = [`title:${file.name}`];
+  const tags = [`title:${title}`];
   if (file.updatedAtMs) {
     tags.push(`updatedAt:${file.updatedAtMs}`);
   }
@@ -84,7 +87,7 @@ export async function upsertGdriveDocument(
       upsertContext: {
         sync_type: isBatchSync ? "batch" : "incremental",
       },
-      title: file.name,
+      title,
       mimeType: file.mimeType,
       async: true,
     });

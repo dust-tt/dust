@@ -49,7 +49,6 @@ import {
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
-import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -62,23 +61,19 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import datadogLogger from "@app/logger/datadogLogger";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
-import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
-import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
@@ -298,15 +293,6 @@ export function AgentMessage({
     owner,
     options: { disabled: true },
   });
-  const { mutateWakeUps } = useConversationWakeUps({
-    owner,
-    conversationId,
-    disabled: true,
-  });
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
 
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -446,24 +432,6 @@ export function AgentMessage({
             ) {
               void mutateSandboxFiles();
             }
-            if (action.internalMCPServerName === "wakeups") {
-              void mutateWakeUps().then((updated) => {
-                const activeWakeUp =
-                  updated?.wakeUps.find(isActiveWakeUp) ?? null;
-                const nextWakeupAt = activeWakeUp
-                  ? getNextWakeUpFireAtFromScheduleConfig(
-                      activeWakeUp.scheduleConfig
-                    )
-                  : null;
-                void mutateConversations(
-                  (currentData: ConversationListItemType[] | undefined) =>
-                    currentData?.map((c) =>
-                      c.sId === conversationId ? { ...c, nextWakeupAt } : c
-                    ),
-                  { revalidate: false }
-                );
-              });
-            }
             break;
           }
           case "end-of-stream":
@@ -485,8 +453,6 @@ export function AgentMessage({
         mutateConversationAttachments,
         mutateSandboxStatus,
         mutateSandboxFiles,
-        mutateWakeUps,
-        mutateConversations,
       ]
     ),
     streamId,

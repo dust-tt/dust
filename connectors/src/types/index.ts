@@ -14,7 +14,6 @@ export * from "./oauth/client/credentials";
 export * from "./oauth/lib";
 export * from "./oauth/oauth_api";
 export * from "./shared/cache";
-export * from "./shared/deployment";
 export * from "./shared/env";
 export * from "./shared/headers";
 export * from "./shared/internal_mime_types";

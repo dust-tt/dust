@@ -7,6 +7,8 @@ import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversa
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { projectsSkill } from "@app/lib/resources/skill/code_defined/projects";
+import { sandboxSkill } from "@app/lib/resources/skill/code_defined/sandbox";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -19,7 +21,12 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+function disableAutoEquippedSkills() {
+  vi.spyOn(projectsSkill, "isAutoEquippedForAgentLoop").mockReturnValue(false);
+  vi.spyOn(sandboxSkill, "isAutoEquippedForAgentLoop").mockReturnValue(false);
+}
 
 describe("getJITServers", () => {
   let auth: Authenticator;
@@ -142,39 +149,49 @@ describe("getJITServers", () => {
       );
     });
 
-    it("should not include skill_management server when agent has no skills", async () => {
-      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-
-      const { servers: jitServers } = await getJITServers(auth, {
-        agentConfiguration: agentConfig,
-        conversation,
-        attachments: [],
+    describe("when no auto-equipped skills", () => {
+      beforeEach(() => {
+        disableAutoEquippedSkills();
       });
 
-      const skillManagementServer = jitServers.find(
-        (server) => server.name === "skill_management"
-      );
-
-      expect(skillManagementServer).toBeUndefined();
-    });
-
-    it("should not include skill_management server when agent only has system skills", async () => {
-      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-      await SkillFactory.linkGlobalSkillToAgent(auth, {
-        globalSkillId: "discover_tools",
-        agentConfigurationId: agentConfig.id,
-      });
-      const { servers: jitServers } = await getJITServers(auth, {
-        agentConfiguration: agentConfig,
-        conversation,
-        attachments: [],
+      afterEach(() => {
+        vi.restoreAllMocks();
       });
 
-      const skillManagementServer = jitServers.find(
-        (server) => server.name === "skill_management"
-      );
+      it("should not include skill_management server when agent has no skills", async () => {
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      expect(skillManagementServer).toBeUndefined();
+        const { servers: jitServers } = await getJITServers(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+          attachments: [],
+        });
+
+        const skillManagementServer = jitServers.find(
+          (server) => server.name === "skill_management"
+        );
+
+        expect(skillManagementServer).toBeUndefined();
+      });
+
+      it("should not include skill_management server when agent only has system skills", async () => {
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+        await SkillFactory.linkGlobalSkillToAgent(auth, {
+          globalSkillId: "discover_tools",
+          agentConfigurationId: agentConfig.id,
+        });
+        const { servers: jitServers } = await getJITServers(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+          attachments: [],
+        });
+
+        const skillManagementServer = jitServers.find(
+          (server) => server.name === "skill_management"
+        );
+
+        expect(skillManagementServer).toBeUndefined();
+      });
     });
 
     it("should return system skills separately from equipped skills", async () => {
@@ -260,6 +277,32 @@ describe("getJITServers", () => {
       });
 
       expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
+    });
+
+    it("auto-equips the projects skill for any agent", async () => {
+      const { enabledSkills, systemSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
+
+      expect(systemSkills.some((s) => s.sId === "projects")).toBe(false);
+      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
+      expect(equippedSkills.some((s) => s.sId === "projects")).toBe(true);
+    });
+
+    it("includes skill_management so agents can enable the projects skill", async () => {
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+      const { servers: jitServers } = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments: [],
+      });
+
+      expect(
+        jitServers.some((server) => server.name === "skill_management")
+      ).toBe(true);
     });
   });
 

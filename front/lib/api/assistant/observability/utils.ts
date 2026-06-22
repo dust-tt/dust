@@ -1,4 +1,6 @@
 import { contextOriginFilter } from "@app/lib/api/assistant/observability/context_origin";
+import type { Authenticator } from "@app/lib/auth";
+import { FREE_ORIGINS } from "@app/lib/metronome/events";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 
@@ -101,6 +103,50 @@ export function buildAgentAnalyticsBaseQuery({
   return {
     bool: {
       filter: filters,
+    },
+  };
+}
+
+// Workspace query scoped to the window, with free origins excluded to mirror the
+// non-free billed scope. Shared by the credit fetchers (timeseries, breakdown,
+// per-user and per-agent tables) so the scope stays identical across them.
+// `extraFilters` / `extraMustNot` carry per-caller constraints (e.g. requiring
+// an agent_id, or excluding the programmatic "unknown" user).
+export function buildCreditsScopeQuery(
+  auth: Authenticator,
+  {
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+    extraFilters = [],
+    extraMustNot = [],
+  }: {
+    startDate: string;
+    endDate: string;
+    contextOrigin?: string | string[];
+    agentIds?: string[];
+    userIds?: string[];
+    extraFilters?: estypes.QueryDslQueryContainer[];
+    extraMustNot?: estypes.QueryDslQueryContainer[];
+  }
+): estypes.QueryDslQueryContainer {
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+  });
+  return {
+    bool: {
+      filter: [baseQuery, ...extraFilters],
+      must_not: [
+        { terms: { context_origin: [...FREE_ORIGINS] } },
+        ...extraMustNot,
+      ],
     },
   };
 }

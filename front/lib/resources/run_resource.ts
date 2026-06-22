@@ -172,6 +172,27 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) => new this(this.model, r.get()));
   }
 
+  // Tag an agent-loop execution's runs with their runKey so credit cost can be
+  // ceiled per execution group (matching the Metronome billing partition).
+  // Idempotent: a finalize retry recomputes the same key for the same runIds.
+  static async setRunKeyForDustRunIds(
+    auth: Authenticator,
+    { dustRunIds, runKey }: { dustRunIds: string[]; runKey: string }
+  ): Promise<void> {
+    if (dustRunIds.length === 0) {
+      return;
+    }
+    await this.model.update(
+      { runKey },
+      {
+        where: {
+          dustRunId: { [Op.in]: dustRunIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
   static async listRunUsagesForRuns(
     auth: Authenticator,
     {
@@ -179,11 +200,20 @@ export class RunResource extends BaseResource<RunModel> {
     }: {
       runs: RunResource[];
     }
-  ): Promise<(RunUsageType & { runModelId: ModelId })[]> {
+  ): Promise<
+    (RunUsageType & { runModelId: ModelId; runKey: string | null })[]
+  > {
     const runModelIds = runs.map((run) => run.id);
     if (runModelIds.length === 0) {
       return [];
     }
+
+    // runKey identifies the agent-loop execution a run belongs to, so callers
+    // can group usages by execution (e.g. to ceil credit cost per the billed
+    // Metronome partition).
+    const runKeyByModelId = new Map<ModelId, string | null>(
+      runs.map((run) => [run.id, run.runKey])
+    );
 
     const usages = await RunUsageModel.findAll({
       where: {
@@ -194,6 +224,7 @@ export class RunResource extends BaseResource<RunModel> {
 
     return usages.map((usage) => ({
       runModelId: usage.runId,
+      runKey: runKeyByModelId.get(usage.runId) ?? null,
       completionTokens: usage.completionTokens,
       modelId: usage.modelId as ModelIdType,
       promptTokens: usage.promptTokens,

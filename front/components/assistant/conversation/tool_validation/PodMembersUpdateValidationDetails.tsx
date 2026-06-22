@@ -42,6 +42,7 @@ function formatMemberName({
 interface MemberChangeRowProps {
   memberSId: string;
   action: "add" | "remove";
+  role?: "member" | "editor";
   currentUserSId: string;
   memberDisplayBySId: Record<string, MemberDisplayInfo>;
   isMembersLoading: boolean;
@@ -50,6 +51,7 @@ interface MemberChangeRowProps {
 function MemberChangeRow({
   memberSId,
   action,
+  role,
   currentUserSId,
   memberDisplayBySId,
   isMembersLoading,
@@ -80,11 +82,20 @@ function MemberChangeRow({
           </div>
         )}
       </div>
-      <Chip
-        size="xs"
-        color={action === "add" ? "green" : "rose"}
-        label={action === "add" ? "Will add" : "Will remove"}
-      />
+      <div className="flex items-center gap-1.5">
+        {action === "add" && role && (
+          <Chip
+            size="xs"
+            color={role === "editor" ? "blue" : "primary"}
+            label={role === "editor" ? "Editor" : "Member"}
+          />
+        )}
+        <Chip
+          size="xs"
+          color={action === "add" ? "green" : "rose"}
+          label={action === "add" ? "Will add" : "Will remove"}
+        />
+      </div>
     </div>
   );
 }
@@ -95,8 +106,9 @@ export function PodMembersUpdateValidationDetails({
   user,
   conversationId,
 }: PodMembersUpdateValidationDetailsProps) {
-  const addMemberIds = input.addMemberIds ?? [];
-  const removeMemberIds = input.removeMemberIds ?? [];
+  const membersToAdd = input.membersToAdd ?? {};
+  const membersToRemove = input.membersToRemove ?? [];
+  const addEntries = Object.entries(membersToAdd);
   const { podLabel, isPodLabelLoading } = usePodLabel({
     owner,
     dustPodUri: input.dustPod?.uri,
@@ -104,8 +116,10 @@ export function PodMembersUpdateValidationDetails({
   });
 
   const memberSIds = useMemo(
-    () => [...new Set([...addMemberIds, ...removeMemberIds])],
-    [addMemberIds, removeMemberIds]
+    () => [
+      ...new Set([...addEntries.map(([userId]) => userId), ...membersToRemove]),
+    ],
+    [addEntries, membersToRemove]
   );
   const { membersBySId, isMembersLoading } = useMemberDetails({
     workspaceId: owner.sId,
@@ -113,14 +127,14 @@ export function PodMembersUpdateValidationDetails({
   });
 
   const summaryParts: string[] = [];
-  if (addMemberIds.length > 0) {
+  if (addEntries.length > 0) {
     summaryParts.push(
-      `add ${addMemberIds.length} member${addMemberIds.length === 1 ? "" : "s"}`
+      `add ${addEntries.length} user${addEntries.length === 1 ? "" : "s"}`
     );
   }
-  if (removeMemberIds.length > 0) {
+  if (membersToRemove.length > 0) {
     summaryParts.push(
-      `remove ${removeMemberIds.length} member${removeMemberIds.length === 1 ? "" : "s"}`
+      `remove ${membersToRemove.length} user${membersToRemove.length === 1 ? "" : "s"}`
     );
   }
 
@@ -134,21 +148,22 @@ export function PodMembersUpdateValidationDetails({
         .
       </p>
 
-      {addMemberIds.length > 0 && (
+      {addEntries.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-            Members to add
+            Users to add
           </div>
           <div
             className={cn(
               "divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background dark:divide-separator-night dark:border-separator-night dark:bg-background-night"
             )}
           >
-            {addMemberIds.map((memberSId) => (
+            {addEntries.map(([memberSId, role]) => (
               <MemberChangeRow
                 key={`add-${memberSId}`}
                 memberSId={memberSId}
                 action="add"
+                role={role}
                 currentUserSId={user.sId}
                 memberDisplayBySId={membersBySId}
                 isMembersLoading={isMembersLoading}
@@ -158,17 +173,17 @@ export function PodMembersUpdateValidationDetails({
         </div>
       )}
 
-      {removeMemberIds.length > 0 && (
+      {membersToRemove.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-            Members to remove
+            Users to remove
           </div>
           <div
             className={cn(
               "divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background dark:divide-separator-night dark:border-separator-night dark:bg-background-night"
             )}
           >
-            {removeMemberIds.map((memberSId) => (
+            {membersToRemove.map((memberSId) => (
               <MemberChangeRow
                 key={`remove-${memberSId}`}
                 memberSId={memberSId}

@@ -309,7 +309,6 @@ export function ChangeSeatModal({
                   seatType={seatType}
                   info={info}
                   isSelected={selectedSeat === seatType}
-                  isDisabled={false}
                   badge={getBadge(seatType, info)}
                   onClick={() => setSelectedSeat(seatType)}
                 />

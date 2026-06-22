@@ -169,6 +169,7 @@ export function SharedFramePage() {
         workspaceId={shareMetadata.workspaceId}
         vizUrl={shareMetadata.vizUrl}
         logoUrl={shareMetadata.logoUrl}
+        showSignUpCta={shareMetadata.showSignUpCta}
         hideHeader={hideHeader}
       />
     </div>

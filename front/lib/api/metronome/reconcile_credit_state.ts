@@ -1,9 +1,9 @@
 import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
 import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
-import { getMetronomeProgrammaticCapAlertStates } from "@app/lib/metronome/alerts/programmatic_cap";
+import { WARNING_BALANCE_RATIO } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
-  listContractPerUserCreditBalances,
+  listCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import { CONTRACT_CREDIT_TYPE_FREE_SEAT } from "@app/lib/metronome/constants";
@@ -12,12 +12,17 @@ import {
   fetchLiveUserCreditInputs,
 } from "@app/lib/metronome/live_user_credit_inputs";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
+import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
-  expectedProgrammaticCreditStateFromAlerts,
+  expectedProgrammaticCreditStateFromUsage,
   setProgrammaticCreditStateReconciled,
 } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
-import { setUserNearLimit } from "@app/lib/metronome/user_block";
+import {
+  clearWorkspaceProgrammaticWarningReached,
+  setUserNearLimit,
+  setWorkspaceProgrammaticWarningReached,
+} from "@app/lib/metronome/user_block";
 import { setUserCreditStateReconciled } from "@app/lib/metronome/user_credit_state_machine";
 import {
   expectedPoolCreditStateFromBalance,
@@ -78,7 +83,8 @@ type ProgrammaticReconcileReport = {
   wasInvalid: boolean;
   corrected: boolean;
   executed: boolean;
-  alarms: { cap: boolean; low: boolean; critical: boolean };
+  monthlyCapCredits: number;
+  spentAwuCredits: number | null;
 };
 
 type UserReconcileReport = {
@@ -143,7 +149,12 @@ export async function reconcileCreditState({
     case "pool":
       return reconcilePool({ auth, workspace, metronomeCustomerId, execute });
     case "programmatic":
-      return reconcileProgrammatic({ workspace, metronomeCustomerId, execute });
+      return reconcileProgrammatic({
+        workspace,
+        metronomeCustomerId,
+        metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
+        execute,
+      });
     case "user":
       if (!userId) {
         return new Err(
@@ -162,7 +173,7 @@ export async function reconcileCreditState({
   }
 }
 
-async function reconcilePool({
+export async function reconcilePool({
   auth,
   workspace,
   metronomeCustomerId,
@@ -213,45 +224,72 @@ async function reconcilePool({
   });
 }
 
-async function reconcileProgrammatic({
+export async function reconcileProgrammatic({
   workspace,
   metronomeCustomerId,
+  metronomeContractId,
   execute,
 }: {
   workspace: WorkspaceResource;
   metronomeCustomerId: string;
+  metronomeContractId: string | null;
   execute: boolean;
 }): Promise<Result<ProgrammaticReconcileReport, Error>> {
-  const statesResult = await getMetronomeProgrammaticCapAlertStates({
+  const config = await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+    workspace.id
+  );
+  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? 0;
+
+  const previousState = workspace.programmaticCreditState;
+
+  // Cap of 0/null → always depleted; no spend to read.
+  if (monthlyCapCredits === 0 || !metronomeContractId) {
+    if (execute) {
+      await setProgrammaticCreditStateReconciled(workspace, "depleted");
+      void clearWorkspaceProgrammaticWarningReached(workspace.sId);
+    }
+    const newState = workspace.programmaticCreditState;
+    return new Ok({
+      target: "programmatic",
+      previousState,
+      expectedState: "depleted",
+      newState,
+      wasInvalid: previousState !== "depleted",
+      corrected: previousState !== newState,
+      executed: execute,
+      monthlyCapCredits,
+      spentAwuCredits: null,
+    });
+  }
+
+  const spendResult = await fetchProgrammaticAwuSpend({
     metronomeCustomerId,
-    workspaceId: workspace.sId,
+    metronomeContractId,
   });
-  if (statesResult.isErr()) {
+  if (spendResult.isErr()) {
     return new Err(
       new Error(
-        `Failed to read programmatic cap alerts: ${statesResult.error.message}`
+        `Failed to read programmatic spend: ${spendResult.error.message}`
       )
     );
   }
-  const { cap, low, critical } = statesResult.value;
-  const alarms = {
-    cap: cap?.status === "in_alarm",
-    low: low?.status === "in_alarm",
-    critical: critical?.status === "in_alarm",
-  };
-  const expectedState = expectedProgrammaticCreditStateFromAlerts({
-    capInAlarm: alarms.cap,
-    criticalInAlarm: alarms.critical,
-    lowInAlarm: alarms.low,
+  const spentAwuCredits = spendResult.value ?? 0;
+  const expectedState = expectedProgrammaticCreditStateFromUsage({
+    spentAwuCredits,
+    monthlyCapCredits,
   });
-
-  const previousState = workspace.programmaticCreditState;
-  const wasInvalid = previousState !== expectedState;
 
   let newState = previousState;
   if (execute) {
     await setProgrammaticCreditStateReconciled(workspace, expectedState);
     newState = workspace.programmaticCreditState;
+    const warningReached =
+      spentAwuCredits >= monthlyCapCredits * WARNING_BALANCE_RATIO;
+    if (warningReached) {
+      void setWorkspaceProgrammaticWarningReached(workspace.sId);
+    } else {
+      void clearWorkspaceProgrammaticWarningReached(workspace.sId);
+    }
   }
 
   return new Ok({
@@ -259,14 +297,15 @@ async function reconcileProgrammatic({
     previousState,
     expectedState,
     newState,
-    wasInvalid,
+    wasInvalid: previousState !== expectedState,
     corrected: previousState !== newState,
     executed: execute,
-    alarms,
+    monthlyCapCredits,
+    spentAwuCredits,
   });
 }
 
-async function reconcileUser({
+export async function reconcileUser({
   auth,
   workspace,
   metronomeCustomerId,
@@ -411,9 +450,8 @@ export async function reconcileWorkspaceUserCreditStates({
   // free user with credit remaining lands on `user_seat` (not `on_pool`) and is
   // moved to `capped` once exhausted. A read failure leaves the map empty —
   // free users then fall back to the seat-balance path (null) as before.
-  const perUserCreditBalancesResult = await listContractPerUserCreditBalances({
+  const perUserCreditBalancesResult = await listCustomerPerUserCreditBalances({
     metronomeCustomerId,
-    metronomeContractId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (perUserCreditBalancesResult.isErr()) {

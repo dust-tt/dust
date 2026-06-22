@@ -8,7 +8,7 @@ import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/lib/model_constructors/types/mo
 
 import { z } from "zod";
 
-const CONTEXT_SIZE = 400_000;
+const CONTEXT_SIZE = 250_000;
 const DEFAULT_REASONING_EFFORT = "high";
 const MAX_OUTPUT_TOKENS = 64_000;
 

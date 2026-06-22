@@ -117,6 +117,7 @@ function toBaseMessages(
           type: "tool_call_result",
           content: {
             callId: message.function_call_id,
+            toolName: message.name,
             parts,
             isError: false,
           },

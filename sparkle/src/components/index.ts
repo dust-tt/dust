@@ -235,6 +235,7 @@ export {
   SheetPortal,
   SheetTitle,
   SheetTrigger,
+  SheetViewportProvider,
   useSheetViewport,
 } from "./Sheet";
 export type { SidebarLayoutProps, SidebarLayoutRef } from "./SidebarLayout";

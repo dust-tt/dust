@@ -59,7 +59,7 @@ describe("syncProgrammaticUsageLimit persistence", () => {
     ).toHaveBeenCalled();
   });
 
-  it("persists 0 as a hard cap rather than clearing it", async () => {
+  it("persists 0 as a hard cap and clears alerts (cap of 0 is always depleted — no alert transition can fire)", async () => {
     const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -71,10 +71,10 @@ describe("syncProgrammaticUsageLimit persistence", () => {
     expect(read.isOk() && read.value).toBe(0);
     expect(
       programmaticCap.upsertMetronomeProgrammaticCapAlerts
-    ).toHaveBeenCalled();
+    ).not.toHaveBeenCalled();
     expect(
       programmaticCap.clearMetronomeProgrammaticCapAlerts
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalled();
   });
 
   it("clears the cap and the alerts when set to null", async () => {

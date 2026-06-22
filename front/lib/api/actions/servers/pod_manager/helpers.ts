@@ -16,6 +16,7 @@ import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -251,6 +252,67 @@ export function makeSuccessResponse(data: Record<string, unknown>): {
  * Wraps an async operation with standardized error handling.
  * Catches exceptions and converts them to MCPError results.
  */
+export async function resolvePodUserRolesBySId(
+  auth: Authenticator,
+  pod: SpaceResource
+): Promise<Map<string, "editor" | "member">> {
+  const { groupsToProcess, allGroupMemberships } =
+    await pod.fetchManualGroupsMemberships(auth, {
+      shouldIncludeAllMembers: false,
+    });
+
+  const groupById = new Map(
+    groupsToProcess.map((group) => [group.id, group] as const)
+  );
+  const membershipByUserId = new Map<number, { isEditor: boolean }>();
+
+  for (const membership of allGroupMemberships) {
+    const group = groupById.get(membership.groupId);
+    if (!group) {
+      continue;
+    }
+
+    const previous = membershipByUserId.get(membership.userId);
+    membershipByUserId.set(membership.userId, {
+      isEditor: Boolean(previous?.isEditor) || group.kind === "space_editors",
+    });
+  }
+
+  const users = await UserResource.fetchByModelIds([
+    ...membershipByUserId.keys(),
+  ]);
+  const roleByUserSId = new Map<string, "editor" | "member">();
+
+  for (const user of users) {
+    const membership = membershipByUserId.get(user.id);
+    if (!membership) {
+      continue;
+    }
+    roleByUserSId.set(user.sId, membership.isEditor ? "editor" : "member");
+  }
+
+  return roleByUserSId;
+}
+
+export function partitionMembersToRemove(
+  membersToRemove: string[],
+  roleByUserSId: Map<string, "editor" | "member">
+): { editorIds: string[]; memberIds: string[] } {
+  const editorIds: string[] = [];
+  const memberIds: string[] = [];
+
+  for (const userId of membersToRemove) {
+    const role = roleByUserSId.get(userId);
+    if (role === "editor") {
+      editorIds.push(userId);
+    } else if (role === "member") {
+      memberIds.push(userId);
+    }
+  }
+
+  return { editorIds, memberIds };
+}
+
 export async function withErrorHandling<T>(
   operation: () => Promise<Result<T, MCPError>>,
   errorMessage: string

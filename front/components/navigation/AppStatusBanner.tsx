@@ -209,8 +209,12 @@ interface WorkspaceUsageStatusBannerProps {
 function WorkspaceUsageStatusBanner({
   owner,
 }: WorkspaceUsageStatusBannerProps) {
-  const { poolCreditState, programmaticCreditStatus, balanceThresholdReached } =
-    useWorkspaceUsageStatus({ owner });
+  const {
+    poolCreditState,
+    programmaticCreditStatus,
+    programmaticWarningReached,
+    balanceThresholdReached,
+  } = useWorkspaceUsageStatus({ owner });
 
   // The low/critical pool states are internal throttling signals and are not
   // surfaced. Admins are alerted when the pool is fully depleted (agents
@@ -234,20 +238,22 @@ function WorkspaceUsageStatusBanner({
     poolStateWouldBanner &&
     !isMetronomeContractLoading &&
     !contract?.hasPersonalCreditSeats;
-  // A cap of 0 is a deliberate hard block on programmatic API, not an
+  // A cap of 0 or null is a deliberate hard block on programmatic API, not an
   // exhausted budget, so its "cap reached" banner is suppressed. The cap is
   // only fetched when the banner would otherwise show.
   const programmaticStateWouldBanner =
-    isAdmin(owner) && programmaticCreditStatus !== "active";
+    isAdmin(owner) &&
+    (programmaticCreditStatus === "depleted" || programmaticWarningReached);
   const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
     useProgrammaticUsageLimit({
       workspaceId: owner.sId,
       disabled: !programmaticStateWouldBanner,
     });
+  const monthlyCapCredits = programmaticUsageLimit?.monthlyCapCredits ?? 0;
   const showProgrammaticBanner =
     programmaticStateWouldBanner &&
     !isProgrammaticUsageLimitLoading &&
-    programmaticUsageLimit?.monthlyCapCredits !== 0;
+    monthlyCapCredits !== 0;
   // The admin-configured balance-threshold warning is only relevant before the
   // pool is depleted/overage — those states have their own (stronger) banner.
   const showBalanceThresholdBanner =

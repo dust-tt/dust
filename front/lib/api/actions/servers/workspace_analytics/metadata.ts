@@ -210,9 +210,6 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "billing computes them. IMPORTANT: these figures are ESTIMATES derived " +
       "from usage logs — always tell the user they are approximate and point " +
       "them to the workspace Usage page for exact, billed credit amounts. " +
-      "When grouped by agent or user in very large workspaces, the ranking is " +
-      "also approximate: it is computed from the most active groups by message " +
-      "volume and may miss low-message, high-tool-usage outliers." +
       "Optionally filter by source (context_origin), agent, or user. " +
       "Admin-only.",
     schema: getCreditUsageSchema,
@@ -225,8 +222,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_credit_timeseries: {
     description:
       "Return estimated AWU credit consumption as a time series over a window " +
-      "(defaults to the last 30 days), bucketed by day, week, or month. Each " +
-      "point splits model and tool credits. Set breakdownBy to split each " +
+      "(defaults to the last 30 days), bucketed by day, week, or month. Set " +
+      "breakdownBy to split each " +
       "bucket into the top agents or users plus an 'other' series (a stacked " +
       "trend). Use this for credit/spend TRENDS over time; use get_credit_usage " +
       "for a single window's totals and top agent/user attribution. IMPORTANT: " +

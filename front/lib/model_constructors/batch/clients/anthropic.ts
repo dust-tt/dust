@@ -6,10 +6,10 @@ import {
   type BatchRequest,
   type BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
-import { WithAnthropicInputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/input";
-import { WithAnthropicOutputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/output";
-import { batchResultToEvents } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
+import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
+import { batchResultToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { ANTHROPIC_API } from "@app/lib/model_constructors/types/provider_apis";
@@ -23,8 +23,8 @@ import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provide
  * `buildRequestPayload` (from the input converter) already omits `stream`, so
  * the per-request payload drops straight into a batch request.
  */
-export abstract class AnthropicBatch extends WithAnthropicInputConverter(
-  WithAnthropicOutputConverter(
+export abstract class AnthropicBatch extends WithAnthropicAIInputConverter(
+  WithAnthropicAIOutputConverter(
     BatchEndpoint<
       MessageCreateParamsNonStreaming,
       MessageBatchResult,

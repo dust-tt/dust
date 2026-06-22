@@ -369,6 +369,66 @@ export async function provisionMetronomeContract({
   return new Ok({ metronomeContractId });
 }
 
+/**
+ * Create a Metronome contract for a payment-gated subscription activation without
+ * touching any existing active contract.
+ *
+ * Unlike `provisionMetronomeContract`, this helper does NOT sunset overlapping
+ * contracts. The free-plan contract must remain active until payment succeeds;
+ * if payment fails, the activation contract is ended and the workspace stays on
+ * the free contract. Only the payment success handler should end the previous
+ * contract.
+ *
+ * No seat sync is performed — the checkout contract is a candidate until payment
+ * succeeds, at which point `handleSubscriptionActivationSuccess` does the swap
+ * and triggers seat sync.
+ */
+export async function provisionPaymentGatedActivationContract({
+  metronomeCustomerId,
+  workspace,
+  packageAlias,
+  uniquenessKey,
+  startingAt,
+  planCode,
+  additionalCustomFields,
+}: {
+  metronomeCustomerId: string;
+  workspace: LightWorkspaceType;
+  packageAlias: string;
+  uniquenessKey?: string;
+  startingAt: Date;
+  planCode: string;
+  additionalCustomFields?: Record<string, string>;
+}): Promise<Result<{ metronomeContractId: string }, Error>> {
+  const alignedStart = new Date(floorToHourISO(startingAt));
+
+  logger.info(
+    {
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+      packageAlias,
+      startingAt: alignedStart.toISOString(),
+    },
+    "[Metronome] Provisioning payment-gated activation contract"
+  );
+
+  const contractResult = await createMetronomeContract({
+    metronomeCustomerId,
+    packageAlias,
+    uniquenessKey,
+    startingAt: alignedStart,
+    enableStripeBilling: true,
+    planCode,
+    additionalCustomFields,
+  });
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
+  }
+  const { contractId: metronomeContractId } = contractResult.value;
+
+  return new Ok({ metronomeContractId });
+}
+
 // ---------------------------------------------------------------------------
 // Enterprise contract provisioning from Stripe pricing
 // ---------------------------------------------------------------------------

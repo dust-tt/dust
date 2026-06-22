@@ -1818,7 +1818,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversations = await this.baseFetchWithAuthorization(
       auth,
-      {},
+      // Load forking data so `toListItem` can derive the "Branched from ..." title for untitled
+      // forked conversations (consistent with the ES-backed listing path).
+      { includeForkingData: true },
       {
         where: whereClause,
         order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],

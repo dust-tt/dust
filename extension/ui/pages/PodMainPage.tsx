@@ -84,7 +84,7 @@ export const PodMainPage = () => {
       <ConversationLayout
         title=""
         centerActions={
-          <div className="flex h-14 items-end">
+          <div className="flex h-title items-end">
             <TabsList border={false}>
               <TabsTrigger
                 value="conversations"

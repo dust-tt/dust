@@ -258,7 +258,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count.\n- \"users\": Top users by message count.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
+            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count, including credits.\n- \"users\": Top users by message count, including credits.\n- \"skills\": Skill metadata catalog.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -267,6 +267,7 @@
                 "source",
                 "agents",
                 "users",
+                "skills",
                 "skill_usage",
                 "tool_usage",
                 "messages",
@@ -5388,6 +5389,9 @@
           },
           "404": {
             "description": "The row was not found"
+          },
+          "429": {
+            "description": "Too many pending table updates are queued for this table. Retry later."
           }
         }
       }
@@ -5612,6 +5616,9 @@
           },
           "404": {
             "description": "Data source or workspace not found."
+          },
+          "429": {
+            "description": "Too many pending table updates are queued for this table. Retry later."
           },
           "500": {
             "description": "Internal Server Error."
@@ -10455,12 +10462,12 @@
           "costCredits": {
             "type": "integer",
             "nullable": true,
-            "description": "Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
+            "description": "Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
           },
           "subAgentCostCredits": {
             "type": "number",
             "nullable": true,
-            "description": "Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
           }
         }
       },
@@ -10606,12 +10613,12 @@
           "costCredits": {
             "type": "integer",
             "nullable": true,
-            "description": "Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
+            "description": "Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
           },
           "subAgentCostCredits": {
             "type": "number",
             "nullable": true,
-            "description": "Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
           },
           "activitySteps": {
             "type": "array",
@@ -11835,6 +11842,9 @@
           },
           {
             "$ref": "#/components/schemas/PrivateConversationTitleEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateWakeUpUpdatedEvent"
           }
         ]
       },
@@ -12003,6 +12013,37 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "PrivateWakeUpUpdatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "wakeUpId",
+          "userId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "wake_up_updated"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "wakeUpId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "description": "sId of the user who owns the wake-up."
           }
         }
       },

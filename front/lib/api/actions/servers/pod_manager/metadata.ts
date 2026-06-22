@@ -7,6 +7,10 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/types";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
+import {
+  PodMembersToAddSchema,
+  PodMembersToRemoveSchema,
+} from "@app/lib/api/actions/servers/pod_manager/types";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -106,16 +110,16 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   [UPDATE_MEMBERS_TOOL_NAME]: {
     description:
-      "Add or remove Pod members by user sId. Requires Pod editor permissions.",
+      "Add or remove Pod members and editors by user id. Requires Pod editor permissions. " +
+      "Editors and members are mutually exclusive: adding an editor removes them from members, " +
+      "and adding a member is a no-op if the user is already an editor.",
     schema: {
-      addMemberIds: z
-        .array(z.string())
-        .optional()
-        .describe("User sIds to add as Pod members"),
-      removeMemberIds: z
-        .array(z.string())
-        .optional()
-        .describe("User sIds to remove from the Pod"),
+      membersToAdd: PodMembersToAddSchema.optional().describe(
+        "User ids to add mapped to their Pod role (member or editor)."
+      ),
+      membersToRemove: PodMembersToRemoveSchema.optional().describe(
+        "User ids to remove from the Pod (membership or editorship)."
+      ),
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
@@ -185,8 +189,37 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   list_pods: {
     description:
-      "List non-archived Pods where you are a space member (same scope as the workspace Pod sidebar source). Each entry includes spaceId, name, and dustPod (uri + mimeType) to pass as the dustPod argument to other pod_manager tools.",
-    schema: {},
+      "List non-archived Pods. Defaults to Pods where you are a member (access='member'). " +
+      "Use access='open' to list all open Pods in the workspace. " +
+      "Each entry includes id, name, and dustPod (uri + mimeType) to pass as the dustPod argument to other pod_manager tools.",
+    schema: {
+      access: z
+        .enum(["member", "open"])
+        .default("member")
+        .optional()
+        .describe(
+          "Pod access filter: member = Pods you belong to (default); open = all open Pods in the workspace."
+        ),
+      q: z
+        .string()
+        .optional()
+        .describe("Optional case-insensitive substring filter on Pod name."),
+      limit: z
+        .number()
+        .min(1)
+        .max(100)
+        .optional()
+        .default(20)
+        .describe(
+          "Maximum number of Pods to return per call (default: 20, max: 100)."
+        ),
+      pageCursor: z
+        .string()
+        .optional()
+        .describe(
+          "Opaque cursor from nextPageCursor of a prior list_pods call. Only for pagination."
+        ),
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing Pods",
@@ -195,7 +228,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   create_pod: {
     description:
-      "Create a new Pod. By default the Pod is private. You can optionally set visibility to open and add members by user sId.",
+      "Create a new Pod. By default the Pod is private. The creator is always added as a Pod editor. " +
+      "You can optionally set visibility to open and add initial members or editors via membersToAdd.",
     schema: {
       title: z.string().describe("Pod title"),
       description: z
@@ -209,12 +243,9 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Pod visibility. Defaults to private. Open Pods are subject to workspace policy."
         ),
-      memberIds: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Optional list of user ids to add as Pod members after Pod creation."
-        ),
+      membersToAdd: PodMembersToAddSchema.optional().describe(
+        "Optional user ids to add after creation mapped to their Pod role (member or editor). The creator is always an editor."
+      ),
       seedInitialTasks: z
         .boolean()
         .optional()
@@ -407,7 +438,7 @@ const POD_MANAGER_INSTRUCTIONS =
   "`remove_content_node` to remove such a reference. " +
   "Use `edit_information` to update the Pod title, description, or pinned frame. " +
   "Use `update_members` to add or remove Pod members. " +
-  "Use `list_pods` to discover Pods you can access and obtain the dustPod uri for other tools. " +
+  "Use `list_pods` to discover Pods you can access (your Pods by default, or all open Pods) and obtain the dustPod uri for other tools. " +
   "Use `retrieve_recent_documents` to load recent content from the Pod data source and from " +
   "knowledge nodes in the Pod context. " +
   `Use \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, SEMANTIC_SEARCH_TOOL_NAME)}\` to find relevant chunks in Pod files and/or conversations ` +

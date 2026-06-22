@@ -1,17 +1,22 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
+import { InputBarFileSearchNode } from "@app/components/editor/extensions/input_bar/FileSearchNodeWithView";
 import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
-import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
+import { InputBarKnowledgeSearchNode } from "@app/components/editor/extensions/input_bar/KnowledgeSearchNodeWithView";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { InputBarCapabilitySearchNode } from "@app/components/editor/extensions/skill_builder/CapabilitySearchNodeWithView";
 import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
@@ -21,11 +26,13 @@ import {
   createMentionSuggestion,
   mentionPluginKey,
 } from "@app/components/editor/input_bar/mentionSuggestion";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
 import { markdownStyles } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
@@ -304,14 +311,27 @@ export interface CustomEditorProps {
     // The conversation may only exist after the editor is initialized, hence the ref.
     conversationIdRef?: React.RefObject<string | null>;
     enabledRef: React.RefObject<boolean>;
-    onSelectRef: React.RefObject<
-      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-    >;
-    onDetailsRef?: React.RefObject<
-      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+    onSelectRef: React.RefObject<((item: SlashCommand) => void) | undefined>;
+    onDetailsRef?: React.RefObject<((item: SlashCommand) => void) | undefined>;
+    onSelectToolRef?: React.RefObject<
+      ((tool: MCPServerViewType) => void) | undefined
     >;
     onSkillDetails?: (skillId: string) => void;
+    onCapabilitySkillDetailsRef?: React.RefObject<
+      ((skill: SlashCommandSkillSuggestion) => void) | undefined
+    >;
+    onCapabilityToolDetailsRef?: React.RefObject<
+      ((tool: MCPServerViewType) => void) | undefined
+    >;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
+    slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
+    includeAttachKnowledgeRef: React.RefObject<boolean>;
+    includeSelectContextFileRef: React.RefObject<boolean>;
+    attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
+    onNodeSelectRef: React.RefObject<
+      ((node: DataSourceViewContentNode) => void) | undefined
+    >;
+    spaceIdRef: React.RefObject<string | null | undefined>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
@@ -453,15 +473,43 @@ export const buildEditorExtensions = ({
 
   if (slashSuggestion) {
     extensions.push(
+      InputBarFileSearchNode.configure({
+        conversationIdRef: slashSuggestion.conversationIdRef,
+        owner,
+        spaceIdRef: slashSuggestion.spaceIdRef,
+      }),
+      InputBarKnowledgeSearchNode.configure({
+        attachedNodesRef: slashSuggestion.attachedNodesRef,
+        onNodeSelectRef: slashSuggestion.onNodeSelectRef,
+        owner,
+        spaceIdRef: slashSuggestion.spaceIdRef,
+      }),
+      InputBarCapabilitySearchNode.configure({
+        onSelectToolRef: slashSuggestion.onSelectToolRef ?? {
+          current: undefined,
+        },
+        onSkillDetailsRef: slashSuggestion.onCapabilitySkillDetailsRef ?? {
+          current: undefined,
+        },
+        onToolDetailsRef: slashSuggestion.onCapabilityToolDetailsRef ?? {
+          current: undefined,
+        },
+        owner,
+        selectedMCPServerViewIdsRef:
+          slashSuggestion.selectedMCPServerViewIdsRef,
+        variant: "input-bar",
+      }),
       InputBarSlashSuggestionExtension.configure({
         owner,
         conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,
-        selectedMCPServerViewIdsRef:
-          slashSuggestion.selectedMCPServerViewIdsRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
+        slashCommandsRef: slashSuggestion.slashCommandsRef,
+        includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
+        includeSelectContextFileRef:
+          slashSuggestion.includeSelectContextFileRef,
       })
     );
   }

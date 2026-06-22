@@ -772,6 +772,17 @@ export type PlanUpdatedEvent = {
   hasApproval: boolean;
 };
 
+// Event sent when a wake-up in the conversation is created or changes status. Thin payload: the
+// client refetches /wakeups on receipt, so the banner always reflects the committed state
+// regardless of when the event arrives.
+export type WakeUpUpdatedEvent = {
+  type: "wake_up_updated";
+  created: number;
+  conversationId: string;
+  wakeUpId: string;
+  userId: string;
+};
+
 export const ConversationMCPServerViewOrigins = [
   "agent_enabled",
   "conversation",

@@ -19,6 +19,7 @@ jobs:
   tests:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
+      fail-fast: false
       matrix:
         shardIndex: [ 1, 2, 3 ]
         shardTotal: [ 3 ]
@@ -58,7 +59,7 @@ jobs:
           REDIS_CACHE_URI: "redis://localhost:5434"
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
-        run: npx tsx ../front/admin/db.ts && npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile=junit-shard-${{ matrix.shardIndex }}.xml
+        run: npx tsx ../front/admin/db.ts && npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile.junit=junit-shard-${{ matrix.shardIndex }}.xml
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@bccf2e31636835cf0874589931c4116687171386 # v6.4.0
@@ -68,6 +69,7 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+          test_files_prefix: front-api
   tsgo:
     runs-on: ubuntu-latest
     steps:

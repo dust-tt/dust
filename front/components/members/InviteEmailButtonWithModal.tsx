@@ -29,6 +29,7 @@ import {
 } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -73,39 +74,40 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
-// Pre-paid slots remaining for the free seat type (minSeats floor not yet consumed).
-function freeSeatAvailability(info: SeatTypeInfo): number {
+function includedSeatsOpen(info: SeatTypeInfo): number {
   return Math.max(0, info.minSeats - info.assignedCount);
 }
 
-function isSeatSelectable(
+function isSeatAtCapacity(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): boolean {
   if (seatType === "free") {
-    return freeSeatAvailability(info) > 0;
+    return false;
   }
-  return info.maxSeats === null || info.assignedCount < info.maxSeats;
+  return info.maxSeats !== null && info.assignedCount >= info.maxSeats;
 }
 
 function seatBadge(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): ReactNode {
-  let label: string;
   if (seatType === "free") {
-    const available = freeSeatAvailability(info);
-    label = `${available} available`;
-  } else {
-    label = formatPriceCents(
-      info.priceCents,
-      info.currency,
-      info.billingFrequency
+    return (
+      <span className="text-xs text-foreground dark:text-foreground-night">
+        Free if eligible
+      </span>
     );
   }
+  const openCount = includedSeatsOpen(info);
+  const price = formatPriceCents(
+    info.priceCents,
+    info.currency,
+    info.billingFrequency
+  );
   return (
     <span className="text-xs text-foreground dark:text-foreground-night">
-      {label}
+      {price} · {openCount} included seat{pluralize(openCount)} open
     </span>
   );
 }
@@ -116,6 +118,7 @@ interface InviteEmailButtonWithModalProps {
   perSeatPricing: SubscriptionPerSeatPricing | null;
   onInviteClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
+  isFreePlan?: boolean;
 }
 
 export function InviteEmailButtonWithModal({
@@ -124,6 +127,7 @@ export function InviteEmailButtonWithModal({
   perSeatPricing,
   onInviteClick,
   disabled = false,
+  isFreePlan = false,
 }: InviteEmailButtonWithModalProps) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const { inviteEmailsList, emailError } =
@@ -139,10 +143,12 @@ export function InviteEmailButtonWithModal({
     workspaceId: owner.sId,
     disabled: !open,
   });
-  const seatTypes = useMemo(
-    () => sortSeatTypes(Object.keys(seatPlans).filter(isMembershipSeatType)),
-    [seatPlans]
-  );
+  const seatTypes = useMemo(() => {
+    const all = sortSeatTypes(
+      Object.keys(seatPlans).filter(isMembershipSeatType)
+    );
+    return isFreePlan ? all.filter((s) => s === "free") : all;
+  }, [seatPlans, isFreePlan]);
   const seatTypesByFrequency = useMemo(
     () => groupSeatTypesByFrequency(seatTypes, seatPlans),
     [seatTypes, seatPlans]
@@ -164,12 +170,13 @@ export function InviteEmailButtonWithModal({
     if (seatInitializedRef.current || isSeatPlanLoading || !hasSeatSelection) {
       return;
     }
-    const selectable = seatTypes.filter((s) => {
+    const notAtCapacity = seatTypes.filter((s) => {
       const info = seatPlans[s];
-      return info && isSeatSelectable(s, info);
+      return info && !isSeatAtCapacity(s, info);
     });
-    const paidSelectable = selectable.filter((s) => s !== "free");
-    const cheapestPaid = paidSelectable.reduce<MembershipSeatType | undefined>(
+    const candidates = notAtCapacity.length > 0 ? notAtCapacity : seatTypes;
+    const paidCandidates = candidates.filter((s) => s !== "free");
+    const cheapestPaid = paidCandidates.reduce<MembershipSeatType | undefined>(
       (min, s) =>
         min === undefined ||
         (seatPlans[s]?.priceCents ?? 0) < (seatPlans[min]?.priceCents ?? 0)
@@ -178,9 +185,9 @@ export function InviteEmailButtonWithModal({
       undefined
     );
     const defaultSeat =
-      selectable.find((s) => s === "free") ??
+      candidates.find((s) => s === "free") ??
       cheapestPaid ??
-      selectable[0] ??
+      candidates[0] ??
       null;
     setSelectedSeatType(defaultSeat);
     setActiveFrequency(
@@ -219,7 +226,7 @@ export function InviteEmailButtonWithModal({
       const nextSeat =
         inFrequency.find((s) => {
           const info = seatPlans[s];
-          return info && isSeatSelectable(s, info);
+          return info && !isSeatAtCapacity(s, info);
         }) ??
         inFrequency[0] ??
         null;
@@ -375,6 +382,7 @@ export function InviteEmailButtonWithModal({
               </div>
               <TextArea
                 placeholder="Email addresses, comma separated"
+                minRows={3}
                 value={inviteEmails}
                 onChange={(e) => {
                   setInviteEmails(e.target.value);
@@ -417,7 +425,6 @@ export function InviteEmailButtonWithModal({
                         seatType={seatType}
                         info={info}
                         isSelected={selectedSeatType === seatType}
-                        isDisabled={!isSeatSelectable(seatType, info)}
                         badge={seatBadge(seatType, info)}
                         onClick={() => setSelectedSeatType(seatType)}
                       />

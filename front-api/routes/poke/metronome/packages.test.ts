@@ -33,6 +33,7 @@ describe("GET /api/poke/metronome/packages", () => {
           tier: "enterprise",
           currency: "usd",
           seats: [],
+          billingAnchor: "contract_start_date" as const,
         },
       ])
     );
@@ -54,6 +55,7 @@ describe("GET /api/poke/metronome/packages", () => {
           tier: "enterprise",
           currency: "usd",
           seats: [],
+          billingAnchor: "contract_start_date" as const,
         },
       ],
     });

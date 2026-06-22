@@ -2,10 +2,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import {
-  dispatchPerUserCapReached,
-  dispatchPerUserCapResolved,
-} from "@app/lib/api/metronome/credit_state_dispatcher";
+import { reconcileUser } from "@app/lib/api/metronome/reconcile_credit_state";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,10 +12,7 @@ import {
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
-import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
-import { setUserNearLimit } from "@app/lib/metronome/user_block";
-import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -42,11 +36,6 @@ export type PutUserSpendLimitResponseBody = SetUserSpendLimitResponse;
 
 export type SetUserSpendLimitResponse = {
   limit: UserSpendLimit;
-  // The credit-state we transitioned the user to, computed locally from
-  // current pool consumption. `null` when usage couldn't be determined and
-  // we therefore did not dispatch a transition (the Metronome webhook
-  // will reconcile on the next state change).
-  transitionedTo: "reached" | "resolved" | null;
 };
 
 export type UserSpendLimitErrorType =
@@ -139,77 +128,6 @@ export async function getUserSpendLimit(
   });
 }
 
-/**
- * Resolve the credit state for a user given a freshly applied cap, by
- * comparing the user's current pool consumption to the cap. The Metronome
- * alert we just created/cleared remains the source of truth for *future*
- * crossings (the webhook keeps the state in sync); this local comparison
- * just sets the immediate state without depending on Metronome's eventual-
- * consistent alert evaluation (which can sit in `evaluating` for minutes).
- *
- * Returns `null` if usage couldn't be fetched — caller should not dispatch
- * and let the webhook reconcile.
- */
-async function resolveLocalCapState({
-  metronomeCustomerId,
-  metronomeContractId,
-  userId,
-  awuCapCredits,
-}: {
-  metronomeCustomerId: string;
-  metronomeContractId: string | null;
-  userId: string;
-  awuCapCredits: number;
-}): Promise<"reached" | "resolved" | null> {
-  if (!metronomeContractId) {
-    return null;
-  }
-  const usageResult = await fetchPerUserAwuUsage({
-    metronomeCustomerId,
-    metronomeContractId,
-    userIds: [userId],
-  });
-  if (usageResult.isErr()) {
-    logger.warn(
-      {
-        metronomeCustomerId,
-        userId: userId,
-        err: usageResult.error,
-      },
-      "[Metronome PerUserCap] Could not fetch current usage; skipping immediate state dispatch"
-    );
-    return null;
-  }
-  const consumed = usageResult.value.get(userId) ?? 0;
-  return consumed >= awuCapCredits ? "reached" : "resolved";
-}
-
-async function dispatchTransition({
-  workspace,
-  userId,
-  transitionedTo,
-}: {
-  workspace: WorkspaceResource;
-  userId: string;
-  transitionedTo: "reached" | "resolved";
-}): Promise<void> {
-  const dispatchResult =
-    transitionedTo === "reached"
-      ? await dispatchPerUserCapReached({ workspace, userId })
-      : await dispatchPerUserCapResolved({ workspace, userId });
-  if (dispatchResult.isErr()) {
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        userId,
-        transitionedTo,
-        err: dispatchResult.error,
-      },
-      "[Metronome PerUserCap] dispatch after spend-limit update failed; continuing"
-    );
-  }
-}
-
 export async function setUserSpendLimit(
   auth: Authenticator,
   {
@@ -292,8 +210,6 @@ export async function setUserSpendLimit(
     limit.kind === "limited" ? limit.awuCredits : null
   );
 
-  let transitionedTo: "reached" | "resolved" | null = null;
-
   switch (limit.kind) {
     case "unlimited": {
       const clearResult = await clearMetronomePerUserCapAlert({
@@ -315,8 +231,6 @@ export async function setUserSpendLimit(
           new UserSpendLimitError("metronome_error", clearResult.error.message)
         );
       }
-
-      // Best-effort: also clear the companion 80% warning alert.
       const clearWarningResult = await clearMetronomePerUserWarningAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
@@ -332,57 +246,14 @@ export async function setUserSpendLimit(
           "[Metronome PerUserCap] Failed to clear warning alert; continuing"
         );
       }
-      void dispatchPerUserCapResolved({
-        workspace: workspaceResource,
-        userId,
-      });
-      void setUserNearLimit(workspaceResource.sId, userId, false);
-
-      // With the override cleared, the workspace default (pool-only value
-      // persisted on the credit-usage configuration) applies for the user's
-      // seat type.
-      const normalizedSeatType = normalizeToPoolLimitSeatType(
-        membership.seatType
-      );
-      const creditUsageConfig =
-        await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-      const defaultPoolCapAwuCredits =
-        creditUsageConfig?.defaultPoolCapAwuCredits ?? null;
-
-      if (normalizedSeatType && defaultPoolCapAwuCredits !== null) {
-        const seatAllowanceAwuCredits = await resolveUserSeatAllowance(
-          auth,
-          membership
-        );
-        transitionedTo = await resolveLocalCapState({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
-          userId: user.sId,
-          awuCapCredits: defaultPoolCapAwuCredits + seatAllowanceAwuCredits,
-        });
-      } else {
-        transitionedTo = "resolved";
-      }
-
-      if (transitionedTo !== null) {
-        await dispatchTransition({
-          workspace: workspaceResource,
-          userId: user.sId,
-          transitionedTo,
-        });
-      }
-      // transitionedTo === null: usage unavailable — let webhook reconcile.
       break;
     }
     case "limited": {
-      // The admin enters pool credits. Add the seat allowance to get the
-      // total Metronome threshold.
       const seatAllowanceAwuCredits = await resolveUserSeatAllowance(
         auth,
         membership
       );
       const totalAwuCredits = limit.awuCredits + seatAllowanceAwuCredits;
-
       const upsertResult = await upsertMetronomePerUserCapAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
@@ -404,8 +275,6 @@ export async function setUserSpendLimit(
           new UserSpendLimitError("metronome_error", upsertResult.error.message)
         );
       }
-
-      // Best-effort: also upsert the companion 80% warning alert.
       const upsertWarningResult = await upsertMetronomePerUserWarningAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
@@ -423,25 +292,28 @@ export async function setUserSpendLimit(
           "[Metronome PerUserCap] Failed to upsert warning alert; continuing"
         );
       }
-
-      transitionedTo = await resolveLocalCapState({
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
-        userId: user.sId,
-        awuCapCredits: totalAwuCredits,
-      });
-      if (transitionedTo !== null) {
-        await dispatchTransition({
-          workspace: workspaceResource,
-          userId: user.sId,
-          transitionedTo,
-        });
-      }
-      // transitionedTo === null: usage unavailable — let webhook reconcile.
       break;
     }
     default:
       assertNever(limit);
+  }
+
+  // Reconcile the user's credit state from live usage — same path as the
+  // poke reconcile button and the seat-sync reconcile.
+  const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
+  if (metronomeContractId) {
+    void reconcileUser({
+      auth,
+      workspace: workspaceResource,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      userId: user.sId,
+      execute: true,
+    }).catch((err) => {
+      logger.warn(
+        { workspaceId: workspace.sId, userId: user.sId, err },
+        "[Metronome PerUserCap] reconcileUser after spend-limit update failed; webhook will reconcile"
+      );
+    });
   }
 
   void emitAuditLogEvent({
@@ -462,5 +334,5 @@ export async function setUserSpendLimit(
     },
   });
 
-  return new Ok({ limit, transitionedTo });
+  return new Ok({ limit });
 }

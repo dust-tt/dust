@@ -53,6 +53,7 @@ import {
   deriveAgentTriggerType,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import {
@@ -2484,6 +2485,20 @@ async function checkMessagesLimit(
         ? ("credits_exhausted" as const)
         : null;
     if (blockedReason === "no_seat") {
+      // If the workspace opted into auto-upgrades, try to assign a seat
+      // (none → workspace) so the member can proceed with this very message.
+      // We await the result (it no-ops unless eligible): on success the user
+      // is no longer seat-less, so we fall through instead of rejecting a
+      // message we just unblocked.
+      if (user) {
+        const upgrade = await maybeAutoUpgradeSeat({
+          workspaceId: owner.sId,
+          userId: user.sId,
+        });
+        if (upgrade.isOk() && upgrade.value.upgraded) {
+          return new Ok(undefined);
+        }
+      }
       return new Err({
         status_code: 403,
         api_error: {
@@ -3034,6 +3049,7 @@ export async function isConversationEventAllowedForAuth(
     case "conversation_title":
     case "user_message_promoted":
     case "plan_updated":
+    case "wake_up_updated":
       return true;
     default:
       assertNever(type);

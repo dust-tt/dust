@@ -468,7 +468,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const { label, timezone: tz } = window.value;
-    const { totalCredits, llmCredits, toolCredits, rows } = result.value;
+    const { totalCredits, rows } = result.value;
 
     if (totalCredits === 0) {
       return new Ok([
@@ -480,9 +480,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const header =
-      `Estimated credit usage for ${label} (${tz}): ${totalCredits} credits ` +
-      `(${llmCredits} model + ${toolCredits} tools). These are estimates — ` +
-      "point the user to the workspace Usage page for exact billed credits.";
+      `Estimated credit usage for ${label} (${tz}): ${totalCredits} credits. ` +
+      "These are estimates — point the user to the workspace Usage page for " +
+      "exact billed credits.";
 
     if (selectedGroupBy === "none" || rows.length === 0) {
       return new Ok([{ type: "text" as const, text: header }]);
@@ -491,8 +491,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const lines = rows.map(
       (row, index) =>
         `${index + 1}. ${row.name} [${row.groupKey}] — ` +
-        `${row.totalCredits} credits ` +
-        `(${row.llmCredits} model + ${row.toolCredits} tools)`
+        `${row.totalCredits} credits`
     );
 
     return new Ok([
@@ -622,9 +621,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const lines = points.map(
-      (point) =>
-        `${point.date}: ${point.totalCredits} credits ` +
-        `(${point.llmCredits} model + ${point.toolCredits} tools)`
+      (point) => `${point.date}: ${point.totalCredits} credits`
     );
 
     return new Ok([

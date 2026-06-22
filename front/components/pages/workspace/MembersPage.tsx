@@ -9,7 +9,7 @@ import {
 import { MembersList } from "@app/components/members/MembersList";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import {
   usePerSeatPricing,
@@ -224,6 +224,7 @@ export function MembersPage() {
               prefillText=""
               perSeatPricing={perSeatPricing}
               onInviteClick={onInviteClick}
+              isFreePlan={isFreePlan(plan.code)}
             />
           )}
         </div>

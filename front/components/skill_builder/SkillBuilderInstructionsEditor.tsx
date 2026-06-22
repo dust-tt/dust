@@ -2,6 +2,7 @@ import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { CAPABILITY_SEARCH_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/CapabilitySearchNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
@@ -583,7 +584,20 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    editor.commands.openCapabilitiesSlashCommand();
+    let hasEmptyCapabilitySearchNode = false;
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === CAPABILITY_SEARCH_NODE_TYPE) {
+        hasEmptyCapabilitySearchNode = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (hasEmptyCapabilitySearchNode) {
+      return;
+    }
+
+    editor.chain().focus().insertCapabilitySearchNode().run();
   }, [editor]);
 
   const handleReferenceClick = useCallback(

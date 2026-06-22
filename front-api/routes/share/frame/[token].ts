@@ -116,10 +116,11 @@ app.get(
     const { faviconUrl, logoUrl, ogImageUrl } =
       await getWorkspaceBrandingPublicUrls(workspace);
 
-    const description =
-      ogImageUrl === null
-        ? `Discover what ${workspace.name} built with AI. Explore now.`
-        : null;
+    // For workspaces without custom branding, add viral copy to drive sign-ups.
+    const isBrandedWorkspace = ogImageUrl !== null;
+    const description = isBrandedWorkspace
+      ? null
+      : `Discover what ${workspace.name} built with AI. Explore now.`;
 
     return ctx.json({
       description,
@@ -128,6 +129,7 @@ app.get(
       ogImageUrl,
       requiresEmailVerification,
       shareUrl,
+      showSignUpCta: !isBrandedWorkspace,
       title: file.fileName,
       vizUrl: config.getVizPublicUrl(),
       workspaceId: workspace.sId,

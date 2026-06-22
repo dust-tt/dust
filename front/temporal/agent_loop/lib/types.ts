@@ -40,6 +40,9 @@ export type GetOutputRequestParams = {
   }>;
   conversation: ConversationType;
   hasConditionalJITTools: boolean;
+  // When true, opt this step's Anthropic call into prompt-cache diagnostics and
+  // thread the previous step's response id via Redis (see cache_diagnostics.ts).
+  cacheDiagnosticsEnabled: boolean;
   userMessage: UserMessageType;
   specifications: AgentActionSpecification[];
   flushParserTokens: () => Promise<void>;

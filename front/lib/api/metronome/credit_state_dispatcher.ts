@@ -1,3 +1,4 @@
+import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { fetchRemainingCapCreditsPercentageForUser } from "@app/lib/api/credits/members_usage";
 import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
 import { getMembers } from "@app/lib/api/workspace";
@@ -5,12 +6,12 @@ import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getNetBalance } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
-import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
 import {
+  clearWorkspaceProgrammaticWarningReached,
   setUserCreditState,
-  setWorkspaceProgrammaticCreditStatus,
+  setWorkspaceProgrammaticWarningReached,
 } from "@app/lib/metronome/user_block";
 import type { LiveUserSeatBalance } from "@app/lib/metronome/user_credit_state_machine";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
@@ -145,6 +146,15 @@ export async function dispatchSeatBalanceExhausted({
       },
       "[CreditStateDispatcher] dispatchSeatBalanceExhausted: transition skipped"
     );
+    return;
+  }
+
+  // Free seats have no pool fallback, so an exhausted balance lands them in
+  // `capped`. If the workspace opted into auto-upgrades, bump their seat one
+  // tier (free → pro) so they stay unblocked. Pro/max seats fall back to the
+  // pool (`on_pool`) instead and are left alone here.
+  if (result.value === "capped") {
+    void maybeAutoUpgradeSeat({ workspaceId: workspace.sId, userId });
   }
 }
 
@@ -259,6 +269,13 @@ export async function dispatchPerUserCapReached({
   if (result.isErr()) {
     return result;
   }
+
+  // The member just hit their per-user cap. If the workspace opted into
+  // auto-upgrades, bump their seat one tier so they stay unblocked.
+  if (result.value === "capped") {
+    void maybeAutoUpgradeSeat({ workspaceId: workspace.sId, userId });
+  }
+
   return new Ok(undefined);
 }
 
@@ -489,6 +506,7 @@ export async function dispatchProgrammaticCapReset({
 }: {
   workspace: WorkspaceResource;
 }): Promise<void> {
+  void clearWorkspaceProgrammaticWarningReached(workspace.sId);
   await transitionProgrammaticCreditState(workspace, {
     type: "programmatic_cap_reset",
   });
@@ -508,10 +526,7 @@ export async function dispatchProgrammaticWarning({
   workspace: WorkspaceResource;
   eventId: string;
 }): Promise<void> {
-  void setWorkspaceProgrammaticCreditStatus(
-    workspace.sId,
-    "active_low_balance"
-  );
+  void setWorkspaceProgrammaticWarningReached(workspace.sId);
   void notifyAdminsProgrammaticCapAboutStatus({
     workspace,
     isBlocked: false,
@@ -587,8 +602,8 @@ async function notifyAdminsProgrammaticCapAboutStatus({
  * may be stale (e.g. `depleted` from the previous contract) and Metronome
  * alert webhooks won't fire until the new balance crosses a threshold.
  *
- * Invalidates the pool credits cache, reads the live AWU balance, then
- * dispatches `credits_added` (balance > 0) or `pool_exhausted` (balance == 0)
+ * Reads the live AWU balance, then dispatches `credits_added` (balance > 0)
+ * or `pool_exhausted` (balance == 0)
  * so the state machine routes to the correct state. On balance-fetch
  * failure, logs and skips — the next Metronome alert webhook will converge.
  */
@@ -599,8 +614,6 @@ export async function syncPoolCreditStateFromBalance({
   workspace: WorkspaceResource;
   metronomeCustomerId: string;
 }): Promise<void> {
-  await invalidateWorkspacePoolCredits(workspace.sId, metronomeCustomerId);
-
   const balanceResult = await getWorkspacePoolAwuBalance(metronomeCustomerId);
 
   if (balanceResult.isErr()) {

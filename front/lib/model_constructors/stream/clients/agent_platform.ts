@@ -1,18 +1,23 @@
 import type {
   MessageCreateParamsNonStreaming,
   MessageCreateParamsStreaming,
+  Model,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import { WithAnthropicInputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/input";
-import { WithAnthropicOutputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/output";
-import { rawOutputToEvents } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
+import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
+import {
+  CLAUDE_HAIKU_4_5_MODEL_ID,
+  type ModelId,
+} from "@app/lib/model_constructors/types/model_ids";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { AGENT_PLATFORM_API } from "@app/lib/model_constructors/types/provider_apis";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
@@ -33,8 +38,12 @@ const configSchema = inputConfigSchema.extend({
     .optional(),
 });
 
-export abstract class AgentPlatformStream extends WithAnthropicInputConverter(
-  WithAnthropicOutputConverter(
+const MODEL_MAPPING: Partial<Record<ModelId, Model>> = {
+  [CLAUDE_HAIKU_4_5_MODEL_ID]: "claude-haiku-4-5@20251001",
+};
+
+export abstract class AgentPlatformStream extends WithAnthropicAIInputConverter(
+  WithAnthropicAIOutputConverter(
     StreamEndpoint<
       MessageCreateParamsNonStreaming,
       RawMessageStreamEvent,
@@ -64,6 +73,9 @@ export abstract class AgentPlatformStream extends WithAnthropicInputConverter(
       projectId: AGENT_PLATFORM_PROJECT_ID,
     });
   }
+
+  modelIdToApiModelId = (modelId: ModelId): Model =>
+    MODEL_MAPPING[modelId] ?? modelId;
 
   async *streamRaw(
     input: MessageCreateParamsNonStreaming

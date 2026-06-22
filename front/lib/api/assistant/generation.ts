@@ -484,17 +484,17 @@ export function constructPromptMultiActions(
   if (hasStaticInstructions) {
     // Structured form with 3 cache tiers, ordered from most stable to most volatile.
     //
-    // Instructions (long cache): stable per agent config — agent instructions,
-    // tools (directives + server listing), skills, format docs, and guidelines.
+    // Instructions (long cache): stable per agent config, covering agent instructions, skills,
+    // format docs, and guidelines.
     //
-    // Shared context (short cache): workspace-scoped data shared across users — date, toolsets,
-    // workspace info. A cache breakpoint here lets different users in the same workspace share
-    // this prefix.
+    // Shared context (short cache): workspace-scoped data shared across users, covering the tools
+    // section (directives + server listing), date, toolsets, and workspace info. A cache breakpoint
+    // here lets different users in the same workspace share this prefix.
     //
-    // Ephemeral context (no breakpoint): per-call data — branch lineage, memories, user profile.
+    // Ephemeral context (no breakpoint): per-call data, covering branch lineage, memories, and user
+    // profile.
     const fullInstructions = [
       instructionsContent,
-      toolsSection,
       skillsSection,
       attachmentsSection,
       pastedContentSection,
@@ -503,7 +503,12 @@ export function constructPromptMultiActions(
       .filter((s) => s.trim() !== "")
       .join("\n");
 
+    // The tools section (directives + available-servers overview) lives in the shared-context
+    // (5min) tier rather than the instructions (1h) tier: its per-server listing and instructions
+    // change whenever a (conditional) JIT server is added mid-run, so keeping it out of the
+    // instructions block lets that block stay cache-stable across server additions.
     const sharedContext: SystemPromptContext[] = [
+      { role: "context" as const, content: toolsSection },
       { role: "context" as const, content: contextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
       { role: "context" as const, content: workspaceContext ?? "" },

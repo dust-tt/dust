@@ -3,6 +3,11 @@
 
 /* Custom scrollbar styles */
 @layer base {
+  :root {
+    --banner-height: 0px;
+    --panel-height: calc(100dvh - var(--banner-height));
+  }
+
   * {
     scrollbar-width: thin;
   }

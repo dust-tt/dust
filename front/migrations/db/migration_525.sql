@@ -1,3 +1,0 @@
-DROP INDEX CONCURRENTLY IF EXISTS messages_workspace_id_conversation_id;
-
-DROP INDEX CONCURRENTLY IF EXISTS messages_conversation_id_rank_version;

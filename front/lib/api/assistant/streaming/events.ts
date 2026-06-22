@@ -132,6 +132,7 @@ function isMessageEventParams(
     case "compaction_message_done":
     case "conversation_title":
     case "plan_updated":
+    case "wake_up_updated":
       return false;
     default:
       assertNever(eventType);

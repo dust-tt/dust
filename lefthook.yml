@@ -65,6 +65,19 @@ pre-commit:
       run: scripts/check-package-lock-sync.sh
       priority: 1
 
+    # Optional: actionlint for GitHub Actions workflow files (skip with LEFTHOOK_EXCLUDE=actionlint)
+    actionlint:
+      glob: ".github/{workflows,actions}/**/*.{yml,yaml}"
+      run: |
+        if command -v actionlint >/dev/null 2>&1; then
+          actionlint {staged_files}
+        else
+          echo "Warning: actionlint is not installed. Skipping GitHub Actions linting."
+          echo "Install with: brew install actionlint"
+          exit 0
+        fi
+      priority: 1
+
     # Front directory checks
     front-lint-audit-log-schemas:
       tags: front

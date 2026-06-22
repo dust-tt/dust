@@ -384,7 +384,7 @@ export const sandboxSkill = {
   icon: "CommandLineIcon",
   // Auto-equipped for every agent when the `sandbox_tools` flag is on (the flag gate lives in
   // isRestricted), but not enabled until the agent decides to use it.
-  isAutoEquippedForAgentLoop: () => true,
+  isAutoEquippedForAgentLoop: (): boolean => true,
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 

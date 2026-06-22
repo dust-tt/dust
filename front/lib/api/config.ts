@@ -673,6 +673,15 @@ const config = {
   getConvertAPIKey: (): string => {
     return EnvironmentConfig.getEnvVariable("CONVERTAPI_API_KEY");
   },
+  getImgproxyUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_URL");
+  },
+  getImgproxyKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_KEY");
+  },
+  getImgproxySalt: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_SALT");
+  },
 };
 
 export default config;

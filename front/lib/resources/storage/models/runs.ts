@@ -11,6 +11,11 @@ export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare dustRunId: string;
   declare runType: string;
   declare useWorkspaceCredentials: boolean | null;
+  // Identifies the agent-loop execution this run belongs to (sha256 of the
+  // execution's sorted dustRunIds). Set at finalize so per-execution credit
+  // costs can be ceiled per group, matching the Metronome billing partition.
+  // Null for non-agent-loop runs and legacy rows.
+  declare runKey: string | null;
 
   declare appId: ForeignKey<AppModel["id"]> | null;
 
@@ -39,6 +44,10 @@ RunModel.init(
     },
     useWorkspaceCredentials: {
       type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    runKey: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },

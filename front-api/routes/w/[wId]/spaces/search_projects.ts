@@ -1,10 +1,8 @@
 import { getPaginationParams } from "@app/lib/api/pagination";
 import {
-  enrichProjectsWithMetadata,
   type SearchProjectsResponseBody,
+  searchReadablePods,
 } from "@app/lib/api/projects/list";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -37,11 +35,7 @@ app.get("/", async (ctx): HandlerResult<SearchProjectsResponseBody> => {
   const queryString = ctx.req.query("query");
   const pagination = paginationRes.value;
 
-  const {
-    spaces: projectSpaces,
-    hasMore,
-    lastValue,
-  } = await SpaceResource.searchProjectsByNamePaginated(auth, {
+  const result = await searchReadablePods(auth, {
     query: queryString,
     pagination: {
       limit: pagination.limit,
@@ -50,28 +44,7 @@ app.get("/", async (ctx): HandlerResult<SearchProjectsResponseBody> => {
     },
   });
 
-  const projectsWithMetadata = await enrichProjectsWithMetadata(
-    auth,
-    projectSpaces
-  );
-
-  const metadataMap = new Map(projectsWithMetadata.map((p) => [p.sId, p]));
-
-  const results = [];
-  for (const space of projectSpaces) {
-    const metadata = metadataMap.get(space.sId);
-    if (!metadata) {
-      logger.warn({ spaceId: space.sId }, "Missing metadata for project");
-      continue;
-    }
-    results.push({ ...metadata, isMember: space.isMember(auth) });
-  }
-
-  return ctx.json({
-    spaces: results,
-    hasMore,
-    lastValue,
-  });
+  return ctx.json(result);
 });
 
 export default app;

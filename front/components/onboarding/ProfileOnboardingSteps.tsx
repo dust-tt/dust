@@ -2,18 +2,14 @@ import type { EmailProviderType } from "@app/lib/utils/email_provider_detection"
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
-import { isJobType, JOB_TYPE_OPTIONS } from "@app/types/job_type";
+import { JOB_TYPE_OPTIONS } from "@app/types/job_type";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   Card,
+  Chip,
   ConfluenceLogo,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   DustLogoSquare,
   FrontLogo,
   GithubLogo,
@@ -28,7 +24,6 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-import { useMemo } from "react";
 
 const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   gmail: GmailLogo,
@@ -99,14 +94,6 @@ export function UserProfileStep({
   showErrors,
   onNext,
 }: UserProfileStepProps) {
-  const selectedJobTypeLabel = useMemo(() => {
-    if (!formData.jobType) {
-      return "Select job type";
-    }
-    const jobType = JOB_TYPE_OPTIONS.find((t) => t.value === formData.jobType);
-    return jobType?.label ?? "Select job type";
-  }, [formData.jobType]);
-
   return (
     <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
       <Page.Header
@@ -164,34 +151,26 @@ export function UserProfileStep({
         <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
           Pick your role to customize your experience:
         </p>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="justify-between text-muted-foreground dark:text-muted-foreground-night"
-              label={selectedJobTypeLabel}
-              isSelect={true}
+        <div className="flex flex-wrap gap-2">
+          {JOB_TYPE_OPTIONS.map((jobTypeOption) => (
+            <Chip
+              key={jobTypeOption.value}
+              label={jobTypeOption.label}
+              size="xs"
+              color={
+                formData.jobType === jobTypeOption.value
+                  ? "highlight"
+                  : "primary"
+              }
+              onClick={() =>
+                setFormData((prev) => ({
+                  ...prev,
+                  jobType: jobTypeOption.value,
+                }))
+              }
             />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-            <DropdownMenuRadioGroup
-              value={formData.jobType ?? ""}
-              onValueChange={(value) => {
-                if (isJobType(value)) {
-                  setFormData((prev) => ({ ...prev, jobType: value }));
-                }
-              }}
-            >
-              {JOB_TYPE_OPTIONS.map((jobTypeOption) => (
-                <DropdownMenuRadioItem
-                  key={jobTypeOption.value}
-                  value={jobTypeOption.value}
-                  label={jobTypeOption.label}
-                />
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          ))}
+        </div>
         {showErrors && formErrors.jobType && (
           <p className="mt-1 text-sm text-red-500">{formErrors.jobType}</p>
         )}

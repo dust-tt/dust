@@ -31,7 +31,7 @@ jobs:
         working-directory: cli/dust-sandbox
         run: |
           VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build with cross
         working-directory: cli/dust-sandbox

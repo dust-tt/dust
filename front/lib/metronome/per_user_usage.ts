@@ -25,18 +25,17 @@ import { Err, Ok } from "@app/types/shared/result";
  * Usage is now folded on the invoice (no per-user line item), so we read it
  * straight from the grouped usage API instead of walking draft invoices.
  *
- * Billing periods always start on the 1st of the month at UTC midnight, so
- * `cycleStart`/`cycleEnd` already satisfy the usage endpoint's two constraints:
- *   - `current_period: true` is rejected ("must have an active plan") — that
- *     flag keys off Metronome's legacy v1 Plan entity, and we provision
- *     customers exclusively via Contracts, so no Plan exists. We pass explicit
- *     `starting_on`/`ending_before` instead.
- *   - explicit `starting_on`/`ending_before` must be UTC midnight — which the
- *     period bounds already are.
- * So we query `[cycleStart, cycleEnd)` directly with `window_size: "DAY"`; every
- * returned bucket falls inside the period, no trimming needed. The request end
- * is capped at the next midnight after `now` so we don't fetch the period's
- * future days.
+ * Billing periods are anchored to the contract start date (e.g. June 15 15:00),
+ * so bounds are non-midnight. The usage endpoint requires midnight-aligned
+ * `starting_on`/`ending_before`, so we floor/ceil to midnight and use
+ * `window_size: "HOUR"` to get per-hour buckets. Pre-period and post-period
+ * buckets are filtered out in code so only usage within `[cycleStart, cycleEnd)`
+ * is counted.
+ *
+ * `current_period: true` is rejected ("must have an active plan") — that flag
+ * keys off Metronome's legacy v1 Plan entity, and we provision customers
+ * exclusively via Contracts, so no Plan exists. We always pass explicit
+ * `starting_on`/`ending_before`.
  *
  * AWU spend has two sources, both priced in the AWU credit type:
  *   - AI Usage: the `cost_awu` metric, priced 1 AWU per unit, so the metric
@@ -81,13 +80,11 @@ export async function fetchPerUserAwuUsage({
   const cycleEndMs = cycleEnd.getTime();
   const cycleStartMs = cycleStart.getTime();
 
-  // The usage endpoint requires midnight-aligned bounds, so we always query from
-  // the floored start. When the period start is not itself midnight (e.g. a
-  // contract that started mid-day), the floored start pulls in usage from before
-  // the period began. Query at HOUR granularity in that case and drop the
-  // pre-start buckets below, so we count exactly the period — matching the
-  // Metronome spend alert and the seat grant. Steady-state periods start at
-  // midnight, so this stays on DAY.
+  // The usage endpoint requires midnight-aligned bounds. Billing periods are
+  // anchored to the contract start date (e.g. June 15 15:00), so the period
+  // bounds are typically non-midnight. Floor/ceil to midnight for the query
+  // and use HOUR granularity so individual buckets can be trimmed: drop
+  // pre-start buckets (< cycleStart) and post-end buckets (>= cycleEnd) below.
   const startingOn = floorToMidnightUTC(cycleStart).toISOString();
   const requestEnd = new Date(Math.min(cycleEndMs, Date.now()));
   const endingBefore = ceilToMidnightUTC(requestEnd).toISOString();
@@ -130,7 +127,8 @@ export async function fetchPerUserAwuUsage({
       !userId ||
       entry.value === null ||
       entry.group?.[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE ||
-      new Date(entry.startingOn).getTime() < cycleStartMs
+      new Date(entry.startingOn).getTime() < cycleStartMs ||
+      new Date(entry.startingOn).getTime() >= cycleEndMs
     ) {
       continue;
     }
@@ -147,6 +145,7 @@ export async function fetchPerUserAwuUsage({
       entry.value === null ||
       entry.group?.[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE ||
       new Date(entry.startingOn).getTime() < cycleStartMs ||
+      new Date(entry.startingOn).getTime() >= cycleEndMs ||
       !category ||
       !isToolCategory(category)
     ) {

@@ -1,5 +1,6 @@
 import { CapabilitiesSection } from "@app/components/workspace/settings/CapabilitiesSection";
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
+import { PreferencesSection } from "@app/components/workspace/settings/PreferencesSection";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import { getPublishingRestrictionMessage } from "@app/lib/api/assistant/publishing_restrictions";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -38,6 +39,7 @@ export function WorkspaceSettingsPage() {
       <Page.Vertical align="stretch" gap="md">
         <WorkspaceNameEditor owner={owner} />
       </Page.Vertical>
+      <PreferencesSection owner={owner} />
       <CapabilitiesSection
         owner={owner}
         publishingRestrictionMessage={getPublishingRestrictionMessage(

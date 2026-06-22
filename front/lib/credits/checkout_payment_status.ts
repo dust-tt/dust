@@ -29,6 +29,7 @@ export const CheckoutPaymentSchema = z.object({
   createdAtMs: z.number(),
   invoiceId: z.string().optional(),
   errorMessage: z.string().optional(),
+  previousMetronomeContractId: z.string().optional(),
 });
 
 export type CheckoutPayment = z.infer<typeof CheckoutPaymentSchema>;

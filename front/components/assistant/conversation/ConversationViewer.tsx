@@ -61,6 +61,8 @@ import {
   CompactionStartedEvent,
 } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useConversationWakeUps } from "@app/lib/swr/wakeups";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import {
   type ConversationForkedChildType,
@@ -73,6 +75,7 @@ import {
   isRichAgentMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -419,6 +422,12 @@ export const ConversationViewer = ({
     options: { disabled: true }, // We don't need the participants, only the mutator.
   });
 
+  const { mutateWakeUps } = useConversationWakeUps({
+    owner,
+    conversationId,
+    disabled: true, // We don't fetch here, only patch the cache on wake_up_updated events.
+  });
+
   const { mutateContextUsage } = useConversationContextUsage({
     conversationId,
     workspaceId: owner.sId,
@@ -478,13 +487,12 @@ export const ConversationViewer = ({
     // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
-    if (
-      !initialListData &&
-      conversation &&
-      messages.length > 0 &&
-      !isValidating
-    ) {
+    if (initialListData === undefined && conversation && !isValidating) {
       const raw = messages.flatMap((m) => m.messages);
+      if (raw.length === 0) {
+        return;
+      }
+
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
       const messagesAndNotices = addConversationForkNotices(
         messagesToRender,
@@ -549,7 +557,7 @@ export const ConversationViewer = ({
   // approval modal would never re-open.
   useEffect(() => {
     if (
-      !initialListData ||
+      initialListData === undefined ||
       !openBranch ||
       !virtuosoMessageListRef.current ||
       hasInjectedOpenBranchRef.current
@@ -1058,6 +1066,24 @@ export const ConversationViewer = ({
             );
             break;
           }
+          case "wake_up_updated": {
+            // Refetch wake-ups, then sync the conversation list's nextWakeupAt. Only one wake-up
+            // can be active per conversation, so the active one fully determines that value.
+            void mutateWakeUps().then((updated) => {
+              const active = updated?.wakeUps.find(isActiveWakeUp) ?? null;
+              const nextWakeupAt = active
+                ? getNextWakeUpFireAtFromScheduleConfig(active.scheduleConfig)
+                : null;
+              void mutateConversations(
+                (currentData: ConversationListItemType[] | undefined) =>
+                  currentData?.map((c) =>
+                    c.sId === conversationId ? { ...c, nextWakeupAt } : c
+                  ),
+                { revalidate: false }
+              );
+            });
+            break;
+          }
           default:
             ((t: never) => {
               logger.error({ event: t }, "Unknown event type");
@@ -1075,6 +1101,7 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
+      mutateWakeUps,
       openPanel,
       owner.sId,
       user.sId,
@@ -1095,7 +1122,8 @@ export const ConversationViewer = ({
       !isConversationLoading &&
       !isLoadingInitialData &&
       messages.length !== 0 &&
-      initialListData !== undefined,
+      initialListData !== undefined &&
+      initialListData.length > 0,
   });
 
   const handleSubmit = useCallback(

@@ -4,21 +4,21 @@ import type {
   MessageCreateParamsStreaming,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import { WithAnthropicInputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/input";
-import { WithAnthropicOutputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/output";
-import { rawOutputToEvents } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
 import {
   type AnthropicInputConfig,
   anthropicConfigSchema,
 } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
+import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
+import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { ANTHROPIC_API } from "@app/lib/model_constructors/types/provider_apis";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 
-export abstract class AnthropicStream extends WithAnthropicInputConverter(
-  WithAnthropicOutputConverter(
+export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
+  WithAnthropicAIOutputConverter(
     StreamEndpoint<
       MessageCreateParamsNonStreaming,
       RawMessageStreamEvent,

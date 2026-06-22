@@ -1,6 +1,9 @@
 import assert from "node:assert";
 import { AnthropicError, APIError } from "@anthropic-ai/sdk";
-import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
+import type {
+  BetaMessage,
+  BetaRawMessageStreamEvent,
+} from "@anthropic-ai/sdk/resources/beta.mjs";
 import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches.mjs";
 import type {
   Message,
@@ -10,6 +13,7 @@ import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/ut
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type {
+  CacheMissReason,
   LLMEvent,
   LLMOutputItem,
   ReasoningDeltaEvent,
@@ -35,6 +39,25 @@ import cloneDeep from "lodash/cloneDeep";
 const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
 const INVALID_JSON_MARKER = "JSON: ";
 const INVALID_TOOL_JSON_NEEDLE = "Unable to parse tool parameter JSON";
+
+// Extract the prompt-cache diagnostics reason from a message_start, when the
+// request opted into diagnostics (beta header + `diagnostics.previous_message_id`).
+// `diagnostics` is null when there was nothing to compare or no divergence.
+// `cache_miss_reason` is null while the background comparison is still pending.
+function toCacheMissReason(message: BetaMessage): CacheMissReason | undefined {
+  const reason = message.diagnostics?.cache_miss_reason;
+  if (!reason) {
+    return undefined;
+  }
+  return {
+    type: reason.type,
+    // Only the `*_changed` reasons carry the lost-cache magnitude.
+    cacheMissedInputTokens:
+      "cache_missed_input_tokens" in reason
+        ? reason.cache_missed_input_tokens
+        : undefined,
+  };
+}
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
@@ -129,6 +152,7 @@ function* handleMessageStreamEvent(
         type: "interaction_id",
         content: {
           modelInteractionId: messageStreamEvent.message.id,
+          cacheMissReason: toCacheMissReason(messageStreamEvent.message),
         },
         metadata,
       };

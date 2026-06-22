@@ -20,7 +20,7 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 import type { SWRInfiniteKeyedMutator } from "swr/infinite";
 
@@ -73,16 +73,37 @@ export function useMultipleDataSourceViewsContentNodes({
   dataSourceViewsAndNodes: DataSourceViewsAndNodes[];
   isNodesLoading: boolean;
   isNodesError: boolean;
+  refetch: () => void;
   // We need to return an invalidation function to avoid stale data.
   invalidate: () => void;
 } {
   const { fetcherWithBody } = useFetcher();
+  const fetcherWithBodyRef = useRef(fetcherWithBody);
+  fetcherWithBodyRef.current = fetcherWithBody;
+
   const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] = useState<
     DataSourceViewsAndNodes[]
   >(emptyArray());
   const [isNodesLoading, setIsNodesLoading] = useState(false);
   const [isNodesError, setIsNodesError] = useState(false);
+  const [fetchGeneration, setFetchGeneration] = useState(0);
 
+  const fetchRequestKey = useMemo(
+    () =>
+      JSON.stringify({
+        ownerId: owner.sId,
+        viewType,
+        requests: dataSourceViewsAndInternalIds.map(
+          ({ dataSourceView, internalIds }) => ({
+            dsvId: dataSourceView.sId,
+            internalIds: internalIds.toSorted(),
+          })
+        ),
+      }),
+    [dataSourceViewsAndInternalIds, owner.sId, viewType]
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchRequestKey encodes owner, viewType, and selection identity
   useEffect(() => {
     const fetchData = async () => {
       setIsNodesLoading(true);
@@ -146,7 +167,11 @@ export function useMultipleDataSourceViewsContentNodes({
           const r = await concurrentExecutor(
             urlAndBodies,
             async (urlAndBody) => {
-              return fetcherWithBody([urlAndBody.url, urlAndBody.body, "POST"]);
+              return fetcherWithBodyRef.current([
+                urlAndBody.url,
+                urlAndBody.body,
+                "POST",
+              ]);
             },
             {
               concurrency: 8,
@@ -184,21 +209,30 @@ export function useMultipleDataSourceViewsContentNodes({
 
     if (dataSourceViewsAndInternalIds.length > 0) {
       void fetchData();
+    } else {
+      setDataSourceViewsAndNodes(emptyArray());
+      setIsNodesLoading(false);
+      setIsNodesError(false);
     }
-  }, [dataSourceViewsAndInternalIds, owner.sId, viewType, fetcherWithBody]);
+  }, [fetchRequestKey, dataSourceViewsAndInternalIds, fetchGeneration]);
+
+  const refetch = useCallback(() => {
+    setFetchGeneration((generation) => generation + 1);
+  }, []);
 
   return useMemo(
     () => ({
       dataSourceViewsAndNodes,
       isNodesLoading,
       isNodesError,
+      refetch,
       invalidate: () => {
         setDataSourceViewsAndNodes(emptyArray());
         setIsNodesLoading(false);
         setIsNodesError(false);
       },
     }),
-    [dataSourceViewsAndNodes, isNodesLoading, isNodesError]
+    [dataSourceViewsAndNodes, isNodesLoading, isNodesError, refetch]
   );
 }
 

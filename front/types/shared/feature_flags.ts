@@ -13,6 +13,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  anthropic_cache_diagnostics: {
+    description:
+      "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
+    stage: "dust_only",
+  },
+  anthropic_tool_search: {
+    description:
+      "Defer non-default (cold) MCP tools via Anthropic's tool search tool so mid-run tool additions append inline instead of mutating the cached prefix",
+    stage: "dust_only",
+  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
@@ -152,6 +162,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
     stage: "on_demand",
   },
+  new_analytics_page: {
+    description:
+      "Use the new Analytics page whose credit chart and tables are sourced from our analytics index (cost.full_awu) instead of Metronome.",
+    stage: "on_demand",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -207,17 +222,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   sandbox_tools: {
     description:
       "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   sandbox_dsbx_tools: {
     description:
       "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   sandbox_workspace_admin: {
     description:
       "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
@@ -329,6 +344,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
     stage: "dust_only",
+  },
+  imgproxy_image_resize: {
+    description:
+      "Resize uploaded raster images via imgproxy instead of ConvertAPI",
+    stage: "dust_only",
+  },
+  workspace_default_agent: {
+    description:
+      "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

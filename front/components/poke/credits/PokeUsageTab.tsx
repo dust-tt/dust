@@ -27,6 +27,7 @@ interface PokeUsageTabProps {
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
+  programmaticWarningReached: boolean;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
@@ -63,6 +64,7 @@ interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
+  programmaticWarningReached: boolean;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
 }
@@ -71,6 +73,7 @@ function PokeCreditStatesCard({
   owner,
   poolCreditState,
   programmaticCreditState,
+  programmaticWarningReached,
   poolAlert,
   programmaticAlerts,
 }: PokeCreditStatesCardProps) {
@@ -102,6 +105,9 @@ function PokeCreditStatesCard({
             color={creditStateChipColor(programmaticCreditState)}
             label={programmaticCreditState}
           />
+          {programmaticWarningReached && (
+            <Chip size="xs" color="warning" label="near limit" />
+          )}
           <AlertChip alert={programmaticAlerts.cap} label="cap alert" />
           <AlertChip alert={programmaticAlerts.warning} label="warning (80%)" />
           <AlertChip alert={programmaticAlerts.low} label="low (-100)" />
@@ -286,6 +292,7 @@ export function PokeUsageTab({
   stripeSubscription,
   poolCreditState,
   programmaticCreditState,
+  programmaticWarningReached,
   creditUsageConfig,
   poolAlert,
   programmaticAlerts,
@@ -311,6 +318,7 @@ export function PokeUsageTab({
         owner={owner}
         poolCreditState={poolCreditState}
         programmaticCreditState={programmaticCreditState}
+        programmaticWarningReached={programmaticWarningReached}
         poolAlert={poolAlert}
         programmaticAlerts={programmaticAlerts}
       />

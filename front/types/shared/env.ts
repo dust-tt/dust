@@ -6,9 +6,11 @@ export function isDevelopment() {
     process.env.IS_DEVELOPMENT === "true"
   );
 }
+
 export function isTest() {
   return process.env.NODE_ENV === "test";
 }
+
 export function isDustWorkspace(w: LightWorkspaceType) {
   return w.sId === process.env.PRODUCTION_DUST_WORKSPACE_ID;
 }

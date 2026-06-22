@@ -36,6 +36,6 @@
 @layer utilities {
   .s-scrollarea-viewport > div {
     display: block !important;
-    height: 100%;
+    min-height: 100%;
   }
 }

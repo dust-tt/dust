@@ -1,7 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/lib/api/invitation";
-import type { MembersLookupResponseBody } from "@app/lib/api/members";
+import type {
+  GetFreeSeatCountsResponseBody,
+  MembersLookupResponseBody,
+} from "@app/lib/api/members";
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
@@ -33,11 +36,6 @@ const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
 
 const PutUserSpendLimitResponseSchema = z.object({
   limit: SpendLimitResponseSchema,
-  transitionedTo: z.union([
-    z.literal("reached"),
-    z.literal("resolved"),
-    z.null(),
-  ]),
 });
 
 type PaginationParams = {
@@ -480,4 +478,26 @@ export function useUpdateUserSpendLimit({
   );
 
   return { doUpdateSpendLimit };
+}
+
+export function useFreeSeatCounts({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const freeSeatCountsFetcher: Fetcher<GetFreeSeatCountsResponseBody> = fetcher;
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/members/free-seats`,
+    freeSeatCountsFetcher,
+    { disabled }
+  );
+
+  return {
+    freeSeatCounts: data?.freeSeatCounts,
+    isFreeSeatCountsLoading: !error && !data && !disabled,
+    isFreeSeatCountsError: !!error,
+  };
 }

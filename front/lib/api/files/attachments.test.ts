@@ -1,5 +1,6 @@
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { generateSnippet } from "@app/lib/api/files/snippet";
 import {
   CSV_UNSUPPORTED_ENCODING_ERROR_MESSAGE,
   processAndUpsertToDataSource,
@@ -30,6 +31,14 @@ vi.mock(import("@app/lib/api/files/upsert"), async (importOriginal) => {
   };
 });
 
+vi.mock(import("@app/lib/api/files/snippet"), async (importOriginal) => {
+  const mod = await importOriginal();
+  return {
+    ...mod,
+    generateSnippet: vi.fn(),
+  };
+});
+
 describe("maybeUpsertFileAttachment", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
@@ -51,6 +60,7 @@ describe("maybeUpsertFileAttachment", () => {
     vi.mocked(processAndUpsertToDataSource).mockResolvedValue(
       new Ok({} as any)
     );
+    vi.mocked(generateSnippet).mockResolvedValue(new Ok("pasted content"));
   });
 
   it("stamps conversationId on files without useCaseMetadata and attempts upsert", async () => {
@@ -101,6 +111,68 @@ describe("maybeUpsertFileAttachment", () => {
       skipDataSourceIndexing: true,
       conversationId: conversation.sId,
     });
+  });
+
+  it("generates snippets for pasted files without indexing them", async () => {
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/vnd.dust.attachment.pasted",
+      fileName: "pasted-text-1_2026-06-22_10-00-00.txt",
+      fileSize: 500,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { skipDataSourceIndexing: true },
+    });
+
+    const result = await maybeUpsertFileAttachment(auth, {
+      contentFragments: [{ fileId: file.sId }],
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(generateSnippet).toHaveBeenCalledOnce();
+    expect(vi.mocked(generateSnippet).mock.calls[0][1].file.sId).toBe(file.sId);
+    expect(getOrCreateConversationDataSourceFromFile).not.toHaveBeenCalled();
+    expect(processAndUpsertToDataSource).not.toHaveBeenCalled();
+
+    const reloaded = await FileResource.fetchById(auth, file.sId);
+    expect(reloaded?.useCaseMetadata).toEqual({
+      skipDataSourceIndexing: true,
+      conversationId: conversation.sId,
+    });
+    expect(reloaded?.snippet).toBe("pasted content");
+  });
+
+  it("generates missing snippets for pasted files already attached to a conversation", async () => {
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/vnd.dust.attachment.pasted",
+      fileName: "pasted-text-2_2026-06-22_10-00-00.txt",
+      fileSize: 500,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        skipDataSourceIndexing: true,
+        conversationId: conversation.sId,
+      },
+      snippet: null,
+    });
+
+    const result = await maybeUpsertFileAttachment(auth, {
+      contentFragments: [{ fileId: file.sId }],
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(generateSnippet).toHaveBeenCalledOnce();
+    expect(vi.mocked(generateSnippet).mock.calls[0][1].file.sId).toBe(file.sId);
+    expect(getOrCreateConversationDataSourceFromFile).not.toHaveBeenCalled();
+    expect(processAndUpsertToDataSource).not.toHaveBeenCalled();
+
+    const reloaded = await FileResource.fetchById(auth, file.sId);
+    expect(reloaded?.useCaseMetadata).toEqual({
+      skipDataSourceIndexing: true,
+      conversationId: conversation.sId,
+    });
+    expect(reloaded?.snippet).toBe("pasted content");
   });
 
   it("propagates upsert failures instead of swallowing them", async () => {

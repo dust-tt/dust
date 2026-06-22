@@ -36,12 +36,12 @@ on:
         description: "The environment to use for API endpoints (prod or edge)"
         type: string
         default: "prod"
-        required: true
+        required: false
       region:
         description: "Default region for API endpoint"
         type: string
         default: "us"
-        required: true
+        required: false
       thread_ts:
         description: "Slack thread timestamp to post in (from parent deploy workflow)"
         type: string
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Get short sha
         id: short_sha
-        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
   notify-start:
     if: ${{ !inputs.skip_slack }}
@@ -136,7 +136,7 @@ jobs:
             SANITIZED="pr-${SANITIZED}"
             SANITIZED=$(echo "$SANITIZED" | cut -c1-28 | sed 's/-$//')
           fi
-          echo "sanitized=${SANITIZED}" >> $GITHUB_OUTPUT
+          echo "sanitized=${SANITIZED}" >> "$GITHUB_OUTPUT"
 
       - name: Build SPA
         working-directory: front-spa
@@ -152,7 +152,8 @@ jobs:
           if [ "${{ github.ref_name }}" != "main" ]; then
             export NEXT_PUBLIC_DUST_APP_URL=https://${{ steps.branch.outputs.sanitized }}--app.preview.dust.tt
           fi
-          export NEXT_PUBLIC_BUILD_DATE=$(date +%s)
+          # shellcheck disable=SC2034  # exported via set -a, used by VITE_* mapping loop below
+          NEXT_PUBLIC_BUILD_DATE=$(date +%s)
           # Map all NEXT_PUBLIC_* to VITE_* for SPA
           for var in $(compgen -v | grep '^NEXT_PUBLIC_'); do
             export "VITE_${var#NEXT_PUBLIC_}=${!var}"
@@ -208,28 +209,30 @@ jobs:
             echo "$UPLOAD_OUTPUT"
             exit 1
           fi
-          echo "version_id=${VERSION_ID}" >> $GITHUB_OUTPUT
+          echo "version_id=${VERSION_ID}" >> "$GITHUB_OUTPUT"
           VERSION_PREFIX=$(echo "$VERSION_ID" | cut -c1-8)
-          echo "version_prefix=${VERSION_PREFIX}" >> $GITHUB_OUTPUT
+          echo "version_prefix=${VERSION_PREFIX}" >> "$GITHUB_OUTPUT"
           echo "Extracted version ID: ${VERSION_ID} (prefix: ${VERSION_PREFIX})"
 
       - name: Derive preview URL
         id: preview_url
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${{ inputs.app }}.preview.dust.tt" >> $GITHUB_OUTPUT
+            echo "url=https://${{ steps.extract_version.outputs.version_prefix }}--${{ inputs.app }}.preview.dust.tt" >> "$GITHUB_OUTPUT"
           else
-            echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}.preview.dust.tt" >> $GITHUB_OUTPUT
+            echo "url=https://${{ steps.branch.outputs.sanitized }}--${{ inputs.app }}.preview.dust.tt" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Summary
         run: |
-          echo "### SPA Deployed :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **App**: ${{ inputs.app }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: ${{ steps.preview_url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Region**: ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### SPA Deployed :rocket:"
+            echo ""
+            echo "- **App**: ${{ inputs.app }}"
+            echo "- **URL**: ${{ steps.preview_url.outputs.url }}"
+            echo "- **Region**: ${{ inputs.region }}"
+            echo "- **Commit**: ${{ github.sha }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Notify Deploy Success
         if: ${{ !inputs.skip_slack }}

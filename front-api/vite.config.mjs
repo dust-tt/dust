@@ -8,6 +8,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     globals: true,
+    root: new URL(".", import.meta.url).pathname,
+    include: ["**/*.{test,spec}.?(c|m)[jt]s?(x)"],
     // jsdom mirrors front's vitest config; some test factories rely on
     // jsdom-provided globals (e.g. globalThis.name).
     environment: "jsdom",
@@ -20,6 +22,13 @@ export default defineConfig({
     maxWorkers: 5,
     minWorkers: 1,
     testTimeout: 5_000,
+    // In CI: emit a JUnit report with file= on every <testcase> so the
+    // annotation action resolves the right source file. Without file=, the
+    // action guesses from the classname, which ends in ".ts" and matches
+    // node_modules/thread-stream/test/ts.test.ts instead of the actual file.
+    reporters: process.env.CI
+      ? [["junit", { addFileAttribute: true }]]
+      : undefined,
   },
   resolve: {
     alias: {

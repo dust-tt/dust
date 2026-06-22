@@ -19,7 +19,7 @@ import {
 } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
   toMessage,
-  toTool,
+  toToolsParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
 import {
   handleError,
@@ -53,6 +53,12 @@ const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
 // other server-side-fallback-* value gets the request rejected with a 400.
 // https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback#server-side-fallback
 const SERVER_SIDE_FALLBACK_BETA_HEADER = "server-side-fallback-2026-06-01";
+
+// Opts into prompt-cache diagnostics: the API compares this request's prefix
+// against the one identified by `diagnostics.previous_message_id` and returns a
+// `cache_miss_reason`. Claude API only (not supported on Vertex AI).
+// https://platform.claude.com/docs/en/build-with-claude/cache-diagnostics
+const CACHE_DIAGNOSTICS_BETA_HEADER = "cache-diagnosis-2026-04-07";
 
 // Server-side fallback is a beta param not yet typed by the SDK (0.100.1). We
 // forward it as an extra body param on the streaming request. The list of
@@ -102,6 +108,11 @@ function buildSystemBlocks(
   if (instructionsText) {
     // If we have conditional JIT tools, we expect more variability in the instructions, so we keep
     // the default ephemeral cache. Otherwise, we can set a longer TTL to maximize cache hits.
+    //
+    // TODO: the tool directives and available-servers overview (the main source of JIT-driven
+    // variability in this block) now live in the shared-context block instead, so this downgrade
+    // should eventually be removable in favor of always using the 1h TTL, once we validate that no
+    // other conditional-JIT content remains in the instructions block.
     const ttl: "1h" | undefined = hasConditionalJITTools ? undefined : "1h";
     system.push({
       type: "text",
@@ -218,7 +229,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       system,
       messages,
       temperature: this.temperature ?? undefined,
-      tools: specifications.map(toTool),
+      tools: toToolsParam(specifications, forceToolCall),
       max_tokens: this.modelConfig.generationTokensCount,
       tool_choice: toToolChoiceParam(specifications, forceToolCall),
     };
@@ -243,26 +254,40 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     const outputFormat = toOutputFormatParam(this.responseFormat);
     const fallbacks = this.buildFallbacksParam();
 
+    // Prompt-cache diagnostics is Claude API only and is opted into per request
+    // by the caller passing `previousMessageId` (tri-state: undefined = off).
+    // `null` is a valid opt-in value (first call, nothing to compare yet).
+    // NOTE: when model_constructors goes live, this inject must move to its
+    // Anthropic request builder. This older client stack is the one in prod today.
+    const cacheDiagnosticsEnabled =
+      !this.useVertex && streamParameters.previousMessageId !== undefined;
+
     // The fallbacks param is rejected unless the request carries the
     // server-side fallback beta header, so the header is attached here rather
     // than left to customBetas (which could drift out of sync).
-    const betas = fallbacks
-      ? [
-          ...(this.modelConfig.customBetas ?? []),
-          SERVER_SIDE_FALLBACK_BETA_HEADER,
-        ]
-      : this.modelConfig.customBetas;
+    const betas = [
+      ...(this.modelConfig.customBetas ?? []),
+      ...(fallbacks ? [SERVER_SIDE_FALLBACK_BETA_HEADER] : []),
+      ...(cacheDiagnosticsEnabled ? [CACHE_DIAGNOSTICS_BETA_HEADER] : []),
+    ];
 
     const payload: AnthropicStreamPayload = {
       ...basePayload,
       stream: true,
-      betas,
+      betas: betas.length > 0 ? betas : undefined,
       output_config: outputFormat
         ? { ...basePayload.output_config, format: outputFormat }
         : basePayload.output_config,
       // Automatic caching is not supported on Vertex AI; the explicit breakpoints in
       // buildBaseRequestPayload (isFirst and isLast) cover Vertex instead.
       ...(!this.useVertex ? { cache_control: { type: "ephemeral" } } : {}),
+      ...(cacheDiagnosticsEnabled
+        ? {
+            diagnostics: {
+              previous_message_id: streamParameters.previousMessageId,
+            },
+          }
+        : {}),
       model: getModel(this.useVertex, { modelId: this.modelId }),
       ...(fallbacks ? { fallbacks } : {}),
     };

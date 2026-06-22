@@ -11,6 +11,7 @@ interface PublicInteractiveContentContainerProps {
   workspaceId: string;
   vizUrl: string;
   logoUrl?: string | null;
+  showSignUpCta?: boolean;
   hideHeader?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function PublicInteractiveContentContainer({
   workspaceId,
   vizUrl,
   logoUrl,
+  showSignUpCta = false,
   hideHeader = false,
 }: PublicInteractiveContentContainerProps) {
   const { frameMetadata, isFrameLoading, error } = usePublicFrame({
@@ -54,6 +56,7 @@ export function PublicInteractiveContentContainer({
             workspaceId={workspaceId}
             vizUrl={vizUrl}
             logoUrl={logoUrl}
+            showSignUpCta={showSignUpCta}
             hideHeader={hideHeader}
           />
         );

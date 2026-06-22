@@ -138,8 +138,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
-import logger from "@app/logger/logger";
-import { sendInitDbMessage } from "@app/types/shared/deployment";
+import { isDevelopment, isTest } from "@app/types/shared/env";
 
 /**
  * Loads all Sequelize models, useful for some tests
@@ -267,10 +266,11 @@ export function loadAllModels() {
 }
 
 async function main() {
-  await sendInitDbMessage({
-    service: "front",
-    logger: logger,
-  });
+  if (!isDevelopment() && !isTest()) {
+    throw new Error(
+      "This script should only be run in development or test mode"
+    );
+  }
 
   for (const model of loadAllModels()) {
     await model.sync({ alter: true });

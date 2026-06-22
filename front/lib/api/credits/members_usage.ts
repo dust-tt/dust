@@ -14,13 +14,14 @@ import {
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import {
-  listContractPerUserCreditBalances,
+  listCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   FREE_SEAT_LIFETIME_AWU_CREDITS,
   getCreditTypeAwuId,
+  toFreeMetronomeUserId,
 } from "@app/lib/metronome/constants";
 import {
   fetchPerUserAwuUsage,
@@ -92,6 +93,9 @@ export type MemberUsageType = {
   consumedFromPoolAwuCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
   billingFrequency: BillingFrequency | null;
+  // ISO timestamp of when the seat credit resets (= next billing period start).
+  // Null for free seats (lifetime grant) or when no billing period is available.
+  nextCreditResetAt: string | null;
   // Set when a future seat change is scheduled (e.g. at the next credit refresh).
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
@@ -312,9 +316,8 @@ async function fetchSeatBalancesForMembersTable({
   // balance: a user who switched free → pro/max still has a leftover free
   // credit, and it must not overwrite their (real) pro/max seat balance.
   // Degrades silently on read failure.
-  const perUserCreditBalances = await listContractPerUserCreditBalances({
+  const perUserCreditBalances = await listCustomerPerUserCreditBalances({
     metronomeCustomerId,
-    metronomeContractId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (perUserCreditBalances.isOk()) {
@@ -433,7 +436,7 @@ async function fetchEffectivePerUserSpendLimits({
 }: {
   metronomeCustomerId: string | null;
   workspaceId: string;
-  defaultPoolCapAwuCredits: number | null;
+  defaultPoolCapAwuCredits: number;
   includeAlertLinks: boolean;
 }): Promise<{
   perUserOverrideAlerts: Map<string, MetronomeCapAlertIds>;
@@ -481,11 +484,9 @@ async function fetchEffectivePerUserSpendLimits({
   const defaultCapAwuCreditsBySeatType: Partial<
     Record<NormalizedPoolLimitSeatType, number>
   > = {};
-  if (defaultPoolCapAwuCredits !== null) {
-    for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
-      defaultCapAwuCreditsBySeatType[seatType] =
-        defaultPoolCapAwuCredits + (seatAllowanceBySeatType[seatType] ?? 0);
-    }
+  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
+    defaultCapAwuCreditsBySeatType[seatType] =
+      defaultPoolCapAwuCredits + (seatAllowanceBySeatType[seatType] ?? 0);
   }
 
   return {
@@ -571,13 +572,15 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId: string;
   seatType: MembershipSeatType | null | undefined;
   poolCapOverrideAwuCredits: number | null;
-  defaultPoolCapAwuCredits: number | null;
+  defaultPoolCapAwuCredits: number;
 }): Promise<number | null> {
   const contract = metronomeCustomerId
     ? await getActiveContract(workspaceId)
     : null;
   const metronomeContractId = contract?.id ?? null;
 
+  const metronomeUserId =
+    seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
   const [
     perUserTotalConsumedCredits,
     { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
@@ -585,7 +588,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId,
       metronomeContractId,
-      userIds: [userId],
+      userIds: [metronomeUserId],
     }),
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId,
@@ -619,7 +622,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
     return null;
   }
 
-  const consumed = perUserTotalConsumedCredits.get(userId) ?? 0;
+  const consumed = perUserTotalConsumedCredits.get(metronomeUserId) ?? 0;
   return Math.max(0, (spendLimitAwuCredits - consumed) / spendLimitAwuCredits);
 }
 
@@ -662,7 +665,9 @@ export async function getMemberUsage({
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
-      userIds: [userId],
+      // Include both forms; seat type is resolved from the membership fetched
+      // in the same Promise.all, so the correct key is picked after resolution.
+      userIds: [userId, toFreeMetronomeUserId(userId)],
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
@@ -672,7 +677,7 @@ export async function getMemberUsage({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
       defaultPoolCapAwuCredits:
-        creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
+        creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
       includeAlertLinks: false,
     }),
   ]);
@@ -686,7 +691,10 @@ export async function getMemberUsage({
     return { member: null };
   }
 
-  const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
+  const metronomeUserId =
+    membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
+  const totalConsumedCredits =
+    perUserTotalConsumedCredits.get(metronomeUserId) ?? 0;
   const seatData = seatDataByUserId.get(userId);
   const awuAllocation = seatData?.awuAllocation ?? 0;
 
@@ -737,6 +745,7 @@ export async function getMemberUsage({
       billingFrequency:
         seatData?.billingFrequency ??
         deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
+      nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
       scheduledSeatType: null,
       scheduledSeatChangeAt: null,
       spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
@@ -857,7 +866,9 @@ export async function getMembersUsage({
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
-      userIds: users.map((u) => u.sId),
+      // Include both the raw sId and the free-prefixed form: free-seat users'
+      // usage is keyed by the prefixed id in Metronome, regular users by sId.
+      userIds: users.flatMap((u) => [u.sId, toFreeMetronomeUserId(u.sId)]),
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
@@ -873,7 +884,7 @@ export async function getMembersUsage({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
       defaultPoolCapAwuCredits:
-        creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
+        creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
       includeAlertLinks,
     }),
     // Free-seat balance-alert ids (low + empty) for deep-linking — poke-only,
@@ -925,7 +936,11 @@ export async function getMembersUsage({
       return [];
     }
     const userId = u.sId;
-    const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
+    // Free-seat users' usage is stored under the prefixed Metronome user id.
+    const metronomeUserId =
+      membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
+    const totalConsumedCredits =
+      perUserTotalConsumedCredits.get(metronomeUserId) ?? 0;
     const seatData = seatDataByUserId.get(userId);
     const awuAllocation = seatData?.awuAllocation ?? 0;
     const scheduled = scheduledByUserId.get(membership.userId);
@@ -983,10 +998,11 @@ export async function getMembersUsage({
       : null;
 
     // Free-seat balance-alert deep links (poke-only). Only free seats have
-    // these per-user credit-balance alerts.
+    // these per-user credit-balance alerts. Alerts are keyed by the
+    // free-prefixed Metronome user id.
     const freeCreditAlerts =
       membership.seatType === "free"
-        ? (freeCreditAlertIds?.get(userId) ?? null)
+        ? (freeCreditAlertIds?.get(metronomeUserId) ?? null)
         : null;
 
     return [
@@ -1000,13 +1016,16 @@ export async function getMembersUsage({
         seatType: membership.seatType ?? null,
         memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
         seatBalanceAwu:
-          awuAllocation > 0 ? (seatBalanceByUserId.get(userId) ?? null) : null,
+          awuAllocation > 0
+            ? (seatBalanceByUserId.get(metronomeUserId) ?? null)
+            : null,
         consumedAwuCredits: totalConsumedCredits,
         consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits,
         billingFrequency:
           seatData?.billingFrequency ??
           deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
+        nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({

@@ -11,3 +11,7 @@ export type MembersLookupResponseBody = {
 export type MembersLookupAdminResponseBody = {
   users: UserType[];
 };
+
+export type GetFreeSeatCountsResponseBody = {
+  freeSeatCounts: { active: number; lifetime: number };
+};
