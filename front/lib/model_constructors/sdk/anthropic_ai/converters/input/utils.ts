@@ -261,7 +261,34 @@ export function toolSpecToAnthropicAITool(tool: ToolSpecification): Tool {
     // https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming
     eager_input_streaming: true,
     input_schema: { type: "object", ...tool.inputSchema },
+    // Only set when true so non-deferred tools serialize identically (stable prefix bytes).
+    ...(tool.deferLoading ? { defer_loading: true } : {}),
   };
+}
+
+// Search tool that lets the model discover deferred tools on demand. Prepended
+// to the tools array whenever at least one tool is deferred.
+const TOOL_SEARCH_TOOL = {
+  type: "tool_search_tool_bm25_20251119",
+  name: "tool_search_tool_bm25",
+} as const;
+
+export function toolSpecsToAnthropicAITools(
+  tools: ToolSpecification[],
+  { forceTool }: { forceTool: string | undefined }
+): Array<Tool | typeof TOOL_SEARCH_TOOL> {
+  const converted = tools.map((tool) =>
+    // A forced tool cannot be deferred: the API requires the tool_choice target
+    // to be loaded, so treat it as non-deferred.
+    toolSpecToAnthropicAITool(
+      tool.name === forceTool ? { ...tool, deferLoading: false } : tool
+    )
+  );
+
+  // The tool search tool is only needed when at least one tool is actually deferred.
+  return converted.some((tool) => tool.defer_loading)
+    ? [TOOL_SEARCH_TOOL, ...converted]
+    : converted;
 }
 
 export function forceToolNameToToolChoice(
