@@ -8,9 +8,9 @@ import type {
   ToolCallEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isRecord, isString } from "@app/types/shared/utils/general";
+import { isNumber, isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { APIError } from "openai";
 import type { ChatCompletionChunk } from "openai/resources/chat/completions";
@@ -102,7 +102,7 @@ export function streamErrorToErrorEvent(
           originalError: error,
         });
       default:
-        if (typeof status === "number" && status >= 500 && status < 600) {
+        if (isNumber(status) && status >= 500 && status < 600) {
           return buildErrorEvent({
             metadata,
             type: "server_error",
@@ -304,7 +304,9 @@ export async function* rawOutputToEvents(
         // Legacy function calls are surfaced through tool_calls deltas.
         break;
       default:
-        assertNever(finishReason);
+        // finish_reason comes off the API stream; ignore unknown values rather
+        // than crashing the stream handler if the provider adds a new one.
+        assertNeverAndIgnore(finishReason);
     }
   }
 
