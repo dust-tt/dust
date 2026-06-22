@@ -21,6 +21,22 @@ export const MISTRAL_MEDIUM_3_5_MODEL_ID = "mistral-medium-3-5" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
 export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
 
+// Fireworks-served models keep their full Fireworks model path as the id.
+export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
+  "accounts/fireworks/models/deepseek-v3p2" as const;
+export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID =
+  "accounts/fireworks/models/deepseek-v4-pro" as const;
+export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
+  "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
+export const FIREWORKS_KIMI_K2P5_MODEL_ID =
+  "accounts/fireworks/models/kimi-k2p5" as const;
+export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
+  "accounts/fireworks/models/minimax-m2p5" as const;
+export const FIREWORKS_GLM_5_MODEL_ID =
+  "accounts/fireworks/models/glm-5" as const;
+export const FIREWORKS_GLM_5P2_MODEL_ID =
+  "accounts/fireworks/models/glm-5p2" as const;
+
 // Include a few examples for now
 export const MODEL_IDS = [
   GPT_5_5_MODEL_ID,
@@ -42,6 +58,13 @@ export const MODEL_IDS = [
   MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
   MISTRAL_CODESTRAL_MODEL_ID,
+  FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
+  FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
+  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
+  FIREWORKS_KIMI_K2P5_MODEL_ID,
+  FIREWORKS_MINIMAX_M2P5_MODEL_ID,
+  FIREWORKS_GLM_5_MODEL_ID,
+  FIREWORKS_GLM_5P2_MODEL_ID,
 ] as const;
 
 export type ModelId = (typeof MODEL_IDS)[number];
