@@ -12,7 +12,7 @@ workspace via a triage agent, in our support queue, or in the
 
 ## TL;DR — the copy-paste template
 
-```markdown
+````markdown
 ### Summary
 <one sentence: what's broken + the symptom>
 
@@ -47,7 +47,7 @@ workspace via a triage agent, in our support queue, or in the
 
 ### Screenshots / logs
 <attach images, screen recording, console/network errors, server logs>
-```
+````
 
 ## What's most often missing
 
@@ -190,5 +190,5 @@ correctly before submitting.
 - Watch the report for follow-up questions — a quick reply often unblocks the fix.
 - When a fix ships, verify on the latest build (hard-refresh the web app, or update
   the CLI/SDK/extension) and confirm it's resolved.
-- If it's fixed, say so so it can be closed with confidence. If not, reopen or
+- If it's fixed, say so it can be closed with confidence. If not, reopen or
   comment with the new details.
