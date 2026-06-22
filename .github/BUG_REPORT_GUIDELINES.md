@@ -20,15 +20,14 @@ workspace via a triage agent, in our support queue, or in the
 <e.g. Agent builder, Slack connector, dust-cli, Browser extension, Frames, API>
 
 ### Environment
-- Where: Dust Cloud (dust.tt) / self-hosted
-- Region (Cloud): US (us-central1) / EU (europe-west1)
-- Version: <CLI/SDK/extension version, or commit SHA if self-hosted>
-- Date/time + timezone observed (Cloud): <helps correlate with deploys>
+- Region: US (us-central1) / EU (europe-west1)
+- Version (CLI / SDK / extension only): <published version>
+- Date/time + timezone observed: <helps correlate with deploys>
 - OS / Browser (if relevant): <e.g. macOS 14.5, Chrome 126>
 
-### Identifiers (use sIds / URLs, never internal numeric IDs — and never secrets)
-- Workspace sId / URL:
-- Agent sId / Conversation URL:
+### Where it happens (paste a URL — never secrets)
+- Conversation URL (preferred, if in an agent conversation):
+- Otherwise, the page URL where the issue occurs:
 - Connector / provider (if relevant):
 
 ### Steps to reproduce
@@ -63,11 +62,11 @@ for. Including them up front avoids a round-trip and gets your bug fixed sooner:
 3. **Region.** Many Dust bugs are region-specific (US `us-central1` vs EU
    `europe-west1`). Always say which one — especially for CLI, API, and connector
    issues.
-4. **Identifiers** (workspace, agent, conversation). Give string identifiers
-   (`sId`) or URLs so we can find the exact object. **Never** internal numeric
-   database IDs, and **never** secrets.
-5. **Version.** For the CLI, SDKs, and extension, the published version; for
-   self-hosted, the commit SHA.
+4. **A URL pointing at the problem.** Paste a link, not raw identifiers: the
+   **conversation URL** if the issue happens in an agent conversation, otherwise
+   the **page URL** where it occurs. This lets us jump straight to the exact place.
+   Never paste secrets.
+5. **Version** (CLI, SDKs, extension only): the published version.
 
 ## Before You Report
 
@@ -81,10 +80,8 @@ often (e.g. "about 1 in 5 runs").
 
 ### Check you're on a supported / latest version
 
-- **Dust Cloud (dust.tt):** Hard-refresh to rule out a stale build, and note the
+- **Web app (dust.tt):** Hard-refresh to rule out a stale build, and note the
   date/time (with timezone) you saw the issue so we can correlate with deploys.
-- **Self-hosted / from source:** Pull the latest `main` and confirm the bug still
-  reproduces. Include the commit SHA (`git rev-parse HEAD`).
 - **CLI / SDKs / extension:** Update to the latest published version and report the
   exact version number.
 
@@ -191,8 +188,8 @@ correctly before submitting.
 ## Following Up
 
 - Watch the report for follow-up questions — a quick reply often unblocks the fix.
-- When a fix ships, verify on the latest build (hard-refresh on Cloud, or pull
-  latest `main` for source builds) and confirm it's resolved.
+- When a fix ships, verify on the latest build (hard-refresh the web app, or update
+  the CLI/SDK/extension) and confirm it's resolved.
 - If it's fixed, say so so it can be closed with confidence. If not, reopen or
   comment with the new details.
 
