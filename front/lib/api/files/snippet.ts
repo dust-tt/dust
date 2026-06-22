@@ -60,8 +60,6 @@ export async function generateSnippet(
     dataSource?: DataSourceResource;
   }
 ): Promise<Result<string, Error>> {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
   if (isSupportedImageContentType(file.contentType)) {
     return new Err(
       new Error("Image files are not supported for file snippets.")
@@ -75,6 +73,7 @@ export async function generateSnippet(
       );
     }
 
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const { bucket, path } = file.getContentBucketAndPath(auth);
     const schemaRes = await coreAPI.tableValidateCSVContent({
       projectId: dataSource.dustAPIProjectId,
