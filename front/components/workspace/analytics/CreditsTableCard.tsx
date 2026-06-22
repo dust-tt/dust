@@ -7,6 +7,51 @@ type CreditsTableRow = {
   onDoubleClick?: () => void;
 };
 
+function CreditsTableMessage({ children }: { children: string }) {
+  return (
+    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      {children}
+    </div>
+  );
+}
+
+interface CreditsTableBodyProps<T extends CreditsTableRow> {
+  isLoading: boolean;
+  isError: boolean;
+  errorMessage: string;
+  emptyMessage: string;
+  columns: ColumnDef<T>[];
+  data: T[];
+}
+
+function CreditsTableBody<T extends CreditsTableRow>({
+  isLoading,
+  isError,
+  errorMessage,
+  emptyMessage,
+  columns,
+  data,
+}: CreditsTableBodyProps<T>) {
+  if (isLoading) {
+    return (
+      <div className="flex h-48 items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+  if (isError) {
+    return <CreditsTableMessage>{errorMessage}</CreditsTableMessage>;
+  }
+  if (data.length === 0) {
+    return <CreditsTableMessage>{emptyMessage}</CreditsTableMessage>;
+  }
+  return (
+    <div className="max-h-[44rem] overflow-y-auto [&_tbody_tr:last-child]:border-b-0">
+      <DataTable<T> data={data} columns={columns} />
+    </div>
+  );
+}
+
 interface CreditsTableCardProps<T extends CreditsTableRow> {
   title: string;
   description: string;
@@ -20,14 +65,6 @@ interface CreditsTableCardProps<T extends CreditsTableRow> {
   emptyMessage: string;
   columns: ColumnDef<T>[];
   data: T[];
-}
-
-function CreditsTableMessage({ children }: { children: string }) {
-  return (
-    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-      {children}
-    </div>
-  );
 }
 
 export function CreditsTableCard<T extends CreditsTableRow>({
@@ -44,27 +81,6 @@ export function CreditsTableCard<T extends CreditsTableRow>({
   columns,
   data,
 }: CreditsTableCardProps<T>) {
-  function renderContent() {
-    if (isLoading) {
-      return (
-        <div className="flex h-48 items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      );
-    }
-    if (isError) {
-      return <CreditsTableMessage>{errorMessage}</CreditsTableMessage>;
-    }
-    if (data.length === 0) {
-      return <CreditsTableMessage>{emptyMessage}</CreditsTableMessage>;
-    }
-    return (
-      <div className="max-h-[44rem] overflow-y-auto [&_tbody_tr:last-child]:border-b-0">
-        <DataTable<T> data={data} columns={columns} />
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-lg border border-border bg-card p-4 dark:border-border-night">
       <div className="mb-3 flex items-center justify-between gap-4">
@@ -84,7 +100,14 @@ export function CreditsTableCard<T extends CreditsTableRow>({
           className="w-64"
         />
       </div>
-      {renderContent()}
+      <CreditsTableBody
+        isLoading={isLoading}
+        isError={isError}
+        errorMessage={errorMessage}
+        emptyMessage={emptyMessage}
+        columns={columns}
+        data={data}
+      />
     </div>
   );
 }
