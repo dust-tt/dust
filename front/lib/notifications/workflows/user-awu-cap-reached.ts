@@ -29,8 +29,8 @@ export const userAwuCapReachedWorkflow = workflow(
         ? "You've reached your usage limit"
         : "You've used 80% of your usage limit";
       const body = payload.isBlocked
-        ? `You have reached your ${payload.capAwuCredits} AWU limit in workspace "${payload.workspaceName}" and can no longer run agents. Contact your admin to increase your limit.`
-        : `You have used 80% of your ${payload.capAwuCredits} AWU limit in workspace "${payload.workspaceName}". Contact your admin to increase your limit before you are blocked.`;
+        ? `You have reached your ${payload.capAwuCredits} credits limit in workspace "${payload.workspaceName}" and can no longer run agents. Contact your admin to increase your limit.`
+        : `You have used 80% of your ${payload.capAwuCredits} credits limit in workspace "${payload.workspaceName}". Contact your admin to increase your limit before you are blocked.`;
       return {
         subject,
         body,
@@ -47,8 +47,8 @@ export const userAwuCapReachedWorkflow = workflow(
         ? `[Dust] You've reached your usage limit in ${payload.workspaceName}`
         : `[Dust] You've used 80% of your usage limit in ${payload.workspaceName}`;
       const content = payload.isBlocked
-        ? `You have reached your ${payload.capAwuCredits} AWU usage limit in the Dust workspace ${payload.workspaceName} and can no longer run agents.\nPlease contact your workspace admin to increase your limit.`
-        : `You have used 80% of your ${payload.capAwuCredits} AWU usage limit in the Dust workspace ${payload.workspaceName}.\nOnce you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin.`;
+        ? `You have reached your ${payload.capAwuCredits} credits usage limit in the Dust workspace ${payload.workspaceName} and can no longer run agents.\nPlease contact your workspace admin to increase your limit.`
+        : `You have used 80% of your ${payload.capAwuCredits} credits usage limit in the Dust workspace ${payload.workspaceName}.\nOnce you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin.`;
       const body = await renderEmail({
         name: subscriber.firstName ?? "there",
         workspace: {
