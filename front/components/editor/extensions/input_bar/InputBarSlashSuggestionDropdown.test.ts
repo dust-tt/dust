@@ -1,10 +1,10 @@
 import {
   ADD_CAPABILITY_SLASH_COMMAND_ACTION,
+  INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION,
   INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
   isRunCommandSlashCommand,
-  RUN_COMMAND_SLASH_COMMAND_ACTION,
-  type RunCommandSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { describe, expect, it } from "vitest";
 
 import { buildInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
@@ -18,6 +18,14 @@ const ALL_COMMANDS = getAvailableInputBarSlashCommands({
   hasAttachment: true,
   hasConversation: true,
 });
+
+function getInputBarSlashCommandItemId(item: SlashCommand): string {
+  if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
+    return item.data.command.id;
+  }
+
+  return item.id;
+}
 
 describe("getAvailableInputBarSlashCommands", () => {
   it("includes upload file when attachments are enabled", () => {
@@ -44,6 +52,7 @@ describe("buildInputBarSlashCommandItems", () => {
     const result = buildInputBarSlashCommandItems({
       commands: [],
       includeAttachKnowledge: false,
+      includeSelectContextFile: false,
       query: "",
     });
 
@@ -52,55 +61,88 @@ describe("buildInputBarSlashCommandItems", () => {
     ]);
   });
 
-  it("lists static commands ahead of attach knowledge and add capability", () => {
+  it("lists commands in INPUT_BAR_SLASH_COMMAND_ORDER", () => {
     const result = buildInputBarSlashCommandItems({
       commands: ALL_COMMANDS,
       includeAttachKnowledge: true,
+      includeSelectContextFile: true,
       query: "",
     });
 
-    expect(result.map((item) => item.action)).toEqual([
-      RUN_COMMAND_SLASH_COMMAND_ACTION,
-      RUN_COMMAND_SLASH_COMMAND_ACTION,
-      INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
-      ADD_CAPABILITY_SLASH_COMMAND_ACTION,
+    expect(result.map(getInputBarSlashCommandItemId)).toEqual([
+      "compact",
+      "add-capability",
+      "reference-file",
+      "upload-file",
+      "attach-knowledge",
     ]);
   });
 
-  it("filters commands by the query", async () => {
+  it("excludes reference file when includeSelectContextFile is false", () => {
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: false,
+        query: "",
+      }).map(getInputBarSlashCommandItemId)
+    ).toEqual(["compact", "add-capability", "upload-file", "attach-knowledge"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: false,
+        query: "reference",
+      })
+    ).toEqual([]);
+  });
+
+  it("excludes attach knowledge when includeAttachKnowledge is false", () => {
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        includeSelectContextFile: true,
+        query: "",
+      }).map(getInputBarSlashCommandItemId)
+    ).toEqual(["compact", "add-capability", "reference-file", "upload-file"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        includeSelectContextFile: true,
+        query: "knowledge",
+      })
+    ).toEqual([]);
+  });
+
+  it("filters commands by the query", () => {
     const result = buildInputBarSlashCommandItems({
       commands: ALL_COMMANDS,
       includeAttachKnowledge: true,
+      includeSelectContextFile: true,
       query: "compact",
     });
 
-    expect(
-      result.map((item) =>
-        item.action === RUN_COMMAND_SLASH_COMMAND_ACTION &&
-        isRunCommandSlashCommand<InputBarSlashCommand>(item)
-          ? item.data.command.id
-          : item.action
-      )
-    ).toEqual(["compact"]);
+    expect(result.map(getInputBarSlashCommandItemId)).toEqual(["compact"]);
 
     expect(
       buildInputBarSlashCommandItems({
         commands: INPUT_BAR_SLASH_COMMANDS,
         includeAttachKnowledge: true,
+        includeSelectContextFile: true,
         query: "upload",
-      }).map((item) =>
-        item.action === RUN_COMMAND_SLASH_COMMAND_ACTION
-          ? (item as RunCommandSlashCommand<InputBarSlashCommand>).data.command
-              .id
-          : item.action
-      )
+      }).map(getInputBarSlashCommandItemId)
     ).toEqual(["upload-file"]);
 
     expect(
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
-        query: "attach",
+        includeSelectContextFile: true,
+        query: "knowledge",
       }).map((item) => item.action)
     ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
 
@@ -108,6 +150,16 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
+        includeSelectContextFile: true,
+        query: "reference",
+      }).map((item) => item.action)
+    ).toEqual([INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        includeSelectContextFile: true,
         query: "zzz",
       })
     ).toEqual([]);
@@ -118,6 +170,7 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: [],
         includeAttachKnowledge: false,
+        includeSelectContextFile: false,
         query: "cap",
       }).map((item) => item.label)
     ).toEqual(["Add capability"]);
@@ -126,6 +179,7 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: [],
         includeAttachKnowledge: false,
+        includeSelectContextFile: false,
         query: "zzz",
       })
     ).toEqual([]);

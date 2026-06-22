@@ -8,6 +8,7 @@ import {
   sortSlashCommandCapabilityMatches,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function filterSlashCommandItems(
@@ -53,11 +54,13 @@ export function buildCapabilitySlashCommandItems({
         .filter((skill) => skillFilter?.(skill) ?? true)
         .filter((skill) =>
           matchesSlashCommandCapabilityQuery({
+            description: skill.userFacingDescription,
             label: skill.name,
             query: normalizedQuery,
           })
         )
         .map((skill) => ({
+          description: skill.userFacingDescription?.toLowerCase(),
           kind: "skill" as const,
           skill,
           sortName: skill.name.toLowerCase(),
@@ -66,11 +69,13 @@ export function buildCapabilitySlashCommandItems({
         .filter((tool) => toolFilter?.(tool) ?? true)
         .filter((tool) =>
           matchesSlashCommandCapabilityQuery({
+            description: getMcpServerViewDescription(tool),
             label: getToolSlashCommandLabel(tool),
             query: normalizedQuery,
           })
         )
         .map((tool) => ({
+          description: getMcpServerViewDescription(tool)?.toLowerCase(),
           kind: "tool" as const,
           tool,
           sortName: getToolSlashCommandLabel(tool).toLowerCase(),

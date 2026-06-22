@@ -1,3 +1,4 @@
+import { SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import {
   Button,
   cn,
@@ -27,7 +28,8 @@ interface SlashCommandTooltip {
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
 
-const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-96";
+const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME =
+  SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME;
 
 export interface SlashCommand {
   action: string;
@@ -190,7 +192,12 @@ export const SlashCommandDropdown = forwardRef<
             </div>
           ) : null}
           {items.length === 0 ? (
-            <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <div
+              className={cn(
+                SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME,
+                "flex items-center justify-center px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night"
+              )}
+            >
               {emptyMessage}
             </div>
           ) : (

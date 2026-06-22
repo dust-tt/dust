@@ -1,10 +1,11 @@
 import {
   ADD_CAPABILITY_SLASH_COMMAND_ACTION,
+  INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION,
   INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
-import { Attachment01, ShapesPlus } from "@dust-tt/sparkle";
+import { Attachment01, File02, ShapesPlus } from "@dust-tt/sparkle";
 
 export function createAttachKnowledgeSlashCommand(): SlashCommand {
   return {
@@ -23,6 +24,17 @@ export function createAttachKnowledgeSlashCommand(): SlashCommand {
         />
       ),
     },
+  };
+}
+
+export function createSelectContextFileSlashCommand(): SlashCommand {
+  return {
+    action: INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION,
+    description:
+      "Reference a file from this conversation or pod in your message",
+    icon: getSlashCommandAvatarIcon(File02),
+    id: "reference-file",
+    label: "Reference file",
   };
 }
 

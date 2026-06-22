@@ -1,6 +1,7 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
+import { InputBarFileSearchNode } from "@app/components/editor/extensions/input_bar/FileSearchNodeWithView";
 import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
@@ -325,6 +326,7 @@ export interface CustomEditorProps {
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
+    includeSelectContextFileRef: React.RefObject<boolean>;
     attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
     onNodeSelectRef: React.RefObject<
       ((node: DataSourceViewContentNode) => void) | undefined
@@ -471,6 +473,11 @@ export const buildEditorExtensions = ({
 
   if (slashSuggestion) {
     extensions.push(
+      InputBarFileSearchNode.configure({
+        conversationIdRef: slashSuggestion.conversationIdRef,
+        owner,
+        spaceIdRef: slashSuggestion.spaceIdRef,
+      }),
       InputBarKnowledgeSearchNode.configure({
         attachedNodesRef: slashSuggestion.attachedNodesRef,
         onNodeSelectRef: slashSuggestion.onNodeSelectRef,
@@ -501,6 +508,8 @@ export const buildEditorExtensions = ({
         onActiveChangeRef: onSuggestionActiveChangeRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
+        includeSelectContextFileRef:
+          slashSuggestion.includeSelectContextFileRef,
       })
     );
   }

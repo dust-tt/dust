@@ -1,21 +1,22 @@
-import {
-  matchesSlashCommandCapabilityQuery,
-  RUN_COMMAND_SLASH_COMMAND_ACTION,
-  sortSlashCommandCapabilityMatches,
-} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
+import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
 import {
   createAddCapabilitySlashCommand,
   createAttachKnowledgeSlashCommand,
+  createSelectContextFileSlashCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
-import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashCommandId,
+} from "./InputBarSlashSuggestionTypes";
+import { INPUT_BAR_SLASH_COMMAND_ORDER } from "./InputBarSlashSuggestionTypes";
 
 const ADD_CAPABILITY_SLASH_COMMAND = createAddCapabilitySlashCommand(
   "Add a skill or tool to your message"
 );
 const ATTACH_KNOWLEDGE_SLASH_COMMAND = createAttachKnowledgeSlashCommand();
+const SELECT_CONTEXT_FILE_SLASH_COMMAND = createSelectContextFileSlashCommand();
 
 function getInputBarRunCommandSlashCommandItem(
   command: InputBarSlashCommand
@@ -30,38 +31,74 @@ function getInputBarRunCommandSlashCommandItem(
   };
 }
 
+function matchesInputBarSlashCommandItem(
+  item: SlashCommand,
+  normalizedQuery: string
+): boolean {
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+
+  return [item.label, item.description, item.tooltip?.description]
+    .filter((value): value is string => value !== undefined)
+    .some((value) => value.toLowerCase().includes(normalizedQuery));
+}
+
+function getInputBarSlashCommandById({
+  commandId,
+  commands,
+  includeAttachKnowledge,
+  includeSelectContextFile,
+}: {
+  commandId: InputBarSlashCommandId;
+  commands: InputBarSlashCommand[];
+  includeAttachKnowledge: boolean;
+  includeSelectContextFile: boolean;
+}): SlashCommand | null {
+  const runCommand = commands.find((command) => command.id === commandId);
+  if (runCommand) {
+    return getInputBarRunCommandSlashCommandItem(runCommand);
+  }
+
+  switch (commandId) {
+    case "add-capability":
+      return ADD_CAPABILITY_SLASH_COMMAND;
+    case "attach-knowledge":
+      return includeAttachKnowledge ? ATTACH_KNOWLEDGE_SLASH_COMMAND : null;
+    case "reference-file":
+      return includeSelectContextFile
+        ? SELECT_CONTEXT_FILE_SLASH_COMMAND
+        : null;
+    default:
+      return null;
+  }
+}
+
 export function buildInputBarSlashCommandItems({
   commands,
   includeAttachKnowledge,
+  includeSelectContextFile,
   query,
 }: {
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
+  includeSelectContextFile: boolean;
   query: string;
 }): SlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  const commandItems = sortSlashCommandCapabilityMatches({
-    items: commands
-      .filter((command) =>
-        matchesSlashCommandCapabilityQuery({
-          label: command.label,
-          query: normalizedQuery,
-        })
-      )
-      .map((command) => ({
-        command,
-        sortName: command.label.toLowerCase(),
-      })),
-    normalizedQuery,
-  }).map(({ command }) => getInputBarRunCommandSlashCommandItem(command));
+  return INPUT_BAR_SLASH_COMMAND_ORDER.flatMap((commandId) => {
+    const item = getInputBarSlashCommandById({
+      commandId,
+      commands,
+      includeAttachKnowledge,
+      includeSelectContextFile,
+    });
 
-  return filterSlashCommandItems(
-    [
-      ...commandItems,
-      ...(includeAttachKnowledge ? [ATTACH_KNOWLEDGE_SLASH_COMMAND] : []),
-      ADD_CAPABILITY_SLASH_COMMAND,
-    ],
-    query
-  );
+    if (!item || !matchesInputBarSlashCommandItem(item, normalizedQuery)) {
+      return [];
+    }
+
+    return [item];
+  });
 }

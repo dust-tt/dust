@@ -74,7 +74,7 @@ const toolSuggestion = ({
 });
 
 describe("buildCapabilitySlashCommandItems", () => {
-  it("filters capabilities by name only", async () => {
+  it("matches capabilities by name or description", async () => {
     const { auth, globalSpace, workspace } =
       await createPrivateApiMockRequest();
     const skill = await SkillFactory.create(auth, {
@@ -97,7 +97,15 @@ describe("buildCapabilitySlashCommandItems", () => {
       tools: [calendarServerView.toJSON()],
     });
 
-    expect(result).toEqual([]);
+    expect(result.map((item) => item.label)).toEqual(["Calendar", "Summarize"]);
+
+    expect(
+      buildCapabilitySlashCommandItems({
+        query: "summarize",
+        skills: [skill.toJSON(auth)],
+        tools: [calendarServerView.toJSON()],
+      }).map((item) => item.label)
+    ).toEqual(["Summarize"]);
   });
 
   it("orders non-substring matches by fuzzy relevance", async () => {

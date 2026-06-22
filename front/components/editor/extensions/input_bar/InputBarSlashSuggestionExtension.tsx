@@ -2,6 +2,7 @@ import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensio
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import {
   isAddCapabilitySlashCommand,
+  isInsertContextFileSlashCommand,
   isInsertKnowledgeSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
@@ -30,6 +31,7 @@ export interface InputBarSlashSuggestionExtensionOptions {
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   slashCommandsRef: RefObject<InputBarSlashCommand[]>;
   includeAttachKnowledgeRef: RefObject<boolean>;
+  includeSelectContextFileRef: RefObject<boolean>;
 }
 
 export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
@@ -55,6 +57,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     selectedMCPServerViewIdsRef: { current: new Set<string>() },
     slashCommandsRef: { current: [] },
     includeAttachKnowledgeRef: { current: false },
+    includeSelectContextFileRef: { current: false },
   },
   allow: ({ editor, state, range, isActive, options, storage }) =>
     Boolean(options.owner) &&
@@ -89,6 +92,11 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
       return;
     }
 
+    if (isInsertContextFileSlashCommand(props)) {
+      editor.chain().focus().deleteRange(range).insertFileSearchNode().run();
+      return;
+    }
+
     editor.chain().focus().deleteRange(range).run();
     options.onSelectRef.current?.(props);
   },
@@ -100,6 +108,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     owner: options.owner,
     slashCommandsRef: options.slashCommandsRef,
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
+    includeSelectContextFileRef: options.includeSelectContextFileRef,
   }),
   notifyActiveChange: (active, options) => {
     options.onActiveChangeRef?.current?.(active);

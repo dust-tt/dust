@@ -1,3 +1,4 @@
+import { SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import {
   cn,
   DropdownMenu,
@@ -244,11 +245,15 @@ export function InlineSlashSearch({
             align="start"
             avoidCollisions
             collisionPadding={12}
+            side="bottom"
+            sideOffset={4}
             onInteractOutside={handleInteractOutside}
             onOpenAutoFocus={(event) => event.preventDefault()}
             onCloseAutoFocus={(event) => event.preventDefault()}
           >
-            {dropdownContent}
+            <div className={SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME}>
+              {dropdownContent}
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

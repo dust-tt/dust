@@ -2,14 +2,34 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import { Minimize01, UploadCloud02 } from "@dust-tt/sparkle";
 import type React from "react";
 
-export type InputBarSlashCommandId = "compact" | "upload-file";
+export type InputBarSlashCommandId =
+  | "add-capability"
+  | "attach-knowledge"
+  | "compact"
+  | "reference-file"
+  | "upload-file";
+
+/** Run commands backed by `INPUT_BAR_SLASH_COMMANDS` (icon, label, handler via `onSelectRef`). */
+export type InputBarRunCommandId = Extract<
+  InputBarSlashCommandId,
+  "compact" | "upload-file"
+>;
+
+/** Reorder this list to change display order in the `/` menu. */
+export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
+  "compact",
+  "add-capability",
+  "reference-file",
+  "upload-file",
+  "attach-knowledge",
+];
 
 // Static command offered by the input bar `/` dropdown, as opposed to workspace capabilities
 // (skills and tools) which are fetched.
 export interface InputBarSlashCommand {
   description: string;
   icon: React.ComponentType;
-  id: InputBarSlashCommandId;
+  id: InputBarRunCommandId;
   label: string;
 }
 
