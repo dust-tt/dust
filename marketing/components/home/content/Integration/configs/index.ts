@@ -1,9 +1,15 @@
 import type { IntegrationEnrichment } from "../types";
 
+import { tailoredEnrichments } from "./tailored_enrichments";
+
 // Integration enrichment configs
 // Each key should match the integration slug from integrationRegistry.ts
+//
+// `baseEnrichments` holds the original per-listing copy (taglines, legacy
+// useCases, FAQs). The tool-grounded chatStoryline + benefits for every listing
+// live in `./tailored_enrichments` and are merged in at the bottom of this file.
 
-export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
+const baseEnrichments: Record<string, IntegrationEnrichment> = {
   // ===== COMMUNICATION =====
   slack: {
     tagline:
@@ -1020,3 +1026,23 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     relatedIntegrations: ["slack"],
   },
 };
+
+// Merge the tool-grounded chat storylines + benefit cards over the base copy.
+// When a listing ships tailored `benefits`, its legacy `useCases` is cleared so
+// the new BenefitsSection renders (IntegrationTemplate suppresses benefits while
+// useCases is present).
+function buildIntegrationEnrichments(): Record<string, IntegrationEnrichment> {
+  const merged: Record<string, IntegrationEnrichment> = { ...baseEnrichments };
+  for (const [slug, tailored] of Object.entries(tailoredEnrichments)) {
+    const base = merged[slug] ?? {};
+    const hasTailoredBenefits =
+      tailored.benefits !== undefined && tailored.benefits.length > 0;
+    merged[slug] = hasTailoredBenefits
+      ? { ...base, useCases: undefined, ...tailored }
+      : { ...base, ...tailored };
+  }
+  return merged;
+}
+
+export const integrationEnrichments: Record<string, IntegrationEnrichment> =
+  buildIntegrationEnrichments();
