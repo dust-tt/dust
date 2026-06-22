@@ -1,4 +1,3 @@
-import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
@@ -22,6 +21,7 @@ import {
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { isPastedFile } from "@app/lib/files";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -1275,9 +1275,11 @@ export async function renderLightContentFragmentForModel(
   // Pasted content is always inlined regardless of feature flags.
   if (fileStringId && isPastedFile(contentType)) {
     const snippet = attachment.snippet ?? "";
+    const hasMissingSnippet = attachment.snippet === null;
     const truncated =
-      snippet.length === TRUNCATED_SNIPPET_SIZE &&
-      snippet.endsWith(TRUNCATED_SUFFIX);
+      hasMissingSnippet ||
+      (snippet.length === TRUNCATED_SNIPPET_SIZE &&
+        snippet.endsWith(TRUNCATED_SUFFIX));
     return {
       role: "content_fragment",
       name: `attach_pasted_content`,
