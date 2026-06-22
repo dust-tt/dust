@@ -343,7 +343,8 @@ function CreditTooltip(
 
   const allKeys = groups.map((g) => g.groupKey);
   const groupNameByKey = new Map(groups.map((g) => [g.groupKey, g.name]));
-  const rows: { label: string; value: string; colorClassName: string }[] = [];
+  const entries: { label: string; credits: number; colorClassName: string }[] =
+    [];
   for (const p of payload) {
     if (p.value == null || typeof p.value !== "number" || p.value <= 0) {
       continue;
@@ -355,16 +356,24 @@ function CreditTooltip(
     } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
       label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
     }
-    rows.push({
+    entries.push({
       label,
-      value: `${formatCredits(p.value)} credits`,
+      credits: p.value,
       colorClassName: getColorClassName(groupBy, groupKey, allKeys),
     });
   }
 
-  if (rows.length === 0) {
+  if (entries.length === 0) {
     return null;
   }
+
+  const rows = entries
+    .sort((a, b) => b.credits - a.credits)
+    .map((entry) => ({
+      label: entry.label,
+      value: `${formatCredits(entry.credits)} credits`,
+      colorClassName: entry.colorClassName,
+    }));
 
   return (
     <ChartTooltipCard
