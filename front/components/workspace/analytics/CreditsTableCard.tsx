@@ -1,5 +1,6 @@
 import { DataTable, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { ReactNode } from "react";
 
 // Minimal row shape DataTable accepts (its optional row-interaction fields).
 type CreditsTableRow = {
@@ -65,6 +66,7 @@ interface CreditsTableCardProps<T extends CreditsTableRow> {
   emptyMessage: string;
   columns: ColumnDef<T>[];
   data: T[];
+  actions?: ReactNode;
 }
 
 export function CreditsTableCard<T extends CreditsTableRow>({
@@ -80,6 +82,7 @@ export function CreditsTableCard<T extends CreditsTableRow>({
   emptyMessage,
   columns,
   data,
+  actions,
 }: CreditsTableCardProps<T>) {
   return (
     <div className="rounded-lg border border-border bg-card p-4 dark:border-border-night">
@@ -92,13 +95,16 @@ export function CreditsTableCard<T extends CreditsTableRow>({
             {description}
           </p>
         </div>
-        <SearchInput
-          name={searchName}
-          placeholder={searchPlaceholder}
-          value={searchValue}
-          onChange={onSearchChange}
-          className="w-64"
-        />
+        <div className="flex items-center gap-2">
+          <SearchInput
+            name={searchName}
+            placeholder={searchPlaceholder}
+            value={searchValue}
+            onChange={onSearchChange}
+            className="w-64"
+          />
+          {actions}
+        </div>
       </div>
       <CreditsTableBody
         isLoading={isLoading}
