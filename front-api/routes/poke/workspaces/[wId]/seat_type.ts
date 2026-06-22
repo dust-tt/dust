@@ -63,6 +63,15 @@ app.post(
                 "Cannot assign a free seat to a member who did not start on a free seat.",
             },
           });
+        case "paid_seat_not_allowed_on_free_plan":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Cannot assign a paid seat while the workspace is on a free plan.",
+            },
+          });
         case "seat_limit_reached":
           return apiError(ctx, {
             status_code: 400,
