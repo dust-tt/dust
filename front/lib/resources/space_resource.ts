@@ -840,10 +840,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
           // Set members of the editor group using the GroupSpaceEditorResource
           const editorUsers = await UserResource.fetchByIds(editorIds);
-          assert(
-            editorUsers.length > 0,
-            "Projects must have at least one editor."
-          );
+          assert(editorUsers.length > 0, "Pods must have at least one editor.");
           const setEditorsRes = await editorGroupSpaces[0].setMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
             transaction: t,
@@ -885,7 +882,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         if (this.isProject()) {
           assert(
             editorGroupIds.length > 0,
-            "Projects must have at least one editor group."
+            "Pods must have at least one editor group."
           );
           // Add the new editor groups
           const editorGroupsResult = await GroupResource.fetchByIds(
@@ -898,7 +895,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           const selectedEditorGroups = editorGroupsResult.value;
           assert(
             selectedEditorGroups.length > 0,
-            "Projects must have at least one editor group."
+            "Pods must have at least one editor group."
           );
           for (const selectedEditorGroup of selectedEditorGroups) {
             await GroupSpaceEditorResource.makeNew(auth, {
@@ -1180,7 +1177,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(
         new DustError(
           "group_requirements_not_met",
-          "Projects must have at least one editor."
+          "Pods must have at least one editor."
         )
       );
     }
