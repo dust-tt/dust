@@ -31,16 +31,16 @@ import { Client, NovuRequestHandler } from "@novu/framework";
 // `error("[agent] Handler error:", err)`. Passing our pino logger directly
 // would silently drop those trailing values: pino only treats its first
 // argument specially and ignores extra args that have no format placeholder.
-// This adapter folds every argument into pino's structured shape so nothing is
-// lost — strings become the message, Errors land under `error` (which our pino
-// instance serializes via `pino.stdSerializers.err`), and any remaining values
-// are kept under `data`. The `novu` flag makes these logs easy to filter.
+// This adapter folds those console-style args into pino's structured shape so
+// nothing is lost — the first arg becomes the message, an Error lands under
+// `error` (which our pino instance serializes via `pino.stdSerializers.err`),
+// and any remaining values are kept under `data`. The `novu` flag makes these
+// logs easy to filter.
 const route =
   (level: "info" | "warn" | "error") =>
-  (...args: unknown[]): void => {
-    const message = args.filter((a) => typeof a === "string").join(" ");
-    const error = args.find((a) => a instanceof Error);
-    const data = args.filter((a) => typeof a !== "string" && a !== error);
+  (message: unknown, ...rest: unknown[]): void => {
+    const error = rest.find((a) => a instanceof Error);
+    const data = rest.filter((a) => a !== error);
 
     logger[level](
       {
@@ -50,7 +50,7 @@ const route =
           ? { data: data.length === 1 ? data[0] : data }
           : {}),
       },
-      message
+      String(message)
     );
   };
 
