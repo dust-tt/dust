@@ -222,17 +222,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   sandbox_tools: {
     description:
       "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   sandbox_dsbx_tools: {
     description:
       "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   sandbox_workspace_admin: {
     description:
       "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
