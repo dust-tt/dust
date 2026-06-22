@@ -12,7 +12,6 @@ import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
   trackEvent,
-  withTracking,
 } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
@@ -31,7 +30,6 @@ import {
   Separator,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import type React from "react";
 import type { ReactElement, ReactNode } from "react";
@@ -625,29 +623,6 @@ function Hero({
 }: HeroProps) {
   return (
     <section className="-mx-6 flex flex-col items-center px-4 pt-6 text-center md:mx-0 md:px-0 md:pt-10 lg:pt-14">
-      <Link
-        href="/landing/ebook"
-        onClick={withTracking(TRACKING_AREAS.PRICING, "hero_ebook_pill")}
-        className="group mb-5 inline-flex items-center gap-2 rounded-full border border-gray-100 bg-white py-1.5 pl-3 pr-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
-      >
-        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
-        <span className="whitespace-nowrap">Our new Pricing post</span>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="flex-shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
-          aria-hidden="true"
-        >
-          <line x1="3" y1="8" x2="13" y2="8" />
-          <polyline points="9 4 13 8 9 12" />
-        </svg>
-      </Link>
       <h1
         className={classNames(
           "heading-5xl md:heading-6xl lg:heading-7xl",
