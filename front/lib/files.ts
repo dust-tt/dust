@@ -1,7 +1,7 @@
+import type { AllSupportedFileContentType } from "@app/types/files";
+
 import capitalize from "lodash/capitalize";
 import words from "lodash/words";
-
-import type { AllSupportedFileContentType } from "@app/types/files";
 
 export const FILE_ID_PATTERN = "fil_[A-Za-z0-9]{10,}";
 export const FILE_ID_REGEX = new RegExp(`\\b${FILE_ID_PATTERN}\\b`, "g");

@@ -69,7 +69,9 @@ export async function generateSnippet(
   if (isSupportedDelimitedTextContentType(file.contentType)) {
     if (!dataSource) {
       return new Err(
-        new Error("Data source is required to generate a delimited text snippet.")
+        new Error(
+          "Data source is required to generate a delimited text snippet."
+        )
       );
     }
 
