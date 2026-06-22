@@ -6,7 +6,6 @@ import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getNetBalance } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
-import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
 import {
@@ -603,8 +602,8 @@ async function notifyAdminsProgrammaticCapAboutStatus({
  * may be stale (e.g. `depleted` from the previous contract) and Metronome
  * alert webhooks won't fire until the new balance crosses a threshold.
  *
- * Invalidates the pool credits cache, reads the live AWU balance, then
- * dispatches `credits_added` (balance > 0) or `pool_exhausted` (balance == 0)
+ * Reads the live AWU balance, then dispatches `credits_added` (balance > 0)
+ * or `pool_exhausted` (balance == 0)
  * so the state machine routes to the correct state. On balance-fetch
  * failure, logs and skips — the next Metronome alert webhook will converge.
  */
@@ -615,8 +614,6 @@ export async function syncPoolCreditStateFromBalance({
   workspace: WorkspaceResource;
   metronomeCustomerId: string;
 }): Promise<void> {
-  await invalidateWorkspacePoolCredits(workspace.sId, metronomeCustomerId);
-
   const balanceResult = await getWorkspacePoolAwuBalance(metronomeCustomerId);
 
   if (balanceResult.isErr()) {
