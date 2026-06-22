@@ -192,10 +192,3 @@ correctly before submitting.
   the CLI/SDK/extension) and confirm it's resolved.
 - If it's fixed, say so so it can be closed with confidence. If not, reopen or
   comment with the new details.
-
----
-
-*Adapted for Dust from OpenSC's
-[How to write a good bug report](https://github.com/OpenSC/OpenSC/wiki/How-to-write-a-good-bug-report)
-(itself based on MuseScore's guidelines), combined with QA bug-reporting best
-practices and patterns observed across Dust's own issue history.*
