@@ -4,6 +4,7 @@ import { HomeReveal } from "@marketing/components/home/content/Product/HomeRevea
 import { homeScenarios } from "@marketing/components/home/content/Product/heroOfficeScenario";
 import { mountFloorScene } from "@marketing/components/home/content/Product/heroOfficeScene";
 import type { TeamMember } from "@marketing/components/home/content/shared/team";
+import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
@@ -46,6 +47,7 @@ const TEAM_POOL: TeamMember[] = OFFICE_FIRST_NAMES.map((firstName) => ({
 }));
 
 export function HeroOfficeSection() {
+  const { openSignUpModal } = useSignUpModal();
   const sceneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -154,14 +156,16 @@ export function HeroOfficeSection() {
                   onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
                 />
               </Link>
-              <Link href="/sign-up">
-                <Button
-                  variant="ghost-secondary"
-                  size="md"
-                  label="Try for free →"
-                  onClick={withTracking(TRACKING_AREAS.HOME, "hero_start_free")}
-                />
-              </Link>
+              <Button
+                variant="ghost-secondary"
+                size="md"
+                label="Try for free →"
+                onClick={withTracking(
+                  TRACKING_AREAS.HOME,
+                  "hero_start_free",
+                  openSignUpModal
+                )}
+              />
             </div>
           </HomeReveal>
         </div>

@@ -1,5 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
+import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
@@ -37,6 +38,8 @@ const STAT_THEME: Record<CTAStatAccent, { number: string }> = {
 };
 
 export function HomeAIOperatorsCTASection() {
+  const { openSignUpModal } = useSignUpModal();
+
   return (
     <section className="relative w-full overflow-hidden bg-slate-950 py-32 text-white">
       <div
@@ -93,17 +96,17 @@ export function HomeAIOperatorsCTASection() {
           delay={300}
           className="mt-2 flex flex-col items-center gap-5"
         >
-          <Link
-            href="/sign-up"
-            className="active:scale-[0.97] inline-block transition-transform duration-100"
-          >
-            <Button
-              variant="highlight"
-              size="md"
-              label="Become an AI Operator"
-              onClick={withTracking(TRACKING_AREAS.HOME, "ai_operator_become")}
-            />
-          </Link>
+          <Button
+            variant="highlight"
+            size="md"
+            label="Become an AI Operator"
+            className="active:scale-[0.97] transition-transform duration-100"
+            onClick={withTracking(
+              TRACKING_AREAS.HOME,
+              "ai_operator_become",
+              openSignUpModal
+            )}
+          />
           <Link
             href="https://dust.tt/jobs"
             className="group inline-flex items-center gap-2 font-mono text-sm uppercase tracking-[0.1em] text-white/80 transition-colors hover:text-white"
