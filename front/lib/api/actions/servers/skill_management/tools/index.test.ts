@@ -57,7 +57,11 @@ describe("skill_management enable_skill tool", () => {
     );
   });
 
-  function makeExtra() {
+  function makeExtra({
+    withUserMessage = true,
+  }: {
+    withUserMessage?: boolean;
+  } = {}) {
     return {
       auth,
       agentLoopContext: {
@@ -65,7 +69,7 @@ describe("skill_management enable_skill tool", () => {
           agentConfiguration,
           agentMessage,
           conversation,
-          userMessage,
+          ...(withUserMessage ? { userMessage } : {}),
         },
       },
       signal: new AbortController().signal,
@@ -165,6 +169,18 @@ describe("skill_management enable_skill tool", () => {
     );
 
     expect(result.isErr()).toBe(true);
+    expect(mockEnableForAgent).not.toHaveBeenCalled();
+    expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
+  });
+
+  it("does not fall back to a broader allow-list without user message context", async () => {
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra({ withUserMessage: false })
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockListForAgentLoop).not.toHaveBeenCalled();
     expect(mockEnableForAgent).not.toHaveBeenCalled();
     expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
   });

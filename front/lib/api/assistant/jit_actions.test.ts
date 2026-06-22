@@ -219,6 +219,39 @@ describe("getJITServers", () => {
       expect(equippedSkills.map((s) => s.sId)).toContain(customSkill.sId);
       expect(equippedSkills.map((s) => s.sId)).not.toContain("discover_tools");
     });
+
+    it("filters discoverable skills disabled for the current agent loop", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_skills",
+        agentConfigurationId: agentConfig.id,
+      });
+
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Tell someone about this.",
+        origin: "slack",
+        rank: -1,
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
+
+      const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        agentMessage,
+        conversation,
+        userMessage,
+      });
+
+      expect(equippedSkills.some((s) => s.sId === "mention_users")).toBe(false);
+    });
   });
 
   describe("projects feature", () => {
