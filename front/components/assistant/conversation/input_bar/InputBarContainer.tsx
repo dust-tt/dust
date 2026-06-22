@@ -13,10 +13,25 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import type {
-  InputBarSlashCommand,
-  InputBarSlashSuggestionCapability,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import {
+  ADD_CAPABILITY_SLASH_COMMAND_ACTION,
+  type AddCapabilitySlashCommand,
+  INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
+  type InsertKnowledgeSlashCommand,
+  isAddCapabilitySlashCommand,
+  isInsertKnowledgeSlashCommand,
+  isRunCommandSlashCommand,
+  isSkillSlashCommand,
+  isToolSlashCommand,
+  RUN_COMMAND_SLASH_COMMAND_ACTION,
+  type RunCommandSlashCommand,
+  SELECT_SKILL_SLASH_COMMAND_ACTION,
+  SELECT_TOOL_SLASH_COMMAND_ACTION,
+  type SkillSlashCommand,
+  type ToolSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -96,6 +111,34 @@ import React, {
   useState,
 } from "react";
 import { InputBarContext } from "./InputBarContext";
+
+type KnownSlashCommand =
+  | RunCommandSlashCommand<InputBarSlashCommand>
+  | SkillSlashCommand
+  | ToolSlashCommand
+  | AddCapabilitySlashCommand
+  | InsertKnowledgeSlashCommand;
+
+function narrowToKnownSlashCommand(
+  item: SlashCommand
+): KnownSlashCommand | null {
+  if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
+    return item;
+  }
+  if (isSkillSlashCommand(item)) {
+    return item;
+  }
+  if (isToolSlashCommand(item)) {
+    return item;
+  }
+  if (isAddCapabilitySlashCommand(item)) {
+    return item;
+  }
+  if (isInsertKnowledgeSlashCommand(item)) {
+    return item;
+  }
+  return null;
+}
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 
@@ -281,11 +324,20 @@ const InputBarContainer = ({
   // conversation may only be created after the first message; the ref keeps it current.
   const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
   conversationIdRef.current = conversation?.sId ?? null;
-  const onSelectRef = useRef<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+  const onSelectRef = useRef<((item: SlashCommand) => void) | undefined>(
+    undefined
+  );
+  const onDetailsRef = useRef<((item: SlashCommand) => void) | undefined>(
+    undefined
+  );
+  const onSelectToolRef = useRef<
+    ((tool: MCPServerViewType) => void) | undefined
   >(undefined);
-  const onDetailsRef = useRef<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+  const onCapabilitySkillDetailsRef = useRef<
+    ((skill: { sId: string }) => void) | undefined
+  >(undefined);
+  const onCapabilityToolDetailsRef = useRef<
+    ((tool: MCPServerViewType) => void) | undefined
   >(undefined);
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
@@ -495,7 +547,7 @@ const InputBarContainer = ({
     sId: skillId,
     name: skillName,
     icon: skillIcon,
-  }: SkillWithoutInstructionsAndToolsType) => {
+  }: Pick<SkillWithoutInstructionsAndToolsType, "sId" | "name" | "icon">) => {
     editorRef.current
       ?.chain()
       .focus()
@@ -536,37 +588,59 @@ const InputBarContainer = ({
     }
   };
 
-  onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
-    switch (capability.kind) {
-      case "command":
-        handleSlashCommandSelect(capability.command);
+  onSelectToolRef.current = onMCPServerViewSelect;
+  onCapabilitySkillDetailsRef.current = (skill) => {
+    setSelectedSkillIdForDetails(skill.sId);
+  };
+  onCapabilityToolDetailsRef.current = setSelectedServerViewForDetails;
+
+  onSelectRef.current = (rawItem: SlashCommand) => {
+    const item = narrowToKnownSlashCommand(rawItem);
+    if (!item) {
+      return;
+    }
+
+    switch (item.action) {
+      case RUN_COMMAND_SLASH_COMMAND_ACTION:
+        handleSlashCommandSelect(item.data.command);
         break;
-      case "skill":
-        handleSkillSelect(capability.skill);
+      case SELECT_SKILL_SLASH_COMMAND_ACTION:
+        handleSkillSelect(item.data.skill);
         break;
-      case "tool":
-        onMCPServerViewSelect(capability.serverView);
+      case SELECT_TOOL_SLASH_COMMAND_ACTION:
+        onMCPServerViewSelect(item.data.tool.view);
+        break;
+      case ADD_CAPABILITY_SLASH_COMMAND_ACTION:
+      case INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION:
         break;
       default:
-        assertNeverAndIgnore(capability);
+        assertNeverAndIgnore(item);
     }
 
     queueMicrotask(() => editorRef.current?.commands.focus());
   };
 
-  onDetailsRef.current = (capability: InputBarSlashSuggestionCapability) => {
-    switch (capability.kind) {
-      case "command":
+  onDetailsRef.current = (rawItem: SlashCommand) => {
+    const item = narrowToKnownSlashCommand(rawItem);
+    if (!item) {
+      return;
+    }
+
+    switch (item.action) {
+      case RUN_COMMAND_SLASH_COMMAND_ACTION:
         // Static commands have no details sheet.
         break;
-      case "skill":
-        setSelectedSkillIdForDetails(capability.skill.sId);
+      case SELECT_SKILL_SLASH_COMMAND_ACTION:
+        setSelectedSkillIdForDetails(item.data.skill.sId);
         break;
-      case "tool":
-        setSelectedServerViewForDetails(capability.serverView);
+      case SELECT_TOOL_SLASH_COMMAND_ACTION:
+        setSelectedServerViewForDetails(item.data.tool.view);
+        break;
+      case ADD_CAPABILITY_SLASH_COMMAND_ACTION:
+      case INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION:
         break;
       default:
-        assertNeverAndIgnore(capability);
+        assertNeverAndIgnore(item);
     }
   };
 
@@ -589,6 +663,9 @@ const InputBarContainer = ({
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
       onDetailsRef,
+      onSelectToolRef,
+      onCapabilitySkillDetailsRef,
+      onCapabilityToolDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
     },

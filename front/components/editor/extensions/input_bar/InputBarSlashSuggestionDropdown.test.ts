@@ -1,113 +1,75 @@
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import {
+  ADD_CAPABILITY_SLASH_COMMAND_ACTION,
+  isRunCommandSlashCommand,
+  RUN_COMMAND_SLASH_COMMAND_ACTION,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { describe, expect, it } from "vitest";
 
-import { filterInputBarSlashSuggestions } from "./InputBarSlashSuggestionDropdown";
-import { INPUT_BAR_SLASH_COMMANDS } from "./InputBarSlashSuggestionTypes";
+import { buildInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
+import {
+  INPUT_BAR_SLASH_COMMANDS,
+  type InputBarSlashCommand,
+} from "./InputBarSlashSuggestionTypes";
 
-describe("filterInputBarSlashSuggestions", () => {
-  it("filters capabilities by name only", async () => {
-    const { auth, globalSpace, workspace } =
-      await createPrivateApiMockRequest();
-    const skill = await SkillFactory.create(auth, {
-      name: "Summarize",
-      userFacingDescription: "Search spreadsheets and documents.",
-    });
-    const calendarServer = await RemoteMCPServerFactory.create(workspace, {
-      name: "Calendar",
-      description: "Search spreadsheets and documents.",
-    });
-    const calendarServerView = await MCPServerViewFactory.create(
-      workspace,
-      calendarServer.sId,
-      globalSpace
-    );
-
-    const result = filterInputBarSlashSuggestions({
+describe("buildInputBarSlashCommandItems", () => {
+  it("always includes the add capability command", () => {
+    const result = buildInputBarSlashCommandItems({
       commands: [],
-      query: "spreadsheet",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [calendarServerView.toJSON()],
-      skills: [skill.toJSON(auth)],
+      query: "",
     });
 
-    expect(result).toEqual([]);
+    expect(result.map((item) => item.action)).toEqual([
+      ADD_CAPABILITY_SLASH_COMMAND_ACTION,
+    ]);
   });
 
-  it("orders non-substring matches by fuzzy relevance", async () => {
-    const { auth } = await createPrivateApiMockRequest();
-    const generateDailyReportSkill = await SkillFactory.create(auth, {
-      name: "Generate Daily Report",
-      userFacingDescription: "",
-    });
-    const googleDriveSkill = await SkillFactory.create(auth, {
-      name: "Google Drive",
-      userFacingDescription: "",
-    });
-
-    const result = filterInputBarSlashSuggestions({
-      commands: [],
-      query: "gd",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [],
-      skills: [
-        generateDailyReportSkill.toJSON(auth),
-        googleDriveSkill.toJSON(auth),
-      ],
-    });
-
-    expect(
-      result.map((capability) =>
-        capability.kind === "skill" ? capability.skill.name : ""
-      )
-    ).toEqual(["Google Drive", "Generate Daily Report"]);
-  });
-
-  it("lists commands ahead of capabilities", async () => {
-    const { auth } = await createPrivateApiMockRequest();
-    const skill = await SkillFactory.create(auth, {
-      name: "Aardvark Facts",
-      userFacingDescription: "",
-    });
-
-    const result = filterInputBarSlashSuggestions({
+  it("lists static commands ahead of add capability", () => {
+    const result = buildInputBarSlashCommandItems({
       commands: INPUT_BAR_SLASH_COMMANDS,
       query: "",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [],
-      skills: [skill.toJSON(auth)],
     });
 
-    expect(result.map((capability) => capability.kind)).toEqual([
-      "command",
-      "skill",
+    expect(result.map((item) => item.action)).toEqual([
+      RUN_COMMAND_SLASH_COMMAND_ACTION,
+      ADD_CAPABILITY_SLASH_COMMAND_ACTION,
     ]);
   });
 
   it("filters commands by the query", async () => {
-    const result = filterInputBarSlashSuggestions({
+    const result = buildInputBarSlashCommandItems({
       commands: INPUT_BAR_SLASH_COMMANDS,
       query: "comp",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [],
-      skills: [],
     });
 
     expect(
-      result.map((capability) =>
-        capability.kind === "command" ? capability.command.id : ""
+      result.map((item) =>
+        item.action === RUN_COMMAND_SLASH_COMMAND_ACTION &&
+        isRunCommandSlashCommand<InputBarSlashCommand>(item)
+          ? item.data.command.id
+          : item.action
       )
     ).toEqual(["compact"]);
 
     expect(
-      filterInputBarSlashSuggestions({
+      buildInputBarSlashCommandItems({
         commands: INPUT_BAR_SLASH_COMMANDS,
         query: "zzz",
-        selectedMCPServerViewIds: new Set(),
-        serverViews: [],
-        skills: [],
+      })
+    ).toEqual([]);
+  });
+
+  it("filters add capability by the query", () => {
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: [],
+        query: "cap",
+      }).map((item) => item.label)
+    ).toEqual(["Add capability"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: [],
+        query: "zzz",
       })
     ).toEqual([]);
   });

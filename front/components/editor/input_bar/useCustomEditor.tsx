@@ -5,13 +5,15 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
-import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { InputBarCapabilitySearchNode } from "@app/components/editor/extensions/skill_builder/CapabilitySearchNodeWithView";
 import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
@@ -21,6 +23,7 @@ import {
   createMentionSuggestion,
   mentionPluginKey,
 } from "@app/components/editor/input_bar/mentionSuggestion";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
@@ -304,13 +307,18 @@ export interface CustomEditorProps {
     // The conversation may only exist after the editor is initialized, hence the ref.
     conversationIdRef?: React.RefObject<string | null>;
     enabledRef: React.RefObject<boolean>;
-    onSelectRef: React.RefObject<
-      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-    >;
-    onDetailsRef?: React.RefObject<
-      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+    onSelectRef: React.RefObject<((item: SlashCommand) => void) | undefined>;
+    onDetailsRef?: React.RefObject<((item: SlashCommand) => void) | undefined>;
+    onSelectToolRef?: React.RefObject<
+      ((tool: MCPServerViewType) => void) | undefined
     >;
     onSkillDetails?: (skillId: string) => void;
+    onCapabilitySkillDetailsRef?: React.RefObject<
+      ((skill: SlashCommandSkillSuggestion) => void) | undefined
+    >;
+    onCapabilityToolDetailsRef?: React.RefObject<
+      ((tool: MCPServerViewType) => void) | undefined
+    >;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
@@ -453,14 +461,27 @@ export const buildEditorExtensions = ({
 
   if (slashSuggestion) {
     extensions.push(
+      InputBarCapabilitySearchNode.configure({
+        onSelectToolRef: slashSuggestion.onSelectToolRef ?? {
+          current: undefined,
+        },
+        onSkillDetailsRef: slashSuggestion.onCapabilitySkillDetailsRef ?? {
+          current: undefined,
+        },
+        onToolDetailsRef: slashSuggestion.onCapabilityToolDetailsRef ?? {
+          current: undefined,
+        },
+        owner,
+        selectedMCPServerViewIdsRef:
+          slashSuggestion.selectedMCPServerViewIdsRef,
+        variant: "input-bar",
+      }),
       InputBarSlashSuggestionExtension.configure({
         owner,
         conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,
-        selectedMCPServerViewIdsRef:
-          slashSuggestion.selectedMCPServerViewIdsRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
       })
     );
