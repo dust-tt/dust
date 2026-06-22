@@ -16,7 +16,7 @@ const REGIONS: Record<
   us: {
     flag: "🇺🇸",
     label: "United States",
-    description: "Data + Models hosted in the US",
+    description: "Data in the US + Global models",
     href: US_SIGNUP_URL,
   },
   eu: {
