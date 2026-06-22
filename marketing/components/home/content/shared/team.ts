@@ -609,6 +609,20 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/matthieu-haguenauer/",
     github: "https://github.com/matthieuhaguen",
   },
+  elias: {
+    name: "Elias Nefzi",
+    title: "Support Engineer",
+    image: "https://avatars.githubusercontent.com/u/144661830?v=4",
+    linkedIn: null,
+    github: "https://github.com/EliasNef",
+  },
+  tarishi: {
+    name: "Tarishi Singh",
+    title: "Support Engineer",
+    image: "https://avatars.githubusercontent.com/u/292186890?v=4",
+    linkedIn: null,
+    github: "https://github.com/tarishi-dust",
+  },
 };
 
 export const TEAM_AVATAR_URLS: string[] = Object.values(PEOPLE).map(
