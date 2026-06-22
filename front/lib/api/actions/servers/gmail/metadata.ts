@@ -278,7 +278,7 @@ export const GMAIL_TOOLS_METADATA = [
     stake: "high",
     editable: {
       isEditable: true,
-      editableArguments: ["subject"] as const,
+      editableArguments: ["subject"],
     },
     displayLabels: {
       running: "Sending Gmail email",

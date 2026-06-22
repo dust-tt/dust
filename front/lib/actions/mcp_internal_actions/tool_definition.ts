@@ -48,13 +48,6 @@ export type ClientToolHandlers<
   ToolNames extends string = ToolsList[number]["name"],
 > = ToolHandlers<ToolsList, ToolNames, BaseToolHandlerExtra>;
 
-type EditableToolConfig<TSchema extends ZodRawShape> = {
-  isEditable: boolean;
-  editableArguments: ReadonlyArray<
-    Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
-  >;
-};
-
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
@@ -74,6 +67,9 @@ export interface ToolDefinition<
   argumentsRequiringApproval?: ReadonlyArray<
     Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
   >;
+  editableArguments?: ReadonlyArray<
+    Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
+  >;
   handler(
     params: z.infer<z.ZodObject<TSchema>>,
     extra: THandlerExtra
@@ -89,6 +85,9 @@ export type ToolMeta<
 type ValidToolMetadata<T extends readonly ToolMeta[]> = {
   [K in keyof T]: {
     argumentsRequiringApproval?: ReadonlyArray<
+      Extract<keyof z.infer<z.ZodObject<T[K]["schema"]>>, string>
+    >;
+    editableArguments?: ReadonlyArray<
       Extract<keyof z.infer<z.ZodObject<T[K]["schema"]>>, string>
     >;
   };
