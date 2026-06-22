@@ -17,12 +17,15 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       return new Err(new MCPError("No conversation context available"));
     }
 
-    const { conversation, agentConfiguration } = agentLoopContext.runContext;
+    const { agentConfiguration, agentMessage, conversation, userMessage } =
+      agentLoopContext.runContext;
 
-    const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
-      agentConfiguration,
-      conversation,
-    });
+    const { equippedSkills } = await SkillResource.listForAgentLoop(
+      auth,
+      userMessage
+        ? { agentConfiguration, agentMessage, conversation, userMessage }
+        : { agentConfiguration, conversation }
+    );
     const skill = equippedSkills.find((skill) => skill.name === skillName);
     if (!skill) {
       return new Err(

@@ -30,7 +30,9 @@ import { TOOLS } from "./index";
 describe("skill_management enable_skill tool", () => {
   const auth = {};
   const agentConfiguration = { sId: "agent-id" };
+  const agentMessage = { sId: "agent-message-id" };
   const conversation = { sId: "conversation-id" };
+  const userMessage = { sId: "user-message-id" };
   const skill = {
     enableForAgent: mockEnableForAgent,
     getFileAttachments: mockGetFileAttachments,
@@ -61,7 +63,9 @@ describe("skill_management enable_skill tool", () => {
       agentLoopContext: {
         runContext: {
           agentConfiguration,
+          agentMessage,
           conversation,
+          userMessage,
         },
       },
       signal: new AbortController().signal,
@@ -83,6 +87,12 @@ describe("skill_management enable_skill tool", () => {
     );
 
     expect(result.isOk()).toBe(true);
+    expect(mockListForAgentLoop).toHaveBeenCalledWith(auth, {
+      agentConfiguration,
+      agentMessage,
+      conversation,
+      userMessage,
+    });
     expect(mockLoadSkillFilesToConversation).toHaveBeenCalledWith(auth, {
       skill,
       conversation,
