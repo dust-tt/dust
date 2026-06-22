@@ -4,7 +4,7 @@ import {
   OPUS_CONTEXT_SIZE,
   OPUS_MAX_OUTPUT_TOKENS,
   opusConfigSchema,
-} from "@app/lib/model_constructors/providers/anthropic/models/opus_shared";
+} from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_shared_config";
 import { CLAUDE_OPUS_4_8_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import type { z } from "zod";

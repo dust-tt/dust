@@ -3,7 +3,7 @@ import type {
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources";
 import { WithAnthropicClaudeOpusFourDotSevenConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_dot_seven";
-import type { AnthropicOpusInputConfig } from "@app/lib/model_constructors/providers/anthropic/models/opus_shared";
+import type { AnthropicOpusInputConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_shared_config";
 import { AnthropicStream } from "@app/lib/model_constructors/stream/clients/anthropic";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
