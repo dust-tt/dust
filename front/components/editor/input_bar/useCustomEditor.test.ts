@@ -34,6 +34,7 @@ describe("buildEditorExtensions", () => {
           onSelectRef: { current: undefined },
           selectedMCPServerViewIdsRef: { current: new Set<string>() },
           slashCommandsRef: { current: [] },
+          includeAttachKnowledgeRef: { current: false },
         }),
       ],
     });

@@ -7,6 +7,7 @@ import {
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
+import { InputBarKnowledgeSearchNode } from "@app/components/editor/extensions/input_bar/KnowledgeSearchNodeWithView";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
@@ -30,6 +31,7 @@ import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
 import { markdownStyles } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
@@ -322,6 +324,12 @@ export interface CustomEditorProps {
     >;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
+    includeAttachKnowledgeRef: React.RefObject<boolean>;
+    attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
+    onNodeSelectRef: React.RefObject<
+      ((node: DataSourceViewContentNode) => void) | undefined
+    >;
+    spaceIdRef: React.RefObject<string | null | undefined>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
@@ -463,6 +471,12 @@ export const buildEditorExtensions = ({
 
   if (slashSuggestion) {
     extensions.push(
+      InputBarKnowledgeSearchNode.configure({
+        attachedNodesRef: slashSuggestion.attachedNodesRef,
+        onNodeSelectRef: slashSuggestion.onNodeSelectRef,
+        owner,
+        spaceIdRef: slashSuggestion.spaceIdRef,
+      }),
       InputBarCapabilitySearchNode.configure({
         onSelectToolRef: slashSuggestion.onSelectToolRef ?? {
           current: undefined,
@@ -486,6 +500,7 @@ export const buildEditorExtensions = ({
         onDetailsRef: slashSuggestion.onDetailsRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
+        includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
       })
     );
   }

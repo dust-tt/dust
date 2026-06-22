@@ -348,6 +348,10 @@ const InputBarContainer = ({
   const onCapabilityToolDetailsRef = useRef<
     ((tool: MCPServerViewType) => void) | undefined
   >(undefined);
+  const onNodeSelectRef = useRef(onNodeSelect);
+  onNodeSelectRef.current = onNodeSelect;
+  const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
+  includeAttachKnowledgeRef.current = actions.includes("attachment");
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -660,6 +664,8 @@ const InputBarContainer = ({
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+  const spaceIdRef = useRef<string | null | undefined>(spaceId);
+  spaceIdRef.current = spaceId;
 
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
@@ -683,6 +689,10 @@ const InputBarContainer = ({
       onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
       slashCommandsRef,
+      includeAttachKnowledgeRef,
+      attachedNodesRef,
+      onNodeSelectRef,
+      spaceIdRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
     onSuggestionActiveChangeRef,

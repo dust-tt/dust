@@ -26,6 +26,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
     owner: LightWorkspaceType;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
+    includeAttachKnowledgeRef: RefObject<boolean>;
   }
 >(
   (
@@ -38,6 +39,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       onClose,
       onDetailsRef,
       slashCommandsRef,
+      includeAttachKnowledgeRef,
     },
     ref
   ) => {
@@ -47,9 +49,10 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       () =>
         buildInputBarSlashCommandItems({
           commands: slashCommandsRef.current ?? [],
+          includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
           query,
         }),
-      [query, slashCommandsRef]
+      [includeAttachKnowledgeRef, query, slashCommandsRef]
     );
 
     useImperativeHandle(

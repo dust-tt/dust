@@ -1,40 +1,23 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import { InlineSlashSearch } from "@app/components/editor/extensions/shared/slash_suggestion/InlineSlashSearch";
+import {
+  KnowledgeSlashSearch,
+  knowledgeNodeToItem,
+} from "@app/components/editor/extensions/shared/slash_suggestion/KnowledgeSlashSearch";
 import {
   InlineKnowledgeChip,
   KnowledgeErrorChip,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import type {
-  FullKnowledgeItem,
-  KnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
-import {
-  computeHasChildren,
-  isFullKnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
-import {
-  getLocationForDataSourceViewContentNodeWithSpace,
-  getVisualForDataSourceViewContentNode,
-} from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useUnifiedSearch } from "@app/lib/swr/search";
-import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { useSpaceDataSourceView } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Chip,
-  DoubleIcon,
-  DropdownMenuItem,
-  Icon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Chip, Spinner } from "@dust-tt/sparkle";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper } from "@tiptap/react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 // Re-exports for existing consumers that import these from KnowledgeNodeView.
 // The canonical home is now KnowledgeNodeTypes.ts (React-free).
@@ -152,161 +135,13 @@ function KnowledgeSearchComponent({
   onCancel,
 }: KnowledgeSearchProps) {
   const { owner } = useSpacesContext();
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const { spaces } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: ["global", "regular", "project"],
-    disabled: false,
-  });
-
-  const spacesMap = useMemo(
-    () => Object.fromEntries(spaces.map((space) => [space.sId, space])),
-    [spaces]
-  );
-
-  const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
-
-  const { knowledgeResults: searchResults, isSearchLoading } = useUnifiedSearch(
-    {
-      owner,
-      query: searchQuery,
-      pageSize: 10,
-      spaceIds,
-      viewType: "all",
-      excludeNonRemoteDatabaseTables: true,
-      includeDataSources: false,
-      searchSourceUrls: true,
-      includeTools: false,
-      prioritizeSpaceAccess: true,
-    }
-  );
-
-  const dataSourceNodes = useMemo(
-    () =>
-      removeNulls(
-        searchResults.map((node) => {
-          const { dataSourceViews, ...rest } = node;
-          const dataSourceView = dataSourceViews.find(
-            (view) => spacesMap[view.spaceId]
-          );
-
-          if (!dataSourceView) {
-            return null;
-          }
-
-          return { ...rest, dataSourceView };
-        })
-      ),
-    [searchResults, spacesMap]
-  );
-
-  const knowledgeItems: (FullKnowledgeItem & { description: string })[] =
-    useMemo(() => {
-      return dataSourceNodes.map((node) => ({
-        dataSourceViewId: node.dataSourceView.sId,
-        description: getLocationForDataSourceViewContentNodeWithSpace(
-          node,
-          spacesMap
-        ),
-        hasChildren: computeHasChildren(node),
-        label: node.title,
-        node,
-        nodeId: node.internalId,
-        spaceId: node.dataSourceView.spaceId,
-      }));
-    }, [dataSourceNodes, spacesMap]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-    if (knowledgeItems.length > 0) {
-      setIsOpen(true);
-    }
-  }, [knowledgeItems.length]);
-
-  const handleItemSelect = useCallback(
-    (index: number) => {
-      const item = knowledgeItems[index];
-      if (item) {
-        onSelect(item);
-        setIsOpen(false);
-        setSelectedIndex(0);
-        setSearchQuery("");
-      }
-    },
-    [knowledgeItems, onSelect]
-  );
-
-  const dropdownContent = isSearchLoading ? (
-    <div className="flex h-14 items-center justify-center">
-      <Spinner size="sm" />
-      <span className="ml-2 text-sm text-gray-500 dark:text-gray-500-night">
-        Searching knowledge...
-      </span>
-    </div>
-  ) : knowledgeItems.length === 0 ? (
-    <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500 dark:text-gray-500-night">
-      {searchQuery.length < 2
-        ? "Type at least 2 characters to search"
-        : "No knowledge found"}
-    </div>
-  ) : (
-    knowledgeItems.map((item, index) => {
-      if (!item.node) {
-        return null;
-      }
-      return (
-        <DropdownMenuItem
-          key={item.nodeId}
-          icon={
-            isWebsite(item.node.dataSourceView.dataSource) ||
-            isFolder(item.node.dataSourceView.dataSource) ? (
-              <Icon
-                visual={getVisualForDataSourceViewContentNode(item.node)}
-                size="md"
-              />
-            ) : (
-              <DoubleIcon
-                size="md"
-                mainIcon={getVisualForDataSourceViewContentNode(item.node)}
-                secondaryIcon={getConnectorProviderLogoWithFallback({
-                  provider:
-                    item.node.dataSourceView.dataSource.connectorProvider,
-                })}
-              />
-            )
-          }
-          label={item.label}
-          description={item.description}
-          truncateText
-          onClick={() => handleItemSelect(index)}
-          onMouseEnter={() => setSelectedIndex(index)}
-          className={
-            index === selectedIndex ? "bg-gray-100 dark:bg-gray-800" : ""
-          }
-        />
-      );
-    })
-  );
 
   return (
-    <InlineSlashSearch
-      dropdownContent={dropdownContent}
-      isDropdownOpen={isOpen}
-      itemCount={knowledgeItems.length}
+    <KnowledgeSlashSearch
+      excludeNonRemoteDatabaseTables
       onCancel={onCancel}
-      onSearchQueryChange={(text) => {
-        setSearchQuery(text);
-        setSelectedIndex(0);
-        setIsOpen(text.trim().length > 0);
-      }}
-      onSelectIndex={handleItemSelect}
-      onSelectedIndexChange={setSelectedIndex}
-      placeholder="Search for knowledge..."
-      searchQuery={searchQuery}
-      selectedIndex={selectedIndex}
+      onSelect={(node) => onSelect(knowledgeNodeToItem(node))}
+      owner={owner}
     />
   );
 }

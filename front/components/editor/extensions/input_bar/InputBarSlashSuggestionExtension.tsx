@@ -1,6 +1,9 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
-import { isAddCapabilitySlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import {
+  isAddCapabilitySlashCommand,
+  isInsertKnowledgeSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
@@ -26,6 +29,7 @@ export interface InputBarSlashSuggestionExtensionOptions {
   owner?: WorkspaceType;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   slashCommandsRef: RefObject<InputBarSlashCommand[]>;
+  includeAttachKnowledgeRef: RefObject<boolean>;
 }
 
 export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
@@ -50,6 +54,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onDetailsRef: { current: undefined },
     selectedMCPServerViewIdsRef: { current: new Set<string>() },
     slashCommandsRef: { current: [] },
+    includeAttachKnowledgeRef: { current: false },
   },
   allow: ({ editor, state, range, isActive, options, storage }) =>
     Boolean(options.owner) &&
@@ -74,6 +79,16 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
       return;
     }
 
+    if (isInsertKnowledgeSlashCommand(props)) {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertKnowledgeSearchNode()
+        .run();
+      return;
+    }
+
     editor.chain().focus().deleteRange(range).run();
     options.onSelectRef.current?.(props);
   },
@@ -84,6 +99,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onDetailsRef: options.onDetailsRef,
     owner: options.owner,
     slashCommandsRef: options.slashCommandsRef,
+    includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
   }),
   notifyActiveChange: (active, options) => {
     options.onActiveChangeRef?.current?.(active);

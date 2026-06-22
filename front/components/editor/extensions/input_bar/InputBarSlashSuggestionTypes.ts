@@ -24,7 +24,7 @@ export const INPUT_BAR_SLASH_COMMANDS: InputBarSlashCommand[] = [
     description: "Free up context by summarizing conversation",
     icon: Minimize01,
     id: "compact",
-    label: "compact",
+    label: "Compact",
   },
 ];
 

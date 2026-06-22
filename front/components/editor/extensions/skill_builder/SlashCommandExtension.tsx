@@ -1,7 +1,4 @@
-import {
-  INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
-  isAddCapabilitySlashCommand,
-} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { isAddCapabilitySlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import type {
   SlashCommand,
@@ -9,9 +6,10 @@ import type {
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
-import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
-import { createAddCapabilitySlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
-import { Attachment01 } from "@dust-tt/sparkle";
+import {
+  createAddCapabilitySlashCommand,
+  createAttachKnowledgeSlashCommand,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import type { ChainedCommands, Editor, Range } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
@@ -20,23 +18,7 @@ import { forwardRef, type RefObject, useImperativeHandle, useRef } from "react";
 export const slashCommandPluginKey = new PluginKey("slashCommand");
 
 const SLASH_COMMANDS: SlashCommand[] = [
-  {
-    id: "add-knowledge",
-    action: INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
-    description: "Search and attach company knowledge for context",
-    icon: getSlashCommandAvatarIcon(Attachment01),
-    label: "Attach knowledge",
-    tooltip: {
-      description: "Use company knowledge for context.",
-      media: (
-        <img
-          alt="Knowledge Search Interface"
-          className="aspect-[4/3] w-full rounded object-cover"
-          src="/static/landing/product/Knowledge_Tooltips.jpg"
-        />
-      ),
-    },
-  },
+  createAttachKnowledgeSlashCommand(),
   createAddCapabilitySlashCommand("Add a skill or tool to these instructions"),
 ];
 

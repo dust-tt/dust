@@ -6,12 +6,16 @@ import {
 import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
-import { createAddCapabilitySlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
+import {
+  createAddCapabilitySlashCommand,
+  createAttachKnowledgeSlashCommand,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
 
 const ADD_CAPABILITY_SLASH_COMMAND = createAddCapabilitySlashCommand(
   "Add a skill or tool to your message"
 );
+const ATTACH_KNOWLEDGE_SLASH_COMMAND = createAttachKnowledgeSlashCommand();
 
 function getInputBarRunCommandSlashCommandItem(
   command: InputBarSlashCommand
@@ -28,9 +32,11 @@ function getInputBarRunCommandSlashCommandItem(
 
 export function buildInputBarSlashCommandItems({
   commands,
+  includeAttachKnowledge,
   query,
 }: {
   commands: InputBarSlashCommand[];
+  includeAttachKnowledge: boolean;
   query: string;
 }): SlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
@@ -51,7 +57,11 @@ export function buildInputBarSlashCommandItems({
   }).map(({ command }) => getInputBarRunCommandSlashCommandItem(command));
 
   return filterSlashCommandItems(
-    [...commandItems, ADD_CAPABILITY_SLASH_COMMAND],
+    [
+      ...commandItems,
+      ...(includeAttachKnowledge ? [ATTACH_KNOWLEDGE_SLASH_COMMAND] : []),
+      ADD_CAPABILITY_SLASH_COMMAND,
+    ],
     query
   );
 }

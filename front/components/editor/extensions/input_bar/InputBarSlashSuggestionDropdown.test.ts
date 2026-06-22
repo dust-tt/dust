@@ -1,5 +1,6 @@
 import {
   ADD_CAPABILITY_SLASH_COMMAND_ACTION,
+  INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
   isRunCommandSlashCommand,
   RUN_COMMAND_SLASH_COMMAND_ACTION,
   type RunCommandSlashCommand,
@@ -42,6 +43,7 @@ describe("buildInputBarSlashCommandItems", () => {
   it("always includes the add capability command", () => {
     const result = buildInputBarSlashCommandItems({
       commands: [],
+      includeAttachKnowledge: false,
       query: "",
     });
 
@@ -50,15 +52,17 @@ describe("buildInputBarSlashCommandItems", () => {
     ]);
   });
 
-  it("lists static commands ahead of add capability", () => {
+  it("lists static commands ahead of attach knowledge and add capability", () => {
     const result = buildInputBarSlashCommandItems({
       commands: ALL_COMMANDS,
+      includeAttachKnowledge: true,
       query: "",
     });
 
     expect(result.map((item) => item.action)).toEqual([
       RUN_COMMAND_SLASH_COMMAND_ACTION,
       RUN_COMMAND_SLASH_COMMAND_ACTION,
+      INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
       ADD_CAPABILITY_SLASH_COMMAND_ACTION,
     ]);
   });
@@ -66,7 +70,8 @@ describe("buildInputBarSlashCommandItems", () => {
   it("filters commands by the query", async () => {
     const result = buildInputBarSlashCommandItems({
       commands: ALL_COMMANDS,
-      query: "comp",
+      includeAttachKnowledge: true,
+      query: "compact",
     });
 
     expect(
@@ -81,6 +86,7 @@ describe("buildInputBarSlashCommandItems", () => {
     expect(
       buildInputBarSlashCommandItems({
         commands: INPUT_BAR_SLASH_COMMANDS,
+        includeAttachKnowledge: true,
         query: "upload",
       }).map((item) =>
         item.action === RUN_COMMAND_SLASH_COMMAND_ACTION
@@ -93,6 +99,15 @@ describe("buildInputBarSlashCommandItems", () => {
     expect(
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        query: "attach",
+      }).map((item) => item.action)
+    ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
         query: "zzz",
       })
     ).toEqual([]);
@@ -102,6 +117,7 @@ describe("buildInputBarSlashCommandItems", () => {
     expect(
       buildInputBarSlashCommandItems({
         commands: [],
+        includeAttachKnowledge: false,
         query: "cap",
       }).map((item) => item.label)
     ).toEqual(["Add capability"]);
@@ -109,6 +125,7 @@ describe("buildInputBarSlashCommandItems", () => {
     expect(
       buildInputBarSlashCommandItems({
         commands: [],
+        includeAttachKnowledge: false,
         query: "zzz",
       })
     ).toEqual([]);
