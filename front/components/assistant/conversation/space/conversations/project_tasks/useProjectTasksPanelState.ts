@@ -42,7 +42,7 @@ import {
   type PodTaskStatus,
   type PodTaskType,
 } from "@app/types/project_task";
-import { getWorkspaceDefaultAgentId } from "@app/types/user";
+import { resolveDefaultAgentId } from "@app/types/user";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export function usePodTasksPanelState({
@@ -112,21 +112,12 @@ export function usePodTasksPanelState({
     workspaceId: owner.sId,
     podId,
   });
-  const hasWorkspaceDefaultAgent = hasFeature("workspace_default_agent");
-  const workspaceDefaultAgentId = hasWorkspaceDefaultAgent
-    ? getWorkspaceDefaultAgentId(owner)
-    : null;
-  const podDefaultAgentId =
-    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgent
-      ? (podMetadata?.defaultAgentId ?? null)
-      : null;
-  const defaultAgentId = podDefaultAgentId ?? workspaceDefaultAgentId;
-
-  const { hasFeature } = useFeatureFlags();
-  const { podMetadata } = usePodMetadata({ workspaceId: owner.sId, podId });
-  const defaultAgentId = hasFeature("pod_default_agent")
-    ? (podMetadata?.defaultAgentId ?? null)
-    : null;
+  const defaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
+  });
 
   const podMembers = useMemo(() => {
     const members = spaceInfo?.members ?? [];

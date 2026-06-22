@@ -10,18 +10,18 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { resolvePodDefaultAgentId } from "@app/lib/api/projects/default_agent";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { serializeProjectTaskDirective } from "@app/lib/project_task/format";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { APIErrorType } from "@app/types/error";
 import type { PodTaskSourceInfo, PodTaskType } from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { getWorkspaceDefaultAgentId } from "@app/types/user";
+import { resolveDefaultAgentId } from "@app/types/user";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { toFileContentFragment } from "../api/assistant/conversation/content_fragment";
 
@@ -122,8 +122,7 @@ function buildTaskKickoffPrompt({
   ].join("\n");
 }
 
-// Resolves the agent a task conversation should kick off with when the caller
-// didn't pick one explicitly. Mirrors the conversation input bar resolution
+// A task conversation should start with the pod's default agent if available.
 async function resolveDefaultAgentIdForTask(
   auth: Authenticator,
   space: SpaceResource
@@ -133,18 +132,18 @@ async function resolveDefaultAgentIdForTask(
     "workspace_default_agent"
   );
   const hasPodDefaultAgent = featureFlags.includes("pod_default_agent");
-
-  const workspaceDefaultAgentId = hasWorkspaceDefaultAgent
-    ? getWorkspaceDefaultAgentId(auth.getNonNullableWorkspace())
-    : null;
-
   let podDefaultAgentId: string | null = null;
   if (hasPodDefaultAgent || hasWorkspaceDefaultAgent) {
     const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
     podDefaultAgentId = metadata?.defaultAgentId ?? null;
   }
 
-  const candidateId = podDefaultAgentId ?? workspaceDefaultAgentId;
+  const candidateId = resolveDefaultAgentId({
+    owner: auth.getNonNullableWorkspace(),
+    podDefaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasWorkspaceDefaultAgent,
+    hasPodDefaultAgentFeature: hasPodDefaultAgent,
+  });
   if (!candidateId || candidateId === GLOBAL_AGENTS_SID.DUST) {
     return GLOBAL_AGENTS_SID.DUST;
   }
@@ -314,6 +313,11 @@ export async function startAgentForProjectTask(
     (customMessage ?? "") +
     "\n\n" +
     "Read the attached file in full for more instructions.";
+
+  // Use the explicitly requested agent if provided, otherwise fall back to the
+  // pod/workspace default agent for tasks (resolves to @dust when none applies).
+  const resolvedAgentConfigurationId =
+    agentConfigurationId ?? (await resolveDefaultAgentIdForTask(auth, space));
 
   const messageRes = await postUserMessage(auth, {
     conversation,

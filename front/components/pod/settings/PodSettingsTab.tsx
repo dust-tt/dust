@@ -21,8 +21,8 @@ import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
-  getWorkspaceDefaultAgentId,
   type LightWorkspaceType,
+  resolveDefaultAgentId,
 } from "@app/types/user";
 import {
   Archive,
@@ -96,14 +96,15 @@ export function PodSettingsTab({
   const dustAgent =
     agentConfigurations.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ?? null;
   // When the pod has no default set, new conversations inherit the workspace
-  // default agent (then @dust).
-  const workspaceDefaultAgentId = hasWorkspaceDefaultAgentFeature
-    ? getWorkspaceDefaultAgentId(owner)
-    : null;
+  // default agent, else then @dust.
   const isInheritingWorkspaceDefault =
     hasWorkspaceDefaultAgentFeature && !podMetadata?.defaultAgentId;
-  const resolvedDefaultAgentId =
-    podMetadata?.defaultAgentId ?? workspaceDefaultAgentId;
+  const resolvedDefaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature,
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
+  });
   // Fall back to @dust when the default agent isn't available to the
   // current user (e.g. unpublished/deleted). This is the agent shown in the
   // input bar and pod settings.
@@ -429,9 +430,8 @@ export function PodSettingsTab({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               The agent pre-selected when anyone starts a new conversation in
               this Pod.{" "}
-              {hasWorkspaceDefaultAgentFeature
-                ? "When unset, it inherits the workspace default agent."
-                : "Defaults to @dust."}
+              {hasWorkspaceDefaultAgentFeature &&
+                "When unset, it inherits the Workspace default agent."}
             </p>
             <div className="flex items-center gap-2">
               {isPodEditor ? (

@@ -17,8 +17,8 @@ import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { PodTaskStatus, PodTaskType } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  getWorkspaceDefaultAgentId,
   type LightWorkspaceType,
+  resolveDefaultAgentId,
 } from "@app/types/user";
 import {
   AttachmentChip,
@@ -99,21 +99,12 @@ function TaskMarkdownPopoverStartChrome({
 
   const { hasFeature } = useFeatureFlags();
   const { podMetadata } = usePodMetadata({ workspaceId: owner.sId, podId });
-<<<<<<< HEAD
-  const defaultAgentId = hasFeature("pod_default_agent")
-    ? (podMetadata?.defaultAgentId ?? null)
-    : null;
-=======
-  const hasWorkspaceDefaultAgent = hasFeature("workspace_default_agent");
-  const workspaceDefaultAgentId = hasWorkspaceDefaultAgent
-    ? getWorkspaceDefaultAgentId(owner)
-    : null;
-  const podDefaultAgentId =
-    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgent
-      ? (podMetadata?.defaultAgentId ?? null)
-      : null;
-  const defaultAgentId = podDefaultAgentId ?? workspaceDefaultAgentId;
->>>>>>> 1f938a662f (Default agent applies to tasks in pods)
+  const defaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
+  });
 
   const hasConversationLink =
     (task.status === "in_progress" || task.status === "done") &&

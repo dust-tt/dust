@@ -26,7 +26,7 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import {
-  getWorkspaceDefaultAgentId,
+  resolveDefaultAgentId,
   type UserType,
   type WorkspaceType,
 } from "@app/types/user";
@@ -113,15 +113,12 @@ export function PodConversationsTab({
 
   // Unless a pod default is explicitly set, fall back to the workspace-wide default
   // agent. The final fallback to @dust happens in `useHandleMentions`.
-  const hasWorkspaceDefaultAgent = hasFeature("workspace_default_agent");
-  const workspaceDefaultAgentId = hasWorkspaceDefaultAgent
-    ? getWorkspaceDefaultAgentId(owner)
-    : null;
-  const podDefaultAgentId =
-    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgent
-      ? (podMetadata?.defaultAgentId ?? null)
-      : null;
-  const defaultAgentId = podDefaultAgentId ?? workspaceDefaultAgentId;
+  const defaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
+  });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
