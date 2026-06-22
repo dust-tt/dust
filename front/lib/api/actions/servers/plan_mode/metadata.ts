@@ -69,10 +69,14 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
   },
   request_plan_approval: {
     description:
+      "Approval is OPTIONAL. A plan can be created, edited, and executed without ever being " +
+      "approved. Only call this when the user must explicitly confirm the plan before you " +
+      "proceed (e.g. risky or irreversible work).\n\n" +
       "Surface the current plan.md to the user and pause execution pending their decision. " +
       "The user sees an approval card and either approves or rejects. On approve, the tool " +
       "returns success and execution resumes. On reject, the tool returns with `denied` status " +
-      "and the handler does not run.\n\n" +
+      "and the handler does not run. Approval is recorded for the current plan version only — " +
+      "if you edit the plan afterwards, the approval becomes stale and must be requested again.\n\n" +
       "Only call when plan.md is ready. Do not call with an incomplete plan.\n\n" +
       "See skill instructions for when to request approval and how to handle rejection.",
     schema: {

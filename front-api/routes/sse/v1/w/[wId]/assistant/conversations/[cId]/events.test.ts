@@ -42,10 +42,8 @@ function planUpdatedEvent(): ConversationEvent {
       type: "plan_updated",
       created: 0,
       conversationId: "conv",
-      planFileId: "file",
       version: 1,
       isClosed: false,
-      hasApproval: false,
     },
   };
 }

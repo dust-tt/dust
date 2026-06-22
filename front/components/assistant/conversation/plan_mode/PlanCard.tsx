@@ -37,7 +37,7 @@ export const PlanCard = React.memo(function PlanCard({
 }: PlanCardProps) {
   const { hasFeature } = useFeatureFlags();
   const isPlanModeEnabled = hasFeature("plan_mode");
-  const { planFile, content, approvalState } = usePlanFile({
+  const { plan, content, approvalState } = usePlanFile({
     // Skip the fetch entirely for workspaces without the plan_mode feature flag.
     conversationId: isPlanModeEnabled ? conversationId : null,
     workspaceId,
@@ -50,9 +50,9 @@ export const PlanCard = React.memo(function PlanCard({
   // Hide the card until the plan has been edited at least once (version >= 2). The skeleton
   // upload from `create_plan` produces version 1; the first `edit_plan` bumps it to 2. This
   // matches the side-panel auto-open trigger so the card appears at the same moment the panel
-  // first opens. `findActivePlanFile` already filters closed plans server-side, so `!planFile`
+  // first opens. `findActivePlan` already filters closed plans server-side, so `!plan`
   // also covers the post-close_plan case.
-  if (!planFile || planFile.version < 2) {
+  if (!plan || plan.version < 2) {
     return null;
   }
 

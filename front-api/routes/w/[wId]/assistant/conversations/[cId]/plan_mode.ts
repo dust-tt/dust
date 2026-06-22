@@ -3,17 +3,19 @@ import {
   REQUEST_PLAN_APPROVAL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type {
-  GetConversationPlanModeResponseBody,
-  PlanApprovalState,
+import type { GetConversationPlanModeResponseBody } from "@app/lib/api/assistant/plan_mode";
+import {
+  derivePlanApprovalState,
+  findActivePlan,
+  getPlanContent,
+  isApprovalRequestStale,
 } from "@app/lib/api/assistant/plan_mode";
-import { findActivePlanFile } from "@app/lib/api/assistant/plan_mode";
-import { getFileContent } from "@app/lib/api/files/utils";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -32,23 +34,39 @@ app.get(
     const auth = ctx.get("auth");
     const { cId } = ctx.req.valid("param");
 
-    // Ensure the caller has access to the conversation.
     const conversationRes = await getLightConversation(auth, cId);
     if (conversationRes.isErr()) {
       return apiErrorForConversation(ctx, conversationRes.error);
     }
+    const conversation = conversationRes.value;
 
-    const planFile = await findActivePlanFile(auth, cId);
-    if (!planFile) {
+    const plan = await findActivePlan(auth, conversation);
+    if (!plan) {
       return ctx.json({
-        planFile: null,
+        plan: null,
         content: null,
-        approvalState: "draft" as PlanApprovalState,
+        approvalState: "none",
       });
     }
 
     // Sequential fetches to avoid holding multiple DB connections from the pool simultaneously.
-    const content = await getFileContent(auth, planFile, "original");
+    const contentRes = await getPlanContent(auth, conversation, plan);
+    if (contentRes.isErr()) {
+      // A missing file is Ok(null); an Err here is a real read failure, surfaced not silenced.
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to read the plan content.",
+          },
+        },
+        contentRes.error
+      );
+    }
+    const content = contentRes.value;
+
     const conversationResource = await ConversationResource.fetchById(
       auth,
       cId
@@ -60,22 +78,19 @@ app.get(
         )
       : [];
 
+    // A stale request would be rejected by the handler, so it must not show as "pending". Mirrors
+    // the handler's staleness check (`action.created` === the action's `createdAt`).
     const hasPendingApproval = blockedActions.some(
       (a) =>
         a.metadata.mcpServerName === PLAN_MODE_SERVER_NAME &&
-        a.metadata.toolName === REQUEST_PLAN_APPROVAL_TOOL_NAME
+        a.metadata.toolName === REQUEST_PLAN_APPROVAL_TOOL_NAME &&
+        !isApprovalRequestStale(plan, { requestedAtMs: a.created })
     );
 
-    const approvalState: PlanApprovalState = hasPendingApproval
-      ? "pending"
-      : planFile.useCaseMetadata?.planModeLastApproval != null
-        ? "approved"
-        : "draft";
-
     return ctx.json({
-      planFile: planFile.toJSON(auth),
+      plan: { version: plan.version },
       content,
-      approvalState,
+      approvalState: derivePlanApprovalState(plan, { hasPendingApproval }),
     });
   }
 );

@@ -28,9 +28,9 @@ export function usePlanFile({
   );
 
   return {
-    planFile: data?.planFile ?? null,
+    plan: data?.plan ?? null,
     content: data?.content ?? null,
-    approvalState: data?.approvalState ?? "draft",
+    approvalState: data?.approvalState ?? "none",
     isPlanLoading: conversationId != null && !error && !data,
     isPlanError: error,
     mutatePlan: mutate,

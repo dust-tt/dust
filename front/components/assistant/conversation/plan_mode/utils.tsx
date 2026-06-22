@@ -18,7 +18,12 @@ export function ApprovalStateChip({ state }: { state: PlanApprovalState }) {
       return <Chip size="mini" color="success" label="Approved" />;
     case "pending":
       return <Chip size="mini" color="warning" label="Pending approval" />;
-    case "draft":
+    case "stale":
+      return (
+        <Chip size="mini" color="warning" label="Changed since approval" />
+      );
+    case "none":
+      // Approval is optional; show nothing when no approval is in play.
       return null;
     default:
       assertNeverAndIgnore(state);

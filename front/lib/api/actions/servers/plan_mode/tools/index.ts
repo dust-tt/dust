@@ -3,35 +3,33 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { PLAN_MODE_TOOLS_METADATA } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import {
-  createPlanFile,
-  findActivePlanFile,
+  createPlan,
+  findActivePlan,
+  getPlanContent,
+  isApprovalRequestStale,
   markPlanApproved,
   markPlanClosed,
   withPlanModeLock,
+  writePlanContent,
 } from "@app/lib/api/assistant/plan_mode";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
-import {
-  getFileContent,
-  getUpdatedContentAndOccurrences,
-} from "@app/lib/api/files/utils";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
+import type { ConversationPlanResource } from "@app/lib/resources/conversation_plan_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 async function publishPlanUpdated(
   conversationId: string,
-  planFile: FileResource
+  plan: ConversationPlanResource
 ): Promise<void> {
   await publishConversationEvent(
     {
       type: "plan_updated",
       created: Date.now(),
       conversationId,
-      planFileId: planFile.sId,
-      version: planFile.version,
-      isClosed: planFile.useCaseMetadata?.isPlanClosed === true,
-      hasApproval: planFile.useCaseMetadata?.planModeLastApproval != null,
+      version: plan.version,
+      isClosed: plan.isClosed,
     },
     { conversationId }
   );
@@ -42,10 +40,10 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     if (!agentLoopContext?.runContext) {
       return new Err(new MCPError("Agent loop context is required."));
     }
-    const { conversation, agentConfiguration } = agentLoopContext.runContext;
+    const { conversation } = agentLoopContext.runContext;
 
     return withPlanModeLock(conversation.sId, async () => {
-      const existing = await findActivePlanFile(auth, conversation.sId);
+      const existing = await findActivePlan(auth, conversation);
       if (existing) {
         return new Err(
           new MCPError(
@@ -55,17 +53,17 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         );
       }
 
-      const planFile = await createPlanFile(auth, {
-        conversationId: conversation.sId,
-        agentConfigurationId: agentConfiguration.sId,
-      });
+      const planRes = await createPlan(auth, { conversation });
+      if (planRes.isErr()) {
+        return new Err(new MCPError(planRes.error.message));
+      }
 
-      await publishPlanUpdated(conversation.sId, planFile);
+      await publishPlanUpdated(conversation.sId, planRes.value);
 
       return new Ok([
         {
           type: "text",
-          text: `plan.md created (file id: ${planFile.sId}). Populate it via \`edit_plan\`.`,
+          text: `plan.md created. Populate it via \`edit_plan\`.`,
         },
       ]);
     });
@@ -75,12 +73,12 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     if (!agentLoopContext?.runContext) {
       return new Err(new MCPError("Agent loop context is required."));
     }
-    const { conversation, agentConfiguration } = agentLoopContext.runContext;
+    const { conversation } = agentLoopContext.runContext;
 
     try {
       return await withPlanModeLock(conversation.sId, async () => {
-        const planFile = await findActivePlanFile(auth, conversation.sId);
-        if (!planFile) {
+        const plan = await findActivePlan(auth, conversation);
+        if (!plan) {
           return new Err(
             new MCPError(
               "No active plan.md for this conversation. Call `create_plan` first to start one."
@@ -88,9 +86,15 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
           );
         }
 
-        const currentContent = await getFileContent(auth, planFile, "original");
-        if (currentContent === null) {
+        const contentRes = await getPlanContent(auth, conversation, plan);
+        if (contentRes.isErr()) {
           return new Err(new MCPError("Failed to read plan.md."));
+        }
+        const currentContent = contentRes.value;
+        if (currentContent === null) {
+          return new Err(
+            new MCPError("plan.md content is missing and cannot be edited.")
+          );
         }
 
         const { updatedContent, occurrences } = getUpdatedContentAndOccurrences(
@@ -118,19 +122,19 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
           );
         }
 
-        await planFile.uploadContent(auth, updatedContent);
-
-        if (
-          planFile.useCaseMetadata?.lastEditedByAgentConfigurationId !==
-          agentConfiguration.sId
-        ) {
-          await planFile.setUseCaseMetadata(auth, {
-            ...planFile.useCaseMetadata,
-            lastEditedByAgentConfigurationId: agentConfiguration.sId,
-          });
+        const writeRes = await writePlanContent(
+          auth,
+          conversation,
+          plan,
+          updatedContent
+        );
+        if (writeRes.isErr()) {
+          return new Err(new MCPError(writeRes.error.message));
         }
 
-        await publishPlanUpdated(conversation.sId, planFile);
+        await plan.incrementVersion();
+
+        await publishPlanUpdated(conversation.sId, plan);
 
         return new Ok([
           {
@@ -152,18 +156,31 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     if (!agentLoopContext?.runContext) {
       return new Err(new MCPError("Agent loop context is required."));
     }
-    const { conversation } = agentLoopContext.runContext;
+    const { conversation, currentAction } = agentLoopContext.runContext;
 
-    // Handler only runs after user approval (tool stake is "high" → routes through the standard
-    // MCP tool-approval flow). On reject, this function is never called; the agent sees the
-    // action as denied.
+    // Runs only after the user approves (stake "high"); on reject it is never called.
     return withPlanModeLock(conversation.sId, async () => {
-      const planFile = await findActivePlanFile(auth, conversation.sId);
-      if (!planFile) {
+      const plan = await findActivePlan(auth, conversation);
+      if (!plan) {
         return new Err(
           new MCPError(
             "No active plan.md for this conversation. `request_plan_approval` requires an " +
               "existing plan — create one first with `create_plan` and populate it."
+          )
+        );
+      }
+
+      // The pending card isn't tied to a plan row/version, so reject it if the plan was edited or
+      // replaced since the request (`currentAction.createdAt` is when approval was requested).
+      if (
+        isApprovalRequestStale(plan, {
+          requestedAtMs: currentAction.createdAt,
+        })
+      ) {
+        return new Err(
+          new MCPError(
+            "The plan changed since approval was requested (it was edited or replaced), so this " +
+              "approval is no longer valid. Call `request_plan_approval` again for the current plan."
           )
         );
       }
@@ -175,14 +192,10 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         );
       }
 
-      // Note: `user.sId` here is the author of the user message that triggered the agent loop,
-      // not necessarily the person who clicked Approve. The existing validate-action check
-      // requires those to be the same user, so in practice they match — but if validate-action
-      // is ever opened up, this needs to become the actual approver's sId from the approval
-      // callback.
-      const approval = await markPlanApproved(auth, planFile, user.sId);
+      // `user.sId` is the triggering user message's author. validate-action requires that to be
+      // the approver, so they match today; revisit if validate-action is opened up.
+      const approval = await markPlanApproved(plan, user.sId);
       if (!approval) {
-        // Plan was closed between approval request and approval decision (close_plan race).
         return new Err(
           new MCPError(
             "The plan was closed while approval was pending. It cannot be approved anymore."
@@ -190,14 +203,14 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         );
       }
 
-      await publishPlanUpdated(conversation.sId, planFile);
+      await publishPlanUpdated(conversation.sId, plan);
 
       return new Ok([
         {
           type: "text",
           text:
-            `Plan approved by ${user.sId} at ${approval.approvedAt} ` +
-            `(plan.md version ${approval.fileVersion}). Proceed with execution: work ` +
+            `Plan approved by ${user.sId} at ${approval.approvedAt.toISOString()} ` +
+            `(plan.md version ${approval.approvedVersion}). Proceed with execution: work ` +
             `through the tasks in plan.md, using \`edit_plan\` to check them off as you ` +
             `go. Stay within the approved scope; if scope changes, surface it to the user ` +
             `before acting.` +
@@ -214,8 +227,8 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     const { conversation } = agentLoopContext.runContext;
 
     return withPlanModeLock(conversation.sId, async () => {
-      const planFile = await findActivePlanFile(auth, conversation.sId);
-      if (!planFile) {
+      const plan = await findActivePlan(auth, conversation);
+      if (!plan) {
         return new Err(
           new MCPError(
             "No active plan.md for this conversation. Nothing to close."
@@ -223,19 +236,17 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         );
       }
 
-      // Intentionally do not resolve any pending `request_plan_approval` blocked action here.
-      // The codebase only transitions blocked actions to terminal via user action on the
-      // approval card itself (UI or email). If a stale card remains after close, existing
-      // paths degrade gracefully: `markPlanApproved` already no-ops on closed plans, and a
-      // reject goes through the normal relaunch flow.
-      await markPlanClosed(auth, planFile);
-      await publishPlanUpdated(conversation.sId, planFile);
+      // Don't resolve any pending approval action here: the codebase only transitions blocked
+      // actions to terminal via user action on the card, and a stale card degrades gracefully
+      // (markPlanApproved no-ops on closed plans). Closing keeps the content; it only flips
+      // `isClosed`.
+      await markPlanClosed(plan);
+      await publishPlanUpdated(conversation.sId, plan);
 
       if (reason) {
         logger.info(
           {
             conversationId: conversation.sId,
-            planFileId: planFile.sId,
             reason,
           },
           "Plan closed by agent"

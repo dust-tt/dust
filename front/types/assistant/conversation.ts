@@ -760,16 +760,14 @@ export type ConversationTitleEvent = {
 };
 
 // Event sent when the conversation's plan.md is created, edited, approved, or closed. Carries
-// only metadata (id, version, status flags) — the UI refetches the full file contents via the
-// plan_mode GET endpoint on receipt.
+// only metadata (version, closed flag) — the UI refetches the full content and approval state via
+// the plan_mode GET endpoint on receipt.
 export type PlanUpdatedEvent = {
   type: "plan_updated";
   created: number;
   conversationId: string;
-  planFileId: string;
   version: number;
   isClosed: boolean;
-  hasApproval: boolean;
 };
 
 // Event sent when a wake-up in the conversation is created or changes status. Thin payload: the

@@ -19,7 +19,7 @@ export function ConversationPlanModePanel({
   owner,
 }: ConversationPlanModePanelProps) {
   const { closePanel } = useConversationSidePanelContext();
-  const { planFile, content, approvalState, isPlanLoading } = usePlanFile({
+  const { plan, content, approvalState, isPlanLoading } = usePlanFile({
     conversationId: conversation.sId,
     workspaceId: owner.sId,
   });
@@ -49,15 +49,15 @@ export function ConversationPlanModePanel({
           <div className="flex h-full items-center justify-center">
             <Spinner />
           </div>
-        ) : !planFile ? (
+        ) : !plan ? (
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             No active plan for this conversation.
           </div>
         ) : (
-          // Key by planFile.version so React remounts on each edit. Sparkle's `Markdown`
+          // Key by plan.version so React remounts on each edit. Sparkle's `Markdown`
           // memoizes AST nodes for streaming reveal, which can hold stale child nodes when the
           // full content prop changes between edits. Remounting forces a clean render.
-          content && <Markdown key={planFile.version} content={content} />
+          content && <Markdown key={plan.version} content={content} />
         )}
       </div>
     </div>
