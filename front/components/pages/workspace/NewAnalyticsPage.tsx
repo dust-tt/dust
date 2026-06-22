@@ -1,5 +1,6 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { WorkspaceAgentCreditsTable } from "@app/components/workspace/analytics/WorkspaceAgentCreditsTable";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
 import { WorkspaceUserCreditsTable } from "@app/components/workspace/analytics/WorkspaceUserCreditsTable";
@@ -97,6 +98,7 @@ export function NewAnalyticsPage() {
           <AwuUsageFromAnalyticsChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>
         <WorkspaceUserCreditsTable workspaceId={owner.sId} period={period} />
+        <WorkspaceAgentCreditsTable workspaceId={owner.sId} period={period} />
         <SafeSuspense fallback={<ChartFallback />}>
           <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>

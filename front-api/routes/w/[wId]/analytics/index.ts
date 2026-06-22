@@ -1,6 +1,7 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import activeUsers from "./active-users";
 import activeUsersExport from "./active-users-export";
+import agentCredits from "./agent-credits";
 import agentsExport from "./agents-export";
 import awuUsage from "./awu-usage";
 import awuUsageAnalytics from "./awu-usage-analytics";
@@ -29,6 +30,7 @@ const app = workspaceApp();
 
 app.route("/active-users-export", activeUsersExport);
 app.route("/active-users", activeUsers);
+app.route("/agent-credits", agentCredits);
 app.route("/agents-export", agentsExport);
 app.route("/awu-usage", awuUsage);
 app.route("/awu-usage-analytics", awuUsageAnalytics);

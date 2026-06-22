@@ -18,6 +18,7 @@ import type {
   GetWorkspaceTopUsersResponse,
 } from "@app/lib/api/analytics/workspace_analytics";
 import type { GetWorkspaceActiveUsersResponse } from "@app/lib/api/assistant/observability/active_users_metrics";
+import type { GetAgentCreditsResponse } from "@app/lib/api/assistant/observability/agent_credits";
 import type { GetWorkspaceContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/lib/api/assistant/observability/messages_metrics";
 import type { GetWorkspaceSkillsResponse } from "@app/lib/api/assistant/observability/skill_usage";
@@ -490,6 +491,37 @@ export function useWorkspaceUserCredits({
     isUserCreditsLoading: !error && !data && !disabled,
     isUserCreditsError: error,
     isUserCreditsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceAgentCredits({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  limit = 100,
+  search,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  limit?: number;
+  search?: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetAgentCreditsResponse> = fetcher;
+  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+  const key = `/api/w/${workspaceId}/analytics/agent-credits?days=${days}&limit=${limit}${searchParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    agentCredits: data?.agents ?? emptyArray(),
+    isAgentCreditsLoading: !error && !data && !disabled,
+    isAgentCreditsError: error,
+    isAgentCreditsValidating: isValidating,
   };
 }
 
