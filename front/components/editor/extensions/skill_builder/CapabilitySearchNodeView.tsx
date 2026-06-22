@@ -295,6 +295,7 @@ function CapabilitySearchNodeViewInner({
       <InlineSlashSearch
         deferDropdownUntilFocus
         dropdownContent={dropdownContent}
+        highlightedItemId={capabilityItems[selectedIndex]?.id}
         isDropdownOpen={capabilityItems.length > 0 || isLoading}
         itemCount={capabilityItems.length}
         onCancel={handleCancel}

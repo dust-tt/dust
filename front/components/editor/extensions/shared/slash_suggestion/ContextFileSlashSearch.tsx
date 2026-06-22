@@ -214,6 +214,7 @@ export function ContextFileSlashSearch({
       fileItems.map((item, index) => (
         <DropdownMenuItem
           key={item.id}
+          itemId={item.id}
           icon={
             <Icon
               visual={getFileTypeIcon(item.file.contentType, item.label)}
@@ -238,6 +239,7 @@ export function ContextFileSlashSearch({
     <InlineSlashSearch
       deferDropdownUntilFocus
       dropdownContent={dropdownContent}
+      highlightedItemId={fileItems[selectedIndex]?.id}
       isDropdownOpen={fileItems.length > 0 || isLoading}
       itemCount={fileItems.length}
       onCancel={onCancel}

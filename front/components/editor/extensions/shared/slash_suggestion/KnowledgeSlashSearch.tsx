@@ -138,45 +138,55 @@ export function KnowledgeSlashSearch({
         : "No knowledge found"}
     </div>
   ) : (
-    knowledgeNodes.map((node, index) => (
-      <DropdownMenuItem
-        key={`${node.internalId}-${node.dataSourceView.sId}`}
-        icon={
-          isWebsite(node.dataSourceView.dataSource) ||
-          isFolder(node.dataSourceView.dataSource) ? (
-            <Icon
-              visual={getVisualForDataSourceViewContentNode(node)}
-              size="md"
-            />
-          ) : (
-            <DoubleIcon
-              size="md"
-              mainIcon={getVisualForDataSourceViewContentNode(node)}
-              secondaryIcon={getConnectorProviderLogoWithFallback({
-                provider: node.dataSourceView.dataSource.connectorProvider,
-              })}
-            />
-          )
-        }
-        label={node.title}
-        description={getLocationForDataSourceViewContentNodeWithSpace(
-          node,
-          spacesMap
-        )}
-        truncateText
-        onClick={() => handleItemSelect(index)}
-        onMouseEnter={() => setSelectedIndex(index)}
-        className={
-          index === selectedIndex ? "bg-gray-100 dark:bg-gray-800" : ""
-        }
-      />
-    ))
+    knowledgeNodes.map((node, index) => {
+      const itemId = `${node.internalId}-${node.dataSourceView.sId}`;
+
+      return (
+        <DropdownMenuItem
+          key={itemId}
+          itemId={itemId}
+          icon={
+            isWebsite(node.dataSourceView.dataSource) ||
+            isFolder(node.dataSourceView.dataSource) ? (
+              <Icon
+                visual={getVisualForDataSourceViewContentNode(node)}
+                size="md"
+              />
+            ) : (
+              <DoubleIcon
+                size="md"
+                mainIcon={getVisualForDataSourceViewContentNode(node)}
+                secondaryIcon={getConnectorProviderLogoWithFallback({
+                  provider: node.dataSourceView.dataSource.connectorProvider,
+                })}
+              />
+            )
+          }
+          label={node.title}
+          description={getLocationForDataSourceViewContentNodeWithSpace(
+            node,
+            spacesMap
+          )}
+          truncateText
+          onClick={() => handleItemSelect(index)}
+          onMouseEnter={() => setSelectedIndex(index)}
+          className={
+            index === selectedIndex ? "bg-gray-100 dark:bg-gray-800" : ""
+          }
+        />
+      );
+    })
   );
 
   return (
     <InlineSlashSearch
       deferDropdownUntilFocus
       dropdownContent={dropdownContent}
+      highlightedItemId={
+        knowledgeNodes[selectedIndex]
+          ? `${knowledgeNodes[selectedIndex].internalId}-${knowledgeNodes[selectedIndex].dataSourceView.sId}`
+          : undefined
+      }
       isDropdownOpen={isOpen}
       itemCount={knowledgeNodes.length}
       onCancel={onCancel}
