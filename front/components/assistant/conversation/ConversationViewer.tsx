@@ -487,13 +487,12 @@ export const ConversationViewer = ({
     // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
-    if (
-      !initialListData &&
-      conversation &&
-      messages.length > 0 &&
-      !isValidating
-    ) {
+    if (initialListData === undefined && conversation && !isValidating) {
       const raw = messages.flatMap((m) => m.messages);
+      if (raw.length === 0) {
+        return;
+      }
+
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
       const messagesAndNotices = addConversationForkNotices(
         messagesToRender,
@@ -558,7 +557,7 @@ export const ConversationViewer = ({
   // approval modal would never re-open.
   useEffect(() => {
     if (
-      !initialListData ||
+      initialListData === undefined ||
       !openBranch ||
       !virtuosoMessageListRef.current ||
       hasInjectedOpenBranchRef.current
@@ -1123,7 +1122,8 @@ export const ConversationViewer = ({
       !isConversationLoading &&
       !isLoadingInitialData &&
       messages.length !== 0 &&
-      initialListData !== undefined,
+      initialListData !== undefined &&
+      initialListData.length > 0,
   });
 
   const handleSubmit = useCallback(
