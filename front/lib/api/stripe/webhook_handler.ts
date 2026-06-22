@@ -925,6 +925,12 @@ export async function processStripeWebhookEvent({
         break;
       }
 
+      // Credit (AWU) purchase invoices are directly handled using
+      // Metronome "payment_gate.payment_status" webhook
+      if (isAwuPurchaseInvoice(invoice)) {
+        break;
+      }
+
       const ctx = await resolveInvoiceCtx(invoice);
       if (!ctx) {
         break;
