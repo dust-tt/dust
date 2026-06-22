@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 
+import AdomikLogo from "./Adomik";
 import Ai21Logo from "./Ai21";
 import AmplitudeLogo from "./Amplitude";
 import AnthropicLogo from "./Anthropic";
@@ -52,6 +53,7 @@ import HuggingFaceLogo from "./HuggingFace";
 import ImageLogo from "./Image";
 import IntercomLogo from "./Intercom";
 import JiraLogo from "./Jira";
+import LemlistLogo from "./Lemlist";
 import LinearLogo from "./Linear";
 import LinearWhiteLogo from "./LinearWhite";
 import LinkedinLogo from "./Linkedin";
@@ -105,6 +107,7 @@ type LogoComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // rendering) should use `getPlatformLogo` rather than maintaining their own
 // allowlists, which inevitably drift between apps.
 export const PLATFORM_LOGOS = {
+  AdomikLogo,
   Ai21Logo,
   AmplitudeLogo,
   AnthropicLogo,
@@ -157,6 +160,7 @@ export const PLATFORM_LOGOS = {
   ImageLogo,
   IntercomLogo,
   JiraLogo,
+  LemlistLogo,
   LinearLogo,
   LinearWhiteLogo,
   LinkedinLogo,
