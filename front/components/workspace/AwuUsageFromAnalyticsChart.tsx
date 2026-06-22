@@ -190,6 +190,10 @@ export function AwuUsageFromAnalyticsChart({
     exportParams.set("groupBy", groupBy);
     exportParams.set("groupByCount", groupByCount.toString());
   }
+  // Mirror the legend drilldown: export only the series currently shown.
+  if (effectiveEnabledKeys) {
+    exportParams.set("series", effectiveEnabledKeys.join(","));
+  }
   const csvDownload = useDownloadCsv({
     url: `/api/w/${workspaceId}/analytics/awu-usage-analytics?${exportParams.toString()}`,
     filename: `dust_credit_usage_last_${period}_days.csv`,

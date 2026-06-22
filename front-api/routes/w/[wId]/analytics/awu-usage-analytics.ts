@@ -12,10 +12,13 @@ import { z } from "zod";
 
 export type { AwuUsageAnalyticsResponse };
 
-const CSV_HEADERS = ["date", "series", "credits"] as const;
+const CSV_HEADERS = ["date", "granularity", "series", "credits"] as const;
 
 const QuerySchema = AwuUsageAnalyticsQuerySchema.extend({
   format: z.enum(["json", "csv"]).optional().default("json"),
+  // Comma-separated group keys to restrict the export to, mirroring the chart's
+  // legend drilldown. Absent means all returned series.
+  series: z.string().optional(),
 });
 
 const app = workspaceApp();
@@ -23,7 +26,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const { format, ...query } = ctx.req.valid("query");
+  const { format, series, ...query } = ctx.req.valid("query");
 
   const result = await getAwuUsageFromAnalytics(auth, query);
   if (result.isErr()) {
@@ -41,10 +44,15 @@ app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
   }
 
   const { groups, points } = result.value;
+  const seriesFilter = series ? new Set(series.split(",")) : null;
+  const visibleGroups = seriesFilter
+    ? groups.filter((group) => seriesFilter.has(group.groupKey))
+    : groups;
   const rows = points.flatMap((point) => {
     const date = new Date(point.timestamp).toISOString().slice(0, 10);
-    return groups.map((group) => ({
+    return visibleGroups.map((group) => ({
       date,
+      granularity: query.granularity,
       series: group.name,
       credits: point.values[group.groupKey] ?? 0,
     }));
