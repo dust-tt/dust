@@ -1,6 +1,8 @@
 import type { MutableRefObject } from "react";
 import { useEffect, useState } from "react";
 
+export const SAMPLE_RATE_HZ = 16_000;
+
 export type VoiceTranscriberStatus =
   | "idle"
   | "authorizing_microphone"
