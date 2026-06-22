@@ -2,6 +2,7 @@ import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stre
 import { AgentPlatformEuropeClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_haiku_four_dot_five";
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { AnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
+import { AnthropicGlobalClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_seven";
 import { AnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_sonnet_four_dot_six";
 import { GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
@@ -21,6 +22,8 @@ export const STREAM_ENDPOINTS = {
     AnthropicGlobalClaudeSonnetFourDotSixStream,
   [AnthropicGlobalClaudeOpusFourDotEightStream.id]:
     AnthropicGlobalClaudeOpusFourDotEightStream,
+  [AnthropicGlobalClaudeOpusFourDotSevenStream.id]:
+    AnthropicGlobalClaudeOpusFourDotSevenStream,
   [AgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
     AgentPlatformEuropeClaudeSonnetFourDotSixStream,
   [GoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:

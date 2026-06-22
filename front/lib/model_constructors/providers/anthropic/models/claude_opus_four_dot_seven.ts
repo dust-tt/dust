@@ -5,21 +5,21 @@ import {
   OPUS_MAX_OUTPUT_TOKENS,
   opusConfigSchema,
 } from "@app/lib/model_constructors/providers/anthropic/models/opus_shared";
-import { CLAUDE_OPUS_4_8_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
+import { CLAUDE_OPUS_4_7_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 
 import type { z } from "zod";
 
-export function WithAnthropicClaudeOpusFourDotEightConfig<
+export function WithAnthropicClaudeOpusFourDotSevenConfig<
   TBase extends abstract new (
     ...args: any[]
   ) => object,
 >(Base: TBase) {
-  abstract class AnthropicClaudeOpusFourDotEight extends Base {
+  abstract class AnthropicClaudeOpusFourDotSeven extends Base {
     // Narrow `Client`'s `["constructor"]` to this model's precise config so the
     // instance type carries the Opus config (not the wide `InputConfig`).
     declare ["constructor"]: BaseEndpointConfiguration<AnthropicOpusInputConfig>;
 
-    static readonly modelId = CLAUDE_OPUS_4_8_MODEL_ID;
+    static readonly modelId = CLAUDE_OPUS_4_7_MODEL_ID;
 
     static readonly configSchema: z.ZodType<
       AnthropicOpusInputConfig,
@@ -31,5 +31,5 @@ export function WithAnthropicClaudeOpusFourDotEightConfig<
     static readonly maxOutputTokens = OPUS_MAX_OUTPUT_TOKENS;
   }
 
-  return AnthropicClaudeOpusFourDotEight;
+  return AnthropicClaudeOpusFourDotSeven;
 }

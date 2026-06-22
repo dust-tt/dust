@@ -2,16 +2,16 @@ import type {
   MessageCreateParamsNonStreaming,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources";
-import { WithAnthropicClaudeOpusFourDotEightConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_dot_eight";
+import { WithAnthropicClaudeOpusFourDotSevenConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_dot_seven";
 import type { AnthropicOpusInputConfig } from "@app/lib/model_constructors/providers/anthropic/models/opus_shared";
 import { AnthropicStream } from "@app/lib/model_constructors/stream/clients/anthropic";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class AnthropicGlobalClaudeOpusFourDotEightStream extends WithAnthropicClaudeOpusFourDotEightConfig(
+export class AnthropicGlobalClaudeOpusFourDotSevenStream extends WithAnthropicClaudeOpusFourDotSevenConfig(
   AnthropicStream
 ) {
-  // https://platform.claude.com/docs/en/about-claude/pricing
+  // https://platform.claude.com/docs/en/about-claude/pricing (verify before launch).
   static readonly tokenPricing = {
     cacheCreated: 6.25,
     // 5m cache write = 1.25x base input; 1h cache write = 2x base input.
@@ -27,7 +27,7 @@ export class AnthropicGlobalClaudeOpusFourDotEightStream extends WithAnthropicCl
   static readonly id = this.buildId();
 }
 
-AnthropicGlobalClaudeOpusFourDotEightStream satisfies StreamEndpointConstructor<
+AnthropicGlobalClaudeOpusFourDotSevenStream satisfies StreamEndpointConstructor<
   MessageCreateParamsNonStreaming,
   RawMessageStreamEvent,
   AnthropicOpusInputConfig
