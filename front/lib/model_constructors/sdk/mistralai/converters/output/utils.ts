@@ -2,8 +2,10 @@ import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoin
 import type {
   ErrorEvent,
   ModelResponseEvent,
+  NonDeltaResponseEvent,
   ReasoningEvent,
   TextEvent,
+  TokenUsageEvent,
   ToolCallEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
@@ -11,13 +13,17 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type {
+  ChatCompletionResponse,
   CompletionEvent,
   ContentChunk,
   ThinkChunk,
   ToolCall,
   UsageInfo,
 } from "@mistralai/mistralai/models/components";
-import { CompletionResponseStreamChoiceFinishReason } from "@mistralai/mistralai/models/components";
+import {
+  ChatCompletionChoiceFinishReason,
+  CompletionResponseStreamChoiceFinishReason,
+} from "@mistralai/mistralai/models/components";
 import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
 
 // Parses tool-call arguments into an object, falling back to `{}` for malformed
@@ -39,7 +45,7 @@ function thinkingChunkToText(thinking: ThinkChunk["thinking"]): string {
 function usageToTokenUsageEvent(
   metadata: EndpointMetadata,
   usage: UsageInfo | undefined
-): ModelResponseEvent {
+): TokenUsageEvent {
   return {
     type: "token_usage",
     content: {
@@ -332,4 +338,107 @@ export async function* rawOutputToEvents(
 
   yield usageToTokenUsageEvent(metadata, usage);
   yield { type: "success", content: { aggregated }, metadata };
+}
+
+// -- Non-streaming entry point: a complete batch response → events --
+
+function isNonDeltaEvent(
+  event: ModelResponseEvent
+): event is NonDeltaResponseEvent {
+  return (
+    event.type !== "text_delta" &&
+    event.type !== "reasoning_delta" &&
+    event.type !== "tool_call_delta"
+  );
+}
+
+function finishReasonToErrorEvent(
+  finishReason: ChatCompletionChoiceFinishReason | undefined,
+  metadata: EndpointMetadata
+): ErrorEvent | null {
+  switch (finishReason) {
+    case ChatCompletionChoiceFinishReason.Length:
+    case ChatCompletionChoiceFinishReason.ModelLength:
+      return buildErrorEvent({
+        metadata,
+        type: "stop_error",
+        message: "The maximum response length was reached.",
+      });
+    case ChatCompletionChoiceFinishReason.Error:
+      return buildErrorEvent({
+        metadata,
+        type: "server_error",
+        message: "Mistral reported an error during completion.",
+      });
+    // Stop / ToolCalls (and any future open-enum value) are not errors.
+    default:
+      return null;
+  }
+}
+
+// Turns a complete `ChatCompletionResponse` (as returned by the Batch API) into
+// the unified event array, mirroring `rawOutputToEvents` minus the
+// streaming-only delta events. Reuses the leaf converters so message semantics
+// stay single-sourced.
+export function responseToEvents(
+  response: ChatCompletionResponse,
+  metadata: EndpointMetadata
+): NonDeltaResponseEvent[] {
+  const events: NonDeltaResponseEvent[] = [];
+  const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
+  const acc: Accumulator = {
+    textParts: "",
+    reasoningParts: "",
+    toolCallIndex: 0,
+  };
+
+  if (response.id) {
+    events.push({
+      type: "response_id",
+      content: { responseId: response.id },
+      metadata,
+    });
+  }
+
+  const choice = response.choices[0];
+  const message = choice?.message;
+
+  // Accumulate text/reasoning from the message content, then flush it.
+  if (message?.content) {
+    for (const event of contentToEvents(message.content, acc, metadata)) {
+      if (isNonDeltaEvent(event)) {
+        events.push(event);
+      }
+    }
+  }
+  for (const event of flushAccumulated(acc, metadata, aggregated)) {
+    if (isNonDeltaEvent(event)) {
+      events.push(event);
+    }
+  }
+
+  if (message?.toolCalls) {
+    for (const toolCall of message.toolCalls) {
+      for (const event of toolCallToEvents(
+        toolCall,
+        acc,
+        metadata,
+        aggregated
+      )) {
+        if (isNonDeltaEvent(event)) {
+          events.push(event);
+        }
+      }
+    }
+  }
+
+  const errorEvent = finishReasonToErrorEvent(choice?.finishReason, metadata);
+  if (errorEvent) {
+    events.push(errorEvent);
+  }
+
+  events.push(usageToTokenUsageEvent(metadata, response.usage));
+  events.push({ type: "success", content: { aggregated }, metadata });
+
+  return events;
 }

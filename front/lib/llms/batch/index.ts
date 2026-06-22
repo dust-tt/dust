@@ -3,6 +3,7 @@ import { DustAnthropicGlobalClaudeSonnetFourDotSixBatch } from "@app/lib/llms/ba
 import { DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { DustGoogleAiStudioGlobalGeminiThreeDotOneProBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_global_gemini_3_5_flash";
+import { DustMistralEuropeMistralMedium35Batch } from "@app/lib/llms/batch/endpoints/mistral_eu_mistral_medium_3_5";
 import { DustOpenAIResponsesGlobalGptFiveDotFiveBatch } from "@app/lib/llms/batch/endpoints/openai_responses_global_gpt_five_dot_five";
 import { isEndpointAvailable } from "@app/lib/llms/batch/utils/is_endpoint_available";
 import type {
@@ -23,6 +24,8 @@ export const DUST_BATCH_ENDPOINTS = {
     DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteBatch,
   [DustOpenAIResponsesGlobalGptFiveDotFiveBatch.id]:
     DustOpenAIResponsesGlobalGptFiveDotFiveBatch,
+  [DustMistralEuropeMistralMedium35Batch.id]:
+    DustMistralEuropeMistralMedium35Batch,
 } as const satisfies Record<BatchEndpointId, DustBatchEndpointConstructor>;
 
 export function getBatchEndpoints(
