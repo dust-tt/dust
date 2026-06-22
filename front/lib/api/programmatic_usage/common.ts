@@ -85,20 +85,15 @@ export type UsageAggregations = {
 };
 
 /**
- * Query-side mirror of isProgrammaticUsage: API-key requests (except Zendesk),
- * messages with no context origin, or a listed programmatic origin. Single
- * source of truth for splitting analytics docs into programmatic vs user.
+ * Query-side mirror of isProgrammaticUsage: API-key requests, messages with no
+ * context origin, or a listed programmatic origin. Single source of truth for
+ * splitting analytics docs into programmatic vs user.
  */
 export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContainer {
   return {
     bool: {
       should: [
-        {
-          bool: {
-            must: [{ term: { auth_method: "api_key" } }],
-            must_not: [{ term: { context_origin: "zendesk" } }],
-          },
-        },
+        { term: { auth_method: "api_key" } },
         { bool: { must_not: { exists: { field: "context_origin" } } } },
         { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
       ],
@@ -110,7 +105,7 @@ export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContain
 /**
  * Build ES filter for programmatic usage tracking.
  * Matches messages that should be tracked for billing:
- * - API key requests (except Zendesk)
+ * - API key requests
  * - Unspecified context origins
  * - Programmatic origins (api, zapier, make, slack, etc.)
  */
