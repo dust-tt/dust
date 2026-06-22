@@ -44,6 +44,7 @@ const kit = vi.hoisted(() => {
     anthropic: { ga: [] as unknown[], beta: [] as unknown[] },
     google: [] as unknown[],
     openai: [] as unknown[],
+    openai_chat: [] as unknown[],
   });
   const state = { captures: freshCaptures() };
   const makeClient = () =>
@@ -74,14 +75,22 @@ const kit = vi.hoisted(() => {
         },
       };
     };
-  // Both the legacy and new OpenAI routers call `client.responses.create`, so
-  // one bucket records both; the adapter splits them by call order.
+  // The default client serves both `responses.create` (OpenAI Responses) and
+  // `chat.completions.create` (Fireworks); one bucket per surface.
   const makeOpenAIClient = () =>
     class {
       responses = {
         create: (input: unknown) => {
           state.captures.openai.push(input);
           return emptyStream();
+        },
+      };
+      chat = {
+        completions: {
+          create: (input: unknown) => {
+            state.captures.openai_chat.push(input);
+            return emptyStream();
+          },
         },
       };
     };

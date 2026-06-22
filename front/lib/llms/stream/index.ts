@@ -5,6 +5,7 @@ import { DustAnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/llms/s
 import { DustAnthropicGlobalClaudeOpusFourDotSevenStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_opus_four_dot_seven";
 import { DustAnthropicGlobalClaudeOpusFourDotSixStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_opus_four_dot_six";
 import { DustAnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_sonnet_four_dot_six";
+import { DustFireworksGlobalGlmFiveDotTwoStream } from "@app/lib/llms/stream/endpoints/fireworks_global_glm_five_dot_two";
 import { DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { DustGoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
@@ -62,6 +63,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream,
   [DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream.id]:
     DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream,
+  [DustFireworksGlobalGlmFiveDotTwoStream.id]:
+    DustFireworksGlobalGlmFiveDotTwoStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
 export function getStreamEndpoints(
