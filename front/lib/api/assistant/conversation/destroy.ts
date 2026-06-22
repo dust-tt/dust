@@ -19,6 +19,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
+import { ConversationPlanResource } from "@app/lib/resources/conversation_plan_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -300,6 +301,11 @@ export async function destroyConversation(
   });
 
   await WakeUpResource.deleteByConversation(auth, conversation.toJSON());
+
+  await ConversationPlanResource.deleteByConversation(
+    auth,
+    conversation.toJSON()
+  );
 
   await ProjectTaskConversationModel.destroy({
     where: { workspaceId: owner.id, conversationId: conversation.id },

@@ -95,6 +95,9 @@ export const RESOURCES_PREFIX = {
   conversation_branch: "cbr",
   conversation_fork: "cfk",
 
+  // Conversation plan (plan mode).
+  conversation_plan: "cpl",
+
   // Provider credentials (BYOK).
   provider_credential: "pcr",
 

@@ -78,6 +78,7 @@ import {
   ProviderModel,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { ConversationPlanModel } from "@app/lib/resources/storage/models/conversation_plan";
 import { CouponRedemptionModel } from "@app/lib/resources/storage/models/coupon_redemptions";
 import { CouponModel } from "@app/lib/resources/storage/models/coupons";
 import { CreditUsageConfigurationModel } from "@app/lib/resources/storage/models/credit_usage_configurations";
@@ -179,6 +180,7 @@ export function loadAllModels() {
     ConversationParticipantModel,
     UserConversationReadsModel,
     WakeUpModel,
+    ConversationPlanModel,
     DataSourceModel,
     DataSourceViewModel,
     RunModel,
