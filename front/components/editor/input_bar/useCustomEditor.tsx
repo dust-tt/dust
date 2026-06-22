@@ -5,6 +5,7 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
+import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
@@ -320,6 +321,7 @@ export interface CustomEditorProps {
       ((tool: MCPServerViewType) => void) | undefined
     >;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
+    slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
@@ -483,6 +485,7 @@ export const buildEditorExtensions = ({
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
+        slashCommandsRef: slashSuggestion.slashCommandsRef,
       })
     );
   }

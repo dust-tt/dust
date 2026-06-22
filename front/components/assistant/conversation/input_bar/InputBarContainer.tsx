@@ -13,7 +13,10 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import {
+  getAvailableInputBarSlashCommands,
+  type InputBarSlashCommand,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import {
   ADD_CAPABILITY_SLASH_COMMAND_ACTION,
   type AddCapabilitySlashCommand,
@@ -324,6 +327,12 @@ const InputBarContainer = ({
   // conversation may only be created after the first message; the ref keeps it current.
   const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
   conversationIdRef.current = conversation?.sId ?? null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const slashCommandsRef = useRef<InputBarSlashCommand[]>([]);
+  slashCommandsRef.current = getAvailableInputBarSlashCommands({
+    hasAttachment: actions.includes("attachment"),
+    hasConversation: Boolean(conversation?.sId),
+  });
   const onSelectRef = useRef<((item: SlashCommand) => void) | undefined>(
     undefined
   );
@@ -561,6 +570,11 @@ const InputBarContainer = ({
 
   const handleSlashCommandSelect = (command: InputBarSlashCommand) => {
     switch (command.id) {
+      case "upload-file":
+        if (!fileUploaderService.isProcessingFiles) {
+          fileInputRef.current?.click();
+        }
+        break;
       case "compact":
         if (isCompacting) {
           break;
@@ -668,6 +682,7 @@ const InputBarContainer = ({
       onCapabilityToolDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
+      slashCommandsRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
     onSuggestionActiveChangeRef,
@@ -1300,8 +1315,6 @@ const InputBarContainer = ({
   const buttonSize = useMemo(() => {
     return isMobile ? "sm" : "xs";
   }, [isMobile]);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isSubmitDisabled =
     (isEmpty && !canSubmitEmpty) ||

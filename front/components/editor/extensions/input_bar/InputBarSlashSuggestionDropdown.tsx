@@ -1,5 +1,5 @@
 import { buildInputBarSlashCommandItems } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
-import { INPUT_BAR_SLASH_COMMANDS } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -25,31 +25,31 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     onClose: () => void;
     onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
     owner: LightWorkspaceType;
+    slashCommandsRef: RefObject<InputBarSlashCommand[]>;
   }
 >(
   (
     {
       clientRect,
       command,
-      conversationIdRef,
       editor,
       query,
       range,
       onClose,
       onDetailsRef,
+      slashCommandsRef,
     },
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
-    const hasConversation = Boolean(conversationIdRef?.current);
 
     const commandItems = useMemo(
       () =>
         buildInputBarSlashCommandItems({
-          commands: hasConversation ? INPUT_BAR_SLASH_COMMANDS : [],
+          commands: slashCommandsRef.current ?? [],
           query,
         }),
-      [hasConversation, query]
+      [query, slashCommandsRef]
     );
 
     useImperativeHandle(

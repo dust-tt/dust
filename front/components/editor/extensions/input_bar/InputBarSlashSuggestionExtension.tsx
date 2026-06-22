@@ -1,4 +1,5 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
+import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { isAddCapabilitySlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
@@ -24,6 +25,7 @@ export interface InputBarSlashSuggestionExtensionOptions {
   onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
   owner?: WorkspaceType;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
+  slashCommandsRef: RefObject<InputBarSlashCommand[]>;
 }
 
 export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
@@ -47,6 +49,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
     selectedMCPServerViewIdsRef: { current: new Set<string>() },
+    slashCommandsRef: { current: [] },
   },
   allow: ({ editor, state, range, isActive, options, storage }) =>
     Boolean(options.owner) &&
@@ -80,6 +83,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     conversationIdRef: options.conversationIdRef,
     onDetailsRef: options.onDetailsRef,
     owner: options.owner,
+    slashCommandsRef: options.slashCommandsRef,
   }),
   notifyActiveChange: (active, options) => {
     options.onActiveChangeRef?.current?.(active);
