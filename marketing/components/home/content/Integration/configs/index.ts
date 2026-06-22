@@ -1035,11 +1035,15 @@ function buildIntegrationEnrichments(): Record<string, IntegrationEnrichment> {
   const merged: Record<string, IntegrationEnrichment> = { ...baseEnrichments };
   for (const [slug, tailored] of Object.entries(tailoredEnrichments)) {
     const base = merged[slug] ?? {};
-    const hasTailoredBenefits =
-      tailored.benefits !== undefined && tailored.benefits.length > 0;
-    merged[slug] = hasTailoredBenefits
-      ? { ...base, useCases: undefined, ...tailored }
-      : { ...base, ...tailored };
+    if (tailored.benefits !== undefined && tailored.benefits.length > 0) {
+      // Tailored benefits supersede legacy useCases. Omit the key entirely
+      // rather than setting it to `undefined` — getStaticProps cannot
+      // serialize `undefined`, only `null` or an absent key.
+      const { useCases: _useCases, ...baseWithoutUseCases } = base;
+      merged[slug] = { ...baseWithoutUseCases, ...tailored };
+    } else {
+      merged[slug] = { ...base, ...tailored };
+    }
   }
   return merged;
 }
