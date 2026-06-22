@@ -3,7 +3,6 @@ import {
   CHART_HEIGHT,
   COST_PALETTE,
   OTHER_LABEL,
-  USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import {
   getIndexedColor,
@@ -150,11 +149,6 @@ export function AwuUsageFromAnalyticsChart({
         let label = group.name;
         if (group.groupKey === "others") {
           label = OTHER_LABEL.label;
-        } else if (
-          groupBy === "origin" &&
-          isUserMessageOrigin(group.groupKey)
-        ) {
-          label = USER_MESSAGE_ORIGIN_LABELS[group.groupKey].label;
         }
         const canFilter =
           !!groupBy &&
@@ -375,8 +369,6 @@ function CreditTooltip(
     let label = groupNameByKey.get(groupKey) ?? groupKey;
     if (groupKey === "others") {
       label = OTHER_LABEL.label;
-    } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
-      label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
     }
     entries.push({
       label,
