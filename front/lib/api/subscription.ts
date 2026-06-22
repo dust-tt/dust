@@ -8,6 +8,7 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { BUSINESS_USD_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { PlanModel } from "@app/lib/models/plan";
 import {
@@ -90,6 +91,16 @@ export async function activateCreditPricedFreePlan(
     "Activating credit-priced free plan"
   );
 
+  const plan = await PlanModel.findOne({
+    where: { code: CREDIT_PRICED_FREE_PLAN_CODE },
+  });
+  if (!plan) {
+    throw new Error(
+      `Plan row for ${CREDIT_PRICED_FREE_PLAN_CODE} not found in DB. ` +
+        `Seed it in production before enabling Metronome billing.`
+    );
+  }
+
   const customerResult = await ensureMetronomeCustomerForWorkspace({
     workspace: lightWorkspace,
   });
@@ -132,16 +143,6 @@ export async function activateCreditPricedFreePlan(
   }
   const { metronomeContractId } = contractResult.value;
 
-  const plan = await PlanModel.findOne({
-    where: { code: CREDIT_PRICED_FREE_PLAN_CODE },
-  });
-  if (!plan) {
-    throw new Error(
-      `Plan row for ${CREDIT_PRICED_FREE_PLAN_CODE} not found in DB. ` +
-        `Seed it in production before enabling Metronome billing.`
-    );
-  }
-
   const subscriptionResult =
     await SubscriptionResource.createSubscriptionFromCheckout({
       workspaceModelId: owner.id,
@@ -155,6 +156,7 @@ export async function activateCreditPricedFreePlan(
     );
   }
 
+  await invalidateContractCache(owner.sId);
   await restoreWorkspaceAfterSubscription(auth);
 }
 
