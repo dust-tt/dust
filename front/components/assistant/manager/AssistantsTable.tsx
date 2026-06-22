@@ -105,7 +105,7 @@ const getTableColumns = ({
               </DataTable.CellContent>
             ),
             meta: {
-              className: "w-8",
+              className: "w-10",
               tooltip: "Select",
             },
             sortable: false,
