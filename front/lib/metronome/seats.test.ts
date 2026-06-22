@@ -441,8 +441,8 @@ describe("classifySeatChange", () => {
     ).toEqual({ kind: "deferred", at: new Date("2026-07-01T00:00:00Z") });
   });
 
-  it("treats free → none as a no-op (free is a one-shot tier)", () => {
-    expect(classify("free", "none")).toEqual({ kind: "noop" });
+  it("removes a free seat (free → none) immediately (no renewing allowance to preserve)", () => {
+    expect(classify("free", "none")).toEqual({ kind: "immediate" });
   });
 
   it("returns undefined for a deferral when no anchor date exists", () => {
