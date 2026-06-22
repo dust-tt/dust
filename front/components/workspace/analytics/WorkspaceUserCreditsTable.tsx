@@ -130,11 +130,16 @@ export function WorkspaceUserCreditsTable({
       disabled: !workspaceId,
     });
 
-  const searchParam = debouncedValue
-    ? `&search=${encodeURIComponent(debouncedValue)}`
-    : "";
+  const exportParams = new URLSearchParams({
+    days: period.toString(),
+    limit: "100",
+    format: "csv",
+  });
+  if (debouncedValue) {
+    exportParams.set("search", debouncedValue);
+  }
   const csvDownload = useDownloadCsv({
-    url: `/api/w/${workspaceId}/analytics/user-credits?days=${period}&limit=100&format=csv${searchParam}`,
+    url: `/api/w/${workspaceId}/analytics/user-credits?${exportParams.toString()}`,
     filename: `dust_users_by_credits_last_${period}_days.csv`,
     disabled:
       isUserCreditsLoading ||
