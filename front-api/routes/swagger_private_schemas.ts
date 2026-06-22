@@ -403,11 +403,11 @@
  *         costCredits:
  *           type: integer
  *           nullable: true
- *           description: Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
+ *           description: Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
  *         subAgentCostCredits:
  *           type: number
  *           nullable: true
- *           description: Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -503,11 +503,11 @@
  *         costCredits:
  *           type: integer
  *           nullable: true
- *           description: Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
+ *           description: Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
  *         subAgentCostCredits:
  *           type: number
  *           nullable: true
- *           description: Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
  *         activitySteps:
  *           type: array
  *           items:
