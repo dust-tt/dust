@@ -14,6 +14,7 @@ import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/ou
 import { MISTRAL_API } from "@app/lib/model_constructors/types/provider_apis";
 import { MISTRAL_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Mistral } from "@mistralai/mistralai";
 import {
   ApiEndpoint,
@@ -24,6 +25,9 @@ import {
 } from "@mistralai/mistralai/models/components";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+
+// A batch job references at most its input + output files.
+const FILE_DELETE_CONCURRENCY = 2;
 
 // One line of the JSONL output file the Batch API produces.
 const mistralBatchOutputLineSchema = z.object({
@@ -165,9 +169,10 @@ export abstract class MistralBatch extends WithMistralAIInputConverter(
     const fileIds = [job.inputFiles, job.outputFile]
       .flat()
       .filter((id): id is string => !!id);
-    // At most 2 files (input + output).
-    const results = await Promise.all(
-      fileIds.map((fileId) => this.client.files.delete({ fileId }))
+    const results = await concurrentExecutor(
+      fileIds,
+      (fileId) => this.client.files.delete({ fileId }),
+      { concurrency: FILE_DELETE_CONCURRENCY }
     );
     return results.every((result) => result.deleted);
   }
