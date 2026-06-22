@@ -73,7 +73,7 @@ export function WorkspaceDefaultAgentPicker({
           pickerButton={
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               isSelect
               disabled={isChanging || isLoading}
               icon={

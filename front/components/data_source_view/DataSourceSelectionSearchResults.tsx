@@ -372,7 +372,7 @@ export function DataSourceSelectionSearchResults({
       {displaySelectAllButton && onSelectAll && loadedCount > 0 && (
         <Button
           variant="ghost"
-          size="xs"
+          size="sm"
           label="Select all"
           onClick={onSelectAll}
         />

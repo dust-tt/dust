@@ -219,7 +219,7 @@ export function BaseAwuUsageFromAnalyticsChart({
           {effectiveEnabledKeys && (
             <Button
               label="Clear filters"
-              size="xs"
+              size="sm"
               variant="ghost"
               onClick={() => setEnabledKeys(null)}
             />
@@ -231,7 +231,7 @@ export function BaseAwuUsageFromAnalyticsChart({
                   GRANULARITY_OPTIONS.find((o) => o.value === granularity)
                     ?.label ?? "Daily"
                 }
-                size="xs"
+                size="sm"
                 variant="outline"
                 isSelect
               />
@@ -253,7 +253,7 @@ export function BaseAwuUsageFromAnalyticsChart({
                   GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label ??
                   "Total"
                 }
-                size="xs"
+                size="sm"
                 variant="outline"
                 isSelect
               />
@@ -273,7 +273,7 @@ export function BaseAwuUsageFromAnalyticsChart({
               <DropdownMenuTrigger asChild>
                 <Button
                   label={`Top ${groupByCount}`}
-                  size="xs"
+                  size="sm"
                   variant="outline"
                   isSelect
                 />
