@@ -28,6 +28,7 @@ export type AgentCreditUser = {
 
 // description is set only when the admin can read the skill.
 export type AgentCreditSkill = {
+  skillId: string;
   name: string;
   description: string | null;
 };
@@ -202,10 +203,12 @@ export async function fetchAgentCreditBreakdown(
     const topSkills: AgentCreditSkill[] = bucketsToArray<SkillBucket>(
       bucket.top_skills?.by_skill?.buckets
     ).map((skillBucket) => {
-      const skill = skillsById.get(String(skillBucket.key));
+      const skillId = String(skillBucket.key);
+      const skill = skillsById.get(skillId);
       const docName = bucketsToArray<SubBucket>(skillBucket.name?.buckets)[0]
         ?.key;
       return {
+        skillId,
         name: skill?.name ?? docName ?? "Unknown skill",
         description: skill?.userFacingDescription || null,
       };

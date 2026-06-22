@@ -42,17 +42,17 @@ function TopSkillsCell({ skills }: { skills: AgentCreditSkill[] }) {
   return (
     <EntityList
       items={skills}
-      renderItem={(skill, index) => {
+      renderItem={(skill) => {
         const label = <span className="truncate text-sm">{skill.name}</span>;
         return skill.description ? (
           <Tooltip
-            key={`${skill.name}-${index}`}
+            key={skill.skillId}
             label={skill.description}
             tooltipTriggerAsChild
             trigger={label}
           />
         ) : (
-          <span key={`${skill.name}-${index}`} className="truncate text-sm">
+          <span key={skill.skillId} className="truncate text-sm">
             {skill.name}
           </span>
         );
