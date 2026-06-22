@@ -2,23 +2,21 @@ import type {
   SlashCommandSkillSuggestion,
   SlashCommandToolSuggestion,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { buildCapabilitySlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { afterEach, describe, expect, it } from "vitest";
+import { CAPABILITY_SEARCH_NODE_TYPE } from "./CapabilitySearchNode";
+import { CapabilitySearchNodeWithView } from "./CapabilitySearchNodeWithView";
 import {
-  buildSkillBuilderSlashCommandItems,
   SlashCommandExtension,
   slashCommandPluginKey,
 } from "./SlashCommandExtension";
-
-const attachKnowledgeItem: SlashCommand = {
-  action: "insert-knowledge-node",
-  icon: () => null,
-  id: "add-knowledge",
-  label: "Attach knowledge",
-};
 
 const skillSuggestion = ({
   editedBy = 1,
@@ -75,28 +73,62 @@ const toolSuggestion = ({
   label,
 });
 
-describe("buildSkillBuilderSlashCommandItems", () => {
-  it("keeps the existing command when skill suggestions are disabled", () => {
-    const result = buildSkillBuilderSlashCommandItems({
-      baseItems: [attachKnowledgeItem],
-      includeSkillSuggestions: false,
-      query: "",
-      skills: [
-        skillSuggestion({
-          name: "Create memo",
-          sId: "skill_create_memo",
-        }),
-      ],
+describe("buildCapabilitySlashCommandItems", () => {
+  it("filters capabilities by name only", async () => {
+    const { auth, globalSpace, workspace } =
+      await createPrivateApiMockRequest();
+    const skill = await SkillFactory.create(auth, {
+      name: "Summarize",
+      userFacingDescription: "Search spreadsheets and documents.",
+    });
+    const calendarServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "Calendar",
+      description: "Search spreadsheets and documents.",
+    });
+    const calendarServerView = await MCPServerViewFactory.create(
+      workspace,
+      calendarServer.sId,
+      globalSpace
+    );
+
+    const result = buildCapabilitySlashCommandItems({
+      query: "spreadsheet",
+      skills: [skill.toJSON(auth)],
+      tools: [calendarServerView.toJSON()],
     });
 
-    expect(result).toEqual([attachKnowledgeItem]);
+    expect(result).toEqual([]);
   });
 
-  it("adds filtered skills under the capabilities section", () => {
-    const result = buildSkillBuilderSlashCommandItems({
-      baseItems: [attachKnowledgeItem],
-      currentSkillId: "skill_current",
-      includeSkillSuggestions: true,
+  it("orders non-substring matches by fuzzy relevance", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const generateDailyReportSkill = await SkillFactory.create(auth, {
+      name: "Generate Daily Report",
+      userFacingDescription: "",
+    });
+    const googleDriveSkill = await SkillFactory.create(auth, {
+      name: "Google Drive",
+      userFacingDescription: "",
+    });
+
+    const result = buildCapabilitySlashCommandItems({
+      query: "gd",
+      skills: [
+        generateDailyReportSkill.toJSON(auth),
+        googleDriveSkill.toJSON(auth),
+      ],
+      tools: [],
+    });
+
+    expect(result.map((item) => item.label)).toEqual([
+      "Google Drive",
+      "Generate Daily Report",
+    ]);
+  });
+
+  it("adds filtered skills and excludes the current skill", () => {
+    const result = buildCapabilitySlashCommandItems({
+      excludeSkillId: "skill_current",
       query: "memo",
       skills: [
         skillSuggestion({
@@ -113,6 +145,7 @@ describe("buildSkillBuilderSlashCommandItems", () => {
           sId: "skill_current",
         }),
       ],
+      tools: [],
     });
 
     expect(result.map((item) => item.id)).toEqual(["skill_create_memo"]);
@@ -137,9 +170,7 @@ describe("buildSkillBuilderSlashCommandItems", () => {
       sId: "mcp_server_view_search",
     });
 
-    const result = buildSkillBuilderSlashCommandItems({
-      baseItems: [attachKnowledgeItem],
-      includeSkillSuggestions: true,
+    const result = buildCapabilitySlashCommandItems({
       query: "",
       skills: [
         skillSuggestion({
@@ -151,11 +182,10 @@ describe("buildSkillBuilderSlashCommandItems", () => {
     });
 
     expect(result.map((item) => item.id)).toEqual([
-      "add-knowledge",
       "mcp_server_view_search",
       "skill_search_checklist",
     ]);
-    expect(result[1]).toMatchObject({
+    expect(result[0]).toMatchObject({
       action: "select-tool",
       data: {
         tool: {
@@ -164,27 +194,6 @@ describe("buildSkillBuilderSlashCommandItems", () => {
           view: tool,
         },
       },
-    });
-  });
-
-  it("includes tools when there are no matching skills", () => {
-    const result = buildSkillBuilderSlashCommandItems({
-      baseItems: [],
-      includeSkillSuggestions: true,
-      query: "search",
-      skills: [],
-      tools: [
-        toolSuggestion({
-          label: "Search docs",
-          name: null,
-          sId: "mcp_server_view_search",
-        }),
-      ],
-    });
-
-    expect(result[0]).toMatchObject({
-      id: "mcp_server_view_search",
-      action: "select-tool",
     });
   });
 });
@@ -201,8 +210,9 @@ describe("SlashCommandExtension", () => {
     editor = new Editor({
       extensions: [
         StarterKit,
+        CapabilitySearchNodeWithView,
         SlashCommandExtension.configure({
-          includeSkillSuggestions: false,
+          onSelectRef: { current: undefined },
         }),
       ],
     });
@@ -210,26 +220,34 @@ describe("SlashCommandExtension", () => {
     return editor;
   }
 
-  it("opens capabilities after marked text", () => {
+  it("opens capabilities search after marked text", () => {
     const editor = createEditor();
     editor.commands.setContent("<p><em>Italic text</em></p>");
     editor.commands.focus("end");
 
     editor.commands.openCapabilitiesSlashCommand();
 
-    expect(editor.getText()).toBe("Italic text /");
-    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
+    expect(editor.getText()).toBe("Italic text");
+    expect(
+      editor.state.doc.content.firstChild?.content.content.some(
+        (node) => node.type.name === CAPABILITY_SEARCH_NODE_TYPE
+      )
+    ).toBe(true);
   });
 
-  it("opens capabilities after regular text", () => {
+  it("opens capabilities search after regular text", () => {
     const editor = createEditor();
     editor.commands.setContent("<p>regular text</p>");
     editor.commands.focus("end");
 
     editor.commands.openCapabilitiesSlashCommand();
 
-    expect(editor.getText()).toBe("regular text /");
-    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
+    expect(editor.getText()).toBe("regular text");
+    expect(
+      editor.state.doc.content.firstChild?.content.content.some(
+        (node) => node.type.name === CAPABILITY_SEARCH_NODE_TYPE
+      )
+    ).toBe(true);
   });
 
   it("keeps typed slash closed after regular text", () => {
