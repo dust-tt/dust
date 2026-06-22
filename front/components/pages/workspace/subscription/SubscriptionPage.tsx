@@ -503,7 +503,7 @@ export function SubscriptionPage() {
           {migrationDate && (
             <ContentMessage
               title="Your plan will be migrated to the new pricing."
-              variant="warning"
+              variant="blue"
             >
               Your current plan will be automatically migrated to the new
               credit-based pricing on{" "}
