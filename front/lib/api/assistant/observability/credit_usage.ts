@@ -1,3 +1,4 @@
+import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { buildCreditsScopeQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -154,7 +155,9 @@ async function resolveGroupNames(
       );
     }
     case "origin":
-      return new Map(ids.map((id) => [id, id]));
+      // Match the chart's user-facing source labels (e.g. web -> Conversation),
+      // falling back to the raw origin for anything unlabeled.
+      return new Map(ids.map((id) => [id, sourceLabelForOrigin(id) ?? id]));
     default:
       return assertNever(groupBy);
   }
