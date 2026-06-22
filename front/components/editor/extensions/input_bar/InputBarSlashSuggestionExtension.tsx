@@ -1,7 +1,6 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import {
-  isAddCapabilitySlashCommand,
   isInsertContextFileSlashCommand,
   isInsertKnowledgeSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
@@ -72,16 +71,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   command: ({ editor, range, props, options, storage }) => {
     storage.dismissedTriggerStart = null;
 
-    if (isAddCapabilitySlashCommand(props)) {
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertCapabilitySearchNode()
-        .run();
-      return;
-    }
-
     if (isInsertKnowledgeSlashCommand(props)) {
       editor
         .chain()
@@ -106,6 +95,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     conversationIdRef: options.conversationIdRef,
     onDetailsRef: options.onDetailsRef,
     owner: options.owner,
+    selectedMCPServerViewIdsRef: options.selectedMCPServerViewIdsRef,
     slashCommandsRef: options.slashCommandsRef,
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     includeSelectContextFileRef: options.includeSelectContextFileRef,

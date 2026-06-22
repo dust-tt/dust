@@ -18,12 +18,6 @@ import {
   type InputBarSlashCommand,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import {
-  ADD_CAPABILITY_SLASH_COMMAND_ACTION,
-  type AddCapabilitySlashCommand,
-  INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
-  type InsertKnowledgeSlashCommand,
-  isAddCapabilitySlashCommand,
-  isInsertKnowledgeSlashCommand,
   isRunCommandSlashCommand,
   isSkillSlashCommand,
   isToolSlashCommand,
@@ -118,9 +112,7 @@ import { InputBarContext } from "./InputBarContext";
 type KnownSlashCommand =
   | RunCommandSlashCommand<InputBarSlashCommand>
   | SkillSlashCommand
-  | ToolSlashCommand
-  | AddCapabilitySlashCommand
-  | InsertKnowledgeSlashCommand;
+  | ToolSlashCommand;
 
 function narrowToKnownSlashCommand(
   item: SlashCommand
@@ -132,12 +124,6 @@ function narrowToKnownSlashCommand(
     return item;
   }
   if (isToolSlashCommand(item)) {
-    return item;
-  }
-  if (isAddCapabilitySlashCommand(item)) {
-    return item;
-  }
-  if (isInsertKnowledgeSlashCommand(item)) {
     return item;
   }
   return null;
@@ -339,15 +325,6 @@ const InputBarContainer = ({
   const onDetailsRef = useRef<((item: SlashCommand) => void) | undefined>(
     undefined
   );
-  const onSelectToolRef = useRef<
-    ((tool: MCPServerViewType) => void) | undefined
-  >(undefined);
-  const onCapabilitySkillDetailsRef = useRef<
-    ((skill: { sId: string }) => void) | undefined
-  >(undefined);
-  const onCapabilityToolDetailsRef = useRef<
-    ((tool: MCPServerViewType) => void) | undefined
-  >(undefined);
   const onNodeSelectRef = useRef(onNodeSelect);
   onNodeSelectRef.current = onNodeSelect;
   const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
@@ -614,12 +591,6 @@ const InputBarContainer = ({
     }
   };
 
-  onSelectToolRef.current = onMCPServerViewSelect;
-  onCapabilitySkillDetailsRef.current = (skill) => {
-    setSelectedSkillIdForDetails(skill.sId);
-  };
-  onCapabilityToolDetailsRef.current = setSelectedServerViewForDetails;
-
   onSelectRef.current = (rawItem: SlashCommand) => {
     const item = narrowToKnownSlashCommand(rawItem);
     if (!item) {
@@ -635,9 +606,6 @@ const InputBarContainer = ({
         break;
       case SELECT_TOOL_SLASH_COMMAND_ACTION:
         onMCPServerViewSelect(item.data.tool.view);
-        break;
-      case ADD_CAPABILITY_SLASH_COMMAND_ACTION:
-      case INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION:
         break;
       default:
         assertNeverAndIgnore(item);
@@ -661,9 +629,6 @@ const InputBarContainer = ({
         break;
       case SELECT_TOOL_SLASH_COMMAND_ACTION:
         setSelectedServerViewForDetails(item.data.tool.view);
-        break;
-      case ADD_CAPABILITY_SLASH_COMMAND_ACTION:
-      case INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION:
         break;
       default:
         assertNeverAndIgnore(item);
@@ -691,9 +656,6 @@ const InputBarContainer = ({
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
       onDetailsRef,
-      onSelectToolRef,
-      onCapabilitySkillDetailsRef,
-      onCapabilityToolDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
       slashCommandsRef,

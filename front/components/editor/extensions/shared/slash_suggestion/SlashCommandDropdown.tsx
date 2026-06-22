@@ -1,3 +1,8 @@
+import {
+  flattenSlashCommandSections,
+  SLASH_COMMAND_CAPABILITIES_SECTION_LABEL,
+  type SlashCommandSection,
+} from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import { SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import {
   Button,
@@ -6,8 +11,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
@@ -17,6 +24,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -46,15 +54,15 @@ export interface SlashCommand {
 }
 
 export interface SlashCommandDropdownProps
-  extends Pick<
-    SuggestionProps<SlashCommand>,
-    "clientRect" | "command" | "items"
-  > {
+  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "command"> {
   emptyMessage?: string;
   header?: string;
+  isLoadingCapabilities?: boolean;
+  items?: SlashCommand[];
   listMaxHeightClassName?: `max-h-${string}`;
   onClose?: () => void;
   onItemDetails?: (item: SlashCommand) => void;
+  sections?: SlashCommandSection[];
   size?: "default" | "wide";
 }
 
@@ -68,11 +76,13 @@ export const SlashCommandDropdown = forwardRef<
 >(
   (
     {
-      items,
+      items: itemsProp,
+      sections,
       command,
       clientRect,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
+      isLoadingCapabilities = false,
       listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       onClose,
       onItemDetails,
@@ -80,6 +90,24 @@ export const SlashCommandDropdown = forwardRef<
     },
     ref
   ) => {
+    const items = useMemo(
+      () =>
+        sections ? flattenSlashCommandSections(sections) : (itemsProp ?? []),
+      [itemsProp, sections]
+    );
+    const itemIdsKey = useMemo(
+      () => items.map((item) => item.id).join("\0"),
+      [items]
+    );
+    const showCapabilitiesLoading =
+      isLoadingCapabilities &&
+      !sections?.some(
+        (section) =>
+          section.label === SLASH_COMMAND_CAPABILITIES_SECTION_LABEL &&
+          section.items.length > 0
+      );
+    const hasVisibleContent = items.length > 0 || showCapabilitiesLoading;
+
     const [selectedIndex, setSelectedIndex] = useState(0);
     const listRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
@@ -132,11 +160,11 @@ export const SlashCommandDropdown = forwardRef<
       [selectItem, selectedIndex, items.length]
     );
 
-    // Reset selected index when items change.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+    // Reset selected index when the visible item list changes, not on every render.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: itemIdsKey is intentional trigger
     useEffect(() => {
       setSelectedIndex(0);
-    }, [items]);
+    }, [itemIdsKey]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
@@ -191,7 +219,7 @@ export const SlashCommandDropdown = forwardRef<
               {header}
             </div>
           ) : null}
-          {items.length === 0 ? (
+          {!hasVisibleContent ? (
             <div
               className={cn(
                 SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME,
@@ -202,67 +230,154 @@ export const SlashCommandDropdown = forwardRef<
             </div>
           ) : (
             <div ref={listRef} className={listMaxHeightClassName}>
-              {items.map((item, index) => {
-                const canShowDetails = !!onItemDetails && !!item.hasDetails;
-                const menuItem = (
-                  <DropdownMenuItem
-                    icon={item.icon}
-                    itemId={item.id}
-                    label={item.label}
-                    description={item.description}
-                    truncateText
-                    endComponent={
-                      canShowDetails ? (
-                        <Button
-                          icon={DotsHorizontal}
-                          variant="outline"
-                          size="mini"
-                          className={cn(
-                            "opacity-0 group-focus-within:opacity-100",
-                            index === selectedIndex && "opacity-100"
-                          )}
-                          onClick={(e) => {
-                            e.stopPropagation();
+              {sections
+                ? (() => {
+                    let flatIndex = 0;
+
+                    const renderItem = (item: SlashCommand, index: number) => {
+                      const canShowDetails =
+                        !!onItemDetails && !!item.hasDetails;
+                      const menuItem = (
+                        <DropdownMenuItem
+                          icon={item.icon}
+                          itemId={item.id}
+                          label={item.label}
+                          description={item.description}
+                          truncateText
+                          endComponent={
+                            canShowDetails ? (
+                              <Button
+                                icon={DotsHorizontal}
+                                variant="outline"
+                                size="mini"
+                                className={cn(
+                                  "opacity-0 group-focus-within:opacity-100",
+                                  index === selectedIndex && "opacity-100"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  onItemDetails?.(item);
+                                }}
+                              />
+                            ) : undefined
+                          }
+                          onClick={() => selectItem(index)}
+                          onPointerMove={(e) => {
                             e.preventDefault();
-                            onItemDetails?.(item);
+                            setSelectedIndex(index);
                           }}
+                          onPointerLeave={(e) => e.preventDefault()}
+                          className={cn(
+                            "group",
+                            index === selectedIndex &&
+                              "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                          )}
                         />
-                      ) : undefined
-                    }
-                    onClick={() => selectItem(index)}
-                    // onPointerMove only fires on actual pointer movement
-                    // (not when items scroll under a stationary cursor).
-                    // preventDefault stops Radix from setting
-                    // data-highlighted, avoiding a double highlight.
-                    onPointerMove={(e) => {
-                      e.preventDefault();
-                      setSelectedIndex(index);
-                    }}
-                    onPointerLeave={(e) => e.preventDefault()}
-                    className={cn(
-                      "group",
-                      index === selectedIndex &&
-                        "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                    )}
-                  />
-                );
+                      );
 
-                // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                const itemContent = item.tooltip ? (
-                  <DropdownTooltipTrigger
-                    description={item.tooltip.description}
-                    media={item.tooltip.media}
-                    side="right"
-                    sideOffset={8}
-                  >
-                    {menuItem}
-                  </DropdownTooltipTrigger>
-                ) : (
-                  menuItem
-                );
+                      const itemContent = item.tooltip ? (
+                        <DropdownTooltipTrigger
+                          description={item.tooltip.description}
+                          media={item.tooltip.media}
+                          side="right"
+                          sideOffset={8}
+                        >
+                          {menuItem}
+                        </DropdownTooltipTrigger>
+                      ) : (
+                        menuItem
+                      );
 
-                return <Fragment key={item.id}>{itemContent}</Fragment>;
-              })}
+                      return <Fragment key={item.id}>{itemContent}</Fragment>;
+                    };
+
+                    return (
+                      <>
+                        {sections.map((section) => (
+                          <Fragment key={section.label}>
+                            <DropdownMenuLabel>
+                              {section.label}
+                            </DropdownMenuLabel>
+                            {section.items.map((item) => {
+                              const index = flatIndex;
+                              flatIndex += 1;
+                              return renderItem(item, index);
+                            })}
+                          </Fragment>
+                        ))}
+                        {showCapabilitiesLoading ? (
+                          <>
+                            <DropdownMenuLabel>
+                              {SLASH_COMMAND_CAPABILITIES_SECTION_LABEL}
+                            </DropdownMenuLabel>
+                            <div className="flex h-14 items-center justify-center">
+                              <Spinner size="sm" />
+                              <span className="ml-2 text-sm text-gray-500 dark:text-gray-500-night">
+                                Loading capabilities…
+                              </span>
+                            </div>
+                          </>
+                        ) : null}
+                      </>
+                    );
+                  })()
+                : items.map((item, index) => {
+                    const canShowDetails = !!onItemDetails && !!item.hasDetails;
+                    const menuItem = (
+                      <DropdownMenuItem
+                        icon={item.icon}
+                        itemId={item.id}
+                        label={item.label}
+                        description={item.description}
+                        truncateText
+                        endComponent={
+                          canShowDetails ? (
+                            <Button
+                              icon={DotsHorizontal}
+                              variant="outline"
+                              size="mini"
+                              className={cn(
+                                "opacity-0 group-focus-within:opacity-100",
+                                index === selectedIndex && "opacity-100"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onItemDetails?.(item);
+                              }}
+                            />
+                          ) : undefined
+                        }
+                        onClick={() => selectItem(index)}
+                        onPointerMove={(e) => {
+                          e.preventDefault();
+                          setSelectedIndex(index);
+                        }}
+                        onPointerLeave={(e) => e.preventDefault()}
+                        className={cn(
+                          "group",
+                          index === selectedIndex &&
+                            "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                        )}
+                      />
+                    );
+
+                    const itemContent = item.tooltip ? (
+                      <DropdownTooltipTrigger
+                        description={item.tooltip.description}
+                        media={item.tooltip.media}
+                        side="right"
+                        sideOffset={8}
+                      >
+                        {menuItem}
+                      </DropdownTooltipTrigger>
+                    ) : (
+                      menuItem
+                    );
+
+                    return <Fragment key={item.id}>{itemContent}</Fragment>;
+                  })}
             </div>
           )}
         </DropdownMenuContent>

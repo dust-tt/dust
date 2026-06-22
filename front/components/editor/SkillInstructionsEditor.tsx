@@ -119,17 +119,33 @@ interface UseSkillInstructionsEditorProps {
 
 function buildSkillInstructionsEditableExtensions({
   capabilitySearchOptions,
+  currentSkillIdRef,
   onSelectRef,
+  onSkillDetailsRef,
+  onToolDetailsRef,
+  owner,
 }: {
   capabilitySearchOptions: CapabilitySearchNodeOptions;
+  currentSkillIdRef: React.RefObject<string | null>;
   onSelectRef: React.RefObject<
     ((item: SlashCommand, editor: Editor, range: Range) => void) | undefined
   >;
+  onSkillDetailsRef: React.RefObject<
+    ((skill: SlashCommandSkillSuggestion) => void) | undefined
+  >;
+  onToolDetailsRef: React.RefObject<
+    ((tool: MCPServerViewType) => void) | undefined
+  >;
+  owner?: LightWorkspaceType;
 }) {
   return [
     CapabilitySearchNodeWithView.configure(capabilitySearchOptions),
     SlashCommandExtension.configure({
+      currentSkillIdRef,
       onSelectRef,
+      onSkillDetailsRef,
+      onToolDetailsRef,
+      owner,
     }),
     AgentInstructionDiffExtension,
     Placeholder.configure({
@@ -162,6 +178,8 @@ export function useSkillInstructionsEditor({
   const onSelectRef = useRef<
     ((item: SlashCommand, editor: Editor, range: Range) => void) | undefined
   >(undefined);
+  const currentSkillIdRef = useRef<string | null>(currentSkillId);
+  currentSkillIdRef.current = currentSkillId;
   const onSelectSkillRef = useRef(onSelectSkill);
   const onSelectToolRef = useRef(onSelectTool);
   const onSkillDetailsRef = useRef(onSkillDetails);
@@ -181,9 +199,12 @@ export function useSkillInstructionsEditor({
           onSkillDetailsRef,
           onToolDetailsRef,
           owner,
-          variant: "skill-builder",
         },
+        currentSkillIdRef,
         onSelectRef,
+        onSkillDetailsRef,
+        onToolDetailsRef,
+        owner,
       }),
     [currentSkillId, owner]
   );

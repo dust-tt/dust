@@ -1,5 +1,4 @@
 import {
-  ADD_CAPABILITY_SLASH_COMMAND_ACTION,
   INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION,
   INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
   isRunCommandSlashCommand,
@@ -48,7 +47,7 @@ describe("getAvailableInputBarSlashCommands", () => {
 });
 
 describe("buildInputBarSlashCommandItems", () => {
-  it("always includes the add capability command", () => {
+  it("returns no commands when none are available", () => {
     const result = buildInputBarSlashCommandItems({
       commands: [],
       includeAttachKnowledge: false,
@@ -56,9 +55,7 @@ describe("buildInputBarSlashCommandItems", () => {
       query: "",
     });
 
-    expect(result.map((item) => item.action)).toEqual([
-      ADD_CAPABILITY_SLASH_COMMAND_ACTION,
-    ]);
+    expect(result).toEqual([]);
   });
 
   it("lists commands in INPUT_BAR_SLASH_COMMAND_ORDER", () => {
@@ -71,7 +68,6 @@ describe("buildInputBarSlashCommandItems", () => {
 
     expect(result.map(getInputBarSlashCommandItemId)).toEqual([
       "compact",
-      "add-capability",
       "reference-file",
       "upload-file",
       "attach-knowledge",
@@ -86,7 +82,7 @@ describe("buildInputBarSlashCommandItems", () => {
         includeSelectContextFile: false,
         query: "",
       }).map(getInputBarSlashCommandItemId)
-    ).toEqual(["compact", "add-capability", "upload-file", "attach-knowledge"]);
+    ).toEqual(["compact", "upload-file", "attach-knowledge"]);
 
     expect(
       buildInputBarSlashCommandItems({
@@ -106,7 +102,7 @@ describe("buildInputBarSlashCommandItems", () => {
         includeSelectContextFile: true,
         query: "",
       }).map(getInputBarSlashCommandItemId)
-    ).toEqual(["compact", "add-capability", "reference-file", "upload-file"]);
+    ).toEqual(["compact", "reference-file", "upload-file"]);
 
     expect(
       buildInputBarSlashCommandItems({
@@ -160,26 +156,6 @@ describe("buildInputBarSlashCommandItems", () => {
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
         includeSelectContextFile: true,
-        query: "zzz",
-      })
-    ).toEqual([]);
-  });
-
-  it("filters add capability by the query", () => {
-    expect(
-      buildInputBarSlashCommandItems({
-        commands: [],
-        includeAttachKnowledge: false,
-        includeSelectContextFile: false,
-        query: "cap",
-      }).map((item) => item.label)
-    ).toEqual(["Add capability"]);
-
-    expect(
-      buildInputBarSlashCommandItems({
-        commands: [],
-        includeAttachKnowledge: false,
-        includeSelectContextFile: false,
         query: "zzz",
       })
     ).toEqual([]);

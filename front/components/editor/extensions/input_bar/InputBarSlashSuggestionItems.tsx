@@ -2,7 +2,6 @@ import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensi
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
 import {
-  createAddCapabilitySlashCommand,
   createAttachKnowledgeSlashCommand,
   createSelectContextFileSlashCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
@@ -12,9 +11,6 @@ import type {
 } from "./InputBarSlashSuggestionTypes";
 import { INPUT_BAR_SLASH_COMMAND_ORDER } from "./InputBarSlashSuggestionTypes";
 
-const ADD_CAPABILITY_SLASH_COMMAND = createAddCapabilitySlashCommand(
-  "Add a skill or tool to your message"
-);
 const ATTACH_KNOWLEDGE_SLASH_COMMAND = createAttachKnowledgeSlashCommand();
 const SELECT_CONTEXT_FILE_SLASH_COMMAND = createSelectContextFileSlashCommand();
 
@@ -61,8 +57,6 @@ function getInputBarSlashCommandById({
   }
 
   switch (commandId) {
-    case "add-capability":
-      return ADD_CAPABILITY_SLASH_COMMAND;
     case "attach-knowledge":
       return includeAttachKnowledge ? ATTACH_KNOWLEDGE_SLASH_COMMAND : null;
     case "reference-file":

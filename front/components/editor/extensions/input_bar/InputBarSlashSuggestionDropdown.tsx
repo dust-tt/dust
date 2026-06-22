@@ -1,10 +1,12 @@
 import { buildInputBarSlashCommandItems } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import {
@@ -25,6 +27,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     onClose: () => void;
     onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
     owner: LightWorkspaceType;
+    selectedMCPServerViewIdsRef: RefObject<Set<string>>;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: RefObject<boolean>;
     includeSelectContextFileRef: RefObject<boolean>;
@@ -39,6 +42,8 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       range,
       onClose,
       onDetailsRef,
+      owner,
+      selectedMCPServerViewIdsRef,
       slashCommandsRef,
       includeAttachKnowledgeRef,
       includeSelectContextFileRef,
@@ -64,13 +69,33 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ]
     );
 
+    const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
+      owner,
+      query,
+      selectedMCPServerViewIdsRef,
+    });
+
+    const sections = useMemo(
+      () =>
+        buildSlashCommandSections({
+          commandItems,
+          capabilityItems,
+        }),
+      [capabilityItems, commandItems]
+    );
+
+    const flatItems = useMemo(
+      () => sections.flatMap((section) => section.items),
+      [sections]
+    );
+
     useImperativeHandle(
       ref,
       () => ({
         onKeyDown: ({ event }) => {
           if (
             (event.key === "Enter" || event.key === "Tab") &&
-            commandItems.length === 0
+            flatItems.length === 0
           ) {
             event.preventDefault();
             return true;
@@ -79,16 +104,17 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [commandItems.length]
+      [flatItems.length]
     );
 
     return (
       <SlashCommandDropdown
         ref={dropdownRef}
-        items={commandItems}
+        sections={sections}
         command={command}
         clientRect={clientRect}
         emptyMessage="No commands found"
+        isLoadingCapabilities={isLoading}
         onClose={onClose}
         onItemDetails={
           onDetailsRef
