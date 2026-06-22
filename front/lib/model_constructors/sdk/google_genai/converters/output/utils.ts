@@ -2,6 +2,7 @@ import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoin
 import type {
   ErrorEvent,
   ModelResponseEvent,
+  NonDeltaResponseEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
   ResponseIdEvent,
@@ -508,4 +509,89 @@ export async function* rawOutputToEvents(
         : {}),
     },
   };
+}
+
+// -- Non-streaming entry point: a complete batch response → events --
+
+function isNonDeltaEvent(
+  event: ModelResponseEvent
+): event is NonDeltaResponseEvent {
+  return (
+    event.type !== "text_delta" &&
+    event.type !== "reasoning_delta" &&
+    event.type !== "tool_call_delta"
+  );
+}
+
+// Turns a single complete `GenerateContentResponse` (as returned by the batch
+// API) into the unified event array, mirroring `rawOutputToEvents` minus the
+// streaming-only delta events. Reuses `partToEvents`/`flushAccumulated` so part
+// semantics (thought signatures, tool-call id fallback) stay single-sourced.
+export function responseToEvents(
+  response: GenerateContentResponse,
+  metadata: EndpointMetadata,
+  converters: OutputEventConverters
+): NonDeltaResponseEvent[] {
+  const events: NonDeltaResponseEvent[] = [];
+  const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
+  const acc: Accumulator = {
+    textParts: "",
+    reasoningParts: "",
+    toolCallIndex: 0,
+  };
+
+  if (response.responseId) {
+    events.push(
+      converters.responseIdToResponseIdEvent(metadata, response.responseId)
+    );
+  }
+
+  const candidate = response.candidates?.[0];
+
+  for (const part of candidate?.content?.parts ?? []) {
+    for (const event of partToEvents(
+      part,
+      acc,
+      metadata,
+      converters,
+      aggregated
+    )) {
+      if (isNonDeltaEvent(event)) {
+        events.push(event);
+      }
+    }
+  }
+
+  for (const event of flushAccumulated(acc, metadata, converters, aggregated)) {
+    if (isNonDeltaEvent(event)) {
+      events.push(event);
+    }
+  }
+
+  if (candidate?.finishReason) {
+    const errorEvent = converters.finishReasonToErrorEvent(
+      metadata,
+      candidate.finishReason
+    );
+    if (errorEvent) {
+      events.push(errorEvent);
+    }
+  }
+
+  events.push(
+    converters.usageToTokenUsageEvent(metadata, response.usageMetadata)
+  );
+
+  events.push({
+    type: "success",
+    content: { aggregated },
+    metadata: {
+      ...metadata,
+      ...(acc.thoughtSignature
+        ? { content: { signature: acc.thoughtSignature } }
+        : {}),
+    },
+  });
+
+  return events;
 }

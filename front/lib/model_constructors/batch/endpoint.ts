@@ -23,5 +23,6 @@ export abstract class BatchEndpoint<
   ): Promise<Map<string, NonDeltaResponseEvent[]>>;
   abstract deleteBatch(batchId: string): Promise<boolean>;
   abstract rawBatchOutputToEvents(raw: R): NonDeltaResponseEvent[];
-  abstract buildRequestPayload(payload: Payload, config: C): I;
+  // May be async (e.g. converters that fetch image parts); awaited in `sendBatch`.
+  abstract buildRequestPayload(payload: Payload, config: C): Promise<I> | I;
 }
