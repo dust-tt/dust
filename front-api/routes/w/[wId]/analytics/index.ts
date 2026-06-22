@@ -20,6 +20,7 @@ import topAgents from "./top-agents";
 import topUsers from "./top-users";
 import usageMetrics from "./usage-metrics";
 import usageMetricsExport from "./usage-metrics-export";
+import userCredits from "./user-credits";
 import usersExport from "./users-export";
 
 // Mounted at /api/w/:wId/analytics. workspaceAuth is applied by the parent
@@ -47,6 +48,7 @@ app.route("/top-agents", topAgents);
 app.route("/top-users", topUsers);
 app.route("/usage-metrics-export", usageMetricsExport);
 app.route("/usage-metrics", usageMetrics);
+app.route("/user-credits", userCredits);
 app.route("/users-export", usersExport);
 
 export default app;

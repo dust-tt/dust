@@ -2,6 +2,7 @@ import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/o
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
+import { WorkspaceUserCreditsTable } from "@app/components/workspace/analytics/WorkspaceUserCreditsTable";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { BarChart01, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
@@ -95,6 +96,7 @@ export function NewAnalyticsPage() {
         <SafeSuspense fallback={<ChartFallback />}>
           <AwuUsageFromAnalyticsChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>
+        <WorkspaceUserCreditsTable workspaceId={owner.sId} period={period} />
         <SafeSuspense fallback={<ChartFallback />}>
           <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>

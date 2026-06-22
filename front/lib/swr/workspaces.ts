@@ -25,6 +25,7 @@ import type {
   GetWorkspaceToolsResponse,
   GetWorkspaceToolUsageResponse,
 } from "@app/lib/api/assistant/observability/tool_usage";
+import type { GetUserCreditsResponse } from "@app/lib/api/assistant/observability/user_credits";
 import type {
   GetNoWorkspaceAuthContextResponseType,
   GetWorkspaceAuthContextResponseType,
@@ -458,6 +459,37 @@ export function useWorkspaceTopUsers({
     isTopUsersLoading: !error && !data && !disabled,
     isTopUsersError: error,
     isTopUsersValidating: isValidating,
+  };
+}
+
+export function useWorkspaceUserCredits({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  limit = 100,
+  search,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  limit?: number;
+  search?: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetUserCreditsResponse> = fetcher;
+  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+  const key = `/api/w/${workspaceId}/analytics/user-credits?days=${days}&limit=${limit}${searchParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    userCredits: data?.users ?? emptyArray(),
+    isUserCreditsLoading: !error && !data && !disabled,
+    isUserCreditsError: error,
+    isUserCreditsValidating: isValidating,
   };
 }
 
