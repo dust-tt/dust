@@ -6,6 +6,10 @@ module.exports = {
   presets: [preset],
   theme: {
     extend: {
+      height: {
+        title: "3rem",
+        panel: "var(--panel-height)", // defined in global.css,
+      },
       fontWeight: {
         medium: "450",
         semibold: "550",

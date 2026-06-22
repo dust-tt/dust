@@ -39,7 +39,10 @@ export const ConversationLayout = ({
   return (
     <FileDropProvider>
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="flex w-full max-w-72 flex-1">
+        <SheetContent
+          side="left"
+          className="flex w-full max-w-72 flex-1 bg-app-background dark:bg-app-background-night"
+        >
           <SheetHeader className="bg-muted-background p-0" hideButton>
             <SheetTitle className="hidden" />
           </SheetHeader>
