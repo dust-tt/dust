@@ -35,9 +35,12 @@ export function WorkspaceDefaultAgentPicker({
     dustAgent;
 
   const saveDefaultAgent = async (agentId: string | null) => {
+    // Selecting dust clears the stored workspaceDefaultAgentId in the DB.
+    const nextAgentId = agentId === GLOBAL_AGENTS_SID.DUST ? null : agentId;
+
     // Warn about the implications of using another default agent before
     // switching. Resetting back to @dust needs no confirmation.
-    if (agentId && agentId !== GLOBAL_AGENTS_SID.DUST) {
+    if (nextAgentId) {
       const confirmed = await confirm({
         title: "Warning",
         message:
@@ -50,7 +53,7 @@ export function WorkspaceDefaultAgentPicker({
         return;
       }
     }
-    await doUpdateWorkspaceDefaultAgent(agentId);
+    await doUpdateWorkspaceDefaultAgent(nextAgentId);
   };
 
   return (
