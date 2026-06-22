@@ -404,7 +404,7 @@ export function PodSettingsTab({
             <div className="heading-lg">Default agent</div>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               The agent pre-selected when anyone starts a new conversation in
-              this Pod. Defaults to @dust.
+              this Pod.
             </p>
             <div className="flex items-center gap-2">
               {isPodEditor ? (
