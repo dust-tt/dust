@@ -1261,6 +1261,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     await this.model.destroy({
       where: {
         id: this.id,
+        workspaceId: this.workspaceId,
       },
       transaction,
     });
