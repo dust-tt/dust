@@ -5,13 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockEnableForAgent,
-  mockFetchActiveByName,
   mockGetFileAttachments,
+  mockListForAgentLoop,
   mockLoadSkillFilesToConversation,
 } = vi.hoisted(() => ({
   mockEnableForAgent: vi.fn(),
-  mockFetchActiveByName: vi.fn(),
   mockGetFileAttachments: vi.fn(),
+  mockListForAgentLoop: vi.fn(),
   mockLoadSkillFilesToConversation: vi.fn(),
 }));
 
@@ -21,7 +21,7 @@ vi.mock("@app/lib/api/skills/conversation_files", () => ({
 
 vi.mock("@app/lib/resources/skill/skill_resource", () => ({
   SkillResource: {
-    fetchActiveByName: mockFetchActiveByName,
+    listForAgentLoop: mockListForAgentLoop,
   },
 }));
 
@@ -41,7 +41,11 @@ describe("skill_management enable_skill tool", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockFetchActiveByName.mockResolvedValue(skill);
+    mockListForAgentLoop.mockResolvedValue({
+      enabledSkills: [],
+      equippedSkills: [skill],
+      systemSkills: [],
+    });
     mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: false });
     mockGetFileAttachments.mockReturnValue([{ fileName: "SKILL.md" }]);
     mockLoadSkillFilesToConversation.mockResolvedValue(
@@ -135,6 +139,23 @@ describe("skill_management enable_skill tool", () => {
     );
 
     expect(result.isOk()).toBe(true);
+    expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
+  });
+
+  it("does not enable skills outside the agent loop allow-list", async () => {
+    mockListForAgentLoop.mockResolvedValue({
+      enabledSkills: [],
+      equippedSkills: [],
+      systemSkills: [],
+    });
+
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra()
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockEnableForAgent).not.toHaveBeenCalled();
     expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
   });
 });

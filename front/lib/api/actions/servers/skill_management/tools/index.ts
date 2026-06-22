@@ -19,7 +19,11 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const { conversation, agentConfiguration } = agentLoopContext.runContext;
 
-    const skill = await SkillResource.fetchActiveByName(auth, skillName);
+    const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
+      agentConfiguration,
+      conversation,
+    });
+    const skill = equippedSkills.find((skill) => skill.name === skillName);
     if (!skill) {
       return new Err(
         new MCPError(`Skill "${skillName}" not found`, {
