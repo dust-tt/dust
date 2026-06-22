@@ -92,8 +92,8 @@ export default function EbookGtmLandingPage() {
                   What you&apos;ll learn
                 </h2>
                 <ul className="flex flex-col gap-3">
-                  {LEARNING_POINTS.map((point, index) => (
-                    <li key={index} className="flex items-start gap-3">
+                  {LEARNING_POINTS.map((point) => (
+                    <li key={point} className="flex items-start gap-3">
                       <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
                         <Check className="h-3.5 w-3.5" />
                       </span>
