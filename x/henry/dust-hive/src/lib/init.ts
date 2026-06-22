@@ -362,57 +362,63 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
   const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
 
-  // Commands and their expected completion markers
-  // Both init_db.sh and init_plans.sh print "Done" when they complete successfully
-  const commands = [
-    { cmd: "./admin/init_db.sh --unsafe", name: "init_db", expectDone: true, env: {} },
-    {
-      cmd: "./admin/init_plans.sh",
-      name: "init_plans",
-      expectDone: true,
-      // pro plans are empty if not in development/test mode
-      env: { NODE_ENV: "development" },
-    },
-  ];
+  // front/admin/init_db.sh (sequelize sync) was removed as deprecated initdb
+  // tooling. Schema setup now goes through the migration tooling, same as
+  // production: the baseline migration (migration 0) creates the full schema.
+  // Idempotent: a re-run reports "No pending migrations" and exits 0.
+  const migrationCommand = buildShell({
+    sourceEnv: envShPath,
+    sourceNvm: true,
+    run: "npm run migration:apply",
+  });
 
-  for (const { cmd, name, expectDone, env } of commands) {
-    const command = buildShell({
-      sourceEnv: envShPath,
-      sourceNvm: true,
-      run: cmd,
-    });
+  const migrationProc = Bun.spawn(["bash", "-c", migrationCommand], {
+    cwd: `${worktreePath}/front`,
+    env: { ...process.env },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
 
-    const proc = Bun.spawn(["bash", "-c", command], {
-      cwd: `${worktreePath}/front`,
-      env: { ...process.env, ...env },
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+  const migrationStdout = await new Response(migrationProc.stdout).text();
+  const migrationStderr = await new Response(migrationProc.stderr).text();
+  await migrationProc.exited;
 
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    await proc.exited;
+  if (migrationProc.exitCode !== 0) {
+    console.log(migrationStdout);
+    console.error(migrationStderr);
+    return false;
+  }
 
-    // Treat "already exists" or "No migrations" as success (idempotent)
-    const alreadyExists =
-      stderr.includes("already exists") ||
-      stdout.includes("already exists") ||
-      stdout.includes("No migrations");
+  // Seed plans (pro plans are empty if not in development/test mode).
+  // init_plans.sh prints "Done" when it completes successfully.
+  const plansCommand = buildShell({
+    sourceEnv: envShPath,
+    sourceNvm: true,
+    run: "./admin/init_plans.sh",
+  });
 
-    if (proc.exitCode !== 0 && !alreadyExists) {
-      console.log(stdout);
-      console.error(stderr);
-      return false;
-    }
+  const plansProc = Bun.spawn(["bash", "-c", plansCommand], {
+    cwd: `${worktreePath}/front`,
+    env: { ...process.env, NODE_ENV: "development" },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
 
-    // Verify script completed successfully by checking for "Done" marker
-    // This catches cases where script exits 0 but didn't actually complete
-    if (expectDone && !stdout.includes("Done")) {
-      logger.error(`${name} did not complete successfully (missing "Done" in output)`);
-      console.log(stdout);
-      console.error(stderr);
-      return false;
-    }
+  const plansStdout = await new Response(plansProc.stdout).text();
+  const plansStderr = await new Response(plansProc.stderr).text();
+  await plansProc.exited;
+
+  if (plansProc.exitCode !== 0) {
+    console.log(plansStdout);
+    console.error(plansStderr);
+    return false;
+  }
+
+  if (!plansStdout.includes("Done")) {
+    logger.error('init_plans did not complete successfully (missing "Done" in output)');
+    console.log(plansStdout);
+    console.error(plansStderr);
+    return false;
   }
 
   return true;
