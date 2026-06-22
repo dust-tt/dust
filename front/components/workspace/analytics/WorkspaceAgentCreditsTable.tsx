@@ -1,14 +1,19 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { CreditsTableCard } from "@app/components/workspace/analytics/CreditsTableCard";
+import {
+  AvatarNameCell,
+  CreditsCell,
+  EmptyCell,
+  EntityList,
+} from "@app/components/workspace/analytics/creditsTableCells";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type {
   AgentCreditRow,
   AgentCreditSkill,
   AgentCreditUser,
 } from "@app/lib/api/assistant/observability/agent_credits";
-import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useWorkspaceAgentCredits } from "@app/lib/swr/workspaces";
-import { Avatar, DataTable, Tooltip } from "@dust-tt/sparkle";
+import { DataTable, Tooltip } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 interface AgentCreditRowData extends AgentCreditRow {
@@ -19,41 +24,25 @@ interface AgentCreditRowData extends AgentCreditRow {
 type AgentCreditInfo = CellContext<AgentCreditRowData, unknown>;
 
 function TopUsersCell({ users }: { users: AgentCreditUser[] }) {
-  if (users.length === 0) {
-    return (
-      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-        —
-      </span>
-    );
-  }
   return (
-    <div className="flex flex-col gap-2 py-1">
-      {users.slice(0, 3).map((user) => (
-        <div key={user.userId} className="flex items-center gap-1.5">
-          <Avatar
-            name={user.name}
-            visual={user.imageUrl ?? undefined}
-            size="xs"
-            isRounded
-          />
-          <span className="truncate text-sm">{user.name}</span>
-        </div>
-      ))}
-    </div>
+    <EntityList
+      items={users}
+      renderItem={(user) => (
+        <AvatarNameCell
+          key={user.userId}
+          name={user.name}
+          imageUrl={user.imageUrl}
+        />
+      )}
+    />
   );
 }
 
 function TopSkillsCell({ skills }: { skills: AgentCreditSkill[] }) {
-  if (skills.length === 0) {
-    return (
-      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-        —
-      </span>
-    );
-  }
   return (
-    <div className="flex flex-col gap-2 py-1">
-      {skills.slice(0, 3).map((skill, index) => {
+    <EntityList
+      items={skills}
+      renderItem={(skill, index) => {
         const label = <span className="truncate text-sm">{skill.name}</span>;
         return skill.description ? (
           <Tooltip
@@ -67,8 +56,8 @@ function TopSkillsCell({ skills }: { skills: AgentCreditSkill[] }) {
             {skill.name}
           </span>
         );
-      })}
-    </div>
+      }}
+    />
   );
 }
 
@@ -78,22 +67,14 @@ const columns: ColumnDef<AgentCreditRowData>[] = [
     accessorKey: "name",
     header: "Agent",
     meta: { sizeRatio: 16 },
-    cell: (info: AgentCreditInfo) => {
-      const { name, pictureUrl } = info.row.original;
-      return (
-        <DataTable.CellContent>
-          <div className="flex items-center gap-2">
-            <Avatar
-              name={name}
-              visual={pictureUrl ?? undefined}
-              size="xs"
-              isRounded
-            />
-            <span className="truncate text-sm">{name}</span>
-          </div>
-        </DataTable.CellContent>
-      );
-    },
+    cell: (info: AgentCreditInfo) => (
+      <DataTable.CellContent>
+        <AvatarNameCell
+          name={info.row.original.name}
+          imageUrl={info.row.original.pictureUrl}
+        />
+      </DataTable.CellContent>
+    ),
   },
   {
     id: "modelDisplayName",
@@ -111,11 +92,7 @@ const columns: ColumnDef<AgentCreditRowData>[] = [
     cell: (info: AgentCreditInfo) => {
       const { description } = info.row.original;
       if (!description) {
-        return (
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            —
-          </span>
-        );
+        return <EmptyCell />;
       }
       return (
         <DataTable.CellContent>
@@ -139,15 +116,7 @@ const columns: ColumnDef<AgentCreditRowData>[] = [
     meta: { sizeRatio: 8 },
     cell: (info: AgentCreditInfo) => (
       <DataTable.CellContent>
-        <Tooltip
-          label={`${formatCredits(info.row.original.credits)} credits`}
-          tooltipTriggerAsChild
-          trigger={
-            <span className="text-sm">
-              {formatCreditsCompact(info.row.original.credits)}
-            </span>
-          }
-        />
+        <CreditsCell credits={info.row.original.credits} />
       </DataTable.CellContent>
     ),
   },

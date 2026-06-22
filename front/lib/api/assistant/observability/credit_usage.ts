@@ -1,5 +1,5 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { buildCreditsScopeQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -8,7 +8,6 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
-import { FREE_ORIGINS } from "@app/lib/metronome/events";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -99,42 +98,6 @@ const creditSubAggs = {
 
 function totalCreditsFromSlice(slice: CreditSlice): number {
   return Math.round(slice.total_cost?.value ?? 0);
-}
-
-// Workspace query scoped to the window/filters, with free origins excluded to
-// mirror the non-free billed scope. Shared by both credit fetchers so the scope
-// stays identical.
-function buildCreditQuery(
-  auth: Authenticator,
-  {
-    startDate,
-    endDate,
-    contextOrigin,
-    agentIds,
-    userIds,
-  }: {
-    startDate: string;
-    endDate: string;
-    contextOrigin?: string | string[];
-    agentIds?: string[];
-    userIds?: string[];
-  },
-  extraFilters: estypes.QueryDslQueryContainer[] = []
-): estypes.QueryDslQueryContainer {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    startDate,
-    endDate,
-    contextOrigin,
-    agentIds,
-    userIds,
-  });
-  return {
-    bool: {
-      filter: [baseQuery, ...extraFilters],
-      must_not: [{ terms: { context_origin: [...FREE_ORIGINS] } }],
-    },
-  };
 }
 
 function groupFieldFor(
@@ -269,11 +232,15 @@ export async function fetchCreditUsage(
     };
   }
 
-  const query = buildCreditQuery(
-    auth,
-    { startDate, endDate, contextOrigin, agentIds, userIds },
-    groupBy === "none" ? [] : [{ exists: { field: groupFieldFor(groupBy) } }]
-  );
+  const query = buildCreditsScopeQuery(auth, {
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+    extraFilters:
+      groupBy === "none" ? [] : [{ exists: { field: groupFieldFor(groupBy) } }],
+  });
 
   const result = await searchAnalytics<never, CreditUsageAggs>(query, {
     aggregations,
@@ -337,7 +304,7 @@ export async function fetchCreditTimeseries(
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesPoint[], ElasticsearchError>> {
-  const query = buildCreditQuery(auth, {
+  const query = buildCreditsScopeQuery(auth, {
     startDate,
     endDate,
     contextOrigin,
@@ -405,7 +372,7 @@ export async function fetchCreditTimeseriesByUsageType(
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditUsageTypePoint[], ElasticsearchError>> {
-  const query = buildCreditQuery(auth, {
+  const query = buildCreditsScopeQuery(auth, {
     startDate,
     endDate,
     contextOrigin,
@@ -510,7 +477,7 @@ export async function fetchCreditTimeseriesBreakdown(
   }
 
   const groupKeys = groups.map((group) => group.groupKey);
-  const query = buildCreditQuery(auth, {
+  const query = buildCreditsScopeQuery(auth, {
     startDate,
     endDate,
     contextOrigin,

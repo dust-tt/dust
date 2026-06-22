@@ -1,11 +1,15 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { CreditsTableCard } from "@app/components/workspace/analytics/CreditsTableCard";
+import {
+  AvatarNameCell,
+  CreditsCell,
+  EntityList,
+} from "@app/components/workspace/analytics/creditsTableCells";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type {
   UserCreditAgent,
   UserCreditRow,
 } from "@app/lib/api/assistant/observability/user_credits";
-import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useWorkspaceUserCredits } from "@app/lib/swr/workspaces";
 import { Avatar, DataTable, Tooltip } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -18,16 +22,10 @@ interface UserCreditRowData extends UserCreditRow {
 type UserCreditInfo = CellContext<UserCreditRowData, unknown>;
 
 function TopAgentsCell({ agents }: { agents: UserCreditAgent[] }) {
-  if (agents.length === 0) {
-    return (
-      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-        —
-      </span>
-    );
-  }
   return (
-    <div className="flex flex-col gap-2 py-1">
-      {agents.slice(0, 3).map((agent) => {
+    <EntityList
+      items={agents}
+      renderItem={(agent) => {
         const row = (
           <div className="flex items-center gap-1.5">
             <Avatar
@@ -54,8 +52,8 @@ function TopAgentsCell({ agents }: { agents: UserCreditAgent[] }) {
         ) : (
           <div key={agent.agentId}>{row}</div>
         );
-      })}
-    </div>
+      }}
+    />
   );
 }
 
@@ -65,22 +63,14 @@ const columns: ColumnDef<UserCreditRowData>[] = [
     accessorKey: "name",
     header: "User",
     meta: { sizeRatio: 30 },
-    cell: (info: UserCreditInfo) => {
-      const { name, imageUrl } = info.row.original;
-      return (
-        <DataTable.CellContent>
-          <div className="flex items-center gap-2">
-            <Avatar
-              name={name}
-              visual={imageUrl ?? undefined}
-              size="xs"
-              isRounded
-            />
-            <span className="truncate text-sm">{name}</span>
-          </div>
-        </DataTable.CellContent>
-      );
-    },
+    cell: (info: UserCreditInfo) => (
+      <DataTable.CellContent>
+        <AvatarNameCell
+          name={info.row.original.name}
+          imageUrl={info.row.original.imageUrl}
+        />
+      </DataTable.CellContent>
+    ),
   },
   {
     id: "messageCount",
@@ -100,15 +90,7 @@ const columns: ColumnDef<UserCreditRowData>[] = [
     meta: { sizeRatio: 13 },
     cell: (info: UserCreditInfo) => (
       <DataTable.CellContent>
-        <Tooltip
-          label={`${formatCredits(info.row.original.credits)} credits`}
-          tooltipTriggerAsChild
-          trigger={
-            <span className="text-sm">
-              {formatCreditsCompact(info.row.original.credits)}
-            </span>
-          }
-        />
+        <CreditsCell credits={info.row.original.credits} />
       </DataTable.CellContent>
     ),
   },

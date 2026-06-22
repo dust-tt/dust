@@ -1,12 +1,14 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
-  buildAgentAnalyticsBaseQuery,
+  getAgentModelDisplayName,
+  getUserDisplayName,
+} from "@app/lib/api/assistant/observability/credit_labels";
+import {
+  buildCreditsScopeQuery,
   daysToInstantRange,
 } from "@app/lib/api/assistant/observability/utils";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { FREE_ORIGINS } from "@app/lib/metronome/events";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -54,7 +56,6 @@ export async function fetchUserCreditBreakdown(
   auth: Authenticator,
   { days, limit, search }: { days: number; limit: number; search?: string }
 ): Promise<Result<UserCreditRow[], Error>> {
-  const owner = auth.getNonNullableWorkspace();
   const { startDate, endDate } = daysToInstantRange(days, "UTC");
 
   let includeUserIds: string[] | undefined;
@@ -73,20 +74,11 @@ export async function fetchUserCreditBreakdown(
     }
   }
 
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const query = buildCreditsScopeQuery(auth, {
     startDate,
     endDate,
+    extraMustNot: [{ term: { user_id: "unknown" } }],
   });
-  const query: estypes.QueryDslQueryContainer = {
-    bool: {
-      filter: [baseQuery],
-      must_not: [
-        { terms: { context_origin: [...FREE_ORIGINS] } },
-        { term: { user_id: "unknown" } },
-      ],
-    },
-  };
 
   const result = await searchAnalytics<never, UserCreditAggs>(query, {
     aggregations: {
@@ -158,17 +150,14 @@ export async function fetchUserCreditBreakdown(
         agentId,
         name: agent?.name ?? "Unknown agent",
         pictureUrl: agent?.pictureUrl ?? null,
-        modelDisplayName: agent
-          ? (getSupportedModelConfig(agent.model)?.displayName ??
-            agent.model.modelId)
-          : "—",
+        modelDisplayName: getAgentModelDisplayName(agent?.model),
         description: agent?.description ?? "",
       };
     });
 
     return {
       userId,
-      name: user?.fullName() || user?.username || user?.email || "Unknown user",
+      name: getUserDisplayName(user),
       imageUrl: user?.imageUrl ?? null,
       messageCount: bucket.doc_count,
       credits: Math.round(bucket.credits?.value ?? 0),
