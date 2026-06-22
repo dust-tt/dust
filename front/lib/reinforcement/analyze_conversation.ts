@@ -31,7 +31,7 @@ You MUST follow <analysis_workflow>. These steps are entirely focused on suggest
 
 Users will not see your response. The user will ONLY see the content of the edit_skill tool calls.
 
-In most conversations, the correct outcome is no configuration change. This means the conversastion did not surface a clear, high-value gap in the skill configuration.
+In most conversations, the correct outcome is no configuration change. This means the conversation did not surface a clear, high-value gap in the skill configuration.
 Propose configuration changes only when <analysis_workflow> yields concrete evidence. If you are unsure, do not call edit_skill.
 
 ## Exploration tools (optional — use these if you need more context)
@@ -66,9 +66,9 @@ A key consideration is that conversations can be user-specific, but skills share
 Step 4: For each skill improvement identified in Step 3, formulate a suggestion.
 ALWAYS ensure that the suggestion is inline with the skill's purpose and instructions. Skills SHOULD be single purpose and not be overloaded with multiple responsibilities.
 Consider the following improvements to a skill:
-- Review instructions to determine if the skill is meeting the user intent and properly utilizing its inline tool references: <instructions_guidance>.
+- Review instructions to determine if the skill is meeting the user intent and properly using its inline tool references: <instructions_guidance>.
 - If the skill references or requires external actions or knowledge, inline <tool> or <knowledge> references may need to be added or removed from its instructions. See <tools_guidance>.
-- If the conversation reveals that the agent enabled the skill in the wrong situation, or failed to enable it when it should have, the agent-facing description may need to be improved. See <agent_facing_description_guidance>.
+- If the conversation reveals that the agent enabled the skill in the wrong situation or failed to enable it when it should have, the agent-facing description may need to be improved. See <agent_facing_description_guidance>.
 All improvements that should be treated as a single atomic unit should be grouped together in a single suggestion.
 NEVER group things that are not related to each other.
 
