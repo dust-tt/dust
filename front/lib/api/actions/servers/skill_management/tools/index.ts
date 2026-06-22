@@ -6,6 +6,7 @@ import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/sk
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { loadSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { Err, Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
@@ -33,7 +34,16 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const { enabledSkills, equippedSkills, systemSkills } =
       await SkillResource.listForAgentLoop(auth, agentLoopData);
-    const directlyAllowedSkills = [...enabledSkills, ...equippedSkills];
+    const userMessageSkills = await SkillResource.fetchByIds(
+      auth,
+      extractUniqueSkillIds(userMessage.content),
+      { agentLoopData, status: "active" }
+    );
+    const directlyAllowedSkills = [
+      ...enabledSkills,
+      ...equippedSkills,
+      ...userMessageSkills,
+    ];
     let skill = directlyAllowedSkills.find((skill) => skill.name === skillName);
 
     if (!skill) {
@@ -41,7 +51,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       const childSkillsByParent = await SkillResource.batchFetchChildSkills(
         auth,
         parentSkills,
-        { agentLoopData }
+        { agentLoopData, onlyAvailableReferences: true }
       );
       skill = [...childSkillsByParent.values()]
         .flat()

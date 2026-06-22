@@ -1594,6 +1594,36 @@ describe("SkillResource", () => {
       expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
     });
 
+    it("can restrict child skills to available skill tags", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
+        testContext.authenticator,
+        { userIds: [testContext.authenticator.getNonNullableUser().sId] }
+      );
+      expect(addAdminToRestrictedSpaceRes.isOk()).toBe(true);
+      await testContext.authenticator.refresh();
+
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Restricted Child Skill For Enable",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With Unavailable Skill Reference",
+        instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+      });
+
+      const childSkillsByParent = await SkillResource.batchFetchChildSkills(
+        testContext.authenticator,
+        [parentSkill],
+        { onlyAvailableReferences: true }
+      );
+
+      expect(parentSkill.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+      expect(childSkillsByParent.get(parentSkill.sId)).toEqual([]);
+    });
+
     it("filters child skills disabled for the current agent loop", async () => {
       const parentSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Parent With Mention Users Reference",

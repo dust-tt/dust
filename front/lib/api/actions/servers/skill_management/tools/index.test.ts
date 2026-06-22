@@ -6,12 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockEnableForAgent,
   mockBatchFetchChildSkills,
+  mockFetchByIds,
   mockGetFileAttachments,
   mockListForAgentLoop,
   mockLoadSkillFilesToConversation,
 } = vi.hoisted(() => ({
   mockEnableForAgent: vi.fn(),
   mockBatchFetchChildSkills: vi.fn(),
+  mockFetchByIds: vi.fn(),
   mockGetFileAttachments: vi.fn(),
   mockListForAgentLoop: vi.fn(),
   mockLoadSkillFilesToConversation: vi.fn(),
@@ -24,6 +26,7 @@ vi.mock("@app/lib/api/skills/conversation_files", () => ({
 vi.mock("@app/lib/resources/skill/skill_resource", () => ({
   SkillResource: {
     batchFetchChildSkills: mockBatchFetchChildSkills,
+    fetchByIds: mockFetchByIds,
     listForAgentLoop: mockListForAgentLoop,
   },
 }));
@@ -35,7 +38,7 @@ describe("skill_management enable_skill tool", () => {
   const agentConfiguration = { sId: "agent-id" };
   const agentMessage = { sId: "agent-message-id" };
   const conversation = { sId: "conversation-id" };
-  const userMessage = { sId: "user-message-id" };
+  const userMessage = { content: "", sId: "user-message-id" };
   const skill = {
     enableForAgent: mockEnableForAgent,
     getFileAttachments: mockGetFileAttachments,
@@ -56,6 +59,7 @@ describe("skill_management enable_skill tool", () => {
       systemSkills: [],
     });
     mockBatchFetchChildSkills.mockResolvedValue(new Map());
+    mockFetchByIds.mockResolvedValue([]);
     mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: false });
     mockGetFileAttachments.mockReturnValue([{ fileName: "SKILL.md" }]);
     mockLoadSkillFilesToConversation.mockResolvedValue(
@@ -66,8 +70,10 @@ describe("skill_management enable_skill tool", () => {
   });
 
   function makeExtra({
+    userMessageOverride = userMessage,
     withUserMessage = true,
   }: {
+    userMessageOverride?: typeof userMessage;
     withUserMessage?: boolean;
   } = {}) {
     return {
@@ -77,7 +83,7 @@ describe("skill_management enable_skill tool", () => {
           agentConfiguration,
           agentMessage,
           conversation,
-          ...(withUserMessage ? { userMessage } : {}),
+          ...(withUserMessage ? { userMessage: userMessageOverride } : {}),
         },
       },
       signal: new AbortController().signal,
@@ -212,6 +218,7 @@ describe("skill_management enable_skill tool", () => {
           conversation,
           userMessage,
         },
+        onlyAvailableReferences: true,
       }
     );
     expect(mockEnableForAgent).toHaveBeenCalledWith(auth, {
@@ -236,6 +243,40 @@ describe("skill_management enable_skill tool", () => {
     );
 
     expect(result.isOk()).toBe(true);
+    expect(mockEnableForAgent).toHaveBeenCalled();
+  });
+
+  it("enables skills explicitly referenced by the current user message", async () => {
+    mockListForAgentLoop.mockResolvedValue({
+      enabledSkills: [],
+      equippedSkills: [],
+      systemSkills: [],
+    });
+    mockFetchByIds.mockResolvedValue([skill]);
+
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra({
+        userMessageOverride: {
+          content: '<skill id="skill-id" name="commit" />',
+          sId: "user-message-id",
+        },
+      })
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockFetchByIds).toHaveBeenCalledWith(auth, ["skill-id"], {
+      agentLoopData: {
+        agentConfiguration,
+        agentMessage,
+        conversation,
+        userMessage: {
+          content: '<skill id="skill-id" name="commit" />',
+          sId: "user-message-id",
+        },
+      },
+      status: "active",
+    });
     expect(mockEnableForAgent).toHaveBeenCalled();
   });
 
