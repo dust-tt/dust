@@ -53,7 +53,8 @@
     "matches": [
       "https://dust.tt/*",
       "https://alan.com/sales-tools/*",
-      "https://alanhealth.lightning.force.com/*"
+      "https://alanhealth.lightning.force.com/*",
+      "https://alanhealth--c.vf.force.com/*"
     ]
   }
 }
