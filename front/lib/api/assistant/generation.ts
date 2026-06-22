@@ -217,8 +217,8 @@ function constructSkillsSection({
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
     `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
     "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
-    `If the referenced skill would help and is not already enabled, call \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
-    "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
+    `If the referenced skill appears in the available-skills list, would help, and is not already enabled, call \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
+    "Do not enable a referenced skill by name when it is not listed as available. " +
     "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
     `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +
     "These mean the instructions used to reference another skill, but that skill is no longer available to this conversation, for example because skill scope or permissions changed. " +
