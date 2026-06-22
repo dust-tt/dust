@@ -1,4 +1,4 @@
-import type { SlashCommand } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,

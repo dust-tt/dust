@@ -8,8 +8,8 @@ import {
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
-} from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+} from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";

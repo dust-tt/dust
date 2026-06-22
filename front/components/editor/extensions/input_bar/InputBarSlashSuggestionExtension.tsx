@@ -1,214 +1,86 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
-import type { SlashCommandDropdownRef } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
+import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { WorkspaceType } from "@app/types/user";
-import { Extension, type Range } from "@tiptap/core";
-import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
-import type { EditorView } from "@tiptap/pm/view";
-import { ReactRenderer } from "@tiptap/react";
-import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
+import { PluginKey } from "@tiptap/pm/state";
 import type { RefObject } from "react";
 
-import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 export const inputBarSlashSuggestionPluginKey = new PluginKey(
   "inputBarSlashSuggestion"
 );
 
-function hasSlashCharacterAtPosition(state: EditorState, position: number) {
-  const docSize = state.doc.content.size;
-
-  if (position < 1 || position > docSize) {
-    return false;
-  }
-
-  return (
-    state.doc.textBetween(
-      position,
-      Math.min(position + 1, docSize + 1),
-      undefined,
-      "\ufffc"
-    ) === "/"
-  );
-}
-
-function isAllowedSlashQuery(state: EditorState, range: Range) {
-  const text = state.doc.textBetween(range.from, range.to, undefined, "\ufffc");
-
-  if (!text.startsWith("/")) {
-    return false;
-  }
-
-  return !text.slice(1).startsWith(" ");
+interface InputBarSlashSuggestionStorage {
+  dismissedTriggerStart: number | null;
+  hasBeenFocused: boolean;
 }
 
 export interface InputBarSlashSuggestionExtensionOptions {
-  owner?: WorkspaceType;
   conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
-  onSelectRef: RefObject<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-  >;
+  onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
   onDetailsRef?: RefObject<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >;
+  onSelectRef: RefObject<
+    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+  >;
+  owner?: WorkspaceType;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
-  onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
 }
 
-export const InputBarSlashSuggestionExtension =
-  Extension.create<InputBarSlashSuggestionExtensionOptions>({
-    name: "inputBarSlashSuggestion",
-
-    addStorage() {
-      return {
-        hasBeenFocused: false,
-        dismissedTriggerStart: null as number | null,
-      };
-    },
-
-    onFocus() {
-      this.storage.hasBeenFocused = true;
-    },
-
-    addOptions() {
-      return {
-        owner: undefined,
-        conversationIdRef: { current: null },
-        enabledRef: { current: false },
-        onSelectRef: { current: undefined },
-        onDetailsRef: { current: undefined },
-        selectedMCPServerViewIdsRef: { current: new Set<string>() },
-      };
-    },
-
-    addProseMirrorPlugins() {
-      const extensionOptions = this.options;
-      const extensionStorage = this.storage;
-
-      return [
-        Suggestion<InputBarSlashSuggestionCapability>({
-          editor: this.editor,
-          char: "/",
-          pluginKey: inputBarSlashSuggestionPluginKey,
-          allowSpaces: true,
-          startOfLine: false,
-          items: () => [],
-          allow: ({ editor, state, range, isActive }) =>
-            Boolean(extensionOptions.owner) &&
-            Boolean(extensionOptions.enabledRef.current) &&
-            extensionStorage.hasBeenFocused &&
-            (editor.isFocused || isActive) &&
-            extensionStorage.dismissedTriggerStart !== range.from &&
-            isAllowedSlashQuery(state, range),
-          shouldShow: ({ transaction }) =>
-            !transaction.getMeta("paste") &&
-            transaction.getMeta("uiEvent") !== "paste",
-          command: ({ editor, range, props }) => {
-            extensionStorage.dismissedTriggerStart = null;
-            editor.chain().focus().deleteRange(range).run();
-            extensionOptions.onSelectRef.current?.(props);
-          },
-          render: () => {
-            let component: ReactRenderer<SlashCommandDropdownRef> | null = null;
-            let activeEditorView: EditorView | null = null;
-            let activeTriggerStart: number | null = null;
-
-            const closeSuggestionDropdown = () => {
-              if (activeTriggerStart !== null) {
-                extensionStorage.dismissedTriggerStart = activeTriggerStart;
-              }
-
-              if (activeEditorView) {
-                exitSuggestion(
-                  activeEditorView,
-                  inputBarSlashSuggestionPluginKey
-                );
-              }
-            };
-
-            return {
-              onStart: (props) => {
-                const owner = extensionOptions.owner;
-
-                if (!owner || !props.clientRect) {
-                  return;
-                }
-
-                extensionOptions.onActiveChangeRef?.current?.(true);
-                activeEditorView = props.editor.view;
-                component = new ReactRenderer(InputBarSlashSuggestionDropdown, {
-                  props: {
-                    ...props,
-                    conversationIdRef: extensionOptions.conversationIdRef,
-                    onClose: closeSuggestionDropdown,
-                    onDetailsRef: extensionOptions.onDetailsRef,
-                    owner,
-                    selectedMCPServerViewIdsRef:
-                      extensionOptions.selectedMCPServerViewIdsRef,
-                  },
-                  editor: props.editor,
-                });
-                activeTriggerStart = props.range.from;
-
-                document.body.appendChild(component.element);
-              },
-
-              onUpdate(props) {
-                const owner = extensionOptions.owner;
-
-                if (!owner) {
-                  return;
-                }
-
-                activeEditorView = props.editor.view;
-                activeTriggerStart = props.range.from;
-                component?.updateProps({
-                  ...props,
-                  conversationIdRef: extensionOptions.conversationIdRef,
-                  onClose: closeSuggestionDropdown,
-                  onDetailsRef: extensionOptions.onDetailsRef,
-                  owner,
-                  selectedMCPServerViewIdsRef:
-                    extensionOptions.selectedMCPServerViewIdsRef,
-                });
-              },
-
-              onKeyDown: ({ event }) => {
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  closeSuggestionDropdown();
-                  return true;
-                }
-
-                return component?.ref?.onKeyDown?.({ event }) ?? false;
-              },
-
-              onExit() {
-                extensionOptions.onActiveChangeRef?.current?.(false);
-                activeEditorView = null;
-                activeTriggerStart = null;
-                component?.element?.remove();
-                component?.destroy();
-                component = null;
-              },
-            };
-          },
-        }),
-        new Plugin({
-          key: new PluginKey("inputBarSlashSuggestionCleanup"),
-          view: () => ({
-            update: (view) => {
-              const dismissedTriggerStart =
-                extensionStorage.dismissedTriggerStart;
-
-              if (
-                dismissedTriggerStart !== null &&
-                !hasSlashCharacterAtPosition(view.state, dismissedTriggerStart)
-              ) {
-                extensionStorage.dismissedTriggerStart = null;
-              }
-            },
-          }),
-        }),
-      ];
-    },
-  });
+export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
+  InputBarSlashSuggestionExtensionOptions,
+  InputBarSlashSuggestionStorage,
+  InputBarSlashSuggestionCapability
+>({
+  name: "inputBarSlashSuggestion",
+  pluginKey: inputBarSlashSuggestionPluginKey,
+  cleanupPluginKeyName: "inputBarSlashSuggestionCleanup",
+  triggerCleanupStorageKey: "dismissedTriggerStart",
+  DropdownComponent: InputBarSlashSuggestionDropdown,
+  createStorage: () => ({
+    hasBeenFocused: false,
+    dismissedTriggerStart: null,
+  }),
+  defaultOptions: {
+    owner: undefined,
+    conversationIdRef: { current: null },
+    enabledRef: { current: false },
+    onSelectRef: { current: undefined },
+    onDetailsRef: { current: undefined },
+    selectedMCPServerViewIdsRef: { current: new Set<string>() },
+  },
+  allow: ({ editor, state, range, isActive, options, storage }) =>
+    Boolean(options.owner) &&
+    Boolean(options.enabledRef.current) &&
+    storage.hasBeenFocused &&
+    (editor.isFocused || isActive) &&
+    storage.dismissedTriggerStart !== range.from &&
+    isAllowedSlashQuery(state, range),
+  shouldShow: ({ transaction }) =>
+    !transaction.getMeta("paste") && transaction.getMeta("uiEvent") !== "paste",
+  items: () => [],
+  command: ({ editor, range, props, options, storage }) => {
+    storage.dismissedTriggerStart = null;
+    editor.chain().focus().deleteRange(range).run();
+    options.onSelectRef.current?.(props);
+  },
+  shouldMountDropdown: ({ props, options }) =>
+    Boolean(options.owner) && Boolean(props.clientRect),
+  mapDropdownProps: ({ options }) => ({
+    conversationIdRef: options.conversationIdRef,
+    onDetailsRef: options.onDetailsRef,
+    owner: options.owner,
+    selectedMCPServerViewIdsRef: options.selectedMCPServerViewIdsRef,
+  }),
+  notifyActiveChange: (active, options) => {
+    options.onActiveChangeRef?.current?.(active);
+  },
+  onDropdownClose: ({ storage, triggerStart }) => {
+    if (triggerStart !== null) {
+      storage.dismissedTriggerStart = triggerStart;
+    }
+  },
+  preventEscapeDefault: true,
+});

@@ -2,12 +2,11 @@ import type {
   SlashCommandSkillSuggestion,
   SlashCommandToolSuggestion,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { afterEach, describe, expect, it } from "vitest";
-
-import type { SlashCommand } from "./SlashCommandDropdown";
 import {
   buildSkillBuilderSlashCommandItems,
   SlashCommandExtension,
