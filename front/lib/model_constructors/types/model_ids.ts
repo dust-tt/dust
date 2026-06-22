@@ -9,6 +9,7 @@ export const GPT_5_MINI_MODEL_ID = "gpt-5-mini" as const;
 export const GPT_5_NANO_MODEL_ID = "gpt-5-nano" as const;
 
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
+export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
 export const CLAUDE_OPUS_4_7_MODEL_ID = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8_MODEL_ID = "claude-opus-4-8" as const;
 export const CLAUDE_HAIKU_4_5_MODEL_ID = "claude-haiku-4-5-20251001" as const;
@@ -34,6 +35,7 @@ export const MODEL_IDS = [
   GPT_5_MINI_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_HAIKU_4_5_MODEL_ID,
@@ -55,6 +57,7 @@ export function isModelId(value: string): value is ModelId {
 export const ORDERED_LARGE_MODEL_IDS = [
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   GPT_5_5_MODEL_ID,
   GPT_5_4_MODEL_ID,
