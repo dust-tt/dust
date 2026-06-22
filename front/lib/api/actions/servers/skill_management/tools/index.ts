@@ -24,13 +24,30 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       return new Err(new MCPError("No user message context available"));
     }
 
-    const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
+    const agentLoopData = {
       agentConfiguration,
       agentMessage,
       conversation,
       userMessage,
-    });
-    const skill = equippedSkills.find((skill) => skill.name === skillName);
+    };
+
+    const { enabledSkills, equippedSkills, systemSkills } =
+      await SkillResource.listForAgentLoop(auth, agentLoopData);
+    const directlyAllowedSkills = [...enabledSkills, ...equippedSkills];
+    let skill = directlyAllowedSkills.find((skill) => skill.name === skillName);
+
+    if (!skill) {
+      const parentSkills = [...systemSkills, ...directlyAllowedSkills];
+      const childSkillsByParent = await SkillResource.batchFetchChildSkills(
+        auth,
+        parentSkills,
+        { agentLoopData }
+      );
+      skill = [...childSkillsByParent.values()]
+        .flat()
+        .find((skill) => skill.name === skillName);
+    }
+
     if (!skill) {
       return new Err(
         new MCPError(`Skill "${skillName}" not found`, {

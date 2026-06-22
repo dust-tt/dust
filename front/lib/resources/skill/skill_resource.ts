@@ -924,7 +924,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async batchFetchChildSkills(
     auth: Authenticator,
-    parentSkills: SkillResource[]
+    parentSkills: SkillResource[],
+    { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
   ): Promise<Map<string, SkillResource[]>> {
     const workspace = auth.getNonNullableWorkspace();
     const customParentSkills = parentSkills.filter((skill) => !skill.globalSId);
@@ -953,7 +954,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         customSkillId: reference.childCustomSkillId,
         globalSkillId: reference.childGlobalSkillId,
       })),
-      { withInstructions: false, withTools: false }
+      { agentLoopData, withInstructions: false, withTools: false }
     );
     const childSkillsById = new Map(
       childSkills.map((skill) => [skill.sId, skill])

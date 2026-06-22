@@ -1593,6 +1593,52 @@ describe("SkillResource", () => {
       ]);
       expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
     });
+
+    it("filters child skills disabled for the current agent loop", async () => {
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With Mention Users Reference",
+        instructions: `Use ${GlobalSkillsRegistry.serializeSkillTag("mention_users")}.`,
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With Parent Skill" }
+      );
+      const conversation = await ConversationFactory.create(
+        testContext.authenticator,
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
+      );
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth: testContext.authenticator,
+        workspace: testContext.workspace,
+        conversation,
+        content: "Tell someone about this.",
+        origin: "slack",
+        rank: -1,
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        testContext.authenticator,
+        {
+          workspace: testContext.workspace,
+          conversation,
+          agentConfig: agent,
+        }
+      );
+
+      const childSkillsByParent = await SkillResource.batchFetchChildSkills(
+        testContext.authenticator,
+        [parentSkill],
+        {
+          agentLoopData: {
+            agentConfiguration: agent,
+            agentMessage,
+            conversation,
+            userMessage,
+          },
+        }
+      );
+
+      expect(childSkillsByParent.get(parentSkill.sId)).toEqual([]);
+    });
   });
 
   describe("batchFetchUsedBySkills", () => {
