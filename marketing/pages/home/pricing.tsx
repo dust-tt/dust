@@ -16,6 +16,7 @@ import {
 } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
+import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { assertNeverAndIgnore } from "@marketing/types/shared/utils/assert_never";
 import {
   Button,
@@ -937,13 +938,7 @@ function FAQSection() {
 export default function Pricing() {
   const router = useRouter();
   const [billing, setBilling] = useState<Billing>("yearly");
-
-  const goToSignup = () => {
-    // eslint-disable-next-line react-hooks/immutability
-    window.location.href = appendUTMParams(
-      "/api/workos/login?screenHint=sign-up"
-    );
-  };
+  const { openSignUpModal } = useSignUpModal();
 
   const onBusinessStart = () => {
     trackEvent({
@@ -952,7 +947,7 @@ export default function Pricing() {
       action: TRACKING_ACTIONS.CLICK,
       extra: { plan: "business", billing },
     });
-    goToSignup();
+    openSignUpModal();
   };
 
   const onEnterpriseContact = () => {

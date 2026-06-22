@@ -28,8 +28,10 @@ const PostHogTracker = dynamic(
     ),
   { ssr: false }
 );
+import { RegionSelectionModal } from "@marketing/components/RegionSelectionModal";
 import { NextLinkWrapper } from "@marketing/components/platform/NextLinkWrapper";
 import { FetcherProvider } from "@marketing/components/swr/FetcherContext";
+import { SignUpModalProvider } from "@marketing/hooks/useSignUpModal";
 import { fetcher, fetcherWithBody } from "@marketing/lib/swr/fetcher";
 import { initDatadogLogs } from "@marketing/logger/datadogLogger";
 import { SparkleContext } from "@dust-tt/sparkle";
@@ -121,7 +123,10 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
         <SparkleContext.Provider
           value={{ components: { link: NextLinkWrapper } }}
         >
-          {getLayout(<Component {...pageProps} />, pageProps)}
+          <SignUpModalProvider>
+            {getLayout(<Component {...pageProps} />, pageProps)}
+            <RegionSelectionModal />
+          </SignUpModalProvider>
         </SparkleContext.Provider>
       </PostHogTracker>
     </FetcherProvider>
