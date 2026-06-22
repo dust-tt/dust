@@ -404,16 +404,28 @@ export function SubscriptionPage() {
     if (!isWorkspaceOnProPlan || !isMetronomeCheckout) {
       return null;
     }
-    const periodEndMs = perSeatPricing?.currentPeriodEndMs ?? null;
-    if (periodEndMs === null) {
+    if (!perSeatPricing) {
       return null;
     }
-    const d = new Date(periodEndMs);
-    const day = d.getDate();
-    d.setDate(1);
-    d.setMonth(d.getMonth() + 1);
-    const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    d.setDate(Math.min(day, daysInMonth));
+    const periodEndMs = perSeatPricing.currentPeriodEndMs;
+    let d: Date;
+    if (perSeatPricing.billingPeriod === "yearly") {
+      d = new Date(2026, 6, 23); // July 23, 2026
+    } else {
+      if (periodEndMs === null) {
+        return null;
+      }
+      d = new Date(periodEndMs);
+      const day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + 1);
+      const daysInMonth = new Date(
+        d.getFullYear(),
+        d.getMonth() + 1,
+        0
+      ).getDate();
+      d.setDate(Math.min(day, daysInMonth));
+    }
     return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
