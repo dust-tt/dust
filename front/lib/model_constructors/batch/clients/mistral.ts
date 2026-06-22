@@ -21,6 +21,7 @@ import {
   BatchJobStatus,
   type ChatCompletionResponse,
   type ChatCompletionStreamRequest,
+  ChatCompletionStreamRequest$outboundSchema,
   chatCompletionResponseFromJSON,
 } from "@mistralai/mistralai/models/components";
 import { z } from "zod";
@@ -78,8 +79,13 @@ export abstract class MistralBatch extends WithMistralAIInputConverter(
     const batchRequests = Array.from(requests.entries()).map(
       ([customId, { payload, config }]) => ({
         customId,
-        // `buildRequestPayload` omits `stream`; force it off for the batch body.
-        body: { ...this.buildRequestPayload(payload, config), stream: false },
+        // The batch `body` is a passthrough record sent verbatim, so serialize
+        // the request to its wire (snake_case) shape — the SDK only does that
+        // for the streaming/non-batch paths. `stream` is forced off.
+        body: ChatCompletionStreamRequest$outboundSchema.parse({
+          ...this.buildRequestPayload(payload, config),
+          stream: false,
+        }),
       })
     );
 
