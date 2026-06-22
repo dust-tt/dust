@@ -127,7 +127,6 @@ describe("buildSkillBuilderSlashCommandItems", () => {
         },
       },
       description: "Draft structured memos.",
-      sectionLabel: "Capabilities",
     });
   });
 
@@ -156,8 +155,6 @@ describe("buildSkillBuilderSlashCommandItems", () => {
       "mcp_server_view_search",
       "skill_search_checklist",
     ]);
-    expect(result[1]?.sectionLabel).toBe("Capabilities");
-    expect(result[2]?.sectionLabel).toBeUndefined();
     expect(result[1]).toMatchObject({
       action: "select-tool",
       data: {
@@ -170,7 +167,7 @@ describe("buildSkillBuilderSlashCommandItems", () => {
     });
   });
 
-  it("labels the first tool section when there are no matching skills", () => {
+  it("includes tools when there are no matching skills", () => {
     const result = buildSkillBuilderSlashCommandItems({
       baseItems: [],
       includeSkillSuggestions: true,
@@ -187,7 +184,7 @@ describe("buildSkillBuilderSlashCommandItems", () => {
 
     expect(result[0]).toMatchObject({
       id: "mcp_server_view_search",
-      sectionLabel: "Capabilities",
+      action: "select-tool",
     });
   });
 });

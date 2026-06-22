@@ -38,9 +38,6 @@ import {
 // exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
 const LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
-const COMMANDS_SECTION_LABEL = "Commands";
-const CAPABILITIES_SECTION_LABEL = "Capabilities";
-
 export function filterInputBarSlashSuggestions({
   commands,
   query,
@@ -196,15 +193,12 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
                   ),
                   id: `command-${capability.command.id}`,
                   label: capability.command.label,
-                  sectionLabel: COMMANDS_SECTION_LABEL,
                 },
               ];
             case "skill":
               return [
                 {
-                  ...getSkillSlashCommandItem(capability.skill, {
-                    sectionLabel: CAPABILITIES_SECTION_LABEL,
-                  }),
+                  ...getSkillSlashCommandItem(capability.skill),
                   data: capability,
                   id: `skill-${capability.skill.sId}`,
                 },
@@ -212,9 +206,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
             case "tool":
               return [
                 {
-                  ...getToolSlashCommandItem(capability.serverView, {
-                    sectionLabel: CAPABILITIES_SECTION_LABEL,
-                  }),
+                  ...getToolSlashCommandItem(capability.serverView),
                   data: capability,
                   id: `tool-${capability.serverView.sId}`,
                 },

@@ -148,13 +148,11 @@ export function buildSkillBuilderSlashCommandItems({
     query,
     skills,
     tools,
-  }).map((capability, index) => {
-    const sectionLabel = index === 0 ? "Capabilities" : undefined;
-
-    return capability.kind === "skill"
-      ? getSkillSlashCommandItem(capability.skill, { sectionLabel })
-      : getToolSlashCommandItem(capability.tool, { sectionLabel });
-  });
+  }).map((capability) =>
+    capability.kind === "skill"
+      ? getSkillSlashCommandItem(capability.skill)
+      : getToolSlashCommandItem(capability.tool)
+  );
 
   return [...visibleBaseItems, ...capabilityItems];
 }

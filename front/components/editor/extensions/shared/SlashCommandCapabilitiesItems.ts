@@ -11,6 +11,9 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
 export const SELECT_TOOL_SLASH_COMMAND_ACTION = "select-tool";
+export const RUN_COMMAND_SLASH_COMMAND_ACTION = "run-command";
+export const INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION = "insert-knowledge-node";
+export const ADD_CAPABILITY_SLASH_COMMAND_ACTION = "add-capability";
 
 export type SlashCommandSkillSuggestion = Pick<
   SkillWithoutInstructionsAndToolsType,
@@ -47,6 +50,22 @@ export interface ToolSlashCommand extends SlashCommand {
   };
 }
 
+export interface RunCommandSlashCommand<TCommand = unknown>
+  extends SlashCommand {
+  action: typeof RUN_COMMAND_SLASH_COMMAND_ACTION;
+  data: {
+    command: TCommand;
+  };
+}
+
+export interface InsertKnowledgeSlashCommand extends SlashCommand {
+  action: typeof INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION;
+}
+
+export interface AddCapabilitySlashCommand extends SlashCommand {
+  action: typeof ADD_CAPABILITY_SLASH_COMMAND_ACTION;
+}
+
 export function isSkillSlashCommand(
   item: SlashCommand
 ): item is SkillSlashCommand {
@@ -57,6 +76,24 @@ export function isToolSlashCommand(
   item: SlashCommand
 ): item is ToolSlashCommand {
   return item.action === SELECT_TOOL_SLASH_COMMAND_ACTION;
+}
+
+export function isRunCommandSlashCommand<TCommand = unknown>(
+  item: SlashCommand
+): item is RunCommandSlashCommand<TCommand> {
+  return item.action === RUN_COMMAND_SLASH_COMMAND_ACTION;
+}
+
+export function isInsertKnowledgeSlashCommand(
+  item: SlashCommand
+): item is InsertKnowledgeSlashCommand {
+  return item.action === INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION;
+}
+
+export function isAddCapabilitySlashCommand(
+  item: SlashCommand
+): item is AddCapabilitySlashCommand {
+  return item.action === ADD_CAPABILITY_SLASH_COMMAND_ACTION;
 }
 
 export function matchesSlashCommandCapabilityQuery({
@@ -112,8 +149,7 @@ export function getToolSlashCommandLabel(tool: SlashCommandToolSuggestion) {
 }
 
 export function getSkillSlashCommandItem(
-  skill: SlashCommandSkillSuggestion,
-  { sectionLabel }: { sectionLabel?: string } = {}
+  skill: SlashCommandSkillSuggestion
 ): SkillSlashCommand {
   return {
     action: SELECT_SKILL_SLASH_COMMAND_ACTION,
@@ -125,13 +161,11 @@ export function getSkillSlashCommandItem(
     icon: getSkillAvatarIcon(skill),
     id: skill.sId,
     label: skill.name,
-    sectionLabel,
   };
 }
 
 export function getToolSlashCommandItem(
-  tool: SlashCommandToolSuggestion,
-  { sectionLabel }: { sectionLabel?: string } = {}
+  tool: SlashCommandToolSuggestion
 ): ToolSlashCommand {
   const name = getToolSlashCommandLabel(tool);
   const description = getMcpServerViewDescription(tool);
@@ -151,6 +185,5 @@ export function getToolSlashCommandItem(
     icon: () => getAvatar(tool.server),
     id: tool.sId,
     label: name,
-    sectionLabel,
   };
 }

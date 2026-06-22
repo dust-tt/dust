@@ -40,7 +40,6 @@ export interface SlashCommand {
   icon: React.ComponentType<any>;
   id: string;
   label: string;
-  sectionLabel?: string;
   tooltip?: SlashCommandTooltip;
 }
 
@@ -197,11 +196,6 @@ export const SlashCommandDropdown = forwardRef<
           ) : (
             <div ref={listRef} className={listMaxHeightClassName}>
               {items.map((item, index) => {
-                const sectionLabel =
-                  item.sectionLabel &&
-                  items[index - 1]?.sectionLabel !== item.sectionLabel
-                    ? item.sectionLabel
-                    : undefined;
                 const canShowDetails = !!onItemDetails && !!item.hasDetails;
                 const menuItem = (
                   <DropdownMenuItem
@@ -260,16 +254,7 @@ export const SlashCommandDropdown = forwardRef<
                   menuItem
                 );
 
-                return (
-                  <Fragment key={item.id}>
-                    {sectionLabel ? (
-                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                        {sectionLabel}
-                      </div>
-                    ) : null}
-                    {itemContent}
-                  </Fragment>
-                );
+                return <Fragment key={item.id}>{itemContent}</Fragment>;
               })}
             </div>
           )}
