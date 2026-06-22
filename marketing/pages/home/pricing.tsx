@@ -111,8 +111,8 @@ const SEAT_TIERS: SeatTier[] = [
   {
     id: "max",
     name: "Max seat",
-    priceYearDollars: 100,
-    priceMonthDollars: 125,
+    priceYearDollars: 120,
+    priceMonthDollars: 150,
     credits: "40,000 credits /seat/mo",
   },
 ];
@@ -344,8 +344,8 @@ function SeatTiersFAQAnswer() {
           yearly, with 8,000 credits/month. Best for most team members.
         </li>
         <li>
-          <strong>Max:</strong> {formatSeatPrice(max?.priceMonthDollars ?? 125)}
-          /month, or {formatSeatPrice(max?.priceYearDollars ?? 100)}/month
+          <strong>Max:</strong> {formatSeatPrice(max?.priceMonthDollars ?? 150)}
+          /month, or {formatSeatPrice(max?.priceYearDollars ?? 120)}/month
           billed yearly, with 40,000 credits/month. Best for power users running
           complex automations, Deep research, or tool-heavy workflows regularly.
         </li>
@@ -970,7 +970,7 @@ export default function Pricing() {
     <MotionConfig reducedMotion="user">
       <PageMetadata
         title="Dust Pricing: Business and Enterprise Plans for AI Agents"
-        description="Dust scales from a single builder to thousands of seats. Business self-serve with Pro ($24/seat/mo yearly) and Max ($100/seat/mo yearly) seats, Enterprise for organizations at scale."
+        description="Dust scales from a single builder to thousands of seats. Business self-serve with Pro ($24/seat/mo yearly) and Max ($120/seat/mo yearly) seats, Enterprise for organizations at scale."
         pathname={router.asPath}
       />
       <Hero
