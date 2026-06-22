@@ -1,1 +1,0 @@
-DROP TABLE IF EXISTS "agent_data_retention";
