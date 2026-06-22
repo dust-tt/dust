@@ -246,7 +246,7 @@ const COMPARISON: ComparisonSectionData[] = [
       },
       {
         feature: "SSO (Okta, Entra ID, Jumpcloud)",
-        business: "5+ seats",
+        business: "5+ seats on demand",
         enterprise: true,
       },
       {
