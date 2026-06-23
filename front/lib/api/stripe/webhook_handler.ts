@@ -1530,6 +1530,16 @@ export async function processStripeWebhookEvent({
           );
           assert(workspace, "Workspace not found for trialing subscription.");
 
+          if (
+            matchingSubscription.metronomeContractId &&
+            workspace.metronomeCustomerId
+          ) {
+            void scheduleMetronomeContractEnd({
+              metronomeCustomerId: workspace.metronomeCustomerId,
+              contractId: matchingSubscription.metronomeContractId,
+            });
+          }
+
           const scheduleScrubRes = await launchScheduleWorkspaceScrubWorkflow({
             workspaceId: workspace.sId,
           });
