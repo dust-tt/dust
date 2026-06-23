@@ -1,19 +1,9 @@
-// Reconstructs a readable plain-text/markdown representation from a Slack message.
-//
-// Many app/bot messages (Datadog, Zendesk, PagerDuty, ...) ship an empty top-level
-// `text` field and put the actual content in `blocks[]` (Block Kit) and/or
-// `attachments[]`. Relying on `message.text` alone makes those messages look empty to
-// LLMs. This formatter walks blocks and attachments to extract their textual content.
-//
-// It is intentionally read-only and best-effort. Slack's SDK does not provide complete
-// types for Block Kit inside message responses (the generated `AssistantAppThreadBlock`
-// type is flattened and even omits `header`), so we accept loosely typed input and narrow
-// defensively with type guards rather than trusting the SDK types. The structure handled
-// here matches the official Block Kit reference:
-// https://docs.slack.dev/reference/block-kit/blocks
+// Reconstructs readable text from a Slack message: app/bot messages (Datadog, Zendesk, ...)
+// often have an empty top-level `text` and put their content in `blocks[]`/`attachments[]`.
+// Block Kit is loosely typed in the SDK (the `header` block is even missing), so we read
+// `unknown` and narrow with type guards. mrkdwn cleanup is delegated to `slack_mrkdwn.ts`.
+import { slackMrkdwnToText } from "@app/lib/api/actions/servers/slack/slack_mrkdwn";
 
-// Minimal type guards (avoids relying on the SDK's incomplete block types and avoids
-// non-type-safe `as` casts per [GEN4]).
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -34,34 +24,7 @@ function readTextObject(value: unknown): string | undefined {
   return asString(value.text);
 }
 
-// Converts Slack mrkdwn to lightweight plain text: resolves links/mentions and strips
-// bold/strikethrough markers so content reads cleanly for an LLM.
-function cleanSlackMrkdwn(text: string): string {
-  return (
-    text
-      // <https://url|label> -> label (https://url)
-      .replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, "$2 ($1)")
-      // <https://url> -> https://url
-      .replace(/<(https?:\/\/[^|>]+)>/g, "$1")
-      // <mailto:foo@bar|label> -> label
-      .replace(/<mailto:[^|>]+\|([^>]+)>/g, "$1")
-      // <@U123|name> -> @name ; <@U123> -> @U123
-      .replace(/<@[UW][A-Z0-9]+\|([^>]+)>/g, "@$1")
-      .replace(/<@([UW][A-Z0-9]+)>/g, "@$1")
-      // <#C123|name> -> #name ; <#C123> -> #C123
-      .replace(/<#[A-Z0-9]+\|([^>]+)>/g, "#$1")
-      .replace(/<#([A-Z0-9]+)>/g, "#$1")
-      // <!subteam^S123|@group> -> @group ; <!here>/<!channel> -> @here/@channel
-      .replace(/<!subteam\^[A-Z0-9]+\|([^>]+)>/g, "$1")
-      .replace(/<!(here|channel|everyone)>/g, "@$1")
-      // *bold* -> bold ; ~strike~ -> strike
-      .replace(/\*([^*\n]+)\*/g, "$1")
-      .replace(/~([^~\n]+)~/g, "$1")
-  );
-}
-
-// Collapses internal newlines/whitespace into single spaces (used for field values that
-// Slack renders on a single visual line, e.g. "*Status:*\nTriggered").
+// Collapses whitespace/newlines into single spaces (for field values shown on one line).
 function toSingleLine(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
@@ -146,14 +109,14 @@ function extractLinesFromBlock(block: unknown): string[] {
   switch (type) {
     case "header": {
       const text = readTextObject(block.text);
-      return text ? [cleanSlackMrkdwn(text)] : [];
+      return text ? [text] : [];
     }
 
     case "section": {
       const lines: string[] = [];
       const main = readTextObject(block.text);
       if (main) {
-        lines.push(cleanSlackMrkdwn(main));
+        lines.push(main);
       }
       // `fields` is an array of text objects rendered in a compact 2-column layout.
       const fields = asArray(block.fields);
@@ -161,7 +124,7 @@ function extractLinesFromBlock(block: unknown): string[] {
         for (const field of fields) {
           const fieldText = readTextObject(field);
           if (fieldText) {
-            lines.push(toSingleLine(cleanSlackMrkdwn(fieldText)));
+            lines.push(toSingleLine(fieldText));
           }
         }
       }
@@ -170,9 +133,9 @@ function extractLinesFromBlock(block: unknown): string[] {
         const label = readTextObject(block.accessory.text);
         const url = asString(block.accessory.url);
         if (label && url) {
-          lines.push(`${cleanSlackMrkdwn(label)} (${url})`);
+          lines.push(`${label} (${url})`);
         } else if (label) {
-          lines.push(cleanSlackMrkdwn(label));
+          lines.push(label);
         }
       }
       return lines;
@@ -193,7 +156,7 @@ function extractLinesFromBlock(block: unknown): string[] {
         }
       }
       const joined = toSingleLine(parts.join(" "));
-      return joined ? [cleanSlackMrkdwn(joined)] : [];
+      return joined ? [joined] : [];
     }
 
     case "actions": {
@@ -206,9 +169,9 @@ function extractLinesFromBlock(block: unknown): string[] {
         const label = readTextObject(element.text);
         const url = asString(element.url);
         if (label && url) {
-          lines.push(`${cleanSlackMrkdwn(label)} (${url})`);
+          lines.push(`${label} (${url})`);
         } else if (label) {
-          lines.push(cleanSlackMrkdwn(label));
+          lines.push(label);
         } else if (url) {
           lines.push(url);
         }
@@ -220,11 +183,11 @@ function extractLinesFromBlock(block: unknown): string[] {
       const lines: string[] = [];
       const title = readTextObject(block.title);
       if (title) {
-        lines.push(cleanSlackMrkdwn(title));
+        lines.push(title);
       }
       const alt = asString(block.alt_text);
       if (alt) {
-        lines.push(cleanSlackMrkdwn(alt));
+        lines.push(alt);
       }
       return lines;
     }
@@ -240,7 +203,7 @@ function extractLinesFromBlock(block: unknown): string[] {
     default: {
       // Best-effort fallback for unknown block types that still carry a text object.
       const text = readTextObject(block.text);
-      return text ? [cleanSlackMrkdwn(text)] : [];
+      return text ? [text] : [];
     }
   }
 }
@@ -255,7 +218,7 @@ function extractLinesFromAttachment(attachment: unknown): string[] {
   const pushIfPresent = (value: unknown) => {
     const text = asString(value);
     if (text && text.trim()) {
-      lines.push(cleanSlackMrkdwn(text));
+      lines.push(text);
     }
   };
 
@@ -277,11 +240,11 @@ function extractLinesFromAttachment(attachment: unknown): string[] {
       const title = asString(field.title)?.trim();
       const value = asString(field.value)?.trim();
       if (title && value) {
-        lines.push(toSingleLine(cleanSlackMrkdwn(`${title}: ${value}`)));
+        lines.push(toSingleLine(`${title}: ${value}`));
       } else if (title) {
-        lines.push(cleanSlackMrkdwn(title));
+        lines.push(title);
       } else if (value) {
-        lines.push(cleanSlackMrkdwn(value));
+        lines.push(value);
       }
     }
   }
@@ -303,22 +266,24 @@ export interface FormattableSlackMessage {
 export function formatSlackMessageForLLM(
   message: FormattableSlackMessage
 ): string {
-  const lines: string[] = [];
+  // Phase 1 — extraction: collect raw lines (still containing Slack mrkdwn tokens) from
+  // every source. Extractors only locate text; they do not normalize it.
+  const rawLines: string[] = [];
 
-  const text = asString(message.text)?.trim();
+  const text = asString(message.text);
   if (text) {
-    lines.push(cleanSlackMrkdwn(text));
+    rawLines.push(text);
   }
 
   if (Array.isArray(message.blocks)) {
     for (const block of message.blocks) {
-      lines.push(...extractLinesFromBlock(block));
+      rawLines.push(...extractLinesFromBlock(block));
     }
   }
 
   if (Array.isArray(message.attachments)) {
     for (const attachment of message.attachments) {
-      lines.push(...extractLinesFromAttachment(attachment));
+      rawLines.push(...extractLinesFromAttachment(attachment));
     }
   }
 
@@ -330,17 +295,19 @@ export function formatSlackMessageForLLM(
       const name = asString(file.name);
       const mimetype = asString(file.mimetype);
       if (name) {
-        lines.push(`Attached file: ${name}${mimetype ? ` (${mimetype})` : ""}`);
+        rawLines.push(
+          `Attached file: ${name}${mimetype ? ` (${mimetype})` : ""}`
+        );
       }
     }
   }
 
-  // Split multi-line entries, trim, drop empties, then dedupe exact lines while preserving
-  // order.
+  // Phase 2 — normalization: split multi-line entries, clean Slack mrkdwn once per line,
+  // trim, drop empties, then dedupe exact lines while preserving order.
   const seen = new Set<string>();
   const deduped: string[] = [];
-  for (const rawLine of lines.flatMap((line) => line.split("\n"))) {
-    const line = rawLine.trim();
+  for (const rawLine of rawLines.flatMap((line) => line.split("\n"))) {
+    const line = slackMrkdwnToText(rawLine).trim();
     if (line.length > 0 && !seen.has(line)) {
       seen.add(line);
       deduped.push(line);
