@@ -5,7 +5,13 @@ import { Button, Users01 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
-export function SkillEditorsSheet() {
+interface SkillEditorsSheetProps {
+  disabled?: boolean;
+}
+
+export function SkillEditorsSheet({
+  disabled = false,
+}: SkillEditorsSheetProps) {
   const { owner } = useSkillBuilderContext();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -22,11 +28,16 @@ export function SkillEditorsSheet() {
         size="sm"
         icon={Users01}
         label="Editors"
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen(true);
+          }
+        }}
+        disabled={disabled}
         type="button"
       />
       <ManageUsersPanel
-        isOpen={isOpen}
+        isOpen={isOpen && !disabled}
         setIsOpen={setIsOpen}
         owner={owner}
         mode="editors-only"

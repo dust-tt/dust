@@ -19,7 +19,13 @@ import {
 import { useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 
-export function SkillBuilderSuggestionsPanel() {
+interface SkillBuilderSuggestionsPanelProps {
+  disabled?: boolean;
+}
+
+export function SkillBuilderSuggestionsPanel({
+  disabled = false,
+}: SkillBuilderSuggestionsPanelProps) {
   const {
     owner,
     skillId,
@@ -102,6 +108,10 @@ export function SkillBuilderSuggestionsPanel() {
 
   const handleAccept = useCallback(
     async (suggestion: SkillSuggestionType) => {
+      if (disabled) {
+        return;
+      }
+
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
         acceptInstructionEdits?.(suggestion.sId);
@@ -118,18 +128,23 @@ export function SkillBuilderSuggestionsPanel() {
       applyToolEdits,
       applyAgentFacingDescriptionEdit,
       setSelectedSuggestionId,
+      disabled,
     ]
   );
 
   const handleDecline = useCallback(
     async (suggestion: SkillSuggestionType) => {
+      if (disabled) {
+        return;
+      }
+
       const result = await patchSuggestions([suggestion.sId], "rejected");
       if (result) {
         setSelectedSuggestionId(null);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId]
+    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId, disabled]
   );
 
   const handleSelect = useCallback(
@@ -189,6 +204,7 @@ export function SkillBuilderSuggestionsPanel() {
                 isSelected={selectedSuggestionId === suggestion.sId}
                 onSelect={() => handleSelect(suggestion.sId)}
                 workspaceId={owner.sId}
+                disabled={disabled}
               />
             ))
           )}

@@ -17,7 +17,13 @@ import { useFormContext } from "react-hook-form";
 
 const MIN_DISCOVERABLE_DESCRIPTION_LENGTH = 150;
 
-export function SkillBuilderIsDefaultSection() {
+interface SkillBuilderIsDefaultSectionProps {
+  disabled?: boolean;
+}
+
+export function SkillBuilderIsDefaultSection({
+  disabled = false,
+}: SkillBuilderIsDefaultSectionProps) {
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const isDefault = watch("isDefault");
   const agentFacingDescription = watch("agentFacingDescription");
@@ -26,6 +32,10 @@ export function SkillBuilderIsDefaultSection() {
     agentFacingDescription.trim().length < MIN_DISCOVERABLE_DESCRIPTION_LENGTH;
 
   const handleToggle = () => {
+    if (disabled) {
+      return;
+    }
+
     if (!isDefault) {
       setShowConfirmDialog(true);
     } else {
@@ -34,6 +44,10 @@ export function SkillBuilderIsDefaultSection() {
   };
 
   const handleConfirm = () => {
+    if (disabled) {
+      return;
+    }
+
     setValue("isDefault", true, { shouldDirty: true });
     setShowConfirmDialog(false);
   };
@@ -41,7 +55,12 @@ export function SkillBuilderIsDefaultSection() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <SliderToggle selected={isDefault} onClick={handleToggle} size="xs" />
+        <SliderToggle
+          selected={isDefault}
+          onClick={handleToggle}
+          size="xs"
+          disabled={disabled}
+        />
         <span className="text-sm text-foreground dark:text-foreground-night">
           Allow agents to discover this skill
         </span>

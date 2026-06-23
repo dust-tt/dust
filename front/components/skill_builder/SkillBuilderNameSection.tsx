@@ -3,7 +3,13 @@ import { Input } from "@dust-tt/sparkle";
 
 const NAME_FIELD_NAME = "name";
 
-export function SkillBuilderNameSection() {
+interface SkillBuilderNameSectionProps {
+  disabled?: boolean;
+}
+
+export function SkillBuilderNameSection({
+  disabled = false,
+}: SkillBuilderNameSectionProps) {
   return (
     <BaseFormFieldSection
       title="Name"
@@ -17,6 +23,7 @@ export function SkillBuilderNameSection() {
           onChange={onChange}
           message={errorMessage}
           messageStatus={hasError ? "error" : "default"}
+          disabled={disabled}
           {...registerProps}
         />
       )}

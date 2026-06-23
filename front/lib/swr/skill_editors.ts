@@ -47,7 +47,7 @@ export function useUpdateSkillEditors({
   skillId,
 }: {
   owner: LightWorkspaceType;
-  skillId: string;
+  skillId: string | null;
 }) {
   const sendNotification = useSendNotification();
   const { mutateEditors } = useSkillEditors({
@@ -58,6 +58,10 @@ export function useUpdateSkillEditors({
 
   const updateSkillEditors = useCallback(
     async (body: PatchSkillEditorsRequestBody) => {
+      if (!skillId) {
+        return false;
+      }
+
       const res = await clientFetch(
         `/api/w/${owner.sId}/skills/${skillId}/editors`,
         {
@@ -70,7 +74,7 @@ export function useUpdateSkillEditors({
       );
 
       if (res.ok) {
-        void mutateEditors();
+        await mutateEditors();
 
         let title;
         let description: string | undefined = undefined;
@@ -97,7 +101,14 @@ export function useUpdateSkillEditors({
           title,
           description,
         });
+        return true;
       }
+
+      sendNotification({
+        type: "error",
+        title: "Failed to update editors",
+      });
+      return false;
     },
     [owner, skillId, mutateEditors, sendNotification]
   );

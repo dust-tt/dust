@@ -4,7 +4,7 @@ import { Chip } from "@dust-tt/sparkle";
 
 interface SpaceChipsProps {
   spaces: SpaceType[];
-  onRemoveSpace: (space: SpaceType) => void;
+  onRemoveSpace?: (space: SpaceType) => void;
 }
 
 export function SpaceChips({ spaces, onRemoveSpace }: SpaceChipsProps) {
@@ -17,7 +17,9 @@ export function SpaceChips({ spaces, onRemoveSpace }: SpaceChipsProps) {
           label={getSpaceName(space)}
           icon={getSpaceIcon(space)}
           onRemove={
-            space.kind !== "global" ? () => onRemoveSpace(space) : undefined
+            space.kind !== "global" && onRemoveSpace
+              ? () => onRemoveSpace(space)
+              : undefined
           }
         />
       ))}
