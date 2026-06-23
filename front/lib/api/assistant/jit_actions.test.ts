@@ -219,7 +219,6 @@ describe("getJITServers", () => {
       expect(equippedSkills.map((s) => s.sId)).toContain(customSkill.sId);
       expect(equippedSkills.map((s) => s.sId)).not.toContain("discover_tools");
     });
-
     it("filters discoverable skills disabled for the current agent loop", async () => {
       await SkillFactory.linkGlobalSkillToAgent(auth, {
         globalSkillId: "discover_skills",
