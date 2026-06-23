@@ -34,26 +34,16 @@ jobs:
         with:
           fetch-depth: 0 # Full depth for better git operations
 
-      # Setup Node.js for JS/TS projects
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
         with:
-          node-version: 24.16.0
+          build-sdks: "true"
 
       # Setup Rust for core project
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
         with:
           components: rustfmt
-
-      # Pre-build SDK only as it's a dependency for other projects
-      - name: Build SDK
-        run: |
-          # Install global tools
-          npm install -g tsx
-
-          # Pre-build SDK as it's a dependency for front and connectors
-          cd sdks/js && npm install && npm run build && cd ../..
 
       - name: Run Claude Code
         id: claude
