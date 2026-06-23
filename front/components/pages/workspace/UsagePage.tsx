@@ -186,7 +186,10 @@ export function UsagePage() {
   }, []);
 
   const sort = sorting[0];
-  const membersOrderColumn = sort?.id === "email" ? "email" : "name";
+  const membersOrderColumn =
+    sort?.id === "email" || sort?.id === "consumedAwuCredits"
+      ? sort.id
+      : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
   const { myUsage } = useMyUsage({ workspaceId: owner.sId });

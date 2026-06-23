@@ -246,7 +246,7 @@ export function useMembersUsage({
   searchTerm?: string;
   pageIndex: number;
   pageSize: number;
-  orderColumn?: "name" | "email";
+  orderColumn?: "name" | "email" | "consumedAwuCredits";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType | "none";
   disabled?: boolean;

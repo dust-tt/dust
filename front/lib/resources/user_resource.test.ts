@@ -4,11 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 const deletedKeys = vi.hoisted(() => [] as string[]);
 const mockEsSearchUsers = vi.hoisted(() => vi.fn());
+const mockEsSearchAllUsers = vi.hoisted(() => vi.fn());
 
 // Elasticsearch isn't available in unit tests; mock the search layer so we can
-// control the returned order and capture the arguments `searchUsers` forwards.
+// control the returned order and capture the arguments the resource forwards.
 vi.mock("@app/lib/user_search/search", () => ({
   searchUsers: mockEsSearchUsers,
+  searchAllUsers: mockEsSearchAllUsers,
 }));
 
 vi.mock("@app/lib/utils/cache", () => ({
@@ -112,6 +114,7 @@ describe("UserResource", () => {
   describe("searchUsers", () => {
     beforeEach(() => {
       mockEsSearchUsers.mockReset();
+      mockEsSearchAllUsers.mockReset();
     });
 
     it("forwards orderBy and returns users in the order Elasticsearch returned", async () => {
@@ -143,6 +146,65 @@ describe("UserResource", () => {
       expect(mockEsSearchUsers).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { field: "name", direction: "desc" },
+        })
+      );
+      expect(result.isOk()).toBe(true);
+      const users = result.isOk() ? result.value.users : [];
+      expect(users.map((u) => u.sId)).toEqual([bob.sId, alice.sId]);
+    });
+
+    it("preserves the Elasticsearch total when the current page is empty", async () => {
+      mockEsSearchUsers.mockResolvedValue(
+        new Ok({
+          users: [],
+          total: 2,
+        })
+      );
+
+      const result = await UserResource.searchUsers(auth, {
+        searchTerm: "",
+        offset: 10,
+        limit: 10,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        return;
+      }
+
+      expect(result.value.users).toEqual([]);
+      expect(result.value.total).toBe(2);
+    });
+  });
+
+  describe("searchAllUsers", () => {
+    beforeEach(() => {
+      mockEsSearchAllUsers.mockReset();
+    });
+
+    it("returns all users in the order Elasticsearch returned", async () => {
+      const alice = await UserFactory.basic();
+      const bob = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, alice, { role: "user" });
+      await MembershipFactory.associate(workspace, bob, { role: "user" });
+
+      mockEsSearchAllUsers.mockResolvedValue(
+        new Ok({
+          users: [
+            { user_id: bob.sId, email: "b@example.com", full_name: "Bob" },
+            { user_id: alice.sId, email: "a@example.com", full_name: "Alice" },
+          ],
+          total: 2,
+        })
+      );
+
+      const result = await UserResource.searchAllUsers(auth, {
+        searchTerm: "",
+      });
+
+      expect(mockEsSearchAllUsers).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchTerm: "",
         })
       );
       expect(result.isOk()).toBe(true);

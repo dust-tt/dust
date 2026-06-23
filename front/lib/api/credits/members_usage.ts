@@ -60,6 +60,9 @@ import {
   normalizeToPoolLimitSeatType,
   toBaseSeatType,
 } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
@@ -162,8 +165,10 @@ export const MembersUsagePaginationSchema = z.object({
   offset: z.coerce.number().int().min(0).catch(0),
   search: z.string().optional().catch(undefined),
   // Members are ordered by name (ascending) by default, giving a stable order
-  // for pagination instead of relevance ranking.
-  orderColumn: z.enum(["name", "email"]).catch("name"),
+  // for pagination instead of relevance ranking. "name"/"email" are sorted by
+  // the search index; "consumedAwuCredits" is sorted in-app over the full
+  // matching set (see resolveMembersUsagePageUsers).
+  orderColumn: z.enum(["name", "email", "consumedAwuCredits"]).catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
   // Optional seat-type filter. A base seat type (e.g. "pro") matches its
   // monthly and yearly variants; "none" matches members with no seat.
@@ -903,6 +908,80 @@ async function resolveSeatTypeFilterUserIds({
   );
 }
 
+// "name"/"email" live in the user search index, which owns sort + pagination
+// for those columns. "consumedAwuCredits" is not indexed, so to sort by it we
+// fetch the full matching set with Elasticsearch `search_after`, rank it by
+// consumed AWU (the same analytics-index signal the table displays, see
+// fetchConsumedAwuCreditsByUserId), sort in-app, then slice the requested page.
+async function resolveMembersUsagePageUsers({
+  auth,
+  workspace,
+  paginationParams,
+  restrictToUserIds,
+}: {
+  auth: Authenticator;
+  workspace: LightWorkspaceType;
+  paginationParams: MembersUsagePaginationInput;
+  restrictToUserIds: string[] | undefined;
+}): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+  const { orderColumn, orderDirection, offset, limit } = paginationParams;
+  const searchTerm = paginationParams.search ?? "";
+
+  // "name"/"email" are indexed: let Elasticsearch own sort and pagination.
+  if (orderColumn === "name" || orderColumn === "email") {
+    return UserResource.searchUsers(auth, {
+      searchTerm,
+      offset,
+      limit,
+      orderBy: { field: orderColumn, direction: orderDirection },
+      restrictToUserIds,
+    });
+  }
+
+  const allUsersResult = await UserResource.searchAllUsers(auth, {
+    searchTerm,
+    restrictToUserIds,
+  });
+  if (allUsersResult.isErr()) {
+    return allUsersResult;
+  }
+  const { users: allUsers, total } = allUsersResult.value;
+
+  const sortKeyByUserId = new Map<string, number>();
+  switch (orderColumn) {
+    case "consumedAwuCredits": {
+      const creditsByUserId = await fetchConsumedAwuCreditsByUserId({
+        workspace,
+        userIds: allUsers.map((u) => u.sId),
+      });
+      for (const u of allUsers) {
+        sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
+      }
+      break;
+    }
+    default:
+      assertNever(orderColumn);
+  }
+
+  const directionFactor = orderDirection === "asc" ? 1 : -1;
+  const sortedUsers = [...allUsers].sort((a, b) => {
+    const keyA = sortKeyByUserId.get(a.sId) ?? 0;
+    const keyB = sortKeyByUserId.get(b.sId) ?? 0;
+    if (keyA !== keyB) {
+      return (keyA - keyB) * directionFactor;
+    }
+    // Stable, direction-independent tiebreaker so pages don't reshuffle.
+    const nameA = (a.fullName() || a.name).toLowerCase();
+    const nameB = (b.fullName() || b.name).toLowerCase();
+    if (nameA !== nameB) {
+      return nameA < nameB ? -1 : 1;
+    }
+    return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
+  });
+
+  return new Ok({ users: sortedUsers.slice(offset, offset + limit), total });
+}
+
 export async function getMembersUsage({
   auth,
   paginationParams,
@@ -935,14 +1014,10 @@ export async function getMembersUsage({
     }
   }
 
-  const usersResult = await UserResource.searchUsers(auth, {
-    searchTerm: paginationParams.search ?? "",
-    offset: paginationParams.offset,
-    limit: paginationParams.limit,
-    orderBy: {
-      field: paginationParams.orderColumn,
-      direction: paginationParams.orderDirection,
-    },
+  const usersResult = await resolveMembersUsagePageUsers({
+    auth,
+    workspace,
+    paginationParams,
     restrictToUserIds,
   });
 

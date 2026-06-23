@@ -401,9 +401,7 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   meta: {
     className: "w-64",
   },
-  // Consumed is computed per-page from Metronome usage, not a server-sortable
-  // field, so it can't participate in server-side sorting.
-  enableSorting: false,
+  enableSorting: true,
 };
 
 const actionsColumn: ColumnDef<RowData, string> = {
