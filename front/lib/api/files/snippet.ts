@@ -1,8 +1,8 @@
-import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import config from "@app/lib/api/config";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { isPastedFile } from "@app/lib/files";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -57,11 +57,9 @@ export async function generateSnippet(
     dataSource,
   }: {
     file: FileResource;
-    dataSource: DataSourceResource;
+    dataSource?: DataSourceResource;
   }
 ): Promise<Result<string, Error>> {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
   if (isSupportedImageContentType(file.contentType)) {
     return new Err(
       new Error("Image files are not supported for file snippets.")
@@ -69,6 +67,15 @@ export async function generateSnippet(
   }
 
   if (isSupportedDelimitedTextContentType(file.contentType)) {
+    if (!dataSource) {
+      return new Err(
+        new Error(
+          "Data source is required to generate a delimited text snippet."
+        )
+      );
+    }
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const { bucket, path } = file.getContentBucketAndPath(auth);
     const schemaRes = await coreAPI.tableValidateCSVContent({
       projectId: dataSource.dustAPIProjectId,

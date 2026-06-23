@@ -93,6 +93,15 @@ app.patch(
                 "The free seat is reserved for first-time members and cannot be assigned again.",
             },
           });
+        case "paid_seat_not_allowed_on_free_plan":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "A paid seat cannot be assigned while the workspace is on a free plan. Upgrade the workspace first.",
+            },
+          });
         case "seat_limit_reached":
           return apiError(ctx, {
             status_code: 400,

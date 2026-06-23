@@ -1,5 +1,5 @@
 import { readInteractiveContentFile } from "@app/lib/api/files/read";
-import type { GetPokeFileResponseBody } from "@app/lib/api/poke/files";
+import type { GetPokeFileResponseBody } from "@app/types/api/poke/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

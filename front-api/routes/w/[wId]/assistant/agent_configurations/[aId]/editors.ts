@@ -2,12 +2,12 @@ import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentEditorsLightResponseBody,
   AgentEditorsResponseBody,
-} from "@app/lib/api/assistant/configuration/editors";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
+} from "@app/types/api/assistant/configuration/editors";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";

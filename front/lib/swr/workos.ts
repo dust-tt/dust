@@ -3,7 +3,6 @@ import type {
   AuditLogsPortal,
   AuditLogsPortalResponse,
 } from "@app/lib/api/audit/workos_audit";
-import type { GetWorkspaceDomainsResponseBody } from "@app/lib/api/workos/organization";
 import type { GetProvisioningStatusResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -13,6 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
+import type { GetWorkspaceDomainsResponseBody } from "@app/types/api/workos/organization";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";

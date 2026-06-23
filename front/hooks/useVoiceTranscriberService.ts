@@ -404,7 +404,13 @@ export const requestMicrophone = async (): Promise<MediaStream> => {
   if (isBrowserExtension()) {
     return extensionRequestMicrophonePermission();
   }
-  return navigator.mediaDevices.getUserMedia({ audio: true });
+  return navigator.mediaDevices.getUserMedia({
+    audio: {
+      noiseSuppression: true, // filter out background noise
+      echoCancellation: true, // prevent mic from picking up speaker output
+      autoGainControl: true, // normalize volume
+    },
+  });
 };
 
 // Safari/iOS does not support audio/webm — fall back to audio/mp4.

@@ -1,8 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetProgrammaticUsageLimitResponseBody,
-  PutProgrammaticUsageLimitResponseBody,
-} from "@app/lib/api/credits/programmatic_usage_limit";
 import type { GetCreditUsageConfigurationResponseBody } from "@app/lib/api/credits/usage_configuration";
 import type {
   GetDefaultUserSpendLimitResponseBody,
@@ -15,6 +11,10 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  GetProgrammaticUsageLimitResponseBody,
+  PutProgrammaticUsageLimitResponseBody,
+} from "@app/types/api/credits/programmatic_usage_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -32,6 +32,8 @@ const PutDefaultUserSpendLimitResponseSchema = z.object({
 export interface UsageSettings {
   allowUpgradeRequest: boolean;
   autoSeatUpgradeEnabled: boolean;
+  autoSeatUpgradeAvailable: boolean;
+  topUpEnabled: boolean;
 }
 
 export interface UsageNotifications {
@@ -43,6 +45,8 @@ export interface UsageNotifications {
 const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   allowUpgradeRequest: true,
   autoSeatUpgradeEnabled: false,
+  autoSeatUpgradeAvailable: false,
+  topUpEnabled: false,
 };
 
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
@@ -96,6 +100,8 @@ export function useUsageSettings({ workspaceId }: { workspaceId: string }) {
       ? {
           allowUpgradeRequest: data.configuration.allowMemberUpgradeRequests,
           autoSeatUpgradeEnabled: data.configuration.autoSeatUpgradeEnabled,
+          autoSeatUpgradeAvailable: data.configuration.autoSeatUpgradeAvailable,
+          topUpEnabled: data.configuration.topUpEnabled,
         }
       : {}),
   };

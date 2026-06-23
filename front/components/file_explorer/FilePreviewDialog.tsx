@@ -1,10 +1,10 @@
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
-import { useFileContent } from "@app/hooks/useFileContent";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import { useFileContentByUrl } from "@app/lib/swr/files";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
@@ -149,7 +149,7 @@ interface AudioPreviewProps {
 
 function AudioPreview({ fileUrl, fileId }: AudioPreviewProps) {
   const transcriptUrl = fileId ? `${fileUrl}&version=processed` : null;
-  const { fileContent: transcript } = useFileContent({
+  const { fileContent: transcript } = useFileContentByUrl({
     url: transcriptUrl,
     disabled: !transcriptUrl,
   });
@@ -347,13 +347,13 @@ export function FilePreviewDialog({
     category === "text" ||
     category === "delimited";
 
-  const { fileContent, isFileContentLoading, fileContentError } =
-    useFileContent({
+  const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
+    useFileContentByUrl({
       url: fileUrl,
       disabled: !isOpen || !entry || !needsTextContent,
     });
 
-  const hasError = needsTextContent && !!fileContentError;
+  const hasError = needsTextContent && (!!fileContentError || isNotFound);
   const isContentLoading =
     isOpen && !!entry && !hasError && needsTextContent && isFileContentLoading;
 

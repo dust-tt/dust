@@ -276,7 +276,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   availableIfOneOf: {
-    enterprise: true,
+    plansWithAdvancedModels: true,
     featureFlag: "claude_4_5_opus_feature",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
@@ -317,7 +317,7 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   availableIfOneOf: {
-    enterprise: true,
+    plansWithAdvancedModels: true,
     featureFlag: "claude_4_5_opus_feature",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
@@ -359,7 +359,7 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   availableIfOneOf: {
-    enterprise: true,
+    plansWithAdvancedModels: true,
     featureFlag: "claude_4_5_opus_feature",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],

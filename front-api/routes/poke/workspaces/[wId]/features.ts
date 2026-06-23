@@ -1,5 +1,5 @@
-import type { GetPokeFeaturesResponseBody } from "@app/lib/api/poke/features";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import type { GetPokeFeaturesResponseBody } from "@app/types/api/poke/features";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 

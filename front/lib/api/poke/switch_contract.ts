@@ -2,6 +2,7 @@ import {
   dispatchPaygDisabled,
   dispatchPaygEnabled,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
+import { cancelPendingContract } from "@app/lib/api/poke/cancel_pending_contract";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -589,6 +590,25 @@ export async function switchContract({
         workspace: owner,
         seatType: seat.seatType,
       });
+    }
+  }
+
+  // If there's already a pending contract, cancel it before creating a new one.
+  // Metronome rejects a second transition from a contract that already has a
+  // RENEWAL successor, so we must archive the pending contract and restore the
+  // current one first.
+  const existingPending =
+    await SubscriptionResource.fetchPendingByWorkspaceModelId(owner.id);
+  if (existingPending) {
+    const cancelResult = await cancelPendingContract({ auth });
+    if (cancelResult.isErr()) {
+      return new Err(
+        new SwitchContractError(
+          "metronome_api_error",
+          `A pending contract already exists and could not be cancelled before ` +
+            `switching: ${cancelResult.error.message}`
+        )
+      );
     }
   }
 

@@ -3,6 +3,7 @@ import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
   type ContractCreditType,
+  fromFreeMetronomeUserId,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
@@ -2663,13 +2664,16 @@ export async function listCustomerPerUserCreditBalances({
     for await (const entry of client.v1.customers.credits.list({
       customer_id: metronomeCustomerId,
       include_balance: true,
+      // Include archived (exhausted) credits so fully-consumed free-seat
+      // credits appear with balance 0 rather than being absent from the map.
+      include_archived: true,
     })) {
       if (entry.contract) {
         continue;
       }
-      const userId =
+      const rawUserId =
         entry.custom_fields?.[PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY];
-      if (!userId) {
+      if (!rawUserId) {
         continue;
       }
       if (
@@ -2678,6 +2682,10 @@ export async function listCustomerPerUserCreditBalances({
       ) {
         continue;
       }
+      // Strip the "free-" prefix so the map is keyed by plain sId. All
+      // callers look up by membership.user.sId; old-format credits without
+      // the prefix keep their raw value as the key.
+      const userId = fromFreeMetronomeUserId(rawUserId) ?? rawUserId;
       const startingBalanceAwu = (
         entry.access_schedule?.schedule_items ?? []
       ).reduce((sum, item) => sum + item.amount, 0);

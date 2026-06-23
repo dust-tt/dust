@@ -10,6 +10,7 @@ import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   buildLlmUsageEvents,
   buildToolUseEvents,
+  computeRunKey,
   getUsageType,
 } from "@app/lib/metronome/events";
 import {
@@ -42,7 +43,6 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
-import { createHash } from "crypto";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -386,10 +386,9 @@ export async function emitMetronomeUsageEventsActivity(
   // Deterministic runKey based on the specific dustRunIds being processed.
   // Same runIds → same transaction IDs → Metronome deduplicates retries.
   // Different runIds (new agent loop execution) → different transaction IDs.
-  const runKey = createHash("sha256")
-    .update(effectiveRunIds.sort().join(","))
-    .digest("hex")
-    .slice(0, 8);
+  // Shared with the credit-cost flow (computeRunKey) so the credit recompute
+  // ceils per the exact same execution partition that is billed here.
+  const runKey = computeRunKey(effectiveRunIds);
 
   // Build and ingest events.
   const llmEvents = buildLlmUsageEvents({

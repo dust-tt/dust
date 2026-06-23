@@ -3,13 +3,14 @@ import { requestMicrophone } from "@app/hooks/useVoiceTranscriberService";
 import {
   hasWebkitAudioContext,
   quackingVoiceTranscriptService,
+  SAMPLE_RATE_HZ,
   startLevelMeteringInterval,
   useElapsedSeconds,
   type VoiceTranscriberService,
   type VoiceTranscriberStatus,
 } from "@app/hooks/utils/voice";
-import type { GetTranscribeTokenResponseBody } from "@app/lib/api/transcribe";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetTranscribeTokenResponseBody } from "@app/types/api/transcribe";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AudioFormat, CommitStrategy, useScribe } from "@elevenlabs/react";
@@ -165,7 +166,7 @@ export function useVoiceLiveTranscriberService({
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
     audioFormat: AudioFormat.PCM_16000,
-    sampleRate: 16000,
+    sampleRate: SAMPLE_RATE_HZ,
     commitStrategy: CommitStrategy.VAD,
     onPartialTranscript: handlePartialTranscript,
     onCommittedTranscript: handleCommittedTranscript,
@@ -212,7 +213,7 @@ export function useVoiceLiveTranscriberService({
       const AC = hasWebkitAudioContext(window)
         ? window.webkitAudioContext
         : window.AudioContext;
-      const audioContext = new AC({ sampleRate: 16000 });
+      const audioContext = new AC({ sampleRate: SAMPLE_RATE_HZ });
       audioContextRef.current = audioContext;
 
       const source = audioContext.createMediaStreamSource(stream);
@@ -239,7 +240,7 @@ export function useVoiceLiveTranscriberService({
       workletNode.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
         const b64 = arrayBufferToBase64(event.data);
         if (!isShuttingDownRef.current || scribeRef.current.isConnected) {
-          scribeRef.current.sendAudio(b64, { sampleRate: 16000 });
+          scribeRef.current.sendAudio(b64, { sampleRate: SAMPLE_RATE_HZ });
         }
       };
       source.connect(workletNode);

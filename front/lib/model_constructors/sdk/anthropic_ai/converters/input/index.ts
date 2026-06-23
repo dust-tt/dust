@@ -18,7 +18,7 @@ import {
   systemMessagesToSystemParam,
   systemMessageToTextBlock,
   toolCallResultMessageToToolResultBlock,
-  toolSpecToAnthropicAITool,
+  toolSpecsToAnthropicAITools,
   userImageMessageToImageBlock,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
@@ -90,7 +90,7 @@ export function WithAnthropicAIInputConverter<
         messages: this.conversationToMessages(conversation),
         system: this.systemMessagesToSystemParam(conversation.system),
         thinking: thinkingConfig.thinking,
-        tools: tools.map((tool) => toolSpecToAnthropicAITool(tool)),
+        tools: toolSpecsToAnthropicAITools(tools, { forceTool }),
         tool_choice: forceToolNameToToolChoice(tools, forceTool),
         temperature,
         ...(Object.keys(outputConfig).length > 0

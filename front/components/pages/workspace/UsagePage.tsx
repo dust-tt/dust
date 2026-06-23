@@ -39,6 +39,7 @@ import {
   useResolveUpgradeRequest,
   useUpgradeRequests,
 } from "@app/lib/swr/upgrade_requests";
+import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
   useAwuUsage,
   usePerSeatPricing,
@@ -212,9 +213,16 @@ export function UsagePage() {
   );
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
+      // Free seats carry no renewing allowance to preserve, so removing one is
+      // immediate; paid seats keep access until the end of the current billing
+      // period.
+      const message =
+        member.seatType === "free"
+          ? `Are you sure you want to remove ${member.name}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
+          : `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
       const confirmed = await confirm({
         title: "Remove seat",
-        message: `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`,
+        message,
         validateLabel: "Remove seat",
         validateVariant: "warning",
       });
@@ -464,6 +472,8 @@ export function UsagePage() {
     );
   }, [seatPlans]);
 
+  const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
+
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
@@ -595,7 +605,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <div className="flex items-center justify-between">
           <Page.Header title="Usage" icon={PieChart01} />
-          {!isReadOnly && !isFreePlanWorkspace && !isEnterprise && (
+          {!isReadOnly && usageSettings.topUpEnabled && (
             <Button
               label="Top up"
               icon={ArrowUp}
@@ -611,13 +621,13 @@ export function UsagePage() {
             <ContentMessage
               title={noOrFreeSeatTitle(myUsage.seatType)}
               icon={AlertCircle}
-              variant="warning"
+              variant="blue"
             >
               <div className="flex items-center justify-between gap-4">
                 <span>{noOrFreeSeatBody(myUsage.seatType)}</span>
                 <Button
                   label="Change my seat"
-                  variant="warning"
+                  variant="primary"
                   size="xs"
                   onClick={() => setChangeSeatMember(myUsage)}
                 />

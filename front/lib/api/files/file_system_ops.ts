@@ -11,11 +11,18 @@ import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system/types";
+import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
-import { isSupportedImageContentType } from "@app/types/files";
+import {
+  contentTypeFromFileName,
+  isSupportedFileContentType,
+  isSupportedImageContentType,
+  resolveFileContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -336,6 +343,112 @@ export async function moveCanonicalFile(
   }
 
   return moveResult;
+}
+
+// ---------------------------------------------------------------------------
+// Content write
+// ---------------------------------------------------------------------------
+
+export const WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES = 512 * 1024;
+
+export type WriteCanonicalFileContentErrorCode =
+  | "too_large"
+  | "unsupported_content_type";
+
+export class WriteCanonicalFileContentError extends Error {
+  constructor(
+    readonly code: WriteCanonicalFileContentErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "WriteCanonicalFileContentError";
+  }
+}
+
+function resolvePathWriteContentType(
+  scopedPath: string,
+  contentTypeFromRequest?: string
+): string {
+  const fileName = path.posix.basename(scopedPath);
+  const requested = contentTypeFromRequest
+    ? stripMimeParameters(contentTypeFromRequest)
+    : "text/plain";
+  const resolved = resolveFileContentType(requested, fileName);
+  if (isSupportedFileContentType(resolved)) {
+    return resolved;
+  }
+
+  return contentTypeFromFileName(fileName) ?? "text/plain";
+}
+
+function validatePathWritableContentType(
+  contentType: string
+): Result<void, WriteCanonicalFileContentError> {
+  if (!contentType.startsWith("text/")) {
+    return new Err(
+      new WriteCanonicalFileContentError(
+        "unsupported_content_type",
+        "Only text files can be updated through this endpoint."
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * Create or replace the text content of a file at `scopedPath`.
+ * Only `text/*` content types are supported.
+ */
+export async function writeCanonicalFileContent(
+  _auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPath: string,
+  content: Uint8Array,
+  contentTypeFromRequest?: string
+): Promise<
+  Result<
+    { created: boolean },
+    DustFileSystemError | WriteCanonicalFileContentError
+  >
+> {
+  if (content.byteLength > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES) {
+    return new Err(
+      new WriteCanonicalFileContentError(
+        "too_large",
+        `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`
+      )
+    );
+  }
+
+  const contentBuffer = Buffer.from(decodeBuffer(content), "utf8");
+
+  const statResult = await dustFs.stat(scopedPath);
+  if (statResult.isErr()) {
+    return statResult;
+  }
+
+  const existingStat = statResult.value;
+  const exists = existingStat !== null;
+  const contentType = exists
+    ? stripMimeParameters(existingStat.contentType)
+    : resolvePathWriteContentType(scopedPath, contentTypeFromRequest);
+
+  const validationResult = validatePathWritableContentType(contentType);
+  if (validationResult.isErr()) {
+    return validationResult;
+  }
+
+  const writeResult = await dustFs.write(
+    scopedPath,
+    contentBuffer,
+    contentType
+  );
+  if (writeResult.isErr()) {
+    return writeResult;
+  }
+
+  return new Ok({ created: !exists });
 }
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,5 @@ export interface PodMetadataType {
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
-  // sId of the agent pre-selected for new conversations in this pod. Null = @dust.
   defaultAgentId: string | null;
 }

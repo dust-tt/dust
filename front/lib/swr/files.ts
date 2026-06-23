@@ -20,9 +20,11 @@ import type {
   FileTypeWithMetadata,
   SharingGrantType,
 } from "@app/types/files";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";
+import { useSWRConfig } from "swr";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
@@ -51,6 +53,136 @@ export const getFilePathViewUrl = (
   const encoded = filePath.split("/").map(encodeURIComponent).join("/");
   return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
 };
+
+/** Relative API path for fetching file text content (for use with clientFetch / useFileContentByUrl). */
+export function getFilePathContentApiPath(
+  owner: LightWorkspaceType,
+  canonicalPath: string
+): string {
+  const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
+  return `/api/w/${owner.sId}/files/path/${encoded}`;
+}
+
+type FileContentByUrlData =
+  | { kind: "loaded"; content: string }
+  | { kind: "not_found" };
+
+export function useFileContentByUrl({
+  url,
+  disabled,
+}: {
+  url: string | null;
+  disabled?: boolean;
+}) {
+  const isDisabled = disabled || !url;
+
+  const { data, error } = useSWRWithDefaults<
+    string | null,
+    FileContentByUrlData
+  >(
+    url,
+    async (u: string) => {
+      const response = await clientFetch(u);
+      if (response.status === 404) {
+        return { kind: "not_found" };
+      }
+      if (!response.ok) {
+        const errorData = await getErrorFromResponse(response);
+        throw new Error(errorData.message);
+      }
+      return { kind: "loaded", content: await response.text() };
+    },
+    { disabled: isDisabled }
+  );
+
+  const isNotFound = data?.kind === "not_found";
+
+  return {
+    fileContent: data?.kind === "loaded" ? data.content : null,
+    isNotFound,
+    isFileContentLoading: !error && data === undefined && !isDisabled,
+    fileContentError: error ? normalizeError(error) : null,
+  };
+}
+
+export async function writeFileContentByPath({
+  owner,
+  canonicalPath,
+  content,
+  contentType = "text/plain",
+}: {
+  owner: LightWorkspaceType;
+  canonicalPath: string;
+  content: string;
+  contentType?: string;
+}): Promise<void> {
+  const url = getFilePathContentApiPath(owner, canonicalPath);
+  const response = await clientFetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: content,
+  });
+
+  if (!response.ok) {
+    const errorData = await getErrorFromResponse(response);
+    throw new Error(errorData.message);
+  }
+}
+
+export function useWriteFileContentByPath({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutate } = useSWRConfig();
+
+  return async ({
+    canonicalPath,
+    content,
+    contentType = "text/plain",
+    showSuccessNotification = false,
+  }: {
+    canonicalPath: string;
+    content: string;
+    contentType?: string;
+    showSuccessNotification?: boolean;
+  }): Promise<Result<void, Error>> => {
+    const url = getFilePathContentApiPath(owner, canonicalPath);
+
+    try {
+      await writeFileContentByPath({
+        owner,
+        canonicalPath,
+        content,
+        contentType,
+      });
+
+      await mutate<FileContentByUrlData>(
+        url,
+        { kind: "loaded", content },
+        { revalidate: false }
+      );
+
+      if (showSuccessNotification) {
+        sendNotification({
+          type: "success",
+          title: "File saved",
+        });
+      }
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to save file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
 
 export const getFilePathDownloadUrl = (
   owner: LightWorkspaceType,

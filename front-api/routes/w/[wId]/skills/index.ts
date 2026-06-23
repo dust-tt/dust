@@ -1,8 +1,3 @@
-import type {
-  GetSkillsResponseBody,
-  GetSkillsWithRelationsResponseBody,
-  PostSkillResponseBody,
-} from "@app/lib/api/skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import {
@@ -14,6 +9,11 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
+import type {
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
+  PostSkillResponseBody,
+} from "@app/types/api/skills";
 import {
   SKILL_REINFORCEMENT_MODES,
   type SkillWithoutInstructionsAndToolsWithRelationsType,

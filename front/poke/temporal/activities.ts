@@ -551,6 +551,7 @@ export async function deleteMembersActivity({
         // Delete the user's agent memories.
         await AgentMemoryModel.destroy({
           where: {
+            workspaceId: workspace.id,
             userId: user.id,
           },
         });

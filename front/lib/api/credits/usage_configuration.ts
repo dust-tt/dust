@@ -1,6 +1,14 @@
+import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
+import { isEnterprisePlanPrefix, isFreePlan } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import {
+  DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
+  DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+  DEFAULT_TOP_UP_ENABLED,
+  DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+} from "@app/lib/resources/storage/models/credit_usage_configurations";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
@@ -21,6 +29,9 @@ export type CreditUsageConfigurationBody = {
   // Whether members who hit their per-user credit limit are automatically bumped
   // to the next entitled seat tier instead of being blocked.
   autoSeatUpgradeEnabled: boolean;
+  autoSeatUpgradeAvailable: boolean;
+  // Whether enterprise-plan workspaces show the "Top up" button on the Usage page.
+  topUpEnabled: boolean;
 };
 
 export type GetCreditUsageConfigurationResponseBody = {
@@ -43,10 +54,6 @@ export type PatchCreditUsageConfigurationBody = z.infer<
   typeof PatchCreditUsageConfigurationRequestBody
 >;
 
-const DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS = true;
-const DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED = true;
-const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
-
 /**
  * Read the full usage configuration for a workspace: the balance threshold plus
  * the upgrade-request toggles, all read from the credit-usage configuration row.
@@ -58,6 +65,8 @@ export async function getUsageConfiguration(
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
+  const subscription = auth.subscriptionResource();
+
   return {
     balanceThresholdCredits: config?.balanceThresholdAwuCredits ?? null,
     allowMemberUpgradeRequests:
@@ -68,6 +77,17 @@ export async function getUsageConfiguration(
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
     autoSeatUpgradeEnabled:
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+    autoSeatUpgradeAvailable: subscription
+      ? passesBillingGate(subscription)
+      : false,
+    // Free plan workspaces cannot top up. Enterprise workspaces can only top up
+    // when the poke-managed flag is explicitly enabled. All other plans can
+    // always top up.
+    topUpEnabled:
+      !isFreePlan(auth.plan()?.code ?? "") &&
+      (isEnterprisePlanPrefix(auth.plan()?.code ?? "")
+        ? (config?.topUpEnabled ?? DEFAULT_TOP_UP_ENABLED)
+        : true),
   };
 }
 

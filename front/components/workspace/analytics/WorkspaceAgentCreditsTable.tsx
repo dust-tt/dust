@@ -1,5 +1,6 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { CreditsTableCard } from "@app/components/workspace/analytics/CreditsTableCard";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
   AvatarNameCell,
   CreditsCell,
@@ -7,6 +8,7 @@ import {
   EntityList,
 } from "@app/components/workspace/analytics/creditsTableCells";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type {
   AgentCreditRow,
   AgentCreditSkill,
@@ -164,8 +166,26 @@ export function WorkspaceAgentCreditsTable({
       disabled: !workspaceId,
     });
 
+  const exportParams = new URLSearchParams({
+    days: period.toString(),
+    limit: "100",
+    format: "csv",
+  });
+  if (debouncedValue) {
+    exportParams.set("search", debouncedValue);
+  }
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/agent-credits?${exportParams.toString()}`,
+    filename: `dust_agents_by_credits_last_${period}_days.csv`,
+    disabled:
+      isAgentCreditsLoading ||
+      Boolean(isAgentCreditsError) ||
+      agentCredits.length === 0,
+  });
+
   return (
     <CreditsTableCard<AgentCreditRowData>
+      actions={<CsvDownloadButton {...csvDownload} />}
       title="Agents by credits"
       description={`Top 100 agents by credits over the last ${period} days, with their top users and skills.`}
       searchName="agent-credits-search"

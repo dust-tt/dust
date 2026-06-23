@@ -55,7 +55,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
-import type { FetchConversationMessageResponseLight } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -64,6 +63,7 @@ import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { FetchConversationMessageResponseLight } from "@app/types/api/assistant/messages";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,

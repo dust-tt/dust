@@ -1,9 +1,9 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
-import type { GetEnabledModelsResponseType } from "@app/lib/api/assistant/models";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { filterEnabledModels } from "@app/lib/assistant";
 import { getFeatureFlags } from "@app/lib/auth";
+import type { GetEnabledModelsResponseType } from "@app/types/api/assistant/models";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

@@ -1,9 +1,9 @@
-import type { PostMentionActionResponseBody } from "@app/lib/api/assistant/conversation/mentions";
 import {
   dismissMention,
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { PostMentionActionResponseBody } from "@app/types/api/assistant/conversation/mentions";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

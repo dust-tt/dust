@@ -1017,7 +1017,8 @@ export async function getMembersUsage({
         memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
         seatBalanceAwu:
           awuAllocation > 0
-            ? (seatBalanceByUserId.get(metronomeUserId) ?? null)
+            ? (seatBalanceByUserId.get(userId) ??
+              (membership.seatType === "free" ? 0 : null))
             : null,
         consumedAwuCredits: totalConsumedCredits,
         consumedFromAllowanceAwuCredits,

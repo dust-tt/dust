@@ -1,5 +1,5 @@
-import type { GetProvidersResponseBody } from "@app/lib/api/providers";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
+import type { GetProvidersResponseBody } from "@app/types/api/providers";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";

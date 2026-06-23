@@ -26,6 +26,7 @@ import { isEmailValid } from "@app/lib/utils";
 import {
   isMembershipSeatType,
   type MembershipSeatType,
+  toBaseSeatType,
 } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -99,15 +100,25 @@ function seatBadge(
       </span>
     );
   }
-  const openCount = includedSeatsOpen(info);
   const price = formatPriceCents(
     info.priceCents,
     info.currency,
     info.billingFrequency
   );
+  if (toBaseSeatType(seatType) === "workspace") {
+    return (
+      <span className="text-xs text-foreground dark:text-foreground-night">
+        {price} · User can spend credits from the workspace pool.
+      </span>
+    );
+  }
+  const openCount = includedSeatsOpen(info);
   return (
     <span className="text-xs text-foreground dark:text-foreground-night">
-      {price} · {openCount} included seat{pluralize(openCount)} open
+      {price} ·{" "}
+      {openCount > 0
+        ? `${openCount} included seat${pluralize(openCount)} open`
+        : "Plan included seats used. You can still invite new users."}
     </span>
   );
 }
@@ -413,7 +424,7 @@ export function InviteEmailButtonWithModal({
                     />
                   </div>
                 )}
-                <div className="flex flex-col gap-2">
+                <div className="flex max-h-64 flex-col gap-2 overflow-y-auto pr-1">
                   {seatTypesByFrequency[activeFrequency].map((seatType) => {
                     const info = seatPlans[seatType];
                     if (!info) {

@@ -221,6 +221,23 @@ function getToolUsageType(
 }
 
 // ---------------------------------------------------------------------------
+// Run key
+// ---------------------------------------------------------------------------
+
+// Identifies a single agent-loop execution by the set of dustRunIds it
+// produced. Same runIds → same key (so Metronome deduplicates retries and the
+// credit-cost recompute groups runs the same way); a new execution
+// (interrupt/resume) has different runIds → different key → additive billing.
+// The credit-cost flow ceils intelligence cost per key, exactly matching the
+// per-execution Metronome events.
+export function computeRunKey(dustRunIds: string[]): string {
+  return createHash("sha256")
+    .update([...dustRunIds].sort().join(","))
+    .digest("hex")
+    .slice(0, 8);
+}
+
+// ---------------------------------------------------------------------------
 // AWU credit conversion helpers
 // ---------------------------------------------------------------------------
 // These are the single source of truth for converting raw usage into AWU
@@ -235,9 +252,13 @@ export function awuFromMicroUsd(microUsd: number): number {
   return Math.ceil(microUsd / 0.85 / 10_000);
 }
 
-// Intelligence (AI compute) credits for a set of run usages. Usages are
-// grouped by (providerId, modelId) and converted per group before summing —
-// this mirrors `buildLlmUsageEvents` so the total equals the billed amount.
+// Intelligence (AI compute) credits for a *single execution's* run usages.
+// Usages are grouped by (providerId, modelId) and converted per group before
+// summing — this mirrors the per-execution `buildLlmUsageEvents` event so the
+// total equals the billed amount for that execution. To get the message-level
+// total across interrupt/resume executions, use
+// `intelligenceAwuFromRunUsagesGroupedByRunKey` (which ceils per execution),
+// not this directly over the union of all runs.
 export function intelligenceAwuFromRunUsages(
   runUsages: RunUsageType[]
 ): number {
@@ -251,6 +272,35 @@ export function intelligenceAwuFromRunUsages(
   let total = 0;
   for (const costMicroUsd of costByModel.values()) {
     total += awuFromMicroUsd(costMicroUsd);
+  }
+  return total;
+}
+
+// Synthetic group for run usages whose run has no runKey yet (legacy rows, or
+// non-agent-loop runs). They are summed together so behavior matches the old
+// single-ceil computation for them.
+const LEGACY_RUN_KEY = "__legacy__";
+
+// Intelligence credits for an agent message, ceiling per agent-loop execution
+// (runKey) to exactly match the per-execution Metronome events. Metronome emits
+// one additive event per execution (interrupt/resume → new runKey → new event),
+// each ceiling per (providerId, modelId). Ceiling over the union of executions
+// instead would undercount (`ceil(a) + ceil(b) >= ceil(a + b)`), so we group by
+// runKey first, ceil each group via `intelligenceAwuFromRunUsages`, then sum.
+export function intelligenceAwuFromRunUsagesGroupedByRunKey(
+  runUsages: (RunUsageType & { runKey: string | null })[]
+): number {
+  const byRunKey = new Map<string, RunUsageType[]>();
+  for (const usage of runUsages) {
+    const key = usage.runKey ?? LEGACY_RUN_KEY;
+    const group = byRunKey.get(key) ?? [];
+    group.push(usage);
+    byRunKey.set(key, group);
+  }
+
+  let total = 0;
+  for (const group of byRunKey.values()) {
+    total += intelligenceAwuFromRunUsages(group);
   }
   return total;
 }

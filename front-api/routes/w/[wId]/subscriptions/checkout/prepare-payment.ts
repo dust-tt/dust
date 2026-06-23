@@ -1,8 +1,8 @@
 import {
-  type GetPreparePaymentResponseBody,
   getPreparePaymentData,
   type PreparePaymentError,
 } from "@app/lib/api/checkout/prepare_payment";
+import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prepare_payment";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";

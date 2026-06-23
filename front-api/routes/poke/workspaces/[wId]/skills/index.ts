@@ -1,5 +1,5 @@
-import type { GetPokeSkillsResponseBody } from "@app/lib/api/poke/skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { GetPokeSkillsResponseBody } from "@app/types/api/poke/skills";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 

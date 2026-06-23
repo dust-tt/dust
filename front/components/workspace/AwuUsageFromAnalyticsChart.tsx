@@ -3,7 +3,6 @@ import {
   CHART_HEIGHT,
   COST_PALETTE,
   OTHER_LABEL,
-  USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import {
   getIndexedColor,
@@ -13,6 +12,8 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
 import {
@@ -148,11 +149,6 @@ export function AwuUsageFromAnalyticsChart({
         let label = group.name;
         if (group.groupKey === "others") {
           label = OTHER_LABEL.label;
-        } else if (
-          groupBy === "origin" &&
-          isUserMessageOrigin(group.groupKey)
-        ) {
-          label = USER_MESSAGE_ORIGIN_LABELS[group.groupKey].label;
         }
         const canFilter =
           !!groupBy &&
@@ -178,6 +174,25 @@ export function AwuUsageFromAnalyticsChart({
       ),
     [allKeys, effectiveEnabledKeys]
   );
+
+  const exportParams = new URLSearchParams({
+    days: period.toString(),
+    granularity,
+    format: "csv",
+  });
+  if (groupBy) {
+    exportParams.set("groupBy", groupBy);
+    exportParams.set("groupByCount", groupByCount.toString());
+  }
+  // Mirror the legend drilldown: export only the series currently shown.
+  if (effectiveEnabledKeys) {
+    exportParams.set("series", effectiveEnabledKeys.join(","));
+  }
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/awu-usage-analytics?${exportParams.toString()}`,
+    filename: `dust_credit_usage_last_${period}_days.csv`,
+    disabled: isAwuUsageLoading || !!isAwuUsageError || chartData.length === 0,
+  });
 
   return (
     <ChartContainer
@@ -262,6 +277,7 @@ export function AwuUsageFromAnalyticsChart({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          <CsvDownloadButton {...csvDownload} />
         </div>
       }
       height={CHART_HEIGHT}
@@ -353,8 +369,6 @@ function CreditTooltip(
     let label = groupNameByKey.get(groupKey) ?? groupKey;
     if (groupKey === "others") {
       label = OTHER_LABEL.label;
-    } else if (groupBy === "origin" && isUserMessageOrigin(groupKey)) {
-      label = USER_MESSAGE_ORIGIN_LABELS[groupKey].label;
     }
     entries.push({
       label,

@@ -1,3 +1,9 @@
+export const DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS = true;
+export const DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED = true;
+export const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
+export const DEFAULT_TOP_UP_ENABLED = false;
+export const DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED = true;
+
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -42,6 +48,12 @@ import type { CreationOptional } from "sequelize";
  *   Metronome balance-threshold alert (see
  *   `lib/metronome/alerts/balance_threshold.ts`) is derived from it. NULL means
  *   no threshold is configured (the warning is off); 0 is normalized to NULL.
+ * - topUpEnabled: When true, enterprise-plan workspaces show the "Top up"
+ *   button on the Usage page. Defaults to false (enterprise workspaces are
+ *   directed to sales by default).
+ * - autoInvoiceFinalizationEnabled: When false, `cleanAndFinalizeMetronomeDraftInvoice`
+ *   skips the Stripe finalization step and leaves the invoice as a cleaned draft
+ *   for manual review. Defaults to true (finalization is automatic).
  *
  * The Metronome balance-threshold alert id (used by the webhook to match the
  * firing alert) is NOT stored here: it is a Metronome-generated value resolved
@@ -59,6 +71,8 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare programmaticMonthlyCapAwuCredits: number | null;
   declare autoSeatUpgradeEnabled: CreationOptional<boolean>;
   declare balanceThresholdAwuCredits: number | null;
+  declare topUpEnabled: CreationOptional<boolean>;
+  declare autoInvoiceFinalizationEnabled: CreationOptional<boolean>;
 }
 
 CreditUsageConfigurationModel.init(
@@ -104,12 +118,12 @@ CreditUsageConfigurationModel.init(
     allowMemberUpgradeRequests: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
     },
     upgradeRequestEmailEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
     },
     defaultPoolCapAwuCredits: {
       type: DataTypes.INTEGER,
@@ -124,12 +138,22 @@ CreditUsageConfigurationModel.init(
     autoSeatUpgradeEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: false,
+      defaultValue: DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
     },
     balanceThresholdAwuCredits: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
+    },
+    topUpEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: DEFAULT_TOP_UP_ENABLED,
+    },
+    autoInvoiceFinalizationEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED,
     },
   },
   {

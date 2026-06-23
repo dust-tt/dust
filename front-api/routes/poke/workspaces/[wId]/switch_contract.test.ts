@@ -1,5 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
-import { listMetronomePackages } from "@app/lib/metronome/client";
+import {
+  archiveMetronomeContract,
+  listMetronomePackages,
+  reactivateMetronomeContract,
+} from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
@@ -32,7 +36,9 @@ vi.mock("@app/lib/metronome/client", async () => {
   >("@app/lib/metronome/client");
   return {
     ...actual,
+    archiveMetronomeContract: vi.fn(),
     listMetronomePackages: vi.fn(),
+    reactivateMetronomeContract: vi.fn(),
   };
 });
 
@@ -200,6 +206,8 @@ function postSwitchContract(workspaceId: string, body: unknown) {
 }
 
 beforeEach(() => {
+  vi.mocked(archiveMetronomeContract).mockResolvedValue(new Ok(undefined));
+  vi.mocked(reactivateMetronomeContract).mockResolvedValue(new Ok(undefined));
   vi.mocked(ensureMetronomeCustomerForWorkspace).mockResolvedValue(
     new Ok({ metronomeCustomerId: METRONOME_CUSTOMER_ID })
   );

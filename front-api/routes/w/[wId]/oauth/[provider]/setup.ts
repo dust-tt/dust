@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 
-import type { GetOAuthSetupResponseBody } from "@app/lib/api/oauth";
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
+import type { GetOAuthSetupResponseBody } from "@app/types/api/oauth";
 import {
   ExtraConfigTypeSchema,
   OAUTH_PROVIDERS,

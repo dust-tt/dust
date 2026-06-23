@@ -13,11 +13,6 @@ import type {
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
-export type GetTrialMessageUsageResponseType = {
-  count: number;
-  limit: number;
-};
-
 export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
 export const MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 60;
 export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR = 3_000;

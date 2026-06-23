@@ -1,5 +1,5 @@
-import type { PostConversationForkResponseBody } from "@app/lib/api/assistant/conversation/forks";
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
+import type { PostConversationForkResponseBody } from "@app/types/api/assistant/conversation/forks";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

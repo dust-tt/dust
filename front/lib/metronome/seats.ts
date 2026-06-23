@@ -158,8 +158,8 @@ export type SeatChangeOutcome =
  * Branches:
  * - Same seat as current: `cancelled` if a pending future change exists,
  *   else `noop`.
- * - `free` → `none`: `noop`. A `free` seat is a one-shot tier that cannot be
- *   downgraded to no seat.
+ * - `free` → `none`: `immediate`. A `free` seat carries no renewing, already-paid
+ *   allowance to preserve, so removing it takes effect right away.
  * - New allocation ≥ previous: `immediate` (the user gains/keeps access
  *   right away).
  * - New allocation < previous: `deferred` to the next time the previous
@@ -186,11 +186,13 @@ export function classifySeatChange({
     return pendingScheduledChange ? { kind: "cancelled" } : { kind: "noop" };
   }
 
-  // `free` is a one-shot tier that can't be given back: downgrading a free
-  // seat to no seat is not allowed, so treat it as a no-op (the caller leaves
-  // the membership untouched).
+  // `free` → `none`: remove the seat immediately. A free seat carries a
+  // one-shot allocation with no renewing, already-paid allowance to preserve,
+  // so there's nothing to defer to — the member drops to no seat right away.
+  // (The `free` tier is one-shot: once removed it can't be re-granted, which
+  // `updateMembershipSeatAndTrack` enforces separately.)
   if (previousSeatType === "free" && newSeatType === "none") {
-    return { kind: "noop" };
+    return { kind: "immediate" };
   }
 
   const previousAllocation = getAwuAllocationForSeatType(

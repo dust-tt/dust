@@ -2711,6 +2711,71 @@ describe("listPrivateConversationsForUser", () => {
     expect(item?.nextWakeupAt).toBe(scheduledFireAt.getTime());
   });
 
+  it("derives the 'Branched from ...' title for forked conversations in the DB paginated list", async () => {
+    const parentConversationTitle = "Quarterly Review Data";
+    const parentConversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationModel.update(
+      { title: parentConversationTitle },
+      { where: { id: parentConversation.id, workspaceId: workspace.id } }
+    );
+
+    // The forked child starts untitled; its display title must be derived from the fork data.
+    const childConversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [],
+    });
+    await ConversationModel.update(
+      { title: null },
+      { where: { id: childConversation.id, workspaceId: workspace.id } }
+    );
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: childConversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const parentConversationResource = await ConversationResource.fetchById(
+      adminAuth,
+      parentConversation.sId
+    );
+    const childConversationResource = await ConversationResource.fetchById(
+      adminAuth,
+      childConversation.sId
+    );
+    assert(parentConversationResource, "Parent conversation not found");
+    assert(childConversationResource, "Child conversation not found");
+
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        conversationId: parentConversation.id,
+        workspaceId: workspace.id,
+        rank: 1,
+      },
+    });
+    assert(sourceMessage, "Source message not found");
+
+    await ConversationForkResource.makeNew(adminAuth, {
+      parentConversation: parentConversationResource,
+      childConversation: childConversationResource,
+      sourceMessageModelId: sourceMessage.id,
+      branchedAt: new Date(),
+    });
+
+    const result =
+      await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+        userAuth,
+        { limit: 100 }
+      );
+    const item = result.conversations.find(
+      (c) => c.sId === childConversation.sId
+    );
+
+    expect(item?.title).toBe(`Branched from '${parentConversationTitle}'`);
+  });
+
   it("should return conversations with populated participation data", async () => {
     // First, get the raw participation data from the database to compare
     const { ConversationParticipantModel } = await import(

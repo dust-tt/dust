@@ -139,24 +139,31 @@ export function useAcademyQuiz({
                 continue;
               }
 
+              let parsed;
               try {
-                const parsed = JSON.parse(data);
-                if (parsed.text) {
-                  assistantMessage += parsed.text;
-                  setMessages((prev) => {
-                    const newMessages = [...prev];
-                    newMessages[newMessages.length - 1] = {
-                      role: "assistant",
-                      content: assistantMessage,
-                    };
-                    return newMessages;
-                  });
-                }
-                if (parsed.error) {
-                  throw new Error(parsed.error);
-                }
+                parsed = JSON.parse(data);
               } catch {
-                // Ignore parse errors for incomplete chunks
+                // Ignore parse errors for incomplete chunks.
+                continue;
+              }
+
+              // Surface server-sent errors to the outer catch (which sets the
+              // error state and removes the placeholder message). This must be
+              // outside the JSON.parse try above, otherwise the throw would be
+              // swallowed by the incomplete-chunk catch.
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+              if (parsed.text) {
+                assistantMessage += parsed.text;
+                setMessages((prev) => {
+                  const newMessages = [...prev];
+                  newMessages[newMessages.length - 1] = {
+                    role: "assistant",
+                    content: assistantMessage,
+                  };
+                  return newMessages;
+                });
               }
             }
           }

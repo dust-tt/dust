@@ -1,5 +1,4 @@
 import type { Client } from "@app/lib/model_constructors/client";
-import type { FireworksInputConfig } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
 import {
   assistantReasoningMessageToMessage,
   assistantTextMessageToMessage,
@@ -15,6 +14,7 @@ import {
   userImageMessageToMessage,
   userTextMessageToMessage,
 } from "@app/lib/model_constructors/sdk/openai_completions/converters/input/utils";
+import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
 
@@ -25,7 +25,7 @@ type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 // fields and the composite routes through `this`, so an endpoint can override a
 // single leaf.
 export function WithOpenAICompletionsInputConverter<
-  TBase extends AbstractConstructor<Client<FireworksInputConfig>>,
+  TBase extends AbstractConstructor<Client<InputConfig>>,
 >(Base: TBase) {
   abstract class WithOpenAICompletionsInputConverter
     extends Base
@@ -41,7 +41,7 @@ export function WithOpenAICompletionsInputConverter<
 
     buildRequestPayload(
       payload: Payload,
-      config: FireworksInputConfig
+      config: InputConfig
     ): ChatCompletionCreateParamsNonStreaming {
       const { conversation } = payload;
       const {
@@ -57,8 +57,8 @@ export function WithOpenAICompletionsInputConverter<
         : undefined;
 
       // `tool_choice` is always sent (matching the legacy client); `tools` is
-      // only sent when non-empty. Fireworks does not get an explicit max-output
-      // cap, matching the legacy client.
+      // only sent when non-empty. No explicit max-output cap is sent, matching
+      // the legacy client.
       return {
         model: this.constructor.modelId,
         messages: conversationToOpenAICompletionsMessages(conversation, this),

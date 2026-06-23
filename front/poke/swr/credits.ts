@@ -11,11 +11,11 @@ import type {
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import type { WindowSize } from "@app/lib/api/analytics/time_utils";
-import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { PokeListCreditsResponseBody } from "@app/lib/api/poke/credits";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import type { Fetcher } from "swr";
 
 export type PokeCreditsData = {

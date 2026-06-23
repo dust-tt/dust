@@ -1,11 +1,11 @@
 // Maximum allowed number of unconsumed invitations per workspace per day.
 
 import type { ConfirmDataType } from "@app/components/Confirm";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
-} from "@app/lib/api/invitation";
-import { clientFetch } from "@app/lib/egress/client";
+} from "@app/types/api/invitation";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { ActiveRoleType, RoleType, WorkspaceType } from "@app/types/user";

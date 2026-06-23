@@ -1,4 +1,4 @@
-import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import { isPastedFile } from "@app/lib/files";
 
 const SLACK_THREAD_CONTENT_TYPE = "text/vnd.dust.attachment.slack.thread";
 const AUDIO_WEBM_CONTENT_TYPE = "audio/webm";

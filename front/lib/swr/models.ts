@@ -1,5 +1,5 @@
-import type { GetEnabledModelsResponseType } from "@app/lib/api/assistant/models";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetEnabledModelsResponseType } from "@app/types/api/assistant/models";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

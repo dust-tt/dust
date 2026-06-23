@@ -38,3 +38,6 @@ export function shouldInsertSlashBoundarySpace(state: EditorState) {
 
   return !!textBefore && !textBefore.endsWith(" ");
 }
+
+/** Keeps slash dropdown height stable so Radix placement does not jump with few items. */
+export const SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME = "min-h-48 max-h-96";

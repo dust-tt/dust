@@ -8,28 +8,11 @@ import { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { z } from "zod";
-
-export const SearchConversationsQuerySchema = z.object({
-  query: z.string().min(1, "Query parameter is required and cannot be empty"),
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1, "Limit must be at least 1")
-    .max(100, "Limit must be at most 100")
-    .optional()
-    .default(10),
-});
-
-export type SearchConversationsResponseBody = {
-  conversations: ConversationWithoutContentType[];
-};
 
 export interface SearchProjectConversationsOptions {
   query: string;

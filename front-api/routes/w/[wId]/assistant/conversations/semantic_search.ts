@@ -1,11 +1,11 @@
-import type { SemanticSearchConversationsResponseBody } from "@app/lib/api/assistant/conversation/semantic_search";
-import {
-  SEMANTIC_SEARCH_SCORE_CUTOFF,
-  SearchQuerySchema,
-} from "@app/lib/api/assistant/conversation/semantic_search";
+import { SEMANTIC_SEARCH_SCORE_CUTOFF } from "@app/lib/api/assistant/conversation/semantic_search";
 import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  SearchQuerySchema,
+  type SemanticSearchConversationsResponseBody,
+} from "@app/types/api/assistant/conversation/semantic_search";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

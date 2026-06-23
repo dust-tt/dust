@@ -28,9 +28,9 @@ import { getOrCreateAnonymousId } from "@marketing/lib/utils/anonymous_id";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
 import { Button, cn } from "@dust-tt/sparkle";
 import Head from "next/head";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import Script from "next/script";
+import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
@@ -55,6 +55,8 @@ export default function LandingLayout({
     hideNavigation,
     fullWidth,
   } = pageProps;
+
+  const { openSignUpModal } = useSignUpModal();
 
   const router = useRouter();
   // Initialize from the timestamp so there's no layout shift on first render.
@@ -190,17 +192,16 @@ export default function LandingLayout({
                     >
                       Sign in
                     </a>
-                    <Link href="/sign-up">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        label="Try for free"
-                        onClick={withTracking(
-                          TRACKING_AREAS.NAVIGATION,
-                          "sign_up"
-                        )}
-                      />
-                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      label="Try for free"
+                      onClick={withTracking(
+                        TRACKING_AREAS.NAVIGATION,
+                        "sign_up",
+                        openSignUpModal
+                      )}
+                    />
                     <UTMButton
                       href="/home/contact"
                       className="hidden xs:inline-flex"

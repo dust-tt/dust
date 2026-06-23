@@ -59,12 +59,14 @@ export function sanitizeContent(str: string): string {
     str += "`";
   }
 
-  // (2) Hide incomplete text directives during streaming.
-  // Incomplete = trailing :directive[... without ] or :directive[...]{... without }
+  // (2) Hide incomplete directives during streaming.
+  // Incomplete = trailing :directive[... without ], :directive[...]{... without },
+  // or :directive{... without }.
   // Uses $ (end of string, no m flag) so only the last streamed tokens are affected.
   str = str
-    .replace(/:[\w]+\[[^\]]*$/, "")
-    .replace(/:[\w]+\[[^\]]*\]\{[^}]*$/, "");
+    .replace(/:{1,3}[\w-]+\[[^\]\n]*$/, "")
+    .replace(/:{1,3}[\w-]+\[[^\]\n]*\]\{[^}\n]*$/, "")
+    .replace(/:{1,2}[\w-]+\{[^}\n]*$/, "");
 
   return str;
 }

@@ -1,3 +1,4 @@
+import { SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import {
   cn,
   DropdownMenu,
@@ -23,6 +24,7 @@ const INTERACT_OUTSIDE_GRACE_MS = 350;
 export interface InlineSlashSearchProps {
   deferDropdownUntilFocus?: boolean;
   dropdownContent: React.ReactNode;
+  highlightedItemId?: string;
   isDropdownOpen: boolean;
   itemCount: number;
   onCancel: () => void;
@@ -37,6 +39,7 @@ export interface InlineSlashSearchProps {
 export function InlineSlashSearch({
   deferDropdownUntilFocus = false,
   dropdownContent,
+  highlightedItemId,
   isDropdownOpen,
   itemCount,
   onCancel,
@@ -244,11 +247,17 @@ export function InlineSlashSearch({
             align="start"
             avoidCollisions
             collisionPadding={12}
+            highlightedItemId={highlightedItemId}
+            scrollHighlightedItemIntoView
+            side="bottom"
+            sideOffset={4}
             onInteractOutside={handleInteractOutside}
             onOpenAutoFocus={(event) => event.preventDefault()}
             onCloseAutoFocus={(event) => event.preventDefault()}
           >
-            {dropdownContent}
+            <div className={SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME}>
+              {dropdownContent}
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

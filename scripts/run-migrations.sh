@@ -8,6 +8,10 @@ set -euo pipefail
 # post-deploy — apply migrations that must run after new code is deployed
 # status      — show pending migrations in every region (continues on failure)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/gcp.sh
+source "${SCRIPT_DIR}/lib/gcp.sh"
+
 COMMAND="${1:?Usage: run-migrations.sh <pre-deploy|post-deploy|status> [front|connectors]}"
 COMPONENT="${2:?Usage: run-migrations.sh <pre-deploy|post-deploy|status> [front|connectors]}"
 
@@ -34,6 +38,25 @@ case "$COMPONENT" in
     ;;
 esac
 
+# ---------------------------------------------------------------------------
+# Post-deploy confirmation
+# ---------------------------------------------------------------------------
+
+if [[ "$COMMAND" == "post-deploy" ]]; then
+  echo ""
+  echo "⚠️  Post-deploy migrations share DB models with front services."
+  echo "   Make sure the following are deployed with the latest code before continuing:"
+  echo "     • front"
+  echo "     • front-sse"
+  echo ""
+  read -r -p "   Have you deployed front and front-sse? [y/N] " confirm
+  if [[ "${confirm,,}" != "y" ]]; then
+    echo "❌ Aborted. Deploy front and front-sse first." >&2
+    exit 1
+  fi
+  echo ""
+fi
+
 # Map command to the npm script defined in package.json.
 case "$COMMAND" in
   pre-deploy) NPM_SCRIPT="migration:apply:pre-deploy" ;;
@@ -45,11 +68,8 @@ esac
 # GCP authentication
 # ---------------------------------------------------------------------------
 
-echo "🔐 Checking gcloud authentication..."
-if ! gcloud auth print-access-token &>/dev/null; then
-  echo "   Not authenticated — running gcloud auth login..."
-  gcloud auth login
-fi
+require_commands gcloud kubectl
+ensure_gcloud_auth
 
 # ---------------------------------------------------------------------------
 # Temp kubeconfig cleanup
@@ -77,36 +97,12 @@ run_in_region() {
   TMPFILES+=("$tmpkubeconfig")
 
   echo ""
-  echo "🌍 ${region} — fetching cluster credentials..."
+  connect_cluster "${region}" "$tmpkubeconfig" || return 1
 
-  # --configuration uses the named gcloud config without activating it globally,
-  # keeping the caller's active configuration intact.
-  if ! KUBECONFIG="$tmpkubeconfig" \
-    gcloud --configuration="${region}" \
-    container clusters get-credentials dust-kube \
-    --region "${region}" \
-    --quiet; then
-    echo "❌ Failed to get credentials for ${region}." >&2
-    return 1
-  fi
-
-  pod_name=$(
-    KUBECONFIG="$tmpkubeconfig" kubectl get pods \
-      -lapp.kubernetes.io/instance=prodbox \
-      --output jsonpath='{.items[0].metadata.name}'
-  ) || {
-    echo "❌ Failed to list pods in ${region}." >&2
-    return 1
-  }
-
-  if [[ -z "$pod_name" ]]; then
-    echo "❌ No prodbox pod found in ${region}." >&2
-    return 1
-  fi
+  pod_name=$(get_prodbox_pod "$tmpkubeconfig") || return 1
 
   echo "   Pod: ${pod_name}"
 
-  local pod_branch
   local pod_branch
   pod_branch=$(KUBECONFIG="$tmpkubeconfig" kubectl exec "${pod_name}" -- git -C /dust branch --show-current) || {
     echo "❌ Failed to check /dust branch in ${region}." >&2

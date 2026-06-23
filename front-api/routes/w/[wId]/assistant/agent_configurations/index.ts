@@ -1,8 +1,4 @@
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
-import type {
-  GetAgentConfigurationsResponseBody,
-  PostAgentConfigurationResponseBody,
-} from "@app/lib/api/assistant/configuration";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
@@ -10,6 +6,10 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import type {
+  GetAgentConfigurationsResponseBody,
+  PostAgentConfigurationResponseBody,
+} from "@app/types/api/assistant/configuration";
 import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,

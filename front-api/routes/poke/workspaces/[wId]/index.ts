@@ -11,6 +11,7 @@ import analytics from "./analytics";
 import apps from "./apps";
 import assistants from "./assistants";
 import authContext from "./auth-context";
+import cancelPendingContract from "./cancel_pending_contract";
 import conversations from "./conversations";
 import credits from "./credits";
 import dataRetention from "./data_retention";
@@ -81,6 +82,7 @@ app.patch(
 
 app.route("/agent_configurations", agentConfigurations);
 app.route("/analytics", analytics);
+app.route("/cancel_pending_contract", cancelPendingContract);
 app.route("/apps", apps);
 app.route("/assistants", assistants);
 app.route("/conversations", conversations);

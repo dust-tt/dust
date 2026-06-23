@@ -1,9 +1,3 @@
-import type {
-  DeleteSkillResponseBody,
-  GetSkillResponseBody,
-  GetSkillWithRelationsResponseBody,
-  PatchSkillResponseBody,
-} from "@app/lib/api/skills";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import {
   getReferencedSkillSpaceModelIds,
@@ -16,6 +10,12 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  DeleteSkillResponseBody,
+  GetSkillResponseBody,
+  GetSkillWithRelationsResponseBody,
+  PatchSkillResponseBody,
+} from "@app/types/api/skills";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";

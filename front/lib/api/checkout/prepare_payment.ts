@@ -4,26 +4,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import { calculateTax, getStripeClient } from "@app/lib/plans/stripe";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
-import type { SupportedCurrency } from "@app/types/currency";
+import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prepare_payment";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
-
-export type GetPreparePaymentResponseBody =
-  | { status: "pending" }
-  | {
-      status: "success";
-      subtotalCents: number;
-      taxCents: number;
-      totalCents: number;
-      seatCount: number;
-      pricePerSeatCents: number;
-      planCode: string;
-      metronomePackageAlias: string;
-      currency: SupportedCurrency;
-      cardBrand?: string;
-      cardLast4?: string;
-      sepaLast4?: string;
-    };
 
 export type PreparePaymentError =
   | { type: "metronome_not_enabled" }

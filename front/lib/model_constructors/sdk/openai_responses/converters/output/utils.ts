@@ -2,6 +2,7 @@ import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoin
 import type {
   ErrorEvent,
   ModelResponseEvent,
+  NonDeltaResponseEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
   ResponseIdEvent,
@@ -21,6 +22,7 @@ import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { APIConnectionError, APIError } from "openai";
 import type {
+  Response as OpenAIResponse,
   ResponseCreatedEvent,
   ResponseOutputItem,
   ResponseStreamEvent,
@@ -570,4 +572,73 @@ export async function* rawOutputToEvents(
   }
 
   yield { type: "success", content: { aggregated }, metadata };
+}
+
+// -- Non-streaming entry point: a complete batch response → events --
+
+function isNonDeltaEvent(
+  event: ModelResponseEvent
+): event is NonDeltaResponseEvent {
+  return (
+    event.type !== "text_delta" &&
+    event.type !== "reasoning_delta" &&
+    event.type !== "tool_call_delta"
+  );
+}
+
+// Turns a complete `Response` (as returned by the Batch API) into the unified
+// event array, mirroring `rawOutputToEvents` minus the streaming-only delta
+// events. Reuses `outputItemToEvents` so output-item semantics stay
+// single-sourced.
+export function responseToEvents(
+  response: OpenAIResponse,
+  metadata: EndpointMetadata,
+  converters: OutputEventConverters
+): NonDeltaResponseEvent[] {
+  // Terminal failure states surface as a single error event.
+  if (response.status === "failed") {
+    return [converters.streamErrorToErrorEvent(metadata, response.error)];
+  }
+  if (response.status === "incomplete") {
+    return [
+      buildErrorEvent({
+        metadata,
+        type: "stop_error",
+        message:
+          response.incomplete_details?.reason ?? "The response was incomplete.",
+      }),
+    ];
+  }
+
+  const events: NonDeltaResponseEvent[] = [];
+  const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
+
+  events.push({
+    type: "response_id",
+    content: { responseId: response.id },
+    metadata,
+  });
+
+  for (const item of response.output) {
+    for (const event of outputItemToEvents(item, metadata, converters)) {
+      if (
+        event.type === "text" ||
+        event.type === "reasoning" ||
+        event.type === "tool_call"
+      ) {
+        aggregated.push(event);
+      }
+      if (isNonDeltaEvent(event)) {
+        events.push(event);
+      }
+    }
+  }
+
+  if (response.usage) {
+    events.push(converters.usageToTokenUsageEvent(metadata, response.usage));
+  }
+
+  events.push({ type: "success", content: { aggregated }, metadata });
+
+  return events;
 }

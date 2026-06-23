@@ -1,5 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetUpgradeRequestsResponseBody } from "@app/lib/api/credits/upgrade_requests";
 import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import {
@@ -8,6 +7,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { GetUpgradeRequestsResponseBody } from "@app/types/api/credits/upgrade_requests";
 import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useCallback } from "react";

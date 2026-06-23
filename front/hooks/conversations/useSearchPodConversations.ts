@@ -1,5 +1,5 @@
-import type { SemanticSearchConversationsResponseBody } from "@app/lib/api/assistant/conversation/semantic_search";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { SemanticSearchConversationsResponseBody } from "@app/types/api/assistant/conversation/semantic_search";
 import { useEffect, useMemo, useState } from "react";
 
 type PodConversationSearchResult =

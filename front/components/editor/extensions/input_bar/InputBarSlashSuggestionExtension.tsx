@@ -1,5 +1,10 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
-import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import {
+  isInsertContextFileSlashCommand,
+  isInsertKnowledgeSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { WorkspaceType } from "@app/types/user";
@@ -19,20 +24,19 @@ export interface InputBarSlashSuggestionExtensionOptions {
   conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
-  onDetailsRef?: RefObject<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-  >;
-  onSelectRef: RefObject<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-  >;
+  onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
+  onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
   owner?: WorkspaceType;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
+  slashCommandsRef: RefObject<InputBarSlashCommand[]>;
+  includeAttachKnowledgeRef: RefObject<boolean>;
+  includeSelectContextFileRef: RefObject<boolean>;
 }
 
 export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   InputBarSlashSuggestionExtensionOptions,
   InputBarSlashSuggestionStorage,
-  InputBarSlashSuggestionCapability
+  SlashCommand
 >({
   name: "inputBarSlashSuggestion",
   pluginKey: inputBarSlashSuggestionPluginKey,
@@ -50,6 +54,9 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
     selectedMCPServerViewIdsRef: { current: new Set<string>() },
+    slashCommandsRef: { current: [] },
+    includeAttachKnowledgeRef: { current: false },
+    includeSelectContextFileRef: { current: false },
   },
   allow: ({ editor, state, range, isActive, options, storage }) =>
     Boolean(options.owner) &&
@@ -63,6 +70,22 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   items: () => [],
   command: ({ editor, range, props, options, storage }) => {
     storage.dismissedTriggerStart = null;
+
+    if (isInsertKnowledgeSlashCommand(props)) {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertKnowledgeSearchNode()
+        .run();
+      return;
+    }
+
+    if (isInsertContextFileSlashCommand(props)) {
+      editor.chain().focus().deleteRange(range).insertFileSearchNode().run();
+      return;
+    }
+
     editor.chain().focus().deleteRange(range).run();
     options.onSelectRef.current?.(props);
   },
@@ -73,6 +96,9 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onDetailsRef: options.onDetailsRef,
     owner: options.owner,
     selectedMCPServerViewIdsRef: options.selectedMCPServerViewIdsRef,
+    slashCommandsRef: options.slashCommandsRef,
+    includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
+    includeSelectContextFileRef: options.includeSelectContextFileRef,
   }),
   notifyActiveChange: (active, options) => {
     options.onActiveChangeRef?.current?.(active);

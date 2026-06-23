@@ -1,8 +1,16 @@
+import type { AllSupportedFileContentType } from "@app/types/files";
+
 import capitalize from "lodash/capitalize";
 import words from "lodash/words";
 
 export const FILE_ID_PATTERN = "fil_[A-Za-z0-9]{10,}";
 export const FILE_ID_REGEX = new RegExp(`\\b${FILE_ID_PATTERN}\\b`, "g");
+export const PASTED_FILE_CONTENT_TYPE =
+  "text/vnd.dust.attachment.pasted" satisfies AllSupportedFileContentType;
+
+export const isPastedFile = (contentType: string | undefined): boolean => {
+  return contentType === PASTED_FILE_CONTENT_TYPE;
+};
 
 // We use this to detect if a Interactive Content file uses conversation files.
 // In which case, we don't want to display it publicly. Our proxy here is to look for usage of the

@@ -163,9 +163,7 @@ describe("getSkillSlashCommandItem", () => {
       userFacingDescription: "Draft structured memos.",
     });
 
-    const item = getSkillSlashCommandItem(skill, {
-      sectionLabel: "Capabilities",
-    });
+    const item = getSkillSlashCommandItem(skill);
 
     expect(item).toMatchObject({
       action: "select-skill",
@@ -176,7 +174,6 @@ describe("getSkillSlashCommandItem", () => {
       hasDetails: true,
       id: "skill_create_memo",
       label: "Create memo",
-      sectionLabel: "Capabilities",
     });
   });
 });
@@ -192,9 +189,7 @@ describe("getToolSlashCommandItem", () => {
       sId: "mcp_server_view_linear",
     });
 
-    const item = getToolSlashCommandItem(tool, {
-      sectionLabel: "Capabilities",
-    });
+    const item = getToolSlashCommandItem(tool);
 
     expect(item).toMatchObject({
       action: "select-tool",
@@ -210,7 +205,6 @@ describe("getToolSlashCommandItem", () => {
       hasDetails: true,
       id: "mcp_server_view_linear",
       label: "Create ticket (Product)",
-      sectionLabel: "Capabilities",
     });
   });
 });

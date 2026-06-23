@@ -165,7 +165,7 @@ describe("isModelAvailable", () => {
   it("should return false for large model without upgraded plan", () => {
     const model = createMockModel({
       largeModel: true,
-      availableIfOneOf: { enterprise: true },
+      availableIfOneOf: { plansWithAdvancedModels: true },
     });
     const plan = createMockPlan(FREE_NO_PLAN_CODE);
 
@@ -182,7 +182,7 @@ describe("isModelAvailable", () => {
   it("should return false for large model with null plan", () => {
     const model = createMockModel({
       largeModel: true,
-      availableIfOneOf: { enterprise: true },
+      availableIfOneOf: { plansWithAdvancedModels: true },
     });
 
     expect(
@@ -212,9 +212,9 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should return true when enterprise is set and plan is an enterprise plan", () => {
+  it("should return true when plansWithAdvancedModels is set and plan is an enterprise plan", () => {
     const model = createMockModel({
-      availableIfOneOf: { enterprise: true },
+      availableIfOneOf: { plansWithAdvancedModels: true },
       largeModel: false,
     });
     const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
@@ -229,9 +229,9 @@ describe("isModelAvailable", () => {
     ).toBe(true);
   });
 
-  it("should return true when enterprise is set and plan has ENT_ prefix", () => {
+  it("should return true when plansWithAdvancedModels is set and plan has ENT_ prefix", () => {
     const model = createMockModel({
-      availableIfOneOf: { enterprise: true },
+      availableIfOneOf: { plansWithAdvancedModels: true },
       largeModel: false,
     });
     const plan = createMockPlan("ENT_CUSTOM_PLAN");
@@ -246,9 +246,12 @@ describe("isModelAvailable", () => {
     ).toBe(true);
   });
 
-  it("should return true when both enterprise and featureFlag are set, with enterprise plan", () => {
+  it("should return true when both plansWithAdvancedModels and featureFlag are set, with enterprise plan", () => {
     const model = createMockModel({
-      availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
+      availableIfOneOf: {
+        plansWithAdvancedModels: true,
+        featureFlag: "deepseek_feature",
+      },
       largeModel: false,
     });
     const plan = createMockPlan(DUST_COMPANY_PLAN_CODE);
@@ -263,9 +266,12 @@ describe("isModelAvailable", () => {
     ).toBe(true);
   });
 
-  it("should return true when both enterprise and featureFlag are set, with featureFlag enabled", () => {
+  it("should return true when both plansWithAdvancedModels and featureFlag are set, with featureFlag enabled", () => {
     const model = createMockModel({
-      availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
+      availableIfOneOf: {
+        plansWithAdvancedModels: true,
+        featureFlag: "deepseek_feature",
+      },
       largeModel: false,
     });
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
@@ -280,9 +286,12 @@ describe("isModelAvailable", () => {
     ).toBe(true);
   });
 
-  it("should return false when both enterprise and featureFlag are set but neither condition is met", () => {
+  it("should return false when both plansWithAdvancedModels and featureFlag are set but neither condition is met", () => {
     const model = createMockModel({
-      availableIfOneOf: { enterprise: true, featureFlag: "deepseek_feature" },
+      availableIfOneOf: {
+        plansWithAdvancedModels: true,
+        featureFlag: "deepseek_feature",
+      },
       largeModel: false,
     });
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
