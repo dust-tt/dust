@@ -4,10 +4,8 @@ import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/Skil
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
-  Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -23,9 +21,6 @@ export function SkillBuilderSettingsSection({
   skill,
   hasSelfImprovingSkills,
 }: SkillBuilderSettingsSectionProps) {
-  const { hasFeature } = useFeatureFlags();
-  const isBetaTester = hasFeature("self_improvement_beta_tester");
-
   return (
     <div className="space-y-5">
       <h2 className="heading-lg text-foreground dark:text-foreground-night">
@@ -48,12 +43,9 @@ export function SkillBuilderSettingsSection({
       </div>
       {hasSelfImprovingSkills && (
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
-              Self Improvement
-            </Label>
-            {isBetaTester && <Chip size="xs" color="golden" label="Beta" />}
-          </div>
+          <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
+            Self Improvement
+          </Label>
           <SkillBuilderEnableSuggestionsSection
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />
