@@ -6,6 +6,8 @@ import { GoogleLLM } from "@app/lib/api/llm/clients/google";
 import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { OpenAIResponsesLLM } from "@app/lib/api/llm/clients/openai";
 import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import { TogetheraiLLM } from "@app/lib/api/llm/clients/togetherai";
+import { isTogetheraiWhitelistedModelId } from "@app/lib/api/llm/clients/togetherai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
@@ -25,6 +27,7 @@ export const PARITY_CREDENTIALS: LLMCredentialsType = {
   GOOGLE_AI_STUDIO_API_KEY: "test-google-key",
   OPENAI_API_KEY: "test-openai-key",
   FIREWORKS_API_KEY: "test-fireworks-key",
+  TOGETHERAI_API_KEY: "test-togetherai-key",
 };
 
 /** Per-call parameters shared by both routers for one parity case. */
@@ -246,11 +249,48 @@ const fireworksProvider: ParityProvider = {
   },
 };
 
+const togetheraiProvider: ParityProvider = {
+  toModelId(raw) {
+    if (!isModelId(raw) || !isTogetheraiWhitelistedModelId(raw)) {
+      throw new Error(`${raw} is not a whitelisted TogetherAI model.`);
+    }
+    return raw;
+  },
+  buildLegacyLLM(auth, _endpoint, params) {
+    if (
+      !isModelId(params.modelId) ||
+      !isTogetheraiWhitelistedModelId(params.modelId)
+    ) {
+      throw new Error(
+        `${params.modelId} is not a whitelisted TogetherAI model.`
+      );
+    }
+    return new TogetheraiLLM(auth, {
+      credentials: PARITY_CREDENTIALS,
+      modelId: params.modelId,
+      temperature: params.temperature,
+      reasoningEffort: params.reasoningEffort,
+      responseFormat: params.responseFormat,
+      bypassFeatureFlag: true,
+    });
+  },
+  // Like Fireworks, both routers hit the same `chat.completions.create`; the
+  // test drains the legacy stream before the new one, so the first capture is
+  // legacy, the last new.
+  selectOldRequest(_endpoint, captures) {
+    return first(captures.openai_chat);
+  },
+  selectNewRequest(_endpoint, captures) {
+    return last(captures.openai_chat);
+  },
+};
+
 const PARITY_PROVIDERS: Partial<Record<ProviderId, ParityProvider>> = {
   anthropic: anthropicProvider,
   google_ai_studio: googleProvider,
   openai: openaiProvider,
   fireworks: fireworksProvider,
+  togetherai: togetheraiProvider,
 };
 
 export function getParityProvider(providerId: ProviderId): ParityProvider {
