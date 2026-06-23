@@ -23,7 +23,6 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare pinnedFramePath: CreationOptional<string | null>;
   /** sId of the agent pre-selected for new conversations in this pod. Null = @dust. */
   declare defaultAgentId: CreationOptional<string | null>;
-  declare defaultSkillIds: CreationOptional<string[] | null>;
 }
 
 ProjectMetadataModel.init(
@@ -68,12 +67,6 @@ ProjectMetadataModel.init(
       allowNull: true,
       defaultValue: null,
       field: "defaultAgentSId",
-    },
-    defaultSkillIds: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-      defaultValue: null,
-      field: "defaultSkillSIds",
     },
   },
   {

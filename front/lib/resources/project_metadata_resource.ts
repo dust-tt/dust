@@ -211,7 +211,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
       pinnedFramePath: this.pinnedFramePath ?? null,
       defaultAgentId: this.defaultAgentId ?? null,
-      defaultSkillIds: this.defaultSkillIds ?? null,
     };
   }
 }
