@@ -5,7 +5,6 @@
 import type { TokenizerAndRendererExtension } from "marked";
 import { Marked } from "marked";
 
-// Builds an inline extension matching a Slack token and rendering it to plain text.
 function slackInlineToken(
   name: string,
   prefixHint: string,
@@ -32,8 +31,7 @@ function slackInlineToken(
   };
 }
 
-// One extension per Slack token. Patterns are anchored (`^`): marked feeds the tokenizer
-// the source starting at the candidate position.
+// Patterns are anchored (`^`): marked feeds the tokenizer the source from the match start.
 const SLACK_EXTENSIONS: TokenizerAndRendererExtension[] = [
   // <@U123> or <@U123|name> -> @name (falls back to the id when no label).
   slackInlineToken(

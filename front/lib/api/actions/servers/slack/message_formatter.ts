@@ -1,13 +1,11 @@
 // Reconstructs readable text from a Slack message: app/bot messages (Datadog, Zendesk, ...)
-// often have an empty top-level `text` and put their content in `blocks[]`/`attachments[]`.
-// Block Kit is loosely typed in the SDK (the `header` block is even missing), so we read
-// `unknown` and narrow with type guards. mrkdwn cleanup is delegated to `slack_mrkdwn.ts`.
+// often have an empty top-level `text` and carry their content in `blocks`/`attachments`.
+// Blocks are validated with zod; mrkdwn cleanup is delegated to `slack_mrkdwn.ts`.
 import { slackMrkdwnToText } from "@app/lib/api/actions/servers/slack/slack_mrkdwn";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
-// A Slack "text object", e.g. { type: "mrkdwn", text: "..." }. We only need `text`.
 const TextObjectSchema = z.object({ text: z.string() });
 
 const HeaderBlockSchema = z.object({
@@ -19,17 +17,17 @@ const SectionBlockSchema = z.object({
   type: z.literal("section"),
   text: TextObjectSchema.optional(),
   fields: z.array(TextObjectSchema).optional(),
-  accessory: z.unknown().optional(),
+  accessory: z.record(z.string(), z.unknown()).optional(),
 });
 
 const ContextBlockSchema = z.object({
   type: z.literal("context"),
-  elements: z.array(z.unknown()).optional(),
+  elements: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 const ActionsBlockSchema = z.object({
   type: z.literal("actions"),
-  elements: z.array(z.unknown()).optional(),
+  elements: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 const ImageBlockSchema = z.object({
@@ -59,7 +57,6 @@ const SlackBlockSchema = z.discriminatedUnion("type", [
 
 type SlackBlock = z.infer<typeof SlackBlockSchema>;
 
-// Attachments are the legacy message format; we read a handful of plain-text fields.
 const AttachmentFieldSchema = z.object({
   title: z.string().optional(),
   value: z.string().optional(),
@@ -99,7 +96,6 @@ function asArray(value: unknown): unknown[] | undefined {
   return Array.isArray(value) ? value : undefined;
 }
 
-// Reads the `.text` string out of a Slack text object (e.g. { type: "mrkdwn", text }).
 function readTextObject(value: unknown): string | undefined {
   if (!isRecord(value)) {
     return undefined;
@@ -107,12 +103,10 @@ function readTextObject(value: unknown): string | undefined {
   return isString(value.text) ? value.text : undefined;
 }
 
-// Collapses whitespace/newlines into single spaces (for field values shown on one line).
 function toSingleLine(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-// Renders a leaf element of a rich_text section.
 function renderRichTextLeaf(element: Record<string, unknown>): string {
   const type = isString(element.type) ? element.type : undefined;
   switch (type) {
@@ -142,8 +136,6 @@ function renderRichTextLeaf(element: Record<string, unknown>): string {
   }
 }
 
-// Renders a rich_text sub-section (rich_text_section, rich_text_list, rich_text_quote,
-// rich_text_preformatted) into one or more lines.
 function renderRichTextSection(section: unknown): string[] {
   if (!isRecord(section)) {
     return [];
@@ -172,7 +164,6 @@ function renderRichTextSection(section: unknown): string[] {
   return [joined];
 }
 
-// Extracts readable lines from a single Block Kit block.
 function extractLinesFromBlock(block: SlackBlock): string[] {
   switch (block.type) {
     case "header": {
@@ -196,7 +187,7 @@ function extractLinesFromBlock(block: SlackBlock): string[] {
         }
       }
       // A section can carry an accessory (often a button with a label and url).
-      if (isRecord(block.accessory)) {
+      if (block.accessory) {
         const label = readTextObject(block.accessory.text);
         const url = isString(block.accessory.url)
           ? block.accessory.url
@@ -215,9 +206,6 @@ function extractLinesFromBlock(block: SlackBlock): string[] {
 
       const parts: string[] = [];
       for (const element of elements) {
-        if (!isRecord(element)) {
-          continue;
-        }
         let text: string | undefined;
         if (isString(element.text)) {
           text = element.text;
@@ -237,9 +225,6 @@ function extractLinesFromBlock(block: SlackBlock): string[] {
 
       const lines: string[] = [];
       for (const element of elements) {
-        if (!isRecord(element)) {
-          continue;
-        }
         const label = readTextObject(element.text);
         const url = isString(element.url) ? element.url : undefined;
         if (label && url) {
@@ -279,7 +264,6 @@ function extractLinesFromBlock(block: SlackBlock): string[] {
   }
 }
 
-// Extracts readable lines from a single message attachment.
 function extractLinesFromAttachment(attachment: SlackAttachment): string[] {
   const lines: string[] = [];
 
@@ -328,7 +312,6 @@ export interface FormattedSlackMessage {
 
 const EMPTY_SECTION = "(empty)";
 
-// Cleans Slack mrkdwn in each line and joins them, or returns "(empty)" when there is none.
 function renderSection(rawLines: string[]): string {
   const cleaned = rawLines
     .flatMap((line) => line.split("\n"))
@@ -347,8 +330,6 @@ export function renderFormattedMessage(m: FormattedSlackMessage): string {
   ].join("\n\n");
 }
 
-// Reconstructs a Slack message as readable text grouped by source. App/bot messages often
-// have an empty top-level `text` and carry their content in `blocks`/`attachments`.
 export function formatSlackMessageForLLM(
   message: FormattableSlackMessage
 ): FormattedSlackMessage {
