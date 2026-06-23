@@ -1,4 +1,7 @@
-import { BuilderEditorGateMessage } from "@app/components/shared/BuilderEditorGateMessage";
+import {
+  BuilderEditorGateMessage,
+  BuilderEditorLoadErrorMessage,
+} from "@app/components/shared/BuilderEditorGateMessage";
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
@@ -72,10 +75,11 @@ export default function SkillBuilder({
   const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
   const isMobile = useIsMobile();
 
-  const { editors, isEditorsLoading } = useSkillEditors({
-    owner,
-    skillId: skill?.sId ?? null,
-  });
+  const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
+    useSkillEditors({
+      owner,
+      skillId: skill?.sId ?? null,
+    });
   const updateSkillEditors = useUpdateSkillEditors({
     owner,
     skillId: skill?.sId ?? null,
@@ -135,9 +139,13 @@ export default function SkillBuilder({
   const isAdminExistingSkill = !!skill && isAdmin(owner);
   const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
   const isAdminNonEditor =
-    isAdminExistingSkill && !isEditorsLoading && !isCurrentUserEditor;
+    isAdminExistingSkill &&
+    !isEditorsLoading &&
+    !isEditorsError &&
+    !isCurrentUserEditor;
   const isEditorLocked =
-    isAdminExistingSkill && (isEditorsLoading || !isCurrentUserEditor);
+    isAdminExistingSkill &&
+    (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
 
   useNavigationLock(isDirty && !isSaving && !isEditorLocked);
 
@@ -240,7 +248,14 @@ export default function SkillBuilder({
 
       <ScrollArea className="flex-1">
         <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
-          {isAdminNonEditor && (
+          {isAdminExistingSkill && isEditorsError ? (
+            <BuilderEditorLoadErrorMessage
+              builderType="skill"
+              onRetry={() => {
+                void mutateEditors();
+              }}
+            />
+          ) : isAdminNonEditor ? (
             <BuilderEditorGateMessage
               builderType="skill"
               isLoading={isAddingSelfAsEditor}
@@ -248,7 +263,7 @@ export default function SkillBuilder({
                 void handleAddSelfAsEditor();
               }}
             />
-          )}
+          ) : null}
           {extendedSkill && (
             <ContentMessage
               title={`Built on ${extendedSkill.name}`}
