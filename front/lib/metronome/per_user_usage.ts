@@ -112,8 +112,9 @@ function fetchSegmentedUsage({
   groupKey: string[];
   userIds: string[];
 }) {
-  return Promise.all(
-    segments.map((segment) =>
+  return concurrentExecutor(
+    segments,
+    (segment) =>
       listMetronomeUsageWithGroups({
         customerId: metronomeCustomerId,
         billableMetricId,
@@ -122,8 +123,8 @@ function fetchSegmentedUsage({
         windowSize: segment.windowSize,
         groupKey,
         groupFilters: { user_id: userIds },
-      })
-    )
+      }),
+    { concurrency: 3 }
   ).then(flattenUsageResults);
 }
 
