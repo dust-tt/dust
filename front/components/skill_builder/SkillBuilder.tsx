@@ -61,10 +61,7 @@ interface SkillBuilderProps {
   onSaved: () => void;
 }
 
-export default function SkillBuilder({
-  skill,
-  onSaved,
-}: SkillBuilderProps) {
+export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
   const router = useAppRouter();
   const sendNotification = useSendNotification();

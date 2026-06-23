@@ -1730,6 +1730,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         updatedAt: new Date(),
         workspaceId,
         icon: def.icon,
+        extendedSkillId: null,
         source: null,
         sourceMetadata: null,
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
@@ -2000,6 +2001,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           instructions: versionModel.instructions,
           instructionsHtml: versionModel.instructionsHtml,
           icon: versionModel.icon,
+          extendedSkillId: null,
           requestedSpaceIds: versionModel.requestedSpaceIds,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
@@ -3665,7 +3667,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         fileName: file.fileName,
       })),
       canWrite: this.canWrite(auth),
+      isExtendable: false,
       isDefault: this.isDefault,
+      extendedSkillId: null,
     };
   }
 

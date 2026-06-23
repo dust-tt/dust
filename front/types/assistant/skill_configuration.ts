@@ -55,7 +55,9 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
     })
   ),
   canWrite: z.boolean(),
+  isExtendable: z.boolean(),
   isDefault: z.boolean(),
+  extendedSkillId: z.string().nullable(),
 });
 
 export type SkillWithoutInstructionsAndToolsType = z.infer<
