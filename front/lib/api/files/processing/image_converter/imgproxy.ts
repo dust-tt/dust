@@ -4,7 +4,6 @@ import {
   ImageConverter,
   ImageConverterError,
 } from "@app/lib/api/files/processing/image_converter/base";
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -60,17 +59,6 @@ export class ImgproxyImageConverter extends ImageConverter {
           )
         );
       }
-
-      logger.info(
-        {
-          maxSizePixels,
-          format,
-          status: response.status,
-          contentType: response.headers.get("content-type"),
-          contentLength: response.headers.get("content-length"),
-        },
-        "Resized image through imgproxy."
-      );
 
       return new Ok(readableStreamToReadable(response.body));
     } catch (err) {
