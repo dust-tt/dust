@@ -611,13 +611,13 @@ export function UsagePage() {
             <ContentMessage
               title={noOrFreeSeatTitle(myUsage.seatType)}
               icon={AlertCircle}
-              variant="warning"
+              variant="blue"
             >
               <div className="flex items-center justify-between gap-4">
                 <span>{noOrFreeSeatBody(myUsage.seatType)}</span>
                 <Button
                   label="Change my seat"
-                  variant="warning"
+                  variant="primary"
                   size="xs"
                   onClick={() => setChangeSeatMember(myUsage)}
                 />
