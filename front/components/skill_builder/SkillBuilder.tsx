@@ -33,7 +33,10 @@ import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement"
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
-import { useSkillEditors } from "@app/lib/swr/skill_editors";
+import {
+  useSkillEditors,
+  useUpdateSkillEditors,
+} from "@app/lib/swr/skill_editors";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -69,6 +72,7 @@ export default function SkillBuilder({
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
   const isMobile = useIsMobile();
 
   const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
@@ -76,6 +80,10 @@ export default function SkillBuilder({
       owner,
       skillId: skill?.sId ?? null,
     });
+  const updateSkillEditors = useUpdateSkillEditors({
+    owner,
+    skillId: skill?.sId ?? null,
+  });
 
   const { skillHistory } = useSkillHistory({
     owner,
@@ -140,6 +148,19 @@ export default function SkillBuilder({
     (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
 
   useNavigationLock(isDirty && !isSaving);
+
+  const handleAddSelfAsEditor = async () => {
+    if (!skill || isAddingSelfAsEditor) {
+      return;
+    }
+
+    setIsAddingSelfAsEditor(true);
+    try {
+      await updateSkillEditors({ addEditorIds: [user.sId] });
+    } finally {
+      setIsAddingSelfAsEditor(false);
+    }
+  };
 
   const handleSubmit = async (data: SkillBuilderFormData) => {
     if (isEditorLocked) {
@@ -215,7 +236,7 @@ export default function SkillBuilder({
 
       sendNotification({
         title: "Cannot save skill",
-        description: "Only skill editors can save changes.",
+        description: "Add yourself as an editor before saving changes.",
         type: "error",
       });
       return;
@@ -258,7 +279,13 @@ export default function SkillBuilder({
               }}
             />
           ) : isAdminNonEditor ? (
-            <BuilderEditorGateMessage builderType="skill" />
+            <BuilderEditorGateMessage
+              builderType="skill"
+              isLoading={isAddingSelfAsEditor}
+              onAddSelfAsEditor={() => {
+                void handleAddSelfAsEditor();
+              }}
+            />
           ) : null}
           {extendedSkill && (
             <ContentMessage

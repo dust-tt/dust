@@ -4,6 +4,7 @@ import {
   ContentMessageAction,
   InfoCircle,
   RefreshCw02,
+  UsersPlus,
 } from "@dust-tt/sparkle";
 
 type BuilderType = "agent" | "skill";
@@ -19,24 +20,51 @@ function getBuilderLabel(builderType: BuilderType): string {
   }
 }
 
+function getEditorTitle(builderType: BuilderType): string {
+  switch (builderType) {
+    case "agent":
+      return "an agent editor";
+    case "skill":
+      return "a skill editor";
+    default:
+      assertNever(builderType);
+  }
+}
+
 interface BuilderEditorGateMessageProps {
   builderType: BuilderType;
+  disabled?: boolean;
+  isLoading?: boolean;
+  onAddSelfAsEditor: () => void;
 }
 
 export function BuilderEditorGateMessage({
   builderType,
+  disabled = false,
+  isLoading = false,
+  onAddSelfAsEditor,
 }: BuilderEditorGateMessageProps) {
   const builderLabel = getBuilderLabel(builderType);
+  const editorTitle = getEditorTitle(builderType);
 
   return (
     <ContentMessage
-      title={`You are not an editor of this ${builderLabel}`}
-      variant="golden"
+      title={`Add yourself as ${editorTitle}`}
+      variant="warning"
       icon={InfoCircle}
       size="lg"
+      action={
+        <ContentMessageAction
+          icon={UsersPlus}
+          label={isLoading ? "Adding..." : "Add me"}
+          variant="warning"
+          disabled={disabled || isLoading}
+          onClick={onAddSelfAsEditor}
+        />
+      }
     >
-      You can view this {builderLabel} as a workspace admin, but only editors
-      can save changes.
+      You can view this {builderLabel} as a workspace admin, but you need to add
+      yourself as an editor before making changes.
     </ContentMessage>
   );
 }
