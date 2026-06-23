@@ -100,9 +100,8 @@ export async function fetchProgrammaticAwuSpend({
   workspaceId: string;
   metronomeCustomerId: string;
 }): Promise<Result<number | null, Error>> {
-  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
-    workspaceId
-  );
+  const periodResult =
+    await getCachedMetronomeCurrentBillingPeriod(workspaceId);
   if (periodResult.isErr()) {
     return new Err(periodResult.error);
   }

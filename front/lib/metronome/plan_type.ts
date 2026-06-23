@@ -17,9 +17,10 @@ export type CachedContract = Omit<ContractV2, "commits" | "credits">;
  * Resolve a workspace's Metronome customer id and the contract id of its
  * active subscription. Returns null when either is missing.
  */
-export async function resolveActiveMetronomeIds(
-  workspaceId: string
-): Promise<{ metronomeCustomerId: string; metronomeContractId: string } | null> {
+export async function resolveActiveMetronomeIds(workspaceId: string): Promise<{
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+} | null> {
   const workspace = await WorkspaceModel.findOne({
     attributes: ["id", "metronomeCustomerId"],
     where: { sId: workspaceId },
