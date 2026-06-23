@@ -46,11 +46,12 @@ ProjectDefaultSkillModel.init(
     modelName: "project_default_skills",
     sequelize: frontSequelize,
     indexes: [
-      // Fetch a pod's default skills; also enforces no duplicate (pod, skill) pair.
+      // Fetch a workspace's or a pod's default skills; also enforces no duplicate
+      // (pod, skill) pair.
       {
-        name: "project_default_skills_project_id_skill_id",
+        name: "project_default_skills_unique",
         unique: true,
-        fields: ["projectId", "skillConfigurationId"],
+        fields: ["workspaceId", "projectId", "skillConfigurationId"],
         concurrently: true,
       },
       // Reverse lookup + FK index for the skill side.
@@ -68,19 +69,7 @@ ProjectDefaultSkillModel.belongsTo(ProjectMetadataModel, {
   targetKey: "id",
 });
 
-ProjectMetadataModel.hasMany(ProjectDefaultSkillModel, {
-  foreignKey: { name: "projectId", allowNull: false },
-  sourceKey: "id",
-  as: "defaultSkillLinks",
-});
-
 ProjectDefaultSkillModel.belongsTo(SkillConfigurationModel, {
   foreignKey: { name: "skillConfigurationId", allowNull: false },
   targetKey: "id",
-});
-
-SkillConfigurationModel.hasMany(ProjectDefaultSkillModel, {
-  foreignKey: { name: "skillConfigurationId", allowNull: false },
-  sourceKey: "id",
-  as: "projectDefaultSkillLinks",
 });

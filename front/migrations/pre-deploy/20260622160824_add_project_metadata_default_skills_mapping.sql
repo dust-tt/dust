@@ -57,7 +57,7 @@ Statement 6
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
-CREATE UNIQUE INDEX CONCURRENTLY project_default_skills_project_id_skill_id ON public.project_default_skills USING btree ("projectId", "skillConfigurationId");
+CREATE UNIQUE INDEX CONCURRENTLY project_default_skills_unique ON public.project_default_skills USING btree ("workspaceId", "projectId", "skillConfigurationId");
 
 /*
 Statement 7
