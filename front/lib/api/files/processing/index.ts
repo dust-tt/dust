@@ -1,6 +1,5 @@
 import config from "@app/lib/api/config";
 import { processImage } from "@app/lib/api/files/processing/images";
-import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import { isSupportedForAvatar } from "@app/lib/api/files/use_cases/avatar";
 import { isSupportedForConversation } from "@app/lib/api/files/use_cases/conversation";
 import { isSupportedForFoldersDocument } from "@app/lib/api/files/use_cases/folders_document";
@@ -434,7 +433,10 @@ const maybeApplyProcessing = async (
   auth: Authenticator,
   file: FileResource
 ): Promise<Result<undefined, Error>> => {
-  if (isSandboxRawDelimitedConversationFile(file)) {
+  // Files mounted raw in the sandbox (stamped with skipFileProcessing at upload) are used as-is: no
+  // extraction/resize. The flag is only ever set server-side by buildEffectiveUseCaseMetadata, so it
+  // is safe to trust here. Covers large delimited conversation files and large skill attachments.
+  if (file.useCaseMetadata?.skipFileProcessing === true) {
     return new Ok(undefined);
   }
 

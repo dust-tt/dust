@@ -293,15 +293,41 @@ export const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
-export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
-  FileFormatCategory,
-  number
-> = {
-  ...MAX_FILE_SIZES_DEFAULT,
-  delimited: 350 * 1024 * 1024,
-};
-
 export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+
+// Files that are mounted into the sandbox and read as-is (no upload-time processing) can be much
+// larger than regular uploads: the agent works on them with code in the sandbox rather than loading
+// them into its context. This covers the data-heavy categories — tabular files (CSV/XLSX ->
+// delimited) and documents (PDF/DOCX/PPTX -> data).
+const MAX_FILE_SIZE_SANDBOX_RAW = 350 * 1024 * 1024;
+
+// Single source of truth for "this upload is mounted raw in the sandbox": it skips upload-time
+// processing and gets the larger size limit. Always requires sandbox tools (a big file is only
+// useful when there is a sandbox to process it).
+//  - conversation: large delimited files are served raw to the sandbox instead of indexed as tables;
+//  - skill_attachment: copied into the conversation file system + sandbox mount and read as-is.
+export function allowsSandboxRawUpload({
+  category,
+  hasSandboxTools,
+  useCase,
+}: {
+  category: FileFormatCategory;
+  hasSandboxTools: boolean;
+  useCase: FileUseCase;
+}): boolean {
+  if (!hasSandboxTools) {
+    return false;
+  }
+
+  switch (useCase) {
+    case "conversation":
+      return category === "delimited";
+    case "skill_attachment":
+      return category === "delimited" || category === "data";
+    default:
+      return false;
+  }
+}
 
 export function resolveMaxFileSizes({
   hasSandboxTools,
@@ -310,9 +336,18 @@ export function resolveMaxFileSizes({
   hasSandboxTools: boolean;
   useCase: FileUseCase;
 }): Record<FileFormatCategory, number> {
-  const eligible = hasSandboxTools && useCase === "conversation";
+  const maxForCategory = (category: FileFormatCategory): number =>
+    allowsSandboxRawUpload({ category, hasSandboxTools, useCase })
+      ? MAX_FILE_SIZE_SANDBOX_RAW
+      : MAX_FILE_SIZES_DEFAULT[category];
 
-  return eligible ? MAX_FILE_SIZES_LARGE_DELIMITED : MAX_FILE_SIZES_DEFAULT;
+  return {
+    image: maxForCategory("image"),
+    data: maxForCategory("data"),
+    code: maxForCategory("code"),
+    delimited: maxForCategory("delimited"),
+    audio: maxForCategory("audio"),
+  };
 }
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {

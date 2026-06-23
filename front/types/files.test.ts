@@ -32,6 +32,29 @@ describe("resolveMaxFileSizes", () => {
     ).toBe(50 * 1024 * 1024);
   });
 
+  it("raises delimited and data limits for skill attachments with sandbox tools", () => {
+    const sizes = resolveMaxFileSizes({
+      hasSandboxTools: true,
+      useCase: "skill_attachment",
+    });
+
+    // CSV/XLSX (delimited) and PPTX/PDF/DOCX (data) can be large for skills.
+    expect(sizes.delimited).toBe(350 * 1024 * 1024);
+    expect(sizes.data).toBe(350 * 1024 * 1024);
+    // Images stay at the default limit.
+    expect(sizes.image).toBe(20 * 1024 * 1024);
+  });
+
+  it("keeps skill attachments at the default limit without sandbox tools", () => {
+    const sizes = resolveMaxFileSizes({
+      hasSandboxTools: false,
+      useCase: "skill_attachment",
+    });
+
+    expect(sizes.delimited).toBe(50 * 1024 * 1024);
+    expect(sizes.data).toBe(50 * 1024 * 1024);
+  });
+
   it("enforces the resolved per-file limit", () => {
     expect(
       ensureFileSize("text/csv", 60 * 1024 * 1024, {
