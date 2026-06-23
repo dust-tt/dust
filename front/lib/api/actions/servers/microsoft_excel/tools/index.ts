@@ -87,33 +87,55 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
     }
 
     try {
-      const rangeMatch = range.match(/^([A-Z]+\d+):([A-Z]+\d+)$/i);
-      if (!rangeMatch) {
-        return new Err(
-          new MCPError("Invalid range format. Use A1 notation like 'A1:D10'.")
-        );
-      }
-      const start = parseCellRef(rangeMatch[1].toUpperCase());
-      const end = parseCellRef(rangeMatch[2].toUpperCase());
-      const cellCount = (end.row - start.row + 1) * (end.col - start.col + 1);
       const MAX_CELLS = 100_000;
-      if (cellCount > MAX_CELLS) {
-        return new Err(
-          new MCPError(
-            `Range exceeds the ${MAX_CELLS.toLocaleString()} cell limit (requested ${cellCount.toLocaleString()}). Use a smaller range.`
-          )
-        );
-      }
-
       const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
-      const apiPath = `${endpoint}/workbook/worksheets/${encodeURIComponent(
-        worksheetName
-      )}/range(address='${encodeURIComponent(range)}')`;
+      const worksheetPath = `${endpoint}/workbook/worksheets/${encodeURIComponent(worksheetName)}`;
+
+      let apiPath: string;
+
+      if (range) {
+        const rangeMatch = range.match(/^([A-Z]+\d+):([A-Z]+\d+)$/i);
+        if (!rangeMatch) {
+          return new Err(
+            new MCPError("Invalid range format. Use A1 notation like 'A1:D10'.")
+          );
+        }
+        const start = parseCellRef(rangeMatch[1].toUpperCase());
+        const end = parseCellRef(rangeMatch[2].toUpperCase());
+        const cellCount = (end.row - start.row + 1) * (end.col - start.col + 1);
+        if (cellCount > MAX_CELLS) {
+          return new Err(
+            new MCPError(
+              `Range exceeds the ${MAX_CELLS.toLocaleString()} cell limit (requested ${cellCount.toLocaleString()}). Use a smaller range.`
+            )
+          );
+        }
+        apiPath = `${worksheetPath}/range(address='${encodeURIComponent(range)}')`;
+      } else {
+        const usedRangeInfo = await makeExcelRequest<{
+          address?: string;
+          rowCount?: number;
+          columnCount?: number;
+        }>(
+          client,
+          itemId,
+          authInfo?.clientId ?? "",
+          `${worksheetPath}/usedRange(valuesOnly=true)?$select=address,rowCount,columnCount`,
+          "get"
+        );
+        const cellCount =
+          (usedRangeInfo.rowCount ?? 0) * (usedRangeInfo.columnCount ?? 0);
+        if (cellCount > MAX_CELLS) {
+          return new Err(
+            new MCPError(
+              `The used range (${usedRangeInfo.address}) contains ${cellCount.toLocaleString()} cells, exceeding the ${MAX_CELLS.toLocaleString()} cell limit. Specify a range parameter to read a subset.`
+            )
+          );
+        }
+        apiPath = `${worksheetPath}/usedRange(valuesOnly=true)`;
+      }
 
       const response = await makeExcelRequest<{
-        address?: string;
-        rowCount?: number;
-        columnCount?: number;
         values?: (string | number | boolean | null)[][];
       }>(client, itemId, authInfo?.clientId ?? "", apiPath, "get");
 
