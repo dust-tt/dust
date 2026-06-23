@@ -11,16 +11,16 @@ const US_SIGNUP_URL = "/api/workos/login?screenHint=sign-up";
 
 const REGIONS: Record<
   Region,
-  { flag: string; label: string; description: string; href: string }
+  { flagSrc: string; label: string; description: string; href: string }
 > = {
   us: {
-    flag: "🇺🇸",
+    flagSrc: "/static/us-flag.svg",
     label: "United States",
     description: "Data in the US + Global models",
     href: US_SIGNUP_URL,
   },
   eu: {
-    flag: "🇪🇺",
+    flagSrc: "/static/eu-flag.svg",
     label: "Europe",
     description: "Data + Models hosted in the EU",
     href: EU_SIGNUP_URL,
@@ -28,7 +28,7 @@ const REGIONS: Record<
 };
 
 interface RegionCardProps {
-  flag: string;
+  flagSrc: string;
   label: string;
   description: string;
   selected: boolean;
@@ -36,7 +36,7 @@ interface RegionCardProps {
 }
 
 function RegionCard({
-  flag,
+  flagSrc,
   label,
   description,
   selected,
@@ -52,9 +52,12 @@ function RegionCard({
         selected ? "border-blue-500" : "border-gray-200 hover:border-blue-500"
       )}
     >
-      <span className="text-4xl" aria-hidden="true">
-        {flag}
-      </span>
+      <img
+        src={flagSrc}
+        alt=""
+        aria-hidden="true"
+        className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
+      />
       <div>
         <p className="font-semibold text-gray-900">{label}</p>
         <p className="text-sm text-gray-500">{description}</p>
@@ -97,7 +100,7 @@ export function RegionSelectionModal() {
             {(Object.keys(REGIONS) as Region[]).map((key) => (
               <RegionCard
                 key={key}
-                flag={REGIONS[key].flag}
+                flagSrc={REGIONS[key].flagSrc}
                 label={REGIONS[key].label}
                 description={REGIONS[key].description}
                 selected={region === key}
