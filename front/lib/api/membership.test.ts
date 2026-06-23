@@ -126,6 +126,22 @@ describe("createAndTrackMembership", () => {
     expect(membership.seatType).toBe("free");
   });
 
+  it("preserves an explicit none seat request on a free plan", async () => {
+    setupEntitledSeats(["free", "pro"]);
+
+    const workspace = await WorkspaceFactory.creditPricedFree();
+    const user = await UserFactory.basic();
+    const membership = await createAndTrackMembership({
+      user,
+      workspace,
+      role: "user",
+      origin: "invited",
+      requestedSeatType: "none",
+    });
+
+    expect(membership.seatType).toBe("none");
+  });
+
   it("still assigns a committed paid seat on a paid plan", async () => {
     setupEntitledSeats(["free", "pro"]);
 

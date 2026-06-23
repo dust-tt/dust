@@ -129,6 +129,10 @@ async function resolveSeatTypeForNewMembership(
     planLimits.maxFreeUsers !== -1 || planLimits.maxLifetimeFreeUsers !== -1;
 
   if (isWorkspaceOnFreePlan) {
+    if (requestedSeatType === "none") {
+      return "none";
+    }
+
     const [productSeatTypes, isReturningMember, freeSeatCounts] =
       await Promise.all([
         getProductSeatTypes(),
