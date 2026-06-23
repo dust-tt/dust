@@ -2,8 +2,15 @@ import {
   FILE_OFFLOAD_SNIPPET_LENGTH,
   FILE_OFFLOAD_TEXT_SIZE_BYTES,
 } from "@app/lib/actions/action_output_limits";
-import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { processToolResults } from "@app/lib/actions/mcp_execution";
+import type {
+  InternalServerSideMCPToolConfigurationType,
+  LightServerSideMCPToolConfigurationType,
+  ServerSideMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
+import {
+  getAugmentedInputs,
+  processToolResults,
+} from "@app/lib/actions/mcp_execution";
 import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
@@ -19,6 +26,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { assert, describe, expect, it, vi } from "vitest";
 
 // Mock file storage to avoid cloud storage interactions.
@@ -85,6 +93,125 @@ async function setupTest() {
 
   return { auth, conversation, action, toolConfiguration };
 }
+
+async function setupAuth() {
+  const user = await UserFactory.basic();
+  const workspace = await WorkspaceFactory.basic();
+  await MembershipFactory.associate(workspace, user, { role: "admin" });
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+
+  return { auth };
+}
+
+function createServerSideToolConfiguration(
+  overrides: Partial<ServerSideMCPToolConfigurationType> = {}
+): ServerSideMCPToolConfigurationType {
+  return {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_configuration",
+    name: "remote_tool",
+    description: null,
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: generateRandomModelSId(),
+    dustAppConfiguration: null,
+    internalMCPServerId: null,
+    secretName: null,
+    dustProject: null,
+    availability: "manual",
+    permission: "never_ask",
+    toolServerId: generateRandomModelSId(),
+    retryPolicy: "no_retry",
+    originalName: "remote_tool",
+    mcpServerName: "remote_server",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+    ...overrides,
+  };
+}
+
+const configurableStringPropertySchema: JSONSchema = {
+  type: "object",
+  properties: {
+    value: { type: "string" },
+    mimeType: {
+      type: "string",
+      const: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+    },
+  },
+  required: ["value", "mimeType"],
+};
+
+describe("getAugmentedInputs", () => {
+  it("returns raw inputs unchanged for remote MCP tools", async () => {
+    const { auth } = await setupAuth();
+    const rawInputs = { query: "test" };
+    const actionConfiguration = createServerSideToolConfiguration({
+      additionalConfiguration: {
+        _attributes: "bogus",
+      },
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string" },
+          _attributes: configurableStringPropertySchema,
+        },
+      },
+    });
+
+    const result = getAugmentedInputs(auth, {
+      actionConfiguration,
+      rawInputs,
+    });
+
+    expect(result).toEqual(rawInputs);
+    expect(result).not.toHaveProperty("_attributes");
+  });
+
+  it("augments inputs for internal MCP tools", async () => {
+    const { auth } = await setupAuth();
+    const rawInputs = { query: "test" };
+    const actionConfiguration = {
+      ...createServerSideToolConfiguration({
+        additionalConfiguration: {
+          stringParam: "config-value",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string" },
+            stringParam: configurableStringPropertySchema,
+          },
+        },
+      }),
+      internalMCPServerId: generateRandomModelSId(),
+      name: "search",
+    } as InternalServerSideMCPToolConfigurationType;
+
+    const result = getAugmentedInputs(auth, {
+      actionConfiguration,
+      rawInputs,
+    });
+
+    expect(result).toEqual({
+      query: "test",
+      stringParam: {
+        value: "config-value",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.STRING,
+      },
+    });
+  });
+});
 
 describe("processToolResults", () => {
   it("should store snippet in DB when text exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES", async () => {
