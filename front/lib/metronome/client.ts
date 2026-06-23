@@ -2664,6 +2664,9 @@ export async function listCustomerPerUserCreditBalances({
     for await (const entry of client.v1.customers.credits.list({
       customer_id: metronomeCustomerId,
       include_balance: true,
+      // Include archived (exhausted) credits so fully-consumed free-seat
+      // credits appear with balance 0 rather than being absent from the map.
+      include_archived: true,
     })) {
       if (entry.contract) {
         continue;
@@ -2679,10 +2682,9 @@ export async function listCustomerPerUserCreditBalances({
       ) {
         continue;
       }
-      // Strip the "free-" prefix so the map is keyed by plain sId, matching
-      // callers that look up by membership.user.sId. Falls back to the raw
-      // value for old-format credits that were granted before the prefix was
-      // introduced.
+      // Strip the "free-" prefix so the map is keyed by plain sId. All
+      // callers look up by membership.user.sId; old-format credits without
+      // the prefix keep their raw value as the key.
       const userId = fromFreeMetronomeUserId(rawUserId) ?? rawUserId;
       const startingBalanceAwu = (
         entry.access_schedule?.schedule_items ?? []
