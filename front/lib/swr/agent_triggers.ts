@@ -1,12 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetTriggersResponseBody,
-  GetUserTriggersResponseBody,
-  PatchTriggersRequestBody,
-  PostTextAsCronRuleRequestBody,
-  PostTextAsCronRuleResponseBody,
-  PostTriggersRequestBody,
-} from "@app/lib/api/assistant/configuration/triggers";
 import { clientFetch } from "@app/lib/egress/client";
 import { parseMatcherExpression } from "@app/lib/matcher";
 import {
@@ -16,6 +8,14 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
+import type {
+  GetTriggersResponseBody,
+  GetUserTriggersResponseBody,
+  PatchTriggersRequestBody,
+  PostTextAsCronRuleRequestBody,
+  PostTextAsCronRuleResponseBody,
+  PostTriggersRequestBody,
+} from "@app/types/api/assistant/configuration/triggers";
 import type {
   PostWebhookFilterGeneratorRequestBody,
   PostWebhookFilterGeneratorResponseBody,
