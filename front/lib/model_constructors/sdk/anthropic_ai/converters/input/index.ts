@@ -12,14 +12,13 @@ import {
   assistantToolCallRequestToToolUseBlock,
   conversationToMessages,
   forceToolNameToToolChoice,
+  imageUrlToImageBlock,
   type MessageBlockConverters,
   outputFormatToOutputConfig,
   reasoningToThinkingConfig,
   systemMessagesToSystemParam,
   systemMessageToTextBlock,
-  toolCallResultMessageToToolResultBlock,
   toolSpecsToAnthropicAITools,
-  userImageMessageToImageBlock,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import type {
@@ -42,9 +41,8 @@ export function WithAnthropicAIInputConverter<
   {
     systemMessageToTextBlock = systemMessageToTextBlock;
     userTextMessageToTextBlock = userTextMessageToTextBlock;
-    userImageMessageToImageBlock = userImageMessageToImageBlock;
-    toolCallResultMessageToToolResultBlock =
-      toolCallResultMessageToToolResultBlock;
+    imageUrlToImageBlock: MessageBlockConverters["imageUrlToImageBlock"] =
+      imageUrlToImageBlock;
     assistantTextMessageToTextBlock = assistantTextMessageToTextBlock;
     assistantReasoningMessageToThinkingBlocks =
       assistantReasoningMessageToThinkingBlocks;
@@ -55,7 +53,7 @@ export function WithAnthropicAIInputConverter<
 
     conversationToMessages(
       conversation: Payload["conversation"]
-    ): MessageParam[] {
+    ): Promise<MessageParam[]> {
       return conversationToMessages(conversation, this);
     }
 
@@ -63,10 +61,10 @@ export function WithAnthropicAIInputConverter<
       return systemMessagesToSystemParam(system, this);
     }
 
-    buildRequestPayload(
+    async buildRequestPayload(
       payload: Payload,
       config: AnthropicInputConfig
-    ): MessageCreateParamsNonStreaming {
+    ): Promise<MessageCreateParamsNonStreaming> {
       const { conversation } = payload;
       const {
         tools = [],
@@ -87,7 +85,7 @@ export function WithAnthropicAIInputConverter<
       return {
         model: this.modelIdToApiModelId(this.constructor.modelId),
         max_tokens: this.constructor.maxOutputTokens,
-        messages: this.conversationToMessages(conversation),
+        messages: await this.conversationToMessages(conversation),
         system: this.systemMessagesToSystemParam(conversation.system),
         thinking: thinkingConfig.thinking,
         tools: toolSpecsToAnthropicAITools(tools, { forceTool }),
