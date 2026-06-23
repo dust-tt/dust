@@ -1,5 +1,6 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConfirmContext } from "@app/components/Confirm";
+import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
@@ -48,6 +49,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
+// Note: this does not use the right format for the path (missing -{podId}) but that how the api expects it.
+// TODO(2026-06-23 FILE SYSTEM): Fix this.
+const AGENTS_MD_CANONICAL_PATH = "AGENTS.md";
 interface PodSettingsTabProps {
   owner: LightWorkspaceType;
   pod: RichSpaceType;
@@ -218,6 +222,7 @@ export function PodSettingsTab({
     podMetadata?.description ?? ""
   );
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
 
   const form = useForm<PatchPodMetadataBodyType>({
     resolver: zodResolver(PatchPodMetadataBodySchema),
@@ -281,8 +286,13 @@ export function PodSettingsTab({
   };
 
   const onSaveDescription = async () => {
-    await doUpdateMetadata({ description: podDescription });
-    setIsEditingDescription(false);
+    setIsSavingDescription(true);
+    try {
+      await doUpdateMetadata({ description: podDescription });
+      setIsEditingDescription(false);
+    } finally {
+      setIsSavingDescription(false);
+    }
   };
 
   const { archivePod, unarchivePod } = useArchivePod({
@@ -409,11 +419,13 @@ export function PodSettingsTab({
                 <Button
                   label="Save"
                   variant="highlight"
-                  onClick={onSaveDescription}
+                  isLoading={isSavingDescription}
+                  onClick={() => void onSaveDescription()}
                 />
                 <Button
                   label="Cancel"
                   variant="outline"
+                  disabled={isSavingDescription}
                   onClick={() => {
                     setPodDescription(podMetadata?.description ?? "");
                     setIsEditingDescription(false);
@@ -421,6 +433,24 @@ export function PodSettingsTab({
                 />
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Instructions for Agents</div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Seen by all agents in this Pod, stored as{" "}
+            <span className="font-medium">AGENTS.md</span> in the Pod's files.
+          </div>
+          <div className="flex w-full min-w-0 flex-col gap-2">
+            <MarkdownFileEditor
+              owner={owner}
+              filePath={`pod-${pod.sId}/${AGENTS_MD_CANONICAL_PATH}`}
+              emptyWhenNotFound
+              readOnly={!isPodEditor}
+              placeholder="Enter instructions for agents"
+              maxCharacterCount={4096}
+            />
           </div>
         </div>
 

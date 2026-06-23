@@ -5,51 +5,45 @@ import {
 import {
   getFilePathContentApiPath,
   useFileContentByUrl,
+  useWriteFileContentByPath,
 } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ContentMessage, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Button, ContentMessage, Spinner } from "@dust-tt/sparkle";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface MarkdownFileEditorProps
   extends Omit<MarkdownEditorProps, "value" | "onChange"> {
   owner: LightWorkspaceType;
   /**
    * Canonical scoped file path, e.g. `pod-{podId}/AGENTS.md`.
-   * Ignored when `fileUrl` is provided.
    */
   filePath?: string | null;
-  /**
-   * Full relative API URL for fetching file content.
-   * Takes precedence over `filePath` when set.
-   */
-  fileUrl?: string | null;
   disabled?: boolean;
   /** When true, show an empty editor if the file does not exist (404). */
   emptyWhenNotFound?: boolean;
+  /** Content-Type sent on save. Defaults to `text/markdown`. */
+  saveContentType?: string;
   onChange?: (content: string) => void;
   onContentLoaded?: (content: string) => void;
+  onSaved?: (content: string) => void;
 }
 
 export function MarkdownFileEditor({
   owner,
   filePath = null,
-  fileUrl = null,
   disabled = false,
   emptyWhenNotFound = false,
+  saveContentType = "text/markdown",
   onChange,
   onContentLoaded,
+  onSaved,
   readOnly,
   ...markdownEditorProps
 }: MarkdownFileEditorProps) {
-  const resolvedUrl = useMemo(() => {
-    if (fileUrl) {
-      return fileUrl;
-    }
-    if (filePath) {
-      return getFilePathContentApiPath(owner, filePath);
-    }
-    return null;
-  }, [filePath, fileUrl, owner]);
+  const resolvedUrl = useMemo(
+    () => (filePath ? getFilePathContentApiPath(owner, filePath) : null),
+    [filePath, owner]
+  );
 
   const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
     useFileContentByUrl({
@@ -57,9 +51,16 @@ export function MarkdownFileEditor({
       disabled: disabled || !resolvedUrl,
     });
 
+  const writeFileContent = useWriteFileContentByPath({ owner });
+
   const [draft, setDraft] = useState("");
+  const [savedContent, setSavedContent] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const hasInitializedFromServerRef = useRef(false);
   const sourceKeyRef = useRef(resolvedUrl);
+
+  const canPersist = !!filePath && !readOnly && !disabled;
+  const isDirty = draft !== savedContent;
 
   useEffect(() => {
     if (sourceKeyRef.current === resolvedUrl) {
@@ -68,6 +69,7 @@ export function MarkdownFileEditor({
     sourceKeyRef.current = resolvedUrl;
     hasInitializedFromServerRef.current = false;
     setDraft("");
+    setSavedContent("");
   }, [resolvedUrl]);
 
   useEffect(() => {
@@ -86,6 +88,7 @@ export function MarkdownFileEditor({
 
     const content = isNotFound ? "" : (fileContent ?? "");
     setDraft(content);
+    setSavedContent(content);
     hasInitializedFromServerRef.current = true;
     onContentLoaded?.(content);
   }, [
@@ -101,6 +104,38 @@ export function MarkdownFileEditor({
     setDraft(content);
     onChange?.(content);
   };
+
+  const handleCancel = useCallback(() => {
+    setDraft(savedContent);
+  }, [savedContent]);
+
+  const handleSave = useCallback(async () => {
+    if (!filePath || isSaving || !isDirty) {
+      return;
+    }
+
+    setIsSaving(true);
+    const result = await writeFileContent({
+      canonicalPath: filePath,
+      content: draft,
+      contentType: saveContentType,
+      showSuccessNotification: true,
+    });
+    setIsSaving(false);
+
+    if (result.isOk()) {
+      setSavedContent(draft);
+      onSaved?.(draft);
+    }
+  }, [
+    draft,
+    filePath,
+    isDirty,
+    isSaving,
+    onSaved,
+    saveContentType,
+    writeFileContent,
+  ]);
 
   if (!resolvedUrl || disabled) {
     return null;
@@ -139,11 +174,29 @@ export function MarkdownFileEditor({
   }
 
   return (
-    <MarkdownEditor
-      {...markdownEditorProps}
-      value={draft}
-      onChange={handleChange}
-      readOnly={readOnly}
-    />
+    <div className="flex w-full min-w-0 flex-col gap-2">
+      <MarkdownEditor
+        {...markdownEditorProps}
+        value={draft}
+        onChange={handleChange}
+        readOnly={readOnly}
+      />
+      {canPersist && isDirty && (
+        <div className="flex gap-2">
+          <Button
+            label="Save"
+            variant="highlight"
+            isLoading={isSaving}
+            onClick={() => void handleSave()}
+          />
+          <Button
+            label="Cancel"
+            variant="outline"
+            disabled={isSaving}
+            onClick={handleCancel}
+          />
+        </div>
+      )}
+    </div>
   );
 }
