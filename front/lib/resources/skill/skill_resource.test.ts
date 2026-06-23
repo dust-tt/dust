@@ -1593,45 +1593,13 @@ describe("SkillResource", () => {
       ]);
       expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
     });
+  });
 
-    it("can restrict child skills to available skill tags", async () => {
-      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
-      const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
-        testContext.authenticator,
-        { userIds: [testContext.authenticator.getNonNullableUser().sId] }
-      );
-      expect(addAdminToRestrictedSpaceRes.isOk()).toBe(true);
-      await testContext.authenticator.refresh();
-
-      const childSkill = await SkillFactory.create(testContext.authenticator, {
-        name: "Restricted Child Skill For Enable",
-        requestedSpaceIds: [restrictedSpace.id],
-      });
-      const parentSkill = await SkillFactory.create(testContext.authenticator, {
-        name: "Parent With Unavailable Skill Reference",
-        instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
-      });
-
-      const childSkillsByParent = await SkillResource.batchFetchChildSkills(
-        testContext.authenticator,
-        [parentSkill],
-        { onlyAvailableReferences: true }
-      );
-
-      expect(parentSkill.instructions).toContain(
-        `<unavailable_skill id="${childSkill.sId}" />`
-      );
-      expect(childSkillsByParent.get(parentSkill.sId)).toEqual([]);
-    });
-
-    it("filters child skills disabled for the current agent loop", async () => {
-      const parentSkill = await SkillFactory.create(testContext.authenticator, {
-        name: "Parent With Mention Users Reference",
-        instructions: `Use ${GlobalSkillsRegistry.serializeSkillTag("mention_users")}.`,
-      });
+  describe("fetchActiveByIdsForAgentLoop", () => {
+    it("filters code-defined skills disabled for the current agent loop", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
-        { name: "Agent With Parent Skill" }
+        { name: "Agent With Slack Mention Users Reference" }
       );
       const conversation = await ConversationFactory.create(
         testContext.authenticator,
@@ -1654,20 +1622,18 @@ describe("SkillResource", () => {
         }
       );
 
-      const childSkillsByParent = await SkillResource.batchFetchChildSkills(
+      const skills = await SkillResource.fetchActiveByIdsForAgentLoop(
         testContext.authenticator,
-        [parentSkill],
+        ["mention_users"],
         {
-          agentLoopData: {
-            agentConfiguration: agent,
-            agentMessage,
-            conversation,
-            userMessage,
-          },
+          agentConfiguration: agent,
+          agentMessage,
+          conversation,
+          userMessage,
         }
       );
 
-      expect(childSkillsByParent.get(parentSkill.sId)).toEqual([]);
+      expect(skills).toEqual([]);
     });
   });
 

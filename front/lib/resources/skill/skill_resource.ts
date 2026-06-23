@@ -49,7 +49,6 @@ import {
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
-  extractUniqueSkillIds,
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
   renameSkillReferencesInContent,
@@ -854,46 +853,42 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async fetchByIds(
     auth: Authenticator,
-    sIds: string[],
-    {
-      agentLoopData,
-      status = ["active", "archived", "suggested"],
-    }: {
-      agentLoopData?: AgentLoopExecutionData;
-      status?: SkillStatus | SkillStatus[];
-    } = {}
+    sIds: string[]
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
     }
 
-    // Separate custom skill IDs from global skill IDs.
-    const { customSkillIds, globalSkillIds } = sIds.reduce<{
-      customSkillIds: ModelId[];
-      globalSkillIds: string[];
-    }>(
-      (acc, sId) => {
-        if (isResourceSId("skill", sId)) {
-          const modelId = getResourceIdFromSId(sId);
-          if (modelId !== null) {
-            acc.customSkillIds.push(modelId);
-          }
-        } else {
-          acc.globalSkillIds.push(sId);
-        }
-        return acc;
-      },
-      { customSkillIds: [], globalSkillIds: [] }
-    );
+    const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
 
-    // When fetching by specific IDs, return skills regardless of status by default.
+    // When fetching by specific IDs, return skills regardless of status.
+    return this.baseFetch(auth, {
+      where: {
+        id: customSkillIds,
+        sId: globalSkillIds,
+        status: ["active", "archived", "suggested"],
+      },
+    });
+  }
+
+  static async fetchActiveByIdsForAgentLoop(
+    auth: Authenticator,
+    sIds: string[],
+    agentLoopData: AgentLoopExecutionData
+  ): Promise<SkillResource[]> {
+    if (sIds.length === 0) {
+      return [];
+    }
+
+    const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
+
     return this.baseFetch(
       auth,
       {
         where: {
           id: customSkillIds,
           sId: globalSkillIds,
-          status,
+          status: "active",
         },
       },
       { agentLoopData }
@@ -919,6 +914,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  static async listActiveByNameForAgentLoop(
+    auth: Authenticator,
+    name: string,
+    agentLoopData: AgentLoopExecutionData
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          name,
+          status: "active",
+        },
+      },
+      { agentLoopData }
+    );
+  }
+
   static async fetchByNames(
     auth: Authenticator,
     names: string[]
@@ -936,14 +948,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async batchFetchChildSkills(
     auth: Authenticator,
-    parentSkills: SkillResource[],
-    {
-      agentLoopData,
-      onlyAvailableReferences = false,
-    }: {
-      agentLoopData?: AgentLoopExecutionData;
-      onlyAvailableReferences?: boolean;
-    } = {}
+    parentSkills: SkillResource[]
   ): Promise<Map<string, SkillResource[]>> {
     const workspace = auth.getNonNullableWorkspace();
     const customParentSkills = parentSkills.filter((skill) => !skill.globalSId);
@@ -972,20 +977,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         customSkillId: reference.childCustomSkillId,
         globalSkillId: reference.childGlobalSkillId,
       })),
-      { agentLoopData, withInstructions: false, withTools: false }
+      { withInstructions: false, withTools: false }
     );
     const childSkillsById = new Map(
       childSkills.map((skill) => [skill.sId, skill])
     );
     const referencesByParentSkillId = groupBy(skillReferences, "parentSkillId");
-    const availableChildIdsByParentId = onlyAvailableReferences
-      ? new Map(
-          customParentSkills.map((parentSkill) => [
-            parentSkill.id,
-            new Set(extractUniqueSkillIds(parentSkill.instructions)),
-          ])
-        )
-      : null;
 
     return new Map(
       customParentSkills.map((parentSkill) => [
@@ -993,16 +990,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         removeNulls(
           (referencesByParentSkillId[parentSkill.id] ?? []).map((reference) => {
             const childSkillId = this.skillReferenceChildId(auth, reference);
-            const availableChildIds = availableChildIdsByParentId?.get(
-              parentSkill.id
-            );
-
-            if (
-              availableChildIds &&
-              (!childSkillId || !availableChildIds.has(childSkillId))
-            ) {
-              return null;
-            }
 
             return childSkillId
               ? (childSkillsById.get(childSkillId) ?? null)
@@ -1034,6 +1021,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return null;
+  }
+
+  private static splitSkillSIds(sIds: string[]): {
+    customSkillIds: ModelId[];
+    globalSkillIds: string[];
+  } {
+    return sIds.reduce<{
+      customSkillIds: ModelId[];
+      globalSkillIds: string[];
+    }>(
+      (acc, sId) => {
+        if (isResourceSId("skill", sId)) {
+          const modelId = getResourceIdFromSId(sId);
+          if (modelId !== null) {
+            acc.customSkillIds.push(modelId);
+          }
+        } else {
+          acc.globalSkillIds.push(sId);
+        }
+        return acc;
+      },
+      { customSkillIds: [], globalSkillIds: [] }
+    );
   }
 
   async fetchChildSkills(auth: Authenticator): Promise<SkillResource[]> {
@@ -1293,9 +1303,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listDiscoverable(
     auth: Authenticator,
-    context: {
+    {
+      agentLoopData,
+    }: {
       agentLoopData?: AgentLoopExecutionData;
-      transaction?: Transaction;
     } = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(
@@ -1306,7 +1317,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           isDefault: true,
         },
       },
-      context
+      { agentLoopData }
     );
   }
 
