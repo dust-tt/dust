@@ -266,9 +266,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
-  metronome_billing: {
+  legacy_billing: {
     description:
-      "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
+      "Force this workspace to use legacy Stripe billing, bypassing Metronome credit-priced plans regardless of the global kill switch.",
     stage: "dust_only",
   },
   plan_mode: {

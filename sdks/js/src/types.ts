@@ -743,7 +743,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "power_bi_mcp"
   | "reinforced_agents"
   | "self_improvement_beta_tester"
-  | "metronome_billing"
+  | "legacy_billing"
   | "plan_mode"
   | "pod_default_agent"
   | "poke_mcp"

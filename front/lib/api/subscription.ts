@@ -50,15 +50,15 @@ export type GetSubscriptionTrialInfoResponseBody = {
 
 // Metronome billing is enabled by default for all workspaces. The
 // `global_disable_metronome_billing` kill switch turns it off globally; the
-// `metronome_billing` feature flag re-enables it for individual workspaces.
+// `legacy_billing` feature flag forces it off for individual workspaces.
 export async function isMetronomeBillingEnabled(
   auth: Authenticator
 ): Promise<boolean> {
-  const [hasFlag, killed] = await Promise.all([
-    hasFeatureFlag(auth, "metronome_billing"),
+  const [hasLegacyFlag, killed] = await Promise.all([
+    hasFeatureFlag(auth, "legacy_billing"),
     KillSwitchResource.isKillSwitchEnabled("global_disable_metronome_billing"),
   ]);
-  return hasFlag || !killed;
+  return !hasLegacyFlag && !killed;
 }
 
 /**

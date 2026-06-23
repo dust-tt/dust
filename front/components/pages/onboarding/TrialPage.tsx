@@ -12,7 +12,7 @@ export function TrialPage() {
   const { killSwitches } = useKillSwitches();
 
   const isMetronome =
-    hasFeature("metronome_billing") ||
+    !hasFeature("legacy_billing") &&
     !killSwitches?.includes("global_disable_metronome_billing");
 
   const skip = async () => {
