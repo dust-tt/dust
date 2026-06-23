@@ -219,7 +219,6 @@ describe("getJITServers", () => {
       expect(equippedSkills.map((s) => s.sId)).toContain(customSkill.sId);
       expect(equippedSkills.map((s) => s.sId)).not.toContain("discover_tools");
     });
-
   });
 
   describe("projects feature", () => {
