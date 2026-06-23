@@ -5,6 +5,7 @@ export const ANTHROPIC_PROVIDER_ID = "anthropic" as const;
 export const GOOGLE_AI_STUDIO_PROVIDER_ID = "google_ai_studio" as const;
 export const MISTRAL_PROVIDER_ID = "mistral" as const;
 export const FIREWORKS_PROVIDER_ID = "fireworks" as const;
+export const TOGETHERAI_PROVIDER_ID = "togetherai" as const;
 
 // `satisfies readonly ModelProviderIdType[]` guarantees every new-system
 // provider id is also a legacy `ModelProviderIdType`. This keeps `ProviderId`
@@ -17,6 +18,7 @@ const PROVIDER_IDS = [
   GOOGLE_AI_STUDIO_PROVIDER_ID,
   MISTRAL_PROVIDER_ID,
   FIREWORKS_PROVIDER_ID,
+  TOGETHERAI_PROVIDER_ID,
 ] as const satisfies readonly ModelProviderIdType[];
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
