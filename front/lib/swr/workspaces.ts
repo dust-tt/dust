@@ -33,7 +33,6 @@ import type {
   GetBusinessActivationResponseBody,
   PostBusinessActivationResponseBody,
 } from "@app/lib/api/checkout/business_activation";
-import type { GetPreparePaymentResponseBody } from "@app/lib/api/checkout/prepare_payment";
 import type { GetMetronomeContractResponseBody } from "@app/lib/api/credits/metronome_contract";
 import type {
   GetCheckoutStatusResponseBody,
@@ -72,6 +71,7 @@ import type {
   GetNoWorkspaceAuthContextResponseType,
   GetWorkspaceAuthContextResponseType,
 } from "@app/types/api/auth_context";
+import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prepare_payment";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/types/api/invitation";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";

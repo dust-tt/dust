@@ -1,5 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetSlackNotificationResponseBody } from "@app/lib/api/me/slack_notifications";
 import type {
   GetUserMetadataResponseBody,
   GetUserResponseBody,
@@ -16,6 +15,7 @@ import {
 } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import type { GetPendingInvitationsResponseBody } from "@app/types/api/invitation";
+import type { GetSlackNotificationResponseBody } from "@app/types/api/me/slack_notifications";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";

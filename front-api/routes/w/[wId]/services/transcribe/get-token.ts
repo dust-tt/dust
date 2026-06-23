@@ -1,6 +1,6 @@
 import { config as regionsConfig } from "@app/lib/api/regions/config";
-import type { GetTranscribeTokenResponseBody } from "@app/lib/api/transcribe";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
+import type { GetTranscribeTokenResponseBody } from "@app/types/api/transcribe";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";

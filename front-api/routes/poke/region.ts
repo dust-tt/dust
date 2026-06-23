@@ -1,5 +1,5 @@
-import type { GetRegionResponseType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
+import type { GetRegionResponseType } from "@app/types/api/regions/config";
 import type { RegionType } from "@app/types/region";
 import { SUPPORTED_REGIONS } from "@app/types/region";
 import { pokeApp } from "@front-api/middlewares/ctx";

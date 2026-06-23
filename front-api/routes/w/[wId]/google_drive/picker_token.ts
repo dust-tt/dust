@@ -1,10 +1,10 @@
 /** @ignoreswagger */
 import config from "@app/lib/api/config";
-import type { PickerTokenResponseType } from "@app/lib/api/google_drive";
 import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import logger from "@app/logger/logger";
+import type { PickerTokenResponseType } from "@app/types/api/google_drive";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

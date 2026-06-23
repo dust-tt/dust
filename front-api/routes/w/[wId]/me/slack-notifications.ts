@@ -1,6 +1,6 @@
-import type { GetSlackNotificationResponseBody } from "@app/lib/api/me/slack_notifications";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { GetSlackNotificationResponseBody } from "@app/types/api/me/slack_notifications";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 

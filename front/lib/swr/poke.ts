@@ -4,7 +4,6 @@ import type {
   GetPokeWorkspaceAuthContextResponseType,
 } from "@app/lib/api/poke/auth_context";
 import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/metronome";
-import type { GetRegionResponseType } from "@app/lib/api/regions/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -17,6 +16,7 @@ import type {
 import type { GetPokeFeaturesResponseBody } from "@app/types/api/poke/features";
 import type { GetPokePlansResponseBody } from "@app/types/api/poke/plans";
 import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/types/api/poke/stripe_customers";
+import type { GetRegionResponseType } from "@app/types/api/regions/config";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import {
