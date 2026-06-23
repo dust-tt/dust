@@ -3,7 +3,11 @@ import type { InputConfig } from "@app/lib/model_constructors/types/input/config
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
 
-export type BatchStatus = "ready" | "computing";
+// - "computing": the batch is still in progress; keep polling.
+// - "ready": the batch has finished and results can be retrieved.
+// - "aborted": the batch failed, expired, or was cancelled and will never
+//   produce results; callers should stop polling and surface an error.
+export type BatchStatus = "computing" | "ready" | "aborted";
 
 export type BatchRequest<C extends InputConfig = InputConfig> = {
   payload: Payload;

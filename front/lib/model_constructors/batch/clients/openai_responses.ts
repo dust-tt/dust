@@ -12,7 +12,7 @@ import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/ou
 import { OPENAI_RESPONSES_API } from "@app/lib/model_constructors/types/provider_apis";
 import { OPENAI_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { OpenAI, toFile } from "openai";
 import type {
   Response as OpenAIResponse,
@@ -109,17 +109,21 @@ export abstract class OpenAIResponsesBatch extends WithOpenAIResponsesInputConve
     const batch = await this.client.batches.retrieve(batchId);
     switch (batch.status) {
       case "completed":
-      case "failed":
-      case "expired":
-      case "cancelled":
         return "ready";
       case "validating":
       case "in_progress":
       case "finalizing":
       case "cancelling":
         return "computing";
+      case "failed":
+      case "expired":
+      case "cancelled":
+        return "aborted";
+      // `status` comes from the OpenAI API; tolerate unknown future values
+      // instead of crashing — treat them as still in progress.
       default:
-        return assertNever(batch.status);
+        assertNeverAndIgnore(batch.status);
+        return "computing";
     }
   }
 

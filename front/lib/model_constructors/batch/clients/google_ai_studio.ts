@@ -27,10 +27,14 @@ const CUSTOM_ID_METADATA_KEY = "custom_id";
 // How many request payloads to build concurrently (each may fetch image parts).
 const BUILD_PAYLOAD_CONCURRENCY = 8;
 
-// Terminal job states: the batch has finished and results can be read.
-const TERMINAL_JOB_STATES: ReadonlySet<JobState> = new Set([
+// Job states where results are available.
+const READY_JOB_STATES: ReadonlySet<JobState> = new Set([
   JobState.JOB_STATE_SUCCEEDED,
   JobState.JOB_STATE_PARTIALLY_SUCCEEDED,
+]);
+
+// Job states that are permanently terminal but produce no results.
+const ABORTED_JOB_STATES: ReadonlySet<JobState> = new Set([
   JobState.JOB_STATE_FAILED,
   JobState.JOB_STATE_CANCELLED,
   JobState.JOB_STATE_EXPIRED,
@@ -118,9 +122,13 @@ export abstract class GoogleAiStudioBatch extends WithGoogleGenAIInputConverter(
 
   async getBatchStatus(batchId: string): Promise<BatchStatus> {
     const batch = await this.client.batches.get({ name: batchId });
-    return batch.state && TERMINAL_JOB_STATES.has(batch.state)
-      ? "ready"
-      : "computing";
+    if (batch.state && READY_JOB_STATES.has(batch.state)) {
+      return "ready";
+    }
+    if (batch.state && ABORTED_JOB_STATES.has(batch.state)) {
+      return "aborted";
+    }
+    return "computing";
   }
 
   async getBatchResult(
