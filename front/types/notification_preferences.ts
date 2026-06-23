@@ -136,3 +136,35 @@ export type WorkflowTriggerId =
   | typeof PROGRAMMATIC_CAP_REACHED_TRIGGER_ID
   | typeof UPGRADE_REQUEST_CREATED_TRIGGER_ID
   | typeof SEAT_AUTO_UPGRADED_TRIGGER_ID;
+
+export const SOUND_NOTIFICATION_OPTIONS = [
+  "Pluck",
+  "Wood",
+  "Skeumorphic",
+  "Game",
+  "Xylophone",
+  "Digital Synth",
+  "Horn",
+  "Bell",
+  "Kalimba",
+  "Marimba",
+  "Tuba",
+] as const;
+
+export type SoundNotificationType = (typeof SOUND_NOTIFICATION_OPTIONS)[number];
+
+export const DEFAULT_SOUND_NOTIFICATION: SoundNotificationType = "Pluck";
+
+export const isSoundNotificationType = (
+  value: unknown
+): value is SoundNotificationType => {
+  return (
+    typeof value === "string" &&
+    (SOUND_NOTIFICATION_OPTIONS as readonly string[]).includes(value)
+  );
+};
+
+export const SOUND_NOTIFICATION_METADATA_KEYS = {
+  enabled: "sound_notification_enabled",
+  sound: "sound_notification_type",
+} as const;

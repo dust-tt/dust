@@ -783,6 +783,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "live_speech_to_text"
   | "force_us_api_url"
   | "workspace_default_agent"
+  | "sound_notification"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

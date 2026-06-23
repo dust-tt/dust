@@ -355,6 +355,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
     stage: "on_demand",
   },
+  sound_notification: {
+    description:
+      "Play a sound notification when an agent requires manual input (approval/decline).",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
