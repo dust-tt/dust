@@ -101,10 +101,11 @@ export abstract class MistralBatch extends WithMistralAIInputConverter(
     const job = await this.client.batch.jobs.get({ jobId: batchId });
     switch (job.status) {
       case BatchJobStatus.Success:
+        return "ready";
       case BatchJobStatus.Failed:
       case BatchJobStatus.TimeoutExceeded:
       case BatchJobStatus.Cancelled:
-        return "ready";
+        return "aborted";
       case BatchJobStatus.Queued:
       case BatchJobStatus.Running:
       case BatchJobStatus.CancellationRequested:
