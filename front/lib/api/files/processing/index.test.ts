@@ -294,6 +294,49 @@ describe("conversation use case", () => {
   });
 });
 
+// Skill attachments are mounted into the sandbox and read as-is. They are stamped with
+// skipFileProcessing, so even binary documents (PPTX/XLSX) that would normally be Tika-extracted
+// are stored as the original only — which is what lets large skill files upload without failing on
+// extraction.
+describe("skill_attachment use case", () => {
+  describe("processAndStoreFile", () => {
+    it("PPTX skips text extraction and is stored as original only", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const contentType =
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+      const file = await FileFactory.create(auth, null, {
+        contentType,
+        fileName: "template.pptx",
+        fileSize: 100,
+        status: "created",
+        useCase: "skill_attachment",
+        useCaseMetadata: {
+          skillId: "skl-test",
+          skipDataSourceIndexing: true,
+          skipFileProcessing: true,
+        },
+      });
+
+      const result = await processAndStoreFile(auth, {
+        file,
+        content: { type: "string", value: "fake pptx bytes" },
+      });
+
+      assert(
+        result.isOk(),
+        `Expected Ok, got: ${result.isErr() ? JSON.stringify(result.error) : ""}`
+      );
+
+      const writes = fileStorageMock.writeStreamCalls;
+      expect(writes).toHaveLength(1);
+      expect(writes[0].contentType).toBe(contentType);
+    });
+  });
+});
+
 // For non-conversation use cases (upsert_document, folders_document, etc.), binary documents
 // are text-extracted via Tika and their processed version is text/plain.
 describe("upsert_document / folders_document use cases", () => {
