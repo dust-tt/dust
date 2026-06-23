@@ -55,9 +55,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
     })
   ),
   canWrite: z.boolean(),
-  isExtendable: z.boolean(),
   isDefault: z.boolean(),
-  extendedSkillId: z.string().nullable(),
 });
 
 export type SkillWithoutInstructionsAndToolsType = z.infer<
@@ -86,7 +84,6 @@ export type SkillRelations = {
   usage: SkillUsageType;
   editors: UserType[] | null;
   editedByUser: UserType | null;
-  extendedSkill: SkillType | null;
   childSkills: SkillWithoutInstructionsAndToolsType[];
 };
 

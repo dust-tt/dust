@@ -18,7 +18,6 @@ import {
   SKILL_REINFORCEMENT_MODES,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -50,7 +49,6 @@ const PostSkillRequestBodySchema = z.intersection(
         mcpServerViewId: z.string(),
       })
     ),
-    extendedSkillId: z.string().nullable(),
     attachedKnowledge: z.array(AttachedKnowledgeSchema),
     instructionsHtml: z.string().nullable(),
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
@@ -127,10 +125,6 @@ app.get(
     });
 
     if (withRelations === "true") {
-      const extendedSkills = await SkillResource.fetchByIds(
-        auth,
-        removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
-      );
       const usageMap = await SkillResource.batchFetchUsage(auth, skills);
       const editorsMap = await SkillResource.batchListEditors(auth, skills);
       const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
@@ -145,8 +139,6 @@ app.get(
         auth,
         skills
       );
-
-      const extendedSkillsMap = new Map(extendedSkills.map((s) => [s.sId, s]));
 
       const skillsWithRelations = skills.map((sc) => {
         const {
@@ -172,10 +164,6 @@ app.get(
             usage: usageWithSkills,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             editedByUser: editedByUser ? editedByUser.toJSON() : null,
-            extendedSkill: sc.extendedSkillId
-              ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
-                null)
-              : null,
             childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
               (childSkill) => {
                 const {
@@ -334,21 +322,6 @@ app.post(
       ...additionalRequestedSpaceIdsRes.value,
     ]);
 
-    const extendedSkill = body.extendedSkillId
-      ? await SkillResource.fetchById(auth, body.extendedSkillId)
-      : null;
-
-    // Only global skills can be extended.
-    if (extendedSkill !== null && !extendedSkill.isExtendable) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `The extended skill with id "${body.extendedSkillId}" cannot be extended.`,
-        },
-      });
-    }
-
     // Validate file attachments if provided.
     let files: FileResource[] | undefined;
     if (fileAttachments) {
@@ -407,7 +380,6 @@ app.post(
         instructionsHtml: body.instructionsHtml,
         editedBy: user.id,
         requestedSpaceIds,
-        extendedSkillId: body.extendedSkillId,
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,

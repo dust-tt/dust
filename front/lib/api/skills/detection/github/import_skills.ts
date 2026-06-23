@@ -194,7 +194,6 @@ export async function importSkillsFromGitHub(
           instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
           editedBy: user.id,
           requestedSpaceIds: [],
-          extendedSkillId: null,
           icon,
           source: "github",
           sourceMetadata: {

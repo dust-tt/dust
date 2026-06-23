@@ -26,7 +26,7 @@ export async function getSkillServers(
     skills,
   }: {
     agentConfiguration: LightAgentConfigurationType;
-    skills: (SkillResource & { extendedSkill?: SkillResource | null })[];
+    skills: SkillResource[];
   }
 ): Promise<MCPServerConfigurationType[]> {
   let inheritedDataSourceViews: DataSourceViewResource[] = [];
@@ -46,10 +46,7 @@ export async function getSkillServers(
   );
 
   const mcpServers = skills.flatMap((skill) =>
-    [
-      ...skill.mcpServerConfigurations,
-      ...(skill.extendedSkill?.mcpServerConfigurations ?? []),
-    ].map((config) => {
+    skill.mcpServerConfigurations.map((config) => {
       const { view, childAgentId, serverNameOverride } = config;
 
       const {

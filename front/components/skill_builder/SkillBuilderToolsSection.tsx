@@ -8,12 +8,9 @@ import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { getSkillIcon } from "@app/lib/skill";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
   Button,
   CardGrid,
-  Chip,
   EmptyCTA,
   ReverseLeft,
   ShapesPlus,
@@ -23,13 +20,7 @@ import {
 import React, { useCallback, useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-interface SkillBuilderToolsSectionProps {
-  extendedSkill?: SkillType;
-}
-
-export function SkillBuilderToolsSection({
-  extendedSkill,
-}: SkillBuilderToolsSectionProps) {
+export function SkillBuilderToolsSection() {
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
 
@@ -105,14 +96,6 @@ export function SkillBuilderToolsSection({
           <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
             Tools
           </h3>
-          {extendedSkill && (
-            <Chip
-              color="highlight"
-              size="xs"
-              icon={getSkillIcon(extendedSkill.icon)}
-              label={`Already includes tools from ${extendedSkill.name}`}
-            />
-          )}
         </div>
         <div className="flex items-center gap-2">
           {toolsDiffer && (

@@ -118,9 +118,6 @@ app.get(
       const usage = await skill.fetchUsage(auth);
       const editors = await skill.listEditors(auth);
       const editedByUser = await skill.fetchEditedByUser(auth);
-      const extendedSkill = serializedSkill.extendedSkillId
-        ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
-        : null;
       const childSkills = await skill.fetchChildSkills(auth);
       const usedBySkills =
         (await SkillResource.batchFetchUsedBySkills(auth, [skill])).get(
@@ -137,7 +134,6 @@ app.get(
           },
           editors: editors ? editors.map((e) => e.toJSON()) : null,
           editedByUser: editedByUser ? editedByUser.toJSON() : null,
-          extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           childSkills: childSkills.map((childSkill) => {
             const {
               instructions,

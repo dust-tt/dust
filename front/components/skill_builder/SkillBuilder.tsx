@@ -31,7 +31,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
-import { getSkillIcon } from "@app/lib/skill";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
 import {
   useSkillEditors,
@@ -59,13 +58,11 @@ import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
-  extendedSkill?: SkillType;
   onSaved: () => void;
 }
 
 export default function SkillBuilder({
   skill,
-  extendedSkill,
   onSaved,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
@@ -110,9 +107,8 @@ export default function SkillBuilder({
 
     return getDefaultSkillFormData({
       user,
-      extendedSkillId: extendedSkill?.sId ?? null,
     });
-  }, [skill, user, extendedSkill]);
+  }, [skill, user]);
 
   const form = useForm<SkillBuilderFormData>({
     resolver: zodResolver(skillBuilderFormSchema),
@@ -287,17 +283,6 @@ export default function SkillBuilder({
               }}
             />
           ) : null}
-          {extendedSkill && (
-            <ContentMessage
-              title={`Built on ${extendedSkill.name}`}
-              variant="highlight"
-              icon={getSkillIcon(extendedSkill.icon)}
-              size="lg"
-            >
-              A customized version of {extendedSkill.name} with your own
-              guidelines and capabilities.
-            </ContentMessage>
-          )}
           {skill?.status === "suggested" && (
             <ContentMessage
               title="This is a generated skill suggestion"

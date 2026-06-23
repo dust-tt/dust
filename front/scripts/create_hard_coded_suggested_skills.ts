@@ -271,7 +271,6 @@ async function createSuggestedSkills(
               editedBy: null,
               requestedSpaceIds: [],
               icon: skill.icon,
-              extendedSkillId: null,
               isDefault: false,
             },
             { transaction }

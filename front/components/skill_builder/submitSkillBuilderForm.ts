@@ -47,7 +47,6 @@ export async function submitSkillBuilderForm({
             ? null
             : formData.instructionsHtml,
         icon: formData.icon,
-        extendedSkillId: formData.extendedSkillId,
         isDefault: formData.isDefault,
         reinforcement: formData.reinforcement,
         tools: formData.tools.map((tool) => ({

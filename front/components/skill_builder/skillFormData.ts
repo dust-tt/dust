@@ -23,7 +23,6 @@ export function transformSkillTypeToFormData(
     tools: skill.tools.map(getDefaultMCPAction),
     fileAttachments: skill.fileAttachments,
     icon: skill.icon ?? null,
-    extendedSkillId: skill.extendedSkillId,
     isDefault: skill.isDefault,
     reinforcement: skill.reinforcement,
     additionalSpaces: [],
@@ -42,10 +41,8 @@ export function transformSkillTypeToFormData(
  */
 export function getDefaultSkillFormData({
   user,
-  extendedSkillId = null,
 }: {
   user: UserType;
-  extendedSkillId?: string | null;
 }): SkillBuilderFormData {
   return {
     name: "",
@@ -57,7 +54,6 @@ export function getDefaultSkillFormData({
     tools: [],
     fileAttachments: [],
     icon: null,
-    extendedSkillId,
     isDefault: false,
     reinforcement: "on",
     additionalSpaces: [],

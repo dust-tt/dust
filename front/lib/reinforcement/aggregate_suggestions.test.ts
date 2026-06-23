@@ -27,9 +27,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     tools: [],
     fileAttachments: [],
     canWrite: true,
-    isExtendable: false,
     isDefault: false,
-    extendedSkillId: null,
     ...overrides,
   };
 }
