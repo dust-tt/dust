@@ -4,12 +4,20 @@ import {
   isAllSupportedFileContentType,
   stripMimeParameters,
 } from "@app/types/files";
-import { escape } from "html-escaper";
+import { escape, unescape } from "html-escaper";
 
 export const FILE_PREVIEW_DIRECTIVE_NAME = "preview_file";
 export const FILE_PREVIEW_COMPONENT_NAME = "file_preview";
+export const FILE_PREVIEW_NODE_TYPE = "filePreview";
 export const FILE_PREVIEW_DIRECTIVE_EXAMPLE =
   ':preview_file{path="conversation-<id>/report.pdf" title="report.pdf" contentType="application/pdf"}';
+
+export type ParsedFilePreviewDirective = {
+  contentType?: string;
+  path: string;
+  raw: string;
+  title?: string;
+};
 
 function fileExtensionLabel(fileName: string): string | null {
   const lastDot = fileName.lastIndexOf(".");
@@ -35,6 +43,80 @@ function contentTypeExtensionLabel(contentType: string | null): string | null {
 
 function quoteDirectiveAttribute(value: string): string {
   return `"${escape(value.replaceAll("\r", " ").replaceAll("\n", " "))}"`;
+}
+
+function parseQuotedDirectiveAttributeValue(
+  src: string,
+  startIndex: number
+): { endIndex: number; value: string } | null {
+  if (src[startIndex] !== '"') {
+    return null;
+  }
+
+  let value = "";
+  for (let index = startIndex + 1; index < src.length; index += 1) {
+    if (src[index] === '"') {
+      return {
+        endIndex: index + 1,
+        value: unescape(value),
+      };
+    }
+
+    value += src[index];
+  }
+
+  return null;
+}
+
+export function parseFilePreviewMarkdownDirective(
+  src: string
+): ParsedFilePreviewDirective | null {
+  const prefix = `:${FILE_PREVIEW_DIRECTIVE_NAME}{`;
+  if (!src.startsWith(prefix)) {
+    return null;
+  }
+
+  let index = prefix.length;
+  const attributes: Record<string, string> = {};
+
+  while (index < src.length && src[index] !== "}") {
+    while (index < src.length && src[index] === " ") {
+      index += 1;
+    }
+
+    const equalsIndex = src.indexOf("=", index);
+    if (equalsIndex === -1) {
+      return null;
+    }
+
+    const key = src.slice(index, equalsIndex);
+    const parsedValue = parseQuotedDirectiveAttributeValue(
+      src,
+      equalsIndex + 1
+    );
+    if (!parsedValue) {
+      return null;
+    }
+
+    attributes[key] = parsedValue.value;
+    index = parsedValue.endIndex;
+  }
+
+  if (src[index] !== "}") {
+    return null;
+  }
+
+  const path = attributes.path;
+  if (!path) {
+    return null;
+  }
+
+  return {
+    contentType: attributes.contentType,
+    path,
+    raw: src.slice(0, index + 1),
+    title: attributes.title,
+  };
 }
 
 export function getFileNameFromScopedPath(filePath: string): string {

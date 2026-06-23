@@ -377,25 +377,26 @@ export function FilePreviewDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
         <DialogHeader className="flex gap-4">
-          <DialogTitle>Preview Data</DialogTitle>
-          <div className="flex items-center justify-between">
+          <DialogTitle>
             <div className="flex items-center gap-1.5 overflow-hidden">
               {FileIcon && (
                 <Icon
                   visual={FileIcon}
-                  size="xs"
+                  size="sm"
                   className="shrink-0 text-foreground dark:text-foreground-night"
                 />
               )}
               <span
                 className={cn(
-                  "line-clamp-1 text-sm leading-5",
+                  "line-clamp-1 leading-5",
                   "text-foreground dark:text-foreground-night"
                 )}
               >
-                {entry?.fileName ?? ""}
+                {entry?.fileName ?? "Preview Data"}
               </span>
             </div>
+          </DialogTitle>
+          <div className="flex items-center justify-between">
             {recordCounts && (
               <span
                 className={cn(

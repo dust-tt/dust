@@ -4,6 +4,7 @@ import {
   getFilePreviewContentType,
   getFilePreviewMarkdownDirective,
   getFilePreviewTypeLabel,
+  parseFilePreviewMarkdownDirective,
 } from "./file_preview";
 
 describe("getFilePreviewMarkdownDirective", () => {
@@ -27,6 +28,21 @@ describe("getFilePreviewMarkdownDirective", () => {
     ).toBe(
       ':preview_file{path="conversation-c1/reports/report &quot;Q2&quot; final.pdf" title="report &quot;Q2&quot; final.pdf" contentType="application/pdf"}'
     );
+  });
+
+  it("round-trips through parseFilePreviewMarkdownDirective", () => {
+    const directive = getFilePreviewMarkdownDirective({
+      contentType: "application/pdf",
+      path: "conversation-c1/booklet.pdf",
+      title: "booklet.pdf",
+    });
+
+    expect(parseFilePreviewMarkdownDirective(directive)).toEqual({
+      contentType: "application/pdf",
+      path: "conversation-c1/booklet.pdf",
+      raw: directive,
+      title: "booklet.pdf",
+    });
   });
 });
 

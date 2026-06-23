@@ -173,7 +173,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               <AttachmentCitation
                 key={index}
                 attachmentCitation={attachmentCitation}
-                compact={!hasImageCitation}
+                size={hasImageCitation ? "md" : "sm"}
               />
             );
           })

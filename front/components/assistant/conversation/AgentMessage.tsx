@@ -1475,7 +1475,7 @@ function getCitations({
       <AttachmentCitation
         key={index}
         attachmentCitation={attachmentCitation}
-        compact
+        size="sm"
       />
     );
   });

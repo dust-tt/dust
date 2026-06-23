@@ -16,9 +16,10 @@ import { DropdownMenuItem, Icon, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type ContextFileSlashSearchSelection = {
+  contentType: string;
   fileId: string;
   label: string;
-  path: string | null;
+  path: string;
 };
 
 export type ContextFileSlashSearchItem =
@@ -29,7 +30,7 @@ export type ContextFileSlashSearchItem =
       id: string;
       kind: "conversation";
       label: string;
-      path: string | null;
+      path: string;
     }
   | {
       description: string;
@@ -53,6 +54,7 @@ function toSelection(
   item: ContextFileSlashSearchItem
 ): ContextFileSlashSearchSelection {
   return {
+    contentType: item.file.contentType,
     fileId: item.fileId,
     label: item.label,
     path: item.path,
@@ -120,6 +122,10 @@ export function ContextFileSlashSearch({
       .filter(isFileAttachmentType)
       .filter((attachment) => !attachment.hidden)
       .filter((attachment) => !attachment.isInProjectContext)
+      .filter(
+        (attachment): attachment is typeof attachment & { path: string } =>
+          attachment.path !== null
+      )
       .filter((attachment) =>
         matchesQuery(attachment.title, "Conversation file")
       )

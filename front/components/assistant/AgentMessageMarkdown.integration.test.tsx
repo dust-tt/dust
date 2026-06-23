@@ -124,12 +124,11 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       );
 
       expect(screen.getByText("booklet.pdf")).toBeInTheDocument();
-      expect(screen.getByText("PDF")).toBeInTheDocument();
       expect(container.querySelector("a[href*='download=1']")).toBeNull();
 
       fireEvent.click(screen.getByText("booklet.pdf"));
 
-      expect(await screen.findByText("Preview Data")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Download" })
       ).toBeInTheDocument();
@@ -167,7 +166,6 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       );
 
       expect(container.textContent).toContain(title);
-      expect(container.textContent).toContain("PDF");
       expect(container.querySelector("a[href*='download=1']")).toBeNull();
     });
 

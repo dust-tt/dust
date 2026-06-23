@@ -1,5 +1,4 @@
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
-import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   FILE_PREVIEW_COMPONENT_NAME,
   FILE_PREVIEW_DIRECTIVE_NAME,
@@ -8,7 +7,6 @@ import {
   getFilePreviewTypeLabel,
 } from "@app/lib/markdown/file_preview";
 import { isString } from "@app/types/shared/utils/general";
-import { Icon } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
 interface FilePreviewBlockProps {
@@ -58,7 +56,6 @@ export function FilePreviewBlock({
     contentType: fileContentType,
     fileName,
   });
-  const FileIcon = getFileTypeIcon(fileContentType, fileName);
 
   return (
     <PreviewableCitation
@@ -66,7 +63,7 @@ export function FilePreviewBlock({
       contentType={fileContentType}
       title={fileName}
       description={typeLabel}
-      icon={<Icon visual={FileIcon} size="xs" />}
+      size="xs"
     />
   );
 }

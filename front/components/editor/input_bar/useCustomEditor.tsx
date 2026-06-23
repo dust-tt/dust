@@ -1,6 +1,7 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
+import { FilePreviewExtension } from "@app/components/editor/extensions/input_bar/FilePreviewExtension";
 import { InputBarFileSearchNode } from "@app/components/editor/extensions/input_bar/FileSearchNodeWithView";
 import {
   InputBarSlashSuggestionExtension,
@@ -456,6 +457,7 @@ export const buildEditorExtensions = ({
     PastedAttachmentExtension.configure({
       onInlineText,
     }),
+    FilePreviewExtension,
     URLStorageExtension,
   ];
 

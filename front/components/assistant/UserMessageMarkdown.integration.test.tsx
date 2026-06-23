@@ -1,4 +1,6 @@
-import { render } from "@testing-library/react";
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
+import { getFilePreviewMarkdownDirective } from "@app/lib/markdown/file_preview";
+import { render, screen } from "@testing-library/react";
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -296,6 +298,26 @@ Quote text
       );
       // The component should render with pasted attachment directive processed
       expect(container).toBeInTheDocument();
+    });
+
+    it("renders scoped file preview directives as previewable files", () => {
+      const directive = getFilePreviewMarkdownDirective({
+        contentType: "application/pdf",
+        path: "conversation-c1/booklet.pdf",
+        title: "booklet.pdf",
+      });
+      const message = { ...mockMessage, content: directive };
+      render(
+        <FilePreviewProvider owner={mockOwner}>
+          <UserMessageMarkdown
+            owner={mockOwner}
+            message={message}
+            isLastMessage={false}
+          />
+        </FilePreviewProvider>
+      );
+
+      expect(screen.getByText("booklet.pdf")).toBeInTheDocument();
     });
 
     it("handles multiple custom directives in one message", () => {

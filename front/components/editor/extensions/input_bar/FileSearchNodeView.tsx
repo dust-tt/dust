@@ -1,3 +1,4 @@
+import { FILE_PREVIEW_NODE_TYPE } from "@app/components/editor/extensions/input_bar/FilePreviewExtension";
 import {
   ContextFileSlashSearch,
   type ContextFileSlashSearchSelection,
@@ -18,19 +19,17 @@ interface FileSearchNodeViewProps extends NodeViewProps {
   options: FileSearchNodeOptions;
 }
 
-function getContextFileReferenceText(
+function getContextFileReferenceContent(
   selection: ContextFileSlashSearchSelection
-): string {
-  // TODO: Replace with the right markdown directive when available.
-  return selection.path ?? selection.fileId;
-}
-
-function getContextFileReferenceContent(reference: string) {
+) {
   return [
     {
-      type: "text" as const,
-      marks: [{ type: "code" as const }],
-      text: reference,
+      type: FILE_PREVIEW_NODE_TYPE,
+      attrs: {
+        contentType: selection.contentType,
+        path: selection.path,
+        title: selection.label,
+      },
     },
     { type: "text" as const, text: " " },
   ];
@@ -66,9 +65,7 @@ export function FileSearchNodeView({
         .chain()
         .focus()
         .deleteRange({ from: pos, to: pos + node.nodeSize })
-        .insertContent(
-          getContextFileReferenceContent(getContextFileReferenceText(selection))
-        )
+        .insertContent(getContextFileReferenceContent(selection))
         .run();
     },
     [editor, getPos, node.nodeSize]
