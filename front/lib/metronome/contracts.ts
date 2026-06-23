@@ -27,6 +27,10 @@ import {
   syncMauCount,
 } from "@app/lib/metronome/mau_sync";
 import {
+  type CachedContract,
+  getActiveContract,
+} from "@app/lib/metronome/plan_type";
+import {
   hasContractSeatSubscription,
   remapMembershipSeatTypesForContract,
   syncSeatCount,
@@ -1279,6 +1283,25 @@ export async function provisionShadowEnterpriseMetronomeContract({
   return new Ok({ metronomeCustomerId, metronomeContractId });
 }
 
+function billingPeriodFromContract(
+  contract: CachedContract
+): Result<BillingCycle, Error> {
+  const currentPeriod = contract.subscriptions
+    ?.map((s) => s.billing_periods?.current)
+    .find((bp) => bp !== undefined);
+
+  if (!currentPeriod) {
+    return new Err(
+      new Error("No current billing period found on Metronome contract")
+    );
+  }
+
+  return new Ok({
+    cycleStart: new Date(currentPeriod.starting_at),
+    cycleEnd: new Date(currentPeriod.ending_before),
+  });
+}
+
 /**
  * Retrieve the current billing period from the Metronome contract.
  *
@@ -1313,18 +1336,15 @@ export async function getMetronomeCurrentBillingPeriod({
     return new Err(contractResult.error);
   }
 
-  const currentPeriod = contractResult.value.subscriptions
-    ?.map((s) => s.billing_periods?.current)
-    .find((bp) => bp !== undefined);
+  return billingPeriodFromContract(contractResult.value);
+}
 
-  if (!currentPeriod) {
-    return new Err(
-      new Error("No current billing period found on Metronome contract")
-    );
+export async function getCachedMetronomeCurrentBillingPeriod(
+  workspaceId: string
+): Promise<Result<BillingCycle | null, Error>> {
+  const contract = await getActiveContract(workspaceId);
+  if (!contract) {
+    return new Ok(null);
   }
-
-  return new Ok({
-    cycleStart: new Date(currentPeriod.starting_at),
-    cycleEnd: new Date(currentPeriod.ending_before),
-  });
+  return billingPeriodFromContract(contract);
 }

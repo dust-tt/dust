@@ -171,17 +171,17 @@ export type MembersUsagePaginationInput = z.infer<
 >;
 
 async function fetchPerUserUsageCreditsForMembersTableUncached({
+  workspaceId,
   metronomeCustomerId,
-  metronomeContractId,
   userIds,
 }: {
+  workspaceId: string;
   metronomeCustomerId: string;
-  metronomeContractId: string;
   userIds: string[];
 }): Promise<Map<string, number>> {
   const result = await fetchPerUserAwuUsage({
+    workspaceId,
     metronomeCustomerId,
-    metronomeContractId,
     userIds,
   });
   if (result.isErr()) {
@@ -195,10 +195,12 @@ async function fetchPerUserUsageCreditsForMembersTableUncached({
 }
 
 async function fetchPerUserUsageCreditsForMembersTable({
+  workspaceId,
   metronomeCustomerId,
   metronomeContractId,
   userIds,
 }: {
+  workspaceId: string;
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
   userIds: string[];
@@ -208,6 +210,7 @@ async function fetchPerUserUsageCreditsForMembersTable({
   }
   try {
     return await getPerUserAwuUsage({
+      workspaceId,
       metronomeCustomerId,
       metronomeContractId,
       userIds,
@@ -218,8 +221,8 @@ async function fetchPerUserUsageCreditsForMembersTable({
       "[MembersUsage] Failed to read cached per-user usage, falling back to uncached fetch"
     );
     return fetchPerUserUsageCreditsForMembersTableUncached({
+      workspaceId,
       metronomeCustomerId,
-      metronomeContractId,
       userIds,
     });
   }
@@ -586,6 +589,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
     { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
   ] = await Promise.all([
     fetchPerUserUsageCreditsForMembersTable({
+      workspaceId,
       metronomeCustomerId,
       metronomeContractId,
       userIds: [metronomeUserId],
@@ -663,6 +667,7 @@ export async function getMemberUsage({
       users: [userResource],
     }),
     fetchPerUserUsageCreditsForMembersTable({
+      workspaceId: workspace.sId,
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
       // Include both forms; seat type is resolved from the membership fetched
@@ -864,6 +869,7 @@ export async function getMembersUsage({
   ] = await Promise.all([
     MembershipResource.getActiveMemberships({ workspace, users }),
     fetchPerUserUsageCreditsForMembersTable({
+      workspaceId: workspace.sId,
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
       // Include both the raw sId and the free-prefixed form: free-seat users'

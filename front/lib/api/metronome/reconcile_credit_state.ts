@@ -496,8 +496,8 @@ export async function reconcileWorkspaceUserCreditStates({
     .map((m) => m.user?.sId)
     .filter((sId): sId is string => sId !== undefined);
   const usageResult = await fetchPerUserAwuUsage({
+    workspaceId,
     metronomeCustomerId,
-    metronomeContractId,
     userIds: memberUserIds,
   });
   if (usageResult.isErr()) {

@@ -416,8 +416,8 @@ makeScript(
 
     // --- Canonical Consumed + reconciliation -------------------------------
     const consumedMap = await fetchPerUserAwuUsage({
+      workspaceId,
       metronomeCustomerId,
-      metronomeContractId,
       userIds: [userId],
     });
     const canonicalConsumed = consumedMap.isOk()
