@@ -1,6 +1,5 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
 import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
-import type { GetWorkspacePodTaskResponseBody } from "@app/lib/api/projects/tasks";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -12,6 +11,7 @@ import {
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
+import type { GetWorkspacePodTaskResponseBody } from "@app/types/api/projects/tasks";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { PodTaskStatus, PodTaskType } from "@app/types/project_task";

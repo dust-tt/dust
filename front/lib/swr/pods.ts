@@ -14,22 +14,6 @@ import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
-import type {
-  GetPodMetadataResponseBody,
-  PatchPodMetadataResponseBody,
-} from "@app/lib/api/projects/metadata";
-import type {
-  GetUserPodNotificationPreferenceResponseBody,
-  PatchUserPodNotificationPreferenceResponseBody,
-  PostUserPodStarResponseBody,
-} from "@app/lib/api/projects/preferences";
-import type {
-  GetPodTasksResponseBody,
-  GetWorkspacePodTaskResponseBody,
-  PatchPodTaskResponseBody,
-  PostPodTaskResponseBody,
-  PostStartPodTaskResponseBody,
-} from "@app/lib/api/projects/tasks";
 import type { CheckNameResponseBody } from "@app/lib/api/spaces";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
@@ -43,6 +27,22 @@ import {
 } from "@app/lib/swr/swr";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
+import type {
+  GetPodMetadataResponseBody,
+  PatchPodMetadataResponseBody,
+} from "@app/types/api/projects/metadata";
+import type {
+  GetUserPodNotificationPreferenceResponseBody,
+  PatchUserPodNotificationPreferenceResponseBody,
+  PostUserPodStarResponseBody,
+} from "@app/types/api/projects/preferences";
+import type {
+  GetPodTasksResponseBody,
+  GetWorkspacePodTaskResponseBody,
+  PatchPodTaskResponseBody,
+  PostPodTaskResponseBody,
+  PostStartPodTaskResponseBody,
+} from "@app/types/api/projects/tasks";
 import type {
   NotificationCondition,
   UserPodNotificationPreference,

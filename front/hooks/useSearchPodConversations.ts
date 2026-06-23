@@ -1,6 +1,6 @@
 import { useDebounce } from "@app/hooks/useDebounce";
-import type { SearchConversationsResponseBody } from "@app/lib/api/projects/search";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
+import type { SearchConversationsResponseBody } from "@app/types/api/projects/search";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";

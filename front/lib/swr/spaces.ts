@@ -8,7 +8,6 @@ import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
-import type { SpacesLookupResponseBody } from "@app/lib/api/projects/lookup";
 import type {
   DataSourceContentNode,
   PostWorkspaceSearchResponseBody,
@@ -31,6 +30,7 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { SpacesLookupResponseBody } from "@app/types/api/projects/list";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";

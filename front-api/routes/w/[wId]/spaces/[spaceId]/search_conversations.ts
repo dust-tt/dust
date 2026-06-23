@@ -1,7 +1,7 @@
-import type { SearchConversationsResponseBody } from "@app/lib/api/projects/search";
 import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import type { SearchConversationsResponseBody } from "@app/types/api/projects/search";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
