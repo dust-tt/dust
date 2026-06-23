@@ -1,3 +1,4 @@
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
@@ -14,6 +15,10 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import {
+  collectGrepMatches,
+  formatGrepFooter,
+} from "@app/lib/api/actions/servers/files/tools/grep_match";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -85,36 +90,30 @@ export async function grepHandler(
     );
   }
 
-  const matches: string[] = [];
-  let lineNumber = 0;
-  let capped = false;
-
-  // readResult.value is a Readable stream readline will stop early once we hit GREP_MATCHES_MAX.
+  // readResult.value is a Readable stream; collectGrepMatches stops early once we hit a cap.
   const rl = readline.createInterface({
     input: readResult.value,
     crlfDelay: Infinity,
   });
 
+  let matches: string[];
+  let matchCapped: boolean;
+  let byteCapped: boolean;
   try {
-    for await (const line of rl) {
-      lineNumber++;
-
-      if (regex.test(line)) {
-        matches.push(`${lineNumber}: ${line}`);
-
-        if (matches.length >= GREP_MATCHES_MAX) {
-          capped = true;
-          rl.close();
-          break;
-        }
-      }
-    }
+    ({ matches, matchCapped, byteCapped } = await collectGrepMatches({
+      lines: rl,
+      regex,
+      maxMatches: GREP_MATCHES_MAX,
+      maxBytes: FILE_OFFLOAD_TEXT_SIZE_BYTES,
+    }));
   } catch (err) {
     return new Err(
       new MCPError(
         `Failed to read file \`${path}\`: ${normalizeError(err).message}`
       )
     );
+  } finally {
+    rl.close();
   }
 
   if (matches.length === 0) {
@@ -126,12 +125,19 @@ export async function grepHandler(
     ]);
   }
 
-  let text = matches.join("\n");
-  if (capped) {
-    text += `\n\n[Showing first ${GREP_MATCHES_MAX} matches. Refine your pattern or use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` with a line offset to read a specific section.]`;
-  } else {
-    text += `\n\n[${matches.length} match${matches.length === 1 ? "" : "es"} found]`;
-  }
+  const text =
+    matches.join("\n") +
+    formatGrepFooter({
+      matchCount: matches.length,
+      matchCapped,
+      byteCapped,
+      maxMatches: GREP_MATCHES_MAX,
+      maxBytes: FILE_OFFLOAD_TEXT_SIZE_BYTES,
+      catToolName: getPrefixedToolName(
+        FILES_SERVER_NAME,
+        FILES_CAT_ACTION_NAME
+      ),
+    });
 
   return new Ok([{ type: "text", text }]);
 }

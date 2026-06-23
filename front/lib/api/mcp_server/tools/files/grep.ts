@@ -1,4 +1,9 @@
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import { GREP_MATCHES_MAX } from "@app/lib/api/actions/servers/files/metadata";
+import {
+  collectGrepMatches,
+  formatGrepFooter,
+} from "@app/lib/api/actions/servers/files/tools/grep_match";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -32,7 +37,8 @@ export function registerFilesGrepTool(server: McpServer) {
     {
       description:
         "Search a text file for lines matching a regular expression. " +
-        `Results are capped at ${GREP_MATCHES_MAX} matches. Use \`files_cat\` with a line offset to read surrounding context. ` +
+        `Results are capped at ${GREP_MATCHES_MAX} matches and ${FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024}KB of output. ` +
+        "Use `files_cat` with a line offset to read surrounding context. " +
         "Requires an explicit scope with conversation_id or pod_id.",
       inputSchema,
     },
@@ -83,33 +89,27 @@ export function registerFilesGrepTool(server: McpServer) {
         return mcpError(`File not found: \`${path}\`.`);
       }
 
-      const matches: string[] = [];
-      let lineNumber = 0;
-      let capped = false;
-
       const rl = readline.createInterface({
         input: readResult.value,
         crlfDelay: Infinity,
       });
 
+      let matches: string[];
+      let matchCapped: boolean;
+      let byteCapped: boolean;
       try {
-        for await (const line of rl) {
-          lineNumber++;
-
-          if (regex.test(line)) {
-            matches.push(`${lineNumber}: ${line}`);
-
-            if (matches.length >= GREP_MATCHES_MAX) {
-              capped = true;
-              rl.close();
-              break;
-            }
-          }
-        }
+        ({ matches, matchCapped, byteCapped } = await collectGrepMatches({
+          lines: rl,
+          regex,
+          maxMatches: GREP_MATCHES_MAX,
+          maxBytes: FILE_OFFLOAD_TEXT_SIZE_BYTES,
+        }));
       } catch (err) {
         return mcpError(
           `Failed to read file \`${path}\`: ${normalizeError(err).message}`
         );
+      } finally {
+        rl.close();
       }
 
       if (matches.length === 0) {
@@ -118,12 +118,16 @@ export function registerFilesGrepTool(server: McpServer) {
         });
       }
 
-      let text = matches.join("\n");
-      if (capped) {
-        text += `\n\n[Showing first ${GREP_MATCHES_MAX} matches. Refine your pattern or use \`files_cat\` with a line offset to read a specific section.]`;
-      } else {
-        text += `\n\n[${matches.length} match${matches.length === 1 ? "" : "es"} found]`;
-      }
+      const text =
+        matches.join("\n") +
+        formatGrepFooter({
+          matchCount: matches.length,
+          matchCapped,
+          byteCapped,
+          maxMatches: GREP_MATCHES_MAX,
+          maxBytes: FILE_OFFLOAD_TEXT_SIZE_BYTES,
+          catToolName: "files_cat",
+        });
 
       return mcpJsonResponse({ text });
     }

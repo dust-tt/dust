@@ -1,3 +1,4 @@
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
@@ -212,7 +213,7 @@ const FILES_TOOLS_COMMON_METADATA = {
       "Search a text file for lines matching a regular expression. " +
       "Returns matching lines with their line numbers. " +
       `Use the line numbers with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to read surrounding context. ` +
-      `Results are capped at ${GREP_MATCHES_MAX} matches.`,
+      `Results are capped at ${GREP_MATCHES_MAX} matches and ${FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024}KB of output.`,
     schema: {
       path: z
         .string()
