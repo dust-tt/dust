@@ -205,7 +205,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
             ref={scrollRef}
             className={
               numPages !== null
-                ? "flex-1 min-h-0 overflow-y-auto rounded-lg"
+                ? "flex-1 min-h-0 overflow-auto rounded-lg"
                 : "hidden"
             }
           >
@@ -218,7 +218,10 @@ export function PDFViewer({ url }: PDFViewerProps) {
               loading={null}
               error={null}
             >
-              <div className="flex flex-col items-center gap-4 py-4">
+              {/* w-fit + min-w-full keeps pages centered when they fit, but
+                  anchors their left edge to the scroll origin when a page is
+                  wider than the viewport, so the left edge stays reachable. */}
+              <div className="flex w-fit min-w-full flex-col items-center gap-4 py-4">
                 {Array.from({ length: numPages ?? 0 }, (_, i) => (
                   <div key={i + 1} data-page-number={i + 1}>
                     <Page
