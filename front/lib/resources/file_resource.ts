@@ -467,6 +467,11 @@ export class FileResource extends BaseResource<FileModel> {
       where: { workspaceId },
     });
 
+    // Delete authorized file accesses before shareable files (FK constraint).
+    await this.authorizedFileAccessModel.destroy({
+      where: { workspaceId },
+    });
+
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
       where: { workspaceId },
