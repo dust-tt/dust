@@ -6,7 +6,7 @@ import {
   assistantToolCallRequestToPart,
   type ContentBlockConverters,
   conversationToContents,
-  effortToThinkingLevel,
+  effortToThinkingConfig,
   forceToolNameToToolConfig,
   outputFormatToResponseSchema,
   systemMessagesToSystemInstruction,
@@ -83,12 +83,9 @@ export function WithGoogleGenAIInputConverter<
               ? [{ functionDeclarations: tools.map(toFunctionDeclaration) }]
               : undefined,
           toolConfig: forceToolNameToToolConfig(tools, forceTool),
-          thinkingConfig: {
-            includeThoughts: true,
-            thinkingLevel: reasoning
-              ? effortToThinkingLevel(reasoning.effort)
-              : undefined,
-          },
+          thinkingConfig: reasoning
+            ? effortToThinkingConfig(reasoning.effort)
+            : { includeThoughts: true },
           maxOutputTokens: this.constructor.maxOutputTokens,
           ...(outputFormat
             ? {

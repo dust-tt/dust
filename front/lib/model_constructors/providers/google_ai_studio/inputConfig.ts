@@ -1,4 +1,4 @@
-import { GEMINI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
+import { GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
 import {
   inputConfigSchema,
   temperatureSchema,
@@ -6,12 +6,12 @@ import {
 import { z } from "zod";
 
 // Provider-wide input config: the widest reasoning contract any Gemini model
-// accepts (all four native thinking levels). Per-model schemas narrow this
-// further (e.g. Pro drops `minimal`).
+// accepts (`none` + all four native thinking levels). Per-model schemas narrow
+// this further (e.g. Pro drops `none`/`minimal`).
 export const googleAiStudioConfigSchema = inputConfigSchema.extend({
   reasoning: z
     .object({
-      effort: z.enum(GEMINI_SUPPORTED_REASONING_EFFORTS),
+      effort: z.enum(GEMINI_FLASH_LITE_SUPPORTED_REASONING_EFFORTS),
     })
     .optional(),
   cacheKey: z.undefined(),
