@@ -1,8 +1,6 @@
-import type {
-  AwuPoolSummaryError,
-  AwuPoolSummaryResponseBody,
-} from "@app/lib/api/credits/awu_pool_summary";
+import type { AwuPoolSummaryError } from "@app/lib/api/credits/awu_pool_summary";
 import { getAwuPoolSummary } from "@app/lib/api/credits/awu_pool_summary";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";

@@ -1,5 +1,3 @@
-import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
-import type { GetMembersSeatsResponseBody } from "@app/lib/api/credits/members_seats";
 import type { GetMemberUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/lib/api/credits/purchase";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
@@ -7,6 +5,8 @@ import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purcha
 import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,

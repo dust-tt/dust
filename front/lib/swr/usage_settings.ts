@@ -1,8 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetProgrammaticUsageLimitResponseBody,
-  PutProgrammaticUsageLimitResponseBody,
-} from "@app/lib/api/credits/programmatic_usage_limit";
 import type { GetCreditUsageConfigurationResponseBody } from "@app/lib/api/credits/usage_configuration";
 import type {
   GetDefaultUserSpendLimitResponseBody,
@@ -15,6 +11,10 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  GetProgrammaticUsageLimitResponseBody,
+  PutProgrammaticUsageLimitResponseBody,
+} from "@app/types/api/credits/programmatic_usage_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";

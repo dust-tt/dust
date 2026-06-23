@@ -1,15 +1,15 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
-import type {
-  GetUpgradeRequestsResponseBody,
-  PatchUpgradeRequestResponseBody,
-  PostUpgradeRequestResponseBody,
-  UpgradeRequestError,
-} from "@app/lib/api/credits/upgrade_requests";
+import type { UpgradeRequestError } from "@app/lib/api/credits/upgrade_requests";
 import {
   createUpgradeRequest,
   listPendingUpgradeRequests,
   resolveUpgradeRequest,
 } from "@app/lib/api/credits/upgrade_requests";
+import type {
+  GetUpgradeRequestsResponseBody,
+  PatchUpgradeRequestResponseBody,
+  PostUpgradeRequestResponseBody,
+} from "@app/types/api/credits/upgrade_requests";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
