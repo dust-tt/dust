@@ -2,6 +2,7 @@ import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getUserGroupMemberships } from "@app/lib/workspace_usage";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -14,7 +15,9 @@ type TopUserExportBucket = {
   doc_count: number;
   last_message?: estypes.AggregationsMaxAggregate;
   active_days?: estypes.AggregationsDateHistogramAggregate;
-  credits?: estypes.AggregationsSumAggregate;
+  credits?: estypes.AggregationsFilterAggregate & {
+    total?: estypes.AggregationsSumAggregate;
+  };
 };
 
 type TopUsersExportAggs = {
@@ -75,7 +78,13 @@ export async function fetchUserExportRows({
                 time_zone: timezone,
               },
             },
-            credits: { sum: { field: "cost.full_awu" } },
+            // Credits mirror the billed scope (failed messages carry a cost in
+            // the index but are never billed), while the count metrics above
+            // stay inclusive of all activity.
+            credits: {
+              filter: { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+              aggs: { total: { sum: { field: "cost.full_awu" } } },
+            },
           },
         },
       },
@@ -106,7 +115,7 @@ export async function fetchUserExportRows({
           activeDaysCount: Array.isArray(activeDaysBuckets)
             ? activeDaysBuckets.filter((d) => d.doc_count > 0).length
             : 0,
-          credits: Math.round(b.credits?.value ?? 0),
+          credits: Math.round(b.credits?.total?.value ?? 0),
         },
       ] as const;
     })

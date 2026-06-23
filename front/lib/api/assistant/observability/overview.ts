@@ -2,6 +2,7 @@ import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observabili
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -137,7 +138,13 @@ export async function fetchAgentCostStats(
 
   const query: estypes.QueryDslQueryContainer = {
     bool: {
-      filter: [baseQuery, { range: { "cost.full_awu": { gt: 0 } } }],
+      filter: [
+        baseQuery,
+        // Mirror the billed scope: failed messages carry a non-zero
+        // `cost.full_awu` in the index but are never billed by Metronome.
+        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+        { range: { "cost.full_awu": { gt: 0 } } },
+      ],
     },
   };
 
