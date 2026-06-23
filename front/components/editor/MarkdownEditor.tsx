@@ -13,10 +13,12 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 
 export const DEFAULT_MARKDOWN_EDITOR_DEBOUNCE_MS = 250;
+/** Default classes for the TipTap editable surface (scroll + max height). */
+export const DEFAULT_MARKDOWN_EDITOR_CLASSNAME = "max-h-96";
 
 const editorVariants = cva(
   [
-    "overflow-auto p-2 resize-y min-h-60 max-h-[2048px]",
+    "overflow-auto p-2 resize-y min-h-60",
     "rounded-xl border transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
     "focus-within:ring-highlight-300 dark:focus-within:ring-highlight-300-night",
@@ -239,6 +241,7 @@ export interface MarkdownEditorProps {
   debounceMs?: number;
   toolbarExtra?: ReactNode;
   className?: string;
+  /** Classes applied to the TipTap editable surface. Defaults to {@link DEFAULT_MARKDOWN_EDITOR_CLASSNAME}. */
   editorClassName?: string;
 }
 
@@ -285,7 +288,11 @@ export function MarkdownEditor({
     editor.setOptions({
       editorProps: {
         attributes: {
-          class: cn(editorVariants({ error: displayError }), editorClassName),
+          class: cn(
+            editorVariants({ error: displayError }),
+            DEFAULT_MARKDOWN_EDITOR_CLASSNAME,
+            editorClassName
+          ),
         },
         transformPastedHTML(html: string) {
           return cleanupPastedHTML(html);

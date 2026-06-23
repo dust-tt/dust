@@ -52,6 +52,57 @@ export const getFilePathViewUrl = (
   return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
 };
 
+/** Relative API path for fetching file text content (for use with clientFetch / useFileContentByUrl). */
+export function getFilePathContentApiPath(
+  owner: LightWorkspaceType,
+  canonicalPath: string
+): string {
+  const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
+  return `/api/w/${owner.sId}/files/path/${encoded}`;
+}
+
+type FileContentByUrlData =
+  | { kind: "loaded"; content: string }
+  | { kind: "not_found" };
+
+export function useFileContentByUrl({
+  url,
+  disabled,
+}: {
+  url: string | null;
+  disabled?: boolean;
+}) {
+  const isDisabled = disabled || !url;
+
+  const { data, error } = useSWRWithDefaults<
+    string | null,
+    FileContentByUrlData
+  >(
+    url,
+    async (u: string) => {
+      const response = await clientFetch(u);
+      if (response.status === 404) {
+        return { kind: "not_found" };
+      }
+      if (!response.ok) {
+        const errorData = await getErrorFromResponse(response);
+        throw new Error(errorData.message);
+      }
+      return { kind: "loaded", content: await response.text() };
+    },
+    { disabled: isDisabled }
+  );
+
+  const isNotFound = data?.kind === "not_found";
+
+  return {
+    fileContent: data?.kind === "loaded" ? data.content : null,
+    isNotFound,
+    isFileContentLoading: !error && data === undefined && !isDisabled,
+    fileContentError: error ? normalizeError(error) : null,
+  };
+}
+
 export const getFilePathDownloadUrl = (
   owner: LightWorkspaceType,
   filePath: string
