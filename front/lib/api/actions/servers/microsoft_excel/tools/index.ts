@@ -87,7 +87,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
     }
 
     try {
-      const MAX_CELLS = 100_000;
+      const MAX_CELLS = 25_000;
       const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
       const worksheetPath = `${endpoint}/workbook/worksheets/${encodeURIComponent(worksheetName)}`;
 
