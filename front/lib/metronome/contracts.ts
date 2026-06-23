@@ -28,7 +28,7 @@ import {
 } from "@app/lib/metronome/mau_sync";
 import {
   type CachedContract,
-  getActiveContract,
+  resolveActiveMetronomeIds,
 } from "@app/lib/metronome/plan_type";
 import {
   hasContractSeatSubscription,
@@ -55,12 +55,14 @@ import {
 } from "@app/lib/plans/usage/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
 import { metronomeAmount } from "./amounts";
@@ -1303,30 +1305,20 @@ function billingPeriodFromContract(
 }
 
 /**
- * Retrieve the current billing period from the Metronome contract.
+ * Retrieve the current billing period directly from Metronome (no caching).
  *
  * Returns:
  * - Ok(BillingCycle) when the period is found on the contract.
  * - Ok(null) when Metronome is not set up for this workspace (missing IDs).
  * - Err when the Metronome API call fails or no subscription has a billing period.
  */
-export async function getMetronomeCurrentBillingPeriod({
+async function fetchMetronomeCurrentBillingPeriod({
   metronomeContractId,
   metronomeCustomerId,
 }: {
-  metronomeContractId: string | null;
-  metronomeCustomerId: string | null;
+  metronomeContractId: string;
+  metronomeCustomerId: string;
 }): Promise<Result<BillingCycle | null, Error>> {
-  if (!metronomeContractId || !metronomeCustomerId) {
-    if (metronomeContractId !== null || metronomeCustomerId !== null) {
-      logger.warn(
-        { metronomeContractId, metronomeCustomerId },
-        "[Metronome] Partial Metronome configuration: one of metronomeContractId or metronomeCustomerId is missing"
-      );
-    }
-    return new Ok(null);
-  }
-
   const contractResult = await getMetronomeContractById({
     metronomeCustomerId,
     metronomeContractId,
@@ -1339,12 +1331,54 @@ export async function getMetronomeCurrentBillingPeriod({
   return billingPeriodFromContract(contractResult.value);
 }
 
+// Billing periods roll over independently of any contract lifecycle event
+// (contract.start/end/edit), so unlike the no-TTL active-contract cache, this
+// needs its own short TTL — otherwise a workspace whose contract hasn't been
+// edited in a while would keep reading a stale, expired period indefinitely.
+const BILLING_PERIOD_CACHE_TTL_MS = 60 * 1000;
+
+async function fetchBillingPeriodRecordForWorkspace(
+  workspaceId: string
+): Promise<{ cycleStartMs: number; cycleEndMs: number } | null> {
+  const ids = await resolveActiveMetronomeIds(workspaceId);
+  if (!ids) {
+    return null;
+  }
+  const periodResult = await fetchMetronomeCurrentBillingPeriod(ids);
+  if (periodResult.isErr()) {
+    throw periodResult.error;
+  }
+  if (!periodResult.value) {
+    return null;
+  }
+  return {
+    cycleStartMs: periodResult.value.cycleStart.getTime(),
+    cycleEndMs: periodResult.value.cycleEnd.getTime(),
+  };
+}
+
+const getCachedBillingPeriodRecordForWorkspace = cacheWithRedis(
+  fetchBillingPeriodRecordForWorkspace,
+  (workspaceId) => workspaceId,
+  { ttlMs: BILLING_PERIOD_CACHE_TTL_MS, cacheNullValues: false }
+);
+
+/**
+ * Retrieve the current billing period for a workspace's active Metronome contract.
+ */
 export async function getCachedMetronomeCurrentBillingPeriod(
   workspaceId: string
 ): Promise<Result<BillingCycle | null, Error>> {
-  const contract = await getActiveContract(workspaceId);
-  if (!contract) {
-    return new Ok(null);
+  try {
+    const record = await getCachedBillingPeriodRecordForWorkspace(workspaceId);
+    if (!record) {
+      return new Ok(null);
+    }
+    return new Ok({
+      cycleStart: new Date(record.cycleStartMs),
+      cycleEnd: new Date(record.cycleEndMs),
+    });
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
-  return billingPeriodFromContract(contract);
 }

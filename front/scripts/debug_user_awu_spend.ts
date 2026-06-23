@@ -29,7 +29,7 @@ import {
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
-import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
   isToolCategory,
   TOOL_CATEGORY_AWU_WEIGHTS,
@@ -77,10 +77,9 @@ makeScript(
       "[debug] Contract start"
     );
 
-    const periodResult = await getMetronomeCurrentBillingPeriod({
-      metronomeCustomerId,
-      metronomeContractId,
-    });
+    const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+      workspace.sId
+    );
     if (periodResult.isErr() || !periodResult.value) {
       logger.error({ workspaceId }, "No current billing period");
       return;
