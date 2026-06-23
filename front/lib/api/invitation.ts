@@ -18,12 +18,8 @@ import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import type {
-  MembershipInvitationType,
-  PendingInvitationOption,
-} from "@app/types/membership_invitation";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -36,55 +32,14 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import { ActiveRoleSchema } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
-import { z } from "zod";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
 const EMAIL_CONCURRENCY = 8;
-
-export type GetWorkspaceInvitationsResponseBody = {
-  invitations: MembershipInvitationType[];
-};
-
-export type GetPendingInvitationsLookupResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
-
-export type GetPendingInvitationsResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
-
-export const PostInvitationRequestBodySchema = z.array(
-  z.object({
-    email: z.string(),
-    role: ActiveRoleSchema,
-    seatType: z.enum(MEMBERSHIP_SEAT_TYPES).nullish(),
-  })
-);
-
-export type PostInvitationRequestBody = z.infer<
-  typeof PostInvitationRequestBodySchema
->;
-
-export type PostInvitationResponseBody = {
-  success: boolean;
-  email: string;
-  error_message?: string;
-}[];
-
-export type PostMemberInvitationsResponseBody = {
-  invitation: MembershipInvitationType;
-};
-
-export const PostMemberInvitationBodySchema = z.object({
-  status: z.enum(["revoked", "pending"]),
-  initialRole: ActiveRoleSchema,
-});
 
 export async function getInvitation(
   auth: Authenticator,

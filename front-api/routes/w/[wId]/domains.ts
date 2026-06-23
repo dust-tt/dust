@@ -3,7 +3,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type { GetWorkspaceDomainsResponseBody } from "@app/lib/api/workos/organization";
 import {
   generateWorkOSAdminPortalUrl,
   getOrCreateWorkOSOrganization,
@@ -11,6 +10,7 @@ import {
 import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization_primitives";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
+import type { GetWorkspaceDomainsResponseBody } from "@app/types/api/workos/organization";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

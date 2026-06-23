@@ -1,6 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
-import type { GetWorkspaceInvitationsResponseBody } from "@app/lib/api/invitation";
 import type {
   GetFreeSeatCountsResponseBody,
   MembersLookupResponseBody,
@@ -13,6 +12,7 @@ import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
+import type { GetWorkspaceInvitationsResponseBody } from "@app/types/api/invitation";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
