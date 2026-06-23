@@ -3,13 +3,96 @@
 // Block Kit is loosely typed in the SDK (the `header` block is even missing), so we read
 // `unknown` and narrow with type guards. mrkdwn cleanup is delegated to `slack_mrkdwn.ts`.
 import { slackMrkdwnToText } from "@app/lib/api/actions/servers/slack/slack_mrkdwn";
+import logger from "@app/logger/logger";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { z } from "zod";
+
+// A Slack "text object", e.g. { type: "mrkdwn", text: "..." }. We only need `text`.
+const TextObjectSchema = z.object({ text: z.string() });
+
+const HeaderBlockSchema = z.object({
+  type: z.literal("header"),
+  text: TextObjectSchema,
+});
+
+const SectionBlockSchema = z.object({
+  type: z.literal("section"),
+  text: TextObjectSchema.optional(),
+  fields: z.array(TextObjectSchema).optional(),
+  accessory: z.unknown().optional(),
+});
+
+const ContextBlockSchema = z.object({
+  type: z.literal("context"),
+  elements: z.array(z.unknown()).optional(),
+});
+
+const ActionsBlockSchema = z.object({
+  type: z.literal("actions"),
+  elements: z.array(z.unknown()).optional(),
+});
+
+const ImageBlockSchema = z.object({
+  type: z.literal("image"),
+  title: TextObjectSchema.optional(),
+  alt_text: z.string().optional(),
+});
+
+const RichTextBlockSchema = z.object({
+  type: z.literal("rich_text"),
+  elements: z.array(z.unknown()).optional(),
+});
+
+const DividerBlockSchema = z.object({
+  type: z.literal("divider"),
+});
+
+const SlackBlockSchema = z.discriminatedUnion("type", [
+  HeaderBlockSchema,
+  SectionBlockSchema,
+  ContextBlockSchema,
+  ActionsBlockSchema,
+  ImageBlockSchema,
+  RichTextBlockSchema,
+  DividerBlockSchema,
+]);
+
+type SlackBlock = z.infer<typeof SlackBlockSchema>;
+
+// Attachments are the legacy message format; we read a handful of plain-text fields.
+const AttachmentFieldSchema = z.object({
+  title: z.string().optional(),
+  value: z.string().optional(),
+});
+
+const AttachmentSchema = z.object({
+  pretext: z.string().optional(),
+  title: z.string().optional(),
+  text: z.string().optional(),
+  fallback: z.string().optional(),
+  fields: z.array(AttachmentFieldSchema).optional(),
+});
+
+type SlackAttachment = z.infer<typeof AttachmentSchema>;
+
+const FileSchema = z.object({
+  name: z.string().optional(),
+  mimetype: z.string().optional(),
+});
+
+const SlackMessageSchema = z.object({
+  text: z.string().optional(),
+  blocks: z.array(SlackBlockSchema).optional(),
+  attachments: z.array(AttachmentSchema).optional(),
+  files: z.array(FileSchema).optional(),
+});
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
+function isString(value: unknown): value is string {
+  return typeof value === "string";
 }
 
 function asArray(value: unknown): unknown[] | undefined {
@@ -21,7 +104,7 @@ function readTextObject(value: unknown): string | undefined {
   if (!isRecord(value)) {
     return undefined;
   }
-  return asString(value.text);
+  return isString(value.text) ? value.text : undefined;
 }
 
 // Collapses whitespace/newlines into single spaces (for field values shown on one line).
@@ -31,41 +114,31 @@ function toSingleLine(text: string): string {
 
 // Renders a leaf element of a rich_text section.
 function renderRichTextLeaf(element: Record<string, unknown>): string {
-  const type = asString(element.type);
+  const type = isString(element.type) ? element.type : undefined;
   switch (type) {
     case "text":
-      return asString(element.text) ?? "";
+      return isString(element.text) ? element.text : "";
     case "link": {
-      const url = asString(element.url) ?? "";
-      const label = asString(element.text);
+      const url = isString(element.url) ? element.url : "";
+      const label = isString(element.text) ? element.text : undefined;
       return label ? `${label} (${url})` : url;
     }
-    case "user": {
-      const userId = asString(element.user_id);
-      return userId ? `@${userId}` : "";
-    }
-    case "usergroup": {
-      const groupId = asString(element.usergroup_id);
-      return groupId ? `@${groupId}` : "";
-    }
-    case "channel": {
-      const channelId = asString(element.channel_id);
-      return channelId ? `#${channelId}` : "";
-    }
-    case "emoji": {
-      const name = asString(element.name);
-      return name ? `:${name}:` : "";
-    }
-    case "broadcast": {
-      const range = asString(element.range);
-      return range ? `@${range}` : "";
-    }
+    case "user":
+      return isString(element.user_id) ? `@${element.user_id}` : "";
+    case "usergroup":
+      return isString(element.usergroup_id) ? `@${element.usergroup_id}` : "";
+    case "channel":
+      return isString(element.channel_id) ? `#${element.channel_id}` : "";
+    case "emoji":
+      return isString(element.name) ? `:${element.name}:` : "";
+    case "broadcast":
+      return isString(element.range) ? `@${element.range}` : "";
     case "date":
       // `date` carries a fallback string suitable for display.
-      return asString(element.fallback) ?? "";
+      return isString(element.fallback) ? element.fallback : "";
     default:
       // Unknown leaf type (e.g. `color`): fall back to any `text` it might carry.
-      return asString(element.text) ?? "";
+      return isString(element.text) ? element.text : "";
   }
 }
 
@@ -75,7 +148,7 @@ function renderRichTextSection(section: unknown): string[] {
   if (!isRecord(section)) {
     return [];
   }
-  const type = asString(section.type);
+  const type = isString(section.type) ? section.type : undefined;
   const elements = asArray(section.elements) ?? [];
 
   // Lists nest one rich_text_section per item.
@@ -100,38 +173,34 @@ function renderRichTextSection(section: unknown): string[] {
 }
 
 // Extracts readable lines from a single Block Kit block.
-function extractLinesFromBlock(block: unknown): string[] {
-  if (!isRecord(block)) {
-    return [];
-  }
-  const type = asString(block.type);
-
-  switch (type) {
+function extractLinesFromBlock(block: SlackBlock): string[] {
+  switch (block.type) {
     case "header": {
-      const text = readTextObject(block.text);
+      const { text } = block.text;
       return text ? [text] : [];
     }
 
     case "section": {
       const lines: string[] = [];
-      const main = readTextObject(block.text);
+      const main = block.text?.text;
       if (main) {
         lines.push(main);
       }
-      // `fields` is an array of text objects rendered in a compact 2-column layout.
-      const fields = asArray(block.fields);
+      const fields = block.fields;
+
       if (fields) {
         for (const field of fields) {
-          const fieldText = readTextObject(field);
-          if (fieldText) {
-            lines.push(toSingleLine(fieldText));
+          if (field.text) {
+            lines.push(toSingleLine(field.text));
           }
         }
       }
       // A section can carry an accessory (often a button with a label and url).
       if (isRecord(block.accessory)) {
         const label = readTextObject(block.accessory.text);
-        const url = asString(block.accessory.url);
+        const url = isString(block.accessory.url)
+          ? block.accessory.url
+          : undefined;
         if (label && url) {
           lines.push(`${label} (${url})`);
         } else if (label) {
@@ -142,15 +211,19 @@ function extractLinesFromBlock(block: unknown): string[] {
     }
 
     case "context": {
-      // In a context block, `elements` are text objects (text at element level) or image
-      // elements (alt_text). They render inline, so we join them on one line.
-      const elements = asArray(block.elements) ?? [];
+      const elements = block.elements ?? [];
+
       const parts: string[] = [];
       for (const element of elements) {
         if (!isRecord(element)) {
           continue;
         }
-        const text = asString(element.text) ?? asString(element.alt_text);
+        let text: string | undefined;
+        if (isString(element.text)) {
+          text = element.text;
+        } else if (isString(element.alt_text)) {
+          text = element.alt_text;
+        }
         if (text) {
           parts.push(text);
         }
@@ -160,14 +233,15 @@ function extractLinesFromBlock(block: unknown): string[] {
     }
 
     case "actions": {
-      const elements = asArray(block.elements) ?? [];
+      const elements = block.elements ?? [];
+
       const lines: string[] = [];
       for (const element of elements) {
         if (!isRecord(element)) {
           continue;
         }
         const label = readTextObject(element.text);
-        const url = asString(element.url);
+        const url = isString(element.url) ? element.url : undefined;
         if (label && url) {
           lines.push(`${label} (${url})`);
         } else if (label) {
@@ -181,11 +255,11 @@ function extractLinesFromBlock(block: unknown): string[] {
 
     case "image": {
       const lines: string[] = [];
-      const title = readTextObject(block.title);
+      const title = block.title?.text;
       if (title) {
         lines.push(title);
       }
-      const alt = asString(block.alt_text);
+      const alt = block.alt_text;
       if (alt) {
         lines.push(alt);
       }
@@ -193,59 +267,45 @@ function extractLinesFromBlock(block: unknown): string[] {
     }
 
     case "rich_text": {
-      const elements = asArray(block.elements) ?? [];
+      const elements = block.elements ?? [];
       return elements.flatMap((section) => renderRichTextSection(section));
     }
 
     case "divider":
       return [];
 
-    default: {
-      // Best-effort fallback for unknown block types that still carry a text object.
-      const text = readTextObject(block.text);
-      return text ? [text] : [];
-    }
+    default:
+      return assertNever(block);
   }
 }
 
 // Extracts readable lines from a single message attachment.
-function extractLinesFromAttachment(attachment: unknown): string[] {
-  if (!isRecord(attachment)) {
-    return [];
-  }
+function extractLinesFromAttachment(attachment: SlackAttachment): string[] {
   const lines: string[] = [];
 
-  const pushIfPresent = (value: unknown) => {
-    const text = asString(value);
-    if (text && text.trim()) {
-      lines.push(text);
+  const pushIfPresent = (value: string | undefined) => {
+    if (value && value.trim()) {
+      lines.push(value);
     }
   };
 
   pushIfPresent(attachment.pretext);
   pushIfPresent(attachment.title);
   pushIfPresent(attachment.text);
-  // `fallback` is the plaintext alternative to the rich content; only use it when there is
-  // no `text` to avoid duplicating the same content twice.
-  if (!asString(attachment.text)) {
+  // `fallback` duplicates the rich content; only use it when there is no `text`.
+  if (!attachment.text) {
     pushIfPresent(attachment.fallback);
   }
 
-  const fields = asArray(attachment.fields);
-  if (fields) {
-    for (const field of fields) {
-      if (!isRecord(field)) {
-        continue;
-      }
-      const title = asString(field.title)?.trim();
-      const value = asString(field.value)?.trim();
-      if (title && value) {
-        lines.push(toSingleLine(`${title}: ${value}`));
-      } else if (title) {
-        lines.push(title);
-      } else if (value) {
-        lines.push(value);
-      }
+  for (const field of attachment.fields ?? []) {
+    const title = field.title?.trim();
+    const value = field.value?.trim();
+    if (title && value) {
+      lines.push(toSingleLine(`${title}: ${value}`));
+    } else if (title) {
+      lines.push(title);
+    } else if (value) {
+      lines.push(value);
     }
   }
 
@@ -259,60 +319,73 @@ export interface FormattableSlackMessage {
   files?: unknown[];
 }
 
-// Reconstructs a readable plain-text/markdown representation of a Slack message, pulling
-// content out of blocks and attachments when the top-level `text` is empty or
-// insufficient. Deduplicates exact-duplicate lines (Slack often repeats content across
-// `text`, `blocks`, and attachment `fallback`).
+export interface FormattedSlackMessage {
+  text: string;
+  blocks: string;
+  attachments: string;
+  files: string;
+}
+
+const EMPTY_SECTION = "(empty)";
+
+// Cleans Slack mrkdwn in each line and joins them, or returns "(empty)" when there is none.
+function renderSection(rawLines: string[]): string {
+  const cleaned = rawLines
+    .flatMap((line) => line.split("\n"))
+    .map((line) => slackMrkdwnToText(line).trim())
+    .filter((line) => line.length > 0);
+  return cleaned.length > 0 ? cleaned.join("\n") : EMPTY_SECTION;
+}
+
+// Flattens a FormattedSlackMessage into a single labeled string for tools that emit text.
+export function renderFormattedMessage(m: FormattedSlackMessage): string {
+  return [
+    `Text: ${m.text}`,
+    `Blocks: ${m.blocks}`,
+    `Attachments: ${m.attachments}`,
+    `Files: ${m.files}`,
+  ].join("\n\n");
+}
+
+// Reconstructs a Slack message as readable text grouped by source. App/bot messages often
+// have an empty top-level `text` and carry their content in `blocks`/`attachments`.
 export function formatSlackMessageForLLM(
   message: FormattableSlackMessage
-): string {
-  // Phase 1 — extraction: collect raw lines (still containing Slack mrkdwn tokens) from
-  // every source. Extractors only locate text; they do not normalize it.
-  const rawLines: string[] = [];
-
-  const text = asString(message.text);
-  if (text) {
-    rawLines.push(text);
+): FormattedSlackMessage {
+  const parsed = SlackMessageSchema.safeParse(message);
+  if (!parsed.success) {
+    logger.warn(
+      { error: parsed.error.format() },
+      "Slack message failed schema validation"
+    );
+    const { text } = message;
+    return {
+      text: renderSection(text ? [text] : []),
+      blocks: "(could not parse)",
+      attachments: "(could not parse)",
+      files: "(could not parse)",
+    };
   }
+  const { text, blocks, attachments, files } = parsed.data;
 
-  if (Array.isArray(message.blocks)) {
-    for (const block of message.blocks) {
-      rawLines.push(...extractLinesFromBlock(block));
-    }
-  }
+  const blockLines = (blocks ?? []).flatMap((block) =>
+    extractLinesFromBlock(block)
+  );
+  const attachmentLines = (attachments ?? []).flatMap((attachment) =>
+    extractLinesFromAttachment(attachment)
+  );
+  const fileLines = (files ?? []).flatMap((file) =>
+    file.name
+      ? [
+          `Attached file: ${file.name}${file.mimetype ? ` (${file.mimetype})` : ""}`,
+        ]
+      : []
+  );
 
-  if (Array.isArray(message.attachments)) {
-    for (const attachment of message.attachments) {
-      rawLines.push(...extractLinesFromAttachment(attachment));
-    }
-  }
-
-  if (Array.isArray(message.files)) {
-    for (const file of message.files) {
-      if (!isRecord(file)) {
-        continue;
-      }
-      const name = asString(file.name);
-      const mimetype = asString(file.mimetype);
-      if (name) {
-        rawLines.push(
-          `Attached file: ${name}${mimetype ? ` (${mimetype})` : ""}`
-        );
-      }
-    }
-  }
-
-  // Phase 2 — normalization: split multi-line entries, clean Slack mrkdwn once per line,
-  // trim, drop empties, then dedupe exact lines while preserving order.
-  const seen = new Set<string>();
-  const deduped: string[] = [];
-  for (const rawLine of rawLines.flatMap((line) => line.split("\n"))) {
-    const line = slackMrkdwnToText(rawLine).trim();
-    if (line.length > 0 && !seen.has(line)) {
-      seen.add(line);
-      deduped.push(line);
-    }
-  }
-
-  return deduped.join("\n");
+  return {
+    text: renderSection(text ? [text] : []),
+    blocks: renderSection(blockLines),
+    attachments: renderSection(attachmentLines),
+    files: renderSection(fileLines),
+  };
 }

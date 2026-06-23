@@ -29,7 +29,10 @@ import {
   resolveUserDisplayName,
   SLACK_THREAD_LISTING_LIMIT,
 } from "@app/lib/api/actions/servers/slack/helpers";
-import { formatSlackMessageForLLM } from "@app/lib/api/actions/servers/slack/message_formatter";
+import {
+  formatSlackMessageForLLM,
+  renderFormattedMessage,
+} from "@app/lib/api/actions/servers/slack/message_formatter";
 import { SLACK_PERSONAL_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
@@ -796,16 +799,18 @@ export function createSlackPersonalTools(
               })
             : null;
           return {
-            ...match,
+            ts: match.ts,
+            reply_count: match.reply_count,
             authorName: authorName ?? "Unknown",
             // Reconstruct readable text from blocks/attachments: app/bot messages
             // (Datadog, Zendesk, ...) often have an empty `text` and put content in
             // `blocks[]`, which would otherwise render as empty for the agent.
-            renderedText: formatSlackMessageForLLM(match),
+            renderedText: renderFormattedMessage(
+              formatSlackMessageForLLM(match)
+            ),
           };
         })
       );
-
       const searchResults = buildSearchResults<{
         permalink?: string;
         renderedText: string;

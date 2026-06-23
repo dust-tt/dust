@@ -37,46 +37,52 @@ describe("formatSlackMessageForLLM", () => {
       ],
     });
 
-    expect(result).toContain("Triggered: API Errors");
-    expect(result).toContain("Service: backend");
-    expect(result).toContain("Env: production");
-    expect(result).toContain("Status: Triggered");
-    expect(result).toContain("Priority: P1");
-    expect(result).toContain("View in Datadog");
-    expect(result).toContain("https://app.datadoghq.com/monitors/123");
+    // Top-level text was empty; all content was reconstructed from the blocks.
+    expect(result.text).toBe("(empty)");
+    expect(result.blocks).toContain("Triggered: API Errors");
+    expect(result.blocks).toContain("Service: backend");
+    expect(result.blocks).toContain("Env: production");
+    expect(result.blocks).toContain("Status: Triggered");
+    expect(result.blocks).toContain("Priority: P1");
+    expect(result.blocks).toContain("View in Datadog");
+    expect(result.blocks).toContain("https://app.datadoghq.com/monitors/123");
   });
 
   it("returns the plain text when there are no blocks", () => {
-    expect(formatSlackMessageForLLM({ text: "hello world", blocks: [] })).toBe(
-      "hello world"
-    );
+    const result = formatSlackMessageForLLM({
+      text: "hello world",
+      blocks: [],
+    });
+    expect(result.text).toBe("hello world");
+    expect(result.blocks).toBe("(empty)");
   });
 
-  it("returns empty string for an empty message", () => {
-    expect(formatSlackMessageForLLM({ text: "", blocks: [] })).toBe("");
-    expect(formatSlackMessageForLLM({})).toBe("");
+  it("marks every source as empty for an empty message", () => {
+    const result = formatSlackMessageForLLM({});
+    expect(result.text).toBe("(empty)");
+    expect(result.blocks).toBe("(empty)");
+    expect(result.attachments).toBe("(empty)");
+    expect(result.files).toBe("(empty)");
   });
 
-  it("does not duplicate content shared between text and blocks", () => {
+  it("keeps text and block content in separate fields", () => {
     const result = formatSlackMessageForLLM({
       text: "Deploy finished",
       blocks: [
         {
           type: "section",
-          text: { type: "mrkdwn", text: "Deploy finished" },
+          text: { type: "mrkdwn", text: "Service A healthy" },
         },
         {
           type: "section",
-          text: { type: "mrkdwn", text: "All services healthy" },
+          text: { type: "mrkdwn", text: "Service B healthy" },
         },
       ],
     });
 
-    const occurrences = result
-      .split("\n")
-      .filter((line) => line === "Deploy finished").length;
-    expect(occurrences).toBe(1);
-    expect(result).toContain("All services healthy");
+    expect(result.text).toBe("Deploy finished");
+    expect(result.blocks).toContain("Service A healthy");
+    expect(result.blocks).toContain("Service B healthy");
   });
 
   it("renders rich_text blocks including links and mentions", () => {
@@ -118,9 +124,11 @@ describe("formatSlackMessageForLLM", () => {
       ],
     });
 
-    expect(result).toContain("See the report (https://example.com) cc @U123");
-    expect(result).toContain("- first item");
-    expect(result).toContain("- second item");
+    expect(result.blocks).toContain(
+      "See the report (https://example.com) cc @U123"
+    );
+    expect(result.blocks).toContain("- first item");
+    expect(result.blocks).toContain("- second item");
   });
 
   it("extracts content from attachments (pretext, title, text, fields)", () => {
@@ -140,11 +148,11 @@ describe("formatSlackMessageForLLM", () => {
       ],
     });
 
-    expect(result).toContain("New ticket");
-    expect(result).toContain("Login broken");
-    expect(result).toContain("Users cannot log in");
-    expect(result).toContain("Severity: High");
-    expect(result).toContain("Assignee: Jane");
+    expect(result.attachments).toContain("New ticket");
+    expect(result.attachments).toContain("Login broken");
+    expect(result.attachments).toContain("Users cannot log in");
+    expect(result.attachments).toContain("Severity: High");
+    expect(result.attachments).toContain("Assignee: Jane");
   });
 
   it("cleans Slack mrkdwn links and user mentions in plain text", () => {
@@ -152,25 +160,30 @@ describe("formatSlackMessageForLLM", () => {
       text: "Ping <@U050CALAKFD|someone> see <https://dust.tt|docs>",
     });
 
-    expect(result).toBe("Ping @someone see docs (https://dust.tt)");
+    expect(result.text).toBe("Ping @someone see docs (https://dust.tt)");
   });
 
-  it("appends file info when present", () => {
+  it("exposes file info in the files field", () => {
     const result = formatSlackMessageForLLM({
       text: "Report attached",
       files: [{ name: "report.pdf", mimetype: "application/pdf" }],
     });
 
-    expect(result).toContain("Report attached");
-    expect(result).toContain("Attached file: report.pdf (application/pdf)");
+    expect(result.text).toBe("Report attached");
+    expect(result.files).toContain(
+      "Attached file: report.pdf (application/pdf)"
+    );
   });
 
-  it("ignores malformed blocks without throwing", () => {
+  it("falls back to the text when blocks fail schema validation", () => {
     const result = formatSlackMessageForLLM({
       text: "ok",
-      blocks: [null, "nope", 42, { type: "section" }, { type: "divider" }],
+      blocks: [null, "nope", 42],
     });
 
-    expect(result).toBe("ok");
+    // Malformed blocks no longer pass zod validation: we surface the raw text
+    // instead of silently dropping content (and log a warning).
+    expect(result.text).toBe("ok");
+    expect(result.blocks).toContain("could not parse");
   });
 });
