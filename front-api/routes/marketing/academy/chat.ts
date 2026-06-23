@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/lib/model_constructors/types/model_ids";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
@@ -259,7 +260,7 @@ app.post("/", async (ctx) => {
       try {
         const stream = await client.messages.create(
           {
-            model: "claude-4-sonnet-20250514",
+            model: CLAUDE_SONNET_4_6_MODEL_ID,
             max_tokens: 1024,
             system: systemPrompt,
             messages: apiMessages,
