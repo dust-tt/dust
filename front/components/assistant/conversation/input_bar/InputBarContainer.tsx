@@ -1499,7 +1499,7 @@ const InputBarContainer = ({
                 </React.Fragment>
               ))}
             </div>
-            <div className="relative flex w-full items-center justify-between">
+            <div className="relative flex min-h-8 w-full items-center justify-between">
               {!isRecording && editor && (
                 <Toolbar
                   variant="overlay"
