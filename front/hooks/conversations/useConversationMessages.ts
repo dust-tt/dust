@@ -1,13 +1,13 @@
-import type {
-  FetchConversationMessageActionResponse,
-  FetchConversationMessageResponse,
-  FetchConversationMessagesResponse,
-} from "@app/lib/api/assistant/messages";
 import {
   useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  FetchConversationMessageActionResponse,
+  FetchConversationMessageResponse,
+  FetchConversationMessagesResponse,
+} from "@app/types/api/assistant/messages";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 

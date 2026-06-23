@@ -1,9 +1,9 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type {
   GetSuggestionsResponseBody,
   PatchSuggestionResponseBody,
-} from "@app/lib/api/assistant/agent_suggestion";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+} from "@app/types/api/assistant/agent_suggestion";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

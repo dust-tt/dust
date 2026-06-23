@@ -1,23 +1,23 @@
-import type {
-  GetGoTemplateDraftResponseBody,
-  GoTemplateAttachment,
-  GoTemplateAttachmentError,
-} from "@app/lib/api/assistant/go_template_types";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getConversationDraftBySlug,
   isHttpsUrl,
 } from "@app/lib/contentful/client";
+import type {
+  GetGoTemplateDraftResponseBody,
+  GoTemplateAttachment,
+  GoTemplateAttachmentError,
+} from "@app/types/api/assistant/go_template_types";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type { GetGoTemplateDraftResponseBody } from "@app/lib/api/assistant/go_template_types";
+export type { GetGoTemplateDraftResponseBody } from "@app/types/api/assistant/go_template_types";
 export {
   GetGoTemplateDraftResponseBodySchema,
   GoTemplateApiErrorBodySchema,
-} from "@app/lib/api/assistant/go_template_types";
+} from "@app/types/api/assistant/go_template_types";
 
 export type GoTemplateError =
   | { type: "template_not_found"; slug: string }

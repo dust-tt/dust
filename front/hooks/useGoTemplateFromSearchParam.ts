@@ -1,11 +1,11 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { useSearchParam } from "@app/lib/platform";
 import {
   GetGoTemplateDraftResponseBodySchema,
   GoTemplateApiErrorBodySchema,
-} from "@app/lib/api/assistant/go_template_types";
-import { clientFetch } from "@app/lib/egress/client";
-import { useSearchParam } from "@app/lib/platform";
+} from "@app/types/api/assistant/go_template_types";
 import { isSupportedFileContentType } from "@app/types/files";
 import { useContext, useEffect, useRef } from "react";
 
