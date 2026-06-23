@@ -7,6 +7,11 @@ import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettings
 import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
+import {
+  getPodAgentsMdScopedPath,
+  POD_AGENTS_MD_FILENAME,
+  POD_AGENTS_MD_MAX_CHARACTER_COUNT,
+} from "@app/lib/api/projects/constants";
 import type { RichSpaceType } from "@app/lib/api/spaces";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -49,9 +54,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
-// Note: this does not use the right format for the path (missing -{podId}) but that how the api expects it.
-// TODO(2026-06-23 FILE SYSTEM): Fix this.
-const AGENTS_MD_CANONICAL_PATH = "AGENTS.md";
 interface PodSettingsTabProps {
   owner: LightWorkspaceType;
   pod: RichSpaceType;
@@ -440,16 +442,17 @@ export function PodSettingsTab({
           <div className="heading-lg">Instructions for Agents</div>
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Seen by all agents in this Pod, stored as{" "}
-            <span className="font-medium">AGENTS.md</span> in the Pod's files.
+            <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
+            Pod's files.
           </div>
           <div className="flex w-full min-w-0 flex-col gap-2">
             <MarkdownFileEditor
               owner={owner}
-              filePath={`pod-${pod.sId}/${AGENTS_MD_CANONICAL_PATH}`}
+              filePath={getPodAgentsMdScopedPath(pod.sId)}
               emptyWhenNotFound
               readOnly={!isPodEditor}
               placeholder="Enter instructions for agents"
-              maxCharacterCount={4096}
+              maxCharacterCount={POD_AGENTS_MD_MAX_CHARACTER_COUNT}
             />
           </div>
         </div>

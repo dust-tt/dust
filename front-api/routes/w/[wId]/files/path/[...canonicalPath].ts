@@ -13,12 +13,12 @@ import {
 } from "@app/lib/api/files/file_system_ops";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
-import { bodyLimit } from "@front-api/middlewares/body_limit";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
+import { bodyLimit as honoBodyLimit } from "hono/body-limit";
 import path from "path";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -56,6 +56,28 @@ const PatchBodySchema = z.discriminatedUnion("action", [
     dest: z.string().min(1),
   }),
 ]);
+
+function isBodyLimitError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    (err.name === "BodyLimitError" || err.message === "Payload Too Large")
+  );
+}
+
+function putContentTooLargeError(ctx: Context) {
+  return apiError(ctx, {
+    status_code: 413,
+    api_error: {
+      type: "invalid_request_error",
+      message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
+    },
+  });
+}
+
+const putBodyLimit = honoBodyLimit({
+  maxSize: WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+  onError: putContentTooLargeError,
+});
 
 /** Resolve and validate the canonical path from the URL, returning an error response if invalid. */
 async function resolveFs(
@@ -355,7 +377,7 @@ app.patch(
 /** @ignoreswagger */
 app.put(
   "/:canonicalPath{.+}",
-  bodyLimit(WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES),
+  putBodyLimit,
   validate("param", ParamsSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -372,20 +394,17 @@ app.put(
         Number.isFinite(contentLength) &&
         contentLength > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES
       ) {
-        return apiError(ctx, {
-          status_code: 413,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
-          },
-        });
+        return putContentTooLargeError(ctx);
       }
     }
 
     let contentBuffer: ArrayBuffer;
     try {
       contentBuffer = await ctx.req.arrayBuffer();
-    } catch {
+    } catch (err) {
+      if (isBodyLimitError(err)) {
+        return putContentTooLargeError(ctx);
+      }
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -396,13 +415,7 @@ app.put(
     }
 
     if (contentBuffer.byteLength > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES) {
-      return apiError(ctx, {
-        status_code: 413,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
-        },
-      });
+      return putContentTooLargeError(ctx);
     }
 
     const writeResult = await writeCanonicalFileContent(
