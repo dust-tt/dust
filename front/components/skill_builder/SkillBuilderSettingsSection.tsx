@@ -17,11 +17,13 @@ import {
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
+  disabled?: boolean;
 }
 
 export function SkillBuilderSettingsSection({
   skill,
   hasSelfImprovingSkills,
+  disabled = false,
 }: SkillBuilderSettingsSectionProps) {
   const { hasFeature } = useFeatureFlags();
   const isBetaTester = hasFeature("self_improvement_beta_tester");
@@ -33,17 +35,17 @@ export function SkillBuilderSettingsSection({
       </h2>
       <div className="flex items-end gap-8">
         <div className="flex-grow">
-          <SkillBuilderNameSection />
+          <SkillBuilderNameSection disabled={disabled} />
         </div>
-        <SkillBuilderIconSection />
+        <SkillBuilderIconSection disabled={disabled} />
       </div>
-      <SkillBuilderUserFacingDescriptionSection />
+      <SkillBuilderUserFacingDescriptionSection disabled={disabled} />
       <div className="flex flex-col space-y-3">
         <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
           Editors
         </Label>
         <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-          <SkillEditorsSheet />
+          <SkillEditorsSheet disabled={disabled} />
         </div>
       </div>
       {hasSelfImprovingSkills && (
@@ -55,6 +57,7 @@ export function SkillBuilderSettingsSection({
             {isBetaTester && <Chip size="xs" color="golden" label="Beta" />}
           </div>
           <SkillBuilderEnableSuggestionsSection
+            disabled={disabled}
             selfImprovementLock={skill?.selfImprovementLock ?? false}
           />
         </div>
@@ -67,7 +70,7 @@ export function SkillBuilderSettingsSection({
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="space-y-3 pt-3">
-                <SkillBuilderIsDefaultSection />
+                <SkillBuilderIsDefaultSection disabled={disabled} />
               </div>
             </CollapsibleContent>
           </Collapsible>

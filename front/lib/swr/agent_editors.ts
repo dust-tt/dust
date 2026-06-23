@@ -49,7 +49,7 @@ export function useUpdateEditors({
   agentConfigurationId,
 }: {
   owner: LightWorkspaceType;
-  agentConfigurationId: string;
+  agentConfigurationId: string | null;
 }) {
   const sendNotification = useSendNotification();
   const { mutateEditors } = useEditors({
@@ -60,6 +60,10 @@ export function useUpdateEditors({
 
   const updateAgentEditors = useCallback(
     async (body: PatchAgentEditorsRequestBody) => {
+      if (!agentConfigurationId) {
+        return false;
+      }
+
       const res = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`,
         {
@@ -72,7 +76,7 @@ export function useUpdateEditors({
       );
 
       if (res.ok) {
-        void mutateEditors();
+        await mutateEditors();
 
         let title = "";
         let description: string | undefined = undefined;
@@ -99,7 +103,14 @@ export function useUpdateEditors({
           title,
           description,
         });
+        return true;
       }
+
+      sendNotification({
+        type: "error",
+        title: "Failed to update editors",
+      });
+      return false;
     },
     [owner, agentConfigurationId, mutateEditors, sendNotification]
   );

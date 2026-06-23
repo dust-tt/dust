@@ -20,10 +20,12 @@ import { useFormContext } from "react-hook-form";
 
 interface AgentBuilderInstructionsBlockProps {
   agentConfigurationId: string | null;
+  disabled?: boolean;
 }
 
 export function AgentBuilderInstructionsBlock({
   agentConfigurationId,
+  disabled = false,
 }: AgentBuilderInstructionsBlockProps) {
   const { owner } = useAgentBuilderContext();
   const { setValue } = useFormContext<AgentBuilderFormData>();
@@ -39,6 +41,10 @@ export function AgentBuilderInstructionsBlock({
   });
 
   const restoreVersion = () => {
+    if (disabled) {
+      return;
+    }
+
     const text = compareVersion?.instructions;
     if (!text) {
       return;
@@ -49,7 +55,9 @@ export function AgentBuilderInstructionsBlock({
     setIsInstructionDiffMode(false);
   };
 
-  const headerActions = <>{!isInstructionDiffMode && <AdvancedSettings />}</>;
+  const headerActions = (
+    <>{!disabled && !isInstructionDiffMode && <AdvancedSettings />}</>
+  );
 
   return (
     <AgentBuilderSectionContainer
@@ -83,11 +91,13 @@ export function AgentBuilderInstructionsBlock({
               icon={RefreshCw02}
               onClick={restoreVersion}
               label="Restore this version"
+              disabled={disabled}
             />
           </div>
         </>
       )}
       <AgentBuilderInstructionsEditor
+        disabled={disabled}
         compareVersion={compareVersion}
         isInstructionDiffMode={isInstructionDiffMode}
       >

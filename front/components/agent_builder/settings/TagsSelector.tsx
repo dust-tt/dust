@@ -29,6 +29,7 @@ interface TagsSelectorProps {
   isSuggestLoading?: boolean;
   isSuggestDisabled?: boolean;
   instructions?: string;
+  disabled?: boolean;
 }
 
 export const TagsSelector = ({
@@ -40,6 +41,7 @@ export const TagsSelector = ({
   isSuggestLoading,
   isSuggestDisabled,
   instructions,
+  disabled = false,
 }: TagsSelectorProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -54,6 +56,11 @@ export const TagsSelector = ({
   const { createTag } = useCreateTag({ owner });
 
   const onMenuOpenChange = (open: boolean) => {
+    if (disabled) {
+      setIsMenuOpen(false);
+      return;
+    }
+
     setIsMenuOpen(open);
     if (open) {
       setSearchText("");
@@ -70,7 +77,7 @@ export const TagsSelector = ({
   };
 
   const triggerSuggestions = async () => {
-    if (!onSuggestTags || isSuggestLoading || !instructions) {
+    if (disabled || !onSuggestTags || isSuggestLoading || !instructions) {
       return;
     }
 
@@ -108,6 +115,10 @@ export const TagsSelector = ({
     isAdmin(owner) && searchText.trim() !== "" && !exactMatch;
 
   const handleCreateTag = async (tagName: string) => {
+    if (disabled) {
+      return;
+    }
+
     const newTag = await createTag(tagName);
     if (newTag) {
       onAddTag(newTag);
@@ -119,6 +130,10 @@ export const TagsSelector = ({
   const sortedTags = tags.toSorted(tagsSorter);
 
   const onKeyDown = async (e: KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) {
+      return;
+    }
+
     if (e.key === "Enter") {
       e.preventDefault();
       e.stopPropagation();
@@ -150,6 +165,7 @@ export const TagsSelector = ({
               isSelect
               size="sm"
               tooltip="Select a tag"
+              disabled={disabled}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-96" side="top" align="start">
@@ -187,6 +203,10 @@ export const TagsSelector = ({
                       label={tag.name}
                       checked={tags.some((t) => t.sId === tag.sId)}
                       onCheckedChange={(checked) => {
+                        if (disabled) {
+                          return;
+                        }
+
                         if (checked) {
                           onAddTag(tag);
                         } else {
@@ -213,6 +233,10 @@ export const TagsSelector = ({
                       label={tag.name}
                       checked={tags.some((t) => t.sId === tag.sId)}
                       onCheckedChange={(checked) => {
+                        if (disabled) {
+                          return;
+                        }
+
                         if (checked) {
                           onAddTag(tag);
                         } else {
@@ -236,7 +260,7 @@ export const TagsSelector = ({
             <Chip
               key={tag.sId}
               onRemove={
-                tag.kind === "protected" && !isBuilder(owner)
+                disabled || (tag.kind === "protected" && !isBuilder(owner))
                   ? undefined
                   : () => onRemoveTag(tag.sId)
               }

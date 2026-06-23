@@ -163,12 +163,14 @@ function ToolbarSlot({ children }: { children: ReactNode }) {
 
 interface AgentBuilderInstructionsEditorProps {
   compareVersion?: LightAgentConfigurationType | null;
+  disabled?: boolean;
   isInstructionDiffMode?: boolean;
   children?: ReactNode;
 }
 
 export function AgentBuilderInstructionsEditor({
   compareVersion,
+  disabled = false,
   isInstructionDiffMode = false,
   children,
 }: AgentBuilderInstructionsEditorProps = {}) {
@@ -266,8 +268,9 @@ export function AgentBuilderInstructionsEditor({
       // Don't set content here - it can cause race conditions in Safari
       // Content will be set in a separate useEffect after the editor is ready
       contentType: "markdown",
+      editable: !disabled,
       onUpdate: ({ editor, transaction }) => {
-        if (transaction.docChanged) {
+        if (transaction.docChanged && !disabled) {
           debouncedUpdate(editor);
         }
       },
@@ -331,7 +334,9 @@ export function AgentBuilderInstructionsEditor({
           // Sync instructionsHtml field with current editor state.
           // For HTML loads, this preserves existing IDs; for markdown loads, this generates new ones.
           instructionsHtmlField.onChange(stripHtmlAttributes(editor.getHTML()));
-          editor.commands.focus("end");
+          if (!disabled) {
+            editor.commands.focus("end");
+          }
 
           // Register with the suggestions context now that content is fully set.
           if (suggestionsContext) {
@@ -342,6 +347,14 @@ export function AgentBuilderInstructionsEditor({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]); // Only run when editor is created, not when field.value changes
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed || isInstructionDiffMode) {
+      return;
+    }
+
+    editor.setEditable(!disabled);
+  }, [disabled, editor, isInstructionDiffMode]);
 
   useEffect(() => {
     return () => {
@@ -447,7 +460,7 @@ export function AgentBuilderInstructionsEditor({
       } else if (!isInstructionDiffMode) {
         if (editor.storage.agentInstructionDiff?.isDiffMode) {
           editor.commands.exitDiff();
-          editor.setEditable(true);
+          editor.setEditable(!disabled);
 
           // After exiting diff, sync editor content with the current form
           // value. The regular content sync effect skips while the editor is in
@@ -469,7 +482,7 @@ export function AgentBuilderInstructionsEditor({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInstructionDiffMode, compareVersion, editor]);
+  }, [isInstructionDiffMode, compareVersion, disabled, editor]);
 
   const toolbarExtra =
     React.Children.toArray(children).find(
@@ -486,9 +499,17 @@ export function AgentBuilderInstructionsEditor({
     pendingInstructionSuggestions.length > 0;
 
   const handleAcceptAll = () => {
+    if (disabled) {
+      return;
+    }
+
     void suggestionsContext.acceptAllInstructionSuggestions();
   };
   const handleRejectAll = () => {
+    if (disabled) {
+      return;
+    }
+
     void suggestionsContext.rejectAllInstructionSuggestions();
   };
 
@@ -498,7 +519,7 @@ export function AgentBuilderInstructionsEditor({
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-px"
     >
       <EditorContent editor={editor} />
-      {editor && (
+      {editor && !disabled && (
         <SuggestionBubbleMenu editor={editor} containerRef={editorWrapperRef} />
       )}
     </div>
@@ -513,7 +534,10 @@ export function AgentBuilderInstructionsEditor({
             editor={editor}
             onAcceptAll={handleAcceptAll}
             onRejectAll={handleRejectAll}
-            showSuggestionActions={hasPendingInstructionSuggestions}
+            showSuggestionActions={
+              !disabled && hasPendingInstructionSuggestions
+            }
+            disabled={disabled}
             toolbarExtra={toolbarExtra}
           />
         }
@@ -526,7 +550,7 @@ export function AgentBuilderInstructionsEditor({
           maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
         />
       )}
-      <BlockInsertDropdown blockDropdownState={blockDropdown} />
+      {!disabled && <BlockInsertDropdown blockDropdownState={blockDropdown} />}
     </div>
   );
 }

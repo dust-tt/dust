@@ -48,7 +48,7 @@ function getWebhookCardDescription({
 interface TriggerCardProps {
   trigger: AgentBuilderTriggerType;
   webhookSourceView: WebhookSourceViewType | undefined;
-  onRemove: () => void;
+  onRemove?: () => void;
   onEdit?: () => void;
 }
 
@@ -93,7 +93,7 @@ export function TriggerCard({
       canAdd={false}
       disabled={trigger.status !== "enabled"}
       onClick={onEdit}
-      onRemove={isEditor || isAdmin ? onRemove : undefined}
+      onRemove={onRemove && (isEditor || isAdmin) ? onRemove : undefined}
       cardContainerClassName="min-h-28"
       footer={
         trigger.editorName

@@ -239,11 +239,13 @@ const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
   "min-h-80 rounded-b-none border-b-0 pb-44";
 
 interface SkillBuilderInstructionsEditorProps {
+  disabled?: boolean;
   onAddKnowledge?: (addKnowledge: () => void) => void;
   onOpenCapabilities?: (openCapabilities: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
+  disabled = false,
   onAddKnowledge,
   onOpenCapabilities,
 }: SkillBuilderInstructionsEditorProps) {
@@ -449,6 +451,10 @@ export function SkillBuilderInstructionsEditor({
 
   const handleSelectToolReference = useCallback(
     (view: MCPServerViewType) => {
+      if (disabled) {
+        return;
+      }
+
       const alreadyAdded = toolsRef.current.some(
         (tool) => tool.configuration.mcpServerViewId === view.sId
       );
@@ -461,11 +467,15 @@ export function SkillBuilderInstructionsEditor({
       toolsRef.current = nextTools;
       onToolsChange(nextTools);
     },
-    [onToolsChange]
+    [disabled, onToolsChange]
   );
 
   const handleSelectSkillReference = useCallback(
     (skill: SlashCommandSkillSuggestion) => {
+      if (disabled) {
+        return;
+      }
+
       const alreadyAdded = referencedSkillsRef.current.some(
         (referencedSkill) => referencedSkill.id === skill.sId
       );
@@ -488,7 +498,7 @@ export function SkillBuilderInstructionsEditor({
         onReferencedSkillIdsChange(nextReferencedSkillIds);
       }
     },
-    [onReferencedSkillIdsChange, onReferencedSkillsChange]
+    [disabled, onReferencedSkillIdsChange, onReferencedSkillsChange]
   );
 
   const handleSkillDetails = useCallback(
@@ -514,7 +524,7 @@ export function SkillBuilderInstructionsEditor({
   const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent: instructionsHtmlField.value ?? undefined,
-    isReadOnly: hasSuggestions,
+    isReadOnly: hasSuggestions || disabled,
     skillReferences: {
       currentSkillId: skillId,
       onSkillDetails: handleSkillDetails,
@@ -545,7 +555,7 @@ export function SkillBuilderInstructionsEditor({
   }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
   const handleAddKnowledge = useCallback(() => {
-    if (!editor) {
+    if (!editor || disabled) {
       return;
     }
 
@@ -571,7 +581,7 @@ export function SkillBuilderInstructionsEditor({
     }
 
     editor.chain().focus().insertKnowledgeNode().run();
-  }, [editor]);
+  }, [disabled, editor]);
 
   useEffect(() => {
     if (editor && onAddKnowledge) {
@@ -580,7 +590,7 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, handleAddKnowledge, onAddKnowledge]);
 
   const handleOpenCapabilities = useCallback(() => {
-    if (!editor) {
+    if (!editor || disabled) {
       return;
     }
 
@@ -598,7 +608,7 @@ export function SkillBuilderInstructionsEditor({
     }
 
     editor.chain().focus().insertCapabilitySearchNode().run();
-  }, [editor]);
+  }, [disabled, editor]);
 
   const handleReferenceClick = useCallback(
     (target: ReferenceSummaryItem) => {
@@ -655,7 +665,7 @@ export function SkillBuilderInstructionsEditor({
   // Accepting the ProseMirror suggestion means we don't need to manipulate the HTML by hand again
   // as we already did it to create the suggestion in ProseMirror.
   useEffect(() => {
-    if (!editor) {
+    if (!editor || disabled) {
       setAcceptInstructionEdits(null);
       return;
     }
@@ -677,7 +687,7 @@ export function SkillBuilderInstructionsEditor({
     return () => {
       setAcceptInstructionEdits(null);
     };
-  }, [editor, syncInstructionsFromEditor, setAcceptInstructionEdits]);
+  }, [disabled, editor, syncInstructionsFromEditor, setAcceptInstructionEdits]);
 
   useEffect(() => {
     if (
@@ -749,7 +759,7 @@ export function SkillBuilderInstructionsEditor({
 
     // Make the editor read-only while suggestion diffs are displayed.
     if (!isDiffMode) {
-      editor.setEditable(!hasSuggestions);
+      editor.setEditable(!hasSuggestions && !disabled);
     }
   }, [
     editor,
@@ -759,6 +769,7 @@ export function SkillBuilderInstructionsEditor({
     selectedSuggestionId,
     isDiffMode,
     hasSuggestions,
+    disabled,
   ]);
 
   useEffect(() => {
@@ -780,7 +791,7 @@ export function SkillBuilderInstructionsEditor({
             editorVariants({
               error: displayError,
               disabled: isDiffMode,
-              readOnly: hasSuggestions,
+              readOnly: hasSuggestions || disabled,
             }),
             INSTRUCTIONS_EDITOR_SIZE,
             hasInstructionReferenceSummary &&
@@ -794,6 +805,7 @@ export function SkillBuilderInstructionsEditor({
     displayError,
     isDiffMode,
     hasSuggestions,
+    disabled,
     hasInstructionReferenceSummary,
   ]);
 
@@ -849,7 +861,7 @@ export function SkillBuilderInstructionsEditor({
         editor.setEditable(false);
       } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
-        editor.setEditable(true);
+        editor.setEditable(!disabled);
 
         if (instructionsHtmlField.value) {
           editor.commands.setContent(instructionsHtmlField.value, {
@@ -874,6 +886,7 @@ export function SkillBuilderInstructionsEditor({
     // field updates the diff overlay.
   }, [
     compareVersion,
+    disabled,
     editor,
     instructionsField.value,
     instructionsHtmlField.value,
@@ -885,7 +898,7 @@ export function SkillBuilderInstructionsEditor({
         <div className="group relative overflow-hidden rounded-xl">
           <SkillInstructionsEditorContent
             editor={editor}
-            isReadOnly={hasSuggestions}
+            isReadOnly={hasSuggestions || disabled}
           />
           <SkillBuilderInstructionsReferenceSummary
             attachedKnowledge={attachedKnowledgeField.value}

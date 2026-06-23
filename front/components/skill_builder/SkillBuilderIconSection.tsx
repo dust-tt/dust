@@ -15,7 +15,13 @@ import { useController } from "react-hook-form";
 
 const DEFAULT_ICON = Plus;
 
-export function SkillBuilderIconSection() {
+interface SkillBuilderIconSectionProps {
+  disabled?: boolean;
+}
+
+export function SkillBuilderIconSection({
+  disabled = false,
+}: SkillBuilderIconSectionProps) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { field: iconField } = useController<SkillBuilderFormData, "icon">({
     name: "icon",
@@ -48,7 +54,12 @@ export function SkillBuilderIconSection() {
             size="sm"
             icon={Edit04}
             type="button"
-            onClick={() => setIsPopoverOpen(true)}
+            onClick={() => {
+              if (!disabled) {
+                setIsPopoverOpen(true);
+              }
+            }}
+            disabled={disabled}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
           />
         </div>
@@ -62,6 +73,10 @@ export function SkillBuilderIconSection() {
           icons={ActionIcons}
           selectedIcon={selectedIconName}
           onIconSelect={(iconName: string) => {
+            if (disabled) {
+              return;
+            }
+
             iconField.onChange(iconName);
             closePopover();
           }}

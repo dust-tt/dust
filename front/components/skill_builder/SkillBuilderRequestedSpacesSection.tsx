@@ -17,10 +17,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
 interface SkillBuilderRequestedSpacesSectionProps {
+  disabled?: boolean;
   initialRequestedSpaceIds?: string[];
 }
 
 export function SkillBuilderRequestedSpacesSection({
+  disabled = false,
   initialRequestedSpaceIds,
 }: SkillBuilderRequestedSpacesSectionProps) {
   const { resetField } = useFormContext<SkillBuilderFormData>();
@@ -174,6 +176,10 @@ export function SkillBuilderRequestedSpacesSection({
   }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
+    if (disabled) {
+      return;
+    }
+
     if (!areSpaceRequirementsReady) {
       return;
     }
@@ -198,6 +204,10 @@ export function SkillBuilderRequestedSpacesSection({
   };
 
   const handleOpenSheet = () => {
+    if (disabled) {
+      return;
+    }
+
     if (!areSpaceRequirementsReady) {
       return;
     }
@@ -216,6 +226,10 @@ export function SkillBuilderRequestedSpacesSection({
   };
 
   const handleSaveSpaces = () => {
+    if (disabled) {
+      return;
+    }
+
     additionalSpacesField.onChange(draftSelectedSpaces);
     handleCloseSheet();
   };
@@ -245,7 +259,7 @@ export function SkillBuilderRequestedSpacesSection({
           label="Manage"
           icon={Planet}
           variant="outline"
-          disabled={!areSpaceRequirementsReady}
+          disabled={disabled || !areSpaceRequirementsReady}
           onClick={handleOpenSheet}
         />
       </div>
@@ -264,7 +278,10 @@ export function SkillBuilderRequestedSpacesSection({
           </ContentMessage>
         </div>
       )}
-      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
+      <SpaceChips
+        spaces={spacesToDisplay}
+        onRemoveSpace={disabled ? undefined : handleRemoveSpace}
+      />
 
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
@@ -272,7 +289,7 @@ export function SkillBuilderRequestedSpacesSection({
         missingSpaceIds={missingSpaceIds}
         onClose={handleCloseSheet}
         onSave={handleSaveSpaces}
-        open={isSheetOpen}
+        open={isSheetOpen && !disabled}
         selectedSpaces={draftSelectedSpaces}
         setSelectedSpaces={setDraftSelectedSpaces}
       />

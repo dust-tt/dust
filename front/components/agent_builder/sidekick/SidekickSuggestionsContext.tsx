@@ -98,16 +98,19 @@ function EditorHighlightSync({ editorRef }: EditorHighlightSyncProps) {
 interface SidekickSuggestionsProviderProps {
   children: ReactNode;
   agentConfigurationId: string | null;
+  disabled?: boolean;
 }
 
 export const SidekickSuggestionsProvider = ({
   children,
   agentConfigurationId,
+  disabled = false,
 }: SidekickSuggestionsProviderProps) => {
   return (
     <SidekickHighlightProvider>
       <SidekickSuggestionsProviderContent
         agentConfigurationId={agentConfigurationId}
+        disabled={disabled}
       >
         {children}
       </SidekickSuggestionsProviderContent>
@@ -118,6 +121,7 @@ export const SidekickSuggestionsProvider = ({
 function SidekickSuggestionsProviderContent({
   children,
   agentConfigurationId,
+  disabled = false,
 }: SidekickSuggestionsProviderProps) {
   const { owner } = useAgentBuilderContext();
   const { skills } = useSkillsContext();
@@ -404,7 +408,7 @@ function SidekickSuggestionsProviderContent({
       }
     }
 
-    if (outdatedSuggestions.length > 0) {
+    if (outdatedSuggestions.length > 0 && !disabled) {
       const outdatedSuggestionIds = outdatedSuggestions.map((s) => s.sId);
 
       for (const s of outdatedSuggestions) {
@@ -435,6 +439,7 @@ function SidekickSuggestionsProviderContent({
     isEditorReady,
     patchSuggestions,
     mutatePending,
+    disabled,
   ]);
 
   const scrollSidekickToSuggestion = useCallback((sId: string) => {
@@ -506,6 +511,10 @@ function SidekickSuggestionsProviderContent({
 
   const acceptSuggestion = useCallback(
     async (suggestion: AgentSuggestionType): Promise<boolean> => {
+      if (disabled) {
+        return false;
+      }
+
       const editor = editorRef.current;
       if (!editor) {
         return false;
@@ -571,11 +580,16 @@ function SidekickSuggestionsProviderContent({
       mutatePending,
       dispatchDelayedBlur,
       scrollToNextSuggestion,
+      disabled,
     ]
   );
 
   const rejectSuggestion = useCallback(
     async (suggestion: AgentSuggestionType): Promise<boolean> => {
+      if (disabled) {
+        return false;
+      }
+
       const editor = editorRef.current;
       if (!editor) {
         return false;
@@ -632,11 +646,15 @@ function SidekickSuggestionsProviderContent({
 
       return true;
     },
-    [patchSuggestions, mutatePending]
+    [patchSuggestions, mutatePending, disabled]
   );
 
   const acceptAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {
+      if (disabled) {
+        return false;
+      }
+
       const editor = editorRef.current;
       if (!editor) {
         return false;
@@ -716,10 +734,15 @@ function SidekickSuggestionsProviderContent({
       mutatePending,
       dispatchDelayedBlur,
       highlightSuggestion,
+      disabled,
     ]);
 
   const rejectAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {
+      if (disabled) {
+        return false;
+      }
+
       const editor = editorRef.current;
       if (!editor) {
         return false;
@@ -792,7 +815,13 @@ function SidekickSuggestionsProviderContent({
       highlightSuggestion(null);
 
       return true;
-    }, [suggestions, patchSuggestions, mutatePending, highlightSuggestion]);
+    }, [
+      suggestions,
+      patchSuggestions,
+      mutatePending,
+      highlightSuggestion,
+      disabled,
+    ]);
 
   const getCommittedInstructionsHtml = useCallback(() => {
     const editor = editorRef.current;

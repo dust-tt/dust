@@ -22,7 +22,11 @@ import {
 import React, { useState } from "react";
 import { useController } from "react-hook-form";
 
-export function AccessSection() {
+interface AccessSectionProps {
+  disabled?: boolean;
+}
+
+export function AccessSection({ disabled = false }: AccessSectionProps) {
   const { field: scope } = useController<
     AgentBuilderFormData,
     "agentSettings.scope"
@@ -76,11 +80,16 @@ export function AccessSection() {
           size="sm"
           icon={Users01}
           label="Editors"
-          onClick={() => setIsEditorsOpen(true)}
+          onClick={() => {
+            if (!disabled) {
+              setIsEditorsOpen(true);
+            }
+          }}
+          disabled={disabled}
           type="button"
         />
         <ManageUsersPanel
-          isOpen={isEditorsOpen}
+          isOpen={isEditorsOpen && !disabled}
           setIsOpen={setIsEditorsOpen}
           owner={owner}
           mode="editors-only"
@@ -96,7 +105,7 @@ export function AccessSection() {
               label={getDisplayValue()}
               isSelect
               type="button"
-              disabled={publishingToggleDisabled}
+              disabled={disabled || publishingToggleDisabled}
               tooltip={publishingToggleTooltip}
             />
           </DropdownMenuTrigger>
@@ -106,14 +115,14 @@ export function AccessSection() {
               description="Visible & usable by all members of the workspace."
               icon={Eye}
               onClick={() => scope.onChange("visible")}
-              disabled={publishingToggleDisabled}
+              disabled={disabled || publishingToggleDisabled}
             />
             <DropdownMenuItem
               label="Unpublished"
               description="Visible & usable by editors only."
               icon={EyeOff}
               onClick={() => scope.onChange("hidden")}
-              disabled={publishingToggleDisabled}
+              disabled={disabled || publishingToggleDisabled}
             />
           </DropdownMenuContent>
         </DropdownMenu>
@@ -124,11 +133,16 @@ export function AccessSection() {
               variant="outline"
               label="Slack preferences"
               icon={SlackLogo}
-              onClick={() => setShowSlackSettings(true)}
+              onClick={() => {
+                if (!disabled) {
+                  setShowSlackSettings(true);
+                }
+              }}
+              disabled={disabled}
               type="button"
             />
             <SlackSettingsSheet
-              isOpen={showSlackSettings}
+              isOpen={showSlackSettings && !disabled}
               onOpenChange={() => setShowSlackSettings(false)}
               slackDataSource={slackDataSource}
             />
