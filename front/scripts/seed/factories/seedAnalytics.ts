@@ -132,6 +132,7 @@ export async function seedAnalytics(
       message_id: message.sId,
       skills_used: [],
       status: agentMessage.status,
+      is_free_seat: false,
       timestamp: new Date(message.createdAt).toISOString(),
       tokens: {
         prompt: 0,
