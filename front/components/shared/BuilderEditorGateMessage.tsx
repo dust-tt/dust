@@ -44,15 +44,15 @@ export function BuilderEditorGateMessage({
       action={
         <ContentMessageAction
           icon={UsersPlus}
-          label={isLoading ? "Preparing..." : "Continue editing"}
-          variant="warning-secondary"
+          label={isLoading ? "Becoming an editor..." : "Become an editor"}
+          variant="primary"
           disabled={disabled || isLoading}
           onClick={onAddSelfAsEditor}
         />
       }
     >
-      You can view this {builderLabel} as a workspace admin. Continuing lets you
-      save changes as an editor.
+      You can view this {builderLabel} as a workspace admin. Become an editor to
+      save changes.
     </ContentMessage>
   );
 }
