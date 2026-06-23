@@ -39,6 +39,7 @@ import {
   useResolveUpgradeRequest,
   useUpgradeRequests,
 } from "@app/lib/swr/upgrade_requests";
+import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
   useAwuUsage,
   usePerSeatPricing,
@@ -471,6 +472,8 @@ export function UsagePage() {
     );
   }, [seatPlans]);
 
+  const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
+
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
@@ -602,7 +605,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <div className="flex items-center justify-between">
           <Page.Header title="Usage" icon={PieChart01} />
-          {!isReadOnly && !isFreePlanWorkspace && !isEnterprise && (
+          {!isReadOnly && usageSettings.topUpEnabled && (
             <Button
               label="Top up"
               icon={ArrowUp}

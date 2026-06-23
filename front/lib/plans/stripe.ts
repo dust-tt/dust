@@ -10,7 +10,10 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED } from "@app/lib/resources/storage/models/credit_usage_configurations";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
@@ -1469,6 +1472,16 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
     // Freeze the draft so Stripe's auto-advance can't finalize it while we edit.
     await stripe.invoices.update(invoiceId, { auto_advance: false });
 
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    const creditConfig = workspace
+      ? await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+          workspace.id
+        )
+      : null;
+    const autoInvoiceFinalizationEnabled =
+      creditConfig?.autoInvoiceFinalizationEnabled ??
+      DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED;
+
     await cleanMetronomeInvoiceLines(stripe, invoice);
 
     await stripe.invoices.update(invoiceId, {
@@ -1478,10 +1491,14 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
       },
     });
 
-    // Finalization is intentionally disabled for now: while we are still
-    // inspecting line shapes and designing the transform, leave the invoice as a
-    // draft so it can be reviewed manually rather than charged. Re-enable once
-    // the line transform is in place.
+    if (!autoInvoiceFinalizationEnabled) {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId },
+        "[Stripe] Cleaned Metronome draft invoice (finalization disabled for workspace)"
+      );
+      return new Ok({ outcome: "cleaned" });
+    }
+
     const finalizeResult = await finalizeInvoice(invoice);
     if (finalizeResult.isErr()) {
       return finalizeResult;
@@ -1489,7 +1506,7 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
 
     logger.info(
       { stripeInvoiceId: invoiceId, workspaceId },
-      "[Stripe] Cleaned Metronome draft invoice (finalization disabled)"
+      "[Stripe] Cleaned and finalized Metronome draft invoice"
     );
     return new Ok({ outcome: "cleaned" });
   } catch (error) {

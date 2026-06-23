@@ -33,6 +33,7 @@ export interface UsageSettings {
   allowUpgradeRequest: boolean;
   autoSeatUpgradeEnabled: boolean;
   autoSeatUpgradeAvailable: boolean;
+  topUpEnabled: boolean;
 }
 
 export interface UsageNotifications {
@@ -45,6 +46,7 @@ const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   allowUpgradeRequest: true,
   autoSeatUpgradeEnabled: false,
   autoSeatUpgradeAvailable: false,
+  topUpEnabled: false,
 };
 
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
@@ -99,6 +101,7 @@ export function useUsageSettings({ workspaceId }: { workspaceId: string }) {
           allowUpgradeRequest: data.configuration.allowMemberUpgradeRequests,
           autoSeatUpgradeEnabled: data.configuration.autoSeatUpgradeEnabled,
           autoSeatUpgradeAvailable: data.configuration.autoSeatUpgradeAvailable,
+          topUpEnabled: data.configuration.topUpEnabled,
         }
       : {}),
   };
