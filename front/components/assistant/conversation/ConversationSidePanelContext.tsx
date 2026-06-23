@@ -29,7 +29,7 @@ type OpenPanelParams =
     }
   | {
       type: "file_preview";
-      fileId: string;
+      filePath: string;
     }
   | {
       type: "files";
@@ -162,7 +162,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case FILE_PREVIEW_SIDE_PANEL_TYPE:
-          setData(params.fileId);
+          setData(params.filePath);
           break;
 
         case FILES_SIDE_PANEL_TYPE:

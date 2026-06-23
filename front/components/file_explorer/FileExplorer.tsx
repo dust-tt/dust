@@ -54,7 +54,7 @@ interface FileExplorerProps {
     parentRelativePath: string
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
-  onOpenPresentation?: (entry: FileEntryWithId) => void;
+  onOpenPresentation?: (entry: FileEntry) => void;
   onRename?: (entry: FileEntry | FolderEntry) => void;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
@@ -242,12 +242,8 @@ export function FileExplorer({
       onOpenInteractive({ ...entry, fileId: entry.fileId });
       return;
     }
-    if (
-      onOpenPresentation &&
-      isPresentationContentType(entry.contentType) &&
-      entry.fileId
-    ) {
-      onOpenPresentation({ ...entry, fileId: entry.fileId });
+    if (onOpenPresentation && isPresentationContentType(entry.contentType)) {
+      onOpenPresentation(entry);
       return;
     }
     setPreviewFile(entry);
