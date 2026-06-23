@@ -5,7 +5,6 @@ export const AGENT_PLATFORM_API = "agent-platform" as const;
 export const MISTRAL_API = "mistral" as const;
 export const FIREWORKS_API = "fireworks" as const;
 export const TOGETHERAI_API = "togetherai" as const;
-export const XAI_API = "xai" as const;
 
 const PROVIDER_APIS = [
   OPENAI_RESPONSES_API,
@@ -15,6 +14,5 @@ const PROVIDER_APIS = [
   MISTRAL_API,
   FIREWORKS_API,
   TOGETHERAI_API,
-  XAI_API,
 ] as const;
 export type ProviderApi = (typeof PROVIDER_APIS)[number];

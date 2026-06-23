@@ -7,5 +7,4 @@ export type Credentials = {
   MISTRAL_API_KEY?: string;
   FIREWORKS_API_KEY?: string;
   TOGETHERAI_API_KEY?: string;
-  XAI_API_KEY?: string;
 };
