@@ -27,6 +27,7 @@ import {
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
   BILLING_CYCLE_CONFIG,
+  BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
   FREE_SEAT_PRODUCT_NAME,
   getCreditTypeAwuId,
   getFreeExcessRecurringCredits,
@@ -551,6 +552,41 @@ export function getNewPackages(): PackageDef[] {
         },
       ]),
       ...BILLING_CYCLE_CONFIG,
+    },
+    // Enterprise Pooled packages anchored to the 1st of the month. Identical to
+    // the contract-start variants above, but billing periods align to calendar
+    // month boundaries (1st → 1st) regardless of when the contract starts.
+    {
+      name: "Enterprise Pooled USD (1st of month)",
+      aliases: [{ name: "enterprise-usd-first-of-month" }],
+      rate_card_name: "Standard USD",
+      subscriptions: ALL_SEAT_SUBSCRIPTIONS,
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: getAllSeatRecurringCredits(),
+      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
+        {
+          product_name:
+            WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+          price: CP_ENTERPRISE_BASIS * 12 * 100,
+        },
+      ]),
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
+    },
+    {
+      name: "Enterprise Pooled EUR (1st of month)",
+      aliases: [{ name: "enterprise-eur-first-of-month" }],
+      rate_card_name: "Standard EUR",
+      subscriptions: ALL_SEAT_SUBSCRIPTIONS,
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: getAllSeatRecurringCredits(),
+      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
+        {
+          product_name:
+            WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+          price: CP_ENTERPRISE_BASIS * 12,
+        },
+      ]),
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
     },
     {
       name: "Enterprise Seat-based USD",
