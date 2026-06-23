@@ -13,10 +13,7 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import type {
-  GetWorkspaceSkillUsageResponse,
-  GetWorkspaceTopUsersResponse,
-} from "@app/lib/api/analytics/workspace_analytics";
+import type { GetWorkspaceSkillUsageResponse } from "@app/lib/api/analytics/workspace_analytics";
 import type { GetWorkspaceActiveUsersResponse } from "@app/lib/api/assistant/observability/active_users_metrics";
 import type { GetAgentCreditsResponse } from "@app/lib/api/assistant/observability/agent_credits";
 import type { GetWorkspaceContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
@@ -48,10 +45,7 @@ import type {
   GetWorkspaceSeatsCountResponseBody,
   GetWorkspaceVerifiedDomainsResponseBody,
 } from "@app/lib/api/workspace";
-import type {
-  GetWorkspaceAnalyticsOverviewResponse,
-  GetWorkspaceTopAgentsResponse,
-} from "@app/lib/api/workspace/analytics";
+import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/lib/api/workspace/analytics";
 import type { GetWorkspaceAnalyticsResponse } from "@app/lib/api/workspace_analytics";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -435,34 +429,6 @@ export function useWorkspaceSkillUsage({
   };
 }
 
-export function useWorkspaceTopUsers({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  limit = 10,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  limit?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceTopUsersResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/top-users?days=${days}&limit=${limit}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    topUsers: data?.users ?? emptyArray(),
-    isTopUsersLoading: !error && !data && !disabled,
-    isTopUsersError: error,
-    isTopUsersValidating: isValidating,
-  };
-}
-
 export function useWorkspaceUserCredits({
   workspaceId,
   days = DEFAULT_PERIOD_DAYS,
@@ -522,34 +488,6 @@ export function useWorkspaceAgentCredits({
     isAgentCreditsLoading: !error && !data && !disabled,
     isAgentCreditsError: error,
     isAgentCreditsValidating: isValidating,
-  };
-}
-
-export function useWorkspaceTopAgents({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  limit = 10,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  limit?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceTopAgentsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/top-agents?days=${days}&limit=${limit}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    topAgents: data?.agents ?? emptyArray(),
-    isTopAgentsLoading: !error && !data && !disabled,
-    isTopAgentsError: error,
-    isTopAgentsValidating: isValidating,
   };
 }
 

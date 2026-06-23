@@ -162,11 +162,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
     stage: "on_demand",
   },
-  new_analytics_page: {
-    description:
-      "Use the new Analytics page whose credit chart and tables are sourced from our analytics index (cost.full_awu) instead of Metronome.",
-    stage: "on_demand",
-  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",

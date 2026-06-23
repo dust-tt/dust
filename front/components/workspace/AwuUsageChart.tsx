@@ -19,7 +19,6 @@ import type {
 } from "@app/lib/api/analytics/awu_usage";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
-import { useAwuUsage } from "@app/lib/swr/workspaces";
 import {
   Button,
   ChevronLeft,
@@ -44,11 +43,6 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
-
-interface AwuUsageChartProps {
-  workspaceId: string;
-  billingCycleStartDay: number;
-}
 
 type DisplayMode = "cumulative" | "daily";
 
@@ -149,58 +143,6 @@ function UsageTooltip(
     hour: displayMode === "cumulative" ? "numeric" : undefined,
   });
   return <ChartTooltipCard title={date} rows={rows} />;
-}
-
-export function AwuUsageChart({
-  workspaceId,
-  billingCycleStartDay,
-}: AwuUsageChartProps) {
-  // Default view is split by usage type (programmatic / user / free).
-  const [groupBy, setGroupBy] = useState<AwuUsageGroupByType | undefined>(
-    "usage_type"
-  );
-  const [groupByCount, setGroupByCount] = useState<number>(5);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>("cumulative");
-  const [filter, setFilter] = useState<
-    Partial<Record<AwuUsageGroupByType, string[]>>
-  >({});
-
-  const [selectedPeriod, setSelectedPeriod] = useState<string>(() => {
-    const currentBillingCycle = getBillingCycleFromDay(
-      billingCycleStartDay,
-      new Date(),
-      true
-    );
-    return formatPeriod(currentBillingCycle.cycleStart);
-  });
-
-  const { awuUsageData, isAwuUsageLoading, isAwuUsageError } = useAwuUsage({
-    workspaceId,
-    selectedPeriod,
-    billingCycleStartDay,
-    groupBy,
-    groupByCount,
-    windowSize: displayMode === "cumulative" ? "HOUR" : "DAY",
-  });
-
-  return (
-    <BaseAwuUsageChart
-      awuUsageData={awuUsageData}
-      isLoading={isAwuUsageLoading}
-      isError={!!isAwuUsageError}
-      groupBy={groupBy}
-      setGroupBy={setGroupBy}
-      groupByCount={groupByCount}
-      setGroupByCount={setGroupByCount}
-      filter={filter}
-      setFilter={setFilter}
-      selectedPeriod={selectedPeriod}
-      setSelectedPeriod={setSelectedPeriod}
-      billingCycleStartDay={billingCycleStartDay}
-      displayMode={displayMode}
-      setDisplayMode={setDisplayMode}
-    />
-  );
 }
 
 interface BaseAwuUsageChartProps {
