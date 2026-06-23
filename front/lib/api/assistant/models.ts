@@ -31,6 +31,7 @@ import {
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export type GetEnabledModelsResponseType = {
   models: ModelConfigurationType[];
@@ -102,22 +103,32 @@ function getModelEnablementContextWithoutFeatureFlag(
   };
 }
 
-// Returns the first candidate model that is fully enabled for the workspace.
-// "Enabled" means both the provider is whitelisted and the model is available
-// for the workspace's plan and region (via isModelEnabled). This is the
-// canonical way to pick a model from a preference-ordered list: it guarantees
-// the chosen model will pass the availability check in conversation.ts instead
-// of being rejected later as "not supported" (e.g. a regionally-unavailable
-// model on a regionalModelsOnly workspace).
+// Returns the first candidate model that is enabled for the workspace. This is
+// the canonical way to pick a model from a preference-ordered list: it runs the
+// exact same isModelEnabled predicate (provider whitelist plus plan, region and
+// feature-flag availability) that is enforced when a message is posted, so the
+// chosen model can never be rejected later as "not supported". It falls through
+// to the next candidate instead.
+//
+// The workspace feature flags must be passed in: selection happens in
+// synchronous global-agent builders where they are not otherwise in scope, and
+// using the real flags here is what keeps this check identical to the one
+// enforced at message time rather than a second, divergent check.
 export function selectEnabledModel(
   auth: Authenticator,
   candidates: ModelConfigurationType[],
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+  {
+    featureFlags,
+    excludeProviders = new Set(),
+  }: {
+    featureFlags: WhitelistableFeature[];
+    excludeProviders?: ReadonlySet<ModelProviderIdType>;
+  }
 ): ModelConfigurationType | null {
-  const context = getModelEnablementContextWithoutFeatureFlag(
-    auth,
-    excludeProviders
-  );
+  const context = {
+    ...getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders),
+    featureFlags,
+  };
 
   return candidates.find((m) => isModelEnabled(m, context)) ?? null;
 }

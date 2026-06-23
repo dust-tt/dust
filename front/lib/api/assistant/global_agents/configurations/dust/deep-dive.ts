@@ -43,6 +43,7 @@ import {
   type ModelProviderIdType,
   type ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -347,12 +348,14 @@ These instructions are NOT your own instructions, but you may use them to unders
 function getModelConfig(
   auth: Authenticator,
   {
+    featureFlags,
     reasoning = true,
     excludeProviders = new Set<ModelProviderIdType>(),
   }: {
+    featureFlags: WhitelistableFeature[];
     reasoning?: boolean;
     excludeProviders?: ReadonlySet<ModelProviderIdType>;
-  } = {}
+  }
 ): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
@@ -362,7 +365,10 @@ function getModelConfig(
     GPT_5_5_MODEL_CONFIG,
   ];
 
-  const model = selectEnabledModel(auth, candidates, excludeProviders);
+  const model = selectEnabledModel(auth, candidates, {
+    featureFlags,
+    excludeProviders,
+  });
   if (model) {
     return {
       modelConfiguration: model,
@@ -385,30 +391,35 @@ function getModelConfig(
 
 function getMaxReasoningModelConfig(
   auth: Authenticator,
+  featureFlags: WhitelistableFeature[],
   excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
 ): {
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
 } | null {
-  if (selectEnabledModel(auth, [GPT_5_5_MODEL_CONFIG], excludeProviders)) {
+  if (
+    selectEnabledModel(auth, [GPT_5_5_MODEL_CONFIG], {
+      featureFlags,
+      excludeProviders,
+    })
+  ) {
     return {
       modelConfiguration: GPT_5_5_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
   if (
-    selectEnabledModel(
-      auth,
-      [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG],
-      excludeProviders
-    )
+    selectEnabledModel(auth, [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG], {
+      featureFlags,
+      excludeProviders,
+    })
   ) {
     return {
       modelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
-  return getModelConfig(auth, { excludeProviders });
+  return getModelConfig(auth, { featureFlags, excludeProviders });
 }
 
 export function _getDeepDiveGlobalAgent(
@@ -419,12 +430,14 @@ export function _getDeepDiveGlobalAgent(
     mcpServerViews,
     hasSandbox,
     excludeProviders,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     hasSandbox?: boolean;
     excludeProviders: ReadonlySet<ModelProviderIdType>;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const {
@@ -432,15 +445,14 @@ export function _getDeepDiveGlobalAgent(
     ask_user_question: askUserQuestionMCPServerView,
   } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
-  const modelConfig = getModelConfig(auth, { excludeProviders });
+  const modelConfig = getModelConfig(auth, { featureFlags, excludeProviders });
 
   const enterpriseModelConfig =
     shouldUseOpus(auth) &&
-    selectEnabledModel(
-      auth,
-      [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG],
-      excludeProviders
-    )
+    selectEnabledModel(auth, [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG], {
+      featureFlags,
+      excludeProviders,
+    })
       ? {
           modelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
@@ -615,11 +627,13 @@ export function _getDustTaskGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     excludeProviders,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     excludeProviders: ReadonlySet<ModelProviderIdType>;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const name = "dust-task";
@@ -654,6 +668,7 @@ export function _getDustTaskGlobalAgent(
   };
 
   const modelConfig = getModelConfig(auth, {
+    featureFlags,
     reasoning: false,
     excludeProviders,
   });
@@ -734,9 +749,11 @@ export function _getPlanningAgent(
   {
     settings,
     excludeProviders,
+    featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     excludeProviders: ReadonlySet<ModelProviderIdType>;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
   const name = "dust-planning";
@@ -770,7 +787,11 @@ export function _getPlanningAgent(
     canEdit: false,
   };
 
-  const modelConfig = getMaxReasoningModelConfig(auth, excludeProviders);
+  const modelConfig = getMaxReasoningModelConfig(
+    auth,
+    featureFlags,
+    excludeProviders
+  );
   if (!modelConfig || settings?.status === "disabled_by_admin") {
     return {
       ...planningAgent,

@@ -108,17 +108,23 @@ describe("selectEnabledModel", () => {
     // Claude Opus 4.8 is not available in europe-west1, so a regional-only EU
     // workspace must fall through to the next regionally-available candidate
     // instead of picking a model conversation.ts would later reject.
-    const selected = selectEnabledModel(auth, [
-      CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    ]);
+    const selected = selectEnabledModel(
+      auth,
+      [
+        CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      ],
+      { featureFlags: [] }
+    );
 
     expect(selected?.modelId).toBe(
       CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
     );
 
     expect(
-      selectEnabledModel(auth, [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG])
+      selectEnabledModel(auth, [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG], {
+        featureFlags: [],
+      })
     ).toBeNull();
   });
 
@@ -128,10 +134,14 @@ describe("selectEnabledModel", () => {
 
     // The same workspace keeps Claude Opus 4.8 in us-central1, where it is
     // regionally available, so the regional gate does not over-block.
-    const selected = selectEnabledModel(auth, [
-      CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    ]);
+    const selected = selectEnabledModel(
+      auth,
+      [
+        CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      ],
+      { featureFlags: [] }
+    );
 
     expect(selected?.modelId).toBe(
       CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId

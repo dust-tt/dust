@@ -7,7 +7,7 @@ import {
   MCP_SERVERS_FOR_GLOBAL_AGENTS,
   type MCPServerViewsForGlobalAgentsMap,
 } from "@app/lib/api/assistant/global_agents/tools";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { SidekickConfig } from "@app/tests/sidekick-evals/lib/types";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
@@ -101,10 +101,13 @@ export async function getSidekickConfig(): Promise<{
       `Unknown SIDEKICK_AGENT: "${SIDEKICK_AGENT}". Must be "default".`
     );
   }
+
+  const featureFlags = await getFeatureFlags(auth);
   const sidekickConfig = _getSidekickGlobalAgent(auth, {
     sidekickContext: mockSidekickContext,
     preFetchedDataSources: null,
     mcpServerViews: MOCK_MCP_SERVER_VIEWS,
+    featureFlags,
   });
 
   const tools: AgentActionSpecification[] = [GET_AGENT_CONFIG_SPEC];
