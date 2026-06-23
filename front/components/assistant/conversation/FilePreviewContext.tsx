@@ -24,10 +24,12 @@ interface PreviewableFile {
 }
 
 type FilePreviewContextType = {
+  getFilePreviewUrl: (file: PreviewableFile) => string | null;
   openFilePreview: (file: PreviewableFile) => void;
 };
 
 const FilePreviewContext = createContext<FilePreviewContextType>({
+  getFilePreviewUrl: () => null,
   openFilePreview: () => {},
 });
 
@@ -46,13 +48,19 @@ export function FilePreviewProvider({
     downloadUrl: string;
   } | null>(null);
 
-  const openFilePreview = useCallback(
-    (file: PreviewableFile) => {
-      const fileUrl = file.filePath
+  const getFilePreviewUrl = useCallback(
+    (file: PreviewableFile) =>
+      file.filePath
         ? getFilePathViewUrl(owner, file.filePath)
         : file.fileId
           ? getFileViewUrl(owner, file.fileId)
-          : null;
+          : null,
+    [owner]
+  );
+
+  const openFilePreview = useCallback(
+    (file: PreviewableFile) => {
+      const fileUrl = getFilePreviewUrl(file);
 
       const downloadUrl = file.filePath
         ? getFilePathDownloadUrl(owner, file.filePath)
@@ -80,7 +88,7 @@ export function FilePreviewProvider({
         downloadUrl,
       });
     },
-    [owner]
+    [getFilePreviewUrl, owner]
   );
 
   const handleDownload = useCallback(async () => {
@@ -89,7 +97,10 @@ export function FilePreviewProvider({
     }
   }, [previewState?.downloadUrl]);
 
-  const contextValue = useMemo(() => ({ openFilePreview }), [openFilePreview]);
+  const contextValue = useMemo(
+    () => ({ getFilePreviewUrl, openFilePreview }),
+    [getFilePreviewUrl, openFilePreview]
+  );
 
   return (
     <FilePreviewContext.Provider value={contextValue}>

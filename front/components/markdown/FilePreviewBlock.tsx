@@ -1,4 +1,4 @@
-import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
+import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   FILE_PREVIEW_COMPONENT_NAME,
@@ -9,6 +9,7 @@ import {
 } from "@app/lib/markdown/file_preview";
 import { isString } from "@app/types/shared/utils/general";
 import { Icon } from "@dust-tt/sparkle";
+import type { MouseEvent } from "react";
 import { visit } from "unist-util-visit";
 
 interface FilePreviewBlockProps {
@@ -45,6 +46,8 @@ export function FilePreviewBlock({
   path,
   title,
 }: FilePreviewBlockProps) {
+  const { getFilePreviewUrl, openFilePreview } = useFilePreviewContext();
+
   if (!path) {
     return null;
   }
@@ -59,15 +62,43 @@ export function FilePreviewBlock({
     fileName,
   });
   const FileIcon = getFileTypeIcon(fileContentType, fileName);
+  const previewFile = {
+    filePath: path,
+    title: fileName,
+    contentType: fileContentType,
+  };
+  const href = getFilePreviewUrl(previewFile) ?? undefined;
+
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    openFilePreview(previewFile);
+  };
 
   return (
-    <PreviewableCitation
-      filePath={path}
-      contentType={fileContentType}
-      title={fileName}
-      description={typeLabel}
-      icon={<Icon visual={FileIcon} size="xs" />}
-    />
+    <a
+      href={href}
+      title={`${fileName} (${typeLabel})`}
+      aria-label={`Open preview for ${fileName}`}
+      onClick={handleClick}
+      className="inline-flex max-w-full items-center gap-1 align-baseline font-semibold text-highlight transition-colors duration-200 hover:text-highlight-400 hover:underline hover:underline-offset-2 active:text-highlight-700 dark:text-highlight-night dark:hover:text-highlight-400-night dark:active:text-highlight-700-night"
+    >
+      <Icon visual={FileIcon} size="xs" className="shrink-0" />
+      <span className="min-w-0 truncate">{fileName}</span>
+      <span className="shrink-0 text-xs font-normal text-muted-foreground dark:text-muted-foreground-night">
+        {typeLabel}
+      </span>
+    </a>
   );
 }
 

@@ -123,11 +123,21 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
         </FilePreviewProvider>
       );
 
-      expect(screen.getByText("booklet.pdf")).toBeInTheDocument();
+      const link = screen.getByRole("link", {
+        name: "Open preview for booklet.pdf",
+      });
+
+      expect(link).toHaveAttribute(
+        "href",
+        expect.stringContaining(
+          "/api/w/test-workspace/files/path/conversation-c1/booklet.pdf"
+        )
+      );
+      expect(link).toHaveTextContent("booklet.pdf");
       expect(screen.getByText("PDF")).toBeInTheDocument();
       expect(container.querySelector("a[href*='download=1']")).toBeNull();
 
-      fireEvent.click(screen.getByText("booklet.pdf"));
+      fireEvent.click(link);
 
       expect(await screen.findByText("Preview Data")).toBeInTheDocument();
       expect(
@@ -160,13 +170,19 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       });
 
       const { container } = render(
-        <AgentMessageMarkdown
-          owner={mockOwner}
-          content={`Download\n${directive}`}
-        />
+        <FilePreviewProvider owner={mockOwner}>
+          <AgentMessageMarkdown
+            owner={mockOwner}
+            content={`Download\n${directive}`}
+          />
+        </FilePreviewProvider>
       );
 
-      expect(container.textContent).toContain(title);
+      const link = screen.getByRole("link", {
+        name: `Open preview for ${title}`,
+      });
+
+      expect(link).toHaveTextContent(title);
       expect(container.textContent).toContain("PDF");
       expect(container.querySelector("a[href*='download=1']")).toBeNull();
     });
