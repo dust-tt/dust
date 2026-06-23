@@ -9,7 +9,7 @@ import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/ut
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  isProviderWhitelisted,
+  selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type {
@@ -337,9 +337,8 @@ export function _getSidekickGlobalAgent(
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? isProviderWhitelisted(auth, "anthropic")
-        ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-        : getSmallWhitelistedModel(auth)
+      ? selectEnabledModel(auth, [CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG]) ??
+        getSmallWhitelistedModel(auth)
       : getLargeWhitelistedModel(auth);
   const model = modelConfiguration
     ? {

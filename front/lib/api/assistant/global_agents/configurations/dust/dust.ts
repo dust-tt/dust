@@ -23,7 +23,7 @@ import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/ut
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  isProviderWhitelisted,
+  selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -299,9 +299,12 @@ function _getDustLikeGlobalAgent(
     }
 
     const isPreferredModelConfigurationAvailable =
-      preferredModelConfiguration &&
-      !excludeProviders.has(preferredModelConfiguration.providerId) &&
-      isProviderWhitelisted(auth, preferredModelConfiguration.providerId);
+      preferredModelConfiguration != null &&
+      selectEnabledModel(
+        auth,
+        [preferredModelConfiguration],
+        excludeProviders
+      ) != null;
 
     if (requiredPreferredModelConfiguration) {
       if (isPreferredModelConfigurationAvailable) {

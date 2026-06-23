@@ -21,7 +21,7 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import {
   getLargeWhitelistedModel,
-  isProviderWhitelisted,
+  selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -362,18 +362,14 @@ function getModelConfig(
     GPT_5_5_MODEL_CONFIG,
   ];
 
-  for (const model of candidates) {
-    if (
-      !excludeProviders.has(model.providerId) &&
-      isProviderWhitelisted(auth, model.providerId)
-    ) {
-      return {
-        modelConfiguration: model,
-        reasoningEffort: reasoning
-          ? "light"
-          : getMinimumReasoningEffort(model.supportedReasoningEfforts),
-      };
-    }
+  const model = selectEnabledModel(auth, candidates, excludeProviders);
+  if (model) {
+    return {
+      modelConfiguration: model,
+      reasoningEffort: reasoning
+        ? "light"
+        : getMinimumReasoningEffort(model.supportedReasoningEfforts),
+    };
   }
 
   // Otherwise we use whatever the default large model is, using the default reasoning effort.
@@ -394,18 +390,18 @@ function getMaxReasoningModelConfig(
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
 } | null {
-  if (
-    !excludeProviders.has("openai") &&
-    isProviderWhitelisted(auth, "openai")
-  ) {
+  if (selectEnabledModel(auth, [GPT_5_5_MODEL_CONFIG], excludeProviders)) {
     return {
       modelConfiguration: GPT_5_5_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
   if (
-    !excludeProviders.has("anthropic") &&
-    isProviderWhitelisted(auth, "anthropic")
+    selectEnabledModel(
+      auth,
+      [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG],
+      excludeProviders
+    )
   ) {
     return {
       modelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -439,9 +435,12 @@ export function _getDeepDiveGlobalAgent(
   const modelConfig = getModelConfig(auth, { excludeProviders });
 
   const enterpriseModelConfig =
-    !excludeProviders.has("anthropic") &&
     shouldUseOpus(auth) &&
-    isProviderWhitelisted(auth, "anthropic")
+    selectEnabledModel(
+      auth,
+      [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG],
+      excludeProviders
+    )
       ? {
           modelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
