@@ -12,6 +12,7 @@ import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
   trackEvent,
+  withTracking,
 } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
@@ -31,6 +32,7 @@ import {
   Separator,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type React from "react";
 import type { ReactElement, ReactNode } from "react";
@@ -351,7 +353,16 @@ function SeatTiersFAQAnswer() {
       </ul>
       <p className="mt-3">
         You can mix and match seat types across your workspace and reassign them
-        anytime as usage changes.
+        anytime as usage changes.{" "}
+        <a
+          href="https://docs.dust.tt/docs/seat-management"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-highlight hover:underline"
+        >
+          Learn more about seats
+        </a>
+        .
       </p>
     </>
   );
@@ -360,11 +371,45 @@ function SeatTiersFAQAnswer() {
 const FAQS: FAQItemData[] = [
   {
     q: "What is a credit?",
-    a: "A credit is Dust's unit for measuring AI usage. Credit consumption depends on the model used, the complexity of the task, and any tools the agent uses, such as search, data retrieval, code execution, or actions in connected apps.",
+    a: (
+      <>
+        A credit is Dust's unit for measuring AI usage. Credit consumption
+        depends on the model used, the complexity of the task, and any tools the
+        agent uses, such as search, data retrieval, code execution, or actions
+        in connected apps.{" "}
+        <a
+          href="https://docs.dust.tt/docs/credits"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-highlight hover:underline"
+        >
+          Learn more about credits
+        </a>
+        .
+      </>
+    ),
   },
   {
     q: "How are credits consumed?",
-    a: "Credits are charged per message, based on the model used and the actions performed. Basic chat with a token-efficient model like Claude Sonnet will consume few credits, while a deep research task that requires complex, multi-step orchestration and tool use will consume more. You'll be able to track your credit usage in Dust so that you can understand how different workflows consume credits.",
+    a: (
+      <>
+        Credits are charged per message, based on the model used and the actions
+        performed. Basic chat with a token-efficient model like Claude Sonnet
+        will consume few credits, while a deep research task that requires
+        complex, multi-step orchestration and tool use will consume more. You'll
+        be able to track your credit usage in Dust so that you can understand
+        how different workflows consume credits.{" "}
+        <a
+          href="https://docs.dust.tt/docs/credit-management"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-highlight hover:underline"
+        >
+          Learn more about managing credits
+        </a>
+        .
+      </>
+    ),
   },
   {
     q: "Do unused credits roll over?",
@@ -609,6 +654,10 @@ function PlanCard({
   );
 }
 
+// Eyebrow pill is hidden for now. Flip to `true` to show the blog link above
+// the page title.
+const SHOW_EYEBROW = false;
+
 interface HeroProps {
   billing: Billing;
   setBilling: (b: Billing) => void;
@@ -624,6 +673,35 @@ function Hero({
 }: HeroProps) {
   return (
     <section className="-mx-6 flex flex-col items-center px-4 pt-6 text-center md:mx-0 md:px-0 md:pt-10 lg:pt-14">
+      {SHOW_EYEBROW && (
+        <Link
+          href="https://dust.tt/blog/economics-of-multiplayer-ai"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={withTracking(TRACKING_AREAS.PRICING, "hero_blog_pill")}
+          className="group mb-5 inline-flex items-center gap-2 rounded-full border border-gray-100 bg-white py-1.5 pl-3 pr-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+        >
+          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
+          <span className="whitespace-nowrap">
+            The economics of multiplayer AI
+          </span>
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="flex-shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
+            aria-hidden="true"
+          >
+            <line x1="3" y1="8" x2="13" y2="8" />
+            <polyline points="9 4 13 8 9 12" />
+          </svg>
+        </Link>
+      )}
       <h1
         className={classNames(
           "heading-5xl md:heading-6xl lg:heading-7xl",
@@ -635,7 +713,7 @@ function Hero({
         with the work you get done
       </h1>
       <p className="copy-lg mb-9 max-w-2xl text-balance text-muted-foreground">
-        Choose self-serve plans for your team, or talk to us about
+        Choose self-serve plan for your team, or talk to us about
         enterprise-ready deployment, governance, and support
       </p>
 
