@@ -20,17 +20,6 @@ function getBuilderLabel(builderType: BuilderType): string {
   }
 }
 
-function getEditorTitle(builderType: BuilderType): string {
-  switch (builderType) {
-    case "agent":
-      return "an agent editor";
-    case "skill":
-      return "a skill editor";
-    default:
-      assertNever(builderType);
-  }
-}
-
 interface BuilderEditorGateMessageProps {
   builderType: BuilderType;
   disabled?: boolean;
@@ -45,26 +34,25 @@ export function BuilderEditorGateMessage({
   onAddSelfAsEditor,
 }: BuilderEditorGateMessageProps) {
   const builderLabel = getBuilderLabel(builderType);
-  const editorTitle = getEditorTitle(builderType);
 
   return (
     <ContentMessage
-      title={`Add yourself as ${editorTitle}`}
-      variant="warning"
+      title={`You are not an editor of this ${builderLabel}`}
+      variant="golden"
       icon={InfoCircle}
       size="lg"
       action={
         <ContentMessageAction
           icon={UsersPlus}
-          label={isLoading ? "Adding..." : "Add me"}
-          variant="warning"
+          label={isLoading ? "Preparing..." : "Continue editing"}
+          variant="warning-secondary"
           disabled={disabled || isLoading}
           onClick={onAddSelfAsEditor}
         />
       }
     >
-      You can view this {builderLabel} as a workspace admin, but you need to add
-      yourself as an editor before making changes.
+      You can view this {builderLabel} as a workspace admin. Continuing lets you
+      save changes as an editor.
     </ContentMessage>
   );
 }

@@ -236,7 +236,7 @@ export default function SkillBuilder({
 
       sendNotification({
         title: "Cannot save skill",
-        description: "Add yourself as an editor before saving changes.",
+        description: "Only skill editors can save changes.",
         type: "error",
       });
       return;
