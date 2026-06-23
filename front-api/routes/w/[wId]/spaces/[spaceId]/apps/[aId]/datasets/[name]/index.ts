@@ -1,10 +1,10 @@
 import config from "@app/lib/api/config";
-import type { GetDatasetResponseBody } from "@app/lib/api/datasets";
 import { getDatasetHash } from "@app/lib/api/datasets";
 import { checkDatasetData } from "@app/lib/datasets";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
+import type { GetDatasetResponseBody } from "@app/types/api/datasets";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";

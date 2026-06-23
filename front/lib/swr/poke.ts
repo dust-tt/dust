@@ -1,5 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetDataSourcePermissionsResponseBody } from "@app/lib/api/data_sources/managed_permissions";
 import type {
   GetPokeNoWorkspaceAuthContextResponseType,
   GetPokeWorkspaceAuthContextResponseType,
@@ -10,6 +9,7 @@ import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
+import type { GetDataSourcePermissionsResponseBody } from "@app/types/api/data_sources/managed_permissions";
 import type {
   GetPokeCouponRedemptionsResponseBody,
   GetPokeCouponsResponseBody,
