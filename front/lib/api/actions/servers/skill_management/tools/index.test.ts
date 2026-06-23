@@ -76,10 +76,8 @@ describe("skill_management enable_skill tool", () => {
 
   function makeExtra({
     userMessageOverride = userMessage,
-    withUserMessage = true,
   }: {
     userMessageOverride?: typeof userMessage;
-    withUserMessage?: boolean;
   } = {}) {
     return {
       auth,
@@ -88,7 +86,7 @@ describe("skill_management enable_skill tool", () => {
           agentConfiguration,
           agentMessage,
           conversation,
-          ...(withUserMessage ? { userMessage: userMessageOverride } : {}),
+          userMessage: userMessageOverride,
         },
       },
       signal: new AbortController().signal,
@@ -360,17 +358,5 @@ describe("skill_management enable_skill tool", () => {
       }
     );
     expect(mockEnableForAgent).toHaveBeenCalled();
-  });
-
-  it("does not fall back to a broader allow-list without user message context", async () => {
-    const result = await getTool().handler(
-      { skillName: "commit" },
-      makeExtra({ withUserMessage: false })
-    );
-
-    expect(result.isErr()).toBe(true);
-    expect(mockListForAgentLoop).not.toHaveBeenCalled();
-    expect(mockEnableForAgent).not.toHaveBeenCalled();
-    expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
   });
 });

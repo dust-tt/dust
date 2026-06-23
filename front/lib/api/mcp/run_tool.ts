@@ -61,7 +61,7 @@ export async function* runToolWithStreaming(
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationType;
-    userMessage?: UserMessageType;
+    userMessage: UserMessageType;
   },
   options?: { signal?: AbortSignal }
 ): AsyncGenerator<
@@ -95,7 +95,7 @@ export async function* runToolWithStreaming(
     conversation,
     stepContext: action.stepContext,
     toolConfiguration,
-    ...(userMessage ? { userMessage } : {}),
+    userMessage,
   };
 
   await action.updateStatus("running");
