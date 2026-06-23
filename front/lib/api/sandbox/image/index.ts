@@ -114,7 +114,3 @@ export type {
 } from "@app/lib/api/sandbox/image/types";
 export { formatSandboxImageId } from "@app/lib/api/sandbox/image/types";
 export { getRegisteredImages, getSandboxImageFromRegistry };
-
-export interface SandboxKillImagesResponseBody {
-  images: Array<{ baseImage: string; version: string }>;
-}

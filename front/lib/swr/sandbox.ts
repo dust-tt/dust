@@ -1,12 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetWorkspaceEgressPolicyResponseBody,
-  PutWorkspaceEgressPolicyResponseBody,
-} from "@app/lib/api/sandbox/egress_policy";
-import type {
-  GetWorkspaceSandboxEnvVarsResponseBody,
-  PostWorkspaceSandboxEnvVarsResponseBody,
-} from "@app/lib/api/sandbox/env_vars";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PatchWorkspaceSandboxEnvVarResponseBody } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import {
@@ -15,6 +7,14 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  GetWorkspaceEgressPolicyResponseBody,
+  PutWorkspaceEgressPolicyResponseBody,
+} from "@app/types/api/sandbox/egress_policy";
+import type {
+  GetWorkspaceSandboxEnvVarsResponseBody,
+  PostWorkspaceSandboxEnvVarsResponseBody,
+} from "@app/types/api/sandbox/env_vars";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
 import type {

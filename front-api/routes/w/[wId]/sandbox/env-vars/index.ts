@@ -1,13 +1,13 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
-import type {
-  GetWorkspaceSandboxEnvVarsResponseBody,
-  PostWorkspaceSandboxEnvVarsResponseBody,
-} from "@app/lib/api/sandbox/env_vars";
 import {
   parseWorkspaceSandboxEnvVarNameForKind,
   validateEnvVarValueForKind,
 } from "@app/lib/api/sandbox/env_vars";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import type {
+  GetWorkspaceSandboxEnvVarsResponseBody,
+  PostWorkspaceSandboxEnvVarsResponseBody,
+} from "@app/types/api/sandbox/env_vars";
 import { WORKSPACE_SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
