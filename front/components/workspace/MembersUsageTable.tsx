@@ -392,21 +392,8 @@ const actionsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildColumns({
-  isSeatBased,
-}: {
-  isSeatBased: boolean;
-}): ColumnDef<RowData, string>[] {
-  const optionalColumns = [];
-  if (isSeatBased) {
-    optionalColumns.push(seatTypeColumn);
-  }
-  return [
-    nameColumn,
-    ...optionalColumns,
-    consumedAwuCreditsColumn,
-    actionsColumn,
-  ];
+function buildColumns(): ColumnDef<RowData, string>[] {
+  return [nameColumn, seatTypeColumn, consumedAwuCreditsColumn, actionsColumn];
 }
 
 interface MembersUsageTableProps {
@@ -464,11 +451,21 @@ export function MembersUsageTable({
         ),
         isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
         menuItems: [
-          ...(isSeatBased
+          ...(!m.seatType || m.seatType === "none"
             ? [
                 {
                   kind: "item" as const,
-                  label: m.seatType ? "Change seat type" : "Assign seat",
+                  label: "Assign seat",
+                  disabled: readOnly,
+                  onClick: () => onChangeSeat(m),
+                },
+              ]
+            : []),
+          ...(isSeatBased && m.seatType && m.seatType !== "none"
+            ? [
+                {
+                  kind: "item" as const,
+                  label: "Change seat type",
                   disabled: readOnly,
                   onClick: () => onChangeSeat(m),
                 },
@@ -511,7 +508,7 @@ export function MembersUsageTable({
     ]
   );
 
-  const columns = useMemo(() => buildColumns({ isSeatBased }), [isSeatBased]);
+  const columns = useMemo(() => buildColumns(), []);
 
   if (isLoading) {
     return (

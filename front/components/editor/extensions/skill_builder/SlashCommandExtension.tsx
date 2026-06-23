@@ -1,67 +1,172 @@
-import { isAddCapabilitySlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import {
+  isSkillSlashCommand,
+  isToolSlashCommand,
+  type SlashCommandSkillSuggestion,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { filterSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
+import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
-import {
-  createAddCapabilitySlashCommand,
-  createAttachKnowledgeSlashCommand,
-} from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
+import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
+import { useSkillBuilderSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { ChainedCommands, Editor, Range } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
-import { forwardRef, type RefObject, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  type RefObject,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from "react";
 
 export const slashCommandPluginKey = new PluginKey("slashCommand");
 
-const SLASH_COMMANDS: SlashCommand[] = [
-  createAttachKnowledgeSlashCommand(),
-  createAddCapabilitySlashCommand("Add a skill or tool to these instructions"),
-];
+const SLASH_COMMANDS: SlashCommand[] = [createAttachKnowledgeSlashCommand()];
 
 interface SkillBuilderSlashSuggestionStorage {
   hasBeenFocused: boolean;
 }
 
+const SkillBuilderSlashCommandDropdownInner = forwardRef<
+  SlashCommandDropdownRef,
+  Pick<
+    SuggestionProps<SlashCommand>,
+    "clientRect" | "command" | "editor" | "query" | "range"
+  > & {
+    currentSkillIdRef?: RefObject<string | null>;
+    onClose: () => void;
+    onSkillDetailsRef?: RefObject<
+      ((skill: SlashCommandSkillSuggestion) => void) | undefined
+    >;
+    onToolDetailsRef?: RefObject<
+      ((tool: MCPServerViewType) => void) | undefined
+    >;
+    owner: LightWorkspaceType;
+  }
+>(
+  (
+    {
+      clientRect,
+      command,
+      editor,
+      query,
+      range,
+      currentSkillIdRef,
+      onClose,
+      onSkillDetailsRef,
+      onToolDetailsRef,
+      owner,
+    },
+    ref
+  ) => {
+    const dropdownRef = useRef<SlashCommandDropdownRef>(null);
+
+    const commandItems = useMemo(
+      () => filterSlashCommandItems(SLASH_COMMANDS, query),
+      [query]
+    );
+
+    const { capabilityItems, isLoading } =
+      useSkillBuilderSlashCommandCapabilities({
+        excludeSkillId: currentSkillIdRef?.current ?? null,
+        owner,
+        query,
+      });
+
+    const sections = useMemo(
+      () =>
+        buildSlashCommandSections({
+          commandItems,
+          capabilityItems,
+        }),
+      [capabilityItems, commandItems]
+    );
+
+    const flatItems = useMemo(
+      () => sections.flatMap((section) => section.items),
+      [sections]
+    );
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        onKeyDown: ({ event }) => {
+          if (
+            (event.key === "Enter" || event.key === "Tab") &&
+            flatItems.length === 0
+          ) {
+            event.preventDefault();
+            return true;
+          }
+
+          return dropdownRef.current?.onKeyDown({ event }) ?? false;
+        },
+      }),
+      [flatItems.length]
+    );
+
+    const handleItemDetails =
+      onSkillDetailsRef || onToolDetailsRef
+        ? (item: SlashCommand) => {
+            editor.chain().focus().deleteRange(range).run();
+            if (isSkillSlashCommand(item)) {
+              onSkillDetailsRef?.current?.(item.data.skill);
+            } else if (isToolSlashCommand(item)) {
+              onToolDetailsRef?.current?.(item.data.tool.view);
+            }
+            onClose();
+          }
+        : undefined;
+
+    return (
+      <SlashCommandDropdown
+        ref={dropdownRef}
+        sections={sections}
+        command={command}
+        clientRect={clientRect}
+        emptyMessage="No commands found"
+        isLoadingCapabilities={isLoading}
+        onClose={onClose}
+        onItemDetails={handleItemDetails}
+        size="wide"
+      />
+    );
+  }
+);
+
+SkillBuilderSlashCommandDropdownInner.displayName =
+  "SkillBuilderSlashCommandDropdownInner";
+
 const SkillBuilderSlashCommandDropdown = forwardRef<
   SlashCommandDropdownRef,
-  Pick<SuggestionProps<SlashCommand>, "clientRect" | "command" | "items"> & {
+  Pick<
+    SuggestionProps<SlashCommand>,
+    "clientRect" | "command" | "editor" | "query" | "range"
+  > & {
+    currentSkillIdRef?: RefObject<string | null>;
     onClose: () => void;
+    onSkillDetailsRef?: RefObject<
+      ((skill: SlashCommandSkillSuggestion) => void) | undefined
+    >;
+    onToolDetailsRef?: RefObject<
+      ((tool: MCPServerViewType) => void) | undefined
+    >;
+    owner?: LightWorkspaceType;
   }
->(({ clientRect, command, items, onClose }, ref) => {
-  const dropdownRef = useRef<SlashCommandDropdownRef>(null);
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      onKeyDown: ({ event }) => {
-        if (
-          (event.key === "Enter" || event.key === "Tab") &&
-          items.length === 0
-        ) {
-          event.preventDefault();
-          return true;
-        }
-
-        return dropdownRef.current?.onKeyDown({ event }) ?? false;
-      },
-    }),
-    [items.length]
-  );
+>(({ owner, ...props }, ref) => {
+  if (!owner) {
+    return null;
+  }
 
   return (
-    <SlashCommandDropdown
-      ref={dropdownRef}
-      items={items}
-      command={command}
-      clientRect={clientRect}
-      emptyMessage="No commands found"
-      onClose={onClose}
-      size="wide"
-    />
+    <SkillBuilderSlashCommandDropdownInner ref={ref} owner={owner} {...props} />
   );
 });
 
@@ -69,9 +174,15 @@ SkillBuilderSlashCommandDropdown.displayName =
   "SkillBuilderSlashCommandDropdown";
 
 export interface SlashCommandExtensionOptions {
+  currentSkillIdRef?: RefObject<string | null>;
   onSelectRef: RefObject<
     ((item: SlashCommand, editor: Editor, range: Range) => void) | undefined
   >;
+  onSkillDetailsRef?: RefObject<
+    ((skill: SlashCommandSkillSuggestion) => void) | undefined
+  >;
+  onToolDetailsRef?: RefObject<((tool: MCPServerViewType) => void) | undefined>;
+  owner?: LightWorkspaceType;
   suggestion: Partial<SuggestionOptions>;
 }
 
@@ -96,7 +207,11 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
     hasBeenFocused: false,
   }),
   defaultOptions: {
+    currentSkillIdRef: { current: null },
     onSelectRef: { current: undefined },
+    onSkillDetailsRef: { current: undefined },
+    onToolDetailsRef: { current: undefined },
+    owner: undefined,
     suggestion: {
       char: "/",
       pluginKey: slashCommandPluginKey,
@@ -115,18 +230,13 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
   allow: ({ storage }) => storage.hasBeenFocused,
   items: ({ query }) => filterSlashCommandItems(SLASH_COMMANDS, query),
   command: ({ editor, range, props, options }) => {
-    if (isAddCapabilitySlashCommand(props)) {
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertCapabilitySearchNode()
-        .run();
-      return;
-    }
-
     options.onSelectRef.current?.(props, editor, range);
   },
-  mapDropdownProps: () => ({}),
+  mapDropdownProps: ({ options }) => ({
+    currentSkillIdRef: options.currentSkillIdRef,
+    onSkillDetailsRef: options.onSkillDetailsRef,
+    onToolDetailsRef: options.onToolDetailsRef,
+    owner: options.owner,
+  }),
   shouldAppendDropdown: ({ props }) => Boolean(props.clientRect),
 });

@@ -1,6 +1,5 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import type {
   SkillRelations,
   SkillType,
@@ -35,13 +34,6 @@ export function transformSkillTypeToFormData(
         icon: childSkill.icon,
         requestedSpaceIds: childSkill.requestedSpaceIds,
       })) ?? [],
-    referencedSkillIds: [
-      ...new Set([
-        ...(skill.relations?.childSkills.map((childSkill) => childSkill.sId) ??
-          []),
-        ...extractUniqueSkillReferenceIds(skill.instructions ?? ""),
-      ]),
-    ],
   };
 }
 
@@ -70,6 +62,5 @@ export function getDefaultSkillFormData({
     reinforcement: "on",
     additionalSpaces: [],
     referencedSkills: [],
-    referencedSkillIds: [],
   };
 }

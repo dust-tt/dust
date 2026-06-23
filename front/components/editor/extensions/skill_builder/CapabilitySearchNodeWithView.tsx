@@ -18,19 +18,12 @@ const DEFAULT_CAPABILITY_SEARCH_NODE_OPTIONS: CapabilitySearchNodeOptions = {
   onSkillDetailsRef: { current: undefined },
   onToolDetailsRef: { current: undefined },
   owner: undefined,
-  selectedMCPServerViewIdsRef: { current: new Set<string>() },
-  variant: "skill-builder",
 };
 
-function createCapabilitySearchNodeExtension(
-  variant: NonNullable<CapabilitySearchNodeOptions["variant"]>
-) {
-  return CapabilitySearchNode.extend<CapabilitySearchNodeOptions>({
+export const CapabilitySearchNodeWithView =
+  CapabilitySearchNode.extend<CapabilitySearchNodeOptions>({
     addOptions() {
-      return {
-        ...DEFAULT_CAPABILITY_SEARCH_NODE_OPTIONS,
-        variant,
-      };
+      return DEFAULT_CAPABILITY_SEARCH_NODE_OPTIONS;
     },
 
     addNodeView() {
@@ -39,10 +32,3 @@ function createCapabilitySearchNodeExtension(
       ));
     },
   });
-}
-
-export const CapabilitySearchNodeWithView =
-  createCapabilitySearchNodeExtension("skill-builder");
-
-export const InputBarCapabilitySearchNode =
-  createCapabilitySearchNodeExtension("input-bar");

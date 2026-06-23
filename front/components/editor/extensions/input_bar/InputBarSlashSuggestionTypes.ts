@@ -3,7 +3,6 @@ import { Minimize01, UploadCloud02 } from "@dust-tt/sparkle";
 import type React from "react";
 
 export type InputBarSlashCommandId =
-  | "add-capability"
   | "attach-knowledge"
   | "compact"
   | "reference-file"
@@ -18,7 +17,6 @@ export type InputBarRunCommandId = Extract<
 /** Reorder this list to change display order in the `/` menu. */
 export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
   "compact",
-  "add-capability",
   "reference-file",
   "upload-file",
   "attach-knowledge",

@@ -3,6 +3,7 @@ import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
   type ContractCreditType,
+  fromFreeMetronomeUserId,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
@@ -2667,9 +2668,9 @@ export async function listCustomerPerUserCreditBalances({
       if (entry.contract) {
         continue;
       }
-      const userId =
+      const rawUserId =
         entry.custom_fields?.[PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY];
-      if (!userId) {
+      if (!rawUserId) {
         continue;
       }
       if (
@@ -2678,6 +2679,11 @@ export async function listCustomerPerUserCreditBalances({
       ) {
         continue;
       }
+      // Strip the "free-" prefix so the map is keyed by plain sId, matching
+      // callers that look up by membership.user.sId. Falls back to the raw
+      // value for old-format credits that were granted before the prefix was
+      // introduced.
+      const userId = fromFreeMetronomeUserId(rawUserId) ?? rawUserId;
       const startingBalanceAwu = (
         entry.access_schedule?.schedule_items ?? []
       ).reduce((sum, item) => sum + item.amount, 0);

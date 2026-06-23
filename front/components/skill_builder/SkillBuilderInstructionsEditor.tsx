@@ -49,7 +49,6 @@ const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
 const REFERENCED_SKILLS_FIELD_NAME = "referencedSkills";
-const REFERENCED_SKILL_IDS_FIELD_NAME = "referencedSkillIds";
 const BASE_ALLOWED_INSTRUCTIONS_TAGS = ["knowledge"];
 const BASE_ALLOWED_INSTRUCTIONS_ATTRS = ["space", "dsv", "hasChildren"];
 const SKILL_REFERENCE_ALLOWED_TAGS = [
@@ -194,16 +193,6 @@ function collectSkillReferenceIds(editor: Editor): Set<string> {
   return skillIds;
 }
 
-function haveSameSkillReferenceIds(
-  currentIds: readonly string[],
-  nextIds: ReadonlySet<string>
-): boolean {
-  return (
-    currentIds.length === nextIds.size &&
-    currentIds.every((skillId) => nextIds.has(skillId))
-  );
-}
-
 function toAttachedKnowledge(
   items: readonly KnowledgeItem[]
 ): SkillBuilderFormData["attachedKnowledge"] {
@@ -259,9 +248,6 @@ export function SkillBuilderInstructionsEditor({
   const referencedSkillsRef = useRef<SkillBuilderFormData["referencedSkills"]>(
     []
   );
-  const referencedSkillIdsRef = useRef<
-    SkillBuilderFormData["referencedSkillIds"]
-  >([]);
   const {
     owner,
     user,
@@ -309,15 +295,6 @@ export function SkillBuilderInstructionsEditor({
     name: REFERENCED_SKILLS_FIELD_NAME,
   });
 
-  const {
-    field: { onChange: onReferencedSkillIdsChange, value: referencedSkillIds },
-  } = useController<
-    SkillBuilderFormData,
-    typeof REFERENCED_SKILL_IDS_FIELD_NAME
-  >({
-    name: REFERENCED_SKILL_IDS_FIELD_NAME,
-  });
-
   useEffect(() => {
     toolsRef.current = tools;
   }, [tools]);
@@ -326,18 +303,15 @@ export function SkillBuilderInstructionsEditor({
     referencedSkillsRef.current = referencedSkills;
   }, [referencedSkills]);
 
-  useEffect(() => {
-    referencedSkillIdsRef.current = referencedSkillIds;
-  }, [referencedSkillIds]);
-
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
   const hasInstructionReferenceSummary =
     (attachedKnowledgeField.value?.length ?? 0) > 0 ||
-    referencedSkills.length > 0 ||
     tools.length > 0 ||
     (instructionsField.value?.includes("<knowledge ") ?? false) ||
-    (instructionsField.value?.includes("<tool ") ?? false);
+    (instructionsField.value?.includes("<tool ") ?? false) ||
+    (instructionsField.value?.includes("<skill ") ?? false) ||
+    (instructionsField.value?.includes("<unavailable_skill ") ?? false);
 
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
@@ -367,17 +341,6 @@ export function SkillBuilderInstructionsEditor({
       previousInlineToolIdsRef.current = currentInlineToolIds;
 
       const currentInlineSkillIds = collectSkillReferenceIds(editor);
-      if (
-        !haveSameSkillReferenceIds(
-          referencedSkillIdsRef.current,
-          currentInlineSkillIds
-        )
-      ) {
-        const nextReferencedSkillIds = [...currentInlineSkillIds];
-        referencedSkillIdsRef.current = nextReferencedSkillIds;
-        onReferencedSkillIdsChange(nextReferencedSkillIds);
-      }
-
       const removedSkillIds = [...previousInlineSkillIdsRef.current].filter(
         (skillId) => !currentInlineSkillIds.has(skillId)
       );
@@ -393,7 +356,7 @@ export function SkillBuilderInstructionsEditor({
 
       previousInlineSkillIdsRef.current = currentInlineSkillIds;
     },
-    [onReferencedSkillIdsChange, onReferencedSkillsChange, onToolsChange]
+    [onReferencedSkillsChange, onToolsChange]
   );
 
   const syncInstructionsFromEditor = useCallback(
@@ -488,17 +451,8 @@ export function SkillBuilderInstructionsEditor({
         referencedSkillsRef.current = nextReferencedSkills;
         onReferencedSkillsChange(nextReferencedSkills);
       }
-
-      if (!referencedSkillIdsRef.current.includes(skill.sId)) {
-        const nextReferencedSkillIds = [
-          ...referencedSkillIdsRef.current,
-          skill.sId,
-        ];
-        referencedSkillIdsRef.current = nextReferencedSkillIds;
-        onReferencedSkillIdsChange(nextReferencedSkillIds);
-      }
     },
-    [disabled, onReferencedSkillIdsChange, onReferencedSkillsChange]
+    [disabled, onReferencedSkillsChange]
   );
 
   const handleSkillDetails = useCallback(
@@ -706,15 +660,7 @@ export function SkillBuilderInstructionsEditor({
       keepTouched: true,
     });
     previousInlineToolIdsRef.current = collectToolReferenceIds(editor);
-    const inlineSkillIds = collectSkillReferenceIds(editor);
-    const inlineSkillIdList = [...inlineSkillIds];
-    previousInlineSkillIdsRef.current = inlineSkillIds;
-    referencedSkillIdsRef.current = inlineSkillIdList;
-    resetField(REFERENCED_SKILL_IDS_FIELD_NAME, {
-      defaultValue: inlineSkillIdList,
-      keepError: true,
-      keepTouched: true,
-    });
+    previousInlineSkillIdsRef.current = collectSkillReferenceIds(editor);
   }, [editor, isContentReady, isDiffMode, resetField]);
 
   // Apply pending instruction suggestions as inline diff decorations.
@@ -906,7 +852,6 @@ export function SkillBuilderInstructionsEditor({
             hasError={displayError}
             instructions={instructionsField.value ?? ""}
             onReferenceClick={handleReferenceClick}
-            referencedSkills={referencedSkills}
             tools={tools}
           />
         </div>

@@ -2,6 +2,7 @@ import { PlanModel } from "@app/lib/models/plan";
 import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
+  CREDIT_PRICED_FREE_PLAN_CODE,
   FREE_BYOK_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
@@ -56,6 +57,16 @@ export class WorkspaceFactory {
     return this.create(
       CREDIT_PRICED_BUSINESS_PLAN_CODE,
       { metronomeCustomerId: "cus_test_credit_priced", ...overrides },
+      { metronomeContractId: "test-metronome-contract-id" }
+    );
+  }
+
+  static async creditPricedFree(
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
+    return this.create(
+      CREDIT_PRICED_FREE_PLAN_CODE,
+      { metronomeCustomerId: "cus_test_credit_priced_free", ...overrides },
       { metronomeContractId: "test-metronome-contract-id" }
     );
   }
