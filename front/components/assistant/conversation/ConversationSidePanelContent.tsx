@@ -38,7 +38,7 @@ export default function ConversationSidePanelContent({
       );
 
     case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return <FilePreviewPanel owner={owner} />;
+      return <FilePreviewPanel conversation={conversation} owner={owner} />;
 
     case FILES_SIDE_PANEL_TYPE:
       return (
