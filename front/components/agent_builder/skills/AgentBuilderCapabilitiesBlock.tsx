@@ -43,7 +43,7 @@ import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface SkillCardProps {
   skill: AgentBuilderSkillsType;
-  onRemove?: () => void;
+  onRemove: () => void;
   onClick: () => void;
 }
 
@@ -64,13 +64,11 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
 }
 
 interface ActionButtonsProps {
-  disabled?: boolean;
   onClickKnowledge: () => void;
   onClickCapability: () => void;
 }
 
 function ActionButtons({
-  disabled = false,
   onClickKnowledge,
   onClickCapability,
 }: ActionButtonsProps) {
@@ -82,7 +80,6 @@ function ActionButtons({
         label="Add capabilities"
         icon={ShapesPlus}
         variant="primary"
-        disabled={disabled}
       />
       <Button
         type="button"
@@ -90,19 +87,16 @@ function ActionButtons({
         label="Add knowledge"
         icon={BookOpen01}
         variant="outline"
-        disabled={disabled}
       />
     </div>
   );
 }
 
 interface AgentBuilderCapabilitiesBlockProps {
-  disabled?: boolean;
   initialRequestedSpaceIds?: string[];
 }
 
 export function AgentBuilderCapabilitiesBlock({
-  disabled = false,
   initialRequestedSpaceIds,
 }: AgentBuilderCapabilitiesBlockProps) {
   const sendNotification = useSendNotification();
@@ -151,10 +145,6 @@ export function AgentBuilderCapabilitiesBlock({
         presetData?: TemplateActionPreset;
       } | null
     ) => {
-      if (disabled) {
-        return;
-      }
-
       if (actionData) {
         setSheetState({
           state: "knowledge",
@@ -164,7 +154,7 @@ export function AgentBuilderCapabilitiesBlock({
         });
       }
     },
-    [disabled]
+    []
   );
 
   usePresetActionHandler({
@@ -175,10 +165,6 @@ export function AgentBuilderCapabilitiesBlock({
 
   // Sheets own closing after save; this handler only upserts into the form state.
   const handleToolEditSave = (updatedAction: BuilderAction) => {
-    if (disabled) {
-      return;
-    }
-
     if (
       (sheetState.state === "configuration" ||
         sheetState.state === "knowledge") &&
@@ -192,10 +178,6 @@ export function AgentBuilderCapabilitiesBlock({
   };
 
   const handleActionEdit = (action: BuilderAction, index: number) => {
-    if (disabled) {
-      return;
-    }
-
     setSheetState(
       getSheetStateForActionEdit({
         action,
@@ -224,10 +206,6 @@ export function AgentBuilderCapabilitiesBlock({
       skills: AgentBuilderSkillsType[];
       tools: SelectedTool[];
     }) => {
-      if (disabled) {
-        return;
-      }
-
       // Validate any configured tools before adding
       for (const tool of tools) {
         if (tool.configuredAction) {
@@ -253,14 +231,10 @@ export function AgentBuilderCapabilitiesBlock({
       appendSkills(skills);
       appendActions(validatedActions);
     },
-    [appendSkills, appendActions, disabled, sendNotification]
+    [appendSkills, appendActions, sendNotification]
   );
 
   const handleClickKnowledge = () => {
-    if (disabled) {
-      return;
-    }
-
     // We don't know which action will be selected so we will create a generic MCP action.
     const action = getDefaultMCPAction();
 
@@ -275,10 +249,6 @@ export function AgentBuilderCapabilitiesBlock({
   };
 
   const handleClickCapability = () => {
-    if (disabled) {
-      return;
-    }
-
     setSheetState({ state: "selection" });
   };
 
@@ -309,7 +279,6 @@ export function AgentBuilderCapabilitiesBlock({
       headerActions={
         hasCapabilitiesConfigured && (
           <ActionButtons
-            disabled={disabled}
             onClickKnowledge={handleClickKnowledge}
             onClickCapability={handleClickCapability}
           />
@@ -327,7 +296,7 @@ export function AgentBuilderCapabilitiesBlock({
               <SkillCard
                 key={field.id}
                 skill={field}
-                onRemove={disabled ? undefined : () => removeSkill(index)}
+                onRemove={() => removeSkill(index)}
                 onClick={() => {
                   void fetchSkillWithRelations(field.sId);
                 }}
@@ -337,10 +306,8 @@ export function AgentBuilderCapabilitiesBlock({
               <BuilderToolCard
                 key={field.id}
                 action={field}
-                onRemove={disabled ? undefined : () => removeAction(index)}
-                onClick={
-                  disabled ? undefined : () => handleActionEdit(field, index)
-                }
+                onRemove={() => removeAction(index)}
+                onClick={() => handleActionEdit(field, index)}
               />
             ))}
           </CardGrid>
@@ -348,7 +315,6 @@ export function AgentBuilderCapabilitiesBlock({
           <EmptyCTA
             action={
               <ActionButtons
-                disabled={disabled}
                 onClickKnowledge={handleClickKnowledge}
                 onClickCapability={handleClickCapability}
               />
@@ -361,11 +327,7 @@ export function AgentBuilderCapabilitiesBlock({
       <KnowledgeConfigurationSheet
         onClose={handleCloseSheet}
         onSave={handleToolEditSave}
-        action={
-          !disabled && sheetState.state === "knowledge"
-            ? sheetState.action
-            : null
-        }
+        action={sheetState.state === "knowledge" ? sheetState.action : null}
         actions={actionFields}
         isEditing={
           sheetState.state === "knowledge" && sheetState.index !== null
@@ -378,7 +340,7 @@ export function AgentBuilderCapabilitiesBlock({
         initialRequestedSpaceIds={initialRequestedSpaceIds}
       />
       <CapabilitiesSheet
-        isOpen={!disabled && isCapabilitiesSheetOpen(sheetState)}
+        isOpen={isCapabilitiesSheetOpen(sheetState)}
         sheetState={
           isCapabilitiesSheetOpen(sheetState)
             ? sheetState

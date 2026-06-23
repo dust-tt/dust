@@ -7,12 +7,10 @@ import { TagsSection } from "@app/components/agent_builder/settings/TagsSection"
 
 interface AgentBuilderSettingsBlockProps {
   agentConfigurationId: string | null;
-  disabled?: boolean;
 }
 
 export function AgentBuilderSettingsBlock({
   agentConfigurationId,
-  disabled = false,
 }: AgentBuilderSettingsBlockProps) {
   const isCreatingNew = !agentConfigurationId;
   return (
@@ -20,22 +18,13 @@ export function AgentBuilderSettingsBlock({
       <div className="space-y-5">
         <div className="flex items-end gap-8">
           <div className="flex-grow">
-            <AgentBuilderNameSection
-              disabled={disabled}
-              isCreatingNew={isCreatingNew}
-            />
+            <AgentBuilderNameSection isCreatingNew={isCreatingNew} />
           </div>
-          <AgentBuilderAvatarSection
-            disabled={disabled}
-            isCreatingNew={isCreatingNew}
-          />
+          <AgentBuilderAvatarSection isCreatingNew={isCreatingNew} />
         </div>
-        <AgentBuilderDescriptionSection
-          disabled={disabled}
-          isCreatingNew={isCreatingNew}
-        />
-        <AccessSection disabled={disabled} />
-        <TagsSection disabled={disabled} />
+        <AgentBuilderDescriptionSection isCreatingNew={isCreatingNew} />
+        <AccessSection />
+        <TagsSection />
       </div>
     </AgentBuilderSectionContainer>
   );

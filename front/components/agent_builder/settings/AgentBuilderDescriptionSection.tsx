@@ -12,12 +12,10 @@ const DESCRIPTION_FIELD_NAME = "agentSettings.description";
 const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 
 interface AgentBuilderDescriptionSectionProps {
-  disabled?: boolean;
   isCreatingNew: boolean;
 }
 
 export function AgentBuilderDescriptionSection({
-  disabled = false,
   isCreatingNew,
 }: AgentBuilderDescriptionSectionProps) {
   const { owner } = useAgentBuilderContext();
@@ -37,7 +35,6 @@ export function AgentBuilderDescriptionSection({
 
   const handleGenerateDescription = useCallback(async () => {
     if (
-      disabled ||
       isGenerating ||
       userSetDescriptionRef.current ||
       !instructions ||
@@ -82,15 +79,7 @@ export function AgentBuilderDescriptionSection({
       });
     }
     setIsGenerating(false);
-  }, [
-    disabled,
-    instructions,
-    isGenerating,
-    name,
-    owner,
-    sendNotification,
-    setValue,
-  ]);
+  }, [instructions, isGenerating, name, owner, sendNotification, setValue]);
 
   useEffect(() => {
     const onInstructionsBlur = () => {
@@ -120,7 +109,6 @@ export function AgentBuilderDescriptionSection({
             ref={registerRef}
             placeholder="Enter agent description"
             className="pr-10"
-            disabled={disabled}
             onChange={(e) => {
               userSetDescriptionRef.current = true;
               onChange(e);
@@ -136,7 +124,6 @@ export function AgentBuilderDescriptionSection({
             className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
             disabled={
               isGenerating ||
-              disabled ||
               !instructions ||
               instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
             }

@@ -345,6 +345,32 @@ export default function AgentBuilder({
     isAdminExistingAgent &&
     (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
 
+  const notifyLockedSave = useCallback(() => {
+    if (isEditorsLoading) {
+      sendNotification({
+        title: "Cannot save agent",
+        description: "Wait until agent editors finish loading before saving.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (isEditorsError) {
+      sendNotification({
+        title: "Cannot save agent",
+        description: "Retry loading editors before saving changes.",
+        type: "error",
+      });
+      return;
+    }
+
+    sendNotification({
+      title: "Cannot save agent",
+      description: "Add yourself as an editor before saving changes.",
+      type: "error",
+    });
+  }, [isEditorsError, isEditorsLoading, sendNotification]);
+
   const handleAddSelfAsEditor = async () => {
     if (!agentConfiguration || isAddingSelfAsEditor) {
       return;
@@ -536,9 +562,15 @@ export default function AgentBuilder({
   };
 
   const handleSave = async () => {
-    if (isSaving || isEditorLocked) {
+    if (isSaving) {
       return;
     }
+
+    if (isEditorLocked) {
+      notifyLockedSave();
+      return;
+    }
+
     setIsSaving(true);
     try {
       await form.handleSubmit(handleSubmit, handleFormErrors)();
@@ -558,13 +590,11 @@ export default function AgentBuilder({
   const { isDirty, isSubmitting } = form.formState;
 
   // Disable navigation lock during save process for new agents
-  useNavigationLock(
-    (isDirty || !!duplicateAgentId) && !isSaving && !isEditorLocked
-  );
+  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
 
   const isSaveDisabled = duplicateAgentId
     ? false
-    : isEditorLocked || isSubmitting || isActionsLoading || isTriggersLoading;
+    : isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -691,7 +721,7 @@ function AgentBuilderContent({
     useSidekickSuggestions();
 
   const { serverId: clientSideMCPServerId } = useSidekickMCPServer({
-    enabled: true,
+    enabled: !isEditorLocked,
   });
 
   const clientSideMCPServerIds = useMemo(
@@ -701,6 +731,7 @@ function AgentBuilderContent({
 
   const handleSaveWithValidation = useCallback(async () => {
     if (isEditorLocked) {
+      handleSave();
       return;
     }
 
@@ -777,7 +808,7 @@ function AgentBuilderContent({
               label: saveLabel,
               variant: "highlight",
               onClick: handleSaveWithValidation,
-              disabled: isSaveDisabled || isEditorLocked,
+              disabled: isSaveDisabled,
             }}
             editorGateMessage={
               isEditorLoadErrorVisible ? (
@@ -795,7 +826,6 @@ function AgentBuilderContent({
             }
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
-            disabled={isEditorLocked}
             isTriggersLoading={isTriggersLoading}
             initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
           />

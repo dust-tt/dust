@@ -21,7 +21,6 @@ interface AgentBuilderLeftPanelProps {
   onCancel: () => void;
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
-  disabled?: boolean;
   editorGateMessage?: ReactNode;
   isTriggersLoading?: boolean;
   initialRequestedSpaceIds?: string[];
@@ -32,7 +31,6 @@ export function AgentBuilderLeftPanel({
   onCancel,
   agentConfigurationId,
   saveButtonProps,
-  disabled = false,
   editorGateMessage,
   isTriggersLoading,
   initialRequestedSpaceIds,
@@ -61,25 +59,20 @@ export function AgentBuilderLeftPanel({
         <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
           {editorGateMessage}
           <AgentBuilderInstructionsBlock
-            disabled={disabled}
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderSpacesBlock
-            disabled={disabled}
             initialRequestedSpaceIds={initialRequestedSpaceIds}
           />
           <AgentBuilderCapabilitiesBlock
-            disabled={disabled}
             initialRequestedSpaceIds={initialRequestedSpaceIds}
           />
           <AgentBuilderTriggersBlock
             owner={owner}
-            disabled={disabled}
             isTriggersLoading={isTriggersLoading}
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderSettingsBlock
-            disabled={disabled}
             agentConfigurationId={agentConfigurationId}
           />
         </div>

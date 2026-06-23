@@ -20,7 +20,6 @@ interface InstructionsMenuBarProps {
   editor: Editor | null;
   onAcceptAll: () => void;
   onRejectAll: () => void;
-  disabled?: boolean;
   showSuggestionActions?: boolean;
   toolbarExtra?: ReactNode;
 }
@@ -29,7 +28,6 @@ export function InstructionsMenuBar({
   editor,
   onAcceptAll,
   onRejectAll,
-  disabled = false,
   showSuggestionActions = false,
   toolbarExtra,
 }: InstructionsMenuBarProps) {
@@ -44,7 +42,6 @@ export function InstructionsMenuBar({
         size="icon"
         variant="ghost-secondary"
         tooltip="Heading"
-        disabled={disabled}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       />
       <Button
@@ -53,7 +50,6 @@ export function InstructionsMenuBar({
         variant="ghost-secondary"
         tooltip="Bold"
         tooltipShortcut="Cmd+B"
-        disabled={disabled}
         onClick={() => editor.chain().focus().toggleBold().run()}
       />
       <Button
@@ -62,7 +58,6 @@ export function InstructionsMenuBar({
         variant="ghost-secondary"
         tooltip="Italic"
         tooltipShortcut="Cmd+I"
-        disabled={disabled}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       />
       <Separator orientation="vertical" />
@@ -71,7 +66,6 @@ export function InstructionsMenuBar({
         size="icon"
         variant="ghost-secondary"
         tooltip="Bulleted list"
-        disabled={disabled}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
       <Button
@@ -79,7 +73,6 @@ export function InstructionsMenuBar({
         size="icon"
         variant="ghost-secondary"
         tooltip="Ordered list"
-        disabled={disabled}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       />
       <Separator orientation="vertical" />
@@ -88,7 +81,6 @@ export function InstructionsMenuBar({
         size="icon"
         variant="ghost-secondary"
         tooltip="Code Block"
-        disabled={disabled}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
       />
       <Separator orientation="vertical" />
@@ -97,7 +89,6 @@ export function InstructionsMenuBar({
         size="icon"
         variant="ghost-secondary"
         tooltip="XML tag"
-        disabled={disabled}
         onClick={() => editor.chain().focus().insertInstructionBlock().run()}
       />
       <Separator orientation="vertical" />

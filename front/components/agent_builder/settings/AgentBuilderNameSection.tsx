@@ -21,12 +21,10 @@ const NAME_FIELD_NAME = "agentSettings.name";
 const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 
 interface AgentBuilderNameSectionProps {
-  disabled?: boolean;
   isCreatingNew?: boolean;
 }
 
 export function AgentBuilderNameSection({
-  disabled = false,
   isCreatingNew = false,
 }: AgentBuilderNameSectionProps) {
   const { owner } = useAgentBuilderContext();
@@ -49,7 +47,6 @@ export function AgentBuilderNameSection({
 
   const handleGenerateNameSuggestions = async () => {
     if (
-      disabled ||
       isGenerating ||
       !instructions ||
       instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
@@ -92,10 +89,6 @@ export function AgentBuilderNameSection({
   };
 
   const handleSelectNameSuggestion = (suggestion: string) => {
-    if (disabled) {
-      return;
-    }
-
     setValue(NAME_FIELD_NAME, suggestion, {
       shouldDirty: true,
       shouldValidate: true,
@@ -104,7 +97,6 @@ export function AgentBuilderNameSection({
 
   const handleAutoGenerateName = useCallback(async () => {
     if (
-      disabled ||
       isGenerating ||
       userSetNameRef.current ||
       !instructions ||
@@ -133,15 +125,7 @@ export function AgentBuilderNameSection({
       });
     }
     setIsGenerating(false);
-  }, [
-    description,
-    disabled,
-    getValues,
-    instructions,
-    isGenerating,
-    owner,
-    setValue,
-  ]);
+  }, [description, getValues, instructions, isGenerating, owner, setValue]);
 
   useEffect(() => {
     if (!isCreatingNew) {
@@ -163,7 +147,6 @@ export function AgentBuilderNameSection({
             ref={registerRef}
             placeholder="Enter agent name"
             className="pr-10"
-            disabled={disabled}
             onChange={(e) => {
               userSetNameRef.current = true;
               onChange(e);
@@ -187,7 +170,6 @@ export function AgentBuilderNameSection({
                 className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
                 disabled={
                   isGenerating ||
-                  disabled ||
                   !instructions ||
                   instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
                 }
