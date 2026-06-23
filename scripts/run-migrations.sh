@@ -38,6 +38,25 @@ case "$COMPONENT" in
     ;;
 esac
 
+# ---------------------------------------------------------------------------
+# Post-deploy confirmation
+# ---------------------------------------------------------------------------
+
+if [[ "$COMMAND" == "post-deploy" ]]; then
+  echo ""
+  echo "⚠️  Post-deploy migrations share DB models with front services."
+  echo "   Make sure the following are deployed with the latest code before continuing:"
+  echo "     • front"
+  echo "     • front-sse"
+  echo ""
+  read -r -p "   Have you deployed front and front-sse? [y/N] " confirm
+  if [[ "${confirm,,}" != "y" ]]; then
+    echo "❌ Aborted. Deploy front and front-sse first." >&2
+    exit 1
+  fi
+  echo ""
+fi
+
 # Map command to the npm script defined in package.json.
 case "$COMMAND" in
   pre-deploy) NPM_SCRIPT="migration:apply:pre-deploy" ;;
