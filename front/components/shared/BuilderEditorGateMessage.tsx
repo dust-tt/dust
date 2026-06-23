@@ -1,3 +1,4 @@
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   ContentMessage,
   ContentMessageAction,
@@ -8,21 +9,25 @@ import {
 
 type BuilderType = "agent" | "skill";
 
-function getBuilderLabel(builderType: BuilderType) {
+function getBuilderLabel(builderType: BuilderType): string {
   switch (builderType) {
     case "agent":
       return "agent";
     case "skill":
       return "skill";
+    default:
+      assertNever(builderType);
   }
 }
 
-function getEditorTitle(builderType: BuilderType) {
+function getEditorTitle(builderType: BuilderType): string {
   switch (builderType) {
     case "agent":
       return "an agent editor";
     case "skill":
       return "a skill editor";
+    default:
+      assertNever(builderType);
   }
 }
 
