@@ -85,10 +85,6 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     const { agentConfiguration, agentMessage, conversation, userMessage } =
       agentLoopContext.runContext;
 
-    if (!userMessage) {
-      return new Err(new MCPError("No user message context available"));
-    }
-
     const agentLoopData = {
       agentConfiguration,
       agentMessage,

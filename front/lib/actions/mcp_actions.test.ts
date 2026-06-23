@@ -36,7 +36,10 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type {
+  AgentMessageType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -572,6 +575,29 @@ describe("tryCallMCPTool", () => {
       richMentions: [],
       costCredits: null,
     };
+    const userMessage: UserMessageType = {
+      id: -1,
+      created: Date.now(),
+      type: "user_message",
+      sId: generateRandomModelSId(),
+      visibility: "visible",
+      version: 0,
+      rank: 0,
+      branchId: null,
+      user: null,
+      mentions: [],
+      richMentions: [],
+      content: "test query",
+      context: {
+        username: "test",
+        fullName: null,
+        email: null,
+        profilePictureUrl: null,
+        timezone: "UTC",
+        origin: "web",
+      },
+      reactions: [],
+    };
 
     // Create tool configuration
     const toolConfiguration: LightServerSideMCPToolConfigurationType = {
@@ -639,6 +665,7 @@ describe("tryCallMCPTool", () => {
       },
       currentAction: mockAction,
       toolConfiguration,
+      userMessage,
     };
 
     // Call tryCallMCPTool

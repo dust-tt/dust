@@ -149,7 +149,7 @@ export type AgentLoopRunContextType = {
   conversation: ConversationType;
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;
-  userMessage?: UserMessageType;
+  userMessage: UserMessageType;
 };
 
 export type AgentLoopListToolsContextType = {
