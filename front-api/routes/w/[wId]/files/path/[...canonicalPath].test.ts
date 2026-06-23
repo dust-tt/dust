@@ -24,6 +24,7 @@ function makeBucket(
     delete: ReturnType<typeof vi.fn>;
     fileDelete: ReturnType<typeof vi.fn>;
     getAllFilesByPrefix: ReturnType<typeof vi.fn>;
+    save: ReturnType<typeof vi.fn>;
   }> = {}
 ) {
   const existingFilePathSuffixes = overrides.existingFilePathSuffixes ?? [];
@@ -34,6 +35,7 @@ function makeBucket(
     overrides.createReadStream ?? vi.fn().mockReturnValue(makeReadStream());
   const fileDelete =
     overrides.fileDelete ?? vi.fn().mockResolvedValue(undefined);
+  const save = overrides.save ?? vi.fn().mockResolvedValue(undefined);
 
   return {
     file: vi.fn((filePath: string) => ({
@@ -45,6 +47,7 @@ function makeBucket(
       getMetadata,
       createReadStream,
       delete: fileDelete,
+      save,
     })),
     copyFile: overrides.copyFile ?? vi.fn().mockResolvedValue(undefined),
     delete: overrides.delete ?? vi.fn().mockResolvedValue(undefined),
@@ -361,6 +364,134 @@ describe("PATCH /api/w/:wId/files/path/:canonicalPath", () => {
     });
 
     expect(response.status).toBe(200);
+  });
+});
+
+describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates a new file and returns 201", async () => {
+    const { workspace, conversation } = await setup();
+
+    const save = vi.fn().mockResolvedValue(undefined);
+    const bucket = makeBucket({ save });
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/notes.md`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: "# Hello",
+      }
+    );
+
+    expect(response.status).toBe(201);
+    expect(save).toHaveBeenCalledWith(Buffer.from("# Hello"), {
+      contentType: "text/markdown",
+    });
+  });
+
+  it("updates an existing file and returns 200", async () => {
+    const { workspace, conversation } = await setup();
+
+    const save = vi.fn().mockResolvedValue(undefined);
+    const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/notes.md"],
+      getMetadata: vi
+        .fn()
+        .mockResolvedValue([{ contentType: "text/markdown", size: "7" }]),
+      save,
+    });
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/notes.md`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "text/markdown" },
+        body: "# Updated",
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(save).toHaveBeenCalledWith(Buffer.from("# Updated"), {
+      contentType: "text/markdown",
+    });
+  });
+
+  it("returns 400 when updating a binary file type", async () => {
+    const { workspace, conversation } = await setup();
+
+    const save = vi.fn().mockResolvedValue(undefined);
+    const bucket = makeBucket({
+      existingFilePathSuffixes: ["/files/report.pdf"],
+      getMetadata: vi
+        .fn()
+        .mockResolvedValue([{ contentType: "application/pdf", size: "1024" }]),
+      save,
+    });
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/report.pdf`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/pdf" },
+        body: "not a real pdf",
+      }
+    );
+
+    expect(response.status).toBe(400);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("returns 413 when content exceeds the size limit", async () => {
+    const { workspace, conversation } = await setup();
+
+    const bucket = makeBucket();
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/large.txt`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "text/plain" },
+        body: "x".repeat(512 * 1024 + 1),
+      }
+    );
+
+    expect(response.status).toBe(413);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("returns 413 when Content-Length exceeds the size limit", async () => {
+    const { workspace, conversation } = await setup();
+
+    const bucket = makeBucket();
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/large.txt`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "text/plain",
+          "Content-Length": String(512 * 1024 + 1),
+        },
+        body: "small",
+      }
+    );
+
+    expect(response.status).toBe(413);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 });
 
