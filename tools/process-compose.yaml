@@ -18,6 +18,9 @@
 #   * front-spa / front-poke / marketing-site depend on sparkle being healthy.
 #   * front-workers depends on front-api-hono being healthy -- it now starts
 #     automatically, so the old "select front-workers and press r" step is gone.
+#   * core, sqlite-workers, oauth, migrations, front-api-hono, connectors depend
+#     on docker-infra (postgres, redis, qdrant, elasticsearch) being healthy.
+#   * front-workers and connectors depend on temporal-infra being healthy.
 
 version: "0.5"
 
@@ -41,6 +44,43 @@ processes:
       fi
       echo "OK"
 
+  # --- Infrastructure (Docker services) -------------------------------------
+  # Mandatory services: postgres, redis, qdrant (primary + secondary),
+  # elasticsearch. Started detached then tailed so they appear in the TUI.
+  # Readiness probe checks all four host ports before downstream services start.
+  docker-infra:
+    command: |
+      docker compose up -d db redis qdrant_primary qdrant_secondary elasticsearch
+      docker compose logs -f db redis qdrant_primary qdrant_secondary elasticsearch
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: infra
+    readiness_probe:
+      exec:
+        command: "nc -z localhost 5432 && nc -z localhost 6379 && nc -z localhost 9200 && nc -z localhost 6333"
+      period_seconds: 3
+      failure_threshold: 120
+
+  # Temporal server + search-attribute bootstrap. Runs its own postgres and
+  # elasticsearch inside the temporal-network (no host-port conflicts with
+  # docker-infra). The readiness probe verifies the search attributes are
+  # registered before front-workers and connectors start.
+  temporal-infra:
+    command: |
+      docker compose up -d
+      until nc -z localhost 7233 2>/dev/null; do sleep 2; done
+      docker compose exec -T temporal-admin-tools temporal operator search-attribute create \
+        --name connectorId --type Int \
+        --name conversationId --type Text \
+        --name workspaceId --type Text 2>/dev/null || true
+      docker compose logs -f
+    working_dir: "${DUST_DEV_ROOT}/temporal"
+    namespace: infra
+    readiness_probe:
+      exec:
+        command: "docker compose -f ${DUST_DEV_ROOT}/temporal/docker-compose.yml exec -T temporal-admin-tools temporal operator search-attribute list 2>/dev/null | grep -q connectorId"
+      period_seconds: 3
+      failure_threshold: 120
+
   # --- Rust services (cargo watch -> live reload) -------------------------
   # `cargo watch` recompiles and reruns on source changes, streaming plain log
   # output into the process-compose view (no TUI). CARGO_TERM_COLOR keeps output
@@ -51,6 +91,9 @@ processes:
     namespace: core
     environment:
       - "CARGO_TERM_COLOR=always"
+    depends_on:
+      docker-infra:
+        condition: process_healthy
 
   sqlite-workers:
     command: "cargo watch -x 'run --bin sqlite-worker'"
@@ -62,6 +105,9 @@ processes:
       - "IS_LOCAL_DEV=1"
       - "DATABASES_STORE_DATABASE_URI=postgresql://dev:dev@localhost:5432/dust_databases_store"
       - "CORE_API_KEY=soupinou"
+    depends_on:
+      docker-infra:
+        condition: process_healthy
 
   oauth:
     command: "cargo watch -x 'run --bin oauth'"
@@ -70,6 +116,9 @@ processes:
     environment:
       - "CARGO_TERM_COLOR=always"
       - "RUST_BACKTRACE=1"
+    depends_on:
+      docker-infra:
+        condition: process_healthy
 
   # --- Build watchers (readiness gates for downstream services) -----------
   sparkle:
@@ -100,6 +149,8 @@ processes:
     depends_on:
       sdks-js:
         condition: process_healthy
+      docker-infra:
+        condition: process_healthy
 
   front-api-hono:
     command: "npm run dev"
@@ -107,6 +158,8 @@ processes:
     namespace: front
     depends_on:
       sdks-js:
+        condition: process_healthy
+      docker-infra:
         condition: process_healthy
     environment:
       - "NODE_ENV=development"
@@ -129,6 +182,8 @@ processes:
     depends_on:
       front-api-hono:
         condition: process_healthy
+      temporal-infra:
+        condition: process_healthy
 
   connectors:
     command: "./admin/dev.sh"
@@ -136,6 +191,10 @@ processes:
     namespace: front
     depends_on:
       sdks-js:
+        condition: process_healthy
+      docker-infra:
+        condition: process_healthy
+      temporal-infra:
         condition: process_healthy
 
   front-spa:
@@ -205,6 +264,26 @@ processes:
     working_dir: "${DUST_DEV_ROOT}/firebase-functions/webhook-router"
     namespace: optional
     disabled: true
+
+  # apache-tika: Document text extraction (PDF, Office, etc.).
+  # front-api reads its URL from TIKA_URL (set to http://localhost:9998).
+  apache-tika:
+    command: "docker compose up apache-tika"
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: optional
+    disabled: true
+
+  # kibana: Elasticsearch UI. kibana_settings (one-shot password setup) is a
+  # docker-compose dependency of kibana and starts automatically.
+  # Requires docker-infra (elasticsearch) to be running first.
+  kibana:
+    command: "docker compose up kibana_settings kibana"
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: optional
+    disabled: true
+    depends_on:
+      docker-infra:
+        condition: process_healthy
 
   # Gotenberg: Office/PDF document preview conversion (LibreOffice route).
   # front-api reads its URL from DOCUMENT_RENDERER_URL (set to http://localhost:3100).

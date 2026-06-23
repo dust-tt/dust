@@ -6,6 +6,11 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 # Source and install the correct node version using nvm.
 # If DUST_NODE_VERSION is set (e.g. via `source scripts/try-node24.sh`), use that version
 # instead of the .nvmrc default.
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker is not running. Please start Docker Desktop/Orb Stack and try again."
+  exit 1
+fi
+
 source ~/.nvm/nvm.sh
 if [ -n "${DUST_NODE_VERSION:-}" ]; then
   nvm install "$DUST_NODE_VERSION"
