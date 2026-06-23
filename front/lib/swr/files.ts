@@ -20,9 +20,11 @@ import type {
   FileTypeWithMetadata,
   SharingGrantType,
 } from "@app/types/files";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";
+import { useSWRConfig } from "swr";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
@@ -100,6 +102,85 @@ export function useFileContentByUrl({
     isNotFound,
     isFileContentLoading: !error && data === undefined && !isDisabled,
     fileContentError: error ? normalizeError(error) : null,
+  };
+}
+
+export async function writeFileContentByPath({
+  owner,
+  canonicalPath,
+  content,
+  contentType = "text/plain",
+}: {
+  owner: LightWorkspaceType;
+  canonicalPath: string;
+  content: string;
+  contentType?: string;
+}): Promise<void> {
+  const url = getFilePathContentApiPath(owner, canonicalPath);
+  const response = await clientFetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: content,
+  });
+
+  if (!response.ok) {
+    const errorData = await getErrorFromResponse(response);
+    throw new Error(errorData.message);
+  }
+}
+
+export function useWriteFileContentByPath({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutate } = useSWRConfig();
+
+  return async ({
+    canonicalPath,
+    content,
+    contentType = "text/plain",
+    showSuccessNotification = false,
+  }: {
+    canonicalPath: string;
+    content: string;
+    contentType?: string;
+    showSuccessNotification?: boolean;
+  }): Promise<Result<void, Error>> => {
+    const url = getFilePathContentApiPath(owner, canonicalPath);
+
+    try {
+      await writeFileContentByPath({
+        owner,
+        canonicalPath,
+        content,
+        contentType,
+      });
+
+      await mutate<FileContentByUrlData>(
+        url,
+        { kind: "loaded", content },
+        { revalidate: false }
+      );
+
+      if (showSuccessNotification) {
+        sendNotification({
+          type: "success",
+          title: "File saved",
+        });
+      }
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to save file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
   };
 }
 

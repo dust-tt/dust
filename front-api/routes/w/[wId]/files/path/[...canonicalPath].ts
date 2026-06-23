@@ -7,9 +7,13 @@ import {
   moveCanonicalFile,
   renameCanonicalFile,
   streamThumbnail,
+  WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+  WriteCanonicalFileContentError,
+  writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import { bodyLimit } from "@front-api/middlewares/body_limit";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -32,6 +36,7 @@ const ParamsSchema = z.object({
  *   HEAD   /api/w/:wId/files/path/{...canonicalPath}                    metadata only
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
+ *   PUT    /api/w/:wId/files/path/{...canonicalPath}                    replace text content
  *   DELETE /api/w/:wId/files/path/{...canonicalPath}
  */
 const app = workspaceApp();
@@ -344,6 +349,101 @@ app.patch(
     }
 
     return new Response(null, { status: 200 });
+  }
+);
+
+/** @ignoreswagger */
+app.put(
+  "/:canonicalPath{.+}",
+  bodyLimit(WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES),
+  validate("param", ParamsSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { canonicalPath } = ctx.req.valid("param");
+    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
+    if (err) {
+      return err;
+    }
+
+    const contentLengthHeader = ctx.req.header("content-length");
+    if (contentLengthHeader) {
+      const contentLength = Number.parseInt(contentLengthHeader, 10);
+      if (
+        Number.isFinite(contentLength) &&
+        contentLength > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES
+      ) {
+        return apiError(ctx, {
+          status_code: 413,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
+          },
+        });
+      }
+    }
+
+    let contentBuffer: ArrayBuffer;
+    try {
+      contentBuffer = await ctx.req.arrayBuffer();
+    } catch {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to read request body.",
+        },
+      });
+    }
+
+    if (contentBuffer.byteLength > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES) {
+      return apiError(ctx, {
+        status_code: 413,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
+        },
+      });
+    }
+
+    const writeResult = await writeCanonicalFileContent(
+      auth,
+      dustFs,
+      canonicalPath,
+      new Uint8Array(contentBuffer),
+      ctx.req.header("content-type") ?? undefined
+    );
+
+    if (writeResult.isErr()) {
+      const error = writeResult.error;
+      if (error instanceof WriteCanonicalFileContentError) {
+        const { code } = error;
+        switch (code) {
+          case "too_large":
+            return apiError(ctx, {
+              status_code: 413,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "unsupported_content_type":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          default:
+            return assertNever(code);
+        }
+      }
+      return apiError(ctx, mapDustFsError(error));
+    }
+
+    return new Response(null, {
+      status: writeResult.value.created ? 201 : 200,
+    });
   }
 );
 
