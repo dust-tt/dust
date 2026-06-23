@@ -22,6 +22,7 @@ import { expect } from "vitest";
 interface WorkspaceOverrides {
   whiteListedProviders?: ModelProviderIdType[] | null;
   metronomeCustomerId?: string | null;
+  regionalModelsOnly?: boolean;
 }
 
 export class WorkspaceFactory {
@@ -31,6 +32,14 @@ export class WorkspaceFactory {
 
   static async byok(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
     return this.create(FREE_BYOK_PLAN_CODE, overrides);
+  }
+
+  static async enterprise(
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
+    const plan = await PlanFactory.enterprise();
+
+    return this.createWithPlan(plan, overrides);
   }
 
   static async freeNoProductAccess(
@@ -115,6 +124,9 @@ export class WorkspaceFactory {
       metronomeCustomerId: overrides?.metronomeCustomerId ?? null,
       ...(overrides?.whiteListedProviders !== undefined && {
         whiteListedProviders: overrides.whiteListedProviders,
+      }),
+      ...(overrides?.regionalModelsOnly !== undefined && {
+        regionalModelsOnly: overrides.regionalModelsOnly,
       }),
     });
 

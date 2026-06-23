@@ -5,7 +5,6 @@ import {
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
@@ -92,15 +91,12 @@ describe("selectEnabledModel", () => {
     vi.restoreAllMocks();
   });
 
-  // withBrandedFrames is the public factory that yields an enterprise,
-  // upgraded workspace, which is what makes Claude Opus 4.8 otherwise
-  // selectable so the only remaining gate under test is regional availability.
+  // An enterprise (upgraded) workspace is what makes Claude Opus 4.8 otherwise
+  // selectable, so the only remaining gate under test is regional availability.
   async function enterpriseRegionalOnlyAuth(): Promise<Authenticator> {
-    const workspace = await WorkspaceFactory.withBrandedFrames();
-    await WorkspaceModel.update(
-      { regionalModelsOnly: true },
-      { where: { sId: workspace.sId } }
-    );
+    const workspace = await WorkspaceFactory.enterprise({
+      regionalModelsOnly: true,
+    });
 
     return Authenticator.internalAdminForWorkspace(workspace.sId);
   }
@@ -137,6 +133,8 @@ describe("selectEnabledModel", () => {
       CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     ]);
 
-    expect(selected?.modelId).toBe(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId);
+    expect(selected?.modelId).toBe(
+      CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId
+    );
   });
 });

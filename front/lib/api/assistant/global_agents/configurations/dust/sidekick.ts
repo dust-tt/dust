@@ -337,8 +337,8 @@ export function _getSidekickGlobalAgent(
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? selectEnabledModel(auth, [CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG]) ??
-        getSmallWhitelistedModel(auth)
+      ? (selectEnabledModel(auth, [CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG]) ??
+        getSmallWhitelistedModel(auth))
       : getLargeWhitelistedModel(auth);
   const model = modelConfiguration
     ? {
