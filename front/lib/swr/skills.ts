@@ -1,5 +1,5 @@
-import type { GetAgentSkillsResponseBody } from "@app/lib/api/assistant/configuration/skills";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetAgentSkillsResponseBody } from "@app/types/api/assistant/configuration/skills";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

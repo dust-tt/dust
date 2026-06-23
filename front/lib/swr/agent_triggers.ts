@@ -7,10 +7,6 @@ import type {
   PostTextAsCronRuleResponseBody,
   PostTriggersRequestBody,
 } from "@app/lib/api/assistant/configuration/triggers";
-import type {
-  PostWebhookFilterGeneratorRequestBody,
-  PostWebhookFilterGeneratorResponseBody,
-} from "@app/lib/api/assistant/configuration/triggers/webhook_filter_generator";
 import { clientFetch } from "@app/lib/egress/client";
 import { parseMatcherExpression } from "@app/lib/matcher";
 import {
@@ -20,6 +16,10 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
+import type {
+  PostWebhookFilterGeneratorRequestBody,
+  PostWebhookFilterGeneratorResponseBody,
+} from "@app/types/api/assistant/configuration/triggers/webhook_filter_generator";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

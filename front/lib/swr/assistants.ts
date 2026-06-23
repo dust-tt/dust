@@ -2,7 +2,6 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetAgentUsageResponseBody } from "@app/lib/api/assistant/agent_usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/lib/api/assistant/builder/slack/channels_linked_with_agent";
-import type { GetAgentConfigurationsResponseBody } from "@app/lib/api/assistant/configuration";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
@@ -43,6 +42,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
+import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,
