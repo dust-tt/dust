@@ -1036,6 +1036,14 @@ export function isMarkdownContentType(contentType: string): boolean {
   return contentType === "text/markdown";
 }
 
+export function isPresentationContentType(contentType: string): boolean {
+  return (
+    contentType === "application/vnd.ms-powerpoint" ||
+    contentType ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+  );
+}
+
 /**
  * Infers a supported content type from a file name's extension.
  * Returns null if the extension is not recognized.

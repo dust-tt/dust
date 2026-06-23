@@ -69,6 +69,12 @@ export function ConversationFileExplorer({
     [openPanel]
   );
 
+  const onOpenPresentation = useCallback(
+    (entry: { fileId: string }) =>
+      openPanel({ type: "file_preview", fileId: entry.fileId }),
+    [openPanel]
+  );
+
   return (
     <div className="flex h-panel min-h-0 flex-col">
       <AppLayoutTitle>
@@ -98,6 +104,7 @@ export function ConversationFileExplorer({
           getFileUrl={getFileUrl}
           onFileDownload={onFileDownload}
           onOpenInteractive={onOpenInteractive}
+          onOpenPresentation={onOpenPresentation}
           owner={owner}
           virtualScopeRoots={isPod ? POD_CONVERSATION_SCOPE_ROOTS : undefined}
         />
