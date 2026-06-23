@@ -1,13 +1,13 @@
-import type {
-  GetUserResponseBody,
-  PostUserMetadataResponseBody,
-} from "@app/lib/api/user";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { getSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  GetUserResponseBody,
+  PostUserMetadataResponseBody,
+} from "@app/types/api/user";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";

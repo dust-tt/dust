@@ -1,8 +1,8 @@
 import apiConfig from "@app/lib/api/config";
-import type { PatchDocumentResponseBody } from "@app/lib/api/data_sources";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
+import type { PatchDocumentResponseBody } from "@app/types/api/data_sources";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
 import { CoreAPI } from "@app/types/core/core_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";

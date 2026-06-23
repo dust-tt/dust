@@ -1,8 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetUserMetadataResponseBody,
-  GetUserResponseBody,
-} from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetWorkspaceUsageStatusResponseBody } from "@app/lib/metronome/user_block";
 import type { GetUserApprovalsResponseBody } from "@app/lib/resources/user_resource";
@@ -16,6 +12,10 @@ import {
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import type { GetPendingInvitationsResponseBody } from "@app/types/api/invitation";
 import type { GetSlackNotificationResponseBody } from "@app/types/api/me/slack_notifications";
+import type {
+  GetUserMetadataResponseBody,
+  GetUserResponseBody,
+} from "@app/types/api/user";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";

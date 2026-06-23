@@ -1,10 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
-  GetDataSourceViewResponseBody,
-  GetSpaceDataSourceViewsResponseBody,
-} from "@app/lib/api/data_source_view";
-import type { PostSpaceDataSourceResponseBody } from "@app/lib/api/data_sources";
-import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
@@ -30,6 +25,11 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  GetDataSourceViewResponseBody,
+  GetSpaceDataSourceViewsResponseBody,
+} from "@app/types/api/data_source_view";
+import type { PostSpaceDataSourceResponseBody } from "@app/types/api/data_sources";
 import type { SpacesLookupResponseBody } from "@app/types/api/projects/list";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";

@@ -23,8 +23,6 @@ import type {
 } from "@app/lib/api/assistant/observability/tool_latency";
 import type { GetToolStepIndexResponse } from "@app/lib/api/assistant/observability/tool_step_index";
 import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observability/version_markers";
-import type { PostAgentUserFavoriteRequestBody } from "@app/lib/api/assistant/user_relation";
-import type { GetMemberResponseBody } from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   FetchAgentTemplateResponse,
@@ -43,6 +41,8 @@ import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
+import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/user_relation";
+import type { GetMemberResponseBody } from "@app/types/api/user";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,

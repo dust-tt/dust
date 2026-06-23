@@ -14,8 +14,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
   LightWorkspaceType,
-  RoleType,
-  UserMetadataType,
   UserType,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
@@ -23,42 +21,6 @@ import type {
 
 import { MembershipResource } from "../resources/membership_resource";
 import { findWorkOSOrganizationsForUserId } from "./workos/organization_membership";
-
-export type GetMemberResponseBody = {
-  member: {
-    id: string;
-    username: string;
-    email: string;
-    firstName: string;
-    lastName: string | null;
-    fullName: string;
-    image: string | null;
-    revoked: boolean;
-    role: RoleType;
-    startAt: string | null;
-    endAt: string | null;
-  };
-};
-
-export type PostMemberResponseBody = {
-  member: UserTypeWithWorkspaces;
-};
-
-export type GetUserResponseBody = {
-  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
-};
-
-export type PostUserMetadataResponseBody = {
-  success: boolean;
-};
-
-export type GetUserMetadataResponseBody = {
-  metadata: UserMetadataType | null;
-};
-
-export type PostUserMetadataKeyResponseBody = {
-  metadata: UserMetadataType;
-};
 
 /**
  * Returns the acting user for an authenticated request. Falls back to looking up the user by

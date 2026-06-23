@@ -1,5 +1,5 @@
-import type { PostDocumentResponseBody } from "@app/lib/api/data_sources";
 import { upsertDocument } from "@app/lib/api/data_sources";
+import type { PostDocumentResponseBody } from "@app/types/api/data_sources";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

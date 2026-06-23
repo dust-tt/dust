@@ -1,7 +1,3 @@
-import type {
-  GetRunsResponseBody,
-  PostRunsResponseBody,
-} from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -10,6 +6,10 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
+import type {
+  GetRunsResponseBody,
+  PostRunsResponseBody,
+} from "@app/types/api/apps";
 import { credentialsFromProviders } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";

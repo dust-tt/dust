@@ -1,5 +1,5 @@
-import type { GetDataSourceViewsResponseBody } from "@app/lib/api/data_source_view";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { GetDataSourceViewsResponseBody } from "@app/types/api/data_source_view";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
