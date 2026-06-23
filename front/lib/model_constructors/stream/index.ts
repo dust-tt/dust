@@ -1,6 +1,9 @@
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { AgentPlatformEuropeClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_haiku_four_dot_five";
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
+import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
+import { AgentPlatformEuropeGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_pro";
+import { AgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
 import { AnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
 import { AnthropicGlobalClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_seven";
 import { AnthropicGlobalClaudeOpusFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_six";
@@ -37,6 +40,12 @@ export const STREAM_ENDPOINTS = {
     AnthropicGlobalClaudeOpusFourDotSixStream,
   [AgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
     AgentPlatformEuropeClaudeSonnetFourDotSixStream,
+  [AgentPlatformEuropeGeminiThreeDotOneProStream.id]:
+    AgentPlatformEuropeGeminiThreeDotOneProStream,
+  [AgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:
+    AgentPlatformEuropeGeminiThreeDotFiveFlashStream,
+  [AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
+    AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream,
   [GoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
     GoogleAiStudioGlobalGeminiThreeDotOneProStream,
   [GoogleAiStudioGlobalGeminiThreeDotFiveFlashStream.id]:
