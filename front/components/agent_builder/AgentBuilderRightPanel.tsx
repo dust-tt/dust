@@ -17,7 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type AgentBuilderRightPanelTabType = "sidekick" | "preview" | "insights";
 
@@ -189,22 +189,26 @@ export function AgentBuilderRightPanel({
   const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
     isSidekickDisabled ? "preview" : "sidekick"
   );
-
-  useEffect(() => {
-    if (isSidekickDisabled && selectedTab === "sidekick") {
-      setSelectedTab("preview");
-    }
-  }, [isSidekickDisabled, selectedTab]);
+  const activeTab =
+    isSidekickDisabled && selectedTab === "sidekick" ? "preview" : selectedTab;
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen((prev) => !prev);
   };
 
   const handleTabChange = (tab: AgentBuilderRightPanelTabType) => {
+    if (isSidekickDisabled && tab === "sidekick") {
+      return;
+    }
+
     setSelectedTab(tab);
   };
 
   const handleTabSelect = (tab: AgentBuilderRightPanelTabType) => {
+    if (isSidekickDisabled && tab === "sidekick") {
+      return;
+    }
+
     setSelectedTab(tab);
     setIsPreviewPanelOpen(true);
   };
@@ -215,14 +219,14 @@ export function AgentBuilderRightPanel({
         <PanelHeader
           isSidekickDisabled={isSidekickDisabled}
           isPreviewPanelOpen={isPreviewPanelOpen}
-          selectedTab={selectedTab}
+          selectedTab={activeTab}
           onTogglePanel={handleTogglePanel}
           onTabChange={handleTabChange}
         />
       </div>
       {isPreviewPanelOpen ? (
         <ExpandedContent
-          selectedTab={selectedTab}
+          selectedTab={activeTab}
           isSidekickDisabled={isSidekickDisabled}
           agentConfigurationId={agentConfigurationId}
         />

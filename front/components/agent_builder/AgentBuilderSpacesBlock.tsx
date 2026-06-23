@@ -212,10 +212,7 @@ export function AgentBuilderSpacesBlock({
           </ContentMessage>
         </div>
       )}
-      <SpaceChips
-        spaces={spacesToDisplay}
-        onRemoveSpace={disabled ? undefined : handleRemoveSpace}
-      />
+      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={actionsAndSkillsRequestedSpaceIds}
