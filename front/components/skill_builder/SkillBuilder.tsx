@@ -132,11 +132,14 @@ export default function SkillBuilder({
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
-  useNavigationLock(isDirty && !isSaving);
-
+  const isAdminExistingSkill = !!skill && isAdmin(owner);
   const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
   const isAdminNonEditor =
-    !!skill && !isEditorsLoading && isAdmin(owner) && !isCurrentUserEditor;
+    isAdminExistingSkill && !isEditorsLoading && !isCurrentUserEditor;
+  const isEditorLocked =
+    isAdminExistingSkill && (isEditorsLoading || !isCurrentUserEditor);
+
+  useNavigationLock(isDirty && !isSaving && !isEditorLocked);
 
   const handleAddSelfAsEditor = async () => {
     if (!skill || isAddingSelfAsEditor) {
@@ -152,7 +155,7 @@ export default function SkillBuilder({
   };
 
   const handleSubmit = async (data: SkillBuilderFormData) => {
-    if (isAdminNonEditor) {
+    if (isEditorLocked) {
       return;
     }
 
@@ -204,7 +207,7 @@ export default function SkillBuilder({
   };
 
   const handleSave = () => {
-    if (isAdminNonEditor) {
+    if (isEditorLocked) {
       return;
     }
 
@@ -270,18 +273,18 @@ export default function SkillBuilder({
             </ContentMessage>
           )}
           <SkillBuilderAgentFacingDescriptionSection
-            disabled={isAdminNonEditor}
+            disabled={isEditorLocked}
           />
-          <SkillBuilderInstructionsSection disabled={isAdminNonEditor} />
+          <SkillBuilderInstructionsSection disabled={isEditorLocked} />
           <SkillBuilderRequestedSpacesSection
-            disabled={isAdminNonEditor}
+            disabled={isEditorLocked}
             initialRequestedSpaceIds={skill?.requestedSpaceIds}
           />
-          <SkillBuilderFilesSection disabled={isAdminNonEditor} />
+          <SkillBuilderFilesSection disabled={isEditorLocked} />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
-            disabled={isAdminNonEditor}
+            disabled={isEditorLocked}
           />
         </div>
       </ScrollArea>
@@ -301,7 +304,7 @@ export default function SkillBuilder({
             variant="highlight"
             label={isSaving ? "Saving..." : "Save"}
             onClick={handleSave}
-            disabled={isSaving || isAdminNonEditor}
+            disabled={isSaving || isEditorLocked}
           />
         }
       />
@@ -335,9 +338,7 @@ export default function SkillBuilder({
                   <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
                     <div className="h-full w-full overflow-y-auto">
-                      <SkillBuilderSuggestionsPanel
-                        disabled={isAdminNonEditor}
-                      />
+                      <SkillBuilderSuggestionsPanel disabled={isEditorLocked} />
                     </div>
                   </ResizablePanel>
                 </>

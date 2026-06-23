@@ -329,13 +329,13 @@ export default function AgentBuilder({
     mcpServerViews,
   });
 
+  const isAdminExistingAgent =
+    !!agentConfiguration && !duplicateAgentId && isAdmin;
   const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
   const isAdminNonEditor =
-    !!agentConfiguration &&
-    !duplicateAgentId &&
-    !isEditorsLoading &&
-    isAdmin &&
-    !isCurrentUserEditor;
+    isAdminExistingAgent && !isEditorsLoading && !isCurrentUserEditor;
+  const isEditorLocked =
+    isAdminExistingAgent && (isEditorsLoading || !isCurrentUserEditor);
 
   const handleAddSelfAsEditor = async () => {
     if (!agentConfiguration || isAddingSelfAsEditor) {
@@ -402,7 +402,7 @@ export default function AgentBuilder({
   }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentId]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
-    if (isAdminNonEditor) {
+    if (isEditorLocked) {
       return;
     }
 
@@ -528,7 +528,7 @@ export default function AgentBuilder({
   };
 
   const handleSave = async () => {
-    if (isSaving || isAdminNonEditor) {
+    if (isSaving || isEditorLocked) {
       return;
     }
     setIsSaving(true);
@@ -551,12 +551,12 @@ export default function AgentBuilder({
 
   // Disable navigation lock during save process for new agents
   useNavigationLock(
-    (isDirty || !!duplicateAgentId) && !isSaving && !isAdminNonEditor
+    (isDirty || !!duplicateAgentId) && !isSaving && !isEditorLocked
   );
 
   const isSaveDisabled = duplicateAgentId
     ? false
-    : isAdminNonEditor || isSubmitting || isActionsLoading || isTriggersLoading;
+    : isEditorLocked || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -576,7 +576,7 @@ export default function AgentBuilder({
       <FormProvider form={form} asForm={false}>
         <SidekickSuggestionsProvider
           agentConfigurationId={suggestionsAgentId}
-          disabled={isAdminNonEditor}
+          disabled={isEditorLocked}
         >
           <AgentBuilderContent
             agentConfiguration={agentConfiguration}
@@ -586,7 +586,8 @@ export default function AgentBuilder({
             saveLabel={saveLabel}
             handleSave={handleSave}
             isSaveDisabled={isSaveDisabled}
-            isEditorLocked={isAdminNonEditor}
+            isEditorLocked={isEditorLocked}
+            isEditorGateVisible={isAdminNonEditor}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={() => {
               void handleAddSelfAsEditor();
@@ -626,6 +627,7 @@ interface AgentBuilderContentProps {
   handleSave: () => void;
   isSaveDisabled: boolean;
   isEditorLocked: boolean;
+  isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
   isTriggersLoading: boolean;
@@ -654,6 +656,7 @@ function AgentBuilderContent({
   handleSave,
   isSaveDisabled,
   isEditorLocked,
+  isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
   isTriggersLoading,
@@ -761,7 +764,7 @@ function AgentBuilderContent({
               disabled: isSaveDisabled || isEditorLocked,
             }}
             editorGateMessage={
-              isEditorLocked ? (
+              isEditorGateVisible ? (
                 <BuilderEditorGateMessage
                   builderType="agent"
                   isLoading={isAddingSelfAsEditor}
