@@ -3,9 +3,9 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import {
-  fileDownloadDirective,
-  getFileDownloadPlugin,
-} from "@app/components/markdown/FileDownloadBlock";
+  filePreviewDirective,
+  getFilePreviewPlugin,
+} from "@app/components/markdown/FilePreviewBlock";
 import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import {
   InstructionBlock,
@@ -69,7 +69,7 @@ export const AgentMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       project_task: getTaskDirectiveBlock(owner),
       dustimg: getImgPlugin(owner),
-      file_download: getFileDownloadPlugin(),
+      file_preview: getFilePreviewPlugin(),
       instruction_block: InstructionBlock,
       ...additionalMarkdownComponents,
     }),
@@ -84,7 +84,7 @@ export const AgentMessageMarkdown = ({
       getCiteDirective(),
       visualizationDirective,
       imgDirective,
-      fileDownloadDirective,
+      filePreviewDirective,
       toolDirective,
       quickReplyDirective,
       ...additionalMarkdownPlugins,

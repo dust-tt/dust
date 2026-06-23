@@ -1,7 +1,7 @@
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
-import { getFileDownloadMarkdownDirective } from "@app/lib/markdown/file_download";
+import { getFilePreviewMarkdownDirective } from "@app/lib/markdown/file_preview";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { AgentMessageMarkdown } from "./AgentMessageMarkdown";
@@ -111,13 +111,13 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       expect(a?.getAttribute("href")).toBe("https://example.com");
     });
 
-    it("renders scoped file download directives as previewable files", async () => {
+    it("renders scoped file preview directives as previewable files", async () => {
       const { container } = render(
         <FilePreviewProvider owner={mockOwner}>
           <AgentMessageMarkdown
             owner={mockOwner}
             content={
-              'Download\n::download_file{path="conversation-c1/booklet.pdf" title="booklet.pdf" contentType="application/pdf"}'
+              'Preview\n:preview_file{path="conversation-c1/booklet.pdf" title="booklet.pdf" contentType="application/pdf"}'
             }
           />
         </FilePreviewProvider>
@@ -135,10 +135,25 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       ).toBeInTheDocument();
     });
 
-    it("round-trips generated file download directives with escaped attributes", () => {
+    it("hides incomplete text directives while content is streaming", async () => {
+      const { container } = render(
+        <AgentMessageMarkdown
+          owner={mockOwner}
+          content={'Created file\n:preview_file{path="conversation-c1/book'}
+          streamingState="streaming"
+        />
+      );
+
+      await waitFor(() =>
+        expect(container.textContent).toContain("Created file")
+      );
+      expect(container.textContent).not.toContain(":preview_file");
+    });
+
+    it("round-trips generated file preview directives with escaped attributes", () => {
       const title = 'report "Q2" [final] `beta`.pdf';
       const path = `conversation-c1/reports/${title}`;
-      const directive = getFileDownloadMarkdownDirective({
+      const directive = getFilePreviewMarkdownDirective({
         contentType: "application/pdf",
         path,
         title,

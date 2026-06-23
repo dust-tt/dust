@@ -1,23 +1,17 @@
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
-  FILE_DOWNLOAD_COMPONENT_NAME,
-  FILE_DOWNLOAD_DIRECTIVE_NAME,
-  getDownloadContentType,
-  getFileDownloadTypeLabel,
+  FILE_PREVIEW_COMPONENT_NAME,
+  FILE_PREVIEW_DIRECTIVE_NAME,
   getFileNameFromScopedPath,
-} from "@app/lib/markdown/file_download";
+  getFilePreviewContentType,
+  getFilePreviewTypeLabel,
+} from "@app/lib/markdown/file_preview";
 import { isString } from "@app/types/shared/utils/general";
 import { Icon } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
-interface FileDownloadBlockProps {
-  contentType?: string;
-  path: string;
-  title?: string;
-}
-
-interface FileDownloadPluginProps {
+interface FilePreviewBlockProps {
   contentType?: string;
   path: string;
   title?: string;
@@ -46,30 +40,30 @@ function getDirectiveLabelText(children: unknown): string | undefined {
   return label.length > 0 ? label : undefined;
 }
 
-export function FileDownloadBlock({
+export function FilePreviewBlock({
   contentType,
   path,
   title,
-}: FileDownloadBlockProps) {
+}: FilePreviewBlockProps) {
   if (!path) {
     return null;
   }
 
   const fileName = title || getFileNameFromScopedPath(path);
-  const downloadContentType = getDownloadContentType({
+  const fileContentType = getFilePreviewContentType({
     contentType,
     fileName,
   });
-  const typeLabel = getFileDownloadTypeLabel({
-    contentType: downloadContentType,
+  const typeLabel = getFilePreviewTypeLabel({
+    contentType: fileContentType,
     fileName,
   });
-  const FileIcon = getFileTypeIcon(downloadContentType, fileName);
+  const FileIcon = getFileTypeIcon(fileContentType, fileName);
 
   return (
     <PreviewableCitation
       filePath={path}
-      contentType={downloadContentType}
+      contentType={fileContentType}
       title={fileName}
       description={typeLabel}
       icon={<Icon visual={FileIcon} size="xs" />}
@@ -77,24 +71,14 @@ export function FileDownloadBlock({
   );
 }
 
-export function getFileDownloadPlugin() {
-  function FileDownloadPlugin({
-    contentType,
-    path,
-    title,
-  }: FileDownloadPluginProps) {
-    return (
-      <FileDownloadBlock contentType={contentType} path={path} title={title} />
-    );
-  }
-
-  return FileDownloadPlugin;
+export function getFilePreviewPlugin() {
+  return FilePreviewBlock;
 }
 
-export function fileDownloadDirective() {
+export function filePreviewDirective() {
   return (tree: any) => {
-    visit(tree, ["textDirective", "leafDirective"], (node) => {
-      if (node.name !== FILE_DOWNLOAD_DIRECTIVE_NAME) {
+    visit(tree, ["textDirective"], (node) => {
+      if (node.name !== FILE_PREVIEW_DIRECTIVE_NAME) {
         return;
       }
 
@@ -117,7 +101,7 @@ export function fileDownloadDirective() {
       }
 
       const data = node.data ?? (node.data = {});
-      data.hName = FILE_DOWNLOAD_COMPONENT_NAME;
+      data.hName = FILE_PREVIEW_COMPONENT_NAME;
       data.hProperties = {
         path,
         title,

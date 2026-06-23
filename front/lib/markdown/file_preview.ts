@@ -6,10 +6,10 @@ import {
 } from "@app/types/files";
 import { escape } from "html-escaper";
 
-export const FILE_DOWNLOAD_DIRECTIVE_NAME = "download_file";
-export const FILE_DOWNLOAD_COMPONENT_NAME = "file_download";
-export const FILE_DOWNLOAD_DIRECTIVE_EXAMPLE =
-  '::download_file{path="conversation-<id>/report.pdf" title="report.pdf" contentType="application/pdf"}';
+export const FILE_PREVIEW_DIRECTIVE_NAME = "preview_file";
+export const FILE_PREVIEW_COMPONENT_NAME = "file_preview";
+export const FILE_PREVIEW_DIRECTIVE_EXAMPLE =
+  ':preview_file{path="conversation-<id>/report.pdf" title="report.pdf" contentType="application/pdf"}';
 
 function fileExtensionLabel(fileName: string): string | null {
   const lastDot = fileName.lastIndexOf(".");
@@ -45,7 +45,7 @@ export function getFileNameFromScopedPath(filePath: string): string {
   return fileName || filePath;
 }
 
-export function getDownloadContentType({
+export function getFilePreviewContentType({
   contentType,
   fileName,
 }: {
@@ -59,14 +59,14 @@ export function getDownloadContentType({
   return contentTypeFromFileName(fileName) ?? "application/octet-stream";
 }
 
-export function getFileDownloadTypeLabel({
+export function getFilePreviewTypeLabel({
   contentType,
   fileName,
 }: {
   contentType?: string;
   fileName: string;
 }): string {
-  const downloadContentType = contentType
+  const fileContentType = contentType
     ? stripMimeParameters(contentType)
     : contentTypeFromFileName(fileName);
 
@@ -75,7 +75,7 @@ export function getFileDownloadTypeLabel({
     return extensionLabel;
   }
 
-  const contentTypeLabel = contentTypeExtensionLabel(downloadContentType);
+  const contentTypeLabel = contentTypeExtensionLabel(fileContentType);
   if (contentTypeLabel) {
     return contentTypeLabel;
   }
@@ -83,7 +83,7 @@ export function getFileDownloadTypeLabel({
   return "File";
 }
 
-export function getFileDownloadMarkdownDirective({
+export function getFilePreviewMarkdownDirective({
   contentType,
   path,
   title,
@@ -101,10 +101,10 @@ export function getFileDownloadMarkdownDirective({
     attributes.push(`contentType=${quoteDirectiveAttribute(contentType)}`);
   }
 
-  return `::${FILE_DOWNLOAD_DIRECTIVE_NAME}{${attributes.join(" ")}}`;
+  return `:${FILE_PREVIEW_DIRECTIVE_NAME}{${attributes.join(" ")}}`;
 }
 
-export function getFileDownloadDirectiveInstruction({
+export function getFilePreviewDirectiveInstruction({
   contentType,
   path,
   title,
@@ -114,8 +114,8 @@ export function getFileDownloadDirectiveInstruction({
   title?: string;
 }): string {
   return (
-    "To show a previewable file card in your response, output this markdown directive exactly on its own line:\n" +
-    `${getFileDownloadMarkdownDirective({ contentType, path, title })}\n` +
+    "To show a previewable file citation in your response, output this markdown directive exactly on its own line:\n" +
+    `${getFilePreviewMarkdownDirective({ contentType, path, title })}\n` +
     "Do not invent a URL for this file."
   );
 }
