@@ -1,9 +1,9 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   PatchSkillResponseBody,
   PostSkillResponseBody,
-} from "@app/lib/api/skills";
-import { clientFetch } from "@app/lib/egress/client";
+} from "@app/types/api/skills";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

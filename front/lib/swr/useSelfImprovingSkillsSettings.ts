@@ -1,8 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetReinforcementDailySpendResponseBody,
-  GetSkillsSpendResponseBody,
-} from "@app/lib/api/skills";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -13,6 +9,10 @@ import {
 } from "@app/lib/reinforcement/consumption";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type {
+  GetReinforcementDailySpendResponseBody,
+  GetSkillsSpendResponseBody,
+} from "@app/types/api/skills";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
