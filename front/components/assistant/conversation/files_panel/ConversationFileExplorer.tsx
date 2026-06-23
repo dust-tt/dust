@@ -70,8 +70,8 @@ export function ConversationFileExplorer({
   );
 
   const onOpenPresentation = useCallback(
-    (entry: { fileId: string }) =>
-      openPanel({ type: "file_preview", fileId: entry.fileId }),
+    (entry: { path: string }) =>
+      openPanel({ type: "file_preview", filePath: entry.path }),
     [openPanel]
   );
 

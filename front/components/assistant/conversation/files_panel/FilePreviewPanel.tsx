@@ -4,63 +4,39 @@ import { InteractiveContentHeader } from "@app/components/assistant/conversation
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import {
-  getFileDownloadUrl,
-  getFileViewUrl,
-  useFileMetadata,
-} from "@app/lib/swr/files";
-import { stripMimeParameters } from "@app/types/files";
+import { getFilePathDownloadUrl, getFilePathViewUrl } from "@app/lib/swr/files";
+import { contentTypeFromFileName } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Download01, Icon, Spinner } from "@dust-tt/sparkle";
+import { Button, Download01, Icon } from "@dust-tt/sparkle";
 
 interface FilePreviewPanelProps {
   owner: LightWorkspaceType;
 }
 
 export function FilePreviewPanel({ owner }: FilePreviewPanelProps) {
-  const { data: fileId, closePanel } = useConversationSidePanelContext();
+  const { data: filePath, closePanel } = useConversationSidePanelContext();
 
-  const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
-    useFileMetadata({
-      fileId: fileId ?? null,
-      owner,
-    });
-
-  if (!fileId) {
+  if (!filePath) {
     return null;
   }
 
+  const fileName = filePath.split("/").pop() ?? filePath;
+  // Office documents have no in-browser renderer; the file's content type is
+  // derived from its name to pick the right preview strategy and icon.
+  const contentType = contentTypeFromFileName(fileName) ?? "";
+  const { category } = getFilePreviewConfig(contentType);
+  const fileUrl = getFilePathViewUrl(owner, filePath);
+  const FileIcon = getFileTypeIcon(contentType, fileName);
+
   const renderContent = () => {
-    if (isFileMetadataLoading) {
-      return (
-        <CenteredState>
-          <Spinner size="sm" />
-          <span>Loading file...</span>
-        </CenteredState>
-      );
-    }
-
-    if (isFileMetadataError || !fileMetadata) {
-      return (
-        <CenteredState>
-          <p className="text-warning-500">Error loading file metadata</p>
-        </CenteredState>
-      );
-    }
-
-    const mimeType = stripMimeParameters(fileMetadata.contentType);
-    const { category } = getFilePreviewConfig(mimeType);
-    const fileUrl = getFileViewUrl(owner, fileId);
-
     // Office documents (presentations, etc.) are rendered as a server-side PDF
-    // conversion; PDFs are rendered directly.
-    if (category === "viewer" || category === "pdf") {
-      const sep = fileUrl.includes("?") ? "&" : "?";
-      const viewerUrl =
-        category === "viewer"
-          ? `${fileUrl}${sep}preview=pdf&v=${fileMetadata.version}`
-          : `${fileUrl}${sep}v=${fileMetadata.version}`;
-      return <PDFViewer key={viewerUrl} url={viewerUrl} />;
+    // conversion (?preview=pdf); native PDFs are rendered directly. Both are
+    // only available through the path-based file route.
+    if (category === "viewer") {
+      return <PDFViewer key={fileUrl} url={`${fileUrl}?preview=pdf`} />;
+    }
+    if (category === "pdf") {
+      return <PDFViewer key={fileUrl} url={fileUrl} />;
     }
 
     return (
@@ -72,33 +48,23 @@ export function FilePreviewPanel({ owner }: FilePreviewPanelProps) {
     );
   };
 
-  const FileIcon = fileMetadata
-    ? getFileTypeIcon(fileMetadata.contentType, fileMetadata.fileName)
-    : null;
-
   return (
     <div className="flex h-full flex-col">
       <InteractiveContentHeader onClose={closePanel}>
         <div className="flex min-w-0 items-center gap-1.5">
-          {FileIcon && (
-            <Icon visual={FileIcon} size="sm" className="shrink-0" />
-          )}
-          <span className="line-clamp-1 text-sm font-medium">
-            {fileMetadata?.fileName ?? "File"}
-          </span>
+          <Icon visual={FileIcon} size="sm" className="shrink-0" />
+          <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
         </div>
-        {fileMetadata && (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Download01}
-            tooltip="Download"
-            href={getFileDownloadUrl(owner, fileId)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-2"
-          />
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={Download01}
+          tooltip="Download"
+          href={getFilePathDownloadUrl(owner, filePath)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-2"
+        />
       </InteractiveContentHeader>
       <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
         {renderContent()}

@@ -74,10 +74,11 @@ export function ConversationFilesPanel({
     }) => {
       if (isInteractiveContentType(contentType)) {
         openPanel({ type: "interactive_content", fileId });
-      } else if (isPresentationContentType(contentType)) {
+      } else if (isPresentationContentType(contentType) && filePath) {
         // Presentations (PowerPoint) open in the resizable right panel like
-        // frames, rather than the cramped file preview modal.
-        openPanel({ type: "file_preview", fileId });
+        // frames, rather than the cramped file preview modal. Preview relies on
+        // the path-based PDF conversion route, so a file path is required.
+        openPanel({ type: "file_preview", filePath });
       } else {
         openFilePreview({
           fileId,
