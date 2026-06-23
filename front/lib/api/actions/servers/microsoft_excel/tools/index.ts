@@ -87,28 +87,56 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
     }
 
     try {
-      const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
-      let apiPath = `${endpoint}/workbook/worksheets/${encodeURIComponent(
-        worksheetName
-      )}`;
-
-      if (range) {
-        apiPath += `/range(address='${encodeURIComponent(range)}')`;
-      } else {
-        apiPath += "/usedRange";
+      const rangeMatch = range.match(/^([A-Z]+\d+):([A-Z]+\d+)$/i);
+      if (!rangeMatch) {
+        return new Err(
+          new MCPError("Invalid range format. Use A1 notation like 'A1:D10'.")
+        );
+      }
+      const start = parseCellRef(rangeMatch[1].toUpperCase());
+      const end = parseCellRef(rangeMatch[2].toUpperCase());
+      const cellCount = (end.row - start.row + 1) * (end.col - start.col + 1);
+      const MAX_CELLS = 100_000;
+      if (cellCount > MAX_CELLS) {
+        return new Err(
+          new MCPError(
+            `Range exceeds the ${MAX_CELLS.toLocaleString()} cell limit (requested ${cellCount.toLocaleString()}). Use a smaller range.`
+          )
+        );
       }
 
-      const response = await makeExcelRequest(
-        client,
-        itemId,
-        authInfo?.clientId ?? "",
-        apiPath,
-        "get"
-      );
+      const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
+      const apiPath = `${endpoint}/workbook/worksheets/${encodeURIComponent(
+        worksheetName
+      )}/range(address='${encodeURIComponent(range)}')`;
 
-      return new Ok([
-        { type: "text" as const, text: JSON.stringify(response, null, 2) },
-      ]);
+      const response = await makeExcelRequest<{
+        address?: string;
+        rowCount?: number;
+        columnCount?: number;
+        values?: (string | number | boolean | null)[][];
+      }>(client, itemId, authInfo?.clientId ?? "", apiPath, "get");
+
+      const values = response.values ?? [];
+      const csv = values
+        .map((row) =>
+          row
+            .map((cell) => {
+              if (cell === null || cell === undefined) {
+                return "";
+              }
+              const str = String(cell);
+              return str.includes(",") ||
+                str.includes('"') ||
+                str.includes("\n")
+                ? `"${str.replace(/"/g, '""')}"`
+                : str;
+            })
+            .join(",")
+        )
+        .join("\n");
+
+      return new Ok([{ type: "text" as const, text: csv }]);
     } catch (err) {
       return new Err(
         new MCPError(

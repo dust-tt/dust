@@ -50,7 +50,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
   },
   read_worksheet: {
     description:
-      "Read data from a specific range or entire worksheet in an Excel file stored in SharePoint.",
+      "Read data from a specific range in an Excel file stored in SharePoint. Returns the cell values as CSV.",
     schema: {
       itemId: z.string().describe("The ID of the Excel file to read from."),
       driveId: z
@@ -70,9 +70,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
         .describe("Name of the worksheet to read from (e.g., 'Sheet1')"),
       range: z
         .string()
-        .optional()
         .describe(
-          "Optional cell range in A1 notation (e.g., 'A1:D10'). If not provided, reads the used range."
+          "Cell range in A1 notation (e.g., 'A1:D10'). Must be a bounded range. Maximum 100,000 cells."
         ),
     },
     stake: "never_ask",
