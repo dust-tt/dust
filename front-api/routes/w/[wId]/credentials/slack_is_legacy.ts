@@ -1,6 +1,6 @@
 import apiConfig from "@app/lib/api/config";
-import type { GetSlackClientIdResponseBody } from "@app/lib/api/credentials";
 import logger from "@app/logger/logger";
+import type { GetSlackClientIdResponseBody } from "@app/types/api/credentials/slack_is_legacy";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
