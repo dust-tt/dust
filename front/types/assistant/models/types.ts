@@ -35,7 +35,7 @@ const WhitelistableFeatureSchema = z.custom<WhitelistableFeature>(
 );
 
 const AvailabilityConditionSchema = z.object({
-  enterprise: z.boolean().optional(),
+  plansWithAdvancedModels: z.boolean().optional(),
   featureFlag: WhitelistableFeatureSchema.optional(),
 });
 
@@ -115,8 +115,8 @@ export type ModelConfigurationType = Omit<
   // If object is empty, model is not available.
   // If defined, model must satisfy one of the conditions to be available.
   availableIfOneOf?: {
-    // If set to true and workspace is enterprise, model is available.
-    enterprise?: boolean;
+    // If set to true, model is available for plans with advanced models access.
+    plansWithAdvancedModels?: boolean;
     // If set, model is available if feature flag is enabled.
     featureFlag?: WhitelistableFeature;
   };
