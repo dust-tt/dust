@@ -4,18 +4,15 @@ import { InfoCircle, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 interface SkillBuilderEnableSuggestionsSectionProps {
-  disabled?: boolean;
   selfImprovementLock: boolean;
 }
 
 export function SkillBuilderEnableSuggestionsSection({
-  disabled = false,
   selfImprovementLock,
 }: SkillBuilderEnableSuggestionsSectionProps) {
   const { owner } = useSkillBuilderContext();
   const isAllowedByWorkspace = owner.metadata?.allowReinforcement === true;
-  const isLockedByPolicy = !isAllowedByWorkspace || selfImprovementLock;
-  const isDisabled = disabled || isLockedByPolicy;
+  const isDisabled = !isAllowedByWorkspace || selfImprovementLock;
 
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const reinforcement = watch("reinforcement");
@@ -30,7 +27,7 @@ export function SkillBuilderEnableSuggestionsSection({
 
   return (
     <div className="flex flex-col gap-2">
-      {isLockedByPolicy && (
+      {isDisabled && (
         <div className="flex items-start gap-1.5 text-xs text-muted-foreground dark:text-muted-foreground-night">
           <InfoCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
@@ -47,7 +44,6 @@ export function SkillBuilderEnableSuggestionsSection({
           selected={enabled && !isDisabled}
           onClick={handleToggle}
           size="xs"
-          disabled={isDisabled}
         />
         <span className="text-sm text-foreground dark:text-foreground-night">
           Self-improve

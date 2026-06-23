@@ -18,13 +18,7 @@ const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 40_000;
 const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 
-interface SkillBuilderInstructionsSectionProps {
-  disabled?: boolean;
-}
-
-export function SkillBuilderInstructionsSection({
-  disabled = false,
-}: SkillBuilderInstructionsSectionProps) {
+export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
@@ -37,10 +31,6 @@ export function SkillBuilderInstructionsSection({
     compareVersion && compareVersion.instructions !== currentInstructions;
 
   const restoreInstructions = () => {
-    if (disabled) {
-      return;
-    }
-
     if (!compareVersion) {
       return;
     }
@@ -77,7 +67,6 @@ export function SkillBuilderInstructionsSection({
               icon={ReverseLeft}
               onClick={restoreInstructions}
               label="Restore instructions"
-              disabled={disabled}
             />
           )}
           {!compareVersion && (
@@ -86,7 +75,7 @@ export function SkillBuilderInstructionsSection({
               label="Attach knowledge"
               icon={BookOpen01}
               onClick={addKnowledge ?? undefined}
-              disabled={disabled || !addKnowledge}
+              disabled={!addKnowledge}
             />
           )}
           {!compareVersion && (
@@ -95,7 +84,7 @@ export function SkillBuilderInstructionsSection({
               label="Attach capabilities"
               icon={ShapesPlus}
               onClick={openCapabilities ?? undefined}
-              disabled={disabled || !openCapabilities}
+              disabled={!openCapabilities}
             />
           )}
         </div>
@@ -113,7 +102,6 @@ export function SkillBuilderInstructionsSection({
         </ContentMessage>
       )}
       <SkillBuilderInstructionsEditor
-        disabled={disabled}
         onAddKnowledge={(fn) => setAddKnowledge(() => fn)}
         onOpenCapabilities={(fn) => setOpenCapabilities(() => fn)}
       />

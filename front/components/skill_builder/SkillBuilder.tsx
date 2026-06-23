@@ -147,7 +147,7 @@ export default function SkillBuilder({
     isAdminExistingSkill &&
     (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
 
-  useNavigationLock(isDirty && !isSaving && !isEditorLocked);
+  useNavigationLock(isDirty && !isSaving);
 
   const handleAddSelfAsEditor = async () => {
     if (!skill || isAddingSelfAsEditor) {
@@ -216,6 +216,29 @@ export default function SkillBuilder({
 
   const handleSave = () => {
     if (isEditorLocked) {
+      if (isEditorsError) {
+        sendNotification({
+          title: "Unable to verify editor access",
+          description: "Retry loading editors before saving changes.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (isEditorsLoading) {
+        sendNotification({
+          title: "Verifying editor access",
+          description: "Wait until skill editors finish loading before saving.",
+          type: "error",
+        });
+        return;
+      }
+
+      sendNotification({
+        title: "Cannot save skill",
+        description: "Add yourself as an editor before saving changes.",
+        type: "error",
+      });
       return;
     }
 
@@ -287,19 +310,15 @@ export default function SkillBuilder({
               specific needs before saving.
             </ContentMessage>
           )}
-          <SkillBuilderAgentFacingDescriptionSection
-            disabled={isEditorLocked}
-          />
-          <SkillBuilderInstructionsSection disabled={isEditorLocked} />
+          <SkillBuilderAgentFacingDescriptionSection />
+          <SkillBuilderInstructionsSection />
           <SkillBuilderRequestedSpacesSection
-            disabled={isEditorLocked}
             initialRequestedSpaceIds={skill?.requestedSpaceIds}
           />
-          <SkillBuilderFilesSection disabled={isEditorLocked} />
+          <SkillBuilderFilesSection disableUpload={isEditorLocked} />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
-            disabled={isEditorLocked}
           />
         </div>
       </ScrollArea>
@@ -319,7 +338,7 @@ export default function SkillBuilder({
             variant="highlight"
             label={isSaving ? "Saving..." : "Save"}
             onClick={handleSave}
-            disabled={isSaving || isEditorLocked}
+            disabled={isSaving}
           />
         }
       />
@@ -371,23 +390,20 @@ export default function SkillBuilder({
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
   hasSelfImprovingSkills,
-  disabled,
 }: {
   skill?: SkillType;
   hasSelfImprovingSkills: boolean;
-  disabled: boolean;
 }) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
   if (compareVersion) {
-    return <SkillBuilderVersionComparisonFooter disabled={disabled} />;
+    return <SkillBuilderVersionComparisonFooter />;
   }
 
   return (
     <SkillBuilderSettingsSection
       skill={skill}
       hasSelfImprovingSkills={hasSelfImprovingSkills}
-      disabled={disabled}
     />
   );
 }

@@ -23,13 +23,7 @@ const DEBOUNCE_DELAY_MS = 250;
 const MIN_DESCRIPTION_LENGTH = 10;
 const DESCRIPTION_EDITOR_SIZE = "h-40 max-h-96";
 
-interface SkillBuilderAgentFacingDescriptionSectionProps {
-  disabled?: boolean;
-}
-
-export function SkillBuilderAgentFacingDescriptionSection({
-  disabled = false,
-}: SkillBuilderAgentFacingDescriptionSectionProps) {
+export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -52,10 +46,6 @@ export function SkillBuilderAgentFacingDescriptionSection({
     compareVersion.agentFacingDescription !== descriptionField.value;
 
   const restoreDescription = () => {
-    if (disabled) {
-      return;
-    }
-
     if (!compareVersion) {
       return;
     }
@@ -99,18 +89,13 @@ export function SkillBuilderAgentFacingDescriptionSection({
 
   const handleUpdate = useCallback(
     ({ editor, transaction }: { editor: Editor; transaction: Transaction }) => {
-      if (
-        transaction.docChanged &&
-        !editor.isDestroyed &&
-        !isDiffMode &&
-        !disabled
-      ) {
+      if (transaction.docChanged && !editor.isDestroyed && !isDiffMode) {
         const text = editor.getText().trim();
         setValue(FIELD_NAME, text, { shouldDirty: true });
         triggerSimilarSkillsFetch(text);
       }
     },
-    [disabled, isDiffMode, setValue, triggerSimilarSkillsFetch]
+    [isDiffMode, setValue, triggerSimilarSkillsFetch]
   );
 
   const handleBlur = useCallback(() => {
@@ -149,14 +134,14 @@ export function SkillBuilderAgentFacingDescriptionSection({
           class: cn(
             editorVariants({
               error: !!descriptionFieldState.error,
-              disabled: isDiffMode || disabled,
+              disabled: isDiffMode,
             }),
             DESCRIPTION_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, descriptionFieldState.error, disabled, isDiffMode]);
+  }, [editor, descriptionFieldState.error, isDiffMode]);
 
   // Sync external changes to the editor content.
   useEffect(() => {
@@ -197,11 +182,9 @@ export function SkillBuilderAgentFacingDescriptionSection({
       editor.setEditable(false);
     } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
       editor.commands.exitDiff();
-      editor.setEditable(!disabled);
-    } else {
-      editor.setEditable(!disabled);
+      editor.setEditable(true);
     }
-  }, [compareVersion, editor, descriptionField.value, disabled]);
+  }, [compareVersion, editor, descriptionField.value]);
 
   return (
     <section className="space-y-4">
@@ -221,7 +204,6 @@ export function SkillBuilderAgentFacingDescriptionSection({
             icon={ReverseLeft}
             onClick={restoreDescription}
             label="Restore description"
-            disabled={disabled}
           />
         )}
       </div>
