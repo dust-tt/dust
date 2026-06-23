@@ -12,12 +12,12 @@ import {
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
-import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
+import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   isApiBlocked,

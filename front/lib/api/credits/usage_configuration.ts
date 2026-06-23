@@ -1,5 +1,6 @@
 import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
+import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import type { Authenticator } from "@app/lib/auth";
 import { isEnterprisePlanPrefix, isFreePlan } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -9,6 +10,7 @@ import {
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
 } from "@app/lib/resources/storage/models/credit_usage_configurations";
+import logger from "@app/logger/logger";
 import type {
   CreditUsageConfigurationBody,
   PatchCreditUsageConfigurationBody,
@@ -114,6 +116,14 @@ export async function updateUsageConfiguration(
     }
   }
 
+  // Detect a false→true transition of the auto-upgrade toggle: enabling it is
+  // the one moment we reconcile the *whole* workspace (rather than per seat
+  // transition), so every member lands in the correct seat↔pool credit state
+  // under the new policy.
+  const enablingAutoSeatUpgrade =
+    patch.autoSeatUpgradeEnabled === true &&
+    !(await getUsageConfiguration(auth)).autoSeatUpgradeEnabled;
+
   if (
     patch.allowMemberUpgradeRequests !== undefined ||
     patch.upgradeRequestEmailEnabled !== undefined ||
@@ -126,6 +136,22 @@ export async function updateUsageConfiguration(
     });
     if (toggleResult.isErr()) {
       return new Err(toggleResult.error);
+    }
+  }
+
+  if (enablingAutoSeatUpgrade) {
+    // Best-effort: a failure here must not fail the configuration update.
+    const reconcileResult = await syncMetronomeSeatCountForWorkspace({
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    if (reconcileResult.isErr()) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          err: reconcileResult.error.message,
+        },
+        "[UsageConfiguration] Whole-workspace reconcile after enabling auto-upgrade failed"
+      );
     }
   }
 

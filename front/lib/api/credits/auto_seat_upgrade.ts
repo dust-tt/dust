@@ -208,6 +208,9 @@ export async function maybeAutoUpgradeSeat({
     workspace: lightWorkspace,
     newSeatType,
     author: "no-author",
+    // Unblock the member immediately rather than waiting on the debounced
+    // seat-count sync: push the seat count now and reconcile just this user.
+    isDirectSync: true,
   });
   if (result.isErr()) {
     logger.warn(

@@ -1,4 +1,3 @@
-import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
 import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { WARNING_BALANCE_RATIO } from "@app/lib/metronome/alerts/programmatic_cap";
@@ -12,6 +11,7 @@ import {
   fetchLiveUserCreditInputs,
 } from "@app/lib/metronome/live_user_credit_inputs";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
+import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   expectedProgrammaticCreditStateFromUsage,

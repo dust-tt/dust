@@ -4,6 +4,7 @@ import {
   emitAuditLogEventDirect,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import type { AuditLogActor } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -649,6 +650,7 @@ export async function updateMembershipSeatAndTrack({
   newSeatType,
   author,
   immediate = false,
+  isDirectSync = false,
 }: {
   user: UserResource;
   workspace: LightWorkspaceType;
@@ -656,6 +658,7 @@ export async function updateMembershipSeatAndTrack({
   author: UserType | "no-author";
   // When true, skip billing-period scheduling and apply the change right now.
   immediate?: boolean;
+  isDirectSync?: boolean;
 }): Promise<
   Result<
     {
@@ -869,6 +872,23 @@ export async function updateMembershipSeatAndTrack({
       "[Metronome] Failed to sync seat count for transition"
     );
     return new Err({ type: "metronome_error" });
+  }
+
+  if (isDirectSync && resultingActiveSeatType !== previousSeatType) {
+    const directSyncResult = await syncMetronomeSeatCountForWorkspace({
+      workspace,
+      reconcileUserId: user.sId,
+    });
+    if (directSyncResult.isErr()) {
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          err: directSyncResult.error.message,
+        },
+        "[Metronome] Direct seat sync failed; debounced workflow will retry"
+      );
+    }
   }
 
   return new Ok({
