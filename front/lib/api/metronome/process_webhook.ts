@@ -1428,14 +1428,15 @@ export async function processMetronomeWebhook({
       // onto a business plan) leaves users stuck in their previous state.
       // Mirrors the pool reconcile above; pass the new contract id directly
       // since the subscription swap below may not have happened yet.
+      const targetPlanCode =
+        contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
+
       await reconcileWorkspaceUserCreditStates({
         workspace: renderLightWorkspaceType({ workspace }),
         metronomeCustomerId: customerId,
         metronomeContractId: contractId,
+        planCode: targetPlanCode ?? "",
       });
-
-      const targetPlanCode =
-        contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
       if (!targetPlanCode) {
         logger.info(
           { contractId, workspaceId: workspace.sId },

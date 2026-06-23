@@ -92,6 +92,7 @@ export async function syncMetronomeSeatCountForWorkspace({
     workspace,
     metronomeCustomerId: workspace.metronomeCustomerId,
     metronomeContractId: subscription.metronomeContractId,
+    planCode: subscription.getPlan().code,
   });
 
   // Ensure per-seat-type cap alerts exist with the current default pool limit.

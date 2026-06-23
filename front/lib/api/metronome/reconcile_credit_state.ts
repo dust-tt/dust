@@ -28,6 +28,7 @@ import {
   expectedPoolCreditStateFromBalance,
   setWorkspacePoolCreditStateReconciled,
 } from "@app/lib/metronome/workspace_credit_state_machine";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -423,11 +424,16 @@ export async function reconcileWorkspaceUserCreditStates({
   workspace,
   metronomeCustomerId,
   metronomeContractId,
+  planCode,
 }: {
   workspace: LightWorkspaceType;
   metronomeCustomerId: string;
   metronomeContractId: string;
+  planCode: string;
 }): Promise<void> {
+  if (!isCreditPricedPlanPrefix(planCode)) {
+    return;
+  }
   const workspaceId = workspace.sId;
 
   // These return our `Result` type: handle their errors with early returns

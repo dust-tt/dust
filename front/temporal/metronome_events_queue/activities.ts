@@ -94,5 +94,6 @@ export async function reconcileWorkspaceUserCreditStatesActivity({
     workspace: renderLightWorkspaceType({ workspace }),
     metronomeCustomerId: workspace.metronomeCustomerId,
     metronomeContractId: subscription.metronomeContractId,
+    planCode: subscription.getPlan().code,
   });
 }

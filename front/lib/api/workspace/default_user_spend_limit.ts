@@ -290,6 +290,7 @@ export async function setDefaultUserSpendLimit(
       workspace,
       metronomeCustomerId,
       metronomeContractId,
+      planCode: auth.subscription()?.plan.code ?? "",
     }).catch((err) => {
       logger.error(
         { workspaceId: workspace.sId, err: normalizeError(err) },
