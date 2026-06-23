@@ -244,7 +244,7 @@ describe("imageUrlToBase64ImageBlock", () => {
     });
     expect(await imageUrlToBase64ImageBlock(url)).toEqual({
       type: "text",
-      text: "Attachment: an unsupported image media type was provided.",
+      text: "Attachement: an unsupported media type was provided.",
     });
   });
 });

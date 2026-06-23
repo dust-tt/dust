@@ -34,7 +34,9 @@ import type {
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isRecord } from "@app/types/shared/utils/general";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
@@ -57,9 +59,11 @@ function isSupportedImageMediaType(
   );
 }
 
+// Kept byte-identical to the legacy AnthropicLLM client so the model-visible
+// fallback text is iso across the router migration (typo included).
 const IMAGE_LOAD_FAILED_TEXT = "Attachment: image could not be loaded.";
 const UNSUPPORTED_MEDIA_TYPE_TEXT =
-  "Attachment: an unsupported image media type was provided.";
+  "Attachement: an unsupported media type was provided.";
 
 // The per-message leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
@@ -148,12 +152,21 @@ export async function imageUrlToBase64ImageBlock(
   let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
   try {
     fetchResult = await trustedFetchImageBase64(url);
-  } catch {
+  } catch (err) {
+    // Don't log the URL: conversation image URLs are signed GCS URLs ([SEC1]).
+    logger.warn(
+      { err: normalizeError(err) },
+      "Failed to fetch image for base64 inlining; using text placeholder."
+    );
     return { type: "text", text: IMAGE_LOAD_FAILED_TEXT };
   }
 
   const { mediaType, data } = fetchResult;
   if (!isSupportedImageMediaType(mediaType)) {
+    logger.warn(
+      { mediaType },
+      "Unsupported image media type for base64 inlining; using text placeholder."
+    );
     return { type: "text", text: UNSUPPORTED_MEDIA_TYPE_TEXT };
   }
 
