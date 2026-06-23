@@ -4,6 +4,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  FILE_PREVIEW_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
   FULL_SCREEN_HASH_PARAM,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
@@ -27,6 +28,10 @@ type OpenPanelParams =
       timestamp?: string;
     }
   | {
+      type: "file_preview";
+      fileId: string;
+    }
+  | {
       type: "files";
     }
   | {
@@ -38,6 +43,7 @@ const isSupportedPanelType = (
 ): type is ConversationSidePanelType =>
   type === "actions" ||
   type === "interactive_content" ||
+  type === "file_preview" ||
   type === "files" ||
   type === "plan";
 
@@ -153,6 +159,10 @@ export function ConversationSidePanelProvider({
           params.timestamp
             ? setData(`${params.fileId}@${params.timestamp}`)
             : setData(params.fileId);
+          break;
+
+        case FILE_PREVIEW_SIDE_PANEL_TYPE:
+          setData(params.fileId);
           break;
 
         case FILES_SIDE_PANEL_TYPE:

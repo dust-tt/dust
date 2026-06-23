@@ -1,11 +1,13 @@
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
 import { ConversationFilesPanel } from "@app/components/assistant/conversation/files_panel/ConversationFilesPanel";
+import { FilePreviewPanel } from "@app/components/assistant/conversation/files_panel/FilePreviewPanel";
 import { InteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/InteractiveContentContainer";
 import { ConversationPlanModePanel } from "@app/components/assistant/conversation/plan_mode/ConversationPlanModePanel";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  FILE_PREVIEW_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   PLAN_SIDE_PANEL_TYPE,
@@ -34,6 +36,9 @@ export default function ConversationSidePanelContent({
           owner={owner}
         />
       );
+
+    case FILE_PREVIEW_SIDE_PANEL_TYPE:
+      return <FilePreviewPanel owner={owner} />;
 
     case FILES_SIDE_PANEL_TYPE:
       return (

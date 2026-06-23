@@ -26,7 +26,10 @@ import {
   isFileExplorerMovableFile,
 } from "@app/components/file_explorer/utils";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isPresentationContentType,
+} from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -51,6 +54,7 @@ interface FileExplorerProps {
     parentRelativePath: string
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
+  onOpenPresentation?: (entry: FileEntryWithId) => void;
   onRename?: (entry: FileEntry | FolderEntry) => void;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
@@ -73,6 +77,7 @@ export function FileExplorer({
   onFileDownload,
   onMoveFile,
   onOpenInteractive,
+  onOpenPresentation,
   onRename,
   getExtraFileMenuItems,
 }: FileExplorerProps) {
@@ -235,6 +240,14 @@ export function FileExplorer({
       entry.fileId
     ) {
       onOpenInteractive({ ...entry, fileId: entry.fileId });
+      return;
+    }
+    if (
+      onOpenPresentation &&
+      isPresentationContentType(entry.contentType) &&
+      entry.fileId
+    ) {
+      onOpenPresentation({ ...entry, fileId: entry.fileId });
       return;
     }
     setPreviewFile(entry);
