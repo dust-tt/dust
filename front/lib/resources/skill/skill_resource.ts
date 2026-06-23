@@ -1301,13 +1301,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * List discoverable skills: custom default skills + regular global skills.
    */
-  static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        status: "active",
-        isDefault: true,
+  static async listDiscoverable(
+    auth: Authenticator,
+    {
+      agentLoopData,
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+    } = {}
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          status: "active",
+          isDefault: true,
+        },
       },
-    });
+      { agentLoopData }
+    );
   }
 
   /**
@@ -1473,7 +1484,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let discoverableSkills: SkillResource[] = [];
     if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
-      discoverableSkills = await this.listDiscoverable(auth);
+      discoverableSkills = await this.listDiscoverable(auth, {
+        agentLoopData,
+      });
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
