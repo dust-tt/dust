@@ -44,7 +44,11 @@ async function getTagsSuggestions({
   });
 }
 
-export function TagsSection() {
+interface TagsSectionProps {
+  disabled?: boolean;
+}
+
+export function TagsSection({ disabled = false }: TagsSectionProps) {
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { tags: allTags } = useTags({ owner });
@@ -68,12 +72,13 @@ export function TagsSection() {
 
   const isButtonDisabled = useMemo(() => {
     return (
+      disabled ||
       isSuggestLoading ||
       !instructions ||
       instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS ||
       availableTagsCount === 0
     );
-  }, [isSuggestLoading, instructions, availableTagsCount]);
+  }, [disabled, isSuggestLoading, instructions, availableTagsCount]);
 
   const getSuggestedTags = async (): Promise<TagType[]> => {
     if (
@@ -125,7 +130,7 @@ export function TagsSection() {
   };
 
   const handleSuggestTags = async (): Promise<TagType[]> => {
-    if (isSuggestLoading) {
+    if (disabled || isSuggestLoading) {
       return [];
     }
 
@@ -151,10 +156,18 @@ export function TagsSection() {
   };
 
   const handleAddTag = (tag: TagType) => {
+    if (disabled) {
+      return;
+    }
+
     append(tag);
   };
 
   const handleRemoveTag = (tagId: string) => {
+    if (disabled) {
+      return;
+    }
+
     const index = selectedTags.findIndex((field) => field.sId === tagId);
     if (index !== -1) {
       remove(index);
@@ -172,6 +185,7 @@ export function TagsSection() {
         isSuggestLoading={isSuggestLoading}
         isSuggestDisabled={isButtonDisabled}
         instructions={instructions}
+        disabled={disabled}
       />
     </SettingSectionContainer>
   );

@@ -12,6 +12,7 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
@@ -20,6 +21,8 @@ interface AgentBuilderLeftPanelProps {
   onCancel: () => void;
   agentConfigurationId: string | null;
   saveButtonProps?: ButtonProps;
+  disabled?: boolean;
+  editorGateMessage?: ReactNode;
   isTriggersLoading?: boolean;
   initialRequestedSpaceIds?: string[];
 }
@@ -29,6 +32,8 @@ export function AgentBuilderLeftPanel({
   onCancel,
   agentConfigurationId,
   saveButtonProps,
+  disabled = false,
+  editorGateMessage,
   isTriggersLoading,
   initialRequestedSpaceIds,
 }: AgentBuilderLeftPanelProps) {
@@ -54,21 +59,27 @@ export function AgentBuilderLeftPanel({
       />
       <ScrollArea className="flex-1">
         <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+          {editorGateMessage}
           <AgentBuilderInstructionsBlock
+            disabled={disabled}
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderSpacesBlock
+            disabled={disabled}
             initialRequestedSpaceIds={initialRequestedSpaceIds}
           />
           <AgentBuilderCapabilitiesBlock
+            disabled={disabled}
             initialRequestedSpaceIds={initialRequestedSpaceIds}
           />
           <AgentBuilderTriggersBlock
             owner={owner}
+            disabled={disabled}
             isTriggersLoading={isTriggersLoading}
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderSettingsBlock
+            disabled={disabled}
             agentConfigurationId={agentConfigurationId}
           />
         </div>

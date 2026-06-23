@@ -33,6 +33,7 @@ import {
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConfirmContext } from "@app/components/Confirm";
+import { BuilderEditorGateMessage } from "@app/components/shared/BuilderEditorGateMessage";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type {
@@ -46,7 +47,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
-import { useEditors } from "@app/lib/swr/agent_editors";
+import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
 import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useModels } from "@app/lib/swr/models";
@@ -112,13 +113,14 @@ export default function AgentBuilder({
   conversationId,
   onSaved,
 }: AgentBuilderProps) {
-  const { owner, user, assistantTemplate } = useAgentBuilderContext();
+  const { owner, user, isAdmin, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
   const { fetcherWithBody } = useFetcher();
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
   const hasPendingCreationRef = useRef(false);
@@ -144,7 +146,11 @@ export default function AgentBuilder({
     }
   );
 
-  const { editors, mutateEditors } = useEditors({
+  const { editors, isEditorsLoading, mutateEditors } = useEditors({
+    owner,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
+  const updateEditors = useUpdateEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
@@ -323,6 +329,27 @@ export default function AgentBuilder({
     mcpServerViews,
   });
 
+  const isAdminExistingAgent =
+    !!agentConfiguration && !duplicateAgentId && isAdmin;
+  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
+  const isAdminNonEditor =
+    isAdminExistingAgent && !isEditorsLoading && !isCurrentUserEditor;
+  const isEditorLocked =
+    isAdminExistingAgent && (isEditorsLoading || !isCurrentUserEditor);
+
+  const handleAddSelfAsEditor = async () => {
+    if (!agentConfiguration || isAddingSelfAsEditor) {
+      return;
+    }
+
+    setIsAddingSelfAsEditor(true);
+    try {
+      await updateEditors({ addEditorIds: [user.sId] });
+    } finally {
+      setIsAddingSelfAsEditor(false);
+    }
+  };
+
   useEffect(() => {
     const createdParam = router.query.showCreatedDialog;
     const shouldOpenDialog =
@@ -375,6 +402,10 @@ export default function AgentBuilder({
   }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentId]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
+    if (isEditorLocked) {
+      return;
+    }
+
     try {
       const confirmed = await showDialog();
       if (!confirmed) {
@@ -497,7 +528,7 @@ export default function AgentBuilder({
   };
 
   const handleSave = async () => {
-    if (isSaving) {
+    if (isSaving || isEditorLocked) {
       return;
     }
     setIsSaving(true);
@@ -519,11 +550,13 @@ export default function AgentBuilder({
   const { isDirty, isSubmitting } = form.formState;
 
   // Disable navigation lock during save process for new agents
-  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
+  useNavigationLock(
+    (isDirty || !!duplicateAgentId) && !isSaving && !isEditorLocked
+  );
 
   const isSaveDisabled = duplicateAgentId
     ? false
-    : isSubmitting || isActionsLoading || isTriggersLoading;
+    : isEditorLocked || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -541,7 +574,10 @@ export default function AgentBuilder({
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <SidekickSuggestionsProvider agentConfigurationId={suggestionsAgentId}>
+        <SidekickSuggestionsProvider
+          agentConfigurationId={suggestionsAgentId}
+          disabled={isEditorLocked}
+        >
           <AgentBuilderContent
             agentConfiguration={agentConfiguration}
             pendingAgentId={pendingAgentId}
@@ -550,6 +586,12 @@ export default function AgentBuilder({
             saveLabel={saveLabel}
             handleSave={handleSave}
             isSaveDisabled={isSaveDisabled}
+            isEditorLocked={isEditorLocked}
+            isEditorGateVisible={isAdminNonEditor}
+            isAddingSelfAsEditor={isAddingSelfAsEditor}
+            onAddSelfAsEditor={() => {
+              void handleAddSelfAsEditor();
+            }}
             isTriggersLoading={isTriggersLoading}
             dialogProps={dialogProps}
             isCreatedDialogOpen={isCreatedDialogOpen}
@@ -584,6 +626,10 @@ interface AgentBuilderContentProps {
   saveLabel: string;
   handleSave: () => void;
   isSaveDisabled: boolean;
+  isEditorLocked: boolean;
+  isEditorGateVisible: boolean;
+  isAddingSelfAsEditor: boolean;
+  onAddSelfAsEditor: () => void;
   isTriggersLoading: boolean;
   dialogProps: {
     mcpServerViewsWithPersonalConnections: ReturnType<
@@ -609,6 +655,10 @@ function AgentBuilderContent({
   saveLabel,
   handleSave,
   isSaveDisabled,
+  isEditorLocked,
+  isEditorGateVisible,
+  isAddingSelfAsEditor,
+  onAddSelfAsEditor,
   isTriggersLoading,
   dialogProps,
   isCreatedDialogOpen,
@@ -634,6 +684,10 @@ function AgentBuilderContent({
   );
 
   const handleSaveWithValidation = useCallback(async () => {
+    if (isEditorLocked) {
+      return;
+    }
+
     const pendingInstructionSuggestions = pendingSuggestions.filter(
       (s) => s.kind === "instructions"
     );
@@ -669,6 +723,7 @@ function AgentBuilderContent({
 
     handleSave();
   }, [
+    isEditorLocked,
     pendingSuggestions,
     getCommittedInstructionsHtml,
     confirm,
@@ -706,10 +761,20 @@ function AgentBuilderContent({
               label: saveLabel,
               variant: "highlight",
               onClick: handleSaveWithValidation,
-              disabled: isSaveDisabled,
+              disabled: isSaveDisabled || isEditorLocked,
             }}
+            editorGateMessage={
+              isEditorGateVisible ? (
+                <BuilderEditorGateMessage
+                  builderType="agent"
+                  isLoading={isAddingSelfAsEditor}
+                  onAddSelfAsEditor={onAddSelfAsEditor}
+                />
+              ) : null
+            }
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
+            disabled={isEditorLocked}
             isTriggersLoading={isTriggersLoading}
             initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
           />
@@ -734,6 +799,7 @@ function AgentBuilderContent({
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
                 agentConfigurationId={agentConfiguration?.sId}
+                isSidekickDisabled={isEditorLocked}
               />
             </ConversationSidePanelProvider>
           </SidekickPanelProvider>

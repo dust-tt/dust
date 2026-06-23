@@ -30,6 +30,7 @@ import { useFieldArray, useFormContext } from "react-hook-form";
 
 interface AgentBuilderTriggersBlockProps {
   owner: LightWorkspaceType;
+  disabled?: boolean;
   isTriggersLoading?: boolean;
   agentConfigurationId: string | null;
 }
@@ -38,6 +39,7 @@ const TEMP_TRIGGER_PREFIX = "temptrg";
 
 export function AgentBuilderTriggersBlock({
   owner,
+  disabled = false,
   isTriggersLoading,
   agentConfigurationId,
 }: AgentBuilderTriggersBlockProps) {
@@ -112,10 +114,18 @@ export function AgentBuilderTriggersBlock({
   );
 
   const handleAddTrigger = () => {
+    if (disabled) {
+      return;
+    }
+
     setSheetMode({ type: "add" });
   };
 
   const handleTriggerEdit = (trigger: AgentBuilderTriggerType) => {
+    if (disabled) {
+      return;
+    }
+
     let webhookSourceView: WebhookSourceViewType | null = null;
 
     if (trigger.kind === "webhook") {
@@ -133,6 +143,10 @@ export function AgentBuilderTriggersBlock({
   };
 
   const handleTriggerCreate = (trigger: AgentBuilderTriggerType) => {
+    if (disabled) {
+      return;
+    }
+
     appendTriggerToCreate({
       ...trigger,
       // Assign a temporary sId for frontend identification until it's created on the backend.
@@ -142,6 +156,10 @@ export function AgentBuilderTriggersBlock({
   };
 
   const handleTriggerUpdate = (trigger: AgentBuilderTriggerType) => {
+    if (disabled) {
+      return;
+    }
+
     if (sheetMode?.type !== "edit" || !trigger.sId) {
       appendTriggerToUpdate(trigger);
       return;
@@ -168,6 +186,10 @@ export function AgentBuilderTriggersBlock({
     trigger: AgentBuilderTriggerType,
     displayIndex: number
   ) => {
+    if (disabled) {
+      return;
+    }
+
     const displayItem = allTriggers[displayIndex];
 
     if (displayItem.source === "create") {
@@ -203,8 +225,12 @@ export function AgentBuilderTriggersBlock({
             ? view.sId === item.trigger.webhookSourceViewId
             : undefined
         )}
-        onRemove={() => handleTriggerRemove(item.trigger, item.displayIndex)}
-        onEdit={() => handleTriggerEdit(item.trigger)}
+        onRemove={
+          disabled
+            ? undefined
+            : () => handleTriggerRemove(item.trigger, item.displayIndex)
+        }
+        onEdit={disabled ? undefined : () => handleTriggerEdit(item.trigger)}
       />
     ));
 
@@ -231,6 +257,7 @@ export function AgentBuilderTriggersBlock({
             type="button"
             icon={Zap}
             onClick={handleAddTrigger}
+            disabled={disabled}
           />
         )
       }
@@ -248,6 +275,7 @@ export function AgentBuilderTriggersBlock({
                 type="button"
                 icon={Zap}
                 onClick={handleAddTrigger}
+                disabled={disabled}
               />
             }
             className="py-4"
@@ -274,7 +302,7 @@ export function AgentBuilderTriggersBlock({
 
       <TriggerViewsSheet
         owner={owner}
-        mode={sheetMode}
+        mode={disabled ? null : sheetMode}
         webhookSourceViews={accessibleWebhookSourceViews}
         agentConfigurationId={agentConfigurationId}
         onAppendTriggerToCreate={handleTriggerCreate}

@@ -14,10 +14,12 @@ import { useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 interface AgentBuilderSpacesBlockProps {
+  disabled?: boolean;
   initialRequestedSpaceIds?: string[];
 }
 
 export function AgentBuilderSpacesBlock({
+  disabled = false,
   initialRequestedSpaceIds,
 }: AgentBuilderSpacesBlockProps) {
   const { setValue } = useFormContext<AgentBuilderFormData>();
@@ -99,6 +101,10 @@ export function AgentBuilderSpacesBlock({
   }, [allSpaces, actionsAndSkillsRequestedSpaceIds, additionalSpaces]);
 
   const handleRemoveSpace = async (space: SpaceType) => {
+    if (disabled) {
+      return;
+    }
+
     // Compute items to remove for the dialog
     const actionsToRemove = spaceIdToActions[space.sId] || [];
 
@@ -144,6 +150,10 @@ export function AgentBuilderSpacesBlock({
   };
 
   const handleOpenSheet = () => {
+    if (disabled) {
+      return;
+    }
+
     // Initialize with current additional spaces so they appear selected
     setDraftSelectedSpaces([...additionalSpaces]);
     setIsSheetOpen(true);
@@ -155,6 +165,10 @@ export function AgentBuilderSpacesBlock({
   };
 
   const handleSaveSpaces = () => {
+    if (disabled) {
+      return;
+    }
+
     setValue("additionalSpaces", draftSelectedSpaces, { shouldDirty: true });
     handleCloseSheet();
   };
@@ -182,6 +196,7 @@ export function AgentBuilderSpacesBlock({
           label="Manage"
           icon={Planet}
           variant="outline"
+          disabled={disabled}
           onClick={handleOpenSheet}
         />
       </div>
@@ -197,7 +212,10 @@ export function AgentBuilderSpacesBlock({
           </ContentMessage>
         </div>
       )}
-      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
+      <SpaceChips
+        spaces={spacesToDisplay}
+        onRemoveSpace={disabled ? undefined : handleRemoveSpace}
+      />
 
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={actionsAndSkillsRequestedSpaceIds}
@@ -205,7 +223,7 @@ export function AgentBuilderSpacesBlock({
         missingSpaceIds={missingSpaceIds}
         onClose={handleCloseSheet}
         onSave={handleSaveSpaces}
-        open={isSheetOpen}
+        open={isSheetOpen && !disabled}
         selectedSpaces={draftSelectedSpaces}
         setSelectedSpaces={setDraftSelectedSpaces}
       />

@@ -41,10 +41,12 @@ async function getEmojiSuggestions({
 }
 
 interface AgentBuilderAvatarSectionProps {
+  disabled?: boolean;
   isCreatingNew: boolean;
 }
 
 export function AgentBuilderAvatarSection({
+  disabled = false,
   isCreatingNew,
 }: AgentBuilderAvatarSectionProps) {
   const { owner } = useAgentBuilderContext();
@@ -64,6 +66,10 @@ export function AgentBuilderAvatarSection({
   });
 
   const updateEmojiFromSuggestions = useCallback(async () => {
+    if (disabled) {
+      return;
+    }
+
     let avatarUrl: string | null = null;
     const emojiSuggestions = await getEmojiSuggestions({
       owner,
@@ -91,7 +97,7 @@ export function AgentBuilderAvatarSection({
     }
 
     field.onChange(avatarUrl);
-  }, [field, instructions, owner]);
+  }, [disabled, field, instructions, owner]);
 
   useEffect(() => {
     const onInstructionsBlur = () => {
@@ -116,9 +122,13 @@ export function AgentBuilderAvatarSection({
     <>
       <AvatarPicker
         owner={owner}
-        isOpen={isAvatarModalOpen}
+        isOpen={isAvatarModalOpen && !disabled}
         setOpen={setIsAvatarModalOpen}
         onPick={(url) => {
+          if (disabled) {
+            return;
+          }
+
           userSetAvatarRef.current = true;
           field.onChange(url);
         }}
@@ -133,7 +143,12 @@ export function AgentBuilderAvatarSection({
           size="sm"
           icon={Edit04}
           type="button"
-          onClick={() => setIsAvatarModalOpen(true)}
+          onClick={() => {
+            if (!disabled) {
+              setIsAvatarModalOpen(true);
+            }
+          }}
+          disabled={disabled}
           className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
         />
       </div>
