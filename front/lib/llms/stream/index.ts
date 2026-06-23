@@ -11,6 +11,10 @@ import { DustFireworksGlobalKimiK2Dot5Stream } from "@app/lib/llms/stream/endpoi
 import { DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { DustGoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/llms/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
+import { DustMistralEuropeCodestralStream } from "@app/lib/llms/stream/endpoints/mistral_eu_codestral";
+import { DustMistralEuropeMistralLargeStream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_large";
+import { DustMistralEuropeMistralMedium35Stream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_medium_3_5";
+import { DustMistralEuropeMistralSmallStream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_small";
 import { DustOpenAIResponsesGlobalGptFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five";
 import { DustOpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { DustOpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_four";
@@ -73,6 +77,11 @@ export const DUST_STREAM_ENDPOINTS = {
   [DustFireworksGlobalKimiK2Dot5Stream.id]: DustFireworksGlobalKimiK2Dot5Stream,
   [DustTogetheraiGlobalLlama3370BInstructTurboStream.id]:
     DustTogetheraiGlobalLlama3370BInstructTurboStream,
+  [DustMistralEuropeMistralLargeStream.id]: DustMistralEuropeMistralLargeStream,
+  [DustMistralEuropeMistralMedium35Stream.id]:
+    DustMistralEuropeMistralMedium35Stream,
+  [DustMistralEuropeMistralSmallStream.id]: DustMistralEuropeMistralSmallStream,
+  [DustMistralEuropeCodestralStream.id]: DustMistralEuropeCodestralStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
 export function getStreamEndpoints(
