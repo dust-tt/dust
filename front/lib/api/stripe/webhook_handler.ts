@@ -1534,10 +1534,21 @@ export async function processStripeWebhookEvent({
             matchingSubscription.metronomeContractId &&
             workspace.metronomeCustomerId
           ) {
-            void scheduleMetronomeContractEnd({
+            const metronomeRes = await scheduleMetronomeContractEnd({
               metronomeCustomerId: workspace.metronomeCustomerId,
               contractId: matchingSubscription.metronomeContractId,
             });
+            if (metronomeRes.isErr()) {
+              logger.error(
+                {
+                  stripeError: true,
+                  workspaceId: workspace.sId,
+                  metronomeContractId: matchingSubscription.metronomeContractId,
+                  error: metronomeRes.error,
+                },
+                "[Stripe Webhook] Failed to end active Metronome contract on subscription deletion."
+              );
+            }
           }
 
           const scheduleScrubRes = await launchScheduleWorkspaceScrubWorkflow({
