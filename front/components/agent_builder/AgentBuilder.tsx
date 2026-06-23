@@ -33,7 +33,10 @@ import {
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConfirmContext } from "@app/components/Confirm";
-import { BuilderEditorGateMessage } from "@app/components/shared/BuilderEditorGateMessage";
+import {
+  BuilderEditorGateMessage,
+  BuilderEditorLoadErrorMessage,
+} from "@app/components/shared/BuilderEditorGateMessage";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type {
@@ -146,10 +149,11 @@ export default function AgentBuilder({
     }
   );
 
-  const { editors, isEditorsLoading, mutateEditors } = useEditors({
-    owner,
-    agentConfigurationId: agentConfiguration?.sId ?? null,
-  });
+  const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
+    useEditors({
+      owner,
+      agentConfigurationId: agentConfiguration?.sId ?? null,
+    });
   const updateEditors = useUpdateEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
@@ -333,9 +337,13 @@ export default function AgentBuilder({
     !!agentConfiguration && !duplicateAgentId && isAdmin;
   const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
   const isAdminNonEditor =
-    isAdminExistingAgent && !isEditorsLoading && !isCurrentUserEditor;
+    isAdminExistingAgent &&
+    !isEditorsLoading &&
+    !isEditorsError &&
+    !isCurrentUserEditor;
   const isEditorLocked =
-    isAdminExistingAgent && (isEditorsLoading || !isCurrentUserEditor);
+    isAdminExistingAgent &&
+    (isEditorsLoading || isEditorsError || !isCurrentUserEditor);
 
   const handleAddSelfAsEditor = async () => {
     if (!agentConfiguration || isAddingSelfAsEditor) {
@@ -587,10 +595,14 @@ export default function AgentBuilder({
             handleSave={handleSave}
             isSaveDisabled={isSaveDisabled}
             isEditorLocked={isEditorLocked}
+            isEditorLoadErrorVisible={isAdminExistingAgent && isEditorsError}
             isEditorGateVisible={isAdminNonEditor}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={() => {
               void handleAddSelfAsEditor();
+            }}
+            onRetryEditors={() => {
+              void mutateEditors();
             }}
             isTriggersLoading={isTriggersLoading}
             dialogProps={dialogProps}
@@ -627,9 +639,11 @@ interface AgentBuilderContentProps {
   handleSave: () => void;
   isSaveDisabled: boolean;
   isEditorLocked: boolean;
+  isEditorLoadErrorVisible: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
+  onRetryEditors: () => void;
   isTriggersLoading: boolean;
   dialogProps: {
     mcpServerViewsWithPersonalConnections: ReturnType<
@@ -656,9 +670,11 @@ function AgentBuilderContent({
   handleSave,
   isSaveDisabled,
   isEditorLocked,
+  isEditorLoadErrorVisible,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
+  onRetryEditors,
   isTriggersLoading,
   dialogProps,
   isCreatedDialogOpen,
@@ -764,7 +780,12 @@ function AgentBuilderContent({
               disabled: isSaveDisabled || isEditorLocked,
             }}
             editorGateMessage={
-              isEditorGateVisible ? (
+              isEditorLoadErrorVisible ? (
+                <BuilderEditorLoadErrorMessage
+                  builderType="agent"
+                  onRetry={onRetryEditors}
+                />
+              ) : isEditorGateVisible ? (
                 <BuilderEditorGateMessage
                   builderType="agent"
                   isLoading={isAddingSelfAsEditor}
