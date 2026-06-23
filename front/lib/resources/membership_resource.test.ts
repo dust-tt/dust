@@ -228,6 +228,43 @@ describe("MembershipResource", () => {
         expect(inMemoryCache.has(cacheKey)).toBe(false);
       });
     });
+
+    describe("updateMembershipSeat() - freeSeatExitedAt", () => {
+      it("stamps freeSeatExitedAt when leaving a free seat for a paid seat", async () => {
+        const user = await UserFactory.basic();
+        const membership = await MembershipFactory.associate(workspace, user, {
+          role: "user",
+          seatType: "free",
+        });
+        expect(membership.freeSeatExitedAt).toBeNull();
+
+        await membership.updateMembershipSeat({
+          user,
+          workspace,
+          newSeatType: "pro",
+          author: "no-author",
+        });
+
+        expect(membership.freeSeatExitedAt).toBeInstanceOf(Date);
+      });
+
+      it("does not stamp freeSeatExitedAt on a paid→paid change", async () => {
+        const user = await UserFactory.basic();
+        const membership = await MembershipFactory.associate(workspace, user, {
+          role: "user",
+          seatType: "pro",
+        });
+
+        await membership.updateMembershipSeat({
+          user,
+          workspace,
+          newSeatType: "max",
+          author: "no-author",
+        });
+
+        expect(membership.freeSeatExitedAt).toBeNull();
+      });
+    });
   });
 
   describe("firstUsedAt behavior", () => {

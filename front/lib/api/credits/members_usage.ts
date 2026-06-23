@@ -183,25 +183,50 @@ type ConsumedCreditsAggs = {
   by_user?: estypes.AggregationsMultiBucketAggregateBase<ConsumedCreditsBucket>;
 };
 
+type ConsumedCreditsFilterBucket = {
+  credits?: estypes.AggregationsSumAggregate;
+};
+
+type CustomStartConsumedCreditsAggs = {
+  by_custom_user?: {
+    buckets: Record<string, ConsumedCreditsFilterBucket>;
+  };
+};
+
+function consumedCreditsBaseFilters(
+  workspace: LightWorkspaceType
+): estypes.QueryDslQueryContainer[] {
+  return [
+    { term: { workspace_id: workspace.sId } },
+    { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+  ];
+}
+
 // Per-user consumed AWU credits for the current billing cycle, summed from the
 // analytics index (`cost.full_awu`, precomputed at index time) by Elasticsearch.
 // This replaces the per-user Metronome usage scan that previously dominated the
-// members-table load: one aggregation returns every requested user's
-// consumption. Keyed by user sId (the analytics `user_id`), so no Metronome
-// free-seat id mapping is needed. Filtered to the billed message statuses so
-// the consumed total matches Metronome (failed messages are indexed with a cost
-// but never billed). Returns an empty map on any failure so the table still
-// renders (the consumed column shows 0).
+// members-table load. Keyed by user sId (the analytics `user_id`).
+//
+// Free-seat usage lives under a separate Metronome user id (`free-<sId>`), so a
+// free→paid upgrade resets a user's billed consumption to 0. The analytics index
+// is keyed only by sId and can't make that distinction, so `freeSeatExitedAtBy`
+// carries the upgrade timestamp for users who left a free seat: those users are
+// counted only from their upgrade (clamped into the cycle) instead of from
+// `cycleStart`, excluding pre-upgrade free usage. Paid→paid changes never set
+// the timestamp, so they don't reset. Returns an empty map on any failure so the
+// table still renders (the consumed column shows 0).
 async function fetchConsumedAwuCreditsByUserId({
   workspace,
   metronomeCustomerId,
   metronomeContractId,
   userIds,
+  freeSeatExitedAtByUserId,
 }: {
   workspace: LightWorkspaceType;
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
   userIds: string[];
+  freeSeatExitedAtByUserId: Map<string, Date>;
 }): Promise<Map<string, number>> {
   if (userIds.length === 0) {
     return new Map();
@@ -223,25 +248,58 @@ async function fetchConsumedAwuCreditsByUserId({
   }
   const { cycleStart, cycleEnd } = periodResult.value;
 
+  const defaultStartUserIds: string[] = [];
+  const customStartByUserId = new Map<string, Date>();
+  for (const userId of userIds) {
+    const exitedAt = freeSeatExitedAtByUserId.get(userId);
+    if (exitedAt && exitedAt.getTime() > cycleStart.getTime()) {
+      customStartByUserId.set(userId, exitedAt);
+    } else {
+      defaultStartUserIds.push(userId);
+    }
+  }
+
+  const [defaultResult, customResult] = await Promise.all([
+    fetchConsumedCreditsWithSharedStart({
+      workspace,
+      userIds: defaultStartUserIds,
+      start: cycleStart,
+      end: cycleEnd,
+    }),
+    fetchConsumedCreditsWithPerUserStart({
+      workspace,
+      startByUserId: customStartByUserId,
+      end: cycleEnd,
+    }),
+  ]);
+
+  return new Map([...defaultResult, ...customResult]);
+}
+
+async function fetchConsumedCreditsWithSharedStart({
+  workspace,
+  userIds,
+  start,
+  end,
+}: {
+  workspace: LightWorkspaceType;
+  userIds: string[];
+  start: Date;
+  end: Date;
+}): Promise<Map<string, number>> {
+  if (userIds.length === 0) {
+    return new Map();
+  }
+
   const result = await searchAnalytics<never, ConsumedCreditsAggs>(
     {
       bool: {
         filter: [
-          { term: { workspace_id: workspace.sId } },
+          ...consumedCreditsBaseFilters(workspace),
           { terms: { user_id: userIds } },
-          // Mirror the billing-side filter: Metronome only emits usage events
-          // and credits for these statuses (see usage_queue activities and
-          // credit_cost), so failed messages carry a non-zero `cost.full_awu`
-          // in the index but are never billed. Without this filter the consumed
-          // total over-counts failed runs (e.g. failed triggers) and diverges
-          // from Metronome.
-          { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
           {
             range: {
-              timestamp: {
-                gte: cycleStart.toISOString(),
-                lte: cycleEnd.toISOString(),
-              },
+              timestamp: { gte: start.toISOString(), lte: end.toISOString() },
             },
           },
         ],
@@ -249,8 +307,6 @@ async function fetchConsumedAwuCreditsByUserId({
     },
     {
       aggregations: {
-        // Scoped to `userIds`, so `size` covers every distinct bucket and the
-        // per-bucket sums are exact (no cross-shard top-N approximation).
         by_user: {
           terms: { field: "user_id", size: userIds.length },
           aggs: { credits: { sum: { field: "cost.full_awu" } } },
@@ -275,6 +331,65 @@ async function fetchConsumedAwuCreditsByUserId({
       String(bucket.key),
       Math.round(bucket.credits?.value ?? 0)
     );
+  }
+  return consumedByUserId;
+}
+
+async function fetchConsumedCreditsWithPerUserStart({
+  workspace,
+  startByUserId,
+  end,
+}: {
+  workspace: LightWorkspaceType;
+  startByUserId: Map<string, Date>;
+  end: Date;
+}): Promise<Map<string, number>> {
+  if (startByUserId.size === 0) {
+    return new Map();
+  }
+
+  const filters: Record<string, estypes.QueryDslQueryContainer> = {};
+  for (const [userId, start] of startByUserId) {
+    filters[userId] = {
+      bool: {
+        filter: [
+          { term: { user_id: userId } },
+          {
+            range: {
+              timestamp: { gte: start.toISOString(), lte: end.toISOString() },
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  const result = await searchAnalytics<never, CustomStartConsumedCreditsAggs>(
+    {
+      bool: { filter: consumedCreditsBaseFilters(workspace) },
+    },
+    {
+      aggregations: {
+        by_custom_user: {
+          filters: { filters },
+          aggs: { credits: { sum: { field: "cost.full_awu" } } },
+        },
+      },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read consumed credits (per-user start) from analytics index"
+    );
+    return new Map();
+  }
+
+  const consumedByUserId = new Map<string, number>();
+  const buckets = result.value.aggregations?.by_custom_user?.buckets ?? {};
+  for (const [userId, bucket] of Object.entries(buckets)) {
+    consumedByUserId.set(userId, Math.round(bucket.credits?.value ?? 0));
   }
   return consumedByUserId;
 }
@@ -961,22 +1076,36 @@ export async function getMembersUsage({
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  // Fetch membership details and Metronome data in parallel for the
-  // current page of users.
+  // Memberships are needed up front to resolve per-user consumed-credit start
+  // bounds (free→paid upgraders are counted from their upgrade, not cycle
+  // start). Keyed by user model id, matching the rest of the flow.
+  const membershipsResult = await MembershipResource.getActiveMemberships({
+    workspace,
+    users,
+  });
+  const userSIdByModelId = new Map(users.map((u) => [u.id, u.sId]));
+  const freeSeatExitedAtByUserId = new Map<string, Date>();
+  for (const membership of membershipsResult.memberships) {
+    const sId = userSIdByModelId.get(membership.userId);
+    if (sId && membership.freeSeatExitedAt) {
+      freeSeatExitedAtByUserId.set(sId, membership.freeSeatExitedAt);
+    }
+  }
+
+  // Fetch Metronome data and consumed credits in parallel for the current page.
   const [
-    membershipsResult,
     perUserTotalConsumedCredits,
     seatDataByUserId,
     seatBalanceByUserId,
     perUserSpendLimits,
     freeCreditAlertIdsByUserId,
   ] = await Promise.all([
-    MembershipResource.getActiveMemberships({ workspace, users }),
     fetchConsumedAwuCreditsByUserId({
       workspace,
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
       userIds: users.map((u) => u.sId),
+      freeSeatExitedAtByUserId,
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,

@@ -21,6 +21,7 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare firstUsedAt: Date | null;
   declare seatType: CreationOptional<MembershipSeatType>;
   declare creditState: CreationOptional<UserCreditState>;
+  declare freeSeatExitedAt: CreationOptional<Date | null>;
   // Admin-set per-user cap on workspace-pool AWU consumption, in AWU credits,
   // excluding the seat allowance (i.e. exactly what the admin entered). NULL
   // means no override — the seat-type default applies. The Metronome
@@ -73,6 +74,11 @@ MembershipModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "on_pool",
+    },
+    freeSeatExitedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     poolCapOverrideAwuCredits: {
       type: DataTypes.INTEGER,

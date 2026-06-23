@@ -1527,6 +1527,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       return { previousSeatType, newSeatType };
     }
 
+    // Stamp when the user leaves the one-shot `free` seat. `free` can never be
+    // re-granted, so this fires at most once and is never cleared. The members
+    // table uses it to start counting a paid user's consumed credits after the
+    // upgrade, excluding pre-upgrade free usage (which the analytics index,
+    // keyed by sId, can't otherwise distinguish).
+    const leftFreeSeat = previousSeatType === "free" && newSeatType !== "free";
+
     await this.update(
       {
         seatType: newSeatType,
@@ -1534,6 +1541,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         // type (same logic as createMembership) so the member isn't stuck in
         // the wrong state during the seat sync's debounce window.
         creditState: initialCreditStateForSeatType(newSeatType),
+        ...(leftFreeSeat ? { freeSeatExitedAt: new Date() } : {}),
       },
       transaction
     );
