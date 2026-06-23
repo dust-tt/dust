@@ -3,6 +3,10 @@ import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import { context as otelContext, trace } from "@opentelemetry/api";
 import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
+import {
+  ATTR_HTTP_REQUEST_METHOD,
+  ATTR_HTTP_ROUTE,
+} from "@opentelemetry/semantic-conventions";
 import type {
   ColumnsDescription,
   Model,
@@ -65,6 +69,9 @@ function trackTx(
         if (m) {
           route = m[1];
         }
+      } else if (attrs?.[ATTR_HTTP_ROUTE]) {
+        // Hono (front-api) sets OTel HTTP semantic-convention attributes.
+        route = String(attrs[ATTR_HTTP_ROUTE]);
       }
     }
     txStates.set(txId, {
@@ -251,6 +258,17 @@ export class SequelizeWithComments<
             comments.route = match[1];
           }
         }
+        // Case 3: Hono (front-api) sets OTel HTTP semantic-convention attributes
+        // on the per-request span (see front-api/middlewares/otel.ts).
+        else if (attrs?.[ATTR_HTTP_ROUTE]) {
+          comments.route = String(attrs[ATTR_HTTP_ROUTE]);
+        }
+
+        // The HTTP method is only set by the Hono span; Next.js spans don't
+        // carry it, so this is effectively front-api only.
+        if (attrs?.[ATTR_HTTP_REQUEST_METHOD]) {
+          comments.method = String(attrs[ATTR_HTTP_REQUEST_METHOD]);
+        }
       }
 
       // Build comment string following sqlcommenter format
@@ -267,6 +285,12 @@ export class SequelizeWithComments<
           )
           .join(",");
         sql = `${sql} /*${commentStr}*/`;
+
+        // DEBUG: remove after manual testing.
+        console.log("[sqlcomment]", {
+          comments,
+          sql: sql.length > 120 ? `${sql.slice(0, 120)}…` : sql,
+        });
       }
 
       return await super.query(sql, options);
