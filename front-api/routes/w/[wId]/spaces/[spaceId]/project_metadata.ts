@@ -7,11 +7,11 @@ import {
   startImmediateProjectTodoWorkflowOnce,
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
-import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
 } from "@app/types/api/projects/metadata";
+import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

@@ -1,6 +1,6 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
-import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/internal/spaces";
+import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import {

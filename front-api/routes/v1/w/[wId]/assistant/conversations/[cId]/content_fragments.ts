@@ -4,7 +4,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithInlinedContent,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import { isInteractiveContentType } from "@app/types/files";
 import {
   type PostContentFragmentResponseType,

@@ -6,7 +6,7 @@ import {
   isSearchableContentType,
 } from "@app/lib/api/assistant/conversation/content_types";
 import logger from "@app/logger/logger";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
   ContentFragmentType,
   ContentFragmentVersion,

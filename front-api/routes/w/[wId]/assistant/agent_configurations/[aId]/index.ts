@@ -5,7 +5,7 @@ import {
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
+import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

@@ -5,15 +5,15 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { PostConversationsResponseBody } from "@app/types/api/assistant/conversation/types";
 import type {
   InternalPostConversationsRequestBodySchema,
   SupportedContentNodeContentType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import {
   isSupportedContentNodeFragmentContentType,
   PostConversationsResponseBodySchema,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
+import type { PostConversationsResponseBody } from "@app/types/api/assistant/conversation/types";
 import type {
   ClientMessageOrigin,
   ConversationMetadata,

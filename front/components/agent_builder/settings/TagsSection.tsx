@@ -5,7 +5,7 @@ import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useTags } from "@app/lib/swr/tags";
-import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
+import type { BuilderSuggestionsType } from "@app/types/api/assistant";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import type { TagType } from "@app/types/tag";

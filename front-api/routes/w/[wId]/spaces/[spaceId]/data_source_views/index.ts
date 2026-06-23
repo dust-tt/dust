@@ -12,8 +12,8 @@ import type {
   GetSpaceDataSourceViewsResponseBody,
   PostSpaceDataSourceViewsResponseBody,
 } from "@app/types/api/data_source_view";
-import { ContentSchema } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import { ContentSchema } from "@app/types/api/spaces";
 import type { DataSourceViewsWithDetails } from "@app/types/data_source_view";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

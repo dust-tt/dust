@@ -116,8 +116,8 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
-} from "@app/types/api/internal/assistant";
-import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
   LightAgentConfigurationType,
   ToolErrorEvent,

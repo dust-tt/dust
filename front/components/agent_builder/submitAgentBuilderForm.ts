@@ -30,7 +30,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type {
   DataSourcesConfigurationsCodecType,
   PostOrPatchAgentConfigurationRequestBody,
-} from "@app/types/api/internal/agent_configuration";
+} from "@app/types/api/agent_configuration";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,

@@ -23,8 +23,8 @@ import {
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
-import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type { PatchPodMetadataBodyType } from "@app/types/api/spaces";
+import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   type LightWorkspaceType,

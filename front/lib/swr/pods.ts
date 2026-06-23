@@ -25,8 +25,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
-import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -43,6 +42,7 @@ import type {
   PostPodTaskResponseBody,
   PostStartPodTaskResponseBody,
 } from "@app/types/api/projects/tasks";
+import type { PatchPodMetadataBodyType } from "@app/types/api/spaces";
 import type {
   NotificationCondition,
   UserPodNotificationPreference,

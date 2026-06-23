@@ -2,8 +2,8 @@
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
 
-import type { SupportedNonImageContentType } from "../../files";
-import { getSupportedNonImageMimeTypes } from "../../files";
+import type { SupportedNonImageContentType } from "../files";
+import { getSupportedNonImageMimeTypes } from "../files";
 
 const AgentMentionSchema = z.object({
   // TODO: add a type="agent" but this requires to be backwards compatible with the old API, not doing for now

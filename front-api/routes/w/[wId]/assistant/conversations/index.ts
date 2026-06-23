@@ -12,11 +12,11 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { InternalPostConversationsRequestBodySchema } from "@app/types/api/assistant";
 import type {
   GetConversationsResponseBody,
   PostConversationsResponseBody,
 } from "@app/types/api/assistant/conversation/types";
-import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";

@@ -11,7 +11,7 @@ import {
   makeUrlForEmojiAndBackground,
 } from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
-import type { BuilderEmojiSuggestionsType } from "@app/types/api/internal/assistant";
+import type { BuilderEmojiSuggestionsType } from "@app/types/api/assistant";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";

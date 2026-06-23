@@ -33,7 +33,7 @@ import { launchConversationForkWorkflow } from "@app/temporal/conversation_fork_
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
 import type {
   ConversationType,

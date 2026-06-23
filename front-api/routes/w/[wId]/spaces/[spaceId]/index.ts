@@ -16,8 +16,8 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";

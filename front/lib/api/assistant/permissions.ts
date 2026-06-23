@@ -7,7 +7,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type { CombinedResourcePermissions } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";

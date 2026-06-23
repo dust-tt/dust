@@ -6,14 +6,14 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import {
+  GetAgentConfigurationsQuerySchema,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "@app/types/api/agent_configuration";
 import type {
   GetAgentConfigurationsResponseBody,
   PostAgentConfigurationResponseBody,
 } from "@app/types/api/assistant/configuration";
-import {
-  GetAgentConfigurationsQuerySchema,
-  PostOrPatchAgentConfigurationRequestBodySchema,
-} from "@app/types/api/internal/agent_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

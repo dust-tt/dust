@@ -10,8 +10,8 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
+import { InternalPostMessagesRequestBodySchema } from "@app/types/api/assistant";
 import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
-import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
   LegacyLightMessageType,
   LightMessageType,
