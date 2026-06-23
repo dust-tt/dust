@@ -4,19 +4,19 @@ import type {
   GetPokeNoWorkspaceAuthContextResponseType,
   GetPokeWorkspaceAuthContextResponseType,
 } from "@app/lib/api/poke/auth_context";
-import type {
-  GetPokeCouponRedemptionsResponseBody,
-  GetPokeCouponsResponseBody,
-} from "@app/lib/api/poke/coupons";
-import type { GetPokeFeaturesResponseBody } from "@app/lib/api/poke/features";
 import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/metronome";
-import type { GetPokePlansResponseBody } from "@app/lib/api/poke/plans";
-import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/lib/api/poke/stripe_customers";
 import type { GetRegionResponseType } from "@app/lib/api/regions/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
+import type {
+  GetPokeCouponRedemptionsResponseBody,
+  GetPokeCouponsResponseBody,
+} from "@app/types/api/poke/coupons";
+import type { GetPokeFeaturesResponseBody } from "@app/types/api/poke/features";
+import type { GetPokePlansResponseBody } from "@app/types/api/poke/plans";
+import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/types/api/poke/stripe_customers";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import {

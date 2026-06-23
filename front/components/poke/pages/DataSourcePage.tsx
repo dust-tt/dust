@@ -7,7 +7,6 @@ import {
   PokeAlertDescription,
 } from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { FeaturesType } from "@app/lib/api/poke/data_sources";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -17,6 +16,7 @@ import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
+import type { FeaturesType } from "@app/types/api/poke/data_sources";
 import type {
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,

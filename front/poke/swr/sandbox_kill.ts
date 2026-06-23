@@ -1,8 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { SandboxKillRequestResponseBody } from "@app/lib/api/poke/types";
 import type { SandboxKillImagesResponseBody } from "@app/lib/api/sandbox/image";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
+import type { SandboxKillRequestResponseBody } from "@app/types/api/poke/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";

@@ -12,7 +12,7 @@ import {
   PokeFormTextArea,
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
-import type { PokeGetPluginDetailsResponseBody } from "@app/lib/api/poke/plugins/manifest";
+import type { PokeGetPluginDetailsResponseBody } from "@app/types/api/poke/plugins/manifest";
 import type {
   AsyncEnumValues,
   EnumValues,

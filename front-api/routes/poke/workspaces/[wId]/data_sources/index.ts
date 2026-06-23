@@ -1,5 +1,5 @@
-import type { PokeListDataSources } from "@app/lib/api/poke/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { PokeListDataSources } from "@app/types/api/poke/data_sources";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
