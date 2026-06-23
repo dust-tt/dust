@@ -122,11 +122,9 @@ export function buildMarkdownEditorExtensions({
   }
 
   if (maxCharacterCount !== undefined) {
-    extensions.push(
-      CharacterCount.configure({
-        limit: maxCharacterCount,
-      })
-    );
+    // Count only — do not set `limit`. TipTap trims initial content when `limit`
+    // is set, which hides oversized files instead of showing them for editing.
+    extensions.push(CharacterCount.configure({}));
   }
 
   return extensions;

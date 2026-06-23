@@ -7,7 +7,7 @@ export const PROJECT_CONTEXT_FOLDER_NAME = "Context";
 export const POD_AGENTS_MD_FILENAME = "AGENTS.md";
 
 /** Matches the character limit enforced in Pod settings UI. */
-export const POD_AGENTS_MD_MAX_CHARACTER_COUNT = 4096;
+export const POD_AGENTS_MD_MAX_CHARACTER_COUNT = 8192;
 
 export function getPodAgentsMdScopedPath(podId: string): string {
   return podScopedPath(podId, POD_AGENTS_MD_FILENAME);

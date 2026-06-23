@@ -2,6 +2,7 @@ import {
   MarkdownEditor,
   type MarkdownEditorProps,
 } from "@app/components/editor/MarkdownEditor";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getFilePathContentApiPath,
   useFileContentByUrl,
@@ -38,8 +39,10 @@ export function MarkdownFileEditor({
   onContentLoaded,
   onSaved,
   readOnly,
+  maxCharacterCount,
   ...markdownEditorProps
 }: MarkdownFileEditorProps) {
+  const sendNotification = useSendNotification();
   const resolvedUrl = useMemo(
     () => (filePath ? getFilePathContentApiPath(owner, filePath) : null),
     [filePath, owner]
@@ -114,6 +117,15 @@ export function MarkdownFileEditor({
       return;
     }
 
+    if (maxCharacterCount !== undefined && draft.length > maxCharacterCount) {
+      sendNotification({
+        type: "error",
+        title: "Content too long",
+        description: `Shorten the file to ${maxCharacterCount} characters or fewer before saving.`,
+      });
+      return;
+    }
+
     setIsSaving(true);
     const result = await writeFileContent({
       canonicalPath: filePath,
@@ -132,8 +144,10 @@ export function MarkdownFileEditor({
     filePath,
     isDirty,
     isSaving,
+    maxCharacterCount,
     onSaved,
     saveContentType,
+    sendNotification,
     writeFileContent,
   ]);
 
@@ -175,11 +189,22 @@ export function MarkdownFileEditor({
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-2">
+      {maxCharacterCount !== undefined && draft.length > maxCharacterCount ? (
+        <ContentMessage
+          title="Content exceeds the character limit"
+          variant="warning"
+          className="w-full"
+        >
+          This file is longer than {maxCharacterCount} characters. You can read
+          and edit it, but trim it down before saving.
+        </ContentMessage>
+      ) : null}
       <MarkdownEditor
         {...markdownEditorProps}
         value={draft}
         onChange={handleChange}
         readOnly={readOnly}
+        maxCharacterCount={maxCharacterCount}
       />
       {canPersist && isDirty && (
         <div className="flex gap-2">
