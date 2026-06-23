@@ -1,10 +1,6 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { clearActionRequiredIfNoBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
-import type {
-  GetConversationResponseBody,
-  PatchConversationResponseBody,
-} from "@app/lib/api/assistant/conversation/types";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -15,6 +11,10 @@ import {
   moveConversationToProject,
 } from "@app/lib/api/projects/conversations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type {
+  GetConversationResponseBody,
+  PatchConversationResponseBody,
+} from "@app/types/api/assistant/conversation/types";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";

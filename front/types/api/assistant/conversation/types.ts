@@ -49,6 +49,9 @@ export type GetConversationResponseBody = {
   conversation: ConversationWithoutContentType;
 };
 
+// Response body for the internal PATCH conversation endpoint. The public v1
+// endpoint uses the SDK's PatchConversationResponseSchema instead (the internal
+// API surface cannot import from @dust-tt/client).
 export type PatchConversationResponseBody = {
   success: boolean;
 };

@@ -1,11 +1,11 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PostConversationsResponseBody } from "@app/lib/api/assistant/conversation/types";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { PostConversationsResponseBody } from "@app/types/api/assistant/conversation/types";
 import type {
   InternalPostConversationsRequestBodySchema,
   SupportedContentNodeContentType,

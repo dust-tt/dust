@@ -5,10 +5,6 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type {
-  GetConversationsResponseBody,
-  PostConversationsResponseBody,
-} from "@app/lib/api/assistant/conversation/types";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -16,6 +12,10 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type {
+  GetConversationsResponseBody,
+  PostConversationsResponseBody,
+} from "@app/types/api/assistant/conversation/types";
 import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";

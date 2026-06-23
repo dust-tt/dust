@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PatchConversationsRequestBody } from "@app/lib/api/assistant/conversation/types";
 import { clientFetch } from "@app/lib/egress/client";
+import type { PatchConversationsRequestBody } from "@app/types/api/assistant/conversation/types";
 import type { ConversationUrlAccessMode } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
