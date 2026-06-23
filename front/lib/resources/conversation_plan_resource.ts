@@ -75,7 +75,7 @@ export class ConversationPlanResource extends BaseResource<ConversationPlanModel
   async recordApproval({
     approvedByUserId,
   }: {
-    approvedByUserId: string;
+    approvedByUserId: ModelId;
   }): Promise<void> {
     await this.update({
       approvedAt: new Date(),

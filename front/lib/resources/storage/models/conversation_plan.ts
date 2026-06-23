@@ -1,6 +1,7 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
@@ -16,7 +17,9 @@ export class ConversationPlanModel extends WorkspaceAwareModel<ConversationPlanM
   declare version: CreationOptional<number>;
   declare isClosed: CreationOptional<boolean>;
   declare approvedAt: CreationOptional<Date | null>;
-  declare approvedByUserId: CreationOptional<string | null>;
+  declare approvedByUserId: CreationOptional<ForeignKey<
+    UserModel["id"]
+  > | null>;
   declare approvedVersion: CreationOptional<number | null>;
 }
 
@@ -56,9 +59,12 @@ ConversationPlanModel.init(
       defaultValue: null,
     },
     approvedByUserId: {
-      type: DataTypes.STRING,
+      type: DataTypes.BIGINT,
       allowNull: true,
-      defaultValue: null,
+      references: {
+        model: UserModel,
+        key: "id",
+      },
     },
     approvedVersion: {
       type: DataTypes.INTEGER,
@@ -83,6 +89,11 @@ ConversationPlanModel.init(
         name: "conversation_plans_active_unique",
         concurrently: true,
       },
+      {
+        fields: ["approvedByUserId"],
+        name: "conversation_plans_approved_by_user_id",
+        concurrently: true,
+      },
     ],
   }
 );
@@ -94,4 +105,15 @@ ConversationModel.hasMany(ConversationPlanModel, {
 
 ConversationPlanModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: false },
+});
+
+// Nullable: approval is optional, and the approver may later be scrubbed (SET NULL keeps the
+// approval record).
+UserModel.hasMany(ConversationPlanModel, {
+  foreignKey: { name: "approvedByUserId", allowNull: true },
+  onDelete: "SET NULL",
+});
+
+ConversationPlanModel.belongsTo(UserModel, {
+  foreignKey: { name: "approvedByUserId", allowNull: true },
 });
