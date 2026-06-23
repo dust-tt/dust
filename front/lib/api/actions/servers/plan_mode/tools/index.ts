@@ -192,9 +192,9 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         );
       }
 
-      // `user.sId` is the triggering user message's author. validate-action requires that to be
-      // the approver, so they match today; revisit if validate-action is opened up.
-      const approval = await markPlanApproved(plan, user.sId);
+      // `user` is the triggering user message's author. validate-action requires that to be the
+      // approver, so they match today; revisit if validate-action is opened up.
+      const approval = await markPlanApproved(plan, user.id);
       if (!approval) {
         return new Err(
           new MCPError(

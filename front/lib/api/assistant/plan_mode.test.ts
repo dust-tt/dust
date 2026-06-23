@@ -137,7 +137,7 @@ describe("plan_mode lifecycle", () => {
     );
 
     const user = auth.getNonNullableUser();
-    const approval = await markPlanApproved(plan, user.sId);
+    const approval = await markPlanApproved(plan, user.id);
     expect(approval).not.toBeNull();
     expect(approval?.approvedVersion).toBe(2);
     expect(derivePlanApprovalState(plan, { hasPendingApproval: false })).toBe(
@@ -178,10 +178,7 @@ describe("plan_mode lifecycle", () => {
     const plan = created.value;
     await markPlanClosed(plan);
 
-    const approval = await markPlanApproved(
-      plan,
-      auth.getNonNullableUser().sId
-    );
+    const approval = await markPlanApproved(plan, auth.getNonNullableUser().id);
     expect(approval).toBeNull();
   });
 

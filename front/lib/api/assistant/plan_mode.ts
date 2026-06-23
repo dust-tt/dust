@@ -6,6 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { ConversationPlanResource } from "@app/lib/resources/conversation_plan_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 // The plan markdown lives at a per-plan path derived from the conversation and the plan sId, so a
@@ -117,7 +118,7 @@ export async function createPlan(
 // No-ops (returns null) if the plan is already closed, covering the close_plan-during-approval race.
 export async function markPlanApproved(
   plan: ConversationPlanResource,
-  approvedByUserId: string
+  approvedByUserId: ModelId
 ): Promise<{ approvedAt: Date; approvedVersion: number } | null> {
   if (plan.isClosed) {
     return null;
