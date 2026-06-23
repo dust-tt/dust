@@ -36,6 +36,9 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     expect(configuration.allowMemberUpgradeRequests).toBe(true);
     expect(configuration.upgradeRequestEmailEnabled).toBe(true);
     expect(configuration.autoSeatUpgradeEnabled).toBe(false);
+    // The default mock workspace is on a free (non-Metronome) plan, so
+    // auto-upgrade is not available — the UI disables the toggle.
+    expect(configuration.autoSeatUpgradeAvailable).toBe(false);
   });
 
   it("PATCH persists the upgrade-request toggles and GET reflects them", async () => {

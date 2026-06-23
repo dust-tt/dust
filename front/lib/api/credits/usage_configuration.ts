@@ -1,3 +1,4 @@
+import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -21,6 +22,7 @@ export type CreditUsageConfigurationBody = {
   // Whether members who hit their per-user credit limit are automatically bumped
   // to the next entitled seat tier instead of being blocked.
   autoSeatUpgradeEnabled: boolean;
+  autoSeatUpgradeAvailable: boolean;
 };
 
 export type GetCreditUsageConfigurationResponseBody = {
@@ -58,6 +60,8 @@ export async function getUsageConfiguration(
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
+  const subscription = auth.subscriptionResource();
+
   return {
     balanceThresholdCredits: config?.balanceThresholdAwuCredits ?? null,
     allowMemberUpgradeRequests:
@@ -68,6 +72,9 @@ export async function getUsageConfiguration(
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
     autoSeatUpgradeEnabled:
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+    autoSeatUpgradeAvailable: subscription
+      ? passesBillingGate(subscription)
+      : false,
   };
 }
 
