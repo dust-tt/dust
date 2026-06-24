@@ -3,9 +3,14 @@ import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeDisplayName,
+} from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
@@ -68,6 +73,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
   Page,
   PieChart01,
   SearchInput,
@@ -78,7 +84,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import capitalize from "lodash/capitalize";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 // Build a minimal member from an upgrade request to feed the reused seat / spend
@@ -543,7 +548,7 @@ export function UsagePage() {
             seatTypeFilter === "none"
               ? "No seat"
               : seatTypeFilter
-                ? capitalize(seatTypeFilter)
+                ? seatTypeDisplayName(seatTypeFilter)
                 : "All seats"
           }
           size="sm"
@@ -557,12 +562,26 @@ export function UsagePage() {
         />
         <DropdownMenuItem
           label="No seat"
+          icon={
+            <Icon
+              visual={SEAT_TYPE_ICONS["none"]}
+              size="sm"
+              className={getSeatIconColorClass("none")}
+            />
+          }
           onClick={() => handleSetSeatTypeFilter("none")}
         />
         {seatFilterOptions.map((seatType) => (
           <DropdownMenuItem
             key={seatType}
-            label={capitalize(seatType)}
+            label={seatTypeDisplayName(seatType)}
+            icon={
+              <Icon
+                visual={SEAT_TYPE_ICONS[seatType]}
+                size="sm"
+                className={getSeatIconColorClass(seatType)}
+              />
+            }
             onClick={() => handleSetSeatTypeFilter(seatType)}
           />
         ))}
