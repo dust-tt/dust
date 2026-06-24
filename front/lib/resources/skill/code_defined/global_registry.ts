@@ -3,6 +3,7 @@ import { framesSkill } from "@app/lib/resources/skill/code_defined/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/code_defined/go_deep";
 import { mentionUsersSkill } from "@app/lib/resources/skill/code_defined/mention_users";
 import { pptxSkill } from "@app/lib/resources/skill/code_defined/pptx";
+import { productboardSkill } from "@app/lib/resources/skill/code_defined/productboard";
 import { projectsSkill } from "@app/lib/resources/skill/code_defined/projects";
 import {
   ensureUniqueSIds,
@@ -22,6 +23,7 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   goDeepSkill,
   mentionUsersSkill,
   pptxSkill,
+  productboardSkill,
   projectsSkill,
   skillAuthoringSkill,
   supportSkill,
