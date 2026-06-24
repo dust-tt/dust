@@ -2197,9 +2197,8 @@ function GovernancePage({
 
       <Page.Separator />
       <Page.SectionHeader title="Models" />
-      {providers.map((provider, pIdx) => (
+      {providers.map((provider) => (
         <div key={provider.id} className="s-flex s-w-full s-flex-col s-gap-3">
-          {pIdx > 0 && <Page.Separator />}
           {/* Provider sub-header */}
           <div className="s-flex s-items-center s-gap-2">
             <provider.Logo className="s-h-5 s-w-5 s-shrink-0" />
