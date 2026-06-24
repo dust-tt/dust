@@ -35,7 +35,8 @@ export const SALESLOFT_SERVER = {
   serverInfo: {
     name: "salesloft",
     version: "1.0.0",
-    description: "Access Salesloft cadences, tasks, and actions.",
+    description:
+      "Access Salesloft sales cadences (outreach sequences), tasks, and due actions for sales engagement and pipeline outreach.",
     authorization: null,
     icon: "SalesloftLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesloft-mcp",
