@@ -61,6 +61,7 @@ import {
   CompactionStartedEvent,
 } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
@@ -738,6 +739,12 @@ export const ConversationViewer = ({
     currentPanelRef.current = currentPanel;
   }, [currentPanel]);
 
+  const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile);
+  useEffect(() => {
+    isMobileRef.current = isMobile;
+  }, [isMobile]);
+
   // Only conversation related events are handled here.
   const onEventCallback = useCallback(
     (eventStr: string) => {
@@ -1055,7 +1062,11 @@ export const ConversationViewer = ({
             lastPlanVersionRef.current = event.version;
             if (event.isClosed && currentPanelRef.current === "plan") {
               closePanel();
-            } else if (prevVersion === 1 && event.version >= 2) {
+            } else if (
+              prevVersion === 1 &&
+              event.version >= 2 &&
+              !isMobileRef.current
+            ) {
               openPanel({ type: "plan" });
             }
             void mutate(
