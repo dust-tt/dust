@@ -44,7 +44,7 @@ const sharedEventFields = {
 export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   list_calendars: {
     description:
-      "List all calendars accessible by the user. Supports pagination via pageToken.",
+      "List all Google Calendars accessible by the user. Supports pagination via pageToken.",
     schema: {
       pageToken: z.string().optional().describe("Page token for pagination."),
       maxResults: z
@@ -212,7 +212,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   },
   check_availability: {
     description:
-      "Compute combined availability across multiple participants within a date range.",
+      "Compute combined free/busy availability across multiple participants within a date range using Google Calendar.",
     schema: {
       participants: z
         .array(
@@ -279,7 +279,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   },
   get_user_timezones: {
     description:
-      "Get timezone information for multiple users by attempting to access their calendars. Only works for calendars shared with you.",
+      "Get timezone settings for multiple users from their Google Calendar configuration. Only works for calendars shared with you.",
     schema: {
       emails: z
         .array(z.string())
@@ -298,7 +298,8 @@ export const GOOGLE_CALENDAR_SERVER = {
   serverInfo: {
     name: "google_calendar",
     version: "1.0.0",
-    description: "Access calendar schedules and appointments.",
+    description:
+      "Manage Google Calendar: list calendars, create and update meeting events, check free/busy availability, and look up attendee timezones.",
     authorization: {
       provider: "google_drive",
       supported_use_cases: ["personal_actions", "platform_actions"],

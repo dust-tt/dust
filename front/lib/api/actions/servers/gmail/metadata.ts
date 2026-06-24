@@ -282,7 +282,8 @@ export const GMAIL_SERVER = {
   serverInfo: {
     name: "gmail",
     version: "1.0.0",
-    description: "Access messages and email drafts.",
+    description:
+      "Read and send Gmail emails: manage inbox messages, threads, drafts, labels, and attachments.",
     authorization: {
       provider: "google_drive",
       supported_use_cases: ["personal_actions", "platform_actions"],

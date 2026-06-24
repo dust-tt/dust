@@ -280,8 +280,8 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
   },
   check_self_availability: {
     description:
-      "Check if the current user is available during a specific time period by analyzing " +
-      "their calendar events. An event is considered blocking if its showAs status is 'busy', " +
+      "Check if the authenticated user is available during a specific time slot in Outlook Calendar. " +
+      "An event is considered blocking if its showAs status is 'busy', " +
       "'tentative', 'oof' (out of office), or 'workingElsewhere'.",
     schema: {
       calendarId: z
@@ -319,7 +319,8 @@ export const OUTLOOK_CALENDAR_SERVER = {
   serverInfo: {
     name: "outlook_calendar",
     version: "1.0.0",
-    description: "Tools for managing Outlook calendars and events.",
+    description:
+      "Manage Outlook Calendar (Microsoft 365): list calendars, create and update meeting events, check free/busy availability.",
     authorization: {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],

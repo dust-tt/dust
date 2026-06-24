@@ -485,7 +485,8 @@ export const OUTLOOK_MAIL_SERVER = {
   serverInfo: {
     name: "outlook",
     version: "1.0.0",
-    description: "Read emails, manage drafts and contacts.",
+    description:
+      "Read and send Outlook emails (Microsoft 365): manage inbox messages, drafts, mail folders, contacts, and shared mailboxes.",
     authorization: {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions", "platform_actions"],
