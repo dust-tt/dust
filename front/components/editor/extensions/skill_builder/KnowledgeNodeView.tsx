@@ -1,9 +1,5 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
-  KnowledgeSlashSearch,
-  knowledgeNodeToItem,
-} from "@app/components/editor/extensions/shared/slash_suggestion/KnowledgeSlashSearch";
-import {
   InlineKnowledgeChip,
   KnowledgeErrorChip,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
@@ -17,7 +13,7 @@ import { Chip, Spinner } from "@dust-tt/sparkle";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper } from "@tiptap/react";
 import type React from "react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect } from "react";
 
 // Re-exports for existing consumers that import these from KnowledgeNodeView.
 // The canonical home is now KnowledgeNodeTypes.ts (React-free).
@@ -46,7 +42,6 @@ export function KnowledgeDisplayComponent({
   onRemove,
   updateAttributes,
 }: KnowledgeDisplayProps) {
-  // Check if we need to fetch full node data.
   const needsFetch = !isFullKnowledgeItem(item);
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
@@ -65,7 +60,6 @@ export function KnowledgeDisplayComponent({
       disabled: !needsFetch || !dataSourceView,
     });
 
-  // Update the item with fetched node data.
   useEffect(() => {
     if (
       needsFetch &&
@@ -86,7 +80,6 @@ export function KnowledgeDisplayComponent({
     }
   }, [fetchedNodes, needsFetch, isFetchingNode, item, updateAttributes]);
 
-  // Show error state if data source view or content node can't be found.
   if (
     isDataSourceViewError ||
     (needsFetch &&
@@ -106,7 +99,6 @@ export function KnowledgeDisplayComponent({
     );
   }
 
-  // Show loading state while fetching node data or waiting for upgrade to full item.
   if (isFetchingNode || (needsFetch && !isFullKnowledgeItem(item))) {
     return (
       <Chip label={item.label} color="white" size="xs">
@@ -115,7 +107,6 @@ export function KnowledgeDisplayComponent({
     );
   }
 
-  // At this point we must have a full item with node data.
   return (
     <InlineKnowledgeChip
       node={item.node}
@@ -125,31 +116,7 @@ export function KnowledgeDisplayComponent({
   );
 }
 
-interface KnowledgeSearchProps {
-  onSelect: (item: KnowledgeItem) => void;
-  onCancel: () => void;
-}
-
-function KnowledgeSearchComponent({
-  onSelect,
-  onCancel,
-}: KnowledgeSearchProps) {
-  const { owner } = useSpacesContext();
-
-  return (
-    <KnowledgeSlashSearch
-      onCancel={onCancel}
-      onSelect={(node) => onSelect(knowledgeNodeToItem(node))}
-      owner={owner}
-    />
-  );
-}
-
-interface ExtendedNodeViewProps extends NodeViewProps {
-  clientRect?: () => DOMRect | null;
-}
-
-export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
+export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   deleteNode,
   editor,
   node,
@@ -166,55 +133,24 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     [deleteNode]
   );
 
-  const handleCancel = useCallback(() => {
-    deleteNode();
-    // Return focus to the editor after the node is removed from the DOM.
-    // We need to wait for the next event loop tick for TipTap to process the deletion.
-    queueMicrotask(() => {
-      if (editor && !editor.isDestroyed) {
-        editor.chain().focus().run();
-      }
-    });
-  }, [deleteNode, editor]);
+  useLayoutEffect(() => {
+    if (selectedItems.length === 0 && editor.isEditable) {
+      deleteNode();
+    }
+  }, [deleteNode, editor.isEditable, selectedItems.length]);
 
-  const handleSelect = useCallback(
-    (item: KnowledgeItem) => {
-      updateAttributes({
-        selectedItems: [item],
-      });
-
-      // Return focus to the editor after selection and add a space.
-      // Wait for the next event loop tick for TipTap to process the attribute update.
-      queueMicrotask(() => {
-        if (editor && !editor.isDestroyed) {
-          editor.chain().focus().insertContent(" ").run();
-        }
-      });
-    },
-    [updateAttributes, editor]
-  );
-
-  // Show selected knowledge.
-  if (selectedItems.length > 0) {
-    return (
-      <NodeViewWrapper className="inline-flex align-middle" data-drag-handle="">
-        <KnowledgeDisplayComponent
-          item={selectedItems[0]}
-          owner={owner}
-          isSpacesLoading={isSpacesLoading}
-          onRemove={editor.isEditable ? handleRemove : undefined}
-          updateAttributes={updateAttributes}
-        />
-      </NodeViewWrapper>
-    );
+  if (selectedItems.length === 0) {
+    return null;
   }
 
-  // Show search interface.
   return (
-    <NodeViewWrapper className="inline">
-      <KnowledgeSearchComponent
-        onSelect={handleSelect}
-        onCancel={handleCancel}
+    <NodeViewWrapper className="inline-flex align-middle" data-drag-handle="">
+      <KnowledgeDisplayComponent
+        item={selectedItems[0]}
+        owner={owner}
+        isSpacesLoading={isSpacesLoading}
+        onRemove={editor.isEditable ? handleRemove : undefined}
+        updateAttributes={updateAttributes}
       />
     </NodeViewWrapper>
   );

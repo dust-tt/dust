@@ -9,7 +9,6 @@ import { BlockIdExtension } from "@app/components/editor/extensions/instructions
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { CapabilitySearchNode } from "@app/components/editor/extensions/skill_builder/CapabilitySearchNode";
 import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import {
   RawMarkdownBlock,
@@ -60,7 +59,6 @@ export function buildSkillInstructionsExtensionsForServer(): Extensions {
     }),
     BlockIdExtension,
     KnowledgeNode.configure({ readOnly: true }),
-    CapabilitySearchNode,
     ToolNode,
     SkillNode,
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),

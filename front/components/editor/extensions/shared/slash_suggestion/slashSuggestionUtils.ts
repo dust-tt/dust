@@ -41,3 +41,12 @@ export function shouldInsertSlashBoundarySpace(state: EditorState) {
 
 /** Keeps slash dropdown height stable so Radix placement does not jump with few items. */
 export const SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME = "min-h-48 max-h-96";
+
+export const SLASH_COMMAND_DEFAULT_LOADING_MESSAGE = "Loading…";
+
+export const SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE =
+  "Loading capabilities…";
+
+export function getAttachContextSlashMenuLoadingMessage(includeFiles: boolean) {
+  return includeFiles ? "Searching…" : "Searching knowledge…";
+}

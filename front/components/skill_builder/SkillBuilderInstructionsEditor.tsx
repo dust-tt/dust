@@ -2,7 +2,6 @@ import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { CAPABILITY_SEARCH_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/CapabilitySearchNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
@@ -229,12 +228,10 @@ const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
-  onOpenCapabilities?: (openCapabilities: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
-  onOpenCapabilities,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { resetField } = useFormContext<SkillBuilderFormData>();
@@ -503,28 +500,7 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    // Check if there's already an empty knowledge node (in search mode).
-    // If so, do nothing - clicking the button already dismissed it via handleInteractOutside.
-    const { doc } = editor.state;
-    let hasEmptyKnowledgeNode = false;
-    doc.descendants((node) => {
-      if (node.type.name === KNOWLEDGE_NODE_TYPE) {
-        const selectedItems = node.attrs?.selectedItems as
-          | KnowledgeItem[]
-          | undefined;
-        if (!selectedItems || selectedItems.length === 0) {
-          hasEmptyKnowledgeNode = true;
-          return false;
-        }
-      }
-      return true;
-    });
-
-    if (hasEmptyKnowledgeNode) {
-      return;
-    }
-
-    editor.chain().focus().insertKnowledgeNode().run();
+    editor.commands.openAttachKnowledgeSlashCommand();
   }, [editor]);
 
   useEffect(() => {
@@ -532,27 +508,6 @@ export function SkillBuilderInstructionsEditor({
       onAddKnowledge(handleAddKnowledge);
     }
   }, [editor, handleAddKnowledge, onAddKnowledge]);
-
-  const handleOpenCapabilities = useCallback(() => {
-    if (!editor) {
-      return;
-    }
-
-    let hasEmptyCapabilitySearchNode = false;
-    editor.state.doc.descendants((node) => {
-      if (node.type.name === CAPABILITY_SEARCH_NODE_TYPE) {
-        hasEmptyCapabilitySearchNode = true;
-        return false;
-      }
-      return true;
-    });
-
-    if (hasEmptyCapabilitySearchNode) {
-      return;
-    }
-
-    editor.chain().focus().insertCapabilitySearchNode().run();
-  }, [editor]);
 
   const handleReferenceClick = useCallback(
     (target: ReferenceSummaryItem) => {
@@ -597,12 +552,6 @@ export function SkillBuilderInstructionsEditor({
     },
     [editor]
   );
-
-  useEffect(() => {
-    if (editor && onOpenCapabilities) {
-      onOpenCapabilities(handleOpenCapabilities);
-    }
-  }, [editor, handleOpenCapabilities, onOpenCapabilities]);
 
   // Register a callback that the suggestions panel can call to accept a
   // suggestion directly via the editor's ProseMirror commands.

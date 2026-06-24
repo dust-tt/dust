@@ -29,12 +29,15 @@ describe("buildEditorExtensions", () => {
       extensions: [
         StarterKit,
         InputBarSlashSuggestionExtension.configure({
+          attachedNodesRef: { current: [] },
           owner,
           enabledRef: { current: true },
+          onNodeSelectRef: { current: undefined },
           onSelectRef: { current: undefined },
           selectedMCPServerViewIdsRef: { current: new Set<string>() },
           slashCommandsRef: { current: [] },
           includeAttachKnowledgeRef: { current: false },
+          spaceIdRef: { current: null },
         }),
       ],
     });

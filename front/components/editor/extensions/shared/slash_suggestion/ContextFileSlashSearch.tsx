@@ -18,6 +18,25 @@ export type ContextFileSlashSearchSelection = {
   path: string;
 };
 
+export function isContextFileSlashSearchSelection(
+  value: unknown
+): value is ContextFileSlashSearchSelection {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  return (
+    "contentType" in value &&
+    typeof value.contentType === "string" &&
+    "fileId" in value &&
+    typeof value.fileId === "string" &&
+    "label" in value &&
+    typeof value.label === "string" &&
+    "path" in value &&
+    typeof value.path === "string"
+  );
+}
+
 export type ContextFileSlashSearchItem =
   | {
       description: string;

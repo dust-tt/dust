@@ -1,13 +1,10 @@
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import {
-  isInsertKnowledgeSlashCommand,
   isSkillSlashCommand,
   isToolSlashCommand,
   type SlashCommandSkillSuggestion,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import type { CapabilitySearchNodeOptions } from "@app/components/editor/extensions/skill_builder/CapabilitySearchNodeView";
-import { CapabilitySearchNodeWithView } from "@app/components/editor/extensions/skill_builder/CapabilitySearchNodeWithView";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
@@ -118,14 +115,12 @@ interface UseSkillInstructionsEditorProps {
 }
 
 function buildSkillInstructionsEditableExtensions({
-  capabilitySearchOptions,
   currentSkillIdRef,
   onSelectRef,
   onSkillDetailsRef,
   onToolDetailsRef,
   owner,
 }: {
-  capabilitySearchOptions: CapabilitySearchNodeOptions;
   currentSkillIdRef: React.RefObject<string | null>;
   onSelectRef: React.RefObject<
     ((item: SlashCommand, editor: Editor, range: Range) => void) | undefined
@@ -139,7 +134,6 @@ function buildSkillInstructionsEditableExtensions({
   owner?: LightWorkspaceType;
 }) {
   return [
-    CapabilitySearchNodeWithView.configure(capabilitySearchOptions),
     SlashCommandExtension.configure({
       currentSkillIdRef,
       onSelectRef,
@@ -189,17 +183,10 @@ export function useSkillInstructionsEditor({
   onSkillDetailsRef.current = onSkillDetails;
   onToolDetailsRef.current = onToolDetails;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to re-run this memo when the skill references change
   const editableExtensions = useMemo(
     () =>
       buildSkillInstructionsEditableExtensions({
-        capabilitySearchOptions: {
-          currentSkillId,
-          onSelectSkillRef,
-          onSelectToolRef,
-          onSkillDetailsRef,
-          onToolDetailsRef,
-          owner,
-        },
         currentSkillIdRef,
         onSelectRef,
         onSkillDetailsRef,
@@ -240,16 +227,6 @@ export function useSkillInstructionsEditor({
 
   onSelectRef.current = (item, editorInstance, range) => {
     if (editorInstance.isDestroyed) {
-      return;
-    }
-
-    if (isInsertKnowledgeSlashCommand(item)) {
-      editorInstance
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertKnowledgeNode()
-        .run();
       return;
     }
 

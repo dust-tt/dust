@@ -1,6 +1,5 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { InputBarContextSearchNode } from "@app/components/editor/extensions/input_bar/ContextSearchNodeWithView";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { FilePreviewExtension } from "@app/components/editor/extensions/input_bar/FilePreviewExtension";
 import {
@@ -461,22 +460,18 @@ export const buildEditorExtensions = ({
 
   if (slashSuggestion) {
     extensions.push(
-      InputBarContextSearchNode.configure({
-        attachedNodesRef: slashSuggestion.attachedNodesRef,
-        conversationIdRef: slashSuggestion.conversationIdRef,
-        onNodeSelectRef: slashSuggestion.onNodeSelectRef,
-        owner,
-        spaceIdRef: slashSuggestion.spaceIdRef,
-      }),
       InputBarSlashSuggestionExtension.configure({
+        attachedNodesRef: slashSuggestion.attachedNodesRef,
         owner,
         conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,
+        onNodeSelectRef: slashSuggestion.onNodeSelectRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
+        spaceIdRef: slashSuggestion.spaceIdRef,
       })
     );
   }
