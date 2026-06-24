@@ -2,6 +2,8 @@ import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
+import type { SoundNotificationPreferencesRefProps } from "@app/components/me/SoundNotificationPreferences";
+import { SoundNotificationPreferences } from "@app/components/me/SoundNotificationPreferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -566,21 +568,44 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const { user } = useUser();
   const notificationPreferencesRef =
     useRef<NotificationPreferencesRefProps>(null);
+  const soundNotificationPreferencesRef =
+    useRef<SoundNotificationPreferencesRefProps>(null);
   const [isDirty, setIsDirty] = useState(false);
 
   const handleSave = async () => {
-    if (notificationPreferencesRef.current) {
-      await notificationPreferencesRef.current.savePreferences();
-      setIsDirty(false);
-    }
+    await Promise.all([
+      soundNotificationPreferencesRef.current?.savePreferences(),
+      notificationPreferencesRef.current?.savePreferences(),
+    ]);
+    setIsDirty(false);
+  };
+
+  const checkDirty = () => {
+    const soundDirty =
+      soundNotificationPreferencesRef.current?.isDirty() ?? false;
+    const notifDirty = notificationPreferencesRef.current?.isDirty() ?? false;
+    setIsDirty(soundDirty || notifDirty);
   };
 
   if (!user?.subscriberHash) {
     return (
-      <SectionContent title="Notifications">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Notification preferences are not available for your account.
-        </p>
+      <SectionContent
+        title="Notifications"
+        description="Manage the usage of your Dust workspace"
+        footer={
+          <Button
+            label="Save"
+            variant="primary"
+            type="button"
+            onClick={handleSave}
+            disabled={!isDirty}
+          />
+        }
+      >
+        <SoundNotificationPreferences
+          ref={soundNotificationPreferencesRef}
+          onChanged={checkDirty}
+        />
       </SectionContent>
     );
   }
@@ -588,6 +613,7 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   return (
     <SectionContent
       title="Notifications"
+      description="Manage the usage of your Dust workspace"
       footer={
         <Button
           label="Save"
@@ -598,9 +624,13 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
         />
       }
     >
+      <SoundNotificationPreferences
+        ref={soundNotificationPreferencesRef}
+        onChanged={checkDirty}
+      />
       <NotificationPreferences
         ref={notificationPreferencesRef}
-        onChanged={() => setIsDirty(true)}
+        onChanged={checkDirty}
         owner={owner}
       />
     </SectionContent>
