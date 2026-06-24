@@ -153,6 +153,7 @@ interface ConversationMessageTitleProps
   extends React.HTMLAttributes<HTMLDivElement> {
   name?: string;
   timestamp?: string;
+  credits?: React.ReactNode;
   infoChip?: React.ReactNode;
   completionStatus?: React.ReactNode;
   renderName: (name: string | null) => React.ReactNode;
@@ -166,6 +167,7 @@ export const ConversationMessageTitle = React.forwardRef<
     {
       name = "",
       timestamp,
+      credits,
       infoChip,
       completionStatus,
       renderName,
@@ -185,8 +187,14 @@ export const ConversationMessageTitle = React.forwardRef<
       >
         <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
           <span className="s-text-sm s-font-medium">{renderName(name)}</span>
-          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <span className="s-inline-flex s-items-center s-gap-1.5 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
             {timestamp}
+            {credits != null && (
+              <>
+                <span aria-hidden="true">&middot;</span>
+                {credits}
+              </>
+            )}
           </span>
           {infoChip && (
             <div className="s-inline-flex s-self-[anchor-center]">
