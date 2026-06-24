@@ -99,7 +99,8 @@ export type KnownModelLLMId =
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
-  | "noop"; // Noop
+  | "noop" // Noop
+  | "workspace-default"; // Sentinel: agent follows the workspace default model
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
@@ -782,6 +783,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "live_speech_to_text"
   | "force_us_api_url"
   | "workspace_default_agent"
+  | "workspace_default_model"
   | "whitelabel_frames"
 >();
 

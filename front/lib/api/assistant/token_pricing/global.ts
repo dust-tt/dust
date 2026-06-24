@@ -372,6 +372,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0,
     output: 0,
   },
+  // Sentinel for agents following the workspace default model; resolved to a
+  // concrete model before execution, so it is never actually billed.
+  "workspace-default": {
+    input: 0,
+    output: 0,
+  },
 };
 
 const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {

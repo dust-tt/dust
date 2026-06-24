@@ -136,6 +136,11 @@ export const AgentModelConfigurationSchema = z.object({
   reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
   responseFormat: z.string().optional(),
   metaData: z.record(z.string(), z.unknown()).optional(),
+  // Output-only flag: set during serialization when the agent follows the
+  // workspace default model. When true, `modelId`/`providerId` already hold the
+  // *resolved* concrete model, so this flag only tells the UI to render
+  // "Workspace default (currently X)". Ignored on input.
+  usesWorkspaceDefault: z.boolean().optional(),
 });
 
 export type AgentModelConfigurationType = z.infer<

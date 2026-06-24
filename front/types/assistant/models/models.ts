@@ -152,6 +152,7 @@ import {
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
 } from "./togetherai";
 import type { ModelConfigurationType } from "./types";
+import { WORKSPACE_DEFAULT_MODEL_ID } from "./workspace_default";
 import {
   GROK_3_MINI_MODEL_CONFIG,
   GROK_3_MINI_MODEL_ID,
@@ -242,6 +243,10 @@ export const STATIC_MODEL_IDS = [
   GROK_4_1_FAST_NON_REASONING_MODEL_ID,
   GROK_4_1_FAST_REASONING_MODEL_ID,
   NOOP_MODEL_ID,
+  // Sentinel for custom agents following the workspace default model. Not a real
+  // model: resolved to a concrete config before execution and never listed in
+  // SUPPORTED_MODEL_CONFIGS.
+  WORKSPACE_DEFAULT_MODEL_ID,
 ] as const;
 
 // Type for static model IDs only (excludes custom models from GCS).

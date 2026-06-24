@@ -1,6 +1,7 @@
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -15,6 +16,7 @@ import {
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@app/types/assistant/models/mistral";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
   GPT_5_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
@@ -32,6 +34,7 @@ import {
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { getWorkspaceDefaultModelSetting } from "@app/types/user";
 
 export function getWhitelistedProviders(
   auth: Authenticator
@@ -79,6 +82,78 @@ export function isProviderWhitelisted(
 ): boolean {
   const whitelistedProviders = getWhitelistedProviders(auth);
   return whitelistedProviders.has(providerId);
+}
+
+// Whether a given model is a real, supported model that is currently enabled
+// for the workspace (provider whitelist + plan + region + feature flags). Used
+// to validate the workspace default model an admin tries to pin.
+export async function isModelEnabledForWorkspace(
+  auth: Authenticator,
+  { providerId, modelId }: { providerId: string; modelId: string }
+): Promise<boolean> {
+  const config = SUPPORTED_MODEL_CONFIGS.find(
+    (m) => m.modelId === modelId && m.providerId === providerId
+  );
+  if (!config) {
+    return false;
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+  const context = {
+    ...getModelEnablementContextWithoutFeatureFlag(auth),
+    featureFlags,
+  };
+  return isModelEnabled(config, context);
+}
+
+// The model an admin pinned as the workspace default, looked up in the model
+// registry. Returns `null` when unset or when the pinned model is no longer in
+// the registry. Does NOT check availability or fall back — callers decide what
+// to do when the pinned model is disabled (the global agents let their normal
+// fallback handle it; `getWorkspaceDefaultModel` falls back to the live
+// default).
+export function getPinnedWorkspaceDefaultModel(
+  auth: Authenticator
+): ModelConfigurationType | null {
+  const setting = getWorkspaceDefaultModelSetting(
+    auth.getNonNullableWorkspace()
+  );
+  if (!setting) {
+    return null;
+  }
+  return (
+    SUPPORTED_MODEL_CONFIGS.find(
+      (m) =>
+        m.modelId === setting.modelId && m.providerId === setting.providerId
+    ) ?? null
+  );
+}
+
+// Resolves the workspace default model to a concrete, enabled model
+// configuration. This is the single source of truth for "what the default model
+// currently is": it backs every custom agent that follows the workspace
+// default.
+//
+// - If an admin pinned a model and it is still enabled for the workspace, that
+//   model is returned (the default is "frozen").
+// - Otherwise (unset, or the pinned model is no longer available) it falls back
+//   to the live best large model, which is exactly today's behavior.
+export function getWorkspaceDefaultModel(
+  auth: Authenticator,
+  { featureFlags = [] }: { featureFlags?: WhitelistableFeature[] } = {}
+): ModelConfigurationType | null {
+  const pinned = getPinnedWorkspaceDefaultModel(auth);
+  if (pinned) {
+    const context = {
+      ...getModelEnablementContextWithoutFeatureFlag(auth),
+      featureFlags,
+    };
+    if (isModelEnabled(pinned, context)) {
+      return pinned;
+    }
+  }
+
+  return getLargeWhitelistedModel(auth);
 }
 
 type ModelEnablementContext = Parameters<typeof isModelEnabled>[1];

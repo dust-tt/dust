@@ -575,6 +575,10 @@ export interface WorkspaceMetadata {
   webSearchProvider?: WebSearchProvider;
   webBrowseProvider?: WebBrowseProvider;
   workspaceDefaultAgentId?: string;
+  // Model pinned by an admin as the workspace default. Absent = "automatic"
+  // (resolve live to the best available model). Backs standard agents and every
+  // custom agent that follows the workspace default.
+  workspaceDefaultModel?: { providerId: string; modelId: string };
 }
 
 export async function updateWorkspaceMetadata(

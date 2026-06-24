@@ -340,6 +340,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
     stage: "on_demand",
   },
+  workspace_default_model: {
+    description:
+      "Workspace default model: admins can pick the model behind standard agents and the default for new agents; new agents follow it dynamically.",
+    stage: "on_demand",
+  },
   whitelabel_frames: {
     description:
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",

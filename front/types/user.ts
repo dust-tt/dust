@@ -85,6 +85,38 @@ export function getWorkspaceDefaultAgentId(
   return typeof value === "string" ? value : null;
 }
 
+// Plain-string shape on purpose: the pair is validated against the model
+// registry at write time, and resolved by string match against
+// SUPPORTED_MODEL_CONFIGS at read time, so we avoid carrying the branded
+// ModelIdType/ModelProviderIdType here (and importing the io-ts-heavy model
+// registry into this widely-shared types module).
+export type WorkspaceDefaultModelSetting = {
+  providerId: string;
+  modelId: string;
+};
+
+/**
+ * The model an admin pinned as the workspace default, read from workspace
+ * metadata. Returns `null` when unset ("automatic": resolve live to the best
+ * available model). Client-safe: reads `owner.metadata` only.
+ */
+export function getWorkspaceDefaultModelSetting(
+  owner: LightWorkspaceType
+): WorkspaceDefaultModelSetting | null {
+  const value = owner.metadata?.workspaceDefaultModel;
+  if (
+    value &&
+    typeof value === "object" &&
+    "providerId" in value &&
+    "modelId" in value &&
+    typeof value.providerId === "string" &&
+    typeof value.modelId === "string"
+  ) {
+    return { providerId: value.providerId, modelId: value.modelId };
+  }
+  return null;
+}
+
 /**
  * The default agent that should be pre-selected for new conversations.
  * A pod-level default agent takes precedence over the workspace-level default agent.

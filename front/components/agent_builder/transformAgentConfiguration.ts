@@ -14,8 +14,10 @@ import type {
   ModelConfigurationType,
   ModelIdType,
 } from "@app/types/assistant/models/types";
+import { WORKSPACE_DEFAULT_MODEL_SETTINGS } from "@app/types/assistant/models/workspace_default";
 import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
-import type { UserType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { getWorkspaceDefaultModelSetting } from "@app/types/user";
 import uniqueId from "lodash/uniqueId";
 
 /**
@@ -43,10 +45,15 @@ export function transformAgentConfigurationToFormData(
     instructions: agentConfiguration.instructions ?? "",
     instructionsHtml: agentConfiguration.instructionsHtml ?? undefined,
     generationSettings: {
-      modelSettings: {
-        modelId: agentConfiguration.model.modelId,
-        providerId: agentConfiguration.model.providerId,
-      },
+      // When the agent follows the workspace default, the server resolves the
+      // model to a concrete one but flags it. Round-trip the sentinel so the
+      // picker shows "Workspace default" and saving keeps following the default.
+      modelSettings: agentConfiguration.model.usesWorkspaceDefault
+        ? { ...WORKSPACE_DEFAULT_MODEL_SETTINGS }
+        : {
+            modelId: agentConfiguration.model.modelId,
+            providerId: agentConfiguration.model.providerId,
+          },
       temperature: agentConfiguration.model.temperature,
       reasoningEffort: agentConfiguration.model.reasoningEffort ?? "none",
       responseFormat: agentConfiguration.model.responseFormat,
@@ -89,6 +96,28 @@ export function getDefaultModel(
     availableModels.find((m) => !m.largeModel);
 
   return fallbackModel ?? CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+}
+
+/**
+ * The model the workspace default currently resolves to, for display ("Workspace
+ * default (currently X)"). Mirrors the backend `getWorkspaceDefaultModel`: the
+ * admin-pinned model when set and available, otherwise the live best model.
+ */
+export function getResolvedWorkspaceDefaultModel(
+  owner: LightWorkspaceType,
+  availableModels: ModelConfigurationType[]
+): ModelConfigurationType {
+  const setting = getWorkspaceDefaultModelSetting(owner);
+  if (setting) {
+    const pinned = availableModels.find(
+      (m) =>
+        m.modelId === setting.modelId && m.providerId === setting.providerId
+    );
+    if (pinned) {
+      return pinned;
+    }
+  }
+  return getDefaultModel(availableModels);
 }
 
 export function getDefaultAgentFormData({
