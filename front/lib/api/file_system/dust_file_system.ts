@@ -17,12 +17,7 @@
 import config from "@app/lib/api/config";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
-import type {
-  FileSystemDirectoryEntry,
-  FileSystemEntry,
-  FileSystemFileEntry,
-  FileSystemMount,
-} from "@app/lib/api/file_system/types";
+import type { FileSystemMount } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   LEGACY_PREFIX_CONVERSATION,
@@ -37,6 +32,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  FileSystemDirectoryEntry,
+  FileSystemEntry,
+  FileSystemFileEntry,
+} from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { isSupportedImageContentType } from "@app/types/files";
@@ -45,11 +45,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import * as path from "path";
 import type { Readable } from "stream";
 
-export type {
-  FileSystemEntry,
-  FileSystemMount,
-} from "@app/lib/api/file_system/types";
+export type { FileSystemMount } from "@app/lib/api/file_system/types";
 export { DustFileSystemError } from "@app/lib/api/file_system/types";
+export type { FileSystemEntry } from "@app/types/api/file_system/types";
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F-\x9F]/g;

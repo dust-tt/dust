@@ -15,9 +15,9 @@ import {
   getSingularFileCategoryLabelForContentType,
 } from "@app/components/file_explorer/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import {
   Button,
   CloudArrowLeftRight,

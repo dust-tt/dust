@@ -1,11 +1,7 @@
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
-import type {
-  FileSystemDirectoryEntry,
-  FileSystemEntry,
-  FileSystemMount,
-} from "@app/lib/api/file_system/types";
+import type { FileSystemMount } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
@@ -15,6 +11,10 @@ import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import logger from "@app/logger/logger";
+import type {
+  FileSystemDirectoryEntry,
+  FileSystemEntry,
+} from "@app/types/api/file_system/types";
 import { stripMimeParameters } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";

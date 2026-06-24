@@ -7,10 +7,6 @@ import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
-  FileSystemEntry,
-  GetSpaceFilesResponseBody,
-} from "@app/lib/api/file_system/types";
-import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
@@ -25,6 +21,10 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
+import type {
+  FileSystemEntry,
+  GetSpaceFilesResponseBody,
+} from "@app/types/api/file_system/types";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,

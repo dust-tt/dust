@@ -1,4 +1,4 @@
-import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type React from "react";
 

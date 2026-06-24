@@ -6,8 +6,8 @@ import {
 } from "@app/components/file_explorer/utils";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useDebounce } from "@app/hooks/useDebounce";
-import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Card,

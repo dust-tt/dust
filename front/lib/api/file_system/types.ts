@@ -50,30 +50,6 @@ export type FileSystemMount = {
   };
 };
 
-type FileSystemEntryBase = {
-  fileName: string;
-  /** Full scoped path, e.g. `conversation-{cId}/folder/report.pdf`. Always canonical. */
-  path: string;
-  sizeBytes: number;
-  lastModifiedMs: number;
-};
-
-export type FileSystemDirectoryEntry = FileSystemEntryBase & {
-  isDirectory: true;
-};
-
-export type FileSystemFileEntry = FileSystemEntryBase & {
-  isDirectory: false;
-  contentType: string;
-  /** sId of the corresponding FileResource record, or null when none exists. */
-  fileId: string | null;
-  thumbnailUrl: string | null;
-  /** Present when the caller requested signed URLs. */
-  signedDownloadUrl?: string | null;
-};
-
-export type FileSystemEntry = FileSystemDirectoryEntry | FileSystemFileEntry;
-
 export type DustFileSystemErrorCode =
   | "unauthorized"
   | "not_found"
@@ -117,11 +93,3 @@ export function conversationScopedPath({
 export function podScopedPath(spaceId: string, rel: string): string {
   return `${SCOPED_PREFIX_POD}${spaceId}/${rel}`;
 }
-
-export type GetSpaceFilesResponseBody = {
-  files: FileSystemEntry[];
-};
-
-export type PostSpaceFolderResponseBody = {
-  folder: FileSystemDirectoryEntry;
-};

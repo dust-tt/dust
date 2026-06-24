@@ -11,8 +11,8 @@ import {
   getChildrenAtFolderPath,
   getFileExplorerBucket,
 } from "@app/components/file_explorer/utils";
-import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
+import type { FileSystemEntry } from "@app/types/api/file_system/types";
 
 export interface FileExplorerPipeline {
   /** Tree nodes at the current folder level, filtered + sorted. */

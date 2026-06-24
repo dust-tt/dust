@@ -1,4 +1,4 @@
-import type { FileSystemEntry } from "@app/lib/api/file_system/types";
+import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
   frameSlideshowContentType,
   getFileFormatCategory,
