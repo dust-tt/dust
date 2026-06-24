@@ -11,7 +11,7 @@ import {
   renameWorkspace,
   updateWorkspaceMetadata,
 } from "@app/lib/api/workspace";
-import { getFeatureFlags } from "@app/lib/auth";
+import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
