@@ -60,3 +60,20 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/sandbox", () => {
     });
   });
 });
+
+describe("Method support /api/w/:wId/assistant/conversations/:cId/sandbox", () => {
+  it("returns 404 for unsupported methods", async () => {
+    const { workspace, auth, conversation } = await setup();
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+
+    for (const method of ["DELETE", "POST", "PUT", "PATCH"] as const) {
+      const response = await honoApp.request(
+        `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}/sandbox`,
+        { method }
+      );
+
+      // Hono returns 404 for unregistered methods (no route matched).
+      expect(response.status).toBe(404);
+    }
+  });
+});

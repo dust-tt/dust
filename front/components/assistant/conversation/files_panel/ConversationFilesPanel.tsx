@@ -11,10 +11,12 @@ import { useConversationAttachments } from "@app/hooks/conversations/useConversa
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { downloadFile } from "@app/lib/swr/files";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -43,6 +45,8 @@ export function ConversationFilesPanel({
   const blobUrlRef = useRef<string | null>(null);
   const { openPanel, closePanel } = useConversationSidePanelContext();
   const sendNotification = useSendNotification();
+  const { featureFlags } = useFeatureFlags();
+  const isComputerEnabled = isComputerFeatureEnabled(featureFlags);
 
   const { attachments, isConversationAttachmentsLoading } =
     useConversationAttachments({
@@ -54,7 +58,7 @@ export function ConversationFilesPanel({
   const { sandboxStatus } = useConversationSandboxStatus({
     conversationId: conversation.sId,
     owner,
-    options: { disabled: isNewFileExplorer },
+    options: { disabled: isNewFileExplorer || !isComputerEnabled },
   });
 
   const openFile = useCallback(
