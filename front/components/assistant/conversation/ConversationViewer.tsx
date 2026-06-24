@@ -725,11 +725,10 @@ export const ConversationViewer = ({
 
   const eventIds = useRef<string[]>([]);
 
-  // Last-seen plan.md version for this conversation. Used to auto-open the plan panel on the
-  // skeleton-to-first-edit transition (v1 -> v2+). If the user lands on an already-populated
-  // plan, no auto-open. ConversationViewer is keyed on conversationId by its parent, so the
-  // ref is naturally reset on conversation switch via remount.
-  const lastPlanVersionRef = useRef<number | undefined>(undefined);
+  // Whether we have already auto-opened the plan panel for this conversation, so we open it once
+  // (on the first non-closed plan update) rather than on every edit. ConversationViewer is keyed
+  // on conversationId by its parent, so the ref is naturally reset on conversation switch.
+  const planAutoOpenedRef = useRef(false);
 
   // `onEventCallback` is bound by `useConversationEvents` once at mount and does not re-subscribe
   // on identity changes (see useEventSource intentional behavior). Any state read from the
@@ -1058,15 +1057,12 @@ export const ConversationViewer = ({
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
           case "plan_updated": {
-            const prevVersion = lastPlanVersionRef.current;
-            lastPlanVersionRef.current = event.version;
-            if (event.isClosed && currentPanelRef.current === "plan") {
-              closePanel();
-            } else if (
-              prevVersion === 1 &&
-              event.version >= 2 &&
-              !isMobileRef.current
-            ) {
+            if (event.isClosed) {
+              if (currentPanelRef.current === "plan") {
+                closePanel();
+              }
+            } else if (!planAutoOpenedRef.current && !isMobileRef.current) {
+              planAutoOpenedRef.current = true;
               openPanel({ type: "plan" });
             }
             void mutate(

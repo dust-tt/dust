@@ -35,14 +35,6 @@ export type FileUseCase =
   // Workspace branding: logo/favicon uploaded by workspace admins.
   | "workspace_branding";
 
-// Audit trail for a plan-mode approval. Recorded on `plan.md.useCaseMetadata` when the user
-// approves a `request_plan_approval` call.
-export type PlanModeApproval = {
-  approvedAt: string; // ISO timestamp.
-  approvedByUserId: string; // sId of the approving user.
-  fileVersion: number; // FileModel.version at the moment of approval.
-};
-
 export type FileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
@@ -59,13 +51,6 @@ export type FileUseCaseMetadata = {
   // only the original blob exists. Stamped together for sandbox-mounted raw delimited files.
   skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
-  // Plan mode. `isPlanFile: true` marks a file as agent-owned (user can't directly mutate).
-  // `planModeLastApproval` is set when the agent's `request_plan_approval` is approved.
-  // `isPlanClosed: true` marks the plan as retired — hidden from UI and ignored by the skill.
-  // Active plans omit `isPlanClosed` (only closed plans have it set).
-  isPlanFile?: boolean;
-  planModeLastApproval?: PlanModeApproval | null;
-  isPlanClosed?: boolean;
   // Which branding asset this file was uploaded for (workspace_branding use case only).
   asset?: string;
 };

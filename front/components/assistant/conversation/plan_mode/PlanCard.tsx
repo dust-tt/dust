@@ -1,8 +1,5 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  ApprovalStateChip,
-  extractPlanTitle,
-} from "@app/components/assistant/conversation/plan_mode/utils";
+import { extractPlanTitle } from "@app/components/assistant/conversation/plan_mode/utils";
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { ChevronRight, cn, File04, Icon } from "@dust-tt/sparkle";
@@ -37,7 +34,7 @@ export const PlanCard = React.memo(function PlanCard({
 }: PlanCardProps) {
   const { hasFeature } = useFeatureFlags();
   const isPlanModeEnabled = hasFeature("plan_mode");
-  const { planFile, content, approvalState } = usePlanFile({
+  const { content } = usePlanFile({
     // Skip the fetch entirely for workspaces without the plan_mode feature flag.
     conversationId: isPlanModeEnabled ? conversationId : null,
     workspaceId,
@@ -47,12 +44,8 @@ export const PlanCard = React.memo(function PlanCard({
   const title = useMemo(() => extractPlanTitle(content), [content]);
   const progress = useMemo(() => countProgress(content), [content]);
 
-  // Hide the card until the plan has been edited at least once (version >= 2). The skeleton
-  // upload from `create_plan` produces version 1; the first `edit_plan` bumps it to 2. This
-  // matches the side-panel auto-open trigger so the card appears at the same moment the panel
-  // first opens. `findActivePlanFile` already filters closed plans server-side, so `!planFile`
-  // also covers the post-close_plan case.
-  if (!planFile || planFile.version < 2) {
+  // No active plan (including post-close): `getActivePlanContent` returns null.
+  if (!content) {
     return null;
   }
 
@@ -69,7 +62,6 @@ export const PlanCard = React.memo(function PlanCard({
     >
       <Icon visual={File04} size="sm" />
       <span className="heading-sm grow truncate">Plan: {title}</span>
-      <ApprovalStateChip state={approvalState} />
       {progress.total > 0 && (
         <span className="copy-xs shrink-0 text-muted-foreground dark:text-muted-foreground-night">
           {progress.done}/{progress.total} done

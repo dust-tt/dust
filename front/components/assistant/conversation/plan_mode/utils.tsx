@@ -1,7 +1,3 @@
-import type { PlanApprovalState } from "@app/types/api/assistant/plan_mode";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { Chip } from "@dust-tt/sparkle";
-
 const TITLE_REGEX = /^#\s+(.+)$/m;
 
 export function extractPlanTitle(content: string | null): string {
@@ -12,16 +8,12 @@ export function extractPlanTitle(content: string | null): string {
   return match ? match[1].trim() : "Untitled plan";
 }
 
-export function ApprovalStateChip({ state }: { state: PlanApprovalState }) {
-  switch (state) {
-    case "approved":
-      return <Chip size="mini" color="success" label="Approved" />;
-    case "pending":
-      return <Chip size="mini" color="warning" label="Pending approval" />;
-    case "draft":
-      return null;
-    default:
-      assertNeverAndIgnore(state);
-      return null;
+// Short, content-sensitive key (djb2) so the Markdown remounts on any edit without using the full
+// content string as a React key.
+export function contentHash(content: string): string {
+  let hash = 5381;
+  for (let i = 0; i < content.length; i++) {
+    hash = (hash * 33) ^ content.charCodeAt(i);
   }
+  return (hash >>> 0).toString(36);
 }

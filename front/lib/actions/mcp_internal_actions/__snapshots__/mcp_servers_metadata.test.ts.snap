@@ -487,7 +487,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "close_plan": "never_ask",
     "create_plan": "never_ask",
     "edit_plan": "never_ask",
-    "request_plan_approval": "high",
   },
   "pod_manager": {
     "add_content_node": "never_ask",

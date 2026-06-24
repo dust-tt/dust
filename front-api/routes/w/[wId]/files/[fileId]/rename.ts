@@ -39,18 +39,6 @@ app.patch(
       });
     }
 
-    // Plan-mode files are agent-owned; users cannot rename them.
-    if (file.useCaseMetadata?.isPlanFile) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "plan.md is managed by the agent and cannot be renamed directly.",
-        },
-      });
-    }
-
     const space = file.useCaseMetadata?.spaceId
       ? await SpaceResource.fetchById(auth, file.useCaseMetadata.spaceId)
       : null;
