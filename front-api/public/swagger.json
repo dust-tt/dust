@@ -3511,6 +3511,14 @@
                       "override"
                     ],
                     "description": "Conflict handling strategy. Defaults to error."
+                  },
+                  "editors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "description": "Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors."
                   }
                 }
               }
