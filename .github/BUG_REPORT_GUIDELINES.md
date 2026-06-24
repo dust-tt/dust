@@ -190,5 +190,5 @@ correctly before submitting.
 - Watch the report for follow-up questions — a quick reply often unblocks the fix.
 - When a fix ships, verify on the latest build (hard-refresh the web app, or update
   the CLI/SDK/extension) and confirm it's resolved.
-- If it's fixed, say so so it can be closed with confidence. If not, reopen or
+- If it's fixed, say so it can be closed with confidence. If not, reopen or
   comment with the new details.
