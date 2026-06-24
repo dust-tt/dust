@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 
 async function findAvailableSkillForAgentLoop({
@@ -22,9 +23,26 @@ async function findAvailableSkillForAgentLoop({
 }): Promise<SkillResource | null> {
   const { enabledSkills, equippedSkills, systemSkills } =
     await SkillResource.listForAgentLoop(auth, agentLoopData);
+  const userMessageSkillIds = new Set(
+    extractUniqueSkillIds(agentLoopData.userMessage.content)
+  );
+  for (const messageVersions of agentLoopData.conversation.content) {
+    const message = messageVersions.at(-1);
+
+    if (
+      message &&
+      isUserMessageType(message) &&
+      message.visibility === "visible"
+    ) {
+      for (const skillId of extractUniqueSkillIds(message.content)) {
+        userMessageSkillIds.add(skillId);
+      }
+    }
+  }
+
   const userMessageSkills = await SkillResource.fetchActiveByIdsForAgentLoop(
     auth,
-    extractUniqueSkillIds(agentLoopData.userMessage.content),
+    [...userMessageSkillIds],
     agentLoopData
   );
   const directlyAllowedSkills = [
