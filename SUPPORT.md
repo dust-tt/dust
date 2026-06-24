@@ -13,7 +13,7 @@ For "how do I…?" questions, API guidance, and developer documentation, start h
 
 ## Account, billing & product help
 
-For account-specific, billing, or workspace issues, use the in-app support widget inside your Dust workspace, or email **support@dust.tt**.
+For account-specific, billing, or workspace issues, use the in-app support widget inside your Dust workspace, or email [support@dust.tt](mailto:support@dust.tt).
 
 ## Bug reports
 
