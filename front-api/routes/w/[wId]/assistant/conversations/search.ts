@@ -1,6 +1,6 @@
-import type { SearchConversationsResponseBody } from "@app/lib/api/assistant/conversation/search";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SearchConversationsResponseBody } from "@app/types/api/assistant/conversation/search";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

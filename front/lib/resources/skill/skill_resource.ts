@@ -369,11 +369,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  get isExtendable(): boolean {
-    // System skills are baseline capabilities: they are not meant to be extended.
-    return this.globalSId !== null && !this.isSystemSkill;
-  }
-
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
@@ -859,24 +854,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [];
     }
 
-    // Separate custom skill IDs from global skill IDs.
-    const { customSkillIds, globalSkillIds } = sIds.reduce<{
-      customSkillIds: ModelId[];
-      globalSkillIds: string[];
-    }>(
-      (acc, sId) => {
-        if (isResourceSId("skill", sId)) {
-          const modelId = getResourceIdFromSId(sId);
-          if (modelId !== null) {
-            acc.customSkillIds.push(modelId);
-          }
-        } else {
-          acc.globalSkillIds.push(sId);
-        }
-        return acc;
-      },
-      { customSkillIds: [], globalSkillIds: [] }
-    );
+    const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
 
     // When fetching by specific IDs, return skills regardless of status.
     return this.baseFetch(auth, {
@@ -886,6 +864,30 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: ["active", "archived", "suggested"],
       },
     });
+  }
+
+  static async fetchActiveByIdsForAgentLoop(
+    auth: Authenticator,
+    sIds: string[],
+    agentLoopData: AgentLoopExecutionData
+  ): Promise<SkillResource[]> {
+    if (sIds.length === 0) {
+      return [];
+    }
+
+    const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
+
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: customSkillIds,
+          sId: globalSkillIds,
+          status: "active",
+        },
+      },
+      { agentLoopData }
+    );
   }
 
   static async fetchActiveByName(
@@ -905,6 +907,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return resources[0];
+  }
+
+  static async listActiveByNameForAgentLoop(
+    auth: Authenticator,
+    name: string,
+    agentLoopData: AgentLoopExecutionData
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          name,
+          status: "active",
+        },
+      },
+      { agentLoopData }
+    );
   }
 
   static async fetchByNames(
@@ -997,6 +1016,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return null;
+  }
+
+  private static splitSkillSIds(sIds: string[]): {
+    customSkillIds: ModelId[];
+    globalSkillIds: string[];
+  } {
+    return sIds.reduce<{
+      customSkillIds: ModelId[];
+      globalSkillIds: string[];
+    }>(
+      (acc, sId) => {
+        if (isResourceSId("skill", sId)) {
+          const modelId = getResourceIdFromSId(sId);
+          if (modelId !== null) {
+            acc.customSkillIds.push(modelId);
+          }
+        } else {
+          acc.globalSkillIds.push(sId);
+        }
+        return acc;
+      },
+      { customSkillIds: [], globalSkillIds: [] }
+    );
   }
 
   async fetchChildSkills(auth: Authenticator): Promise<SkillResource[]> {
@@ -1254,13 +1296,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * List discoverable skills: custom default skills + regular global skills.
    */
-  static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        status: "active",
-        isDefault: true,
+  static async listDiscoverable(
+    auth: Authenticator,
+    {
+      agentLoopData,
+    }: {
+      agentLoopData?: AgentLoopExecutionData;
+    } = {}
+  ): Promise<SkillResource[]> {
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          status: "active",
+          isDefault: true,
+        },
       },
-    });
+      { agentLoopData }
+    );
   }
 
   /**
@@ -1390,8 +1443,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List skills for the agent loop, returning system skills, (extended) enabled skills,
-   * and equipped skills.
+   * List skills for the agent loop, returning system skills, enabled skills, and
+   * equipped skills.
    */
   static async listForAgentLoop(
     auth: Authenticator,
@@ -1403,7 +1456,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           conversation: ConversationWithoutContentType;
         }
   ): Promise<{
-    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    enabledSkills: SkillResource[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
   }> {
@@ -1426,7 +1479,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let discoverableSkills: SkillResource[] = [];
     if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
-      discoverableSkills = await this.listDiscoverable(auth);
+      discoverableSkills = await this.listDiscoverable(auth, {
+        agentLoopData,
+      });
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
@@ -1499,11 +1554,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...autoEnabledSkills.filter((s) => !s.isSystemSkill),
     ].sort(sortByName);
 
-    const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
-      auth,
-      enabledSkills
-    );
-
     // Compute the equipped skills: all non-system agent skills, auto-equipped skills,
     // plus discoverable skills that are not already equipped. Keep this list stable
     // even after a skill is enabled.
@@ -1523,33 +1573,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ]);
 
     return {
-      enabledSkills: augmentedEnabledSkills,
+      enabledSkills,
       systemSkills: systemSkills.sort(sortByName),
       equippedSkills,
     };
-  }
-
-  private static async augmentSkillsWithExtendedSkills(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<(SkillResource & { extendedSkill: SkillResource | null })[]> {
-    const extendedSkillIds = removeNulls(
-      uniq(skills.map((skill) => skill.extendedSkillId))
-    );
-    const extendedSkills = await this.fetchByIds(auth, extendedSkillIds);
-
-    // Create a map for a quick lookup of extended skills.
-    const extendedSkillsMap = new Map(
-      extendedSkills.map((skill) => [skill.sId, skill])
-    );
-
-    return skills.map((skill) =>
-      Object.assign(skill, {
-        extendedSkill: skill.extendedSkillId
-          ? (extendedSkillsMap.get(skill.extendedSkillId) ?? null)
-          : null,
-      })
-    );
   }
 
   async upsertToConversation(
@@ -1716,7 +1743,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         updatedAt: new Date(),
         workspaceId,
         icon: def.icon,
-        extendedSkillId: null,
         source: null,
         sourceMetadata: null,
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
@@ -1988,7 +2014,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           instructionsHtml: versionModel.instructionsHtml,
           icon: versionModel.icon,
           requestedSpaceIds: versionModel.requestedSpaceIds,
-          extendedSkillId: versionModel.extendedSkillId,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
           isDefault: versionModel.isDefault,
@@ -3653,9 +3678,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         fileName: file.fileName,
       })),
       canWrite: this.canWrite(auth),
-      isExtendable: this.isExtendable,
+      isExtendable: false,
       isDefault: this.isDefault,
-      extendedSkillId: this.extendedSkillId,
+      extendedSkillId: null,
     };
   }
 

@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
-import type { GetTablesResponseBody } from "@app/lib/api/poke/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { GetTablesResponseBody } from "@app/types/api/poke/data_sources";
 import { CoreAPI } from "@app/types/core/core_api";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

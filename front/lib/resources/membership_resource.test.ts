@@ -228,6 +228,36 @@ describe("MembershipResource", () => {
         expect(inMemoryCache.has(cacheKey)).toBe(false);
       });
     });
+
+    describe("getActiveSeatTypeForUserModelId()", () => {
+      it("returns the active seat type", async () => {
+        const user = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, user, {
+          role: "user",
+          seatType: "free",
+        });
+
+        const seatType =
+          await MembershipResource.getActiveSeatTypeForUserModelId({
+            workspace,
+            userModelId: user.id,
+          });
+
+        expect(seatType).toBe("free");
+      });
+
+      it("returns null when the user has no active membership", async () => {
+        const user = await UserFactory.basic();
+
+        const seatType =
+          await MembershipResource.getActiveSeatTypeForUserModelId({
+            workspace,
+            userModelId: user.id,
+          });
+
+        expect(seatType).toBeNull();
+      });
+    });
   });
 
   describe("firstUsedAt behavior", () => {

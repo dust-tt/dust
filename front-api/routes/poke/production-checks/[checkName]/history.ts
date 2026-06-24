@@ -1,8 +1,8 @@
-import type { GetCheckHistoryResponseBody } from "@app/lib/api/poke/production_checks";
 import {
   getCheckHistoryRuns,
   getRegisteredCheck,
 } from "@app/lib/api/poke/production_checks";
+import type { GetCheckHistoryResponseBody } from "@app/types/api/poke/production_checks";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

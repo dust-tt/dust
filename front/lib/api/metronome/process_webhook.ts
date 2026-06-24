@@ -59,6 +59,7 @@ import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_EXCESS,
   CONTRACT_CREDIT_TYPE_POOL,
+  fromFreeMetronomeUserId,
   getCreditTypeAwuId,
   getProductExcessCreditsId,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
@@ -1003,13 +1004,17 @@ export async function processMetronomeWebhook({
     // `threshold === 0` → exhausted (→ capped), else → near-limit flag set.
     case "alerts.low_remaining_contract_credit_balance_reached": {
       const { alert_id: alertId, threshold } = event.properties;
-      const userId = await resolvePerUserCreditAlertUserId({
+      const metronomeUserId = await resolvePerUserCreditAlertUserId({
         metronomeCustomerId: event.properties.customer_id,
         alertId,
       });
-      if (!userId || threshold === null || threshold === undefined) {
+      if (!metronomeUserId || threshold === null || threshold === undefined) {
         break;
       }
+      // Alerts are keyed by the free-prefixed Metronome user id; strip the
+      // prefix to recover the raw sId used everywhere else.
+      const userId =
+        fromFreeMetronomeUserId(metronomeUserId) ?? metronomeUserId;
       if (threshold === 0) {
         await dispatchSeatBalanceExhausted({ workspace, userId });
         logger.info(
@@ -1030,13 +1035,17 @@ export async function processMetronomeWebhook({
       break;
     }
     case "alerts.low_remaining_contract_credit_balance_resolved": {
-      const userId = await resolvePerUserCreditAlertUserId({
+      const metronomeUserId = await resolvePerUserCreditAlertUserId({
         metronomeCustomerId: event.properties.customer_id,
         alertId: event.properties.alert_id,
       });
-      if (!userId) {
+      if (!metronomeUserId) {
         break;
       }
+      // Alerts are keyed by the free-prefixed Metronome user id; strip the
+      // prefix to recover the raw sId used everywhere else.
+      const userId =
+        fromFreeMetronomeUserId(metronomeUserId) ?? metronomeUserId;
       void setUserNearLimit(workspace.sId, userId, false);
       await dispatchSeatBalanceResolved({ workspace, userId });
       logger.info(
@@ -1419,14 +1428,15 @@ export async function processMetronomeWebhook({
       // onto a business plan) leaves users stuck in their previous state.
       // Mirrors the pool reconcile above; pass the new contract id directly
       // since the subscription swap below may not have happened yet.
+      const targetPlanCode =
+        contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
+
       await reconcileWorkspaceUserCreditStates({
         workspace: renderLightWorkspaceType({ workspace }),
         metronomeCustomerId: customerId,
         metronomeContractId: contractId,
+        planCode: targetPlanCode ?? "",
       });
-
-      const targetPlanCode =
-        contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
       if (!targetPlanCode) {
         logger.info(
           { contractId, workspaceId: workspace.sId },

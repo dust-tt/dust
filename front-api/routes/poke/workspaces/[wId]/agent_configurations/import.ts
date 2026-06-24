@@ -1,5 +1,5 @@
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
+import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

@@ -3,9 +3,14 @@ import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeDisplayName,
+} from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
@@ -39,6 +44,7 @@ import {
   useResolveUpgradeRequest,
   useUpgradeRequests,
 } from "@app/lib/swr/upgrade_requests";
+import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
   useAwuUsage,
   usePerSeatPricing,
@@ -67,6 +73,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
   Page,
   PieChart01,
   SearchInput,
@@ -77,7 +84,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import capitalize from "lodash/capitalize";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 // Build a minimal member from an upgrade request to feed the reused seat / spend
@@ -97,6 +103,7 @@ function memberFromUpgradeRequest(
     consumedFromAllowanceAwuCredits: 0,
     consumedFromPoolAwuCredits: 0,
     billingFrequency: null,
+    nextCreditResetAt: null,
     scheduledSeatType: null,
     scheduledSeatChangeAt: null,
     spendLimitAwuCredits: null,
@@ -184,7 +191,10 @@ export function UsagePage() {
   }, []);
 
   const sort = sorting[0];
-  const membersOrderColumn = sort?.id === "email" ? "email" : "name";
+  const membersOrderColumn =
+    sort?.id === "email" || sort?.id === "consumedAwuCredits"
+      ? sort.id
+      : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
   const { myUsage } = useMyUsage({ workspaceId: owner.sId });
@@ -211,9 +221,16 @@ export function UsagePage() {
   );
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
+      // Free seats carry no renewing allowance to preserve, so removing one is
+      // immediate; paid seats keep access until the end of the current billing
+      // period.
+      const message =
+        member.seatType === "free"
+          ? `Are you sure you want to remove ${member.name}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
+          : `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
       const confirmed = await confirm({
         title: "Remove seat",
-        message: `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`,
+        message,
         validateLabel: "Remove seat",
         validateVariant: "warning",
       });
@@ -463,6 +480,8 @@ export function UsagePage() {
     );
   }, [seatPlans]);
 
+  const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
+
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
@@ -532,7 +551,7 @@ export function UsagePage() {
             seatTypeFilter === "none"
               ? "No seat"
               : seatTypeFilter
-                ? capitalize(seatTypeFilter)
+                ? seatTypeDisplayName(seatTypeFilter)
                 : "All seats"
           }
           size="sm"
@@ -546,12 +565,26 @@ export function UsagePage() {
         />
         <DropdownMenuItem
           label="No seat"
+          icon={
+            <Icon
+              visual={SEAT_TYPE_ICONS["none"]}
+              size="sm"
+              className={getSeatIconColorClass("none")}
+            />
+          }
           onClick={() => handleSetSeatTypeFilter("none")}
         />
         {seatFilterOptions.map((seatType) => (
           <DropdownMenuItem
             key={seatType}
-            label={capitalize(seatType)}
+            label={seatTypeDisplayName(seatType)}
+            icon={
+              <Icon
+                visual={SEAT_TYPE_ICONS[seatType]}
+                size="sm"
+                className={getSeatIconColorClass(seatType)}
+              />
+            }
             onClick={() => handleSetSeatTypeFilter(seatType)}
           />
         ))}
@@ -594,7 +627,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <div className="flex items-center justify-between">
           <Page.Header title="Usage" icon={PieChart01} />
-          {!isReadOnly && !isFreePlanWorkspace && !isEnterprise && (
+          {!isReadOnly && usageSettings.topUpEnabled && (
             <Button
               label="Top up"
               icon={ArrowUp}
@@ -610,13 +643,13 @@ export function UsagePage() {
             <ContentMessage
               title={noOrFreeSeatTitle(myUsage.seatType)}
               icon={AlertCircle}
-              variant="warning"
+              variant="blue"
             >
               <div className="flex items-center justify-between gap-4">
                 <span>{noOrFreeSeatBody(myUsage.seatType)}</span>
                 <Button
                   label="Change my seat"
-                  variant="warning"
+                  variant="primary"
                   size="xs"
                   onClick={() => setChangeSeatMember(myUsage)}
                 />

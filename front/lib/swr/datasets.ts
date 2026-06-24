@@ -1,8 +1,8 @@
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetDatasetResponseBody,
   GetDatasetsResponseBody,
-} from "@app/lib/api/datasets";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+} from "@app/types/api/datasets";
 import type { AppType } from "@app/types/app";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";

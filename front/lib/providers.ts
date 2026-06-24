@@ -1,5 +1,5 @@
-import type { GetProvidersCheckResponseBody } from "@app/lib/api/provider_credentials";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
 import type { WorkspaceType } from "@app/types/user";
 
 import type { useProviders } from "./swr/apps";

@@ -187,7 +187,7 @@ export function BrandingSection({ owner }: BrandingSectionProps) {
       <BrandingAssetUploader
         asset="favicon"
         currentVersion={branding?.assets.favicon?.version ?? null}
-        description="A compact version of your logo. Used as the favicon when someone opens a branded Frame. Must be square (1:1 ratio)."
+        description="A compact version of your logo. Used as the favicon when someone opens a whitelabel Frame. Must be square (1:1 ratio)."
         onSaved={handleSaved}
         owner={owner}
         title="Icon"

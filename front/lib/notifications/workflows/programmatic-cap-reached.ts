@@ -12,7 +12,7 @@ import z from "zod";
 const ProgrammaticCapReachedPayloadSchema = z.object({
   workspaceId: z.string(),
   workspaceName: z.string(),
-  // The monthly programmatic credit cap in AWU credits, if known.
+  // The monthly programmatic credit cap in credits, if known.
   monthlyCapCredits: z.number().nullable(),
   // true → cap fully depleted and API calls are blocked; false → 80% warning.
   isBlocked: z.boolean(),

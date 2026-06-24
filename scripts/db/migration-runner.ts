@@ -1,4 +1,5 @@
 import { execFileSync } from "child_process";
+import { existsSync } from "fs";
 import { QueryTypes } from "sequelize";
 import type { Sequelize } from "sequelize";
 import type { MigrationParams } from "umzug";
@@ -11,7 +12,9 @@ type Command =
   | "status"
   | "check"
   | "check-pre-deploy"
-  | "check-post-deploy";
+  | "check-post-deploy"
+  | "mark-pre-deploy"
+  | "mark-post-deploy";
 
 export interface MigrationLogger {
   debug: (obj: Record<string, unknown>, msg?: string) => void;
@@ -180,6 +183,42 @@ async function runCheckPhase(
   logger.info({ phase }, "All migrations applied.");
 }
 
+async function runMark(
+  sequelize: Sequelize,
+  logger: MigrationLogger,
+  phase: Phase,
+  name: string
+): Promise<void> {
+  const filename = name.endsWith(".sql") ? name : `${name}.sql`;
+  const filePath = `migrations/${phase}/${filename}`;
+
+  if (!existsSync(filePath)) {
+    logger.error(
+      { phase, name: filename, filePath },
+      "Migration file not found."
+    );
+    process.exit(1);
+  }
+
+  const storage = new PhasedSequelizeStorage(sequelize, phase);
+  const storedName = `${phase}/${filename}`;
+
+  const executed = await storage.executed();
+  if (executed.includes(storedName)) {
+    logger.info(
+      { phase, name: storedName },
+      "Migration already marked as applied."
+    );
+    return;
+  }
+
+  await storage.logMigration({ name: storedName });
+  logger.info(
+    { phase, name: storedName },
+    "Migration marked as applied without running."
+  );
+}
+
 function assertNever(x: never): never {
   throw new Error(`Unexpected migration command: ${JSON.stringify(x)}`);
 }
@@ -189,11 +228,13 @@ export async function runMigrations({
   getDatabaseURI,
   logger,
   command,
+  name,
 }: {
   sequelize: Sequelize;
   getDatabaseURI: () => string;
   logger: MigrationLogger;
   command: string;
+  name?: string;
 }): Promise<void> {
   await ensureSchemaMigrationsTable(sequelize);
 
@@ -207,12 +248,28 @@ export async function runMigrations({
       await runStatus(sequelize, getDatabaseURI, logger);
       break;
     case "check":
+      await Promise.all([
+        runCheckPhase(sequelize, getDatabaseURI, logger, "pre-deploy"),
+        runCheckPhase(sequelize, getDatabaseURI, logger, "post-deploy"),
+      ]);
+      break;
     case "check-pre-deploy":
       await runCheckPhase(sequelize, getDatabaseURI, logger, "pre-deploy");
       break;
     case "check-post-deploy":
       await runCheckPhase(sequelize, getDatabaseURI, logger, "post-deploy");
       break;
+    case "mark-pre-deploy":
+    case "mark-post-deploy": {
+      if (!name) {
+        logger.error({}, "--name is required for mark commands.");
+        process.exit(1);
+      }
+      const markPhase =
+        typedCommand === "mark-pre-deploy" ? "pre-deploy" : "post-deploy";
+      await runMark(sequelize, logger, markPhase, name);
+      break;
+    }
     default:
       assertNever(typedCommand);
   }

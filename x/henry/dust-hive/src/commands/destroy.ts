@@ -1,10 +1,15 @@
 import { requireEnvironment } from "../lib/commands";
+import { removeDirenvIntegration } from "../lib/direnv";
 import { removeDockerVolumes, stopDocker } from "../lib/docker";
-import { deleteEnvironmentDir, type Environment, getEnvironment } from "../lib/environment";
+import {
+  deleteEnvironmentDir,
+  type Environment,
+  getEnvironment,
+  getEnvironmentWorktreeDir,
+} from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
-import { getWorktreeDir } from "../lib/paths";
 import { getInstallInstructions } from "../lib/platform";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
@@ -29,9 +34,83 @@ async function cleanupMultiplexerSession(envName: string): Promise<void> {
   await multiplexer.deleteSession(sessionName);
 }
 
-interface DestroyOptions {
+export interface DestroyOptions {
   force: boolean;
   keepBranch: boolean;
+  keepWorktree: boolean;
+}
+
+interface DestroyPlan {
+  worktreePath: string;
+  keepWorktree: boolean;
+  keepBranch: boolean;
+}
+
+function getDestroyPlan(env: Environment, options: DestroyOptions): DestroyPlan {
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
+  const keepWorktree = options.keepWorktree || env.metadata.worktreeOwner === "external";
+
+  return {
+    worktreePath,
+    keepWorktree,
+    keepBranch: options.keepBranch || keepWorktree,
+  };
+}
+
+async function ensureWorktreeCanBeRemoved(
+  env: Environment,
+  worktreePath: string,
+  options: DestroyOptions,
+  keepWorktree: boolean
+): Promise<Result<void>> {
+  if (options.force || keepWorktree) {
+    return Ok(undefined);
+  }
+
+  if (!(await directoryExists(worktreePath))) {
+    return Ok(undefined);
+  }
+
+  if (!(await hasUncommittedChanges(worktreePath))) {
+    return Ok(undefined);
+  }
+
+  return Err(
+    new CommandError(
+      `Environment '${env.name}' has uncommitted changes. Use --force to destroy anyway.`
+    )
+  );
+}
+
+async function cleanupEnvironmentPorts(env: Environment, force: boolean): Promise<Result<void>> {
+  const portServices: ServiceName[] = [
+    "proxy",
+    "front-api",
+    "marketing",
+    "core",
+    "connectors",
+    "oauth",
+  ];
+  const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
+  const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
+
+  const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
+    allowedPids,
+    force,
+  });
+  if (blockedPorts.length > 0) {
+    const details = formatBlockedPorts(blockedPorts);
+    return Err(
+      new CommandError(
+        `Ports in use by other processes: ${details}. Stop them or rerun destroy with --force to terminate.`
+      )
+    );
+  }
+  if (killedPorts.length > 0) {
+    logger.warn(`Killed processes on ports: ${killedPorts.join(", ")}`);
+  }
+
+  return Ok(undefined);
 }
 
 async function cleanupTemporalNamespaces(envName: string): Promise<void> {
@@ -110,42 +189,47 @@ async function cleanupDocker(envName: string): Promise<void> {
   }
 }
 
+async function cleanupGitResources(
+  env: Environment,
+  plan: DestroyPlan,
+  settings: Settings
+): Promise<void> {
+  if (plan.keepWorktree) {
+    await removeDirenvIntegration(env.name, plan.worktreePath);
+    logger.info(`Keeping worktree: ${plan.worktreePath}`);
+  } else {
+    logger.step("Removing git worktree...");
+    await removeWorktree(env.metadata.repoRoot, plan.worktreePath);
+    logger.success("Git worktree removed");
+  }
+
+  if (plan.keepBranch) {
+    logger.info(`Keeping branch '${env.metadata.workspaceBranch}'`);
+    return;
+  }
+
+  logger.step(`Deleting branch '${env.metadata.workspaceBranch}'...`);
+  await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch, settings);
+  logger.success("Branch deleted");
+}
+
 // Destroy a single environment (internal helper)
-async function destroySingleEnvironment(
+export async function destroySingleEnvironment(
   env: Environment,
   options: DestroyOptions,
   settings: Settings
 ): Promise<Result<void>> {
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const plan = getDestroyPlan(env, options);
+  const safeResult = await ensureWorktreeCanBeRemoved(
+    env,
+    plan.worktreePath,
+    options,
+    plan.keepWorktree
+  );
+  if (!safeResult.ok) return safeResult;
 
-  // Check for uncommitted changes (unless --force)
-  if (!options.force) {
-    const worktreeExists = await directoryExists(worktreePath);
-    if (worktreeExists) {
-      const hasChanges = await hasUncommittedChanges(worktreePath);
-      if (hasChanges) {
-        return Err(
-          new CommandError(
-            `Environment '${env.name}' has uncommitted changes. Use --force to destroy anyway.`
-          )
-        );
-      }
-    }
-  }
-
-  logger.info(`Destroying environment '${env.name}'...`);
+  logger.info(`${plan.keepWorktree ? "Unregistering" : "Destroying"} environment '${env.name}'...`);
   console.log();
-
-  const portServices: ServiceName[] = [
-    "proxy",
-    "front-api",
-    "marketing",
-    "core",
-    "connectors",
-    "oauth",
-  ];
-  const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
-  const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
 
   // Stop all services
   logger.step("Stopping all services...");
@@ -156,21 +240,8 @@ async function destroySingleEnvironment(
   await cleanupMultiplexerSession(env.name);
 
   // Force cleanup any orphaned processes on service ports
-  const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
-    allowedPids,
-    force: options.force,
-  });
-  if (blockedPorts.length > 0) {
-    const details = formatBlockedPorts(blockedPorts);
-    return Err(
-      new CommandError(
-        `Ports in use by other processes: ${details}. Stop them or rerun destroy with --force to terminate.`
-      )
-    );
-  }
-  if (killedPorts.length > 0) {
-    logger.warn(`Killed processes on ports: ${killedPorts.join(", ")}`);
-  }
+  const portsResult = await cleanupEnvironmentPorts(env, options.force);
+  if (!portsResult.ok) return portsResult;
   logger.success("All services stopped");
 
   await cleanupTemporalNamespaces(env.name);
@@ -187,19 +258,7 @@ async function destroySingleEnvironment(
     logger.warn(`Could not drop test database: ${testDbResult.error}`);
   }
 
-  // Remove git worktree
-  logger.step("Removing git worktree...");
-  await removeWorktree(env.metadata.repoRoot, worktreePath);
-  logger.success("Git worktree removed");
-
-  // Delete the workspace branch (unless --keep-branch is specified)
-  if (!options.keepBranch) {
-    logger.step(`Deleting branch '${env.metadata.workspaceBranch}'...`);
-    await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch, settings);
-    logger.success("Branch deleted");
-  } else {
-    logger.info(`Keeping branch '${env.metadata.workspaceBranch}'`);
-  }
+  await cleanupGitResources(env, plan, settings);
 
   // Remove environment directory
   logger.step("Removing environment config...");
@@ -207,7 +266,7 @@ async function destroySingleEnvironment(
   logger.success("Environment config removed");
 
   console.log();
-  logger.success(`Environment '${env.name}' destroyed`);
+  logger.success(`Environment '${env.name}' ${plan.keepWorktree ? "unregistered" : "destroyed"}`);
   console.log();
 
   return Ok(undefined);
@@ -217,7 +276,12 @@ export async function destroyCommand(
   name: string | undefined,
   options?: Partial<DestroyOptions>
 ): Promise<Result<void>> {
-  const resolvedOptions: DestroyOptions = { force: false, keepBranch: false, ...options };
+  const resolvedOptions: DestroyOptions = {
+    force: false,
+    keepBranch: false,
+    keepWorktree: false,
+    ...options,
+  };
 
   // Load settings for git-spice support
   const settings = await loadSettings();

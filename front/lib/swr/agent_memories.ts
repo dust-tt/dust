@@ -1,10 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetAgentMemoriesResponseBody,
   PatchAgentMemoryRequestBody,
-} from "@app/lib/api/assistant/configuration/memories";
-import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+} from "@app/types/api/assistant/configuration/memories";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";

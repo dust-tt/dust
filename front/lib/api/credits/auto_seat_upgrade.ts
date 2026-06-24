@@ -44,7 +44,7 @@ const AUTO_UPGRADE_TARGET_BASE_TIER: Partial<
  * Metronome-billed on a non-free credit-priced plan. (The same gate the member
  * upgrade-request flow uses, plus the explicit non-free check.)
  */
-function passesBillingGate(subscription: SubscriptionResource): boolean {
+export function passesBillingGate(subscription: SubscriptionResource): boolean {
   if (!subscription.isMetronomeOnlyBilled) {
     return false;
   }
@@ -208,6 +208,9 @@ export async function maybeAutoUpgradeSeat({
     workspace: lightWorkspace,
     newSeatType,
     author: "no-author",
+    // Unblock the member immediately rather than waiting on the debounced
+    // seat-count sync: push the seat count now and reconcile just this user.
+    isDirectSync: true,
   });
   if (result.isErr()) {
     logger.warn(

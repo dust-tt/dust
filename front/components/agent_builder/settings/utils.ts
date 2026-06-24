@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import type { BuilderSuggestionsType } from "@app/types/api/internal/assistant";
+import type { BuilderSuggestionsType } from "@app/types/api/assistant";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

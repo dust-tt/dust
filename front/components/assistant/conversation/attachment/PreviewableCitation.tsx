@@ -1,12 +1,15 @@
+import type {
+  FileCitationCardIcon,
+  FileCitationCardSize,
+} from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { isSupportedImageContentType } from "@app/types/files";
-import { Citation, CitationImage, Icon, Tooltip } from "@dust-tt/sparkle";
+import { Citation, CitationImage, Tooltip } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface PreviewableCitationProps {
-  compact?: boolean;
   containerClassName?: string;
   contentType: string;
   description?: React.ReactNode;
@@ -14,10 +17,11 @@ interface PreviewableCitationProps {
   fileId?: string | null;
   filePath?: string;
   // Icon for non-image citations, auto-computed from contentType and title if omitted.
-  icon?: React.ReactNode;
+  icon?: FileCitationCardIcon;
   isLoading?: boolean;
   loadingLabel?: string;
   onRemove?: () => void;
+  size?: FileCitationCardSize;
   // Thumbnail shown inside CitationImage, required for image citations.
   thumbnailUrl?: string;
   title: string;
@@ -25,7 +29,6 @@ interface PreviewableCitationProps {
 }
 
 export function PreviewableCitation({
-  compact,
   containerClassName,
   contentType,
   description,
@@ -36,6 +39,7 @@ export function PreviewableCitation({
   isLoading,
   loadingLabel,
   onRemove,
+  size = "md",
   thumbnailUrl,
   title,
   tooltipLabel,
@@ -45,13 +49,13 @@ export function PreviewableCitation({
   const handleClick = () =>
     openFilePreview({ fileId, filePath, title, contentType });
 
-  if (isSupportedImageContentType(contentType)) {
+  if (isSupportedImageContentType(contentType) && thumbnailUrl) {
     return (
       <Tooltip
         trigger={
           <Citation
             isLoading={isLoading}
-            compact={compact}
+            compact={size !== "md"}
             containerClassName={containerClassName ?? "h-full min-h-24"}
           >
             <CitationImage
@@ -72,10 +76,10 @@ export function PreviewableCitation({
   const FileIcon = getFileTypeIcon(contentType, title);
   return (
     <FileCitationCard
-      icon={icon ?? <Icon visual={FileIcon} size="xs" />}
+      icon={icon ?? FileIcon}
       title={title}
       description={description}
-      compact={compact}
+      size={size}
       isLoading={isLoading}
       loadingLabel={loadingLabel}
       onClick={handleClick}

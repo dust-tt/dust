@@ -45,10 +45,8 @@ export function getToolsForProvider(
   return new Ok(filterDsbxToolEntries(providerTools, { includeDsbxTools }));
 }
 
-// TODO(dsbx-tools): Hacky temporary filtering — we strip the `dsbx` tool
-// entry from the manifest by name when the `sandbox_dsbx_tools` flag is
-// off so it is not advertised to the model. Remove once `dsbx tools` ships
-// to all sandbox-enabled workspaces and the flag goes away.
+// Hacky temporary filtering: strip the `dsbx` tool entry from the manifest by
+// name when sandbox tools are off so it is not advertised to the model.
 export function filterDsbxToolEntries(
   tools: readonly ToolEntry[],
   { includeDsbxTools }: { includeDsbxTools: boolean }
@@ -114,7 +112,3 @@ export type {
 } from "@app/lib/api/sandbox/image/types";
 export { formatSandboxImageId } from "@app/lib/api/sandbox/image/types";
 export { getRegisteredImages, getSandboxImageFromRegistry };
-
-export interface SandboxKillImagesResponseBody {
-  images: Array<{ baseImage: string; version: string }>;
-}

@@ -1,4 +1,4 @@
-import type { PlanApprovalState } from "@app/lib/api/assistant/plan_mode";
+import type { PlanApprovalState } from "@app/types/api/assistant/plan_mode";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Chip } from "@dust-tt/sparkle";
 

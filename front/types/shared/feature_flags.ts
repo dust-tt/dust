@@ -84,6 +84,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Disable logging of agent runs",
     stage: "dust_only",
   },
+  disable_computer_feature: {
+    description:
+      "Disable all Computer (sandbox) features for this workspace, overriding sandbox opt-in flags",
+    stage: "on_demand",
+  },
   disallow_agent_creation_to_users: {
     description:
       "Prevent users from creating agents, allowing only admins and builders",
@@ -183,10 +188,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "on_demand",
   },
-  slideshow: {
-    description: "Slideshow MCP tool",
-    stage: "dust_only",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -216,18 +217,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   sandbox_tools: {
     description:
-      "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
-    stage: "dust_only",
-  },
-  sandbox_dsbx_tools: {
-    description:
-      "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
-    stage: "dust_only",
-  },
-  sandbox_workspace_admin: {
-    description:
-      "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
-    stage: "dust_only",
+      "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
+    stage: "on_demand",
   },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
@@ -261,9 +252,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
-  metronome_billing: {
+  legacy_billing: {
     description:
-      "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
+      "Force this workspace to use legacy Stripe billing, bypassing Metronome credit-priced plans regardless of the global kill switch.",
     stage: "dust_only",
   },
   plan_mode: {
@@ -305,6 +296,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable ES-backed conversation listing in the sidebar (read path)",
     stage: "dust_only",
   },
+  restricted_spaces_in_input_bar: {
+    description:
+      "Allow users to explicitly select restricted Spaces from the conversation input bar.",
+    stage: "dust_only",
+  },
   new_file_explorer: {
     description:
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
@@ -340,10 +336,15 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
     stage: "dust_only",
   },
-  imgproxy_image_resize: {
+  workspace_default_agent: {
     description:
-      "Resize uploaded raster images via imgproxy instead of ConvertAPI",
-    stage: "dust_only",
+      "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
+    stage: "on_demand",
+  },
+  whitelabel_frames: {
+    description:
+      "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
@@ -365,6 +366,18 @@ export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
+
+export const DISABLE_COMPUTER_FEATURE =
+  "disable_computer_feature" as const satisfies WhitelistableFeature;
+
+export function isComputerFeatureEnabled(
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return (
+    featureFlags.includes("sandbox_tools") &&
+    !featureFlags.includes(DISABLE_COMPUTER_FEATURE)
+  );
+}
 
 export function isWhitelistableFeature(
   feature: unknown

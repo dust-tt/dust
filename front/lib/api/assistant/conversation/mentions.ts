@@ -53,22 +53,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
-import { z } from "zod";
 import { getConversation } from "./fetch";
-
-export const PostMentionActionRequestBodySchema = z.object({
-  type: z.enum(["agent", "user"]),
-  id: z.string(),
-  action: z.enum(["approved", "rejected", "dismissed"]),
-});
-
-export type PostMentionActionRequestBody = z.infer<
-  typeof PostMentionActionRequestBodySchema
->;
-
-export type PostMentionActionResponseBody = {
-  success: boolean;
-};
 
 export async function getMentionStatus(
   auth: Authenticator,

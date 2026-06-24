@@ -265,12 +265,19 @@ export function clampRetryAfterSeconds(
 }
 
 export class GongClient {
-  private readonly baseUrl = "https://api.gong.io/v2";
+  private readonly baseUrl: string;
 
   constructor(
     private readonly authToken: string,
-    private readonly connectorId: ModelId
-  ) {}
+    private readonly connectorId: ModelId,
+    // Per-customer API host returned by Gong's OAuth token exchange
+    // (`api_base_url_for_customer`), e.g. "https://eu-2086.api.gong.io".
+    // Customers can be provisioned on different Gong cells, so we cannot
+    // hardcode "https://api.gong.io".
+    baseUrlForCustomer: string
+  ) {
+    this.baseUrl = `${baseUrlForCustomer}/v2`;
+  }
 
   /**
    * Handles response parsing and error handling for all API requests.

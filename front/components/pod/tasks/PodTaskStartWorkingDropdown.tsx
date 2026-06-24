@@ -10,11 +10,13 @@ import {
   ButtonGroupDropdown,
   Check,
   ChevronDown,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   type DropdownMenuItemProps,
   DropdownMenuTrigger,
   Icon,
+  InfoCircle,
   Play,
   Robot,
   TextArea,
@@ -69,6 +71,7 @@ export function PodTaskStartWorkingDropdown({
   isStarting,
   isFirstOnboardingTask = false,
   defaultGoToConversation = false,
+  defaultAgentId = null,
   context = "tasks_page",
   onOpenChange,
   onStart,
@@ -85,6 +88,7 @@ export function PodTaskStartWorkingDropdown({
   isStarting: boolean;
   isFirstOnboardingTask?: boolean;
   defaultGoToConversation?: boolean;
+  defaultAgentId?: string | null;
   context?: ProjectTaskStartWorkingContext;
   onOpenChange?: (open: boolean) => void;
   onStart: (options: ProjectTaskStartWorkingOptions) => Promise<void>;
@@ -109,8 +113,10 @@ export function PodTaskStartWorkingDropdown({
     if (open) {
       setStartCustomMessage("");
       const defaultAgent =
-        activeAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ??
-        activeAgents[0] ??
+        (defaultAgentId &&
+          activeAgents.find((a) => a.sId === defaultAgentId)) ||
+        activeAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ||
+        activeAgents[0] ||
         null;
       setSelectedStartAgent(defaultAgent);
     }
@@ -127,16 +133,18 @@ export function PodTaskStartWorkingDropdown({
   const handleConfirmStart = async () => {
     setStartMenuOpen(false);
     onOpenChange?.(false);
-    const agentConfigurationId =
-      selectedStartAgent && selectedStartAgent.sId !== GLOBAL_AGENTS_SID.DUST
-        ? selectedStartAgent.sId
-        : undefined;
     await onStart({
       customMessage: startCustomMessage.trim() || undefined,
-      agentConfigurationId,
+      agentConfigurationId: selectedStartAgent?.sId,
       goToConversation: goToConversationAfterStart,
     });
   };
+
+  const isDefaultAgentUnavailable =
+    !agentsLoading &&
+    !!defaultAgentId &&
+    defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
+    !activeAgents.some((a) => a.sId === defaultAgentId);
 
   const redirectMenuLabels = startRedirectMenuLabels(context);
 
@@ -235,29 +243,60 @@ export function PodTaskStartWorkingDropdown({
                 disabled={agentsLoading}
                 isLoading={agentsLoading}
                 mountPortal
-                showDropdownArrow
+                showDropdownArrow={false}
                 showFooterButtons={false}
                 side="bottom"
                 size="xs"
                 onItemClick={(agent) => setSelectedStartAgent(agent)}
                 pickerButton={
-                  <Button
-                    variant="ghost-secondary"
-                    size="xs"
-                    isSelect
-                    icon={
-                      selectedStartAgent
-                        ? () => (
-                            <Avatar
-                              size="xxs"
-                              visual={selectedStartAgent.pictureUrl}
-                            />
-                          )
-                        : Robot
-                    }
-                    label={selectedStartAgent?.name ?? "Agent"}
-                    className="max-w-full min-w-0"
-                  />
+                  <button
+                    type="button"
+                    aria-label={`Selected agent: ${selectedStartAgent?.name ?? "Agent"}`}
+                    className={cn(
+                      "inline-flex box-border max-w-full min-w-0 items-center rounded-lg h-7 heading-xs px-2 gap-1.5 text-primary-900 dark:text-primary-900-night transition-colors duration-200",
+                      agentsLoading
+                        ? "opacity-50 pointer-events-none"
+                        : "cursor-pointer hover:bg-muted-background dark:hover:bg-muted-background-night"
+                    )}
+                  >
+                    {selectedStartAgent ? (
+                      <Avatar
+                        size="xxs"
+                        visual={selectedStartAgent.pictureUrl}
+                      />
+                    ) : (
+                      <Icon visual={Robot} size="xs" />
+                    )}
+                    <span className="grow truncate notranslate">
+                      {selectedStartAgent?.name ?? "Agent"}
+                    </span>
+                    {isDefaultAgentUnavailable && (
+                      <Tooltip
+                        tooltipTriggerAsChild
+                        trigger={
+                          <span
+                            className="flex items-center text-warning dark:text-warning-night"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          >
+                            <Icon visual={InfoCircle} size="xs" />
+                          </span>
+                        }
+                        label="This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+                      />
+                    )}
+                    <Icon
+                      visual={ChevronDown}
+                      size="xs"
+                      className="-mr-1 text-faint dark:text-faint-night"
+                    />
+                  </button>
                 }
               />
             </div>

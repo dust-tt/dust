@@ -1,12 +1,12 @@
+import {
+  getUsageConfiguration,
+  updateUsageConfiguration,
+} from "@app/lib/api/credits/usage_configuration";
 import type {
   GetCreditUsageConfigurationResponseBody,
   PatchCreditUsageConfigurationResponseBody,
-} from "@app/lib/api/credits/usage_configuration";
-import {
-  getUsageConfiguration,
-  PatchCreditUsageConfigurationRequestBody,
-  updateUsageConfiguration,
-} from "@app/lib/api/credits/usage_configuration";
+} from "@app/types/api/credits/usage_configuration";
+import { PatchCreditUsageConfigurationRequestBody } from "@app/types/api/credits/usage_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

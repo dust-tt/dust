@@ -1,5 +1,5 @@
-import type { PostCheckBigQueryLocationsResponseBody } from "@app/lib/api/oauth";
-import { PostCheckBigQueryRegionsRequestBodySchema } from "@app/lib/api/oauth";
+import type { PostCheckBigQueryLocationsResponseBody } from "@app/types/api/oauth";
+import { PostCheckBigQueryRegionsRequestBodySchema } from "@app/types/api/oauth";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";

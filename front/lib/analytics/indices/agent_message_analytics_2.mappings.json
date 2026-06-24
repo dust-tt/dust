@@ -30,6 +30,9 @@
     "status": {
       "type": "keyword"
     },
+    "is_free_seat": {
+      "type": "boolean"
+    },
     "latency_ms": {
       "type": "integer"
     },

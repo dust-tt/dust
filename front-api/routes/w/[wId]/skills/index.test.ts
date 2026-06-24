@@ -260,7 +260,6 @@ describe("GET /api/w/:wId/skills", () => {
       requestedSpaceIds: [],
       fileAttachments: [],
       isDefault: false,
-      extendedSkillId: null,
     });
     expect(skillWithoutInstructionsAndTools).toHaveProperty("createdAt");
     expect(skillWithoutInstructionsAndTools).toHaveProperty("updatedAt");
@@ -586,7 +585,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: "Simple instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -624,7 +622,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -662,7 +659,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -691,7 +687,6 @@ describe("POST /api/w/:wId/skills", () => {
         'Start with <skill id="not-a-skill-reference" name="Ghost Skill" />.',
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -718,7 +713,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: "Simple instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
       additionalRequestedSpaceIds: [openSpace.sId],
@@ -752,7 +746,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: "Simple instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
       additionalRequestedSpaceIds: [restrictedSpace.sId],
@@ -798,7 +791,6 @@ describe("POST /api/w/:wId/skills", () => {
         { mcpServerViewId: serverView1.sId },
         { mcpServerViewId: serverView2.sId },
       ],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -872,7 +864,6 @@ describe("POST /api/w/:wId/skills", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [{ mcpServerViewId: serverView.sId }],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -932,7 +923,6 @@ describe("POST /api/w/:wId/skills", () => {
           title: "Folder Node 2",
         },
       ],
-      extendedSkillId: null,
     });
 
     expect(response.status).toBe(200);
@@ -985,7 +975,6 @@ describe("POST /api/w/:wId/skills", () => {
           title,
         },
       ],
-      extendedSkillId: null,
     });
 
     expect(response.status).toBe(200);
@@ -1031,7 +1020,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
       fileAttachments: [{ fileId: file1.sId }, { fileId: file2.sId }],
@@ -1063,7 +1051,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
     });
@@ -1090,7 +1077,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [],
-      extendedSkillId: null,
       attachedKnowledge: [],
       instructionsHtml: null,
       fileAttachments: [{ fileId: file.sId }],

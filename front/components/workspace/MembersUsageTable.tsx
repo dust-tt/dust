@@ -10,9 +10,7 @@ import {
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
-import { useDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import {
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
@@ -42,6 +40,7 @@ type RowData = {
   image: string | null;
   seatType: MembershipSeatType | null;
   memberUsageLimit: number | null;
+  seatBalanceAwu: number | null;
   consumedAwuCredits: number;
   consumedFromAllowanceAwuCredits: number;
   consumedFromPoolAwuCredits: number;
@@ -103,7 +102,7 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   );
 }
 
-interface AwuUsageBarProps {
+export interface AwuUsageBarProps {
   consumed: number;
   // Of `consumed`, the part drawn from the seat allowance vs. the workspace
   // pool (+ overage). Provided by the API so the bar doesn't re-derive the
@@ -111,42 +110,52 @@ interface AwuUsageBarProps {
   consumedFromAllowance: number;
   consumedFromPool: number;
   memberUsageLimit: number | null;
-  limit: number | null;
+  // Live remaining Metronome balance for the per-user credit (free seats only).
+  // When provided for a free seat, the bar shows lifetime consumed/remaining
+  // instead of period spend.
+  seatBalanceAwu?: number | null;
+  // The fully-resolved spend cap from `spendLimitAwuCredits` (member override or
+  // workspace default, both including seat allowance). Always non-null for seated
+  // users — workspace default pool cap treats null as 0 (seat-only). Pass `?? 0`
+  // as a TypeScript guard only.
+  effectiveLimit: number;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
 }
 
-function AwuUsageBar({
+export function AwuUsageBar({
   consumed,
   consumedFromAllowance,
   consumedFromPool,
   memberUsageLimit,
-  limit,
+  seatBalanceAwu,
+  effectiveLimit,
   seatType,
   isTotalAllowedUsagePending: isPending,
 }: AwuUsageBarProps) {
-  const { sId: workspaceId } = useWorkspace();
-  const { defaultUserSpendLimit } = useDefaultUserSpendLimit({ workspaceId });
-
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
-
-  // When no Metronome cap alert exists for this user (`limit` is null), fall
-  // back to displaying the workspace default: seat allowance + default pool.
-  const effectiveLimit =
-    limit ??
-    (defaultUserSpendLimit?.awuCredits != null
-      ? allowance + defaultUserSpendLimit.awuCredits
-      : null);
-
+  // For free seats: use lifetime consumed (derived from the live Metronome
+  // balance) instead of period spend, so the bar reflects remaining credit.
+  const isFreeWithBalance =
+    seatType === "free" && seatBalanceAwu !== null && memberUsageLimit !== null;
+  const lifetimeConsumed = isFreeWithBalance
+    ? Math.max(0, memberUsageLimit - seatBalanceAwu!)
+    : null;
+  // Uncapped is not a real product state: fall back to seat allowance when no
+  // explicit spend limit is configured (no pool access).
   // The bar splits consumption into seat → pool → overage:
   //   seat consumed · seat remaining · pool consumed · pool remaining · overage
-  // `poolLimit` is the headroom on top of the seat allowance (null = uncapped).
-  // A seat with no pool (poolLimit === 0, e.g. free) shows no pool section —
+  // `poolLimit` is the headroom above the seat allowance (0 = seat-only, e.g. free).
+  // A seat with no pool (poolLimit === 0) shows no pool section —
   // any spend beyond the seat allowance is overage. Zero-width sections are
   // skipped. `pool remaining` is omitted when uncapped (no finite headroom).
-  const seatConsumed = consumedFromAllowance;
-  const seatRemaining = Math.max(0, allowance - seatConsumed);
+  const seatConsumed = isFreeWithBalance
+    ? lifetimeConsumed!
+    : consumedFromAllowance;
+  const seatRemaining = isFreeWithBalance
+    ? seatBalanceAwu!
+    : Math.max(0, allowance - seatConsumed);
   const poolLimit =
     effectiveLimit !== null ? Math.max(0, effectiveLimit - allowance) : null;
   // Of the pool consumption, the part within the pool limit vs. the overage
@@ -166,12 +175,13 @@ function AwuUsageBar({
     className: string;
     label: string;
   }> = [];
+  const creditLabel = isFreeWithBalance ? "lifetime credits" : "seat allowance";
   if (seatConsumed > 0) {
     sections.push({
       key: "seat-consumed",
       value: seatConsumed,
       className: seatColors.fill,
-      label: `${formatCredits(seatConsumed)} of ${formatCredits(allowance)} seat allowance used`,
+      label: `${formatCredits(seatConsumed)} of ${formatCredits(allowance)} ${creditLabel} used`,
     });
   }
   if (seatRemaining > 0) {
@@ -179,7 +189,7 @@ function AwuUsageBar({
       key: "seat-remaining",
       value: seatRemaining,
       className: seatColors.track,
-      label: `${formatCredits(seatRemaining)} of ${formatCredits(allowance)} seat allowance remaining`,
+      label: `${formatCredits(seatRemaining)} of ${formatCredits(allowance)} ${creditLabel} remaining`,
     });
   }
   if (poolConsumed > 0) {
@@ -219,7 +229,7 @@ function AwuUsageBar({
     tooltipLines.push({
       track: seatColors.track,
       fill: seatColors.fill,
-      legend: "Seat usage",
+      legend: isFreeWithBalance ? "Lifetime credits" : "Seat usage",
       usage: `${formatCredits(seatConsumed)} credits used out of ${formatCredits(allowance)}`,
     });
   }
@@ -293,12 +303,20 @@ function AwuUsageBar({
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
-        <span>{formatCredits(consumed)}</span>
+        <span>
+          {isFreeWithBalance
+            ? formatCredits(lifetimeConsumed! + overage)
+            : formatCredits(consumed)}
+        </span>
         {isPending ? (
           <Spinner size="xs" />
         ) : (
           <span>
-            {effectiveLimit === null ? "∞" : formatCredits(effectiveLimit)}
+            {isFreeWithBalance
+              ? formatCredits(allowance)
+              : effectiveLimit !== null
+                ? formatCredits(effectiveLimit)
+                : "—"}
           </span>
         )}
       </div>
@@ -371,7 +389,8 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
         }
         consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
         memberUsageLimit={info.row.original.memberUsageLimit}
-        limit={info.row.original.spendLimitAwuCredits}
+        seatBalanceAwu={info.row.original.seatBalanceAwu}
+        effectiveLimit={info.row.original.spendLimitAwuCredits ?? 0}
         seatType={info.row.original.seatType}
         isTotalAllowedUsagePending={
           info.row.original.isTotalAllowedUsagePending
@@ -382,9 +401,7 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   meta: {
     className: "w-64",
   },
-  // Consumed is computed per-page from Metronome usage, not a server-sortable
-  // field, so it can't participate in server-side sorting.
-  enableSorting: false,
+  enableSorting: true,
 };
 
 const actionsColumn: ColumnDef<RowData, string> = {
@@ -400,21 +417,8 @@ const actionsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildColumns({
-  isSeatBased,
-}: {
-  isSeatBased: boolean;
-}): ColumnDef<RowData, string>[] {
-  const optionalColumns = [];
-  if (isSeatBased) {
-    optionalColumns.push(seatTypeColumn);
-  }
-  return [
-    nameColumn,
-    ...optionalColumns,
-    consumedAwuCreditsColumn,
-    actionsColumn,
-  ];
+function buildColumns(): ColumnDef<RowData, string>[] {
+  return [nameColumn, seatTypeColumn, consumedAwuCreditsColumn, actionsColumn];
 }
 
 interface MembersUsageTableProps {
@@ -461,6 +465,7 @@ export function MembersUsageTable({
         image: m.image,
         seatType: m.seatType,
         memberUsageLimit: m.memberUsageLimit,
+        seatBalanceAwu: m.seatBalanceAwu,
         consumedAwuCredits: m.consumedAwuCredits,
         consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
@@ -472,11 +477,21 @@ export function MembersUsageTable({
         ),
         isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
         menuItems: [
-          ...(isSeatBased
+          ...(!m.seatType || m.seatType === "none"
             ? [
                 {
                   kind: "item" as const,
-                  label: m.seatType ? "Change seat type" : "Assign seat",
+                  label: "Assign seat",
+                  disabled: readOnly,
+                  onClick: () => onChangeSeat(m),
+                },
+              ]
+            : []),
+          ...(isSeatBased && m.seatType && m.seatType !== "none"
+            ? [
+                {
+                  kind: "item" as const,
+                  label: "Change seat type",
                   disabled: readOnly,
                   onClick: () => onChangeSeat(m),
                 },
@@ -519,7 +534,7 @@ export function MembersUsageTable({
     ]
   );
 
-  const columns = useMemo(() => buildColumns({ isSeatBased }), [isSeatBased]);
+  const columns = useMemo(() => buildColumns(), []);
 
   if (isLoading) {
     return (

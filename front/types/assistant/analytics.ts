@@ -61,6 +61,7 @@ export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   message_id: string;
   skills_used: AgentMessageAnalyticsSkillUsed[];
   status: AgentMessageStatus;
+  is_free_seat: boolean;
   timestamp: string; // ISO date string.
   tokens: AgentMessageAnalyticsTokens;
   tools_used: AgentMessageAnalyticsToolUsed[];

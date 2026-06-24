@@ -8,11 +8,7 @@ import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
 import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
-export type EnabledSkill = SkillResource & {
-  extendedSkill: SkillResource | null;
-};
-
-type SkillInstructionsSource = Pick<SkillResource, "sId" | "instructions">;
+export type EnabledSkill = SkillResource;
 
 function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   return {
@@ -29,31 +25,13 @@ function stripInstructionPresentationAttributes(content: string): string {
 }
 
 export function getEnabledSkillInstructions(
-  skill: Pick<SkillResource, "sId" | "name" | "instructions"> & {
-    extendedSkill: SkillInstructionsSource | null;
-  }
+  skill: Pick<SkillResource, "sId" | "name" | "instructions">
 ): string {
-  const { name, extendedSkill } = skill;
   const modelInstructions = stripInstructionPresentationAttributes(
     skill.instructions
   );
 
-  if (!extendedSkill) {
-    return `<${name}>\n${modelInstructions}\n</${name}>`;
-  }
-
-  const extendedModelInstructions = stripInstructionPresentationAttributes(
-    extendedSkill.instructions
-  );
-
-  return [
-    `<${name}>`,
-    extendedModelInstructions,
-    "<additional_guidelines>",
-    modelInstructions,
-    "</additional_guidelines>",
-    `</${name}>`,
-  ].join("\n");
+  return `<${skill.name}>\n${modelInstructions}\n</${skill.name}>`;
 }
 
 export function renderEquippedSkillsUserMessage(

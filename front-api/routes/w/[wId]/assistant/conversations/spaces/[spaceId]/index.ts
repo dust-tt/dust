@@ -1,9 +1,9 @@
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
-import type { GetSpaceConversationsResponseBody } from "@app/lib/api/assistant/conversation/spaces";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { GetSpaceConversationsResponseBody } from "@app/types/api/assistant/conversation/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

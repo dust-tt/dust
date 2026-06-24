@@ -31,6 +31,10 @@ export const toolSpecificationSchema = z.object({
   name: z.string(),
   description: z.string(),
   inputSchema: z.record(z.unknown()),
+  // When true, providers that support tool search (Anthropic) keep this tool's
+  // schema out of the cached prefix and load it on demand. Ignored by providers
+  // without tool-search support.
+  deferLoading: z.boolean().optional(),
 });
 export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
 

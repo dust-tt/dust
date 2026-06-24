@@ -1,9 +1,9 @@
+import { getUserFromSession } from "@app/lib/iam/session";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   GetUserMetadataResponseBody,
   PostUserMetadataKeyResponseBody as PostUserMetadataResponseBody,
-} from "@app/lib/api/user";
-import { getUserFromSession } from "@app/lib/iam/session";
-import { UserResource } from "@app/lib/resources/user_resource";
+} from "@app/types/api/user";
 import type { APIErrorResponse } from "@app/types/error";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

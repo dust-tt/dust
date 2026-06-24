@@ -110,6 +110,8 @@ const ParamsSchema = z.object({
  *         description: The row was deleted
  *       404:
  *         description: The row was not found
+ *       429:
+ *         description: Too many pending table updates are queued for this table. Retry later.
  */
 const app = publicApiApp();
 
@@ -269,6 +271,19 @@ app.delete(
           },
         });
       }
+
+      if (deleteRes.error.code === "too_many_pending_upserts") {
+        return apiError(ctx, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "Too many pending table updates are queued for this table. " +
+              "Please retry later.",
+          },
+        });
+      }
+
       logger.error(
         {
           dataSourceId: dataSource.sId,

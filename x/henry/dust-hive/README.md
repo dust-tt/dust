@@ -164,11 +164,13 @@ dust-hive down
 | Command | Description |
 |---------|-------------|
 | `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
+| `adopt NAME --path PATH` | Register an existing Git worktree as an environment |
 | `warm [NAME...] [--no-forward] [--force-ports]` | Start docker + all services |
 | `cool [NAME...]` | Pause services + docker, keep SDK (fast restart) |
 | `start [NAME...]` | Resume stopped environments |
 | `stop [NAME] [SERVICE]` | Full stop + remove docker containers, or stop one service |
 | `destroy [NAME] [--force]` | Remove environment completely (multi-select if NAME omitted) |
+| `unregister [NAME] [--force]` | Remove Hive resources while keeping the worktree and branch |
 | `restart [NAME] SERVICE` | Restart a single service |
 | `open [NAME]` | Open zellij terminal session |
 | `reload [NAME]` | Kill and reopen zellij session |
@@ -362,6 +364,51 @@ dust-hive open my-feature
 # When done for the day
 dust-hive stop my-feature
 ```
+
+### Adopting an externally managed worktree
+
+Some workspace managers need to create the Git worktree themselves. Dust-hive can adopt that
+worktree while still managing ports, environment variables, dependency links, Docker resources, and
+service daemons.
+
+Configure the external tool's workspace root inside the main Dust repo, for example:
+
+```text
+/path/to/dust/.hives/external/<tool-name>
+```
+
+Then call dust-hive from the tool's setup, run, and teardown hooks:
+
+```bash
+dust-hive adopt --path "$WORKSPACE_PATH" --name "$WORKSPACE_NAME"
+dust-hive start "$WORKSPACE_NAME"
+dust-hive unregister "$WORKSPACE_NAME"
+```
+
+`adopt` registers the worktree and starts the cold services. Use `start` when the workspace is
+opened again so a stopped environment returns to the cold state. Do not run `warm` from workspace
+creation hooks; use it only when the full app stack is needed.
+
+#### Example: Conductor
+
+Set the Conductor workspace root to `/path/to/dust/.hives/external/conductor`, then wire the same
+hooks as repository scripts:
+
+```toml
+[scripts]
+setup = "dust-hive adopt --path \"$CONDUCTOR_WORKSPACE_PATH\" --name \"$CONDUCTOR_WORKSPACE_NAME\""
+run = "dust-hive start \"$CONDUCTOR_WORKSPACE_NAME\""
+archive = "dust-hive unregister \"$CONDUCTOR_WORKSPACE_NAME\""
+run_mode = "concurrent"
+```
+
+`adopt` requires the worktree to live inside the main Dust repo root. This keeps the existing
+shallow `node_modules` strategy working: workspace packages resolve through the worktree while
+third-party dependencies can still resolve from the main repo cache. Adopted worktrees are treated
+as externally owned, so `unregister` and `destroy` keep the worktree and branch.
+
+Pass `--wait` to `adopt` only when the external tool must block until the cold services have
+finished their initial builds.
 
 ### Running multiple environments
 

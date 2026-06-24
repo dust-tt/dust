@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
-import type { GetDataSourceViewDocumentResponseBody } from "@app/lib/api/data_source_view";
 import logger from "@app/logger/logger";
+import type { GetDataSourceViewDocumentResponseBody } from "@app/types/api/data_source_view";
 import { CoreAPI } from "@app/types/core/core_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

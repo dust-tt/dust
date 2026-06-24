@@ -1,11 +1,9 @@
 import config from "@app/lib/api/config";
-import type { GetDataSourcePermissionsResponseBody } from "@app/lib/api/data_sources/managed_permissions";
-import {
-  getManagedDataSourcePermissions,
-  ManagedPermissionsQuerySchema,
-} from "@app/lib/api/data_sources/managed_permissions";
+import { getManagedDataSourcePermissions } from "@app/lib/api/data_sources/managed_permissions";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { GetDataSourcePermissionsResponseBody } from "@app/types/api/data_sources/managed_permissions";
+import { ManagedPermissionsQuerySchema } from "@app/types/api/data_sources/managed_permissions";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";

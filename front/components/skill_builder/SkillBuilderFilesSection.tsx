@@ -17,7 +17,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-export function SkillBuilderFilesSection() {
+interface SkillBuilderFilesSectionProps {
+  disableUpload?: boolean;
+}
+
+export function SkillBuilderFilesSection({
+  disableUpload = false,
+}: SkillBuilderFilesSectionProps) {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { setValue } = useFormContext<SkillBuilderFormData>();
@@ -108,11 +114,20 @@ export function SkillBuilderFilesSection() {
   };
 
   const onUploadClick = () => {
+    if (disableUpload) {
+      return;
+    }
+
     fileInputRef.current?.click();
   };
 
   const onFileInputChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (disableUpload) {
+        e.target.value = "";
+        return;
+      }
+
       const files = e.target.files;
       if (!files || files.length === 0) {
         return;
@@ -144,7 +159,13 @@ export function SkillBuilderFilesSection() {
       // Reset input so re-uploading the same file triggers onChange.
       e.target.value = "";
     },
-    [handleFilesUpload, append, existingFileNames, sendNotification]
+    [
+      disableUpload,
+      handleFilesUpload,
+      append,
+      existingFileNames,
+      sendNotification,
+    ]
   );
 
   const headerActions = !isDiffMode && hasFileAttachments && (
@@ -154,7 +175,7 @@ export function SkillBuilderFilesSection() {
       label="Upload files"
       icon={isProcessingFiles ? Spinner : Plus}
       variant="outline"
-      disabled={isProcessingFiles}
+      disabled={disableUpload || isProcessingFiles}
     />
   );
 
@@ -184,7 +205,7 @@ export function SkillBuilderFilesSection() {
         </div>
       </div>
 
-      {!isDiffMode && (
+      {!isDiffMode && !disableUpload && (
         <input
           ref={fileInputRef}
           type="file"
@@ -208,7 +229,7 @@ export function SkillBuilderFilesSection() {
                 label="Upload files"
                 icon={Plus}
                 variant="outline"
-                disabled={isProcessingFiles}
+                disabled={disableUpload || isProcessingFiles}
               />
             }
             className="py-8"

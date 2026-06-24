@@ -109,7 +109,10 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
         format: toResponseFormat(this.responseFormat, OPENAI_PROVIDER_ID),
       },
       // Only models supporting reasoning can do encrypted content for reasoning.
-      include: reasoning !== null ? ["reasoning.encrypted_content"] : [],
+      include:
+        reasoning !== null && reasoning.effort !== "none"
+          ? ["reasoning.encrypted_content"]
+          : [],
       tool_choice: toToolOption(specifications, forceToolCall),
       ...(metadata ? { prompt_cache_key: metadata.conversationId } : {}),
     };

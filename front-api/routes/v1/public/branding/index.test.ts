@@ -44,7 +44,7 @@ describe("GET /api/v1/public/branding/:wId/:asset", () => {
   });
 
   it("redirects to the default asset when no custom asset is uploaded", async () => {
-    const workspace = await WorkspaceFactory.withBrandedFrames();
+    const workspace = await WorkspaceFactory.withWhitelabelFrames();
     mockGetFileContentType.mockResolvedValue(new Err(new Error("not found")));
 
     const res = await getBrandingAsset(workspace.sId, "logo");
@@ -54,7 +54,7 @@ describe("GET /api/v1/public/branding/:wId/:asset", () => {
   });
 
   it("serves the asset bytes with correct headers when a custom asset exists", async () => {
-    const workspace = await WorkspaceFactory.withBrandedFrames();
+    const workspace = await WorkspaceFactory.withWhitelabelFrames();
     mockGetFileContentType.mockResolvedValue(new Ok("image/png"));
     mockFetchFileBuffer.mockResolvedValue(new Uint8Array([137, 80, 78, 71]));
 

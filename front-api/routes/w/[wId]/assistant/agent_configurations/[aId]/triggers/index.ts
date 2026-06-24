@@ -1,9 +1,9 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { GetTriggersResponseBody } from "@app/lib/api/assistant/configuration/triggers";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
+import type { GetTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

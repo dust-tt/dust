@@ -1,6 +1,7 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isInteractiveContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import React from "react";
@@ -23,6 +24,7 @@ export function useAutoOpenInteractiveContent({
   agentMessage,
 }: useAutoOpenInteractiveContentProps) {
   const { openPanel } = useConversationSidePanelContext();
+  const isMobile = useIsMobile();
 
   // Track the last opened fileId to prevent double-opening glitch.
   //
@@ -66,6 +68,10 @@ export function useAutoOpenInteractiveContent({
   );
 
   React.useEffect(() => {
+    if (isMobile) {
+      return;
+    }
+
     // Handle progress notifications - always open drawer (supports generated->progress refresh).
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
@@ -98,6 +104,7 @@ export function useAutoOpenInteractiveContent({
     interactiveFilesFromProgress,
     isLastMessage,
     openPanel,
+    isMobile,
   ]);
 
   // Reset tracking when message changes.

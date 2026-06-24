@@ -1,4 +1,3 @@
-import type { PokeCreditType } from "@app/lib/api/poke/credits";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
@@ -6,6 +5,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type { PokeCreditType } from "@app/types/api/poke/credits";
 import type { CreditDisplayData } from "@app/types/credits";
 import {
   CREDIT_EXPIRATION_DAYS,

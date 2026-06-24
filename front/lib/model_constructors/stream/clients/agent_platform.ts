@@ -6,11 +6,11 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import { WithAnthropicInputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/input";
-import { WithAnthropicOutputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/output";
-import { rawOutputToEvents } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
+import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
@@ -42,8 +42,8 @@ const MODEL_MAPPING: Partial<Record<ModelId, Model>> = {
   [CLAUDE_HAIKU_4_5_MODEL_ID]: "claude-haiku-4-5@20251001",
 };
 
-export abstract class AgentPlatformStream extends WithAnthropicInputConverter(
-  WithAnthropicOutputConverter(
+export abstract class AgentPlatformStream extends WithAnthropicAIInputConverter(
+  WithAnthropicAIOutputConverter(
     StreamEndpoint<
       MessageCreateParamsNonStreaming,
       RawMessageStreamEvent,

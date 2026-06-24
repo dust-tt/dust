@@ -223,7 +223,6 @@ export async function importSkillsFromFiles(
           instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
           editedBy: user?.id ?? null,
           requestedSpaceIds: [],
-          extendedSkillId: null,
           icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },

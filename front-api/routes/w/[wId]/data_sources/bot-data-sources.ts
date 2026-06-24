@@ -1,5 +1,5 @@
-import type { GetBotDataSourcesResponseBody } from "@app/lib/api/data_sources/bot_data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { GetBotDataSourcesResponseBody } from "@app/types/api/data_sources/bot_data_sources";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";

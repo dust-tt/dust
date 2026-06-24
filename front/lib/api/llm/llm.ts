@@ -64,7 +64,7 @@ export abstract class LLM<TPayload = unknown> {
       context,
       getTraceOutput,
       modelId,
-      reasoningEffort = "none",
+      reasoningEffort,
       responseFormat = null,
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
     }: LLMParameters
@@ -79,7 +79,10 @@ export abstract class LLM<TPayload = unknown> {
     }
     this.modelConfig = modelConfig;
     this.temperature = temperature;
-    this.reasoningEffort = reasoningEffort;
+    this.reasoningEffort =
+      reasoningEffort !== undefined
+        ? reasoningEffort
+        : modelConfig.defaultReasoningEffort;
     this.responseFormat = responseFormat;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = {
@@ -131,7 +134,8 @@ export abstract class LLM<TPayload = unknown> {
       yield* this.completeStream(streamParameters, metadata);
       return;
     }
-    const { conversation, prompt, specifications } = streamParameters;
+    const { conversation, prompt, specifications, previousMessageId } =
+      streamParameters;
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(
@@ -162,6 +166,9 @@ export abstract class LLM<TPayload = unknown> {
       name: startCase(this.context.operationType),
       metadata: {
         dustTraceId: this.traceId,
+        // Prompt-cache diagnostics: the previous response id we threaded into this
+        // request (the current one is added below from the `interaction_id` event).
+        ...(previousMessageId && { previousMessageId }),
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
         ...(this.authenticator.user()?.sId && {
           actualUserId: this.authenticator.user()!.sId,

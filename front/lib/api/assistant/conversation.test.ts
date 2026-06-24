@@ -44,8 +44,8 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
-} from "@app/types/api/internal/assistant";
-import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {

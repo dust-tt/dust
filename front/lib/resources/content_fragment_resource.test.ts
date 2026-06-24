@@ -199,6 +199,21 @@ describe("renderLightContentFragmentForModel", () => {
       expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
     });
 
+    it("guides the model to read pasted files when the stored snippet is missing", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet: null,
+          path: "conversation-conv123/pasted-text-1.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = getTextContent(result);
+      expect(text).toContain('truncated="true"');
+      expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
+    });
+
     it("re-truncates a legacy oversized stored snippet so the full paste is not inlined", async () => {
       const fullPaste = "b".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
       const result = await renderLightContentFragmentForModel(

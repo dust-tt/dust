@@ -31,6 +31,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { heartbeat } from "@temporalio/activity";
@@ -54,11 +55,13 @@ export async function* runToolWithStreaming(
     agentConfiguration,
     agentMessage,
     conversation,
+    userMessage,
   }: {
     action: AgentMCPActionResource;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationType;
+    userMessage: UserMessageType;
   },
   options?: { signal?: AbortSignal }
 ): AsyncGenerator<
@@ -92,6 +95,7 @@ export async function* runToolWithStreaming(
     conversation,
     stepContext: action.stepContext,
     toolConfiguration,
+    userMessage,
   };
 
   await action.updateStatus("running");

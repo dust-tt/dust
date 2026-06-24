@@ -4,7 +4,7 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 
 const BEGINNING_AGENT_TOOLTIP =
-  "Credits used for this message (intelligence and tools).";
+  "Credits used for this message (tokens and actions).";
 
 const ITEM_CLASS_NAME =
   "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent dark:text-muted-foreground-night dark:hover:bg-transparent dark:focus:bg-transparent";

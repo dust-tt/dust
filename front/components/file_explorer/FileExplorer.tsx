@@ -14,6 +14,7 @@ import type {
   FileExplorerEntry,
   FileExplorerFilter,
   FileExplorerMenuAction,
+  FileExplorerPathEntry,
   FileExplorerSortMode,
   FileSystemTreeNode,
   FolderEntry,
@@ -25,9 +26,9 @@ import {
   getScopedRelativePath,
   isFileExplorerMovableFile,
 } from "@app/components/file_explorer/utils";
-import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -38,7 +39,7 @@ interface FileExplorerProps {
   defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
   hideBreadcrumbAtRoot?: boolean;
-  files: FileSystemEntry[];
+  files: FileExplorerPathEntry[];
   getFileUrl: (path: string) => string;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
@@ -52,9 +53,12 @@ interface FileExplorerProps {
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
   onRename?: (entry: FileEntry | FolderEntry) => void;
+  owner?: LightWorkspaceType;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
   ) => FileExplorerMenuAction[];
+  /** Top-level scope folders at the virtual root (e.g. `conversation`, `pod`). */
+  virtualScopeRoots?: readonly string[];
 }
 
 export function FileExplorer({
@@ -74,7 +78,9 @@ export function FileExplorer({
   onMoveFile,
   onOpenInteractive,
   onRename,
+  owner,
   getExtraFileMenuItems,
+  virtualScopeRoots,
 }: FileExplorerProps) {
   const [currentFolderPath, setCurrentFolderPath] = useState("");
   const prevNavigationResetKey = useRef(navigationResetKey);
@@ -95,6 +101,7 @@ export function FileExplorer({
 
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [searchQuery, setSearchQuery] = useState("");
+  const searchFolderPath = searchQuery.trim() ? currentFolderPath : undefined;
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
   const [sortMode, setSortMode] =
     useState<FileExplorerSortMode>("last-modified");
@@ -119,6 +126,7 @@ export function FileExplorer({
         searchQuery,
         activeFilter,
         sortMode,
+        virtualScopeRoots,
       }),
     [
       contentNodes,
@@ -127,6 +135,7 @@ export function FileExplorer({
       searchQuery,
       activeFilter,
       sortMode,
+      virtualScopeRoots,
     ]
   );
 
@@ -272,7 +281,7 @@ export function FileExplorer({
           className={cn("flex flex-1 min-h-0 flex-col gap-5", contentClassName)}
         >
           {showBreadcrumb && (
-            <div className={cn("px-4", hideBreadcrumbAtRoot && "pt-5")}>
+            <div className="px-4 pt-5">
               <FileExplorerBreadcrumb
                 currentFolderPath={currentFolderPath}
                 onNavigate={handleBreadcrumbNavigate}
@@ -325,6 +334,7 @@ export function FileExplorer({
                 ? getMenuItems
                 : undefined
             }
+            searchFolderPath={searchFolderPath}
           />
         </div>
       </div>
@@ -337,6 +347,7 @@ export function FileExplorer({
         onDownload={onFileDownload}
         onPrev={handlePreviewPrev}
         onNext={handlePreviewNext}
+        owner={owner}
       />
 
       {onMoveFile && (

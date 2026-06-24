@@ -23,7 +23,7 @@ import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/ut
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  isProviderWhitelisted,
+  selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -69,6 +69,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 interface DustLikeGlobalAgentArgs {
   settings: GlobalAgentSettingsModel | null;
@@ -77,6 +78,9 @@ interface DustLikeGlobalAgentArgs {
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders?: ReadonlySet<ModelProviderIdType>;
+  // Workspace feature flags, forwarded to model selection so it runs the exact
+  // same model availability check that is enforced when a message is posted.
+  featureFlags: WhitelistableFeature[];
   // When set, the @dust agent defaults to GPT 5.5 (medium reasoning) instead of
   // Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_5_default` feature flag.
   preferGpt55DefaultModel?: boolean;
@@ -259,6 +263,7 @@ function _getDustLikeGlobalAgent(
     hasDeepDive,
     globalAgentContext,
     excludeProviders = new Set<ModelProviderIdType>(),
+    featureFlags,
   }: DustLikeGlobalAgentArgs,
   {
     agentId,
@@ -299,9 +304,11 @@ function _getDustLikeGlobalAgent(
     }
 
     const isPreferredModelConfigurationAvailable =
-      preferredModelConfiguration &&
-      !excludeProviders.has(preferredModelConfiguration.providerId) &&
-      isProviderWhitelisted(auth, preferredModelConfiguration.providerId);
+      preferredModelConfiguration != null &&
+      selectEnabledModel(auth, [preferredModelConfiguration], {
+        featureFlags,
+        excludeProviders,
+      }) != null;
 
     if (requiredPreferredModelConfiguration) {
       if (isPreferredModelConfigurationAvailable) {

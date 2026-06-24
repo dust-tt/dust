@@ -574,6 +574,7 @@ export interface WorkspaceMetadata {
   selfImprovementCapPerSkillAwuCredits?: number;
   webSearchProvider?: WebSearchProvider;
   webBrowseProvider?: WebBrowseProvider;
+  workspaceDefaultAgentId?: string;
 }
 
 export async function updateWorkspaceMetadata(

@@ -1,4 +1,3 @@
-import type { GetShareFrameMetadataResponseBody } from "@app/lib/api/files/share";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -7,6 +6,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
+import type { GetShareFrameMetadataResponseBody } from "@app/types/api/files/share";
 import { useCallback, useEffect } from "react";
 import type { Fetcher } from "swr";
 

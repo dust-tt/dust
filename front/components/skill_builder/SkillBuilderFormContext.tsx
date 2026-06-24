@@ -56,13 +56,11 @@ export const skillBuilderFormSchema = z.object({
   editors: z.array(editorUserSchema),
   tools: z.array(actionSchema),
   icon: z.string().nullable(),
-  extendedSkillId: z.string().nullable(),
   isDefault: z.boolean(),
   reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
   fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
   referencedSkills: z.array(referencedSkillSchema),
-  referencedSkillIds: z.array(z.string()),
   additionalSpaces: z.array(z.string()),
 });
 

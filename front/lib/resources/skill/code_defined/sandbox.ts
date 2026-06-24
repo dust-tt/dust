@@ -14,6 +14,7 @@ import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
 
 function buildSandboxInstructionProse({
@@ -126,7 +127,7 @@ function formatWorkspaceAllowlist(domains: string[]): string {
 
 async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
   const flags = await getFeatureFlags(auth);
-  const hasWorkspaceAdmin = flags.includes("sandbox_workspace_admin");
+  const hasWorkspaceAdmin = isComputerFeatureEnabled(flags);
   const allowAgentRequests =
     hasWorkspaceAdmin &&
     auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
@@ -369,7 +370,7 @@ export const sandboxSkill = {
   ) => {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
     const flags = await getFeatureFlags(auth);
-    const hasDsbxTools = flags.includes("sandbox_dsbx_tools");
+    const hasDsbxTools = isComputerFeatureEnabled(flags);
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
@@ -388,6 +389,6 @@ export const sandboxSkill = {
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
-    return !flags.includes("sandbox_tools");
+    return !isComputerFeatureEnabled(flags);
   },
 } as const satisfies SystemSkillDefinition;

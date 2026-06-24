@@ -10,7 +10,7 @@ import {
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
-import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
   isToolCategory,
   TOOL_CATEGORY_AWU_WEIGHTS,
@@ -54,8 +54,8 @@ export async function getRemainingProgrammaticUsageFromMetronome(
   }
 
   const programmaticSpendRes = await fetchProgrammaticAwuSpend({
+    workspaceId: workspace.sId,
     metronomeCustomerId,
-    metronomeContractId,
   });
   if (programmaticSpendRes.isErr()) {
     logger.warn(
@@ -94,16 +94,14 @@ export async function getRemainingProgrammaticUsageFromMetronome(
  * risk of being capped server-side.
  */
 export async function fetchProgrammaticAwuSpend({
+  workspaceId,
   metronomeCustomerId,
-  metronomeContractId,
 }: {
+  workspaceId: string;
   metronomeCustomerId: string;
-  metronomeContractId: string;
 }): Promise<Result<number | null, Error>> {
-  const periodResult = await getMetronomeCurrentBillingPeriod({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
+  const periodResult =
+    await getCachedMetronomeCurrentBillingPeriod(workspaceId);
   if (periodResult.isErr()) {
     return new Err(periodResult.error);
   }

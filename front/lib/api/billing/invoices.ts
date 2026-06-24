@@ -3,6 +3,7 @@ import {
   getBillingStripeCustomerId,
   getStripeClient,
 } from "@app/lib/plans/stripe";
+import type { BillingInvoice } from "@app/types/api/billing/invoices";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -10,26 +11,6 @@ import { errorToString } from "@app/types/shared/utils/error_utils";
 import type Stripe from "stripe";
 
 const BILLING_INVOICES_PAGE_SIZE = 12;
-
-export type BillingInvoice = {
-  id: string;
-  number: string | null;
-  status: Stripe.Invoice.Status | null;
-  description: string | null;
-  currency: string;
-  totalCents: number;
-  amountPaidCents: number;
-  createdAtMs: number;
-  dueDateMs: number | null;
-  periodStartMs: number;
-  periodEndMs: number;
-  hostedInvoiceUrl: string | null;
-  invoicePdf: string | null;
-};
-
-export type GetBillingInvoicesResponseBody = {
-  billingInvoices: BillingInvoice[];
-};
 
 function serializeInvoice(invoice: Stripe.Invoice): BillingInvoice {
   return {

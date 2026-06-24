@@ -2,10 +2,8 @@ import type {
   MessageCreateParamsNonStreaming,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources";
-import {
-  type ClaudeOpusFourDotEight,
-  WithAnthropicClaudeOpusFourDotEightConfig,
-} from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_dot_eight";
+import { WithAnthropicClaudeOpusFourDotEightConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_dot_eight";
+import type { AnthropicOpusInputConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_opus_four_shared_config";
 import { AnthropicStream } from "@app/lib/model_constructors/stream/clients/anthropic";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
@@ -32,5 +30,5 @@ export class AnthropicGlobalClaudeOpusFourDotEightStream extends WithAnthropicCl
 AnthropicGlobalClaudeOpusFourDotEightStream satisfies StreamEndpointConstructor<
   MessageCreateParamsNonStreaming,
   RawMessageStreamEvent,
-  ClaudeOpusFourDotEight
+  AnthropicOpusInputConfig
 >;

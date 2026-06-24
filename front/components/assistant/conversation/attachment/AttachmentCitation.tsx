@@ -1,3 +1,4 @@
+import type { FileCitationCardSize } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
@@ -9,12 +10,12 @@ import { useContext } from "react";
 
 interface AttachmentCitationProps {
   attachmentCitation: AttachmentCitation;
-  compact?: boolean;
+  size?: FileCitationCardSize;
 }
 
 export function AttachmentCitation({
   attachmentCitation,
-  compact,
+  size = "md",
 }: AttachmentCitationProps) {
   const sidePanel = useContext(ConversationSidePanelContext);
 
@@ -58,7 +59,7 @@ export function AttachmentCitation({
       title: attachmentCitation.title,
       description: attachmentCitation.path ?? attachmentCitation.spaceName,
       onRemove: attachmentCitation.onRemove,
-      compact,
+      size,
       tooltipLabel: tooltipContent,
     };
     return nodeUrl ? (
@@ -85,7 +86,7 @@ export function AttachmentCitation({
         icon={attachmentCitation.visual}
         title={title}
         description={attachmentCitation.description}
-        compact={compact}
+        size={size}
         onClick={() =>
           sidePanel.openPanel({ type: "interactive_content", fileId })
         }
@@ -107,7 +108,7 @@ export function AttachmentCitation({
         downloadUrl={sourceUrl ?? undefined}
         icon={attachmentCitation.visual}
         description={attachmentCitation.description}
-        compact={compact}
+        size={size}
         isLoading={isLoading}
         loadingLabel={loadingLabel}
         onRemove={attachmentCitation.onRemove}
@@ -121,7 +122,7 @@ export function AttachmentCitation({
     icon: attachmentCitation.visual,
     title,
     description: attachmentCitation.description,
-    compact,
+    size,
     isLoading,
     loadingLabel,
     onRemove: attachmentCitation.onRemove,

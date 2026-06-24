@@ -13,10 +13,22 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import type {
-  InputBarSlashCommand,
-  InputBarSlashSuggestionCapability,
+import {
+  getAvailableInputBarSlashCommands,
+  type InputBarSlashCommand,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import {
+  isRunCommandSlashCommand,
+  isSkillSlashCommand,
+  isToolSlashCommand,
+  RUN_COMMAND_SLASH_COMMAND_ACTION,
+  type RunCommandSlashCommand,
+  SELECT_SKILL_SLASH_COMMAND_ACTION,
+  SELECT_TOOL_SLASH_COMMAND_ACTION,
+  type SkillSlashCommand,
+  type ToolSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -96,6 +108,26 @@ import React, {
   useState,
 } from "react";
 import { InputBarContext } from "./InputBarContext";
+
+type KnownSlashCommand =
+  | RunCommandSlashCommand<InputBarSlashCommand>
+  | SkillSlashCommand
+  | ToolSlashCommand;
+
+function narrowToKnownSlashCommand(
+  item: SlashCommand
+): KnownSlashCommand | null {
+  if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
+    return item;
+  }
+  if (isSkillSlashCommand(item)) {
+    return item;
+  }
+  if (isToolSlashCommand(item)) {
+    return item;
+  }
+  return null;
+}
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 
@@ -281,12 +313,22 @@ const InputBarContainer = ({
   // conversation may only be created after the first message; the ref keeps it current.
   const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
   conversationIdRef.current = conversation?.sId ?? null;
-  const onSelectRef = useRef<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-  >(undefined);
-  const onDetailsRef = useRef<
-    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-  >(undefined);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const slashCommandsRef = useRef<InputBarSlashCommand[]>([]);
+  slashCommandsRef.current = getAvailableInputBarSlashCommands({
+    hasAttachment: actions.includes("attachment"),
+    hasConversation: Boolean(conversation?.sId),
+  });
+  const onSelectRef = useRef<((item: SlashCommand) => void) | undefined>(
+    undefined
+  );
+  const onDetailsRef = useRef<((item: SlashCommand) => void) | undefined>(
+    undefined
+  );
+  const onNodeSelectRef = useRef(onNodeSelect);
+  onNodeSelectRef.current = onNodeSelect;
+  const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
+  includeAttachKnowledgeRef.current = actions.includes("attachment");
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -495,7 +537,7 @@ const InputBarContainer = ({
     sId: skillId,
     name: skillName,
     icon: skillIcon,
-  }: SkillWithoutInstructionsAndToolsType) => {
+  }: Pick<SkillWithoutInstructionsAndToolsType, "sId" | "name" | "icon">) => {
     editorRef.current
       ?.chain()
       .focus()
@@ -509,6 +551,11 @@ const InputBarContainer = ({
 
   const handleSlashCommandSelect = (command: InputBarSlashCommand) => {
     switch (command.id) {
+      case "upload-file":
+        if (!fileUploaderService.isProcessingFiles) {
+          fileInputRef.current?.click();
+        }
+        break;
       case "compact":
         if (isCompacting) {
           break;
@@ -536,42 +583,54 @@ const InputBarContainer = ({
     }
   };
 
-  onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
-    switch (capability.kind) {
-      case "command":
-        handleSlashCommandSelect(capability.command);
+  onSelectRef.current = (rawItem: SlashCommand) => {
+    const item = narrowToKnownSlashCommand(rawItem);
+    if (!item) {
+      return;
+    }
+
+    switch (item.action) {
+      case RUN_COMMAND_SLASH_COMMAND_ACTION:
+        handleSlashCommandSelect(item.data.command);
         break;
-      case "skill":
-        handleSkillSelect(capability.skill);
+      case SELECT_SKILL_SLASH_COMMAND_ACTION:
+        handleSkillSelect(item.data.skill);
         break;
-      case "tool":
-        onMCPServerViewSelect(capability.serverView);
+      case SELECT_TOOL_SLASH_COMMAND_ACTION:
+        onMCPServerViewSelect(item.data.tool.view);
         break;
       default:
-        assertNeverAndIgnore(capability);
+        assertNeverAndIgnore(item);
     }
 
     queueMicrotask(() => editorRef.current?.commands.focus());
   };
 
-  onDetailsRef.current = (capability: InputBarSlashSuggestionCapability) => {
-    switch (capability.kind) {
-      case "command":
+  onDetailsRef.current = (rawItem: SlashCommand) => {
+    const item = narrowToKnownSlashCommand(rawItem);
+    if (!item) {
+      return;
+    }
+
+    switch (item.action) {
+      case RUN_COMMAND_SLASH_COMMAND_ACTION:
         // Static commands have no details sheet.
         break;
-      case "skill":
-        setSelectedSkillIdForDetails(capability.skill.sId);
+      case SELECT_SKILL_SLASH_COMMAND_ACTION:
+        setSelectedSkillIdForDetails(item.data.skill.sId);
         break;
-      case "tool":
-        setSelectedServerViewForDetails(capability.serverView);
+      case SELECT_TOOL_SLASH_COMMAND_ACTION:
+        setSelectedServerViewForDetails(item.data.tool.view);
         break;
       default:
-        assertNeverAndIgnore(capability);
+        assertNeverAndIgnore(item);
     }
   };
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+  const spaceIdRef = useRef<string | null | undefined>(spaceId);
+  spaceIdRef.current = spaceId;
 
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
@@ -591,6 +650,11 @@ const InputBarContainer = ({
       onDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
+      slashCommandsRef,
+      includeAttachKnowledgeRef,
+      attachedNodesRef,
+      onNodeSelectRef,
+      spaceIdRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
     onSuggestionActiveChangeRef,
@@ -1224,8 +1288,6 @@ const InputBarContainer = ({
     return isMobile ? "sm" : "xs";
   }, [isMobile]);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const isSubmitDisabled =
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
@@ -1428,7 +1490,7 @@ const InputBarContainer = ({
                 </React.Fragment>
               ))}
             </div>
-            <div className="relative flex w-full items-center justify-between">
+            <div className="relative flex min-h-8 w-full items-center justify-between">
               {!isRecording && editor && (
                 <Toolbar
                   variant="overlay"

@@ -4,17 +4,15 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type {
   GetSpacesResponseBody,
   PostSpaceRequestBodyType,
   PostSpacesResponseBody,
-} from "@app/lib/api/spaces";
-import {
-  createSpaceAndGroup,
-  PostSpaceRequestBodySchema,
-} from "@app/lib/api/spaces";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
+} from "@app/types/api/spaces";
+import { PostSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { PodType, SpaceType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";

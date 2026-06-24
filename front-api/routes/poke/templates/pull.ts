@@ -1,6 +1,6 @@
-import type { PullTemplatesResponseBody } from "@app/lib/api/poke/templates";
 import { pullTemplatesFromMainRegion } from "@app/lib/api/poke/templates";
 import { config } from "@app/lib/api/regions/config";
+import type { PullTemplatesResponseBody } from "@app/types/api/poke/templates";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

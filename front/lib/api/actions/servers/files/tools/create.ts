@@ -14,6 +14,7 @@ import {
   frameFileCreateRejectedError,
   frameFileEditRejectedError,
 } from "@app/lib/api/actions/servers/files/tools/utils";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
   isInteractiveContentType,
@@ -102,7 +103,13 @@ export async function createHandler(
   > = [
     {
       type: "text",
-      text: `${verb} \`${path}\` (${content_type}, ${sizeKb} KB). The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
+      text:
+        `${verb} \`${path}\` (${content_type}, ${sizeKb} KB). ` +
+        getFilePreviewDirectiveInstruction({
+          contentType: content_type,
+          path,
+          title: fileName,
+        }),
     },
   ];
 

@@ -8,8 +8,8 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_1_PRO_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import {
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
@@ -31,10 +31,7 @@ import {
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
-
-export type GetEnabledModelsResponseType = {
-  models: ModelConfigurationType[];
-};
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function getWhitelistedProviders(
   auth: Authenticator
@@ -102,6 +99,36 @@ function getModelEnablementContextWithoutFeatureFlag(
   };
 }
 
+// Returns the first candidate model that is enabled for the workspace. This is
+// the canonical way to pick a model from a preference-ordered list: it runs the
+// exact same isModelEnabled predicate (provider whitelist plus plan, region and
+// feature-flag availability) that is enforced when a message is posted, so the
+// chosen model can never be rejected later as "not supported". It falls through
+// to the next candidate instead.
+//
+// The workspace feature flags must be passed in: selection happens in
+// synchronous global-agent builders where they are not otherwise in scope, and
+// using the real flags here is what keeps this check identical to the one
+// enforced at message time rather than a second, divergent check.
+export function selectEnabledModel(
+  auth: Authenticator,
+  candidates: ModelConfigurationType[],
+  {
+    featureFlags,
+    excludeProviders = new Set(),
+  }: {
+    featureFlags: WhitelistableFeature[];
+    excludeProviders?: ReadonlySet<ModelProviderIdType>;
+  }
+): ModelConfigurationType | null {
+  const context = {
+    ...getModelEnablementContextWithoutFeatureFlag(auth, excludeProviders),
+    featureFlags,
+  };
+
+  return candidates.find((m) => isModelEnabled(m, context)) ?? null;
+}
+
 const ORDERED_FAST_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_SMALL_MODEL_CONFIG,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -157,7 +184,7 @@ function _getSmallWhitelistedModel(
 const ORDERED_LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
+  GEMINI_3_1_PRO_MODEL_CONFIG,
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
 ];

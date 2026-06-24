@@ -142,10 +142,6 @@ export function asDisplayToolName(name?: string | null) {
     return "Create Frames";
   }
 
-  if (name === "slideshow") {
-    return "Create Slideshows";
-  }
-
   if (name === "image_generation") {
     return "Create Images";
   }

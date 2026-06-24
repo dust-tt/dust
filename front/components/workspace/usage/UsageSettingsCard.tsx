@@ -146,12 +146,32 @@ export function UsageSettingsCard({
         />
         <SettingsList.Row
           title="Auto-upgrade seats"
-          description="When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost."
+          description={
+            usageSettings.autoSeatUpgradeAvailable ? (
+              "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost."
+            ) : (
+              <>
+                When a member reaches their credit limit, automatically move
+                them to the next seat tier available in your plan (free → pro,
+                pro → max) instead of blocking them.{" "}
+                <strong>
+                  Auto-upgrade isn't available on your current plan. Upgrade to
+                  a paid plan to enable it.
+                </strong>
+              </>
+            )
+          }
           action={
             <SliderToggle
-              selected={usageSettings.autoSeatUpgradeEnabled}
+              selected={
+                usageSettings.autoSeatUpgradeAvailable &&
+                usageSettings.autoSeatUpgradeEnabled
+              }
               disabled={
-                readOnly || isSavingAutoSeatUpgrade || isUsageSettingsLoading
+                readOnly ||
+                isSavingAutoSeatUpgrade ||
+                isUsageSettingsLoading ||
+                !usageSettings.autoSeatUpgradeAvailable
               }
               onClick={() => void handleToggleAutoSeatUpgrade()}
             />

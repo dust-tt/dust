@@ -61,37 +61,53 @@ interface ConversationMessageContentProps
   type: ConversationMessageType;
   infoChip?: React.ReactNode;
   reversed?: boolean;
+  showContent?: boolean;
 }
 
 export const ConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   ConversationMessageContentProps
->(({ children, citations, className, type, reversed, ...props }, ref) => {
-  return (
-    <>
-      {type === "user" && citations && citations.length > 0 && (
-        <CitationGrid reversed={reversed}>{citations}</CitationGrid>
-      )}
-      <div
-        ref={ref}
-        className={cn(
-          "s-flex s-min-w-0 s-flex-col s-gap-1",
-          type === "user" &&
-            "s-rounded-2xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3",
-          className
+>(
+  (
+    {
+      children,
+      citations,
+      className,
+      type,
+      reversed,
+      showContent = true,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <>
+        {type === "user" && citations && citations.length > 0 && (
+          <CitationGrid reversed={reversed}>{citations}</CitationGrid>
         )}
-        {...props}
-      >
-        <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
-          {children}
-        </div>
-        {type === "agent" && citations && citations.length > 0 && (
-          <CitationGrid>{citations}</CitationGrid>
+        {showContent && (
+          <div
+            ref={ref}
+            className={cn(
+              "s-flex s-min-w-0 s-flex-col s-gap-1",
+              type === "user" &&
+                "s-rounded-2xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3",
+              className
+            )}
+            {...props}
+          >
+            <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
+              {children}
+            </div>
+            {type === "agent" && citations && citations.length > 0 && (
+              <CitationGrid>{citations}</CitationGrid>
+            )}
+          </div>
         )}
-      </div>
-    </>
-  );
-});
+      </>
+    );
+  }
+);
 
 ConversationMessageContent.displayName = "ConversationMessageContent";
 

@@ -18,6 +18,7 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
+import { isProjectType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -99,6 +100,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
+  const isPod = space ? isProjectType(space) : false;
+  const defaultAgentUnavailableLabel = isPod
+    ? "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+    : "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.";
+
   const handleAgentDetailsClick = (agentId: string) => {
     setQueryParam(router, "agentDetails", agentId);
   };
@@ -156,7 +162,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                     <Icon visual={InfoCircle} size="xs" />
                   </span>
                 }
-                label="This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+                label={defaultAgentUnavailableLabel}
               />
             )}
             <button

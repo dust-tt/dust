@@ -37,6 +37,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -106,6 +107,7 @@ import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
+import { ProjectDefaultSkillModel } from "@app/lib/resources/storage/models/project_default_skills";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   ProjectTaskConversationModel,
@@ -118,7 +120,10 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
+import {
+  ConversationSandboxModel,
+  SandboxModel,
+} from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -138,8 +143,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
-import logger from "@app/logger/logger";
-import { sendInitDbMessage } from "@app/types/shared/deployment";
+import { isDevelopment, isTest } from "@app/types/shared/env";
 
 /**
  * Loads all Sequelize models, useful for some tests
@@ -177,6 +181,7 @@ export function loadAllModels() {
     WebhookRequestModel,
     WebhookRequestTriggerModel,
     ConversationModel,
+    ConversationSelectedSpaceModel,
     ConversationParticipantModel,
     UserConversationReadsModel,
     WakeUpModel,
@@ -238,6 +243,7 @@ export function loadAllModels() {
     GroupSkillModel,
     SkillReferenceModel,
     AgentSkillModel,
+    ProjectDefaultSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
     SkillMCPServerConfigurationModel,
@@ -249,6 +255,7 @@ export function loadAllModels() {
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
     SandboxModel,
+    ConversationSandboxModel,
     ConversationBranchModel,
     ConversationForkModel,
     ProjectTaskModel,
@@ -267,10 +274,11 @@ export function loadAllModels() {
 }
 
 async function main() {
-  await sendInitDbMessage({
-    service: "front",
-    logger: logger,
-  });
+  if (!isDevelopment() && !isTest()) {
+    throw new Error(
+      "This script should only be run in development or test mode"
+    );
+  }
 
   for (const model of loadAllModels()) {
     await model.sync({ alter: true });

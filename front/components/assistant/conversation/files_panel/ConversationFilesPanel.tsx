@@ -11,8 +11,8 @@ import { useConversationAttachments } from "@app/hooks/conversations/useConversa
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { downloadFile } from "@app/lib/swr/files";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";

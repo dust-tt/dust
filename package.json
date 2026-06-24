@@ -42,6 +42,7 @@
     "eslint-plugin-react-hooks": {
       "zod-validation-error": "^4.0.0"
     },
+    "ajv": "^8.20.0",
     "@types/react": "^18.3.18",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "@types/node": "^24.12.2",

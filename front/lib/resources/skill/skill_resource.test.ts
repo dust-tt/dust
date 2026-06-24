@@ -1595,6 +1595,48 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("fetchActiveByIdsForAgentLoop", () => {
+    it("filters code-defined skills disabled for the current agent loop", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With Slack Mention Users Reference" }
+      );
+      const conversation = await ConversationFactory.create(
+        testContext.authenticator,
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
+      );
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth: testContext.authenticator,
+        workspace: testContext.workspace,
+        conversation,
+        content: "Tell someone about this.",
+        origin: "slack",
+        rank: -1,
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        testContext.authenticator,
+        {
+          workspace: testContext.workspace,
+          conversation,
+          agentConfig: agent,
+        }
+      );
+
+      const skills = await SkillResource.fetchActiveByIdsForAgentLoop(
+        testContext.authenticator,
+        ["mention_users"],
+        {
+          agentConfiguration: agent,
+          agentMessage,
+          conversation,
+          userMessage,
+        }
+      );
+
+      expect(skills).toEqual([]);
+    });
+  });
+
   describe("batchFetchUsedBySkills", () => {
     it("should not hydrate MCP server views for returned parent skills", async () => {
       const server = await RemoteMCPServerFactory.create(testContext.workspace);

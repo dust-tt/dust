@@ -15,12 +15,19 @@ makeScript(
         "check",
         "check-pre-deploy",
         "check-post-deploy",
+        "mark-pre-deploy",
+        "mark-post-deploy",
       ],
       demandOption: true,
       describe: "Migration command to run.",
     },
+    name: {
+      type: "string",
+      describe:
+        "Migration filename for mark commands (e.g. 20250101000000_my_migration or 20250101000000_my_migration.sql).",
+    },
   },
-  async ({ command, execute }) => {
+  async ({ command, name, execute }) => {
     if (!execute) {
       return;
     }
@@ -29,6 +36,7 @@ makeScript(
       getDatabaseURI: () => dbConfig.getRequiredDatabaseURI(),
       logger,
       command,
+      name,
     });
     await connectorsSequelize.close();
   }

@@ -1215,7 +1215,7 @@ describe("createAgentMessages", () => {
       expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
     });
 
-    it("should allow agent mentions when agent uses restricted spaces other than conversation's space but the user is the sole manual member of the restricted conversation space", async () => {
+    it("should reject agent mentions when agent uses restricted spaces other than conversation's space even if the user is the sole manual member of the conversation space", async () => {
       const conversationSpace = await SpaceFactory.regular(workspace);
       const user = auth.getNonNullableUser();
       const adminAuth = await Authenticator.internalAdminForWorkspace(
@@ -1325,13 +1325,15 @@ describe("createAgentMessages", () => {
         }
       );
 
-      expect(agentMessages).toHaveLength(1);
-      expect(agentMessages[0].configuration.sId).toBe(agentConfig.sId);
+      // Normally this agent would not be mentionable: getAgentConfiguration
+      // filters agents by requestedSpaceIds the user cannot read. This test
+      // bypasses that early check to assert the Pod-level guard still rejects.
+      expect(agentMessages).toHaveLength(0);
 
       expect(richMentions).toHaveLength(1);
       if (isRichAgentMention(richMentions[0])) {
         expect(richMentions[0].id).toBe(agentConfig.sId);
-        expect(richMentions[0].status).toBe("approved");
+        expect(richMentions[0].status).toBe("agent_restricted_by_space_usage");
       }
 
       const mentionInDb = await MentionModel.findOne({
@@ -1342,7 +1344,7 @@ describe("createAgentMessages", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("approved");
+      expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
     });
 
     it("should allow agent mentions when agent uses global space other than conversation's space", async () => {

@@ -1,8 +1,6 @@
 import { getPaginationParams } from "@app/lib/api/pagination";
-import {
-  type SearchProjectsResponseBody,
-  searchReadablePods,
-} from "@app/lib/api/projects/list";
+import { searchReadablePods } from "@app/lib/api/projects/list";
+import type { SearchProjectsResponseBody } from "@app/types/api/projects/list";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

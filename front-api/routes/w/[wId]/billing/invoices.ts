@@ -1,7 +1,5 @@
-import {
-  type GetBillingInvoicesResponseBody,
-  listRecentBillingInvoices,
-} from "@app/lib/api/billing/invoices";
+import { listRecentBillingInvoices } from "@app/lib/api/billing/invoices";
+import type { GetBillingInvoicesResponseBody } from "@app/types/api/billing/invoices";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

@@ -9,6 +9,7 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   createContext,
   type ReactNode,
@@ -232,7 +233,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
   const { workspace } = useAuth();
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
 
   const useCaseMetadata = useMemo(() => {
     if (!conversationId) {
@@ -244,7 +245,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }, [conversationId]);
 
   const fileUploaderService = useFileUploaderService({
-    hasSandboxTools: hasFeature("sandbox_tools"),
+    hasSandboxTools: isComputerFeatureEnabled(featureFlags),
     owner: workspace,
     useCase: "conversation",
     useCaseMetadata,

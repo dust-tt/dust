@@ -6,9 +6,7 @@ import { describe, expect, it } from "vitest";
 type SkillInstructionsSource = Pick<
   SkillResource,
   "sId" | "name" | "instructions"
-> & {
-  extendedSkill: Pick<SkillResource, "sId" | "instructions"> | null;
-};
+>;
 
 function makeEnabledSkill(
   overrides: Partial<SkillInstructionsSource>
@@ -17,7 +15,6 @@ function makeEnabledSkill(
     sId: "research",
     name: "ResearchSkill",
     instructions: "",
-    extendedSkill: null,
     ...overrides,
   };
 }

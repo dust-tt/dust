@@ -3,6 +3,7 @@ import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
   type ContractCreditType,
+  fromFreeMetronomeUserId,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
@@ -485,6 +486,7 @@ export interface MetronomePackageSummary {
   tier: MetronomePackageTier;
   currency: SupportedCurrency;
   seats: PackageSeatConfig[];
+  billingAnchor: "contract_start_date" | "first_billing_period";
 }
 
 /**
@@ -674,6 +676,9 @@ export async function listMetronomePackages(): Promise<
         tier,
         currency: classifyMetronomePackageCurrencyByName(name),
         seats: seatConfigsFromPackageOverrides(pkg.overrides, productSeatTypes),
+        // billing_anchor_date is not exposed on PackageListResponse; default to
+        // contract_start_date which all current packages use.
+        billingAnchor: "contract_start_date" as const,
       });
     }
     packages.sort(comparePackagesForDisplay);
@@ -2582,10 +2587,10 @@ export async function addPerUserCreditToCustomer({
  */
 export async function listCustomerPerUserCreditUserIds({
   metronomeCustomerId,
-  creditName,
+  contractCreditType,
 }: {
   metronomeCustomerId: string;
-  creditName: string;
+  contractCreditType: ContractCreditType;
 }): Promise<Result<Set<string>, Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok(new Set());
@@ -2600,7 +2605,11 @@ export async function listCustomerPerUserCreditUserIds({
       include_balance: false,
       include_archived: true,
     })) {
-      if (entry.contract || entry.name !== creditName) {
+      if (
+        entry.contract ||
+        entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
+          contractCreditType
+      ) {
         continue;
       }
       for (const specifier of entry.specifiers ?? []) {
@@ -2655,13 +2664,16 @@ export async function listCustomerPerUserCreditBalances({
     for await (const entry of client.v1.customers.credits.list({
       customer_id: metronomeCustomerId,
       include_balance: true,
+      // Include archived (exhausted) credits so fully-consumed free-seat
+      // credits appear with balance 0 rather than being absent from the map.
+      include_archived: true,
     })) {
       if (entry.contract) {
         continue;
       }
-      const userId =
+      const rawUserId =
         entry.custom_fields?.[PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY];
-      if (!userId) {
+      if (!rawUserId) {
         continue;
       }
       if (
@@ -2670,6 +2682,10 @@ export async function listCustomerPerUserCreditBalances({
       ) {
         continue;
       }
+      // Strip the "free-" prefix so the map is keyed by plain sId. All
+      // callers look up by membership.user.sId; old-format credits without
+      // the prefix keep their raw value as the key.
+      const userId = fromFreeMetronomeUserId(rawUserId) ?? rawUserId;
       const startingBalanceAwu = (
         entry.access_schedule?.schedule_items ?? []
       ).reduce((sum, item) => sum + item.amount, 0);
@@ -2693,8 +2709,11 @@ export async function listCustomerPerUserCreditBalances({
 }
 
 /**
- * Revoke a per-user customer credit by setting its end date to now. The
- * uniqueness key is untouched so the user can never re-claim the same credit.
+ * Revoke a per-user customer credit by setting its end date to the next round
+ * hour. Metronome requires hour-aligned timestamps; ceiling to the next hour is
+ * safe here because the credit is keyed on the free-seat Metronome user id
+ * ("free-<sId>") and no new usage events will be emitted for that id once the
+ * user has left the free seat.
  */
 export async function revokePerUserCustomerCredit({
   metronomeCustomerId,
@@ -2706,7 +2725,7 @@ export async function revokePerUserCustomerCredit({
   return updateMetronomeCreditEndDate({
     metronomeCustomerId,
     creditId,
-    accessEndingBefore: new Date().toISOString(),
+    accessEndingBefore: ceilToHourISO(new Date()),
   });
 }
 

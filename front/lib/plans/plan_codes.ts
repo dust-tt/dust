@@ -133,6 +133,13 @@ export const isUpgraded = (plan: PlanType | null): boolean => {
   return ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(plan.code);
 };
 
+export function isEnterpriseOrDust(plan: PlanType | null): boolean {
+  return (
+    plan !== null &&
+    (isEnterprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
+  );
+}
+
 export const isWhitelistedBusinessPlan = (owner?: WorkspaceType) => {
   if (!owner) {
     return false;

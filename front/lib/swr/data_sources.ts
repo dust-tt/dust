@@ -1,7 +1,7 @@
-import type { GetDataSourceUsageResponseBody } from "@app/lib/api/agent_data_sources";
-import type { GetBotDataSourcesResponseBody } from "@app/lib/api/data_sources/bot_data_sources";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
+import type { GetDataSourceUsageResponseBody } from "@app/types/api/agent_data_sources";
+import type { GetBotDataSourcesResponseBody } from "@app/types/api/data_sources/bot_data_sources";
+import type { GetPostNotionSyncResponseBody } from "@app/types/api/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";

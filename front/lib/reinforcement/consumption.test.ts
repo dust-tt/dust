@@ -18,17 +18,12 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function makeAuth({
-  metronomeContractId = null,
-  metronomeCustomerId = null,
+  hasWorkspace = false,
 }: {
-  metronomeContractId?: string | null;
-  metronomeCustomerId?: string | null;
+  hasWorkspace?: boolean;
 } = {}): Authenticator {
   return {
-    subscription: () =>
-      metronomeContractId !== null ? { metronomeContractId } : null,
-    workspace: () =>
-      metronomeCustomerId !== null ? { metronomeCustomerId } : null,
+    workspace: () => (hasWorkspace ? { sId: "ws-1" } : null),
   } as unknown as Authenticator;
 }
 
@@ -180,7 +175,7 @@ describe("getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits", () => {
 describe("getCurrentPeriod", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(metronomeContracts, "getMetronomeCurrentBillingPeriod");
+    vi.spyOn(metronomeContracts, "getCachedMetronomeCurrentBillingPeriod");
   });
 
   afterEach(() => {
@@ -189,7 +184,7 @@ describe("getCurrentPeriod", () => {
   });
 
   describe("fallback to current calendar month", () => {
-    it("falls back when auth has no metronome IDs", async () => {
+    it("falls back when auth has no workspace", async () => {
       vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
       const { cycleStart, cycleEnd } = await getCurrentPeriod(makeAuth());
       expect(cycleStart.toISOString()).toBe("2026-03-01T00:00:00.000Z");
@@ -199,13 +194,10 @@ describe("getCurrentPeriod", () => {
     it("falls back when the Metronome API returns an error", async () => {
       vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
       vi.mocked(
-        metronomeContracts.getMetronomeCurrentBillingPeriod
+        metronomeContracts.getCachedMetronomeCurrentBillingPeriod
       ).mockResolvedValue(new Err(new Error("Metronome unavailable")));
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
-        makeAuth({
-          metronomeContractId: "contract-1",
-          metronomeCustomerId: "customer-1",
-        })
+        makeAuth({ hasWorkspace: true })
       );
       expect(cycleStart.toISOString()).toBe("2026-03-01T00:00:00.000Z");
       expect(cycleEnd.toISOString()).toBe("2026-04-01T00:00:00.000Z");
@@ -214,13 +206,10 @@ describe("getCurrentPeriod", () => {
     it("falls back when Metronome has no billing period (Ok(null))", async () => {
       vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
       vi.mocked(
-        metronomeContracts.getMetronomeCurrentBillingPeriod
+        metronomeContracts.getCachedMetronomeCurrentBillingPeriod
       ).mockResolvedValue(new Ok(null));
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
-        makeAuth({
-          metronomeContractId: "contract-1",
-          metronomeCustomerId: "customer-1",
-        })
+        makeAuth({ hasWorkspace: true })
       );
       expect(cycleStart.toISOString()).toBe("2026-03-01T00:00:00.000Z");
       expect(cycleEnd.toISOString()).toBe("2026-04-01T00:00:00.000Z");
@@ -230,7 +219,7 @@ describe("getCurrentPeriod", () => {
   describe("using Metronome billing period", () => {
     it("returns the period from Metronome", async () => {
       vi.mocked(
-        metronomeContracts.getMetronomeCurrentBillingPeriod
+        metronomeContracts.getCachedMetronomeCurrentBillingPeriod
       ).mockResolvedValue(
         new Ok({
           cycleStart: new Date("2026-03-04T00:00:00.000Z"),
@@ -238,10 +227,7 @@ describe("getCurrentPeriod", () => {
         })
       );
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
-        makeAuth({
-          metronomeContractId: "contract-1",
-          metronomeCustomerId: "customer-1",
-        })
+        makeAuth({ hasWorkspace: true })
       );
       expect(cycleStart.toISOString()).toBe("2026-03-04T00:00:00.000Z");
       expect(cycleEnd.toISOString()).toBe("2026-04-04T00:00:00.000Z");

@@ -3,7 +3,6 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -18,6 +17,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
@@ -218,6 +218,38 @@ describe("getJITServers", () => {
       expect(enabledSkills.map((s) => s.sId)).not.toContain("discover_tools");
       expect(equippedSkills.map((s) => s.sId)).toContain(customSkill.sId);
       expect(equippedSkills.map((s) => s.sId)).not.toContain("discover_tools");
+    });
+    it("filters discoverable skills disabled for the current agent loop", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_skills",
+        agentConfigurationId: agentConfig.id,
+      });
+
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Tell someone about this.",
+        origin: "slack",
+        rank: -1,
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
+
+      const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        agentMessage,
+        conversation,
+        userMessage,
+      });
+
+      expect(equippedSkills.some((s) => s.sId === "mention_users")).toBe(false);
     });
   });
 

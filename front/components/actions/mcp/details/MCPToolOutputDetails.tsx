@@ -95,7 +95,7 @@ export function ToolGeneratedFileDetails({
 
   return (
     <PreviewableCitation
-      compact
+      size="sm"
       fileId={resource.fileId ?? null}
       filePath={"filePath" in resource ? resource.filePath : undefined}
       contentType={resource.contentType}

@@ -61,6 +61,7 @@ import {
   CompactionStartedEvent,
 } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
@@ -487,13 +488,12 @@ export const ConversationViewer = ({
     // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
-    if (
-      !initialListData &&
-      conversation &&
-      messages.length > 0 &&
-      !isValidating
-    ) {
+    if (initialListData === undefined && conversation && !isValidating) {
       const raw = messages.flatMap((m) => m.messages);
+      if (raw.length === 0) {
+        return;
+      }
+
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
       const messagesAndNotices = addConversationForkNotices(
         messagesToRender,
@@ -558,7 +558,7 @@ export const ConversationViewer = ({
   // approval modal would never re-open.
   useEffect(() => {
     if (
-      !initialListData ||
+      initialListData === undefined ||
       !openBranch ||
       !virtuosoMessageListRef.current ||
       hasInjectedOpenBranchRef.current
@@ -738,6 +738,12 @@ export const ConversationViewer = ({
   useEffect(() => {
     currentPanelRef.current = currentPanel;
   }, [currentPanel]);
+
+  const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile);
+  useEffect(() => {
+    isMobileRef.current = isMobile;
+  }, [isMobile]);
 
   // Only conversation related events are handled here.
   const onEventCallback = useCallback(
@@ -1056,7 +1062,11 @@ export const ConversationViewer = ({
             lastPlanVersionRef.current = event.version;
             if (event.isClosed && currentPanelRef.current === "plan") {
               closePanel();
-            } else if (prevVersion === 1 && event.version >= 2) {
+            } else if (
+              prevVersion === 1 &&
+              event.version >= 2 &&
+              !isMobileRef.current
+            ) {
               openPanel({ type: "plan" });
             }
             void mutate(
@@ -1123,7 +1133,8 @@ export const ConversationViewer = ({
       !isConversationLoading &&
       !isLoadingInitialData &&
       messages.length !== 0 &&
-      initialListData !== undefined,
+      initialListData !== undefined &&
+      initialListData.length > 0,
   });
 
   const handleSubmit = useCallback(

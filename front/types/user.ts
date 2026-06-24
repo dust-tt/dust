@@ -78,6 +78,41 @@ export type LightWorkspaceType = {
   groups?: string[];
 };
 
+export function getWorkspaceDefaultAgentId(
+  owner: LightWorkspaceType
+): string | null {
+  const value = owner.metadata?.workspaceDefaultAgentId;
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * The default agent that should be pre-selected for new conversations.
+ * A pod-level default agent takes precedence over the workspace-level default agent.
+ *
+ * Returns the resolved agent sId, or `null` when no default applies (callers then
+ * fall back to @dust). ).
+ */
+export function resolveDefaultAgentId({
+  owner,
+  podDefaultAgentId,
+  hasWorkspaceDefaultAgentFeature,
+  hasPodDefaultAgentFeature,
+}: {
+  owner: LightWorkspaceType;
+  podDefaultAgentId: string | null | undefined;
+  hasWorkspaceDefaultAgentFeature: boolean;
+  hasPodDefaultAgentFeature: boolean;
+}): string | null {
+  const workspaceDefaultAgentId = hasWorkspaceDefaultAgentFeature
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
+  const resolvedPodDefaultAgentId =
+    hasPodDefaultAgentFeature || hasWorkspaceDefaultAgentFeature
+      ? (podDefaultAgentId ?? null)
+      : null;
+  return resolvedPodDefaultAgentId ?? workspaceDefaultAgentId;
+}
+
 export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
 };

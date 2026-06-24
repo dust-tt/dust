@@ -1,8 +1,8 @@
 import type { StaticCredentialFormHandle } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PostCredentialsResponseBody } from "@app/lib/api/oauth";
 import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { PostCredentialsResponseBody } from "@app/types/api/oauth";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

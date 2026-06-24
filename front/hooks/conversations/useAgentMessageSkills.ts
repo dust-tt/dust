@@ -1,5 +1,5 @@
-import type { GetAgentMessageSkillsResponseBody } from "@app/lib/api/assistant/messages";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetAgentMessageSkillsResponseBody } from "@app/types/api/assistant/messages";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";

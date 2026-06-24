@@ -132,14 +132,32 @@ export async function canAgentBeUsedInProjectConversation(
         throw new Error("Unexpected: project not found");
       }
 
-      // Special case for restricted projects with only one member that is the user, we can use the agent directly.
+      // Special case for restricted projects whose members all belong to every
+      // restricted space required by the agent, we can use the agent directly.
       if (!project.isOpen()) {
-        const members =
+        const restrictedAgentSpaces = spaces.filter(
+          (space) => space.sId !== conversation.spaceId && !space.isOpen()
+        );
+        const projectMembers =
           await project.fetchDistinctActiveManualGroupMembers(auth);
-        if (
-          members.length === 1 &&
-          members[0].sId === auth.getNonNullableUser().sId
-        ) {
+
+        if (restrictedAgentSpaces.length > 0 && projectMembers.length > 0) {
+          const workspaceId = auth.getNonNullableWorkspace().sId;
+          const memberAuths = await Promise.all(
+            projectMembers.map((member) =>
+              Authenticator.fromUserIdAndWorkspaceId(member.sId, workspaceId)
+            )
+          );
+
+          // O(n×m) sync membership checks; both arrays are small (Pod members and
+          // agent restricted spaces are typically each well under 100 elements).
+          for (const restrictedSpace of restrictedAgentSpaces) {
+            for (const memberAuth of memberAuths) {
+              if (!memberAuth || !restrictedSpace.isMember(memberAuth)) {
+                return false;
+              }
+            }
+          }
           return true;
         }
       }

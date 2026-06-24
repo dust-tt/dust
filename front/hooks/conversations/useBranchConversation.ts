@@ -1,10 +1,10 @@
 import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PostConversationForkResponseBody } from "@app/lib/api/assistant/conversation/forks";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { PostConversationForkResponseBody } from "@app/types/api/assistant/conversation/forks";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";

@@ -57,7 +57,6 @@ export function renderPlanFromModel({
     trialPeriodDays: plan.trialPeriodDays,
     isByok: plan.isByok,
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
-    isBrandedFramesAllowed: plan.isBrandedFramesAllowed,
   };
 }
 

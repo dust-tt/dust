@@ -21,8 +21,10 @@ import {
   AWU_PRIORITY_FREE_SEAT_CREDIT,
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   FREE_SEAT_LIFETIME_AWU_CREDITS,
+  fromFreeMetronomeUserId,
   getCreditTypeAwuId,
   getProductSeatSubscriptionCreditsId,
+  toFreeMetronomeUserId,
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
@@ -156,8 +158,8 @@ export type SeatChangeOutcome =
  * Branches:
  * - Same seat as current: `cancelled` if a pending future change exists,
  *   else `noop`.
- * - `free` → `none`: `noop`. A `free` seat is a one-shot tier that cannot be
- *   downgraded to no seat.
+ * - `free` → `none`: `immediate`. A `free` seat carries no renewing, already-paid
+ *   allowance to preserve, so removing it takes effect right away.
  * - New allocation ≥ previous: `immediate` (the user gains/keeps access
  *   right away).
  * - New allocation < previous: `deferred` to the next time the previous
@@ -184,11 +186,13 @@ export function classifySeatChange({
     return pendingScheduledChange ? { kind: "cancelled" } : { kind: "noop" };
   }
 
-  // `free` is a one-shot tier that can't be given back: downgrading a free
-  // seat to no seat is not allowed, so treat it as a no-op (the caller leaves
-  // the membership untouched).
+  // `free` → `none`: remove the seat immediately. A free seat carries a
+  // one-shot allocation with no renewing, already-paid allowance to preserve,
+  // so there's nothing to defer to — the member drops to no seat right away.
+  // (The `free` tier is one-shot: once removed it can't be re-granted, which
+  // `updateMembershipSeatAndTrack` enforces separately.)
   if (previousSeatType === "free" && newSeatType === "none") {
-    return { kind: "noop" };
+    return { kind: "immediate" };
   }
 
   const previousAllocation = getAwuAllocationForSeatType(
@@ -543,7 +547,7 @@ async function grantFreeSeatCredits({
   // key, so we never double-grant, only make redundant (no-op) API calls.
   const alreadyGranted = await listCustomerPerUserCreditUserIds({
     metronomeCustomerId,
-    creditName: FREE_SEAT_CREDIT_NAME,
+    contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (alreadyGranted.isErr()) {
     logger.warn(
@@ -554,22 +558,27 @@ async function grantFreeSeatCredits({
   const grantedUserIds = alreadyGranted.isOk()
     ? alreadyGranted.value
     : new Set<string>();
-  const toGrant = userIds.filter((userId) => !grantedUserIds.has(userId));
+  // Credits are stored in Metronome with the free-prefixed user id; compare
+  // against the same form so already-granted users are skipped correctly.
+  const toGrant = userIds.filter(
+    (userId) => !grantedUserIds.has(toFreeMetronomeUserId(userId))
+  );
 
   // Grant the credit only for users that don't have one yet.
   await concurrentExecutor(
     toGrant,
     async (userId) => {
+      const freeMetronomeId = toFreeMetronomeUserId(userId);
       const result = await addPerUserCreditToCustomer({
         metronomeCustomerId,
         productId: getProductSeatSubscriptionCreditsId(),
         creditTypeId: getCreditTypeAwuId(),
         contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
         amount: FREE_SEAT_LIFETIME_AWU_CREDITS,
-        userId,
+        userId: freeMetronomeId,
         productTags: [USAGE_TAG],
         startingAt,
-        name: FREE_SEAT_CREDIT_NAME,
+        name: `${FREE_SEAT_CREDIT_NAME} ${userId}`,
         priority: AWU_PRIORITY_FREE_SEAT_CREDIT,
         // Workspace+user scoped: customer credits survive across contracts, so
         // there is no need to scope per-contract. A given user in a workspace
@@ -598,7 +607,7 @@ async function grantFreeSeatCredits({
       const alertResult = await upsertPerUserCreditBalanceAlerts({
         metronomeCustomerId,
         workspaceId,
-        userId,
+        userId: toFreeMetronomeUserId(userId),
         allowanceAwu: FREE_SEAT_LIFETIME_AWU_CREDITS,
       });
       if (alertResult.isErr()) {
@@ -637,8 +646,13 @@ async function revokeFreeSeatCreditsForExFreeUsers({
     );
     return;
   }
+  // Only process new-format credits (keyed by "free-<sId>"); old-format credits
+  // (plain sId) are ignored — they will eventually expire naturally.
   const toRevoke = [...activeCreditsResult.value.entries()].filter(
-    ([userId]) => !currentFreeUserIds.has(userId)
+    ([metronomeUserId]) => {
+      const rawUserId = fromFreeMetronomeUserId(metronomeUserId);
+      return rawUserId !== null && !currentFreeUserIds.has(rawUserId);
+    }
   );
   if (toRevoke.length === 0) {
     return;
@@ -1671,6 +1685,10 @@ async function reconcileSeatBasedSegment({
 export type SeatData = {
   awuAllocation: number;
   billingFrequency: BillingFrequency | null;
+  // ISO timestamp of the next credit reset. Null when no current billing period
+  // is available. Equals billing_periods.current.ending_before since credits
+  // are now anchored to the contract start date (same as the billing period).
+  nextCreditResetAt: string | null;
 };
 
 /**
@@ -1742,10 +1760,13 @@ export async function buildSeatDataByUserId({
       }
 
       const freq = sub.subscription_rate.billing_frequency;
+      const nextCreditResetAt =
+        sub.billing_periods?.current?.ending_before ?? null;
       return new Ok({
         seatIds: seatIdsResult.value,
         awuAllocation,
         billingFrequency: freq === "MONTHLY" || freq === "ANNUAL" ? freq : null,
+        nextCreditResetAt,
       });
     },
     { concurrency: 10 }
@@ -1762,6 +1783,7 @@ export async function buildSeatDataByUserId({
         seatDataByUserId.set(seatId, {
           awuAllocation: subSeatData.awuAllocation,
           billingFrequency: subSeatData.billingFrequency,
+          nextCreditResetAt: subSeatData.nextCreditResetAt,
         });
       }
     }

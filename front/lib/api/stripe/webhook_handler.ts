@@ -925,6 +925,12 @@ export async function processStripeWebhookEvent({
         break;
       }
 
+      // Credit (AWU) purchase invoices are directly handled using
+      // Metronome "payment_gate.payment_status" webhook
+      if (isAwuPurchaseInvoice(invoice)) {
+        break;
+      }
+
       const ctx = await resolveInvoiceCtx(invoice);
       if (!ctx) {
         break;
@@ -1523,6 +1529,27 @@ export async function processStripeWebhookEvent({
             matchingSubscription.workspaceId
           );
           assert(workspace, "Workspace not found for trialing subscription.");
+
+          if (
+            matchingSubscription.metronomeContractId &&
+            workspace.metronomeCustomerId
+          ) {
+            const metronomeRes = await scheduleMetronomeContractEnd({
+              metronomeCustomerId: workspace.metronomeCustomerId,
+              contractId: matchingSubscription.metronomeContractId,
+            });
+            if (metronomeRes.isErr()) {
+              logger.error(
+                {
+                  stripeError: true,
+                  workspaceId: workspace.sId,
+                  metronomeContractId: matchingSubscription.metronomeContractId,
+                  error: metronomeRes.error,
+                },
+                "[Stripe Webhook] Failed to end active Metronome contract on subscription deletion."
+              );
+            }
+          }
 
           const scheduleScrubRes = await launchScheduleWorkspaceScrubWorkflow({
             workspaceId: workspace.sId,

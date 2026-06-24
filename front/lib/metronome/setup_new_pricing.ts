@@ -26,6 +26,7 @@ import {
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
+  BILLING_CYCLE_CONFIG,
   BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
   FREE_SEAT_PRODUCT_NAME,
   getCreditTypeAwuId,
@@ -533,7 +534,7 @@ export function getNewPackages(): PackageDef[] {
           price: CP_ENTERPRISE_BASIS * 12 * 100,
         },
       ]),
-      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
+      ...BILLING_CYCLE_CONFIG,
     },
     {
       name: "Enterprise Pooled EUR",
@@ -543,6 +544,41 @@ export function getNewPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
       // Enterprise contracts are yearly-only: only the annual seat is entitled.
+      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
+        {
+          product_name:
+            WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+          price: CP_ENTERPRISE_BASIS * 12,
+        },
+      ]),
+      ...BILLING_CYCLE_CONFIG,
+    },
+    // Enterprise Pooled packages anchored to the 1st of the month. Identical to
+    // the contract-start variants above, but billing periods align to calendar
+    // month boundaries (1st → 1st) regardless of when the contract starts.
+    {
+      name: "Enterprise Pooled USD (1st of month)",
+      aliases: [{ name: "enterprise-usd-first-of-month" }],
+      rate_card_name: "Standard USD",
+      subscriptions: ALL_SEAT_SUBSCRIPTIONS,
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: getAllSeatRecurringCredits(),
+      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
+        {
+          product_name:
+            WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+          price: CP_ENTERPRISE_BASIS * 12 * 100,
+        },
+      ]),
+      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
+    },
+    {
+      name: "Enterprise Pooled EUR (1st of month)",
+      aliases: [{ name: "enterprise-eur-first-of-month" }],
+      rate_card_name: "Standard EUR",
+      subscriptions: ALL_SEAT_SUBSCRIPTIONS,
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: getAllSeatRecurringCredits(),
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
         {
           product_name:
@@ -570,7 +606,7 @@ export function getNewPackages(): PackageDef[] {
           price: (CP_ENTERPRISE_BASIS + CP_MAX_SEAT_COST_YEARLY) * 12 * 100,
         },
       ]),
-      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
+      ...BILLING_CYCLE_CONFIG,
     },
     {
       name: "Enterprise Seat-based EUR",
@@ -590,7 +626,7 @@ export function getNewPackages(): PackageDef[] {
           price: (CP_ENTERPRISE_BASIS + CP_MAX_SEAT_COST_YEARLY) * 12,
         },
       ]),
-      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
+      ...BILLING_CYCLE_CONFIG,
     },
     // Business USD / EUR — Pro and Max seats (plus the free starter seat) priced
     // via overrides; per-seat INDIVIDUAL AWU credit allocations (Pro: 8000 /
@@ -622,7 +658,7 @@ export function getNewPackages(): PackageDef[] {
         },
         { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
-      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
+      ...BILLING_CYCLE_CONFIG,
     },
     {
       name: "Business EUR",
@@ -650,7 +686,7 @@ export function getNewPackages(): PackageDef[] {
         },
         { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
-      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
+      ...BILLING_CYCLE_CONFIG,
     },
     // Free plan — entitles only the Free Seat.
     {
@@ -663,7 +699,7 @@ export function getNewPackages(): PackageDef[] {
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
         { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
-      ...BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
+      ...BILLING_CYCLE_CONFIG,
     },
   ];
 }

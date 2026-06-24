@@ -1,7 +1,7 @@
-import type { GetRunBlockResponseBody } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
+import type { GetRunBlockResponseBody } from "@app/types/api/apps";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { BlockType } from "@app/types/run";
 import { workspaceApp } from "@front-api/middlewares/ctx";

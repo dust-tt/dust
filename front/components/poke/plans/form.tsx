@@ -40,7 +40,6 @@ export type EditingPlanType = {
   isSCIMAllowed: boolean;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
-  isBrandedFramesAllowed: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
@@ -72,7 +71,6 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
     isByok: plan.isByok,
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
-    isBrandedFramesAllowed: plan.isBrandedFramesAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     maxAwuCredits: plan.limits.assistant.maxAwuCredits,
@@ -155,7 +153,6 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
     isByok: editingPlan.isByok,
     isAuditLogsAllowed: editingPlan.isAuditLogsAllowed,
-    isBrandedFramesAllowed: editingPlan.isBrandedFramesAllowed,
   };
 };
 
@@ -178,7 +175,6 @@ const getEmptyPlan = (): EditingPlanType => ({
   isSCIMAllowed: false,
   isByok: false,
   isAuditLogsAllowed: false,
-  isBrandedFramesAllowed: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
@@ -372,11 +368,6 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Audit",
-  },
-  isBrandedFramesAllowed: {
-    type: "boolean",
-    width: "tiny",
-    title: "Branded Frames",
   },
   maxVaults: {
     type: "number",

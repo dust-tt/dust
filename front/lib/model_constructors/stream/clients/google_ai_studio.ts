@@ -1,10 +1,10 @@
-import { WithGoogleAiStudioInputConverter } from "@app/lib/model_constructors/providers/google_ai_studio/converters/input";
-import { WithGoogleAiStudioOutputConverter } from "@app/lib/model_constructors/providers/google_ai_studio/converters/output";
-import { rawOutputToEvents } from "@app/lib/model_constructors/providers/google_ai_studio/converters/output/utils";
 import {
   type GoogleAiStudioInputConfig,
   googleAiStudioConfigSchema,
 } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+import { WithGoogleGenAIInputConverter } from "@app/lib/model_constructors/sdk/google_genai/converters/input";
+import { WithGoogleGenAIOutputConverter } from "@app/lib/model_constructors/sdk/google_genai/converters/output";
+import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
@@ -16,8 +16,8 @@ import type {
 } from "@google/genai";
 import { GoogleGenAI } from "@google/genai";
 
-export abstract class GoogleAiStudioStream extends WithGoogleAiStudioInputConverter(
-  WithGoogleAiStudioOutputConverter(
+export abstract class GoogleAiStudioStream extends WithGoogleGenAIInputConverter(
+  WithGoogleGenAIOutputConverter(
     StreamEndpoint<
       GenerateContentParameters,
       GenerateContentResponse,

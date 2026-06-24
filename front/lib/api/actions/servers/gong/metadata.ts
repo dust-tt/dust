@@ -72,7 +72,8 @@ export const GONG_SERVER = {
   serverInfo: {
     name: "gong",
     version: "1.0.0",
-    description: "Access sales calls, transcripts, and conversation analytics.",
+    description:
+      "Access Gong sales calls, transcripts, conversation analytics, and revenue intelligence for deal coaching and pipeline review.",
     authorization: {
       provider: "gong" as const,
       supported_use_cases: ["personal_actions", "platform_actions"] as const,

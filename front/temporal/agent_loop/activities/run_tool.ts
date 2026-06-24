@@ -140,6 +140,7 @@ export async function runToolActivity(
     agentConfiguration,
     conversation: originalConversation,
     agentMessage: originalAgentMessage,
+    userMessage,
   } = runAgentDataRes.value;
 
   const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
@@ -177,6 +178,7 @@ export async function runToolActivity(
         deferredEvents,
         runIds,
         step,
+        userMessage,
       });
     },
     { asType: "tool" }
@@ -193,6 +195,7 @@ async function executeToolStreaming(
     deferredEvents,
     runIds,
     step,
+    userMessage,
   }: {
     action: AgentMCPActionResource;
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
@@ -201,6 +204,7 @@ async function executeToolStreaming(
     deferredEvents: ToolExecutionResult["deferredEvents"];
     runIds?: string[];
     step: number;
+    userMessage: AgentLoopExecutionData["userMessage"];
   }
 ): Promise<ToolExecutionResult> {
   const abortSignal = AbortSignal.any([
@@ -225,6 +229,7 @@ async function executeToolStreaming(
       agentConfiguration,
       agentMessage,
       conversation,
+      userMessage,
     },
     {
       signal: abortSignal,

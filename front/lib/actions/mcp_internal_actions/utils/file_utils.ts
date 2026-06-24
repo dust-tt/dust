@@ -1,6 +1,5 @@
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { resolveFile } from "@app/lib/api/actions/servers/files/tools/utils";
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
@@ -16,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@dust-tt/client";

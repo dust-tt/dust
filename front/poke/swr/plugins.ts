@@ -1,7 +1,4 @@
-import type { PokeListPluginRunsResponseBody } from "@app/lib/api/poke/plugin_manager";
-import type { PokeGetPluginAsyncArgsResponseBody } from "@app/lib/api/poke/plugins/async_args";
 import type { PokeListPluginsForScopeResponseBody } from "@app/lib/api/poke/plugins/list";
-import type { PokeGetPluginDetailsResponseBody } from "@app/lib/api/poke/plugins/manifest";
 import type { PokeRunPluginResponseBody } from "@app/lib/api/poke/plugins/run";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -10,6 +7,9 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { PokeListPluginRunsResponseBody } from "@app/types/api/poke/plugin_manager";
+import type { PokeGetPluginAsyncArgsResponseBody } from "@app/types/api/poke/plugins/async_args";
+import type { PokeGetPluginDetailsResponseBody } from "@app/types/api/poke/plugins/manifest";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

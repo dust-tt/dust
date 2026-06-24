@@ -1,12 +1,17 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConfirmContext } from "@app/components/Confirm";
+import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
 import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
-import type { RichSpaceType } from "@app/lib/api/spaces";
+import {
+  getPodAgentsMdScopedPath,
+  POD_AGENTS_MD_FILENAME,
+  POD_AGENTS_MD_MAX_CHARACTER_COUNT,
+} from "@app/lib/api/projects/constants";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -17,10 +22,16 @@ import {
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
-import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type {
+  PatchPodMetadataBodyType,
+  RichSpaceType,
+} from "@app/types/api/spaces";
+import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { LightWorkspaceType } from "@app/types/user";
+import {
+  type LightWorkspaceType,
+  resolveDefaultAgentId,
+} from "@app/types/user";
 import {
   Archive,
   Avatar,
@@ -39,6 +50,7 @@ import {
   Tooltip,
   Upload01,
   Users01,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -69,7 +81,9 @@ export function PodSettingsTab({
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
-  const isDefaultAgentEnabled = hasFeature("pod_default_agent");
+  const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
+  const isDefaultAgentEnabled =
+    hasFeature("pod_default_agent") || hasWorkspaceDefaultAgentFeature;
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -89,12 +103,22 @@ export function PodSettingsTab({
     });
   const dustAgent =
     agentConfigurations.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ?? null;
-  // Fall back to @dust when the pod's configured default agent isn't available
-  // to the current user (e.g. unpublished/deleted). This is the agent shown in
-  // the input bar and pod settings.
+  // When the pod has no default set, new conversations inherit the workspace
+  // default agent, else then @dust.
+  const isInheritingWorkspaceDefault =
+    hasWorkspaceDefaultAgentFeature && !podMetadata?.defaultAgentId;
+  const resolvedDefaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature,
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
+  });
+  // Fall back to @dust when the default agent isn't available to the
+  // current user (e.g. unpublished/deleted). This is the agent shown in the
+  // input bar and pod settings.
   const displayedDefaultAgent =
-    (podMetadata?.defaultAgentId &&
-      agentConfigurations.find((a) => a.sId === podMetadata.defaultAgentId)) ||
+    (resolvedDefaultAgentId &&
+      agentConfigurations.find((a) => a.sId === resolvedDefaultAgentId)) ||
     dustAgent;
   // The configured default may be an agent the current user can't access (e.g.
   // an unpublished agent). `agentConfigurations` only contains viewable agents,
@@ -133,7 +157,11 @@ export function PodSettingsTab({
     <div
       role="button"
       tabIndex={interactive ? 0 : -1}
-      aria-label={`Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`}
+      aria-label={
+        isInheritingWorkspaceDefault
+          ? `Default agent: ${displayedDefaultAgent?.name ?? "Dust"} (workspace default)`
+          : `Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`
+      }
       aria-disabled={!interactive}
       className={cn(
         "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200",
@@ -145,6 +173,11 @@ export function PodSettingsTab({
       <Avatar size="xs" visual={displayedDefaultAgent?.pictureUrl} />
       <span className="grow truncate notranslate">
         {displayedDefaultAgent?.name ?? "Dust"}
+        {isInheritingWorkspaceDefault && (
+          <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+            · Workspace default
+          </span>
+        )}
       </span>
       {isDefaultAgentUnavailable && (
         <Tooltip
@@ -193,6 +226,7 @@ export function PodSettingsTab({
     podMetadata?.description ?? ""
   );
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
 
   const form = useForm<PatchPodMetadataBodyType>({
     resolver: zodResolver(PatchPodMetadataBodySchema),
@@ -256,8 +290,13 @@ export function PodSettingsTab({
   };
 
   const onSaveDescription = async () => {
-    await doUpdateMetadata({ description: podDescription });
-    setIsEditingDescription(false);
+    setIsSavingDescription(true);
+    try {
+      await doUpdateMetadata({ description: podDescription });
+      setIsEditingDescription(false);
+    } finally {
+      setIsSavingDescription(false);
+    }
   };
 
   const { archivePod, unarchivePod } = useArchivePod({
@@ -384,11 +423,13 @@ export function PodSettingsTab({
                 <Button
                   label="Save"
                   variant="highlight"
-                  onClick={onSaveDescription}
+                  isLoading={isSavingDescription}
+                  onClick={() => void onSaveDescription()}
                 />
                 <Button
                   label="Cancel"
                   variant="outline"
+                  disabled={isSavingDescription}
                   onClick={() => {
                     setPodDescription(podMetadata?.description ?? "");
                     setIsEditingDescription(false);
@@ -399,22 +440,58 @@ export function PodSettingsTab({
           </div>
         </div>
 
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Instructions for Agents</div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Seen by all agents in this Pod, stored as{" "}
+            <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
+            Pod's files.
+          </div>
+          <div className="flex w-full min-w-0 flex-col gap-2">
+            <MarkdownFileEditor
+              owner={owner}
+              filePath={getPodAgentsMdScopedPath(pod.sId)}
+              emptyWhenNotFound
+              readOnly={!isPodEditor}
+              placeholder="Enter instructions for agents"
+              maxCharacterCount={POD_AGENTS_MD_MAX_CHARACTER_COUNT}
+            />
+          </div>
+        </div>
+
         {isDefaultAgentEnabled && (
           <div className="flex w-full flex-col gap-2">
             <div className="heading-lg">Default agent</div>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               The agent pre-selected when anyone starts a new conversation in
-              this Pod. Defaults to @dust.
+              this Pod.{" "}
+              {hasWorkspaceDefaultAgentFeature &&
+                "When unset, it inherits the Workspace default agent."}
             </p>
             <div className="flex items-center gap-2">
               {isPodEditor ? (
-                <AgentPicker
-                  owner={owner}
-                  agents={agentConfigurations}
-                  showFooterButtons={false}
-                  onItemClick={(agent) => saveDefaultAgent(agent.sId)}
-                  pickerButton={renderDefaultAgentPill(true)}
-                />
+                <>
+                  <AgentPicker
+                    owner={owner}
+                    agents={agentConfigurations}
+                    showFooterButtons={false}
+                    onItemClick={(agent) => saveDefaultAgent(agent.sId)}
+                    pickerButton={renderDefaultAgentPill(true)}
+                  />
+                  {/* Clearing the pod default reverts to inheriting the
+                      workspace default. Only shown when the workspace-default
+                      feature is on and an explicit pod default is set. */}
+                  {hasWorkspaceDefaultAgentFeature &&
+                    podMetadata?.defaultAgentId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={XCircle}
+                        tooltip="Reset to workspace default"
+                        onClick={() => void saveDefaultAgent(null)}
+                      />
+                    )}
+                </>
               ) : (
                 renderDefaultAgentPill(false)
               )}

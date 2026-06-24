@@ -10,6 +10,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -745,6 +746,47 @@ describe("destroyConversation", () => {
         where: {
           agentMessageId,
           workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      })
+    ).resolves.toBe(0);
+  });
+
+  it("should delete selected spaces before deleting a conversation", async () => {
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    if (!conversation) {
+      throw new Error("Conversation should exist");
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.user();
+    if (!user) {
+      throw new Error("User should exist");
+    }
+
+    const space = await SpaceFactory.regular(workspace);
+    await ConversationSelectedSpaceModel.create({
+      workspaceId: workspace.id,
+      conversationId: conversation.id,
+      spaceId: space.id,
+      selectedByUserId: user.id,
+      origin: "input_bar",
+    });
+
+    const result = await destroyConversation(auth, { conversation });
+
+    expect(result.isOk()).toBe(true);
+    await expect(
+      ConversationSelectedSpaceModel.count({
+        where: {
+          workspaceId: workspace.id,
+          conversationId: conversation.id,
         },
       })
     ).resolves.toBe(0);
@@ -2709,6 +2751,71 @@ describe("listPrivateConversationsForUser", () => {
     const item = result.conversations.find((c) => c.sId === conversation.sId);
 
     expect(item?.nextWakeupAt).toBe(scheduledFireAt.getTime());
+  });
+
+  it("derives the 'Branched from ...' title for forked conversations in the DB paginated list", async () => {
+    const parentConversationTitle = "Quarterly Review Data";
+    const parentConversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationModel.update(
+      { title: parentConversationTitle },
+      { where: { id: parentConversation.id, workspaceId: workspace.id } }
+    );
+
+    // The forked child starts untitled; its display title must be derived from the fork data.
+    const childConversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [],
+    });
+    await ConversationModel.update(
+      { title: null },
+      { where: { id: childConversation.id, workspaceId: workspace.id } }
+    );
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: childConversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const parentConversationResource = await ConversationResource.fetchById(
+      adminAuth,
+      parentConversation.sId
+    );
+    const childConversationResource = await ConversationResource.fetchById(
+      adminAuth,
+      childConversation.sId
+    );
+    assert(parentConversationResource, "Parent conversation not found");
+    assert(childConversationResource, "Child conversation not found");
+
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        conversationId: parentConversation.id,
+        workspaceId: workspace.id,
+        rank: 1,
+      },
+    });
+    assert(sourceMessage, "Source message not found");
+
+    await ConversationForkResource.makeNew(adminAuth, {
+      parentConversation: parentConversationResource,
+      childConversation: childConversationResource,
+      sourceMessageModelId: sourceMessage.id,
+      branchedAt: new Date(),
+    });
+
+    const result =
+      await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+        userAuth,
+        { limit: 100 }
+      );
+    const item = result.conversations.find(
+      (c) => c.sId === childConversation.sId
+    );
+
+    expect(item?.title).toBe(`Branched from '${parentConversationTitle}'`);
   });
 
   it("should return conversations with populated participation data", async () => {
@@ -6730,6 +6837,8 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "conversation_fork",
   "conversation_mcp_server_view",
   "conversation_participant",
+  "conversation_selected_spaces",
+  "conversation_sandbox",
   "conversation_skills",
   "data_source",
   "message",

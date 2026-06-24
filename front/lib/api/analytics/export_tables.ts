@@ -3,7 +3,7 @@ import {
   AGENT_EXPORT_HEADERS,
   fetchAgentExportRows,
 } from "@app/lib/api/analytics/agents_export";
-import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
+import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import type { FeedbackExportRow } from "@app/lib/api/analytics/feedback_export";
 import {
   FEEDBACK_EXPORT_HEADERS,
@@ -43,7 +43,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import { stringify } from "csv-stringify/sync";
 
 type AnalyticsExportTable =
   | "usage_metrics"
@@ -229,38 +228,28 @@ export async function exportTable({
 export function stringifyExportTableAsCsv(data: ExportTableData): string {
   switch (data.table) {
     case "usage_metrics":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "active_users":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "source":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "agents":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "users":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "skills":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "skill_usage":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "tool_usage":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "messages":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     case "feedback":
-      return stringifyRowsAsCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows);
     default:
       assertNever(data);
   }
-}
-
-function stringifyRowsAsCsv<
-  K extends string,
-  R extends Record<K, string | number>,
->(headers: readonly K[], rows: readonly R[]): string {
-  const csvData = rows.map((row) =>
-    headers.map((h) => sanitizeCsvCell(row[h]))
-  );
-  return stringify([[...headers], ...csvData], { header: false });
 }
 
 async function exportUsageMetrics({

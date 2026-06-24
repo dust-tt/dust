@@ -1,8 +1,8 @@
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
-import type { PokeGetAgentDetails } from "@app/lib/api/poke/agent_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { PokeGetAgentDetails } from "@app/types/api/poke/agent_configurations";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { pokeApp } from "@front-api/middlewares/ctx";

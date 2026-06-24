@@ -10,7 +10,7 @@ import {
   USAGE_TYPE_FREE,
   USAGE_TYPE_GROUP_KEY,
 } from "@app/lib/metronome/constants";
-import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
   isToolCategory,
   TOOL_CATEGORY_AWU_WEIGHTS,
@@ -19,24 +19,132 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+type UsageWindowSize = "HOUR" | "DAY";
+
+interface UsageQuerySegment {
+  startingOn: string;
+  endingBefore: string;
+  windowSize: UsageWindowSize;
+}
+
+/**
+ * Partition `[cycleStart, requestEnd)` into the fewest midnight-aligned
+ * segments the usage endpoint can query directly: a single DAY-granularity
+ * segment for the interior days (the bulk of a typical month-long billing
+ * period), plus HOUR-granularity segments only for the partial first/last day
+ * when a boundary isn't already UTC midnight.
+ *
+ * Segments are contiguous and non-overlapping by construction, so summing
+ * their results is safe.
+ */
+export function buildUsageQuerySegments({
+  cycleStart,
+  requestEnd,
+}: {
+  cycleStart: Date;
+  requestEnd: Date;
+}): UsageQuerySegment[] {
+  if (requestEnd.getTime() <= cycleStart.getTime()) {
+    return [];
+  }
+
+  const dayStart = ceilToMidnightUTC(cycleStart);
+  const dayEnd = floorToMidnightUTC(requestEnd);
+
+  // No full day fits between the boundaries (period shorter than a day, or
+  // confined to a single partial day): one HOUR segment for the whole range.
+  if (dayEnd.getTime() <= dayStart.getTime()) {
+    return [
+      {
+        startingOn: floorToMidnightUTC(cycleStart).toISOString(),
+        endingBefore: ceilToMidnightUTC(requestEnd).toISOString(),
+        windowSize: "HOUR",
+      },
+    ];
+  }
+
+  const segments: UsageQuerySegment[] = [];
+  if (dayStart.getTime() > cycleStart.getTime()) {
+    segments.push({
+      startingOn: floorToMidnightUTC(cycleStart).toISOString(),
+      endingBefore: dayStart.toISOString(),
+      windowSize: "HOUR",
+    });
+  }
+  segments.push({
+    startingOn: dayStart.toISOString(),
+    endingBefore: dayEnd.toISOString(),
+    windowSize: "DAY",
+  });
+  if (requestEnd.getTime() > dayEnd.getTime()) {
+    segments.push({
+      startingOn: dayEnd.toISOString(),
+      endingBefore: ceilToMidnightUTC(requestEnd).toISOString(),
+      windowSize: "HOUR",
+    });
+  }
+  return segments;
+}
+
+function flattenUsageResults<T>(
+  results: Array<Result<T[], Error>>
+): Result<T[], Error> {
+  const merged: T[] = [];
+  for (const result of results) {
+    if (result.isErr()) {
+      return result;
+    }
+    merged.push(...result.value);
+  }
+  return new Ok(merged);
+}
+
+function fetchSegmentedUsage({
+  segments,
+  metronomeCustomerId,
+  billableMetricId,
+  groupKey,
+  userIds,
+}: {
+  segments: UsageQuerySegment[];
+  metronomeCustomerId: string;
+  billableMetricId: string;
+  groupKey: string[];
+  userIds: string[];
+}) {
+  return concurrentExecutor(
+    segments,
+    (segment) =>
+      listMetronomeUsageWithGroups({
+        customerId: metronomeCustomerId,
+        billableMetricId,
+        startingOn: segment.startingOn,
+        endingBefore: segment.endingBefore,
+        windowSize: segment.windowSize,
+        groupKey,
+        groupFilters: { user_id: userIds },
+      }),
+    { concurrency: 3 }
+  ).then(flattenUsageResults);
+}
+
 /**
  * Per-user AWU consumption for the current billing period.
  *
  * Usage is now folded on the invoice (no per-user line item), so we read it
  * straight from the grouped usage API instead of walking draft invoices.
  *
- * Billing periods always start on the 1st of the month at UTC midnight, so
- * `cycleStart`/`cycleEnd` already satisfy the usage endpoint's two constraints:
- *   - `current_period: true` is rejected ("must have an active plan") — that
- *     flag keys off Metronome's legacy v1 Plan entity, and we provision
- *     customers exclusively via Contracts, so no Plan exists. We pass explicit
- *     `starting_on`/`ending_before` instead.
- *   - explicit `starting_on`/`ending_before` must be UTC midnight — which the
- *     period bounds already are.
- * So we query `[cycleStart, cycleEnd)` directly with `window_size: "DAY"`; every
- * returned bucket falls inside the period, no trimming needed. The request end
- * is capped at the next midnight after `now` so we don't fetch the period's
- * future days.
+ * Billing periods are anchored to the contract start date (e.g. June 15 15:00),
+ * so bounds are non-midnight. The usage endpoint requires midnight-aligned
+ * `starting_on`/`ending_before`, so the query is split into per-day-granularity
+ * and per-hour-granularity segments by `buildUsageQuerySegments` (see there).
+ * Pre-period and post-period buckets are filtered out in code so only usage
+ * within `[cycleStart, cycleEnd)` is counted.
+ *
+ * `current_period: true` is rejected ("must have an active plan") — that flag
+ * keys off Metronome's legacy v1 Plan entity, and we provision customers
+ * exclusively via Contracts, so no Plan exists. We always pass explicit
+ * `starting_on`/`ending_before`.
  *
  * AWU spend has two sources, both priced in the AWU credit type:
  *   - AI Usage: the `cost_awu` metric, priced 1 AWU per unit, so the metric
@@ -52,14 +160,15 @@ import { Err, Ok } from "@app/types/shared/result";
  * so we must scope by `user_id`. Free usage is excluded by dropping
  * `usage_type === "free"` buckets in code (we still group by `usage_type` so
  * each bucket carries it).
+ *
  */
 export async function fetchPerUserAwuUsage({
+  workspaceId,
   metronomeCustomerId,
-  metronomeContractId,
   userIds,
 }: {
+  workspaceId: string;
   metronomeCustomerId: string;
-  metronomeContractId: string;
   // Users to scope the usage query to (the `user_id` group filter). Required:
   // an unfiltered query is capped and omits users. Empty → empty result.
   userIds: string[];
@@ -67,10 +176,8 @@ export async function fetchPerUserAwuUsage({
   if (userIds.length === 0) {
     return new Ok(new Map());
   }
-  const periodResult = await getMetronomeCurrentBillingPeriod({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
+  const periodResult =
+    await getCachedMetronomeCurrentBillingPeriod(workspaceId);
   if (periodResult.isErr()) {
     return new Err(periodResult.error);
   }
@@ -81,37 +188,28 @@ export async function fetchPerUserAwuUsage({
   const cycleEndMs = cycleEnd.getTime();
   const cycleStartMs = cycleStart.getTime();
 
-  // The usage endpoint requires midnight-aligned bounds, so we always query from
-  // the floored start. When the period start is not itself midnight (e.g. a
-  // contract that started mid-day), the floored start pulls in usage from before
-  // the period began. Query at HOUR granularity in that case and drop the
-  // pre-start buckets below, so we count exactly the period — matching the
-  // Metronome spend alert and the seat grant. Steady-state periods start at
-  // midnight, so this stays on DAY.
-  const startingOn = floorToMidnightUTC(cycleStart).toISOString();
+  // The usage endpoint requires midnight-aligned bounds; buckets outside
+  // [cycleStart, cycleEnd) are trimmed below regardless of segment.
   const requestEnd = new Date(Math.min(cycleEndMs, Date.now()));
-  const endingBefore = ceilToMidnightUTC(requestEnd).toISOString();
-  const windowSize =
-    cycleStartMs === floorToMidnightUTC(cycleStart).getTime() ? "DAY" : "HOUR";
+  const segments = buildUsageQuerySegments({ cycleStart, requestEnd });
+  if (segments.length === 0) {
+    return new Ok(new Map());
+  }
 
   const [aiResult, toolResult] = await Promise.all([
-    listMetronomeUsageWithGroups({
-      customerId: metronomeCustomerId,
+    fetchSegmentedUsage({
+      segments,
+      metronomeCustomerId,
       billableMetricId: getMetricLlmProviderCostAwuId(),
-      startingOn,
-      endingBefore,
-      windowSize,
       groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
-      groupFilters: { user_id: userIds },
+      userIds,
     }),
-    listMetronomeUsageWithGroups({
-      customerId: metronomeCustomerId,
+    fetchSegmentedUsage({
+      segments,
+      metronomeCustomerId,
       billableMetricId: getMetricToolInvocationsId(),
-      startingOn,
-      endingBefore,
-      windowSize,
       groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
-      groupFilters: { user_id: userIds },
+      userIds,
     }),
   ]);
   if (aiResult.isErr()) {
@@ -130,7 +228,8 @@ export async function fetchPerUserAwuUsage({
       !userId ||
       entry.value === null ||
       entry.group?.[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE ||
-      new Date(entry.startingOn).getTime() < cycleStartMs
+      new Date(entry.startingOn).getTime() < cycleStartMs ||
+      new Date(entry.startingOn).getTime() >= cycleEndMs
     ) {
       continue;
     }
@@ -147,6 +246,7 @@ export async function fetchPerUserAwuUsage({
       entry.value === null ||
       entry.group?.[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE ||
       new Date(entry.startingOn).getTime() < cycleStartMs ||
+      new Date(entry.startingOn).getTime() >= cycleEndMs ||
       !category ||
       !isToolCategory(category)
     ) {
@@ -178,10 +278,12 @@ function perUserAwuUsageCacheKey(
  * reuse each other's entries. Throws if the batched fetch fails.
  */
 export async function getPerUserAwuUsage({
+  workspaceId,
   metronomeCustomerId,
   metronomeContractId,
   userIds,
 }: {
+  workspaceId: string;
   metronomeCustomerId: string;
   metronomeContractId: string;
   userIds: string[];
@@ -214,8 +316,8 @@ export async function getPerUserAwuUsage({
 
       if (misses.length > 0) {
         const fetched = await fetchPerUserAwuUsage({
+          workspaceId,
           metronomeCustomerId,
-          metronomeContractId,
           userIds: misses,
         });
         if (fetched.isErr()) {

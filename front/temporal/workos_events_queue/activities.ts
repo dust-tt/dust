@@ -1087,6 +1087,26 @@ async function handleCreateOrUpdateWorkOSUser(
   const workOSUser = workOSUserRes.value;
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+
+  // Entra (and other IdPs) disable users via SCIM PATCH active=false, which WorkOS translates
+  // into dsync.user.updated with state='inactive' rather than dsync.user.deleted. Treat this
+  // the same as deletion: revoke membership and remove from all groups.
+  if (eventData.state === "inactive") {
+    if (!user) {
+      logger.info(
+        { workspaceId: workspace.sId, workOSUserId: workOSUser.id },
+        "Inactive user not found in workspace, skipping revocation"
+      );
+      return;
+    }
+    await revokeWorkOSUserMembership(
+      workspace,
+      user,
+      eventData.directoryId,
+      false
+    );
+    return;
+  }
   const externalUser: ExternalUser = {
     email: workOSUser.email,
     email_verified: true,
@@ -1210,30 +1230,12 @@ async function handleCreateOrUpdateWorkOSUser(
   });
 }
 
-async function handleDeleteWorkOSUser(
+async function revokeWorkOSUserMembership(
   workspace: LightWorkspaceType,
-  event: DsyncUserDeletedEvent
+  user: UserResource,
+  directoryId: string | null | undefined,
+  triggersDeleted: boolean
 ) {
-  const { data: eventData } = event;
-  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
-    workspace,
-    workOSUser: eventData,
-  });
-  if (workOSUserRes.isErr()) {
-    throw workOSUserRes.error;
-  }
-  const workOSUser = workOSUserRes.value;
-
-  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
-  if (!user) {
-    throw new Error(
-      `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
-    );
-  }
-
-  // Clear WorkOS custom attributes before revoking membership.
-  await clearCustomAttributesFromUserMetadata(user, workspace);
-
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const groups = await GroupResource.listUserGroupsInWorkspace({
     user,
@@ -1265,7 +1267,7 @@ async function handleDeleteWorkOSUser(
     allowLastAdminRevocation: true,
     auditActor: {
       type: "system",
-      id: String(eventData.directoryId ?? "directory_sync"),
+      id: String(directoryId ?? "directory_sync"),
       name: "Directory Sync",
     },
   });
@@ -1273,10 +1275,7 @@ async function handleDeleteWorkOSUser(
   if (membershipRevokeResult.isErr()) {
     if (membershipRevokeResult.error.type === "already_revoked") {
       logger.info(
-        {
-          userId: user.sId,
-          workspaceId: workspace.sId,
-        },
+        { userId: user.sId, workspaceId: workspace.sId },
         "User membership already revoked, skipping"
       );
       return;
@@ -1290,7 +1289,7 @@ async function handleDeleteWorkOSUser(
     action: "scim.user_deprovisioned",
     actor: {
       type: "system",
-      id: String(eventData.directoryId ?? "directory_sync"),
+      id: String(directoryId ?? "directory_sync"),
       name: "Directory Sync",
     },
     targets: [
@@ -1303,10 +1302,42 @@ async function handleDeleteWorkOSUser(
     context: { location: "system" },
     metadata: {
       email: user.email,
-      directory_id: String(eventData.directoryId ?? "unknown"),
-      triggers_deleted: "true",
+      directory_id: String(directoryId ?? "unknown"),
+      triggers_deleted: String(triggersDeleted),
     },
   });
+}
+
+async function handleDeleteWorkOSUser(
+  workspace: LightWorkspaceType,
+  event: DsyncUserDeletedEvent
+) {
+  const { data: eventData } = event;
+  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+    workspace,
+    workOSUser: eventData,
+  });
+  if (workOSUserRes.isErr()) {
+    throw workOSUserRes.error;
+  }
+  const workOSUser = workOSUserRes.value;
+
+  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  if (!user) {
+    throw new Error(
+      `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
+    );
+  }
+
+  // Clear WorkOS custom attributes before revoking membership.
+  await clearCustomAttributesFromUserMetadata(user, workspace);
+
+  await revokeWorkOSUserMembership(
+    workspace,
+    user,
+    eventData.directoryId,
+    true
+  );
 }
 
 async function handleGroupDelete(

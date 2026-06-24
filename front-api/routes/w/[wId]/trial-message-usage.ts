@@ -1,5 +1,5 @@
-import type { GetTrialMessageUsageResponseType } from "@app/lib/api/assistant/rate_limits";
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
+import type { GetTrialMessageUsageResponseType } from "@app/types/api/assistant/rate_limits";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 
 // Mounted at /api/w/:wId/trial-message-usage.

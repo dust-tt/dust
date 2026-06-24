@@ -15,10 +15,6 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
 
-export type GetProvidersCheckResponseBody =
-  | { ok: true }
-  | { ok: false; error: string };
-
 // Fraction of requests that use BYOK credentials during the transition period.
 const BYOK_TRANSITION_BYOK_KEYS_RATIO = 1; // 100%
 

@@ -6,6 +6,7 @@ import {
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   INTERACTIVE_CONTENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { FILE_PREVIEW_DIRECTIVE_EXAMPLE } from "@app/lib/markdown/file_preview";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -45,6 +46,12 @@ const SCOPED_PATH_HINT =
   "Paths use `conversation-<id>/...` or `pod-<id>/...` for any conversation or Pod you can access; " +
   "defaults target the current conversation and its Pod when applicable.";
 
+const FILE_PREVIEW_DIRECTIVE_HINT =
+  "To show a previewable file citation for a scoped file path in a final response, " +
+  `output the markdown directive \`${FILE_PREVIEW_DIRECTIVE_EXAMPLE}\`; include \`contentType\` when known. ` +
+  "The rendered citation opens the file preview, where the user can download the file. " +
+  "Use the scoped path exactly as returned by this server and never invent an app URL for it.";
+
 const LIST_SCOPE_SCHEMA = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("conversation"),
@@ -69,6 +76,7 @@ const LIST_SCOPE_SCHEMA = z.discriminatedUnion("type", [
 const LIST_TOOL = {
   description:
     `${LIST_DESCRIPTION_PREFIX} ` +
+    `${FILE_PREVIEW_DIRECTIVE_HINT} ` +
     'Defaults to the current conversation\'s files. Omit `scope` or pass `{ type: "conversation" }`. ' +
     'Pass `{ type: "pod" }` to list a Pod\'s shared files. ' +
     "Optional `conversation_id` or `pod_id` on the matching variant list another accessible scope.",
@@ -352,7 +360,7 @@ export const FILES_SERVER = {
       "Defaults to the current conversation (and its Pod when applicable). " +
       "Files include user uploads, sandbox outputs, and tool results. " +
       "Scoped paths such as `conversation-<id>/chart.png` or `pod-<id>/spec.md` identify files " +
-      "and can be used to reference, display, or link them in responses. " +
+      "and can be used to reference or display them in responses. " +
       "Processed siblings (resized images, audio transcripts) are listed alongside their source with an annotation.",
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,

@@ -206,6 +206,14 @@ processes:
     namespace: optional
     disabled: true
 
+  # Gotenberg: Office/PDF document preview conversion (LibreOffice route).
+  # front-api reads its URL from DOCUMENT_RENDERER_URL (set to http://localhost:3100).
+  gotenberg:
+    command: "docker compose --profile gotenberg up gotenberg"
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: optional
+    disabled: true
+
   novu:
     # Doc: https://docs.novu.co/framework/studio
     command: "npx novu@latest dev --port 3000"

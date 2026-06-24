@@ -123,6 +123,10 @@ import {
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import {
+  isComputerFeatureEnabled,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 
 // Exhaustive map of flags for each global agent. This is used to control which agents inject
 // per-user dynamic content (like memories) into the prompt context. This approach is not ideal but
@@ -723,6 +727,7 @@ function getGlobalAgent({
   globalAgentContext,
   excludeProviders,
   preferGpt55DefaultModel,
+  featureFlags,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -735,6 +740,7 @@ function getGlobalAgent({
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
   preferGpt55DefaultModel: boolean;
+  featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -936,6 +942,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
         globalAgentContext,
         excludeProviders,
         preferGpt55DefaultModel,
@@ -947,6 +954,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
         globalAgentContext,
       });
       break;
@@ -956,6 +964,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
         globalAgentContext,
       });
       break;
@@ -965,6 +974,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
         globalAgentContext,
       });
       break;
@@ -974,6 +984,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT:
@@ -982,6 +993,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM:
@@ -990,6 +1002,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_HIGH:
@@ -998,6 +1011,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED:
@@ -1006,6 +1020,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED:
@@ -1014,6 +1029,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI:
@@ -1022,6 +1038,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM:
@@ -1030,6 +1047,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_KIMI_HIGH:
@@ -1038,6 +1056,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM:
@@ -1046,6 +1065,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM:
@@ -1054,6 +1074,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GLM_HIGH:
@@ -1062,6 +1083,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_PISTACHE:
@@ -1070,6 +1092,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
@@ -1078,6 +1101,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH:
@@ -1086,6 +1110,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX:
@@ -1094,6 +1119,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM:
@@ -1102,6 +1128,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH:
@@ -1110,6 +1137,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_DEEPSEEK:
@@ -1118,6 +1146,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE:
@@ -1126,6 +1155,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH:
@@ -1134,6 +1164,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
@@ -1142,6 +1173,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI:
@@ -1150,6 +1182,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM:
@@ -1158,6 +1191,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI_HIGH:
@@ -1166,6 +1200,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG:
@@ -1174,6 +1209,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
@@ -1182,6 +1218,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_HIGH:
@@ -1190,6 +1227,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO:
@@ -1198,6 +1236,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM:
@@ -1206,6 +1245,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH:
@@ -1214,6 +1254,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
@@ -1222,6 +1263,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT:
@@ -1230,6 +1272,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM:
@@ -1238,6 +1281,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT_HIGH:
@@ -1246,6 +1290,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_LIONEL:
@@ -1254,6 +1299,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
@@ -1262,6 +1308,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
@@ -1270,6 +1317,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasDeepDive,
+        featureFlags,
       });
       break;
     // Active custom-model dust-* agents.
@@ -1287,6 +1335,7 @@ function getGlobalAgent({
           preFetchedDataSources,
           mcpServerViews,
           hasDeepDive,
+          featureFlags,
         },
         sId
       );
@@ -1307,6 +1356,7 @@ function getGlobalAgent({
           preFetchedDataSources,
           mcpServerViews,
           hasDeepDive,
+          featureFlags,
         },
         sId
       );
@@ -1318,6 +1368,7 @@ function getGlobalAgent({
         mcpServerViews,
         hasSandbox,
         excludeProviders,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_TASK:
@@ -1326,6 +1377,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         excludeProviders,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY:
@@ -1335,6 +1387,7 @@ function getGlobalAgent({
       agentConfiguration = _getPlanningAgent(auth, {
         settings,
         excludeProviders,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.SIDEKICK:
@@ -1343,6 +1396,7 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         globalAgentContext,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.REINFORCEMENT:
@@ -1595,10 +1649,11 @@ export async function getGlobalAgents(
       mcpServerViews,
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
-      hasSandbox: flags.includes("sandbox_tools"),
+      hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
       preferGpt55DefaultModel: flags.includes("dust_agent_gpt_5_5_default"),
+      featureFlags: flags,
     })
   );
 

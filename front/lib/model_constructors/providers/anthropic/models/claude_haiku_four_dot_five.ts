@@ -1,5 +1,5 @@
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
-import { reasoningToExtendedThinkingConfig } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
+import { reasoningToExtendedThinkingConfig } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   inputConfigSchema,
   temperatureSchema,

@@ -226,6 +226,7 @@ describe("maybeAutoUpgradeSeat", () => {
       expect.objectContaining({
         newSeatType: "max",
         author: "no-author",
+        isDirectSync: true,
       })
     );
     expect(workosAudit.emitAuditLogEventDirect).toHaveBeenCalledWith(

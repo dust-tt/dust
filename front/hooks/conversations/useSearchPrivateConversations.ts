@@ -1,9 +1,9 @@
-import type { SearchConversationsResponseBody } from "@app/lib/api/assistant/conversation/search";
 import {
   emptyArray,
   useFetcher,
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
+import type { SearchConversationsResponseBody } from "@app/types/api/assistant/conversation/search";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
