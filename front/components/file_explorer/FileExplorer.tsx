@@ -28,6 +28,7 @@ import {
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -52,6 +53,7 @@ interface FileExplorerProps {
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
   onRename?: (entry: FileEntry | FolderEntry) => void;
+  owner?: LightWorkspaceType;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
   ) => FileExplorerMenuAction[];
@@ -74,6 +76,7 @@ export function FileExplorer({
   onMoveFile,
   onOpenInteractive,
   onRename,
+  owner,
   getExtraFileMenuItems,
 }: FileExplorerProps) {
   const [currentFolderPath, setCurrentFolderPath] = useState("");
@@ -337,6 +340,7 @@ export function FileExplorer({
         onDownload={onFileDownload}
         onPrev={handlePreviewPrev}
         onNext={handlePreviewNext}
+        owner={owner}
       />
 
       {onMoveFile && (

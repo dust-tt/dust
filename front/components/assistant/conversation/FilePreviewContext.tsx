@@ -69,7 +69,7 @@ export function FilePreviewProvider({
           kind: "file",
           isDirectory: false,
           fileName: file.title,
-          path: file.title,
+          path: file.filePath ?? file.title,
           contentType: file.contentType,
           fileId: file.fileId ?? null,
           thumbnailUrl: null,
@@ -104,6 +104,7 @@ export function FilePreviewProvider({
           }
         }}
         onDownload={handleDownload}
+        owner={owner}
       />
     </FilePreviewContext.Provider>
   );

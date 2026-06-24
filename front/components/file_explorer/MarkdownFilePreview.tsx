@@ -1,12 +1,58 @@
-import { LinkBlock, Markdown } from "@dust-tt/sparkle";
+import { RawMarkdownEditor } from "@app/components/editor/RawMarkdownEditor";
+import {
+  ButtonsSwitch,
+  ButtonsSwitchList,
+  cn,
+  Edit04,
+  Eye,
+  LinkBlock,
+  Markdown,
+} from "@dust-tt/sparkle";
 import type React from "react";
-import { useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
 
+export type MarkdownFilePreviewViewMode = "preview" | "edit";
+
 interface MarkdownFilePreviewProps {
   content: string;
+  canEdit?: boolean;
+  showToolbar?: boolean;
+  viewMode: MarkdownFilePreviewViewMode;
+  onContentChange?: (content: string) => void;
+  onViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
+}
+
+interface MarkdownFilePreviewViewModeSwitchProps {
+  viewMode: MarkdownFilePreviewViewMode;
+  onViewModeChange: (mode: MarkdownFilePreviewViewMode) => void;
+}
+
+export function MarkdownFilePreviewViewModeSwitch({
+  viewMode,
+  onViewModeChange,
+}: MarkdownFilePreviewViewModeSwitchProps) {
+  return (
+    <ButtonsSwitchList
+      key={viewMode}
+      defaultValue={viewMode}
+      size="xs"
+      onValueChange={(value) => {
+        if (isViewMode(value)) {
+          onViewModeChange(value);
+        }
+      }}
+    >
+      <ButtonsSwitch value="preview" label="Preview" icon={Eye} />
+      <ButtonsSwitch value="edit" label="Edit" icon={Edit04} />
+    </ButtonsSwitchList>
+  );
+}
+
+function isViewMode(value: string): value is MarkdownFilePreviewViewMode {
+  return value === "preview" || value === "edit";
 }
 
 interface LinkProps {
@@ -112,8 +158,53 @@ function getLocalAnchorId(href: string): string | null {
   return null;
 }
 
-export function MarkdownFilePreview({ content }: MarkdownFilePreviewProps) {
+function isPreviewInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return (
+    target.closest(
+      "a, button, input, textarea, select, [role='link'], [role='button']"
+    ) !== null
+  );
+}
+
+export function MarkdownFilePreview({
+  content,
+  canEdit = false,
+  showToolbar = true,
+  viewMode,
+  onContentChange,
+  onViewModeChange,
+}: MarkdownFilePreviewProps) {
   const previewRef = useRef<HTMLDivElement>(null);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewContentRef = useRef(content);
+
+  if (viewMode === "preview") {
+    previewContentRef.current = content;
+  }
+
+  useLayoutEffect(() => {
+    if (viewMode === "edit") {
+      editTextareaRef.current?.focus({ preventScroll: true });
+    }
+  }, [viewMode]);
+
+  const handlePreviewClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (
+      !canEdit ||
+      !onViewModeChange ||
+      viewMode !== "preview" ||
+      isPreviewInteractiveTarget(event.target)
+    ) {
+      return;
+    }
+
+    onViewModeChange("edit");
+  };
+
   const markdownPlugins = useMemo<PluggableList>(
     () => [() => getMarkdownHeadingAnchorPlugin()],
     []
@@ -148,17 +239,58 @@ export function MarkdownFilePreview({ content }: MarkdownFilePreviewProps) {
     []
   );
 
+  const markdownContent = canEdit ? previewContentRef.current : content;
+
   return (
-    <div
-      ref={previewRef}
-      className="rounded-lg bg-muted-background p-4 dark:bg-muted-background-night"
-    >
-      <Markdown
-        content={content}
-        isStreaming={false}
-        additionalMarkdownComponents={markdownComponents}
-        additionalMarkdownPlugins={markdownPlugins}
-      />
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-2">
+      {canEdit && showToolbar && onViewModeChange && (
+        <div className="flex shrink-0 justify-end">
+          <MarkdownFilePreviewViewModeSwitch
+            viewMode={viewMode}
+            onViewModeChange={onViewModeChange}
+          />
+        </div>
+      )}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-muted-background dark:bg-muted-background-night">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col p-4",
+            viewMode !== "preview" && "hidden"
+          )}
+        >
+          <div
+            className={cn(
+              "min-h-0 flex-1 overflow-y-auto overflow-x-hidden",
+              canEdit && "cursor-text"
+            )}
+            onClick={handlePreviewClick}
+          >
+            <div ref={previewRef}>
+              <Markdown
+                content={markdownContent}
+                isStreaming={false}
+                optimizeForStreaming={false}
+                additionalMarkdownComponents={markdownComponents}
+                additionalMarkdownPlugins={markdownPlugins}
+              />
+            </div>
+          </div>
+        </div>
+        {canEdit ? (
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col p-4",
+              viewMode !== "edit" && "hidden"
+            )}
+          >
+            <RawMarkdownEditor
+              ref={editTextareaRef}
+              value={content}
+              onChange={onContentChange}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

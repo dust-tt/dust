@@ -107,6 +107,7 @@ export function ConversationFileExplorer({
             getFileUrl={getFileUrl}
             onFileDownload={onFileDownload}
             onOpenInteractive={onOpenInteractive}
+            owner={owner}
           />
         </div>
 
@@ -125,6 +126,7 @@ export function ConversationFileExplorer({
               getFileUrl={getFileUrl}
               onFileDownload={onFileDownload}
               onOpenInteractive={onOpenInteractive}
+              owner={owner}
             />
           </div>
         )}

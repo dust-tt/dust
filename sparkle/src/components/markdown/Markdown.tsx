@@ -1,31 +1,8 @@
 import { Chip } from "@sparkle/components/Chip";
-import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
-import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import {
-  H1Block,
-  H2Block,
-  H3Block,
-  H4Block,
-  H5Block,
-  H6Block,
-} from "@sparkle/components/markdown/HeadingBlock";
-import { HrBlock } from "@sparkle/components/markdown/HrBlock";
-import { InputBlock } from "@sparkle/components/markdown/InputBlock";
-import { LinkBlock } from "@sparkle/components/markdown/LinkBlock";
-import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
+import { createBaseMarkdownComponents } from "@sparkle/components/markdown/createBaseMarkdownComponents";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { MarkdownStyleContext } from "@sparkle/components/markdown/MarkdownStyleContext";
-import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
-import { PreBlock } from "@sparkle/components/markdown/PreBlock";
-import { StrongBlock } from "@sparkle/components/markdown/StrongBlock";
 import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
-import {
-  TableBlock,
-  TableBodyBlock,
-  TableDataBlock,
-  TableHeadBlock,
-  TableHeaderBlock,
-} from "@sparkle/components/markdown/TableBlock";
 import {
   type StreamingState,
   useAnimatedText,
@@ -74,6 +51,8 @@ export interface MarkdownProps {
   enableAnimation?: boolean;
   animationDurationSeconds?: number;
   delimiter?: string;
+  /** When true (default), skip re-rendering blocks whose AST position is unchanged. */
+  optimizeForStreaming?: boolean;
 }
 
 export const Markdown: React.FC<MarkdownProps> = ({
@@ -90,6 +69,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   enableAnimation = false,
   animationDurationSeconds = DEFAULT_ANIMATION_DURATION_SECONDS,
   delimiter = DEFAULT_DELIMITER,
+  optimizeForStreaming = true,
 }) => {
   // Derive streaming state: explicit prop takes priority, otherwise derive from isStreaming boolean.
   // @TODO: remove isStreaming prop and use streamingState prop only
@@ -132,34 +112,12 @@ export const Markdown: React.FC<MarkdownProps> = ({
   // Minimal test whenever editing this code: ensure that code block content of a streaming message
   // can be selected without blinking.
 
-  // All base components are memo'd and read style props from MarkdownStyleContext,
-  // so this object never needs to be recreated.
+  // When optimizeForStreaming is false, plain (non-memo) block components are used so
+  // content edits at unchanged AST positions still re-render (e.g. file preview).
+
   const baseMarkdownComponents: Components = useMemo(
-    () => ({
-      pre: PreBlock,
-      a: LinkBlock,
-      ul: UlBlock,
-      ol: OlBlock,
-      li: LiBlock,
-      p: ParagraphBlock,
-      h1: H1Block,
-      h2: H2Block,
-      h3: H3Block,
-      h4: H4Block,
-      h5: H5Block,
-      h6: H6Block,
-      table: TableBlock,
-      thead: TableHeadBlock,
-      tbody: TableBodyBlock,
-      th: TableHeaderBlock,
-      td: TableDataBlock,
-      strong: StrongBlock,
-      input: InputBlock,
-      blockquote: BlockquoteBlock,
-      hr: HrBlock,
-      code: CodeBlockWithExtendedSupport,
-    }),
-    []
+    () => createBaseMarkdownComponents(optimizeForStreaming),
+    [optimizeForStreaming]
   );
 
   // Merge base components with additional directive components.

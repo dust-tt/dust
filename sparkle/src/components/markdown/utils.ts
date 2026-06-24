@@ -1,6 +1,30 @@
 import type { Element } from "hast";
+import type { ComponentType, MemoExoticComponent } from "react";
 
 export type MarkdownNode = Element;
+
+export function getPlainMarkdownBlock<P>(
+  optimizedBlock: MemoExoticComponent<ComponentType<P>>
+): ComponentType<P> {
+  const plain = (
+    optimizedBlock as MemoExoticComponent<ComponentType<P>> & {
+      type?: ComponentType<P>;
+    }
+  ).type;
+
+  return plain ?? optimizedBlock;
+}
+
+export function pickMarkdownBlock<P>(
+  optimizedBlock: MemoExoticComponent<ComponentType<P>>,
+  optimizeForStreaming: boolean
+): ComponentType<P> {
+  if (optimizeForStreaming) {
+    return optimizedBlock as unknown as ComponentType<P>;
+  }
+
+  return getPlainMarkdownBlock(optimizedBlock);
+}
 
 export function sameNodePosition(
   prev?: MarkdownNode,

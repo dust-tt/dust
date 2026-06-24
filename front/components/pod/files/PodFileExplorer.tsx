@@ -790,6 +790,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         getExtraFileMenuItems={getExtraFileMenuItems}
         toolbarExtraActions={addButton}
         isLoading={isLoading}
+        owner={owner}
       />
     </>
   );
