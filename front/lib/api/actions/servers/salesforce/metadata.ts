@@ -1,4 +1,3 @@
-import { SALESFORCE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -7,7 +6,13 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
   execute_read_query: {
-    description: "Execute a read query on Salesforce",
+    description:
+      "Run a read-only SOQL query on Salesforce to retrieve or discover data. It never writes. " +
+      "The usual flow is list_objects to find an object name, then describe_object to learn its exact fields and relationships, then this tool. " +
+      "Custom objects and fields end in `__c` and custom relationships end in `__r`. " +
+      "Use dot notation for child-to-parent (e.g. SELECT Account.Name FROM Contact) and a subquery for parent-to-child (e.g. SELECT Name, (SELECT LastName FROM Contacts) FROM Account). " +
+      "To list fields inline instead of calling describe_object, use FIELDS(ALL), FIELDS(CUSTOM), or FIELDS(STANDARD), which require a LIMIT of at most 200. " +
+      'A "No such column" or "Didn\'t understand relationship" error usually means the name is wrong, so confirm it with describe_object.',
     schema: {
       query: z.string().describe("The SOQL read query to execute"),
     },
@@ -18,7 +23,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
   },
   list_objects: {
-    description: "List the objects in Salesforce: standard and custom objects",
+    description:
+      "List Salesforce objects (standard, custom, or all). Use it to find an object's exact API name before describing or querying it.",
     schema: {
       filter: z
         .enum(["all", "standard", "custom"])
@@ -33,7 +39,9 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
   },
   describe_object: {
-    description: "Describe an object in Salesforce",
+    description:
+      "Get detailed metadata for a Salesforce object from its API name (e.g. Account, Lead, MyCustomObject__c): all fields with their names and types, child relationship names for subqueries, and record types. " +
+      "This is the reliable way to confirm field and relationship names before an execute_read_query.",
     schema: {
       objectName: z.string().describe("The name of the object to describe"),
     },
@@ -126,7 +134,6 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
 });
 
 export const SALESFORCE_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "salesforce",
     version: "1.0.0",
@@ -137,7 +144,7 @@ export const SALESFORCE_SERVER = {
     },
     icon: "SalesforceLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesforce",
-    instructions: SALESFORCE_SERVER_INSTRUCTIONS,
+    instructions: null,
   },
   tools: Object.values(SALESFORCE_TOOLS_METADATA).map((t) => ({
     name: t.name,
