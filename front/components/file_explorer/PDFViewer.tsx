@@ -11,8 +11,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-const DEFAULT_ZOOM_IDX = 2;
+const ZOOM_LEVELS = [0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 2.0];
+const DEFAULT_ZOOM_IDX = 3;
 const BASE_PAGE_WIDTH = 680;
 
 type State = {
@@ -33,14 +33,16 @@ type Action =
   | { type: "zoom_in" }
   | { type: "zoom_out" };
 
-const initialState: State = {
-  currentPage: 1,
-  hasError: false,
-  isFetching: true,
-  numPages: null,
-  objectUrl: null,
-  zoomIdx: DEFAULT_ZOOM_IDX,
-};
+function makeInitialState(zoomIdx: number): State {
+  return {
+    currentPage: 1,
+    hasError: false,
+    isFetching: true,
+    numPages: null,
+    objectUrl: null,
+    zoomIdx,
+  };
+}
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -76,11 +78,22 @@ function reducer(state: State, action: Action): State {
 
 interface PDFViewerProps {
   url: string;
+  // Initial zoom level index into ZOOM_LEVELS. Defaults to DEFAULT_ZOOM_IDX
+  // (100%). Callers with a narrower container (e.g. the side panel previewing
+  // wide slides) can pass a smaller index so pages don't render oversized.
+  initialZoomIdx?: number;
 }
 
-export function PDFViewer({ url }: PDFViewerProps) {
+export function PDFViewer({
+  url,
+  initialZoomIdx = DEFAULT_ZOOM_IDX,
+}: PDFViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(
+    reducer,
+    initialZoomIdx,
+    makeInitialState
+  );
   const { isFetching, hasError, objectUrl, numPages, currentPage, zoomIdx } =
     state;
 
