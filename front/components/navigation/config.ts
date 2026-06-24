@@ -290,7 +290,7 @@ export const subNavigationAdmin = ({
         current: isCurrent("workspace"),
         disabled: !hasWorkspaceAdminPermission,
       },
-      ...(subscription.plan.isBrandedFramesAllowed
+      ...(featureFlags.includes("whitelabel_frames")
         ? [
             {
               id: "workspace_branding" as const,

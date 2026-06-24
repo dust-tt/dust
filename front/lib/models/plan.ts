@@ -56,7 +56,6 @@ export class PlanModel extends BaseModel<PlanModel> {
   declare isSSOAllowed: boolean;
   declare isSCIMAllowed: boolean;
   declare isAuditLogsAllowed: boolean;
-  declare isBrandedFramesAllowed: boolean;
   declare isByok: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
@@ -187,10 +186,6 @@ PlanModel.init(
       defaultValue: false,
     },
     isAuditLogsAllowed: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    isBrandedFramesAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

@@ -66,7 +66,6 @@ app.post(
       isSSOAllowed: body.limits.users.isSSOAllowed,
       isSCIMAllowed: body.limits.users.isSCIMAllowed,
       isAuditLogsAllowed: body.isAuditLogsAllowed,
-      isBrandedFramesAllowed: body.isBrandedFramesAllowed,
       maxDataSourcesCount: body.limits.dataSources.count,
       maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
       maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,

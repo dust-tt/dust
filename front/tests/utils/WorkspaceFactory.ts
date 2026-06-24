@@ -8,6 +8,7 @@ import {
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -80,14 +81,14 @@ export class WorkspaceFactory {
     );
   }
 
-  static async withBrandedFrames(
+  // Whitelabel frames are gated by the `whitelabel_frames` feature flag.
+  static async withWhitelabelFrames(
     overrides?: WorkspaceOverrides
   ): Promise<WorkspaceType> {
-    const plan = await PlanFactory.enterprise("ENT_BRANDED_FRAMES_TEST", {
-      isBrandedFramesAllowed: true,
-    });
+    const workspace = await this.basic(overrides);
+    await FeatureFlagResource.enable(workspace, "whitelabel_frames");
 
-    return this.createWithPlan(plan, overrides);
+    return workspace;
   }
 
   // Plans are seeded by the DB init script (admin/db.ts) to avoid deadlocks

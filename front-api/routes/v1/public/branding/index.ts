@@ -6,10 +6,11 @@ import {
   buildBrandingAssetStoragePath,
   isBrandingAssetName,
 } from "@app/lib/api/workspace_branding";
+import { getFeatureFlagsForWorkspace } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -81,10 +82,10 @@ app.get("/:wId/:asset", validate("param", ParamsSchema), async (ctx) => {
     return redirectToDefaultAsset(ctx, asset);
   }
 
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
+  const featureFlags = await getFeatureFlagsForWorkspace(
+    renderLightWorkspaceType({ workspace })
   );
-  if (!subscription?.getPlan().isBrandedFramesAllowed) {
+  if (!featureFlags.includes("whitelabel_frames")) {
     return redirectToDefaultAsset(ctx, asset);
   }
 

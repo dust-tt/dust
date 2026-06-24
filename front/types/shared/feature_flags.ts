@@ -350,6 +350,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
     stage: "on_demand",
   },
+  whitelabel_frames: {
+    description:
+      "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

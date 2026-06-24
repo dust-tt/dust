@@ -73,7 +73,7 @@ describe("PATCH /api/w/:wId/branding", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns 403 when workspace is not entitled to branded frames", async () => {
+  it("returns 403 when workspace is not entitled to whitelabel frames", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
 
     const res = await honoApp.request(`/api/w/${workspace.sId}/branding`, {
@@ -86,7 +86,7 @@ describe("PATCH /api/w/:wId/branding", () => {
   });
 
   it("returns 204 and deletes the asset when fileId is null", async () => {
-    const workspace = await WorkspaceFactory.withBrandedFrames();
+    const workspace = await WorkspaceFactory.withWhitelabelFrames();
     await createPrivateApiMockRequest({ role: "admin", workspace });
 
     const res = await honoApp.request(`/api/w/${workspace.sId}/branding`, {
@@ -103,7 +103,7 @@ describe("PATCH /api/w/:wId/branding", () => {
   });
 
   it("returns 204 and copies the file when a valid fileId is given", async () => {
-    const workspace = await WorkspaceFactory.withBrandedFrames();
+    const workspace = await WorkspaceFactory.withWhitelabelFrames();
     const { auth, user } = await createPrivateApiMockRequest({
       role: "admin",
       workspace,
@@ -132,7 +132,7 @@ describe("PATCH /api/w/:wId/branding", () => {
   });
 
   it("returns 404 when the fileId does not exist", async () => {
-    const workspace = await WorkspaceFactory.withBrandedFrames();
+    const workspace = await WorkspaceFactory.withWhitelabelFrames();
     await createPrivateApiMockRequest({ role: "admin", workspace });
 
     const res = await honoApp.request(`/api/w/${workspace.sId}/branding`, {

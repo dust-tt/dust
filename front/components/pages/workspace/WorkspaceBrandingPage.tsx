@@ -1,16 +1,16 @@
 import { BrandingSection } from "@app/components/workspace/settings/BrandingSection";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { cn, Page, Palette } from "@dust-tt/sparkle";
 
 export function WorkspaceBrandingPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
-  const isBrandedFramesAllowed = subscription.plan.isBrandedFramesAllowed;
+  const { hasFeature } = useFeatureFlags();
+  const isWhitelabelFramesAllowed = hasFeature("whitelabel_frames");
 
   return (
     <Page.Vertical align="stretch" gap="xl">
       <Page.Header title="Branding" icon={Palette} />
-      {isBrandedFramesAllowed ? (
+      {isWhitelabelFramesAllowed ? (
         <BrandingSection owner={owner} />
       ) : (
         <div
@@ -23,9 +23,8 @@ export function WorkspaceBrandingPage() {
             Workspace branding
           </p>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Workspace branding is not available on the current plan. Upgrade to
-            a plan that includes branded frames to customize your workspace
-            logo.
+            Workspace branding is not available for this workspace. Whitelabel
+            frames must be enabled to customize your workspace logo.
           </p>
         </div>
       )}

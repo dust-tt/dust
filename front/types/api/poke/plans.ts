@@ -53,7 +53,6 @@ export const PlanTypeSchema = z.object({
   }),
   trialPeriodDays: z.number(),
   isByok: z.boolean(),
-  isBrandedFramesAllowed: z.boolean(),
   isAuditLogsAllowed: z.boolean(),
 });
 

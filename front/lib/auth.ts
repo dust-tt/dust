@@ -1626,11 +1626,9 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
   ttl: 3000,
 });
 
-export function getFeatureFlags(
-  auth: Authenticator
+export function getFeatureFlagsForWorkspace(
+  workspace: LightWorkspaceType
 ): Promise<WhitelistableFeature[]> {
-  const workspace = auth.getNonNullableWorkspace();
-
   return new Promise((resolve, reject) => {
     _getFeatureFlags(workspace, (err, result) => {
       if (err) {
@@ -1640,6 +1638,12 @@ export function getFeatureFlags(
       }
     });
   });
+}
+
+export function getFeatureFlags(
+  auth: Authenticator
+): Promise<WhitelistableFeature[]> {
+  return getFeatureFlagsForWorkspace(auth.getNonNullableWorkspace());
 }
 
 export async function hasFeatureFlag(

@@ -126,7 +126,6 @@ async function ensureEnterprisePlan(): Promise<void> {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
-    isBrandedFramesAllowed: false,
   });
 }
 

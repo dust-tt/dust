@@ -56,7 +56,6 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 14,
     canUseProduct: true,
     isByok: false,
-    isBrandedFramesAllowed: false,
   });
   CREDIT_PRICED_PLANS_DATA.push({
     code: CREDIT_PRICED_FREE_PLAN_CODE,
@@ -89,7 +88,6 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
-    isBrandedFramesAllowed: false,
   });
   CREDIT_PRICED_PLANS_DATA.push({
     code: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
@@ -122,7 +120,6 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
-    isBrandedFramesAllowed: false,
   });
 }
 
