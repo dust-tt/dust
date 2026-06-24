@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS "conversation_selected_spaces" (
     "createdAt" timestamp WITH time zone NOT NULL DEFAULT NOW(),
     "updatedAt" timestamp WITH time zone NOT NULL DEFAULT NOW(),
     "conversationId" bigint NOT NULL REFERENCES "conversations" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    "spaceId" bigint NOT NULL REFERENCES "spaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "spaceId" bigint NOT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "selectedByUserId" bigint NOT NULL REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "origin" varchar(255) NOT NULL,
     "removedAt" timestamp WITH time zone,
