@@ -1,4 +1,3 @@
-import { JIRA_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -26,7 +25,10 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_issue: {
-    description: "Retrieves a single JIRA issue by its key (e.g., 'PROJ-123').",
+    description:
+      "Retrieves a single JIRA issue by its key (e.g., 'PROJ-123'). " +
+      "By default it returns a minimal set of fields for performance: summary, issuetype, priority, assignee, reporter, labels, duedate, parent, project, status. " +
+      "To request others, pass them in the fields parameter using the key for built-in fields (e.g. summary) and the id for custom fields (e.g. customfield_10020), which you can discover with get_issue_read_fields.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       fields: z
@@ -166,7 +168,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_connection_info: {
     description:
-      "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves",
+      "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves. Also use it to authenticate when another tool reports that no access token was found.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -386,7 +388,6 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
 });
 
 export const JIRA_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "jira",
     version: "1.0.0",
@@ -397,7 +398,7 @@ export const JIRA_SERVER = {
     },
     icon: "JiraLogo",
     documentationUrl: "https://docs.dust.tt/docs/jira",
-    instructions: JIRA_SERVER_INSTRUCTIONS,
+    instructions: null,
   },
   tools: Object.values(JIRA_TOOLS_METADATA).map((t) => ({
     name: t.name,
