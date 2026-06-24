@@ -450,21 +450,25 @@ export const InputBar = React.memo(function InputBar({
                 !disableInput && "cursor-pointer"
               )
             : classNames(
-                "w-full rounded-2xl",
-                "bg-muted-background dark:bg-muted-background-night",
-                "border",
-                "border-border-dark dark:border-border-dark/10",
-                "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
-                "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
+                "w-full rounded-3xl border",
                 isFloating
                   ? classNames(
+                      // Elevated composer: glassy near-white border + layered drop
+                      // shadow, interior brightens to pure white on focus.
+                      "border-white/90 dark:border-border-dark-night",
+                      "bg-[#fbfbfb] has-[.tiptap:focus]:bg-white",
+                      "dark:bg-muted-background-night",
+                      "shadow-[0px_8px_10px_-6px_rgba(0,0,0,0.1),0px_20px_25px_-5px_rgba(0,0,0,0.1),0px_0px_1px_0px_rgba(0,0,0,0.07)]",
                       "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
                       "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
                       "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
                     )
                   : classNames(
-                      "has-[.tiptap:focus]:border-highlight-300",
-                      "dark:has-[.tiptap:focus]:border-highlight-300-night"
+                      // Flat composer (embedded contexts, e.g. agent builder):
+                      // subtle border, no elevation.
+                      "bg-muted-background dark:bg-muted-background-night",
+                      "border-border dark:border-border-night",
+                      "has-[.tiptap:focus]:border-border-dark dark:has-[.tiptap:focus]:border-border-dark-night"
                     )
               )
         )}
