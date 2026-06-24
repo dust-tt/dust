@@ -1,10 +1,10 @@
 import { FirstSyncTaskLookbackForm } from "@app/components/assistant/conversation/space/FirstSyncTaskLookbackForm";
 import { ConfirmContext } from "@app/components/Confirm";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
-import type { RichSpaceType } from "@app/lib/api/spaces";
 import type { InitialTasksSyncLookbackValue } from "@app/lib/project_task/analyze_document/types";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
+import type { RichSpaceType } from "@app/types/api/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,

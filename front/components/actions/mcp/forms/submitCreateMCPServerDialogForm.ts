@@ -5,11 +5,11 @@ import type {
   CreateMCPServerResponseBody,
   MCPServerType,
 } from "@app/lib/api/mcp";
-import type { DiscoverOAuthMetadataResponseBody } from "@app/lib/api/oauth/providers/mcp";
 import {
   isMCPCreateServerError,
   type MCPConnectionType,
 } from "@app/lib/swr/mcp_servers";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { RegionInfo } from "@app/types/region";

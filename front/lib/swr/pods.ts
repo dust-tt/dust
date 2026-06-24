@@ -14,7 +14,6 @@ import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
-import type { CheckNameResponseBody } from "@app/lib/api/spaces";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
@@ -42,7 +41,10 @@ import type {
   PostPodTaskResponseBody,
   PostStartPodTaskResponseBody,
 } from "@app/types/api/projects/tasks";
-import type { PatchPodMetadataBodyType } from "@app/types/api/spaces";
+import type {
+  CheckNameResponseBody,
+  PatchPodMetadataBodyType,
+} from "@app/types/api/spaces";
 import type {
   NotificationCondition,
   UserPodNotificationPreference,

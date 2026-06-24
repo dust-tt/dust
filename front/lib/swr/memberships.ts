@@ -1,14 +1,14 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
-import type {
-  GetFreeSeatCountsResponseBody,
-  MembersLookupResponseBody,
-} from "@app/lib/api/members";
 import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/types/api/invitation";
+import type {
+  GetFreeSeatCountsResponseBody,
+  MembersLookupResponseBody,
+} from "@app/types/api/members";
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,

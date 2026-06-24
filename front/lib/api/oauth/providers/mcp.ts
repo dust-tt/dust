@@ -13,6 +13,11 @@ import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
+import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
+import {
+  BaseMCPMetadataSchema,
+  MCPOAuthConnectionMetadataSchema,
+} from "@app/types/api/oauth/providers/mcp";
 import type {
   ExtraConfigType,
   OAuthConnectionType,
@@ -28,19 +33,6 @@ import { z } from "zod";
 export const MCP_OAUTH_RESPONSE_TYPE = "code";
 export const MCP_OAUTH_CODE_CHALLENGE_METHOD = "S256";
 
-const BaseMCPMetadataSchema = z.object({
-  client_id: z.string(),
-  token_endpoint: z.string(),
-  authorization_endpoint: z.string(),
-});
-
-const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
-  client_secret: z.string().optional(),
-  scope: z.string().optional(),
-  resource: z.string().optional(),
-  token_endpoint_auth_method: z.string().optional(),
-});
-
 const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
   code_challenge: z.string(),
   code_verifier: z.string(),
@@ -52,20 +44,7 @@ const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
   use_static_ip_proxy: z.enum(["true", "false"]).optional(),
 });
 
-export type MCPOAuthConnectionMetadataType = z.infer<
-  typeof MCPOAuthConnectionMetadataSchema
->;
-
 type MCPMetadataType = z.infer<typeof MCPMetadataSchema>;
-
-export type DiscoverOAuthMetadataResponseBody =
-  | {
-      oauthRequired: true;
-      connectionMetadata: MCPOAuthConnectionMetadataType;
-    }
-  | {
-      oauthRequired: false;
-    };
 
 export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
   provider: OAuthProvider = "mcp";

@@ -1,9 +1,9 @@
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   MembersLookupAdminResponseBody,
   MembersLookupResponseBody,
-} from "@app/lib/api/members";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
+} from "@app/types/api/members";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

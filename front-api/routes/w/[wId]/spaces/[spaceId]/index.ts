@@ -4,11 +4,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type {
-  GetSpaceResponseBody,
-  PatchSpaceResponseBody,
-  SpaceCategoryInfo,
-} from "@app/lib/api/spaces";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -17,6 +12,11 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type {
+  GetSpaceResponseBody,
+  PatchSpaceResponseBody,
+  SpaceCategoryInfo,
+} from "@app/types/api/spaces";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";

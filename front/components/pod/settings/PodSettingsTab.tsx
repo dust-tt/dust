@@ -12,7 +12,6 @@ import {
   POD_AGENTS_MD_FILENAME,
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "@app/lib/api/projects/constants";
-import type { RichSpaceType } from "@app/lib/api/spaces";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -23,7 +22,10 @@ import {
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import type { PatchPodMetadataBodyType } from "@app/types/api/spaces";
+import type {
+  PatchPodMetadataBodyType,
+  RichSpaceType,
+} from "@app/types/api/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {

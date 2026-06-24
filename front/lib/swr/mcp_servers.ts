@@ -28,7 +28,6 @@ import type {
   PatchMCPServerViewBody,
   PatchMCPServerViewResponseBody,
 } from "@app/lib/api/mcp/views";
-import type { DiscoverOAuthMetadataResponseBody } from "@app/lib/api/oauth/providers/mcp";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
@@ -40,6 +39,7 @@ import type {
 import type { GetMCPServerViewsResponseBody } from "@app/lib/resources/mcp_server_view_resource";
 import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
