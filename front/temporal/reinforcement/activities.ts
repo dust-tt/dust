@@ -15,7 +15,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
@@ -102,10 +102,8 @@ export { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 /**
  * Report usage for a single self-improvement LLM step to billing and ES
  * analytics: as Metronome usage events for workspaces billed by Metronome on
- * a credit-priced plan, as programmatic usage otherwise. Workspaces with the
- * `self_improvement_beta_tester` feature flag report nothing and run for
- * free. Fire-and-forget: failures are logged but do not break the
- * reinforcement workflow.
+ * a credit-priced plan, as programmatic usage otherwise. Fire-and-forget:
+ * failures are logged but do not break the reinforcement workflow.
  */
 async function reportSelfImprovingSkillsStepUsage({
   auth,
@@ -122,10 +120,6 @@ async function reportSelfImprovingSkillsStepUsage({
   userMessageId: string;
   dustRunIds?: string[];
 }): Promise<void> {
-  if (await hasFeatureFlag(auth, "self_improvement_beta_tester")) {
-    return;
-  }
-
   // Reinforcement messages are created with default version 0 and are never
   // retried at a higher version (Temporal retries create new message sIds).
   const agentLoopArgs: AgentLoopArgs = {
