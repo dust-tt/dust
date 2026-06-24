@@ -741,7 +741,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   productboard: {
     id: 46,
-    availability: "manual",
+    availability: "auto",
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
