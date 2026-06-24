@@ -34,6 +34,7 @@ export function useAgentConfigurationActions(
   return {
     actions: actionsWithIds,
     isActionsLoading: !error && !data && !disabled,
+    isActionsError: !!error,
     mutateActions: mutate,
     error,
   };

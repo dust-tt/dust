@@ -128,26 +128,26 @@ export default function AgentBuilder({
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
   const hasPendingCreationRef = useRef(false);
 
-  const { actions, isActionsLoading, mutateActions } =
+  const { actions, isActionsError, isActionsLoading, mutateActions } =
     useAgentConfigurationActions(
       owner.sId,
       duplicateAgentId ?? agentConfiguration?.sId ?? null
     );
 
-  const { triggers, isTriggersLoading, mutateTriggers } = useAgentTriggers({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration?.sId ?? null,
-  });
+  const { triggers, isTriggersError, isTriggersLoading, mutateTriggers } =
+    useAgentTriggers({
+      workspaceId: owner.sId,
+      agentConfigurationId: agentConfiguration?.sId ?? null,
+    });
 
   const agentConfigurationIdForSkills =
     duplicateAgentId ?? agentConfiguration?.sId ?? null;
-  const { skills, isSkillsLoading, mutateSkills } = useAgentConfigurationSkills(
-    {
+  const { skills, isSkillsError, isSkillsLoading, mutateSkills } =
+    useAgentConfigurationSkills({
       owner,
       agentConfigurationId: agentConfigurationIdForSkills ?? "",
       disabled: !agentConfigurationIdForSkills,
-    }
-  );
+    });
 
   const shouldLoadEditors = !!agentConfiguration && !duplicateAgentId;
   const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
@@ -565,8 +565,12 @@ export default function AgentBuilder({
 
   const { isDirty, isSubmitting } = form.formState;
 
+  const hasAgentDataLoadError =
+    isActionsError || isSkillsError || !!isTriggersError || isEditorsError;
+
   const isSaveDisabled =
     isSubmitting ||
+    hasAgentDataLoadError ||
     isActionsLoading ||
     isSkillsLoading ||
     isTriggersLoading ||
