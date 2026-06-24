@@ -17,6 +17,10 @@ import {
 } from "@app/lib/metronome/seat_types";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
+import type {
+  DefaultUserSpendLimit,
+  GetDefaultUserSpendLimitResponseBody,
+} from "@app/types/api/workspace/default_user_spend_limit";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -29,16 +33,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-
-export type DefaultUserSpendLimit = {
-  awuCredits: number;
-};
-
-export type GetDefaultUserSpendLimitResponseBody = {
-  awuCredits: number | null;
-};
-
-export type PutDefaultUserSpendLimitResponseBody = DefaultUserSpendLimit;
 
 export type DefaultUserSpendLimitErrorType =
   | "workspace_not_metronome_billed"

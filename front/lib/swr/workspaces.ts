@@ -24,19 +24,10 @@ import type {
   GetWorkspaceToolUsageResponse,
 } from "@app/lib/api/assistant/observability/tool_usage";
 import type { GetUserCreditsResponse } from "@app/lib/api/assistant/observability/user_credits";
-import type { GetBillingInfoResponseBody } from "@app/lib/api/billing/info";
-import type { GetBillingInvoicesResponseBody } from "@app/lib/api/billing/invoices";
 import type {
   GetBusinessActivationResponseBody,
   PostBusinessActivationResponseBody,
 } from "@app/lib/api/checkout/business_activation";
-import type { GetMetronomeContractResponseBody } from "@app/lib/api/credits/metronome_contract";
-import type {
-  GetCheckoutStatusResponseBody,
-  GetSubscriptionsResponseBody,
-  GetSubscriptionTrialInfoResponseBody,
-  PostSubscriptionResponseBody,
-} from "@app/lib/api/subscription";
 import type {
   GetSeatAvailabilityResponseBody,
   GetWelcomeResponseBody,
@@ -65,8 +56,17 @@ import type {
   GetNoWorkspaceAuthContextResponseType,
   GetWorkspaceAuthContextResponseType,
 } from "@app/types/api/auth_context";
+import type { GetBillingInfoResponseBody } from "@app/types/api/billing/info";
+import type { GetBillingInvoicesResponseBody } from "@app/types/api/billing/invoices";
 import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prepare_payment";
+import type { GetMetronomeContractResponseBody } from "@app/types/api/credits/metronome_contract";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/types/api/invitation";
+import type {
+  GetCheckoutStatusResponseBody,
+  GetSubscriptionsResponseBody,
+  GetSubscriptionTrialInfoResponseBody,
+  PostSubscriptionResponseBody,
+} from "@app/types/api/subscription";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";

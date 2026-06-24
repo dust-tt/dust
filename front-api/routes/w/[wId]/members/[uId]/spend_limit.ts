@@ -1,13 +1,15 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
-  type GetUserSpendLimitResponseBody,
   getUserSpendLimit,
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
-  type PutUserSpendLimitResponseBody,
   setUserSpendLimit,
   type UserSpendLimitError,
 } from "@app/lib/api/users/spend_limit";
+import type {
+  GetUserSpendLimitResponseBody,
+  PutUserSpendLimitResponseBody,
+} from "@app/types/api/users/spend_limit";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";

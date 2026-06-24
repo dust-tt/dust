@@ -9,50 +9,12 @@ import {
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
 } from "@app/lib/resources/storage/models/credit_usage_configurations";
+import type {
+  CreditUsageConfigurationBody,
+  PatchCreditUsageConfigurationBody,
+} from "@app/types/api/credits/usage_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { z } from "zod";
-
-// Combined workspace-level usage configuration surfaced to admins on the Usage
-// page. All fields are stored on the `credit_usage_configurations` row:
-// `balanceThresholdCredits` is the source of truth from which the Metronome
-// balance-threshold alert is derived (see `balance_threshold_alert.ts`).
-export type CreditUsageConfigurationBody = {
-  // Credit balance (in AWU credits) below which workspace admins are emailed.
-  // `null` means no threshold is configured (the warning is off).
-  balanceThresholdCredits: number | null;
-  // Whether non-admin members who reach their per-user spend limit can request a
-  // spend-limit upgrade from the product.
-  allowMemberUpgradeRequests: boolean;
-  // Whether workspace admins are emailed when a member requests an upgrade.
-  upgradeRequestEmailEnabled: boolean;
-  // Whether members who hit their per-user credit limit are automatically bumped
-  // to the next entitled seat tier instead of being blocked.
-  autoSeatUpgradeEnabled: boolean;
-  autoSeatUpgradeAvailable: boolean;
-  // Whether enterprise-plan workspaces show the "Top up" button on the Usage page.
-  topUpEnabled: boolean;
-};
-
-export type GetCreditUsageConfigurationResponseBody = {
-  configuration: CreditUsageConfigurationBody;
-};
-
-export type PatchCreditUsageConfigurationResponseBody = {
-  configuration: CreditUsageConfigurationBody;
-};
-
-export const PatchCreditUsageConfigurationRequestBody = z.object({
-  // 0 (or null) clears the threshold; a positive value enables the alert.
-  balanceThresholdCredits: z.number().int().min(0).nullable().optional(),
-  allowMemberUpgradeRequests: z.boolean().optional(),
-  upgradeRequestEmailEnabled: z.boolean().optional(),
-  autoSeatUpgradeEnabled: z.boolean().optional(),
-});
-
-export type PatchCreditUsageConfigurationBody = z.infer<
-  typeof PatchCreditUsageConfigurationRequestBody
->;
 
 /**
  * Read the full usage configuration for a workspace: the balance threshold plus

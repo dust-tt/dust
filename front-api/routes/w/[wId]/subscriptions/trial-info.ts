@@ -1,5 +1,5 @@
-import type { GetSubscriptionTrialInfoResponseBody } from "@app/lib/api/subscription";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
+import type { GetSubscriptionTrialInfoResponseBody } from "@app/types/api/subscription";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";

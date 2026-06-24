@@ -1,9 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetCreditUsageConfigurationResponseBody } from "@app/lib/api/credits/usage_configuration";
-import type {
-  GetDefaultUserSpendLimitResponseBody,
-  PutDefaultUserSpendLimitResponseBody,
-} from "@app/lib/api/workspace/default_user_spend_limit";
 import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import {
@@ -15,6 +10,11 @@ import type {
   GetProgrammaticUsageLimitResponseBody,
   PutProgrammaticUsageLimitResponseBody,
 } from "@app/types/api/credits/programmatic_usage_limit";
+import type { GetCreditUsageConfigurationResponseBody } from "@app/types/api/credits/usage_configuration";
+import type {
+  GetDefaultUserSpendLimitResponseBody,
+  PutDefaultUserSpendLimitResponseBody,
+} from "@app/types/api/workspace/default_user_spend_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
