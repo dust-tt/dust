@@ -713,8 +713,9 @@ export async function fetchRemainingCapCreditsPercentageForUser({
 
   // Mirror `getMembersUsage`: the override threshold stored on the membership is
   // the pool-only portion; add the seat allowance to get the total threshold.
+  // "none" seat users have no pool access, so their override is irrelevant.
   const overrideAwuCredits =
-    poolCapOverrideAwuCredits !== null
+    poolCapOverrideAwuCredits !== null && seatType !== "none"
       ? poolCapOverrideAwuCredits +
         (normalizedSeatType
           ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
@@ -818,8 +819,10 @@ export async function getMemberUsage({
   const defaultAwuCredits = normalizedSeatType
     ? (defaultCapAwuCreditsBySeatType[normalizedSeatType] ?? null)
     : null;
+  // "none" seat users have no pool access, so their override is irrelevant.
   const overrideAwuCredits =
-    membership.poolCapOverrideAwuCredits !== null
+    membership.poolCapOverrideAwuCredits !== null &&
+    membership.seatType !== "none"
       ? membership.poolCapOverrideAwuCredits +
         (normalizedSeatType
           ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
@@ -1072,8 +1075,10 @@ export async function getMembersUsage({
     const defaultAwuCredits = normalizedSeatType
       ? (defaultCapAwuCreditsBySeatType[normalizedSeatType] ?? null)
       : null;
+    // "none" seat users have no pool access, so their override is irrelevant.
     const overrideAwuCredits =
-      membership.poolCapOverrideAwuCredits !== null
+      membership.poolCapOverrideAwuCredits !== null &&
+      membership.seatType !== "none"
         ? membership.poolCapOverrideAwuCredits +
           (normalizedSeatType
             ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
