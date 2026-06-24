@@ -1,5 +1,6 @@
 import { escape } from "html-escaper";
 import sanitizeHtml from "sanitize-html";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export interface GmailHeader {
   name: string;
@@ -219,12 +220,19 @@ export function createQuoteSection(
       : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         `${escape(originalFrom || "Original sender")} wrote:`;
 
-  const quotedContent =
-    originalMimeType === "text/html"
-      ? sanitizeHtml(originalBody, {
-          allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-        })
-      : escape(originalBody).replace(/\n/g, "<br>");
+  let quotedContent: string;
+  switch (originalMimeType) {
+    case "text/html":
+      quotedContent = sanitizeHtml(originalBody, {
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+      });
+      break;
+    case "text/plain":
+      quotedContent = escape(originalBody).replace(/\n/g, "<br>");
+      break;
+    default:
+      assertNever(originalMimeType);
+  }
 
   const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${quotedContent}</blockquote>`;
 
