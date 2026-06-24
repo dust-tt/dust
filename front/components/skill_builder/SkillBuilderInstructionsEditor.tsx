@@ -223,8 +223,10 @@ function sanitizeSkillInstructionsHtml(html: string): string {
 }
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[50vh]";
+const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_CONTAINER_SIZE =
+  "h-80 min-h-80 max-h-[50vh]";
 const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
-  "min-h-80 rounded-b-none border-b-0 pb-44";
+  "h-full min-h-0 max-h-none resize-none rounded-b-none border-b-0 pb-44";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
@@ -777,8 +779,16 @@ export function SkillBuilderInstructionsEditor({
   return (
     <>
       <div className="space-y-1 p-px">
-        <div className="group relative overflow-hidden rounded-xl">
+        <div
+          className={cn(
+            "group relative overflow-hidden rounded-xl",
+            hasInstructionReferenceSummary &&
+              INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_CONTAINER_SIZE,
+            hasInstructionReferenceSummary && !isDiffMode && "resize-y"
+          )}
+        >
           <SkillInstructionsEditorContent
+            className={hasInstructionReferenceSummary ? "h-full" : undefined}
             editor={editor}
             isReadOnly={hasSuggestions}
           />
