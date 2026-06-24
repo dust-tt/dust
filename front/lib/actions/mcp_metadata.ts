@@ -20,6 +20,7 @@ import {
 import {
   getServerTypeAndIdFromSId,
   isMcpTimeoutError,
+  NO_OP_MCP_JSON_SCHEMA_VALIDATOR,
 } from "@app/lib/actions/mcp_helper";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import {
@@ -364,10 +365,13 @@ export async function connectToMCPServer(
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
 > {
   // This is where we route the MCP client to the right server.
-  const mcpClient = new Client({
-    name: "dust-mcp-client",
-    version: "1.0.0",
-  });
+  const mcpClient = new Client(
+    {
+      name: "dust-mcp-client",
+      version: "1.0.0",
+    },
+    { jsonSchemaValidator: NO_OP_MCP_JSON_SCHEMA_VALIDATOR }
+  );
   const connectionType = params.type;
   switch (connectionType) {
     case "mcpServerId": {
