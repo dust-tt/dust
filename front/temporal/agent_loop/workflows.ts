@@ -313,7 +313,6 @@ export async function agentLoopWorkflow({
             ...agentLoopArgs,
             initialStartTime,
           },
-          runIds,
         });
         if (creditCheckResult.shouldStop) {
           creditStopRequested = true;

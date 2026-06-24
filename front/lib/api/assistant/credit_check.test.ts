@@ -1,46 +1,28 @@
 import { checkPoolCreditGate } from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockGetCachedPoolCredits,
-  mockGetWorkspaceCreditPoolStatus,
-  mockComputeAgentMessageCredits,
-  mockListByAgentMessageIds,
-  mockListByDustRunIds,
-  mockListRunUsagesForRuns,
+  mockIsUserBlocked,
+  mockIsApiBlocked,
+  mockIsProgrammaticApiBlocked,
+  mockIsProgrammaticUsage,
 } = vi.hoisted(() => ({
-  mockGetCachedPoolCredits: vi.fn(),
-  mockGetWorkspaceCreditPoolStatus: vi.fn(),
-  mockComputeAgentMessageCredits: vi.fn(),
-  mockListByAgentMessageIds: vi.fn(),
-  mockListByDustRunIds: vi.fn(),
-  mockListRunUsagesForRuns: vi.fn(),
-}));
-
-vi.mock("@app/lib/metronome/credit_balance", () => ({
-  getCachedPoolCredits: mockGetCachedPoolCredits,
+  mockIsUserBlocked: vi.fn(),
+  mockIsApiBlocked: vi.fn(),
+  mockIsProgrammaticApiBlocked: vi.fn(),
+  mockIsProgrammaticUsage: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
-  getWorkspaceCreditPoolStatus: mockGetWorkspaceCreditPoolStatus,
+  isUserBlocked: mockIsUserBlocked,
+  isApiBlocked: mockIsApiBlocked,
+  isProgrammaticApiBlocked: mockIsProgrammaticApiBlocked,
 }));
 
-vi.mock("@app/lib/api/assistant/credit_cost", () => ({
-  computeAgentMessageCredits: mockComputeAgentMessageCredits,
-}));
-
-vi.mock("@app/lib/resources/agent_mcp_action_resource", () => ({
-  AgentMCPActionResource: {
-    listByAgentMessageIds: mockListByAgentMessageIds,
-  },
-}));
-
-vi.mock("@app/lib/resources/run_resource", () => ({
-  RunResource: {
-    listByDustRunIds: mockListByDustRunIds,
-    listRunUsagesForRuns: mockListRunUsagesForRuns,
-  },
+vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
+  isProgrammaticUsage: mockIsProgrammaticUsage,
 }));
 
 vi.mock("@app/types/plan", () => ({
@@ -48,214 +30,128 @@ vi.mock("@app/types/plan", () => ({
     plan.code.startsWith("ENT_NEW"),
 }));
 
-vi.mock("@app/logger/logger", () => ({
-  default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}));
-
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class
 // instance can't be constructed structurally, so a single `as unknown as` is the standard test-mock
 // escape here (see the same pattern across the suite); the cast surface is kept to this one spot.
 function makeAuth({
-  workspaceId = "ws_test",
-  metronomeCustomerId = "metro_123",
   isCreditPriced = true,
+  metronomeCustomerId = "metro_123",
+  hasUser = true,
 }: {
-  workspaceId?: string;
-  metronomeCustomerId?: string | null;
   isCreditPriced?: boolean;
+  metronomeCustomerId?: string | null;
+  hasUser?: boolean;
 } = {}): Authenticator {
   const plan = isCreditPriced
     ? { code: "ENT_NEW_CREDIT", limits: {} }
     : { code: "LEGACY_PRO", limits: {} };
 
   return {
-    getNonNullableWorkspace: () => ({ sId: workspaceId, metronomeCustomerId }),
+    getNonNullableWorkspace: () => ({ sId: "ws_test", metronomeCustomerId }),
     subscription: () => ({ plan }),
+    user: () => (hasUser ? { sId: "user_test" } : null),
   } as unknown as Authenticator;
 }
 
 function callGate(
   auth: Authenticator,
-  {
-    runIds = [],
-    isFreeUsage = false,
-  }: { runIds?: string[]; isFreeUsage?: boolean } = {}
+  userMessageOrigin: UserMessageOrigin | null = null
 ) {
-  return checkPoolCreditGate(auth, {
-    agentMessageId: "msg_test",
-    agentMessageModelId: 1,
-    runIds,
-    isFreeUsage,
-  });
+  return checkPoolCreditGate(auth, { userMessageOrigin });
 }
 
 describe("checkPoolCreditGate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetWorkspaceCreditPoolStatus.mockResolvedValue("active");
-    mockListByDustRunIds.mockResolvedValue([]);
-    mockListRunUsagesForRuns.mockResolvedValue([]);
-    mockListByAgentMessageIds.mockResolvedValue([]);
-    mockComputeAgentMessageCredits.mockReturnValue(0);
+    mockIsUserBlocked.mockResolvedValue(null);
+    mockIsApiBlocked.mockResolvedValue(false);
+    mockIsProgrammaticApiBlocked.mockResolvedValue(false);
+    mockIsProgrammaticUsage.mockReturnValue(false);
   });
 
   it("returns shouldStop=false for non-credit-priced plans, reading nothing", async () => {
     const auth = makeAuth({ isCreditPriced: false });
     const result = await callGate(auth);
     expect(result).toEqual({ shouldStop: false, reason: null });
-    expect(mockGetCachedPoolCredits).not.toHaveBeenCalled();
-    expect(mockGetWorkspaceCreditPoolStatus).not.toHaveBeenCalled();
+    expect(mockIsUserBlocked).not.toHaveBeenCalled();
+    expect(mockIsApiBlocked).not.toHaveBeenCalled();
   });
 
   it("returns shouldStop=false when metronomeCustomerId is null, reading nothing", async () => {
     const auth = makeAuth({ metronomeCustomerId: null });
     const result = await callGate(auth);
     expect(result).toEqual({ shouldStop: false, reason: null });
-    expect(mockGetCachedPoolCredits).not.toHaveBeenCalled();
+    expect(mockIsUserBlocked).not.toHaveBeenCalled();
   });
 
-  it("reads the balance for this message and uses it", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(100);
-
-    const auth = makeAuth();
+  it("does not stop when the user is not blocked", async () => {
+    mockIsUserBlocked.mockResolvedValue(null);
+    const auth = makeAuth({ hasUser: true });
     const result = await callGate(auth);
-
-    expect(mockGetCachedPoolCredits).toHaveBeenCalledWith(
-      "ws_test",
-      "metro_123"
-    );
-    expect(result.shouldStop).toBe(false);
+    expect(result).toEqual({ shouldStop: false, reason: null });
   });
 
-  it("does not stop when the workspace is in overage (PAYG), even if local spend exceeds the balance", async () => {
-    mockGetWorkspaceCreditPoolStatus.mockResolvedValue("overage");
-    mockGetCachedPoolCredits.mockResolvedValue(10);
-    mockComputeAgentMessageCredits.mockReturnValue(1000);
-
-    const auth = makeAuth();
-    const result = await callGate(auth, { runIds: ["run1"] });
-
-    expect(result.shouldStop).toBe(false);
-    // Short-circuits before touching the balance or local spend at all.
-    expect(mockGetCachedPoolCredits).not.toHaveBeenCalled();
-    expect(mockListByAgentMessageIds).not.toHaveBeenCalled();
+  it.each([
+    "credits_exhausted",
+    "user_cap_reached",
+    "no_seat",
+  ] as const)("stops as credits_exhausted when isUserBlocked returns %s", async (blockedReason) => {
+    mockIsUserBlocked.mockResolvedValue(blockedReason);
+    const auth = makeAuth({ hasUser: true });
+    const result = await callGate(auth);
+    expect(result).toEqual({
+      shouldStop: true,
+      reason: "credits_exhausted",
+    });
   });
 
-  it("does not stop while local spend is below the balance", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(100);
-    mockComputeAgentMessageCredits.mockReturnValue(40);
-
-    const auth = makeAuth();
-    const result = await callGate(auth, { runIds: ["run1"] });
-
-    expect(result.shouldStop).toBe(false);
+  it("checks isApiBlocked (not isUserBlocked) when there is no human user", async () => {
+    const auth = makeAuth({ hasUser: false });
+    await callGate(auth);
+    expect(mockIsUserBlocked).not.toHaveBeenCalled();
+    expect(mockIsApiBlocked).toHaveBeenCalledWith("ws_test");
   });
 
-  it("stops with credits_exhausted once local spend reaches the balance", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(100);
-    mockComputeAgentMessageCredits.mockReturnValue(100);
-
-    const auth = makeAuth();
-    const result = await callGate(auth, { runIds: ["run1"] });
-
+  it("stops when isApiBlocked is true (no human user)", async () => {
+    mockIsApiBlocked.mockResolvedValue(true);
+    const auth = makeAuth({ hasUser: false });
+    const result = await callGate(auth);
     expect(result).toEqual({ shouldStop: true, reason: "credits_exhausted" });
   });
 
-  it("counts both LLM run usage and tool actions toward local spend", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(100);
-    mockListRunUsagesForRuns.mockResolvedValue([{ costMicroUsd: 1 }]);
-    mockListByDustRunIds.mockResolvedValue([{ id: 1 }]);
-    mockListByAgentMessageIds.mockResolvedValue([
-      {
-        metadata: { internalMCPServerName: "web_search" },
-        status: "succeeded",
-      },
-    ]);
-
+  it("does not check the programmatic cap when userMessageOrigin is null", async () => {
     const auth = makeAuth();
-    await callGate(auth, { runIds: ["run1"] });
-
-    // Tool actions are fetched for the message and passed (mapped) to the billing computation
-    // alongside the LLM run usages — so the subtraction is the full cost, not LLM-only.
-    expect(mockListByAgentMessageIds).toHaveBeenCalledWith(auth, [1]);
-    expect(mockComputeAgentMessageCredits).toHaveBeenCalledWith(
-      expect.objectContaining({
-        runUsages: [{ costMicroUsd: 1 }],
-        actions: [{ internalMCPServerName: "web_search", status: "succeeded" }],
-        isFreeUsage: false,
-      })
-    );
+    await callGate(auth, null);
+    expect(mockIsProgrammaticUsage).not.toHaveBeenCalled();
+    expect(mockIsProgrammaticApiBlocked).not.toHaveBeenCalled();
   });
 
-  it("passes isFreeUsage through so free-origin messages cost 0 against the pool", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(100);
-
+  it("does not check the programmatic cap when this origin isn't programmatic usage", async () => {
+    mockIsProgrammaticUsage.mockReturnValue(false);
     const auth = makeAuth();
-    await callGate(auth, { runIds: ["run1"], isFreeUsage: true });
-
-    expect(mockComputeAgentMessageCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ isFreeUsage: true })
-    );
+    await callGate(auth, "api");
+    expect(mockIsProgrammaticApiBlocked).not.toHaveBeenCalled();
   });
 
-  it("stops on a real zero balance even with zero local spend (distinct from an unreadable one)", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(0);
-    mockComputeAgentMessageCredits.mockReturnValue(0);
-
+  it("stops when this is programmatic usage and the monthly cap is reached", async () => {
+    mockIsProgrammaticUsage.mockReturnValue(true);
+    mockIsProgrammaticApiBlocked.mockResolvedValue(true);
     const auth = makeAuth();
-    const result = await callGate(auth);
-
-    expect(result.shouldStop).toBe(true);
+    const result = await callGate(auth, "api");
+    expect(result).toEqual({ shouldStop: true, reason: "credits_exhausted" });
   });
 
-  it("does NOT stop when the balance is unreadable (null), even with spend", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(null);
-
+  it("does not stop when this is programmatic usage but the cap isn't reached", async () => {
+    mockIsProgrammaticUsage.mockReturnValue(true);
+    mockIsProgrammaticApiBlocked.mockResolvedValue(false);
     const auth = makeAuth();
-    const result = await callGate(auth, { runIds: ["run1", "run2"] });
-
-    expect(result.shouldStop).toBe(false);
-    // Doesn't compute local spend when there's no balance to compare against.
-    expect(mockListByAgentMessageIds).not.toHaveBeenCalled();
+    const result = await callGate(auth, "api");
+    expect(result).toEqual({ shouldStop: false, reason: null });
   });
 
-  it("propagates a hard pool-status (Redis) read failure rather than silently not stopping", async () => {
-    mockGetWorkspaceCreditPoolStatus.mockRejectedValue(
-      new Error("redis unavailable")
-    );
-
+  it("propagates a hard read failure rather than silently not stopping", async () => {
+    mockIsUserBlocked.mockRejectedValue(new Error("redis unavailable"));
     const auth = makeAuth();
     await expect(callGate(auth)).rejects.toThrow("redis unavailable");
-  });
-
-  it("propagates a hard balance (Redis) read failure", async () => {
-    mockGetCachedPoolCredits.mockRejectedValue(new Error("redis unavailable"));
-
-    const auth = makeAuth();
-    await expect(callGate(auth, { runIds: ["run1"] })).rejects.toThrow(
-      "redis unavailable"
-    );
-  });
-
-  it("propagates a local-spend (Postgres) query failure", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(100);
-    mockListByAgentMessageIds.mockRejectedValue(new Error("db down"));
-
-    const auth = makeAuth();
-    await expect(callGate(auth, { runIds: ["run1"] })).rejects.toThrow(
-      "db down"
-    );
-  });
-
-  it("skips the LLM run-usage query when there are no runs, but still accounts for tool usage", async () => {
-    mockGetCachedPoolCredits.mockResolvedValue(100);
-
-    const auth = makeAuth();
-    await callGate(auth, { runIds: [] });
-
-    expect(mockListByDustRunIds).not.toHaveBeenCalled();
-    // Tool actions are still fetched (a step can produce tool spend with no model run).
-    expect(mockListByAgentMessageIds).toHaveBeenCalledWith(auth, [1]);
-    expect(mockComputeAgentMessageCredits).toHaveBeenCalled();
   });
 });
