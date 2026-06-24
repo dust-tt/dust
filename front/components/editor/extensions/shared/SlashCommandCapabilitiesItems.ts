@@ -13,8 +13,6 @@ export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
 export const SELECT_TOOL_SLASH_COMMAND_ACTION = "select-tool";
 export const RUN_COMMAND_SLASH_COMMAND_ACTION = "run-command";
 export const INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION = "insert-knowledge-node";
-export const INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION =
-  "insert-context-file-search-node";
 
 export type SlashCommandSkillSuggestion = Pick<
   SkillWithoutInstructionsAndToolsType,
@@ -63,10 +61,6 @@ export interface InsertKnowledgeSlashCommand extends SlashCommand {
   action: typeof INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION;
 }
 
-export interface InsertContextFileSlashCommand extends SlashCommand {
-  action: typeof INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION;
-}
-
 export function isSkillSlashCommand(
   item: SlashCommand
 ): item is SkillSlashCommand {
@@ -89,12 +83,6 @@ export function isInsertKnowledgeSlashCommand(
   item: SlashCommand
 ): item is InsertKnowledgeSlashCommand {
   return item.action === INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION;
-}
-
-export function isInsertContextFileSlashCommand(
-  item: SlashCommand
-): item is InsertContextFileSlashCommand {
-  return item.action === INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION;
 }
 
 export function matchesSlashCommandCapabilityQuery({

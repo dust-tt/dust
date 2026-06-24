@@ -330,13 +330,11 @@ const InputBarContainer = ({
   const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
   includeAttachKnowledgeRef.current = actions.includes("attachment");
   const contextSpaceId = conversation?.spaceId ?? space?.sId ?? null;
-  const includeSelectContextFileRef = useRef(
-    actions.includes("attachment") &&
-      (Boolean(conversation?.sId) || Boolean(contextSpaceId))
+  const includeContextFilesRef = useRef(
+    Boolean(conversation?.sId) || Boolean(contextSpaceId)
   );
-  includeSelectContextFileRef.current =
-    actions.includes("attachment") &&
-    (Boolean(conversation?.sId) || Boolean(contextSpaceId));
+  includeContextFilesRef.current =
+    Boolean(conversation?.sId) || Boolean(contextSpaceId);
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -660,7 +658,7 @@ const InputBarContainer = ({
       selectedMCPServerViewIdsRef,
       slashCommandsRef,
       includeAttachKnowledgeRef,
-      includeSelectContextFileRef,
+      includeContextFilesRef,
       attachedNodesRef,
       onNodeSelectRef,
       spaceIdRef,

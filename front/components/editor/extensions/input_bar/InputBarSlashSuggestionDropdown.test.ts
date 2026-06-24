@@ -1,5 +1,4 @@
 import {
-  INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION,
   INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
   isRunCommandSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
@@ -51,7 +50,6 @@ describe("buildInputBarSlashCommandItems", () => {
     const result = buildInputBarSlashCommandItems({
       commands: [],
       includeAttachKnowledge: false,
-      includeSelectContextFile: false,
       query: "",
     });
 
@@ -62,36 +60,14 @@ describe("buildInputBarSlashCommandItems", () => {
     const result = buildInputBarSlashCommandItems({
       commands: ALL_COMMANDS,
       includeAttachKnowledge: true,
-      includeSelectContextFile: true,
       query: "",
     });
 
     expect(result.map(getInputBarSlashCommandItemId)).toEqual([
       "compact",
-      "reference-file",
       "upload-file",
       "attach-knowledge",
     ]);
-  });
-
-  it("excludes reference file when includeSelectContextFile is false", () => {
-    expect(
-      buildInputBarSlashCommandItems({
-        commands: ALL_COMMANDS,
-        includeAttachKnowledge: true,
-        includeSelectContextFile: false,
-        query: "",
-      }).map(getInputBarSlashCommandItemId)
-    ).toEqual(["compact", "upload-file", "attach-knowledge"]);
-
-    expect(
-      buildInputBarSlashCommandItems({
-        commands: ALL_COMMANDS,
-        includeAttachKnowledge: true,
-        includeSelectContextFile: false,
-        query: "reference",
-      })
-    ).toEqual([]);
   });
 
   it("excludes attach knowledge when includeAttachKnowledge is false", () => {
@@ -99,16 +75,14 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: false,
-        includeSelectContextFile: true,
         query: "",
       }).map(getInputBarSlashCommandItemId)
-    ).toEqual(["compact", "reference-file", "upload-file"]);
+    ).toEqual(["compact", "upload-file"]);
 
     expect(
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: false,
-        includeSelectContextFile: true,
         query: "knowledge",
       })
     ).toEqual([]);
@@ -118,7 +92,6 @@ describe("buildInputBarSlashCommandItems", () => {
     const result = buildInputBarSlashCommandItems({
       commands: ALL_COMMANDS,
       includeAttachKnowledge: true,
-      includeSelectContextFile: true,
       query: "compact",
     });
 
@@ -128,7 +101,6 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: INPUT_BAR_SLASH_COMMANDS,
         includeAttachKnowledge: true,
-        includeSelectContextFile: true,
         query: "upload",
       }).map(getInputBarSlashCommandItemId)
     ).toEqual(["upload-file"]);
@@ -137,7 +109,6 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
-        includeSelectContextFile: true,
         query: "knowledge",
       }).map((item) => item.action)
     ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
@@ -146,16 +117,22 @@ describe("buildInputBarSlashCommandItems", () => {
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
-        includeSelectContextFile: true,
         query: "reference",
       }).map((item) => item.action)
-    ).toEqual([INSERT_CONTEXT_FILE_SLASH_COMMAND_ACTION]);
+    ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
 
     expect(
       buildInputBarSlashCommandItems({
         commands: ALL_COMMANDS,
         includeAttachKnowledge: true,
-        includeSelectContextFile: true,
+        query: "company",
+      }).map((item) => item.action)
+    ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
         query: "zzz",
       })
     ).toEqual([]);

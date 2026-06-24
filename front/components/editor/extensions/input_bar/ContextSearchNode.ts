@@ -1,17 +1,17 @@
 import { Node } from "@tiptap/core";
 
-export const KNOWLEDGE_SEARCH_NODE_TYPE = "knowledgeSearchNode";
+export const CONTEXT_SEARCH_NODE_TYPE = "contextSearchNode";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
-    knowledgeSearchNode: {
-      insertKnowledgeSearchNode: () => ReturnType;
+    contextSearchNode: {
+      insertContextSearchNode: () => ReturnType;
     };
   }
 }
 
-export const KnowledgeSearchNode = Node.create({
-  name: KNOWLEDGE_SEARCH_NODE_TYPE,
+export const ContextSearchNode = Node.create({
+  name: CONTEXT_SEARCH_NODE_TYPE,
   group: "inline",
   inline: true,
   atom: true,
@@ -22,12 +22,12 @@ export const KnowledgeSearchNode = Node.create({
   },
 
   renderHTML() {
-    return ["span", { "data-knowledge-search": "true" }];
+    return ["span", { "data-context-search": "true" }];
   },
 
   addCommands() {
     return {
-      insertKnowledgeSearchNode:
+      insertContextSearchNode:
         () =>
         ({ chain }) =>
           chain().insertContent({ type: this.name }).run(),

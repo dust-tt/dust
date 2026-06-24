@@ -1,15 +1,14 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { InputBarContextSearchNode } from "@app/components/editor/extensions/input_bar/ContextSearchNodeWithView";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { FilePreviewExtension } from "@app/components/editor/extensions/input_bar/FilePreviewExtension";
-import { InputBarFileSearchNode } from "@app/components/editor/extensions/input_bar/FileSearchNodeWithView";
 import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
-import { InputBarKnowledgeSearchNode } from "@app/components/editor/extensions/input_bar/KnowledgeSearchNodeWithView";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
@@ -315,7 +314,7 @@ export interface CustomEditorProps {
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
-    includeSelectContextFileRef: React.RefObject<boolean>;
+    includeContextFilesRef: React.RefObject<boolean>;
     attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
     onNodeSelectRef: React.RefObject<
       ((node: DataSourceViewContentNode) => void) | undefined
@@ -463,13 +462,10 @@ export const buildEditorExtensions = ({
 
   if (slashSuggestion) {
     extensions.push(
-      InputBarFileSearchNode.configure({
-        conversationIdRef: slashSuggestion.conversationIdRef,
-        owner,
-        spaceIdRef: slashSuggestion.spaceIdRef,
-      }),
-      InputBarKnowledgeSearchNode.configure({
+      InputBarContextSearchNode.configure({
         attachedNodesRef: slashSuggestion.attachedNodesRef,
+        conversationIdRef: slashSuggestion.conversationIdRef,
+        includeFilesRef: slashSuggestion.includeContextFilesRef,
         onNodeSelectRef: slashSuggestion.onNodeSelectRef,
         owner,
         spaceIdRef: slashSuggestion.spaceIdRef,
@@ -483,8 +479,7 @@ export const buildEditorExtensions = ({
         onActiveChangeRef: onSuggestionActiveChangeRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
-        includeSelectContextFileRef:
-          slashSuggestion.includeSelectContextFileRef,
+        includeContextFilesRef: slashSuggestion.includeContextFilesRef,
       })
     );
   }

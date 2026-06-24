@@ -30,7 +30,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     selectedMCPServerViewIdsRef: RefObject<Set<string>>;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: RefObject<boolean>;
-    includeSelectContextFileRef: RefObject<boolean>;
   }
 >(
   (
@@ -46,7 +45,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       selectedMCPServerViewIdsRef,
       slashCommandsRef,
       includeAttachKnowledgeRef,
-      includeSelectContextFileRef,
     },
     ref
   ) => {
@@ -57,16 +55,9 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         buildInputBarSlashCommandItems({
           commands: slashCommandsRef.current ?? [],
           includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
-          includeSelectContextFile:
-            includeSelectContextFileRef.current ?? false,
           query,
         }),
-      [
-        includeAttachKnowledgeRef,
-        includeSelectContextFileRef,
-        query,
-        slashCommandsRef,
-      ]
+      [includeAttachKnowledgeRef, query, slashCommandsRef]
     );
 
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
