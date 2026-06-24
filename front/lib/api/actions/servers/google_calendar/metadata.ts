@@ -106,7 +106,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_event: {
-    description: "Create a new event in a Google Calendar.",
+    description:
+      "Create a new event in a Google Calendar. By default: (1) add the calling user as both organizer and attendee, (2) call check_availability to verify attendee availability beforehand, (3) call get_user_timezones first to determine attendee timezones for accurate scheduling.",
     schema: {
       calendarId: z
         .string()
@@ -294,7 +295,6 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
 });
 
 export const GOOGLE_CALENDAR_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "google_calendar",
     version: "1.0.0",
@@ -307,8 +307,7 @@ export const GOOGLE_CALENDAR_SERVER = {
     },
     icon: "GcalLogo",
     documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-    instructions:
-      "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
+    instructions: null,
   },
   tools: Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => ({
     name: t.name,
