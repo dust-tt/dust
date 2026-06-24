@@ -1,3 +1,4 @@
+import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
@@ -243,7 +244,6 @@ function FilePreviewDialogContent({
       }
       return null;
 
-    case "markdown":
     case "text":
       if (processedContent) {
         return (
@@ -251,6 +251,12 @@ function FilePreviewDialogContent({
             <Markdown content={processedContent.text} isStreaming={false} />
           </div>
         );
+      }
+      return null;
+
+    case "markdown":
+      if (processedContent) {
+        return <MarkdownFilePreview content={processedContent.text} />;
       }
       return null;
 
