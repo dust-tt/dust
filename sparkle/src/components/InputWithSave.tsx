@@ -97,18 +97,18 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
     return (
       <div
         className={cn(
-          "s-flex s-h-9 s-w-full s-items-center s-gap-1.5 s-rounded-xl s-border s-py-1.5 s-pl-3 s-text-sm",
-          showSaveButton ? "s-pr-1.5" : "s-pr-3",
+          // Matches the redesigned Input (sm): 32px tall, rounded-xl, subtle
+          // border-dark focus (no ring). The Save button sits inset on the
+          // right, so tighten the right padding when it shows.
+          "s-flex s-h-8 s-w-full s-items-center s-gap-1.5 s-rounded-xl s-border s-py-1.5 s-pl-3 s-text-sm s-transition-colors",
+          showSaveButton ? "s-pr-1" : "s-pr-3",
           "s-bg-background dark:s-bg-background-night",
           "s-border-border dark:s-border-border-night",
-          "s-ring-inset s-ring-highlight/0 dark:s-ring-highlight-night/0",
           disabled
             ? "s-cursor-not-allowed"
             : cn(
                 "s-cursor-text",
-                "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
-                "focus-within:s-ring-2",
-                "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50"
+                "focus-within:s-border-border-dark dark:focus-within:s-border-border-dark-night"
               ),
           className
         )}
@@ -122,8 +122,8 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
             // inner input must not render its own outline or ring.
             "s-outline-none focus:s-outline-none focus-visible:s-outline-none",
             "s-ring-0 focus:s-ring-0 focus-visible:s-ring-0 s-shadow-none",
-            "dark:s-text-primary-50",
-            "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
+            "s-text-foreground dark:s-text-foreground-night",
+            "placeholder:s-text-faint dark:placeholder:s-text-faint-night",
             disabled &&
               "s-cursor-not-allowed s-text-muted-foreground dark:s-text-muted-foreground-night"
           )}

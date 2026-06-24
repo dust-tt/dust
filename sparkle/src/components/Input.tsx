@@ -181,7 +181,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ? "disabled"
           : "default";
     return (
-      <div className={cn("s-flex s-flex-col s-gap-1", containerClassName)}>
+      <div className={cn("s-flex s-flex-col s-gap-1.5", containerClassName)}>
         {label && (
           <label htmlFor={props.name} className={labelVariants({ size })}>
             {label}
