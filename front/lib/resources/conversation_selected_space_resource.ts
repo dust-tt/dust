@@ -17,6 +17,7 @@ import { Op } from "sequelize";
 function sortSelectedSpaceRowsBySelectionOrder<T extends { id: ModelId }>(
   rows: T[]
 ): T[] {
+  // Selection order is insertion order. Reactivating a row keeps its original position.
   return [...rows].sort((left, right) => left.id - right.id);
 }
 
@@ -35,6 +36,22 @@ function pickSpacesInModelIdOrder({
       spacesByModelId.get(spaceModelId)
     )
   );
+}
+
+function dedupeSpacesByFirstModelId(spaces: SpaceResource[]): SpaceResource[] {
+  const seenSpaceModelIds = new Set<ModelId>();
+  const uniqueSpaces: SpaceResource[] = [];
+
+  for (const space of spaces) {
+    if (seenSpaceModelIds.has(space.id)) {
+      continue;
+    }
+
+    seenSpaceModelIds.add(space.id);
+    uniqueSpaces.push(space);
+  }
+
+  return uniqueSpaces;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -130,7 +147,8 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
     return withTransaction(async (t) => {
       const workspace = auth.getNonNullableWorkspace();
       const user = auth.getNonNullableUser();
-      const spaceModelIds = spaces.map((space) => space.id);
+      const uniqueSpaces = dedupeSpacesByFirstModelId(spaces);
+      const spaceModelIds = uniqueSpaces.map((space) => space.id);
 
       if (spaceModelIds.length === 0) {
         return {
@@ -162,13 +180,14 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
         (row) => row.spaceId
       );
       const reactivatedRowModelIds = reactivatedRows.map((row) => row.id);
-      const createdSpaces = spaces.filter(
+      const missingSpaces = uniqueSpaces.filter(
         (space) => !existingSpaceModelIds.has(space.id)
       );
+      let createdSpaceModelIds: ModelId[] = [];
 
-      if (createdSpaces.length > 0) {
-        await this.model.bulkCreate(
-          createdSpaces.map((space) => ({
+      if (missingSpaces.length > 0) {
+        const createdRows = await this.model.bulkCreate(
+          missingSpaces.map((space) => ({
             workspaceId: workspace.id,
             conversationId: conversation.id,
             spaceId: space.id,
@@ -178,6 +197,11 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
           })),
           { ignoreDuplicates: true, transaction: t }
         );
+
+        // With `ignoreDuplicates`, rows skipped by a concurrent insert come back without an id.
+        createdSpaceModelIds = createdRows
+          .filter((row) => Number.isInteger(row.id))
+          .map((row) => row.spaceId);
       }
 
       if (reactivatedRowModelIds.length > 0) {
@@ -214,13 +238,54 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
         selectedSpaces: sortSelectedSpaceRowsBySelectionOrder(selectedRows).map(
           (row) => new this(this.model, row.get())
         ),
-        createdSpaces,
+        createdSpaces: pickSpacesInModelIdOrder({
+          spaces: uniqueSpaces,
+          orderedSpaceModelIds: createdSpaceModelIds,
+        }),
         reactivatedSpaces: pickSpacesInModelIdOrder({
-          spaces,
+          spaces: uniqueSpaces,
           orderedSpaceModelIds: reactivatedSpaceModelIds,
         }),
       };
     }, transaction);
+  }
+
+  static async removeForConversation(
+    auth: Authenticator,
+    {
+      conversation,
+      spaces,
+      transaction,
+    }: {
+      conversation: { id: ModelId };
+      spaces: SpaceResource[];
+      transaction?: Transaction;
+    }
+  ): Promise<number> {
+    const spaceModelIds = dedupeSpacesByFirstModelId(spaces).map(
+      (space) => space.id
+    );
+
+    if (spaceModelIds.length === 0) {
+      return 0;
+    }
+
+    const [updatedCount] = await this.model.update(
+      { removedAt: new Date() },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          conversationId: conversation.id,
+          removedAt: null,
+          spaceId: {
+            [Op.in]: spaceModelIds,
+          },
+        },
+        transaction,
+      }
+    );
+
+    return updatedCount;
   }
 
   static async deleteForConversation(

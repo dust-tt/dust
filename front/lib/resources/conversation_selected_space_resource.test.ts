@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -76,16 +75,10 @@ describe("ConversationSelectedSpaceResource", () => {
       origin: "input_bar",
       spaces: [secondSpace, firstSpace],
     });
-    await ConversationSelectedSpaceModel.update(
-      { removedAt: new Date() },
-      {
-        where: {
-          conversationId: conversation.id,
-          spaceId: firstSpace.id,
-          workspaceId: workspace.id,
-        },
-      }
-    );
+    await ConversationSelectedSpaceResource.removeForConversation(auth, {
+      conversation,
+      spaces: [firstSpace],
+    });
 
     const activeRows =
       await ConversationSelectedSpaceResource.listByConversation(auth, {
@@ -132,16 +125,10 @@ describe("ConversationSelectedSpaceResource", () => {
     ).toEqual([space.sId]);
     expect(created.reactivatedSpaces).toEqual([]);
 
-    await ConversationSelectedSpaceModel.update(
-      { removedAt: new Date() },
-      {
-        where: {
-          conversationId: conversation.id,
-          spaceId: space.id,
-          workspaceId: workspace.id,
-        },
-      }
-    );
+    await ConversationSelectedSpaceResource.removeForConversation(auth, {
+      conversation,
+      spaces: [space],
+    });
 
     const reactivated =
       await ConversationSelectedSpaceResource.upsertForConversation(auth, {
@@ -163,5 +150,37 @@ describe("ConversationSelectedSpaceResource", () => {
     );
     expect(row.origin).toBe("parent_conversation");
     expect(row.removedAt).toBeNull();
+  });
+
+  it("deduplicates selected Spaces before creating rows", async () => {
+    const conversation = await createConversation();
+    const space = await createMemberRestrictedRegularSpace();
+
+    const created =
+      await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+        conversation,
+        origin: "input_bar",
+        spaces: [space, space],
+      });
+
+    expect(created.selectedSpaces.map((row) => row.spaceId)).toEqual([
+      space.id,
+    ]);
+    expect(
+      created.createdSpaces.map((createdSpace) => createdSpace.sId)
+    ).toEqual([space.sId]);
+
+    const alreadySelected =
+      await ConversationSelectedSpaceResource.upsertForConversation(auth, {
+        conversation,
+        origin: "input_bar",
+        spaces: [space, space],
+      });
+
+    expect(alreadySelected.selectedSpaces.map((row) => row.spaceId)).toEqual([
+      space.id,
+    ]);
+    expect(alreadySelected.createdSpaces).toEqual([]);
+    expect(alreadySelected.reactivatedSpaces).toEqual([]);
   });
 });
