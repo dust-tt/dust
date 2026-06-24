@@ -599,13 +599,12 @@ app.post(
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
     } else if ("sandboxAllowAgentEgressRequests" in body) {
-      if (!(await hasFeatureFlag(auth, "sandbox_workspace_admin"))) {
+      if (!(await hasFeatureFlag(auth, "sandbox_tools"))) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message:
-              "Sandbox workspace admin configuration is not enabled for this workspace.",
+            message: "Sandbox tools are not enabled for this workspace.",
           },
         });
       }

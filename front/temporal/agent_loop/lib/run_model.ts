@@ -393,10 +393,7 @@ export async function runModel(
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
   const featureFlags = await getFeatureFlags(auth);
-  const hasSandboxTools = isComputerFeatureEnabled(
-    featureFlags,
-    "sandbox_tools"
-  );
+  const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
   );

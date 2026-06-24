@@ -2,7 +2,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isWhitelistableFeature,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
@@ -25,9 +28,11 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
   static async listAll(): Promise<GlobalFeatureFlagResource[]> {
     const flags = await GlobalFeatureFlagModel.findAll();
 
-    return flags.map(
-      (f) => new GlobalFeatureFlagResource(GlobalFeatureFlagModel, f.get())
-    );
+    return flags
+      .map(
+        (f) => new GlobalFeatureFlagResource(GlobalFeatureFlagModel, f.get())
+      )
+      .filter((flag) => isWhitelistableFeature(flag.name));
   }
 
   static async setRolloutPercentage(

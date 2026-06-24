@@ -23,7 +23,7 @@ function readHeaders(ctx: Context): Record<string, string> {
 /**
  * Authenticates a sandbox action callback request. Requires a sandbox token in
  * the Authorization header, resolves the sandbox `Authenticator`, enforces the
- * `sandbox_dsbx_tools` flag, and stashes both `auth` and the verified token
+ * `sandbox_tools` flag, and stashes both `auth` and the verified token
  * `sandboxClaims` on the context so handlers don't re-verify the token.
  *
  * Mirrors `withSandboxAuthentication` in `front/lib/api/auth_wrappers.ts`.
@@ -78,12 +78,12 @@ export const sandboxAuth = createMiddleware<SandboxCtx>(async (ctx, next) => {
   const auth = authRes.value;
 
   const featureFlags = await getFeatureFlags(auth);
-  if (!isComputerFeatureEnabled(featureFlags, "sandbox_dsbx_tools")) {
+  if (!isComputerFeatureEnabled(featureFlags)) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "invalid_request_error",
-        message: "Sandbox dsbx tools are not enabled for this workspace.",
+        message: "Sandbox tools are not enabled for this workspace.",
       },
     });
   }

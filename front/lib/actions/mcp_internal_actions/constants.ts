@@ -1056,7 +1056,7 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
-      return !isComputerFeatureEnabled(featureFlags, "sandbox_tools");
+      return !isComputerFeatureEnabled(featureFlags);
     },
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,

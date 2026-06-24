@@ -7,9 +7,7 @@ import { ContentMessage, Globe01, InfoCircle, Page } from "@dust-tt/sparkle";
 export function SandboxPage() {
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasSandboxAdmin =
-    isComputerFeatureEnabled(featureFlags, "sandbox_tools") &&
-    isComputerFeatureEnabled(featureFlags, "sandbox_workspace_admin");
+  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
 
   const renderBody = () => {
     if (!isAdmin) {

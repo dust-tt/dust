@@ -176,9 +176,7 @@ export function EnvironmentSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasSandboxAdmin =
-    isComputerFeatureEnabled(featureFlags, "sandbox_tools") &&
-    isComputerFeatureEnabled(featureFlags, "sandbox_workspace_admin");
+  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToReplace, setEnvVarToReplace] =

@@ -136,6 +136,6 @@ export const docxSkill = {
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
-    return !isComputerFeatureEnabled(flags, "sandbox_tools");
+    return !isComputerFeatureEnabled(flags);
   },
 } as const satisfies GlobalSkillDefinition;

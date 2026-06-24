@@ -33,9 +33,7 @@ export function NetworkSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasSandboxAdmin =
-    isComputerFeatureEnabled(featureFlags, "sandbox_tools") &&
-    isComputerFeatureEnabled(featureFlags, "sandbox_workspace_admin");
+  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
   const [domainInput, setDomainInput] = useState("");
   const [isEnableAgentRequestsDialogOpen, setIsEnableAgentRequestsDialogOpen] =
     useState(false);

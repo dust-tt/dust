@@ -405,7 +405,7 @@ export const subNavigationAdmin = ({
         icon: Globe01,
         href: `/w/${owner.sId}/developers/sandbox`,
         current: isCurrent("sandbox"),
-        featureFlag: "sandbox_workspace_admin",
+        featureFlag: "sandbox_tools",
         disabled: !hasWorkspaceAdminPermission,
       },
       ...(computeIsSelfImprovementAvailable({

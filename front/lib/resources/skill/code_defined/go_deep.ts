@@ -25,7 +25,7 @@ export const goDeepSkill = {
     _params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const flags = await getFeatureFlags(auth);
-    const hasSandbox = isComputerFeatureEnabled(flags, "sandbox_tools");
+    const hasSandbox = isComputerFeatureEnabled(flags);
     return getDeepDiveInstructions({
       includeToolsetsPrompt: false,
       hasSandbox,

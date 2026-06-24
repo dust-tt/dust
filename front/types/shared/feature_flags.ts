@@ -221,17 +221,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   sandbox_tools: {
     description:
-      "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
-    stage: "on_demand",
-  },
-  sandbox_dsbx_tools: {
-    description:
-      "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
-    stage: "on_demand",
-  },
-  sandbox_workspace_admin: {
-    description:
-      "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
+      "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
     stage: "on_demand",
   },
   run_tools_from_prompt: {
@@ -379,28 +369,14 @@ export const WHITELISTABLE_FEATURES = Object.keys(
 export const DISABLE_COMPUTER_FEATURE =
   "disable_computer_feature" as const satisfies WhitelistableFeature;
 
-export const COMPUTER_FEATURE_FLAGS = [
-  "sandbox_tools",
-  "sandbox_dsbx_tools",
-  "sandbox_workspace_admin",
-] as const satisfies readonly WhitelistableFeature[];
-
-export type ComputerFeatureFlag = (typeof COMPUTER_FEATURE_FLAGS)[number];
-
-export function isComputerFeatureFlag(
-  feature: WhitelistableFeature
-): feature is ComputerFeatureFlag {
-  return COMPUTER_FEATURE_FLAGS.some(
-    (computerFeature) => computerFeature === feature
-  );
-}
+export const COMPUTER_FEATURE =
+  "sandbox_tools" as const satisfies WhitelistableFeature;
 
 export function isComputerFeatureEnabled(
-  featureFlags: WhitelistableFeature[],
-  feature: ComputerFeatureFlag
+  featureFlags: WhitelistableFeature[]
 ): boolean {
   return (
-    featureFlags.includes(feature) &&
+    featureFlags.includes(COMPUTER_FEATURE) &&
     !featureFlags.includes(DISABLE_COMPUTER_FEATURE)
   );
 }

@@ -1649,7 +1649,7 @@ export async function getGlobalAgents(
       mcpServerViews,
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
-      hasSandbox: isComputerFeatureEnabled(flags, "sandbox_tools"),
+      hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
       preferGpt55DefaultModel: flags.includes("dust_agent_gpt_5_5_default"),

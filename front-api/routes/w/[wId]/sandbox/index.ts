@@ -16,13 +16,6 @@ app.use(
     message: "Sandbox tools are not enabled for this workspace.",
   })
 );
-app.use(
-  "*",
-  withFeatureFlag("sandbox_workspace_admin", {
-    message:
-      "Sandbox workspace admin configuration is not enabled for this workspace.",
-  })
-);
 
 app.route("/egress-policy", egressPolicy);
 app.route("/env-vars", envVars);

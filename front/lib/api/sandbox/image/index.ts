@@ -46,9 +46,8 @@ export function getToolsForProvider(
 }
 
 // TODO(dsbx-tools): Hacky temporary filtering — we strip the `dsbx` tool
-// entry from the manifest by name when the `sandbox_dsbx_tools` flag is
-// off so it is not advertised to the model. Remove once `dsbx tools` ships
-// to all sandbox-enabled workspaces and the flag goes away.
+// entry from the manifest by name when the sandbox tools flag is off so it is
+// not advertised to the model.
 export function filterDsbxToolEntries(
   tools: readonly ToolEntry[],
   { includeDsbxTools }: { includeDsbxTools: boolean }

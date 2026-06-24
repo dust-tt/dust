@@ -192,7 +192,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
   }
 
   const flags = await getFeatureFlags(auth);
-  const hasSandboxTools = isComputerFeatureEnabled(flags, "sandbox_tools");
+  const hasSandboxTools = isComputerFeatureEnabled(flags);
 
   if (
     !ensureFileSize(contentType, fileSize, {

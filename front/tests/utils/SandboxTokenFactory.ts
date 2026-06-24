@@ -17,10 +17,8 @@ process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
 export async function createSandboxTokenTestContext({
   enableSandboxTools = false,
-  enableDsbxTools = false,
 }: {
   enableSandboxTools?: boolean;
-  enableDsbxTools?: boolean;
 } = {}) {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
@@ -34,9 +32,6 @@ export async function createSandboxTokenTestContext({
 
   if (enableSandboxTools) {
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
-  }
-  if (enableDsbxTools) {
-    await FeatureFlagFactory.basic(auth, "sandbox_dsbx_tools");
   }
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {

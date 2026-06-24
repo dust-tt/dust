@@ -39,8 +39,8 @@ import { hasRolePermissions } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
+  COMPUTER_FEATURE,
   isComputerFeatureEnabled,
-  isComputerFeatureFlag,
   WHITELISTABLE_FEATURES,
 } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1651,8 +1651,8 @@ export async function hasFeatureFlag(
   flag: WhitelistableFeature
 ): Promise<boolean> {
   const flags = await getFeatureFlags(auth);
-  if (isComputerFeatureFlag(flag)) {
-    return isComputerFeatureEnabled(flags, flag);
+  if (flag === COMPUTER_FEATURE) {
+    return isComputerFeatureEnabled(flags);
   }
 
   return flags.includes(flag);

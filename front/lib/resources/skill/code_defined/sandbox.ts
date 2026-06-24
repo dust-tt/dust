@@ -127,10 +127,7 @@ function formatWorkspaceAllowlist(domains: string[]): string {
 
 async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
   const flags = await getFeatureFlags(auth);
-  const hasWorkspaceAdmin = isComputerFeatureEnabled(
-    flags,
-    "sandbox_workspace_admin"
-  );
+  const hasWorkspaceAdmin = isComputerFeatureEnabled(flags);
   const allowAgentRequests =
     hasWorkspaceAdmin &&
     auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
@@ -373,7 +370,7 @@ export const sandboxSkill = {
   ) => {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
     const flags = await getFeatureFlags(auth);
-    const hasDsbxTools = isComputerFeatureEnabled(flags, "sandbox_dsbx_tools");
+    const hasDsbxTools = isComputerFeatureEnabled(flags);
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
@@ -392,6 +389,6 @@ export const sandboxSkill = {
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
-    return !isComputerFeatureEnabled(flags, "sandbox_tools");
+    return !isComputerFeatureEnabled(flags);
   },
 } as const satisfies SystemSkillDefinition;
