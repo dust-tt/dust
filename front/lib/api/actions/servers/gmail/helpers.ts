@@ -1,6 +1,6 @@
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { escape } from "html-escaper";
 import sanitizeHtml from "sanitize-html";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export interface GmailHeader {
   name: string;
