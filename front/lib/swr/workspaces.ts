@@ -6,10 +6,6 @@ import type {
 } from "@app/lib/api/analytics/awu_usage";
 import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import type {
-  GetMetronomeUsageResponse,
-  MetronomeUsageGroupByType,
-} from "@app/lib/api/analytics/metronome_usage";
-import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
@@ -600,56 +596,6 @@ export function useWorkspaceProgrammaticCost({
     isProgrammaticCostLoading: !error && !data && !disabled,
     isProgrammaticCostError: error,
     isProgrammaticCostValidating: isValidating,
-  };
-}
-
-export function useMetronomeUsage({
-  workspaceId,
-  groupBy,
-  groupByCount,
-  selectedPeriod,
-  billingCycleStartDay,
-  windowSize,
-  disabled,
-}: {
-  workspaceId: string;
-  groupBy?: MetronomeUsageGroupByType;
-  groupByCount?: number;
-  selectedPeriod?: string;
-  billingCycleStartDay: number;
-  windowSize?: "HOUR" | "DAY";
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetMetronomeUsageResponse> = fetcher;
-
-  const queryParams = new URLSearchParams();
-  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
-  if (selectedPeriod) {
-    queryParams.set("selectedPeriod", selectedPeriod);
-  }
-  if (groupBy) {
-    queryParams.set("groupBy", groupBy);
-  }
-  if (groupByCount !== undefined) {
-    queryParams.set("groupByCount", groupByCount.toString());
-  }
-  if (windowSize) {
-    queryParams.set("windowSize", windowSize);
-  }
-  const queryString = queryParams.toString();
-  const key = `/api/w/${workspaceId}/analytics/metronome-usage?${queryString}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    metronomeUsageData: data,
-    isMetronomeUsageLoading: !error && !data && !disabled,
-    isMetronomeUsageError: error,
-    isMetronomeUsageValidating: isValidating,
   };
 }
 

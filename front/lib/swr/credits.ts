@@ -57,35 +57,27 @@ function resetPostPurchaseRefreshCount(workspaceId: string): void {
 
 export function useCredits({
   workspaceId,
-  metronomeCustomerId,
   disabled,
 }: {
   workspaceId: string;
-  metronomeCustomerId?: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const creditsFetcher: Fetcher<GetCreditsResponseBody> = fetcher;
 
-  const endpoint = metronomeCustomerId
-    ? `/api/w/${workspaceId}/credits/metronome-balances`
-    : `/api/w/${workspaceId}/credits`;
-
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    endpoint,
+    `/api/w/${workspaceId}/credits`,
     creditsFetcher,
     {
       disabled,
-      refreshInterval: metronomeCustomerId
-        ? undefined
-        : () => {
-            const count = getPostPurchaseRefreshCount(workspaceId);
-            if (count < 5) {
-              incrementPostPurchaseRefreshCount(workspaceId);
-              return 5000;
-            }
-            return 0;
-          },
+      refreshInterval: () => {
+        const count = getPostPurchaseRefreshCount(workspaceId);
+        if (count < 5) {
+          incrementPostPurchaseRefreshCount(workspaceId);
+          return 5000;
+        }
+        return 0;
+      },
     }
   );
 

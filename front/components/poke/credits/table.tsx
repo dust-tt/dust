@@ -15,11 +15,9 @@ const PokeProgrammaticCostChart = safeLazy(() =>
   )
 );
 
-const PokeMetronomeUsageChart = safeLazy(() =>
-  import("@app/components/poke/credits/PokeMetronomeUsageChart").then(
-    (mod) => ({
-      default: mod.PokeMetronomeUsageChart,
-    })
+const PokeAwuUsageFromAnalyticsChart = safeLazy(() =>
+  import("@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart").then(
+    (mod) => ({ default: mod.PokeAwuUsageFromAnalyticsChart })
   )
 );
 
@@ -135,7 +133,7 @@ export function CreditsDataTable({
             />
           </Suspense>
           <Suspense fallback={<PokeChartFallback />}>
-            <PokeMetronomeUsageChart
+            <PokeAwuUsageFromAnalyticsChart
               owner={owner}
               billingCycleStartDay={billingCycleStartDay}
             />
