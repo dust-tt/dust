@@ -61,10 +61,6 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
-  extendedSkillId: {
-    type: DANGEROUSLY_UNBOUNDED_TEXT,
-    allowNull: true,
-  },
   source: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -112,8 +108,6 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare icon: string | null;
 
   declare editedBy: ForeignKey<UserModel["id"]> | null;
-  // Legacy nullable column kept in the model until a schema migration drops it.
-  declare extendedSkillId: string | null;
 
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
