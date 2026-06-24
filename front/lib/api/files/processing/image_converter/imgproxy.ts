@@ -27,7 +27,10 @@ function buildImgproxyUrl({
   const salt = Buffer.from(config.getImgproxySalt(), "hex");
 
   const encodedSource = Buffer.from(sourceUrl).toString("base64url");
-  const path = `/rs:fit:${maxSizePixels}:${maxSizePixels}:0/${encodedSource}.${extension}`;
+  // q:75 re-encodes below imgproxy's default (80) to shrink file size while
+  // keeping text and detail legible to vision models. Lossy-format only (JPEG);
+  // a no-op for PNG/GIF.
+  const path = `/rs:fit:${maxSizePixels}:${maxSizePixels}:0/q:75/${encodedSource}.${extension}`;
 
   const signature = crypto
     .createHmac("sha256", key)

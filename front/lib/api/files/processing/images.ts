@@ -16,6 +16,11 @@ const AVATAR_IMG_MAX_SIZE_PIXELS = 256;
 const BRANDING_LOGO_MAX_SIZE_PIXELS = 512;
 const BRANDING_FAVICON_MAX_SIZE_PIXELS = 256;
 
+// Images within the pixel limit are kept as-is below this byte size; above it
+// we still re-encode (via the converter) to bring the file size down, since a
+// small-dimension image can still be several MB.
+const IMG_REENCODE_THRESHOLD_BYTES = 1024 * 1024;
+
 function getMaxSizePixels(file: FileResource): number {
   if (file.useCase === "avatar") {
     return AVATAR_IMG_MAX_SIZE_PIXELS;
@@ -67,6 +72,11 @@ async function resizeRasterImage(
   file: FileResource,
   maxSizePixels: number
 ): Promise<Result<undefined, Error>> {
+  // Only imgproxy re-encodes at a lower quality (q:75); ConvertAPI can only
+  // rescale, so routing a within-dimension file through it is a paid no-op.
+  // Gate the byte-based re-encode on imgproxy being the active converter.
+  const useImgproxy = await hasFeatureFlag(auth, "imgproxy_image_resize");
+
   try {
     const readStreamForProbe = file.getReadStream({
       auth,
@@ -95,9 +105,13 @@ async function resizeRasterImage(
       throw new Error("Could not determine image dimensions");
     }
 
+    const withinByteBudget =
+      !useImgproxy || file.fileSize <= IMG_REENCODE_THRESHOLD_BYTES;
+
     if (
       dimensions.width <= maxSizePixels &&
-      dimensions.height <= maxSizePixels
+      dimensions.height <= maxSizePixels &&
+      withinByteBudget
     ) {
       const readStream = file.getReadStream({ auth, version: "original" });
       const writeStream = file.getWriteStream({ auth, version: "processed" });
@@ -106,6 +120,7 @@ async function resizeRasterImage(
         {
           dimensions: { width: dimensions.width, height: dimensions.height },
           maxSizePixels,
+          fileSize: file.fileSize,
         },
         "Image already within size limits, skipping resize"
       );
@@ -129,7 +144,7 @@ async function resizeRasterImage(
   const resizeOptions = { format, maxSizePixels };
 
   const converter = await getImageConverter(auth);
-  const resizeResult = (await hasFeatureFlag(auth, "imgproxy_image_resize"))
+  const resizeResult = useImgproxy
     ? await converter.resizeFromUrl(
         await file.getSignedUrlForInlineView(auth),
         resizeOptions
