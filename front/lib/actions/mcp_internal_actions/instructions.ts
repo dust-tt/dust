@@ -43,27 +43,3 @@ The output includes:
 -   Other object-level properties.
 This is the most reliable way to discover the correct names for fields and relationships before writing an \`execute_read_query\`.
 `;
-
-export const JIRA_SERVER_INSTRUCTIONS = `
-      You have access to the following tools: get_issue, get_projects, get_project, get_transitions, create_comment, get_issues, get_issue_types, get_issue_create_fields, get_connection_info, transition_issue, create_issue, update_issue, create_issue_link, delete_issue_link, get_issue_link_types, get_users, get_issue_read_fields.
-
-      # General Workflow for JIRA Data:
-      1.  **Authenticate:** Use \`get_connection_info\` to authenticate with JIRA if you are not authenticated ("No access token found").
-      2.  **For Create/Update Operations:** Always use \`get_issue_types\` and \`get_issue_create_fields\` with the specific issue typename to get its create/update-time metadata (fields available on the Create/Update screens).
-      3.  **Execute Read Query:** Use \`get_issues\` to retrieve data using JQL. Construct your JQL queries based on the information obtained from \`get_issue_types\` to ensure you are using correct field and relationship names.
-
-      **Best Practices for Querying:**
-      1.  **Discover Object Structure First:** Use \`get_issue_create_fields\` to understand fields available for create/update in a given project and issue type. Alternatively, for a quick field list directly in a query, use \`get_issues\`.
-      2.  **Verify Field and Relationship Names:** If you encounter JIRA 400 errors suggesting that the field or relationship does not exist, use \`get_issue_types\` for the relevant object(s) to confirm the exact names and their availability.
-
-      **Field Selection for get_issue (Optional Performance Optimization):**
-      - By default, \`get_issue\` returns essential fields: summary, issuetype, priority, assignee, reporter, labels, duedate, parent, project, status
-      - Only use \`get_issue_read_fields\` if you need additional custom fields or want to optimize performance by requesting specific fields
-      - For built-in fields use the \`key\` (e.g., "summary", "issuetype", "status"). For custom fields use the \`id\` (e.g., "customfield_10020").
-
-      **User Lookup (get_users):**
-      - Provide emailAddress for exact match on email. Example: { "emailAddress": "jane.doe@acme.com" }
-      - Or provide name for case-insensitive contains on display name. Example: { "name": "Jane" }
-      - If neither emailAddress nor name is provided, the tool lists the first maxResults users.
-      - For pagination, pass startAt using the previous result's nextStartAt. Example: { "name": "Jane", "startAt": 100 }
-    `;
