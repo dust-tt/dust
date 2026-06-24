@@ -2,8 +2,8 @@ import { SubscriptionModel } from "@app/lib/models/plan";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
+import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import { makeScript } from "@app/scripts/helpers";
-import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { Op } from "sequelize";
 
 const AGE_THRESHOLD_DAYS = 7;
@@ -47,19 +47,19 @@ async function scrubWorkspaceBatch(
   await concurrentExecutor(
     toScrub,
     async (workspace) => {
-      const res = await launchImmediateWorkspaceScrubWorkflow({
+      const res = await launchDeleteWorkspaceWorkflow({
         workspaceId: workspace.sId,
       });
       if (res.isErr()) {
         logger.error(
           { workspaceId: workspace.sId, error: res.error },
-          "Failed to launch scrub workflow."
+          "Failed to launch delete workspace workflow."
         );
         return;
       }
       logger.info(
-        { workspaceId: workspace.sId, workflowId: res.value },
-        "Launched immediate scrub workflow."
+        { workspaceId: workspace.sId },
+        "Launched delete workspace workflow."
       );
     },
     { concurrency: SCRUB_CONCURRENCY }
