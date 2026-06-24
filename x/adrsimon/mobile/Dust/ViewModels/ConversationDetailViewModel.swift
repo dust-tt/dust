@@ -78,6 +78,14 @@ final class ConversationDetailViewModel: ObservableObject {
         turn?.snapshot.completedSteps ?? []
     }
 
+    /// The agent used in the conversation's latest agent message, so the input bar can target it.
+    var currentAgentId: String? {
+        for message in messages.reversed() {
+            if case let .agent(agentMsg) = message { return agentMsg.configuration.sId }
+        }
+        return nil
+    }
+
     /// Overlays the streaming message with its live snapshot until finalize commits it.
     func renderMessage(_ message: ConversationMessage) -> ConversationMessage {
         guard case let .agent(agent) = message,

@@ -7,6 +7,8 @@ private let logger = Logger(subsystem: AppConfig.bundleId, category: "InputBar")
 
 @MainActor
 final class InputBarViewModel: ObservableObject {
+    private static let defaultAgentId = "dust"
+
     @Published var agents: [LightAgentConfiguration] = []
     @Published var selectedAgent: LightAgentConfiguration?
     @Published var messageText: String = ""
@@ -22,6 +24,8 @@ final class InputBarViewModel: ObservableObject {
     @Published var selectedCapabilities: [Capability] = []
     @Published var selectedKnowledgeItems: [KnowledgeItem] = []
     private var hasLoadedCapabilities = false
+    /// Id of the conversation's agent, kept until the agents list is available to resolve it.
+    private var pendingAgentId: String?
 
     lazy var speechService = SpeechService(workspaceId: workspaceId, tokenProvider: tokenProvider)
 
@@ -54,8 +58,9 @@ final class InputBarViewModel: ObservableObject {
                 }
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
+            applyPendingAgent()
             if selectedAgent == nil {
-                selectedAgent = agents.first { $0.sId == "dust" } ?? agents.first
+                selectedAgent = agents.first { $0.sId == Self.defaultAgentId } ?? agents.first
             }
         } catch {
             logger.error("Failed to load agents: \(error)")
@@ -137,6 +142,19 @@ final class InputBarViewModel: ObservableObject {
                 showAgentPicker = true
             }
         }
+    }
+
+    /// Target the agent used in the conversation's latest message (existing conversations).
+    func selectConversationAgent(id: String) {
+        pendingAgentId = id
+        applyPendingAgent()
+    }
+
+    private func applyPendingAgent() {
+        guard let id = pendingAgentId,
+              let match = agents.first(where: { $0.sId == id }) else { return }
+        selectedAgent = match
+        pendingAgentId = nil
     }
 
     func selectAgent(_ agent: LightAgentConfiguration) {
@@ -354,7 +372,7 @@ final class InputBarViewModel: ObservableObject {
     }
 
     private func resolveMentions() -> [MentionPayload] {
-        let agentId = selectedAgent?.sId ?? "dust"
+        let agentId = selectedAgent?.sId ?? Self.defaultAgentId
         return [MentionPayload(configurationId: agentId)]
     }
 

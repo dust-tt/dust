@@ -93,6 +93,11 @@ struct ConversationDetailView: View {
             async let caps: () = inputBarViewModel.loadCapabilities()
             _ = await (agents, caps)
         }
+        .onChange(of: viewModel.currentAgentId) { _, agentId in
+            if let agentId {
+                inputBarViewModel.selectConversationAgent(id: agentId)
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await viewModel.resyncOnForeground() }
