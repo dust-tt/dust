@@ -141,10 +141,16 @@ procs:
       npm run dev
     autostart: false
 
-  extension:
+  extension-chrome:
     cwd: "<CONFIG_DIR>/../extension"
     shell: |
       npm run dev:chrome
+    autostart: false
+
+  extension-firefox:
+    cwd: "<CONFIG_DIR>/../extension"
+    shell: |
+      npm run dev:firefox
     autostart: false
 
   ngrok:

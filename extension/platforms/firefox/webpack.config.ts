@@ -255,6 +255,10 @@ export const getConfig = async ({
             to: path.join(buildDirPath, "request-mic.js"),
           },
           {
+            from: resolvePath("../../ui/pcm-processor.js"),
+            to: path.join(buildDirPath, "pcm-processor.js"),
+          },
+          {
             context: resolvePath("../../ui/images"),
             from: "**/*.png",
             to: path.resolve(buildDirPath, "images"),

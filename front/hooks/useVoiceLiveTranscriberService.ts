@@ -50,6 +50,13 @@ registerProcessor('pcm-processor', PCMProcessor);
 `;
 
 function createPCMWorkletURL(): string {
+  // Chrome extensions block blob: URLs in script-src CSP. Use the pre-bundled static file instead.
+  if (
+    typeof chrome !== "undefined" &&
+    typeof chrome.runtime?.getURL === "function"
+  ) {
+    return chrome.runtime.getURL("pcm-processor.js");
+  }
   const blob = new Blob([PCM_WORKLET_CODE], { type: "application/javascript" });
   return URL.createObjectURL(blob);
 }

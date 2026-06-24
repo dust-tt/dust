@@ -188,8 +188,14 @@ processes:
     namespace: optional
     disabled: true
 
-  extension:
+  extension-chrome:
     command: "npm run dev:chrome"
+    working_dir: "${DUST_DEV_ROOT}/extension"
+    namespace: optional
+    disabled: true
+
+  extension-firefox:
+    command: "npm run dev:firefox"
     working_dir: "${DUST_DEV_ROOT}/extension"
     namespace: optional
     disabled: true
