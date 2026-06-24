@@ -44,8 +44,10 @@ export function DefaultModelSelect({
         <div className="flex flex-col gap-2">
           <div>{model.shortDescription}</div>
           <div>
-            This model powers Dust, dust-task and every agent set to follow the
-            workspace default — it changes the cost and latency of those agents.
+            This model powers @dust, @dust-task and every default agent. It is
+            also the default option for newly created agents. Cost and latency
+            may vary depending on the model you select. You can always change it
+            later.
           </div>
         </div>
       ),
@@ -108,8 +110,11 @@ export function DefaultModelSelect({
         model to freeze it.{" "}
         {isAutomatic && (
           <>
-            No model is selected — agents currently use{" "}
-            <span className="font-medium">{resolvedModel.displayName}</span>.
+            <br />
+            <b>
+              No model is set. Agents currently default to Dust's recommended
+              model: {resolvedModel.displayName}
+            </b>
           </>
         )}
       </div>
