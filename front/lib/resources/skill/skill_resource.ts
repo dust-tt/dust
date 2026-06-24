@@ -3678,9 +3678,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         fileName: file.fileName,
       })),
       canWrite: this.canWrite(auth),
-      isExtendable: false,
       isDefault: this.isDefault,
-      extendedSkillId: null,
     };
   }
 
