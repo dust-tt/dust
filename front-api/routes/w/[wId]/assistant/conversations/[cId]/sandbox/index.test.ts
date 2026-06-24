@@ -18,9 +18,9 @@ async function setup() {
   return { workspace, auth, conversation };
 }
 
-function getSandboxStatus(workspace: { sId: string }, cId: string) {
+function getSandboxStatus(workspace: { sId: string }, conversationId: string) {
   return honoApp.request(
-    `/api/w/${workspace.sId}/assistant/conversations/${cId}/sandbox`
+    `/api/w/${workspace.sId}/assistant/conversations/${conversationId}/sandbox`
   );
 }
 
