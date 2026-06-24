@@ -6,17 +6,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockEnableForAgent,
   mockBatchFetchUsedBySkills,
+  mockFetchActiveByName,
   mockFetchActiveByIdsForAgentLoop,
   mockGetFileAttachments,
-  mockListActiveByNameForAgentLoop,
   mockListForAgentLoop,
   mockLoadSkillFilesToConversation,
 } = vi.hoisted(() => ({
   mockEnableForAgent: vi.fn(),
   mockBatchFetchUsedBySkills: vi.fn(),
+  mockFetchActiveByName: vi.fn(),
   mockFetchActiveByIdsForAgentLoop: vi.fn(),
   mockGetFileAttachments: vi.fn(),
-  mockListActiveByNameForAgentLoop: vi.fn(),
   mockListForAgentLoop: vi.fn(),
   mockLoadSkillFilesToConversation: vi.fn(),
 }));
@@ -28,8 +28,8 @@ vi.mock("@app/lib/api/skills/conversation_files", () => ({
 vi.mock("@app/lib/resources/skill/skill_resource", () => ({
   SkillResource: {
     batchFetchUsedBySkills: mockBatchFetchUsedBySkills,
+    fetchActiveByName: mockFetchActiveByName,
     fetchActiveByIdsForAgentLoop: mockFetchActiveByIdsForAgentLoop,
-    listActiveByNameForAgentLoop: mockListActiveByNameForAgentLoop,
     listForAgentLoop: mockListForAgentLoop,
   },
 }));
@@ -88,8 +88,8 @@ describe("skill_management enable_skill tool", () => {
       systemSkills: [],
     });
     mockBatchFetchUsedBySkills.mockResolvedValue(new Map());
+    mockFetchActiveByName.mockResolvedValue(null);
     mockFetchActiveByIdsForAgentLoop.mockResolvedValue([]);
-    mockListActiveByNameForAgentLoop.mockResolvedValue([]);
     mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: false });
     mockGetFileAttachments.mockReturnValue([{ fileName: "SKILL.md" }]);
     mockLoadSkillFilesToConversation.mockResolvedValue(
@@ -228,7 +228,7 @@ describe("skill_management enable_skill tool", () => {
       equippedSkills: [parentSkill],
       systemSkills: [],
     });
-    mockListActiveByNameForAgentLoop.mockResolvedValue([skill]);
+    mockFetchActiveByName.mockResolvedValue(skill);
     mockBatchFetchUsedBySkills.mockResolvedValue(
       new Map([
         [
@@ -244,16 +244,14 @@ describe("skill_management enable_skill tool", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockListActiveByNameForAgentLoop).toHaveBeenCalledWith(
-      auth,
-      "commit",
-      {
+    expect(mockFetchActiveByName).toHaveBeenCalledWith(auth, "commit", {
+      agentLoopData: {
         agentConfiguration,
         agentMessage,
         conversation,
         userMessage,
-      }
-    );
+      },
+    });
     expect(mockBatchFetchUsedBySkills).toHaveBeenCalledWith(auth, [skill]);
     expect(mockEnableForAgent).toHaveBeenCalledWith(auth, {
       agentConfiguration,
@@ -267,7 +265,7 @@ describe("skill_management enable_skill tool", () => {
       equippedSkills: [],
       systemSkills: [],
     });
-    mockListActiveByNameForAgentLoop.mockResolvedValue([skill]);
+    mockFetchActiveByName.mockResolvedValue(skill);
     mockBatchFetchUsedBySkills.mockResolvedValue(
       new Map([
         [
@@ -296,7 +294,7 @@ describe("skill_management enable_skill tool", () => {
       equippedSkills: [unavailableParentSkill],
       systemSkills: [],
     });
-    mockListActiveByNameForAgentLoop.mockResolvedValue([skill]);
+    mockFetchActiveByName.mockResolvedValue(skill);
     mockBatchFetchUsedBySkills.mockResolvedValue(
       new Map([
         [
@@ -328,7 +326,7 @@ describe("skill_management enable_skill tool", () => {
       systemSkills: [],
     });
     mockFetchActiveByIdsForAgentLoop.mockResolvedValue([parentSkill]);
-    mockListActiveByNameForAgentLoop.mockResolvedValue([skill]);
+    mockFetchActiveByName.mockResolvedValue(skill);
     mockBatchFetchUsedBySkills.mockResolvedValue(
       new Map([
         [
@@ -424,7 +422,7 @@ describe("skill_management enable_skill tool", () => {
     expect(mockEnableForAgent).toHaveBeenCalled();
   });
 
-  it("does not enable skills referenced before the latest compaction", async () => {
+  it("enables skills explicitly referenced before the latest compaction", async () => {
     const earlierUserMessage = {
       ...userMessage,
       content: '<skill id="skill-id" name="commit" />',
@@ -447,6 +445,7 @@ describe("skill_management enable_skill tool", () => {
       equippedSkills: [],
       systemSkills: [],
     });
+    mockFetchActiveByIdsForAgentLoop.mockResolvedValue([skill]);
 
     const result = await getTool().handler(
       { skillName: "commit" },
@@ -455,11 +454,49 @@ describe("skill_management enable_skill tool", () => {
       })
     );
 
+    expect(result.isOk()).toBe(true);
+    expect(mockFetchActiveByIdsForAgentLoop).toHaveBeenCalledWith(
+      auth,
+      ["skill-id"],
+      {
+        agentConfiguration,
+        agentMessage,
+        conversation: conversationWithCompaction,
+        userMessage,
+      }
+    );
+    expect(mockEnableForAgent).toHaveBeenCalled();
+  });
+
+  it("does not enable skills referenced by later user messages", async () => {
+    const laterUserMessage = {
+      ...userMessage,
+      content: '<skill id="skill-id" name="commit" />',
+      rank: 3,
+      sId: "later-user-message-id",
+    };
+    const conversationWithLaterSkill = {
+      ...conversation,
+      content: [[userMessage], [laterUserMessage]],
+    };
+    mockListForAgentLoop.mockResolvedValue({
+      enabledSkills: [],
+      equippedSkills: [],
+      systemSkills: [],
+    });
+
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra({
+        conversationOverride: conversationWithLaterSkill,
+      })
+    );
+
     expect(result.isErr()).toBe(true);
     expect(mockFetchActiveByIdsForAgentLoop).toHaveBeenCalledWith(auth, [], {
       agentConfiguration,
       agentMessage,
-      conversation: conversationWithCompaction,
+      conversation: conversationWithLaterSkill,
       userMessage,
     });
     expect(mockEnableForAgent).not.toHaveBeenCalled();

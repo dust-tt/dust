@@ -892,38 +892,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async fetchActiveByName(
     auth: Authenticator,
-    name: string
-  ): Promise<SkillResource | null> {
-    const resources = await this.baseFetch(auth, {
-      where: {
-        name,
-        status: "active",
-      },
-      limit: 1,
-    });
-
-    if (resources.length === 0) {
-      return null;
-    }
-
-    return resources[0];
-  }
-
-  static async listActiveByNameForAgentLoop(
-    auth: Authenticator,
     name: string,
-    agentLoopData: AgentLoopExecutionData
-  ): Promise<SkillResource[]> {
-    return this.baseFetch(
+    { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
+  ): Promise<SkillResource | null> {
+    const resources = await this.baseFetch(
       auth,
       {
         where: {
           name,
           status: "active",
         },
+        limit: 1,
       },
       { agentLoopData }
     );
+
+    if (resources.length === 0) {
+      return null;
+    }
+
+    return resources[0];
   }
 
   static async fetchByNames(

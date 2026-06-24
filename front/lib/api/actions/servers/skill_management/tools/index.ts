@@ -9,42 +9,17 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import {
-  isCompactionMessageType,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 
-async function findAvailableSkillForAgentLoop({
-  auth,
-  agentLoopData,
-  skillName,
-}: {
-  auth: Authenticator;
-  agentLoopData: AgentLoopExecutionData;
-  skillName: string;
-}): Promise<SkillResource | null> {
-  const { enabledSkills, equippedSkills, systemSkills } =
-    await SkillResource.listForAgentLoop(auth, agentLoopData);
+function extractSkillIdsFromConversationMessages(
+  agentLoopData: AgentLoopExecutionData
+): string[] {
   const userMessageSkillIds = new Set(
     extractUniqueSkillIds(agentLoopData.userMessage.content)
   );
-  let startIndex = 0;
-  for (let i = agentLoopData.conversation.content.length - 1; i >= 0; i--) {
-    const message = agentLoopData.conversation.content[i].at(-1);
 
-    if (
-      message &&
-      isCompactionMessageType(message) &&
-      message.status === "succeeded"
-    ) {
-      startIndex = i;
-      break;
-    }
-  }
-
-  for (let i = startIndex; i < agentLoopData.conversation.content.length; i++) {
-    const messageVersions = agentLoopData.conversation.content[i];
+  for (const messageVersions of agentLoopData.conversation.content) {
     const message = messageVersions.at(-1);
 
     if (
@@ -59,9 +34,23 @@ async function findAvailableSkillForAgentLoop({
     }
   }
 
+  return [...userMessageSkillIds];
+}
+
+async function findAvailableSkillForAgentLoop({
+  auth,
+  agentLoopData,
+  skillName,
+}: {
+  auth: Authenticator;
+  agentLoopData: AgentLoopExecutionData;
+  skillName: string;
+}): Promise<SkillResource | null> {
+  const { enabledSkills, equippedSkills, systemSkills } =
+    await SkillResource.listForAgentLoop(auth, agentLoopData);
   const userMessageSkills = await SkillResource.fetchActiveByIdsForAgentLoop(
     auth,
-    [...userMessageSkillIds],
+    extractSkillIdsFromConversationMessages(agentLoopData),
     agentLoopData
   );
   const directlyAllowedSkills = [
@@ -83,31 +72,26 @@ async function findAvailableSkillForAgentLoop({
       skill,
     ])
   );
-  const candidates = await SkillResource.listActiveByNameForAgentLoop(
-    auth,
-    skillName,
-    agentLoopData
-  );
-  if (candidates.length === 0) {
+  const candidate = await SkillResource.fetchActiveByName(auth, skillName, {
+    agentLoopData,
+  });
+  if (!candidate) {
     return null;
   }
 
-  const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(
-    auth,
-    candidates
-  );
+  const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(auth, [
+    candidate,
+  ]);
 
-  return (
-    candidates.find((skill) =>
-      (usedBySkillsByChild.get(skill.sId) ?? []).some(({ sId }) => {
-        const parentSkill = parentSkillById.get(sId);
+  return (usedBySkillsByChild.get(candidate.sId) ?? []).some(({ sId }) => {
+    const parentSkill = parentSkillById.get(sId);
 
-        return parentSkill
-          ? extractUniqueSkillIds(parentSkill.instructions).includes(skill.sId)
-          : false;
-      })
-    ) ?? null
-  );
+    return parentSkill
+      ? extractUniqueSkillIds(parentSkill.instructions).includes(candidate.sId)
+      : false;
+  })
+    ? candidate
+    : null;
 }
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
