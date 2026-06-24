@@ -369,14 +369,11 @@ export const WHITELISTABLE_FEATURES = Object.keys(
 export const DISABLE_COMPUTER_FEATURE =
   "disable_computer_feature" as const satisfies WhitelistableFeature;
 
-export const COMPUTER_FEATURE =
-  "sandbox_tools" as const satisfies WhitelistableFeature;
-
 export function isComputerFeatureEnabled(
   featureFlags: WhitelistableFeature[]
 ): boolean {
   return (
-    featureFlags.includes(COMPUTER_FEATURE) &&
+    featureFlags.includes("sandbox_tools") &&
     !featureFlags.includes(DISABLE_COMPUTER_FEATURE)
   );
 }

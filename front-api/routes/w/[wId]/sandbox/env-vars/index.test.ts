@@ -76,6 +76,18 @@ describe("GET/POST /api/w/:wId/sandbox/env-vars", () => {
     });
   });
 
+  it("returns 403 when Computer is disabled", async () => {
+    const { workspace, auth } = await setupTest();
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const response = await listEnvVars(workspace.sId);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "feature_flag_not_found" },
+    });
+  });
+
   it("returns an empty list when no env vars exist", async () => {
     const { workspace } = await setupTest();
 

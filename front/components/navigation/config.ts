@@ -3,7 +3,10 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
 import { hasPermission } from "@app/types/permissions";
 import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder, isOnlyBusinessAdmin } from "@app/types/user";
 import {
@@ -405,8 +408,9 @@ export const subNavigationAdmin = ({
         icon: Globe01,
         href: `/w/${owner.sId}/developers/sandbox`,
         current: isCurrent("sandbox"),
-        featureFlag: "sandbox_tools",
-        disabled: !hasWorkspaceAdminPermission,
+        disabled:
+          !hasWorkspaceAdminPermission ||
+          !isComputerFeatureEnabled(featureFlags),
       },
       ...(computeIsSelfImprovementAvailable({
         owner,

@@ -9,6 +9,7 @@ import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { afterEach, describe, expect, it } from "vitest";
 
 function invalidateAllCaches(auth: Authenticator) {
@@ -144,7 +145,7 @@ describe("getFeatureFlags with global flags", () => {
     expect(flags).toContain("sandbox_tools");
   });
 
-  it("disable_computer_feature takes precedence over workspace sandbox_tools", async () => {
+  it("keeps disable_computer_feature independent from raw feature flag checks", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -155,11 +156,13 @@ describe("getFeatureFlags with global flags", () => {
     ]);
     invalidateAllCaches(auth);
 
-    await expect(hasFeatureFlag(auth, "sandbox_tools")).resolves.toBe(false);
+    const flags = await getFeatureFlags(auth);
+    expect(isComputerFeatureEnabled(flags)).toBe(false);
+    await expect(hasFeatureFlag(auth, "sandbox_tools")).resolves.toBe(true);
     await expect(hasFeatureFlag(auth, "deepseek_feature")).resolves.toBe(true);
   });
 
-  it("disable_computer_feature takes precedence over globally rolled out sandbox_tools", async () => {
+  it("keeps disable_computer_feature independent from globally rolled out sandbox_tools", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -170,7 +173,8 @@ describe("getFeatureFlags with global flags", () => {
     const flags = await getFeatureFlags(auth);
     expect(flags).toContain("disable_computer_feature");
     expect(flags).toContain("sandbox_tools");
-    await expect(hasFeatureFlag(auth, "sandbox_tools")).resolves.toBe(false);
+    expect(isComputerFeatureEnabled(flags)).toBe(false);
+    await expect(hasFeatureFlag(auth, "sandbox_tools")).resolves.toBe(true);
   });
 });
 
