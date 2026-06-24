@@ -18,7 +18,6 @@ channels below) will get you a faster answer.
 
 For account-specific, billing, or workspace issues, use **in-app support** (the
 help/chat widget inside your Dust workspace), or email **support@dust.tt**.
-<!-- TODO: confirm the correct support email / in-app support entry point. -->
 
 ## 🐛 Bug reports
 
