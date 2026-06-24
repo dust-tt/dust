@@ -11,14 +11,13 @@
  *   npx tsx scripts/backfill_non_credit_membership_seat_type.ts --wId <sId> [--execute]
  */
 
-import { Op } from "sequelize";
-
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { Op } from "sequelize";
 
 makeScript(
   {
