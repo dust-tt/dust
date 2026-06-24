@@ -1,11 +1,11 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   DeleteAllPokeCacheResponseBody,
   GetPokeCacheResponseBody,
   RedisInstance,
-} from "@app/lib/api/poke/cache";
-import { clientFetch } from "@app/lib/egress/client";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+} from "@app/types/api/poke/cache";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useState } from "react";
 import type { Fetcher } from "swr";

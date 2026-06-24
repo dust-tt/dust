@@ -1,11 +1,14 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { RedisCacheResult, RedisInstance } from "@app/lib/api/poke/cache";
 import {
   usePokeCacheDeleteAll,
   usePokeCacheInvalidate,
   usePokeCacheLookup,
 } from "@app/poke/swr/cache";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import type {
+  RedisCacheResult,
+  RedisInstance,
+} from "@app/types/api/poke/cache";
 import type { CacheResourceDefinition } from "@app/types/shared/cache_resource_registry";
 import {
   buildCacheKey,

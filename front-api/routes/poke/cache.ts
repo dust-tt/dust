@@ -1,11 +1,11 @@
+import { runOnRedis, runOnRedisCache } from "@app/lib/api/redis";
+import logger from "@app/logger/logger";
 import type {
   DeleteAllPokeCacheResponseBody,
   DeletePokeCacheResponseBody,
   GetPokeCacheResponseBody,
   RedisCacheResult,
-} from "@app/lib/api/poke/cache";
-import { runOnRedis, runOnRedisCache } from "@app/lib/api/redis";
-import logger from "@app/logger/logger";
+} from "@app/types/api/poke/cache";
 import {
   buildCacheKey,
   buildCacheKeyPattern,
