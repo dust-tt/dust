@@ -28,7 +28,9 @@ import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 interface AwuUsageFromAnalyticsChartProps {
-  workspaceId: string;
+  // Base path to the awu-usage-analytics endpoint, allowing the same chart to
+  // back both the workspace admin page and Poke (different API namespaces).
+  endpoint: string;
   period: ObservabilityTimeRangeType;
 }
 
@@ -81,7 +83,7 @@ function formatTimestamp(timestamp: number, granularity: Granularity): string {
 }
 
 export function AwuUsageFromAnalyticsChart({
-  workspaceId,
+  endpoint,
   period,
 }: AwuUsageFromAnalyticsChartProps) {
   const [granularity, setGranularity] = useState<Granularity>("day");
@@ -115,7 +117,7 @@ export function AwuUsageFromAnalyticsChart({
 
   const { awuUsageData, isAwuUsageLoading, isAwuUsageError } =
     useAwuUsageFromAnalytics({
-      workspaceId,
+      endpoint,
       groupBy,
       groupByCount,
       granularity,
@@ -189,7 +191,7 @@ export function AwuUsageFromAnalyticsChart({
     exportParams.set("series", effectiveEnabledKeys.join(","));
   }
   const csvDownload = useDownloadCsv({
-    url: `/api/w/${workspaceId}/analytics/awu-usage-analytics?${exportParams.toString()}`,
+    url: `${endpoint}?${exportParams.toString()}`,
     filename: `dust_credit_usage_last_${period}_days.csv`,
     disabled: isAwuUsageLoading || !!isAwuUsageError || chartData.length === 0,
   });

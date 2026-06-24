@@ -704,14 +704,17 @@ export function useAwuUsage({
 }
 
 export function useAwuUsageFromAnalytics({
-  workspaceId,
+  endpoint,
   groupBy,
   groupByCount,
   granularity,
   days,
   disabled,
 }: {
-  workspaceId: string;
+  // Base path to the awu-usage-analytics endpoint, e.g.
+  // `/api/w/${wId}/analytics/awu-usage-analytics` (workspace admin) or
+  // `/api/poke/workspaces/${wId}/analytics/awu-usage-analytics` (Poke).
+  endpoint: string;
   groupBy?: "usage_type" | "agent" | "user" | "origin";
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
@@ -735,7 +738,7 @@ export function useAwuUsageFromAnalytics({
     queryParams.set("days", days.toString());
   }
   const queryString = queryParams.toString();
-  const key = `/api/w/${workspaceId}/analytics/awu-usage-analytics?${queryString}`;
+  const key = `${endpoint}?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

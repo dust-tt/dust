@@ -1,3 +1,4 @@
+import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import type { CreditBreakdownBy } from "@app/lib/api/assistant/observability/credit_usage";
 import {
   fetchCreditTimeseries,
@@ -31,6 +32,17 @@ export const AwuUsageAnalyticsQuerySchema = z.object({
 export type AwuUsageAnalyticsQuery = z.infer<
   typeof AwuUsageAnalyticsQuerySchema
 >;
+
+// HTTP query schema for the JSON/CSV export endpoints (both /api/w/... and
+// /api/poke/...). The `format` and `series` fields are transport concerns; the
+// remaining fields are forwarded to getAwuUsageFromAnalytics.
+export const AwuUsageAnalyticsExportQuerySchema =
+  AwuUsageAnalyticsQuerySchema.extend({
+    format: z.enum(["json", "csv"]).optional().default("json"),
+    // Comma-separated group keys to restrict the export to, mirroring the
+    // chart's legend drilldown. Absent means all returned series.
+    series: z.string().optional(),
+  });
 
 export type AwuUsageAnalyticsGroup = { groupKey: string; name: string };
 
@@ -155,4 +167,42 @@ export async function getAwuUsageFromAnalytics(
   }
 
   return new Ok({ granularity, groups: mappedGroups, points: mappedPoints });
+}
+
+const AWU_USAGE_CSV_HEADERS = [
+  "date",
+  "granularity",
+  "series",
+  "credits",
+] as const;
+
+// Flatten an AWU usage analytics response into a downloadable CSV, optionally
+// restricting to a subset of series (mirrors the chart's legend drilldown).
+export function awuUsageAnalyticsToCsv({
+  response,
+  series,
+  days,
+}: {
+  response: AwuUsageAnalyticsResponse;
+  series?: string;
+  days: number;
+}): { csv: string; filename: string } {
+  const { granularity, groups, points } = response;
+  const seriesFilter = series ? new Set(series.split(",")) : null;
+  const visibleGroups = seriesFilter
+    ? groups.filter((group) => seriesFilter.has(group.groupKey))
+    : groups;
+  const rows = points.flatMap((point) => {
+    const date = new Date(point.timestamp).toISOString().slice(0, 10);
+    return visibleGroups.map((group) => ({
+      date,
+      granularity,
+      series: group.name,
+      credits: point.values[group.groupKey] ?? 0,
+    }));
+  });
+  return {
+    csv: rowsToCsv(AWU_USAGE_CSV_HEADERS, rows),
+    filename: `dust_credit_usage_last_${days}_days.csv`,
+  };
 }

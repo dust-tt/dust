@@ -4,19 +4,18 @@ import {
   awuUsageAnalyticsToCsv,
   getAwuUsageFromAnalytics,
 } from "@app/lib/api/analytics/awu_usage_analytics";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 export type { AwuUsageAnalyticsResponse };
 
-const app = workspaceApp();
+// Mounted at /api/poke/workspaces/:wId/analytics/awu-usage-analytics.
+const app = pokeApp();
 
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
   validate("query", AwuUsageAnalyticsExportQuerySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

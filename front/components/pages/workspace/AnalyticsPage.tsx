@@ -95,7 +95,10 @@ export function AnalyticsPage() {
       />
       <div className="flex flex-col pb-8 gap-8">
         <SafeSuspense fallback={<ChartFallback />}>
-          <AwuUsageFromAnalyticsChart workspaceId={owner.sId} period={period} />
+          <AwuUsageFromAnalyticsChart
+            endpoint={`/api/w/${owner.sId}/analytics/awu-usage-analytics`}
+            period={period}
+          />
         </SafeSuspense>
         <WorkspaceUserCreditsTable workspaceId={owner.sId} period={period} />
         <WorkspaceAgentCreditsTable workspaceId={owner.sId} period={period} />
