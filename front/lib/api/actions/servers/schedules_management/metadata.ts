@@ -40,7 +40,8 @@ export const SCHEDULES_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
     },
   },
   list_schedules: {
-    description: "List all schedules created for this agent.",
+    description:
+      "List all schedules created for this agent and for the current user.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
