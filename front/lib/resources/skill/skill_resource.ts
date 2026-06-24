@@ -2068,22 +2068,49 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
+  async upsertEditors(
+    auth: Authenticator,
+    users: UserResource[]
+  ): Promise<Result<void, Error>> {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    if (!this.canWrite(auth)) {
+      return new Err(
+        new Error("User is not authorized to update skill editors.")
+      );
+    }
+
+    if (!this.editorGroup) {
+      return new Err(new Error("The skill does not have an editors group."));
+    }
+
+    const existingEditors = await this.listEditors(auth);
+    const existingEditorIds = new Set(existingEditors?.map((u) => u.id) ?? []);
+    const usersToAdd = users.filter((u) => !existingEditorIds.has(u.id));
+
+    if (usersToAdd.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const addResult = await this.editorGroup.dangerouslyAddMembers(auth, {
+      users: usersToAdd.map((u) => u.toJSON()),
+    });
+    if (addResult.isErr()) {
+      return new Err(new Error(addResult.error.message));
+    }
+
+    return new Ok(undefined);
+  }
+
   private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
     const user = auth.user();
-    if (!this.editorGroup || !user) {
+    if (!user) {
       return;
     }
 
-    if (!this.editorGroup.canWrite(auth)) {
-      return;
-    }
-
-    const isMember = await this.editorGroup.isMember(user);
-    if (!isMember) {
-      await this.editorGroup.dangerouslyAddMember(auth, {
-        user: user.toJSON(),
-      });
-    }
+    await this.upsertEditors(auth, [user]);
   }
 
   async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
