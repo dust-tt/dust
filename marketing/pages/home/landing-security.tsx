@@ -106,8 +106,8 @@ function EventLogCard({ rows }: { rows: LogRow[] }) {
         </span>
       </div>
       <div className="flex flex-col divide-y divide-border">
-        {rows.map((row, index) => (
-          <div key={index} className="flex items-start gap-4 px-6 py-5">
+        {rows.map((row) => (
+          <div key={row.time} className="flex items-start gap-4 px-6 py-5">
             <span
               className={cn(
                 "inline-flex flex-shrink-0 items-center rounded-md px-2 py-1 text-[10px] font-semibold uppercase leading-none tracking-[0.06em]",
@@ -197,7 +197,7 @@ function DotList({ items }: { items: DotItem[] }) {
         const theme = ACCENT[item.accent];
         return (
           <HomeReveal
-            key={index}
+            key={item.accent}
             variant="right"
             delay={80 + index * 60}
             className="flex items-start gap-3"
