@@ -128,34 +128,54 @@ export default function AgentBuilder({
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
   const hasPendingCreationRef = useRef(false);
 
-  const { actions, isActionsError, isActionsLoading, mutateActions } =
-    useAgentConfigurationActions(
-      owner.sId,
-      duplicateAgentId ?? agentConfiguration?.sId ?? null
-    );
+  const {
+    actions,
+    isActionsError,
+    isActionsLoading,
+    isActionsValidating,
+    mutateActions,
+  } = useAgentConfigurationActions(
+    owner.sId,
+    duplicateAgentId ?? agentConfiguration?.sId ?? null
+  );
 
-  const { triggers, isTriggersError, isTriggersLoading, mutateTriggers } =
-    useAgentTriggers({
-      workspaceId: owner.sId,
-      agentConfigurationId: agentConfiguration?.sId ?? null,
-    });
+  const {
+    triggers,
+    isTriggersError,
+    isTriggersLoading,
+    isTriggersValidating,
+    mutateTriggers,
+  } = useAgentTriggers({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
 
   const agentConfigurationIdForSkills =
     duplicateAgentId ?? agentConfiguration?.sId ?? null;
-  const { skills, isSkillsError, isSkillsLoading, mutateSkills } =
-    useAgentConfigurationSkills({
-      owner,
-      agentConfigurationId: agentConfigurationIdForSkills ?? "",
-      disabled: !agentConfigurationIdForSkills,
-    });
+  const {
+    skills,
+    isSkillsError,
+    isSkillsLoading,
+    isSkillsValidating,
+    mutateSkills,
+  } = useAgentConfigurationSkills({
+    owner,
+    agentConfigurationId: agentConfigurationIdForSkills ?? "",
+    disabled: !agentConfigurationIdForSkills,
+  });
 
   const shouldLoadEditors = !!agentConfiguration && !duplicateAgentId;
-  const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
-    useEditors({
-      owner,
-      agentConfigurationId: agentConfiguration?.sId ?? null,
-      disabled: !shouldLoadEditors,
-    });
+  const {
+    editors,
+    isEditorsError,
+    isEditorsLoading,
+    isEditorsValidating,
+    mutateEditors,
+  } = useEditors({
+    owner,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+    disabled: !shouldLoadEditors,
+  });
   const updateEditors = useUpdateEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
@@ -568,9 +588,16 @@ export default function AgentBuilder({
   const hasAgentDataLoadError =
     isActionsError || isSkillsError || !!isTriggersError || isEditorsError;
 
+  const isAgentDataValidating =
+    isActionsValidating ||
+    isSkillsValidating ||
+    isTriggersValidating ||
+    isEditorsValidating;
+
   const isSaveDisabled =
     isSubmitting ||
     hasAgentDataLoadError ||
+    isAgentDataValidating ||
     isActionsLoading ||
     isSkillsLoading ||
     isTriggersLoading ||
