@@ -18,6 +18,7 @@ import {
   useWorkspaceUsageStatus,
 } from "@app/lib/swr/user";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
@@ -139,14 +140,21 @@ interface UsageSectionProps {
 
 function UsageSection({ owner, onClose }: UsageSectionProps) {
   const { isAdmin, subscription } = useAuth();
+
+  const isCreditBased = isCreditPricedPlan(subscription.plan);
+
   const { myUsage, nextCreditResetAt, isMyUsageLoading } = useMyUsage({
     workspaceId: owner.sId,
+    disabled: !isCreditBased,
   });
-  const { seatPlans } = useSeatPlan({ workspaceId: owner.sId });
+  const { seatPlans } = useSeatPlan({
+    workspaceId: owner.sId,
+    disabled: !isCreditBased,
+  });
 
   const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
     owner,
-    disabled: isAdmin,
+    disabled: isAdmin || !isCreditBased,
   });
 
   const seatName =
@@ -164,67 +172,69 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
       title="Usage"
       description="Manage the usage of your Dust workspace"
     >
-      <section className="flex flex-col gap-2 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-highlight-100 outline outline-1 outline-highlight-500/20 dark:bg-highlight-100-night">
-              <Stars02 className="h-3 w-3 text-highlight-500" />
+      {isCreditBased && (
+        <section className="flex flex-col gap-2 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-highlight-100 outline outline-1 outline-highlight-500/20 dark:bg-highlight-100-night">
+                <Stars02 className="h-3 w-3 text-highlight-500" />
+              </span>
+              <span className="text-base font-semibold text-foreground dark:text-foreground-night">
+                {seatName}
+              </span>
             </span>
-            <span className="text-base font-semibold text-foreground dark:text-foreground-night">
-              {seatName}
-            </span>
-          </span>
-          <UsageUpgradeButton
-            owner={owner}
-            hasPendingUpgradeRequest={hasPendingUpgradeRequest}
-            variant="button"
-            isAdmin={isAdmin}
-            onAdminNavigate={onClose}
-          />
-        </div>
-        <Separator />
-        {isLoading ? (
-          <div className="flex justify-center py-2">
-            <Spinner size="sm" />
+            <UsageUpgradeButton
+              owner={owner}
+              hasPendingUpgradeRequest={hasPendingUpgradeRequest}
+              variant="button"
+              isAdmin={isAdmin}
+              onAdminNavigate={onClose}
+            />
           </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {hasPersonalUsage ? (
-              <>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                    Your Credits
-                  </span>
-                  {nextCreditResetAt &&
-                    (() => {
-                      const d = new Date(nextCreditResetAt);
-                      const month = d.toLocaleDateString("en-US", {
-                        month: "long",
-                        timeZone: "UTC",
-                      });
-                      return (
-                        <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                          Resets on {month} {ordinalDay(d.getUTCDate())}
-                        </span>
-                      );
-                    })()}
-                </div>
-                <AwuUsageBar
-                  consumed={myUsage?.consumedAwuCredits ?? 0}
-                  consumedFromAllowance={
-                    myUsage?.consumedFromAllowanceAwuCredits ?? 0
-                  }
-                  consumedFromPool={myUsage?.consumedFromPoolAwuCredits ?? 0}
-                  memberUsageLimit={myUsage?.memberUsageLimit ?? null}
-                  effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
-                  seatType={myUsage?.seatType ?? null}
-                  isTotalAllowedUsagePending={false}
-                />
-              </>
-            ) : null}
-          </div>
-        )}
-      </section>
+          <Separator />
+          {isLoading ? (
+            <div className="flex justify-center py-2">
+              <Spinner size="sm" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {hasPersonalUsage ? (
+                <>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                      Your Credits
+                    </span>
+                    {nextCreditResetAt &&
+                      (() => {
+                        const d = new Date(nextCreditResetAt);
+                        const month = d.toLocaleDateString("en-US", {
+                          month: "long",
+                          timeZone: "UTC",
+                        });
+                        return (
+                          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                            Resets on {month} {ordinalDay(d.getUTCDate())}
+                          </span>
+                        );
+                      })()}
+                  </div>
+                  <AwuUsageBar
+                    consumed={myUsage?.consumedAwuCredits ?? 0}
+                    consumedFromAllowance={
+                      myUsage?.consumedFromAllowanceAwuCredits ?? 0
+                    }
+                    consumedFromPool={myUsage?.consumedFromPoolAwuCredits ?? 0}
+                    memberUsageLimit={myUsage?.memberUsageLimit ?? null}
+                    effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
+                    seatType={myUsage?.seatType ?? null}
+                    isTotalAllowedUsagePending={false}
+                  />
+                </>
+              ) : null}
+            </div>
+          )}
+        </section>
+      )}
 
       {isAdmin && (
         <section className="flex items-center justify-between border-b border-border pb-4 dark:border-border-night">
