@@ -179,18 +179,18 @@ export type MembersUsagePaginationInput = z.infer<
   typeof MembersUsagePaginationSchema
 >;
 
-type ConsumedCreditsBucket = {
-  key: string;
+type ConsumedCreditsSplit = {
   credits?: estypes.AggregationsSumAggregate;
 };
 
-type ConsumedCreditsGroup = {
-  by_user?: estypes.AggregationsMultiBucketAggregateBase<ConsumedCreditsBucket>;
+type ConsumedCreditsBucket = {
+  key: string;
+  paid_credits?: ConsumedCreditsSplit;
+  free_credits?: ConsumedCreditsSplit;
 };
 
 type ConsumedCreditsAggs = {
-  paid_users?: ConsumedCreditsGroup;
-  free_users?: ConsumedCreditsGroup;
+  by_user?: estypes.AggregationsMultiBucketAggregateBase<ConsumedCreditsBucket>;
 };
 
 // Per-user consumed AWU credits for the current billing cycle, summed from the
@@ -237,13 +237,13 @@ async function fetchConsumedAwuCreditsByUserId({
   const { cycleStart, cycleEnd } = periodResult.value;
 
   const freeSeatUserIdSet = new Set(freeSeatUserIds);
-  const paidSeatUserIds = userIds.filter((id) => !freeSeatUserIdSet.has(id));
 
   const result = await searchAnalytics<never, ConsumedCreditsAggs>(
     {
       bool: {
         filter: [
           { term: { workspace_id: workspace.sId } },
+          { terms: { user_id: userIds } },
           // Mirror the billing-side filter: Metronome only emits usage events
           // and credits for these statuses (see usage_queue activities and
           // credit_cost), so failed messages carry a non-zero `cost.full_awu`
@@ -264,43 +264,27 @@ async function fetchConsumedAwuCreditsByUserId({
     },
     {
       aggregations: {
-        // Paid (and seatless) users: count only paid-seat usage, excluding any
-        // free-seat usage from before an upgrade. `must_not is_free_seat=true`
-        // (rather than `is_free_seat=false`) so historical docs indexed before
-        // this field existed — which can't be backfilled — count as paid.
-        paid_users: {
-          filter: {
-            bool: {
-              filter: [{ terms: { user_id: paidSeatUserIds } }],
-              must_not: [{ term: { is_free_seat: true } }],
-            },
+        // One bucket per user, each splitting consumption on the `is_free_seat`
+        // dimension so we can pick the side matching the user's current seat:
+        //   - `paid_credits`: paid-seat usage. `must_not is_free_seat=true`
+        //     (rather than `is_free_seat=false`) so historical docs indexed
+        //     before this field existed — which can't be backfilled — count as
+        //     paid.
+        //   - `free_credits`: free-seat usage (from before an upgrade).
+        by_user: {
+          terms: {
+            field: "user_id",
+            size: Math.max(1, userIds.length),
           },
           aggs: {
-            by_user: {
-              terms: {
-                field: "user_id",
-                size: Math.max(1, paidSeatUserIds.length),
+            paid_credits: {
+              filter: {
+                bool: { must_not: [{ term: { is_free_seat: true } }] },
               },
               aggs: { credits: { sum: { field: "cost.full_awu" } } },
             },
-          },
-        },
-        // Free-seat users: count their free-seat usage.
-        free_users: {
-          filter: {
-            bool: {
-              filter: [
-                { terms: { user_id: freeSeatUserIds } },
-                { term: { is_free_seat: true } },
-              ],
-            },
-          },
-          aggs: {
-            by_user: {
-              terms: {
-                field: "user_id",
-                size: Math.max(1, freeSeatUserIds.length),
-              },
+            free_credits: {
+              filter: { term: { is_free_seat: true } },
               aggs: { credits: { sum: { field: "cost.full_awu" } } },
             },
           },
@@ -318,18 +302,16 @@ async function fetchConsumedAwuCreditsByUserId({
   }
 
   const consumedByUserId = new Map<string, number>();
-  for (const group of [
-    result.value.aggregations?.paid_users,
-    result.value.aggregations?.free_users,
-  ]) {
-    for (const bucket of bucketsToArray<ConsumedCreditsBucket>(
-      group?.by_user?.buckets
-    )) {
-      consumedByUserId.set(
-        String(bucket.key),
-        Math.round(bucket.credits?.value ?? 0)
-      );
-    }
+  for (const bucket of bucketsToArray<ConsumedCreditsBucket>(
+    result.value.aggregations?.by_user?.buckets
+  )) {
+    const userId = String(bucket.key);
+    // Free-seat users count their free-seat usage; paid (and seatless) users
+    // count only their paid-seat usage.
+    const split = freeSeatUserIdSet.has(userId)
+      ? bucket.free_credits
+      : bucket.paid_credits;
+    consumedByUserId.set(userId, Math.round(split?.credits?.value ?? 0));
   }
   return consumedByUserId;
 }
@@ -1008,9 +990,22 @@ async function resolveMembersUsagePageUsers({
   const sortKeyByUserId = new Map<string, number>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
+      // Split consumed credits on seat type so free-seat users sort by their
+      // free-seat usage and everyone else by their paid-seat usage.
+      const { memberships } = await MembershipResource.getActiveMemberships({
+        workspace,
+        users: allUsers,
+      });
+      const seatTypeByUserModelId = new Map(
+        memberships.map((m) => [m.userId, m.seatType])
+      );
+      const freeSeatUserIds = allUsers.flatMap((u) =>
+        seatTypeByUserModelId.get(u.id) === "free" ? [u.sId] : []
+      );
       const creditsByUserId = await fetchConsumedAwuCreditsByUserId({
         workspace,
         userIds: allUsers.map((u) => u.sId),
+        freeSeatUserIds,
       });
       for (const u of allUsers) {
         sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
