@@ -71,10 +71,14 @@ export type StartVerificationError = {
   retryAfterSeconds?: number;
 };
 
+export type StartVerificationStatus = "code_sent" | "already_verified";
+
 export async function startVerification(
   auth: Authenticator,
   phoneNumber: string
-): Promise<Result<void, StartVerificationError>> {
+): Promise<
+  Result<{ status: StartVerificationStatus }, StartVerificationError>
+> {
   const workspace = auth.getNonNullableWorkspace();
   const workspaceModelId = workspace.id;
   const phoneNumberHash =
@@ -88,10 +92,7 @@ export async function startVerification(
 
   if (existingAttempt) {
     if (existingAttempt.status === "verified") {
-      return new Err({
-        type: "invalid_request_error",
-        message: "This workspace is already verified.",
-      });
+      return new Ok({ status: "already_verified" });
     }
   } else {
     const isPhoneUsedElsewhere =
@@ -208,5 +209,5 @@ export async function startVerification(
     );
   }
 
-  return new Ok(undefined);
+  return new Ok({ status: "code_sent" });
 }
