@@ -11,6 +11,7 @@ import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import { SendButton } from "@app/components/assistant/conversation/input_bar/SendButton";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
 import {
@@ -74,7 +75,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  ArrowUp,
   Attachment01,
   Button,
   Camera01,
@@ -1728,14 +1728,12 @@ const InputBarContainer = ({
                     setIsBlockTooltipOpen(false);
                   }}
                 >
-                  <Button
+                  <SendButton
                     size={buttonSize}
                     isLoading={
                       isSubmitting &&
                       activeVoiceService.status !== "transcribing"
                     }
-                    icon={ArrowUp}
-                    variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
                     disabled={isSubmitDisabled}
                     onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
                       e.preventDefault();
