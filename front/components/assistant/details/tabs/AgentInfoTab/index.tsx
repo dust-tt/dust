@@ -103,7 +103,11 @@ export function AgentInfoTab({
               icon={getModelProviderLogo(model.providerId, isDark)}
               size="xs"
             />
-            <div>{model.displayName}</div>
+            <div>
+              {agentConfiguration.model.usesWorkspaceDefault
+                ? `Workspace default (currently ${model.displayName})`
+                : model.displayName}
+            </div>
           </div>
         </div>
       )}

@@ -26,6 +26,7 @@ import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgen
 import {
   getDefaultAgentFormData,
   getDefaultModel,
+  getResolvedWorkspaceDefaultModel,
   transformAgentConfigurationToFormData,
   transformDuplicateAgentToFormData,
   transformTemplateToFormData,
@@ -46,6 +47,7 @@ import type {
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAppRouter } from "@app/lib/platform";
@@ -60,6 +62,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { WORKSPACE_DEFAULT_MODEL_SETTINGS } from "@app/types/assistant/models/workspace_default";
 import type { TemplateInfo } from "@app/types/assistant/templates";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
@@ -117,6 +120,7 @@ export default function AgentBuilder({
   onSaved,
 }: AgentBuilderProps) {
   const { owner, user, isAdmin, assistantTemplate } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
   const { fetcherWithBody } = useFetcher();
@@ -272,7 +276,23 @@ export default function AgentBuilder({
   useEffect(() => {
     const currentValues = form.getValues();
 
-    const defaultModel = getDefaultModel(availableModels);
+    // New agents follow the workspace default model when the feature is on
+    // (stored as the sentinel, resolved at fetch time). Otherwise they get the
+    // best available concrete model, as before.
+    const followsWorkspaceDefault = hasFeature("workspace_default_model");
+    const resolvedDefaultModel = getResolvedWorkspaceDefaultModel(
+      owner,
+      availableModels
+    );
+    const defaultModelSettings = followsWorkspaceDefault
+      ? { ...WORKSPACE_DEFAULT_MODEL_SETTINGS }
+      : (() => {
+          const defaultModel = getDefaultModel(availableModels);
+          return {
+            modelId: defaultModel.modelId,
+            providerId: defaultModel.providerId,
+          };
+        })();
     const userOwnedTriggers = triggers.filter(
       (trigger) => trigger.editor === user.id
     );
@@ -299,11 +319,8 @@ export default function AgentBuilder({
       ...(!agentConfiguration && {
         generationSettings: {
           ...currentValues.generationSettings,
-          modelSettings: {
-            modelId: defaultModel.modelId,
-            providerId: defaultModel.providerId,
-          },
-          reasoningEffort: defaultModel.defaultReasoningEffort,
+          modelSettings: defaultModelSettings,
+          reasoningEffort: resolvedDefaultModel.defaultReasoningEffort,
         },
       }),
     });

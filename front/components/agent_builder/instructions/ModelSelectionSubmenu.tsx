@@ -3,6 +3,7 @@ import {
   getModelKey,
   getModelsCategorization,
 } from "@app/components/agent_builder/instructions/utils";
+import { getResolvedWorkspaceDefaultModel } from "@app/components/agent_builder/transformAgentConfiguration";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -10,6 +11,10 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import {
+  WORKSPACE_DEFAULT_MODEL_ID,
+  WORKSPACE_DEFAULT_MODEL_SETTINGS,
+} from "@app/types/assistant/models/workspace_default";
 import type { RegionType } from "@app/types/region";
 import {
   DropdownMenuLabel,
@@ -74,7 +79,13 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
 
   const { regionInfo } = useRegionContext();
   const { hasFeature } = useFeatureFlags();
-  const { subscription } = useAuth();
+  const { subscription, workspace } = useAuth();
+
+  const showWorkspaceDefault = hasFeature("workspace_default_model");
+  const resolvedWorkspaceDefaultModel = getResolvedWorkspaceDefaultModel(
+    workspace,
+    models
+  );
 
   const showRegionalFlag =
     hasFeature("use_vertex_for_supported_models") &&
@@ -106,11 +117,36 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
     reasoningEffortField.onChange(modelConfig.defaultReasoningEffort);
   };
 
+  const handleWorkspaceDefaultSelection = () => {
+    modelField.onChange({ ...WORKSPACE_DEFAULT_MODEL_SETTINGS });
+    reasoningEffortField.onChange(
+      resolvedWorkspaceDefaultModel.defaultReasoningEffort
+    );
+  };
+
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Model selection" />
       <DropdownMenuPortal>
         <DropdownMenuSubContent className="w-80">
+          {showWorkspaceDefault && (
+            <>
+              <DropdownMenuLabel label="Default" />
+              <DropdownMenuRadioGroup value={currentModelKey}>
+                <DropdownMenuRadioItem
+                  value={WORKSPACE_DEFAULT_MODEL_ID}
+                  icon={getModelProviderLogo(
+                    resolvedWorkspaceDefaultModel.providerId,
+                    isDark
+                  )}
+                  label="Workspace default"
+                  description={`Currently ${resolvedWorkspaceDefaultModel.displayName} — follows your workspace setting`}
+                  onClick={handleWorkspaceDefaultSelection}
+                />
+              </DropdownMenuRadioGroup>
+            </>
+          )}
+
           {isSelectedModelNotInBest && selectedModel && (
             <>
               <DropdownMenuLabel label="Selected model" />

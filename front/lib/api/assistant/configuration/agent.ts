@@ -74,6 +74,7 @@ import {
 } from "@app/types/assistant/assistant";
 import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
+import { WORKSPACE_DEFAULT_MODEL_SETTINGS } from "@app/types/assistant/models/workspace_default";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -111,6 +112,20 @@ export async function createPendingAgentConfiguration(
 
   const sId = generateRandomModelSId();
 
+  // When the workspace-default-model feature is enabled, new agents follow the
+  // workspace default by default: store the sentinel model, resolved at fetch
+  // time. Otherwise keep the historical hardcoded Sonnet default.
+  const featureFlags = await getFeatureFlags(auth);
+  const followsWorkspaceDefault = featureFlags.includes(
+    "workspace_default_model"
+  );
+  const defaultModel = followsWorkspaceDefault
+    ? WORKSPACE_DEFAULT_MODEL_SETTINGS
+    : {
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      };
+
   await withTransaction(async (t) => {
     const agent = await AgentConfigurationModel.create(
       {
@@ -121,8 +136,8 @@ export async function createPendingAgentConfiguration(
         name: PENDING_AGENT_PLACEHOLDER_NAME,
         description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
         instructions: null,
-        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: defaultModel.providerId,
+        modelId: defaultModel.modelId,
         temperature: 0.7,
         reasoningEffort:
           CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
