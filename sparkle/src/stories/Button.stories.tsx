@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { BUTTON_SIZES, BUTTON_VARIANTS } from "@sparkle/components/Button";
+import {
+  BUTTON_SIZES,
+  BUTTON_VARIANTS,
+  type ButtonSizeType,
+  type ButtonVariantType,
+} from "@sparkle/components/Button";
 
 import {
   ArrowRight,
@@ -26,9 +31,7 @@ const meta = {
       description: {
         component: `Buttons let users trigger an action or event — submitting a form, opening a dialog, or confirming a choice. The button comes in several visual **variants** and three **sizes** (sm / md / lg), and supports a leading and/or trailing icon, loading and disabled states, an inline counter, a dropdown-chevron affordance (**isSelect**), and a fully-rounded shape (**isRounded**).
 
-**When to use**
-- To perform an action on the current page (save, delete, open a menu).
-- As the primary call-to-action in a form, dialog, or empty state.
+**For design review:** the **Overview** story shows every variant in light and dark side by side; **Sizes** shows the S/M/L scale; **States** shows default / icon / loading / disabled. Press a button to see the 0.97 press animation (it's automatically suppressed on dropdown triggers).
 
 **Guidelines**
 - Use a single **highlight** button per view; use **outline** or a **ghost** variant for secondary actions.
@@ -106,7 +109,103 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const ExampleButton: Story = {
+// ---------------------------------------------------------------------------
+// Showcase helpers
+// ---------------------------------------------------------------------------
+
+const labelClass =
+  "s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night";
+
+// One variant row: the five states designers care about, left to right.
+function VariantRow({
+  variant,
+  size,
+}: {
+  variant: ButtonVariantType;
+  size: ButtonSizeType;
+}) {
+  return (
+    <div className="s-flex s-items-center s-gap-3">
+      <div className={`s-w-32 s-shrink-0 ${labelClass}`}>{variant}</div>
+      <Button size={size} variant={variant} label="Button" />
+      <Button size={size} variant={variant} icon={Plus} label="Button" />
+      <Button
+        size={size}
+        variant={variant}
+        icon={Plus}
+        iconRight={ArrowRight}
+        label="Button"
+      />
+      <Button size={size} variant={variant} icon={Plus} tooltip="Add" />
+      <Button size={size} variant={variant} label="Button" isLoading />
+      <Button size={size} variant={variant} label="Button" disabled />
+    </div>
+  );
+}
+
+function ColumnLegend() {
+  return (
+    <div className={`s-flex s-items-center s-gap-3 ${labelClass}`}>
+      <div className="s-w-32 s-shrink-0">variant \ state</div>
+      <div className="s-w-[88px]">label</div>
+      <div className="s-w-[112px]">+ icon</div>
+      <div className="s-w-[132px]">+ both</div>
+      <div className="s-w-8">icon</div>
+      <div className="s-w-[100px]">loading</div>
+      <div>disabled</div>
+    </div>
+  );
+}
+
+function VariantGrid({ size = "md" }: { size?: ButtonSizeType }) {
+  return (
+    <div className="s-flex s-flex-col s-gap-3">
+      <ColumnLegend />
+      {BUTTON_VARIANTS.map((variant) => (
+        <VariantRow key={variant} variant={variant} size={size} />
+      ))}
+    </div>
+  );
+}
+
+// A themed surface card. `dark` toggles the `.s-dark` ancestor (sparkle's
+// class-based dark mode) so every button inside renders its dark treatment.
+function Surface({
+  dark = false,
+  title,
+  caption,
+  children,
+}: {
+  dark?: boolean;
+  title: string;
+  caption?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={[
+        dark ? "s-dark s-bg-background-night s-border-border-night" : "",
+        !dark ? "s-bg-background s-border-border" : "",
+        "s-flex s-flex-col s-gap-4 s-rounded-2xl s-border s-p-6",
+      ].join(" ")}
+    >
+      <div>
+        <div className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+          {title}
+        </div>
+        {caption && <div className={`s-mt-0.5 ${labelClass}`}>{caption}</div>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stories
+// ---------------------------------------------------------------------------
+
+/** Interactive single button — tweak any prop from the Controls panel. */
+export const Playground: Story = {
   args: {
     variant: "primary",
     label: "Button",
@@ -121,7 +220,45 @@ export const ExampleButton: Story = {
   },
 };
 
-export const IconOnly: Story = {
+/**
+ * Every variant in light and dark, side by side — the main story for design
+ * review. Each row walks through the states: label, + icon, + both icons,
+ * icon-only, loading, disabled.
+ */
+export const Overview: Story = {
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-6">
+      <Surface title="Light">
+        <VariantGrid size="md" />
+      </Surface>
+      <Surface
+        dark
+        title="Dark"
+        caption="Interim dark pass (auto -night ramp mirror) — provisional, pending the designer's dark spec (Outline Dark + primary/outline swap)."
+      >
+        <VariantGrid size="md" />
+      </Surface>
+    </div>
+  ),
+};
+
+/** The S / M / L scale (24 / 32 / 40px) across all variants. */
+export const Sizes: Story = {
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-6">
+      {BUTTON_SIZES.map((size) => (
+        <div key={size} className="s-flex s-flex-col s-gap-3">
+          <Separator />
+          <h3 className={labelClass}>{size.toUpperCase()}</h3>
+          <VariantGrid size={size} />
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+/** Icon-only buttons across sizes, plus the fully-rounded shape. */
+export const IconButtons: Story = {
   render: () => (
     <div className="s-flex s-items-center s-gap-4">
       <Button size="sm" variant="outline" icon={Plus} tooltip="Add" />
@@ -134,48 +271,22 @@ export const IconOnly: Story = {
         isRounded
         tooltip="Add"
       />
+      <Button size="md" variant="primary" icon={Robot} tooltip="Agent" />
     </div>
   ),
 };
 
-const ButtonBySize = ({ size }: { size: (typeof BUTTON_SIZES)[number] }) => (
-  <>
-    <Separator />
-    <h3 className="s-text-primary dark:s-text-primary-50">
-      {size.toUpperCase()}
-    </h3>
-    <div className="s-flex s-flex-col s-gap-4">
-      {BUTTON_VARIANTS.map((variant) => (
-        <div key={variant} className="s-flex s-flex-col s-gap-2">
-          <div className="s-text-sm s-font-medium s-text-primary dark:s-text-primary-night">
-            {variant}
-          </div>
-          <div className="s-flex s-items-center s-gap-4">
-            <Button size={size} variant={variant} label="Button" />
-            <Button size={size} variant={variant} label="Button" isLoading />
-            <Button size={size} variant={variant} icon={Plus} label="Button" />
-            <Button
-              size={size}
-              variant={variant}
-              icon={Plus}
-              iconRight={ArrowRight}
-              label="Button"
-            />
-            <Button size={size} variant={variant} icon={Plus} tooltip="Add" />
-            <Button size={size} variant={variant} label="Button" disabled />
-          </div>
-        </div>
-      ))}
-    </div>
-  </>
-);
-
-export const Gallery: Story = {
+/** Dropdown affordance (isSelect), inline counter, rounded, and pulsing. */
+export const SpecialStates: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
-      <ButtonBySize size="sm" />
-      <ButtonBySize size="md" />
-      <ButtonBySize size="lg" />
+      <div className="s-flex s-items-center s-gap-4">
+        <Button variant="outline" label="Select agent" icon={Robot} isSelect />
+        <Button variant="primary" label="Filter" isSelect />
+        <Button variant="outline" label="Messages" isCounter counterValue="8" />
+        <Button variant="highlight" label="New" icon={Plus} isRounded />
+        <Button variant="primary" label="Live" isPulsing />
+      </div>
     </div>
   ),
 };

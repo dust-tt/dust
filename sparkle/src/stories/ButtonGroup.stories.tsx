@@ -2,14 +2,14 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  DEPRECATED_BUTTON_VARIANTS,
-  type DeprecatedRegularButtonSize,
-  type DeprecatedButtonVariantType,
-} from "@sparkle/components/DeprecatedButton";
+  BUTTON_VARIANTS,
+  type ButtonSizeType,
+  type ButtonVariantType,
+} from "@sparkle/components/Button";
 
 import {
   RefreshCw02,
-  DeprecatedButton as Button,
+  Button,
   ButtonGroup,
   ButtonGroupDropdown,
   ChevronDown,
@@ -22,10 +22,10 @@ import {
 
 const DefaultButtons = ({
   variant = "outline",
-  size = "sm",
+  size = "md",
 }: {
-  variant?: DeprecatedButtonVariantType;
-  size?: DeprecatedRegularButtonSize;
+  variant?: ButtonVariantType;
+  size?: ButtonSizeType;
 }) => (
   <>
     <Button label="First" variant={variant} size={size} />
@@ -89,9 +89,9 @@ export const WithIcons: Story = {
   args: {
     children: (
       <>
-        <Button icon={Plus} label="Add" variant="outline" size="sm" />
-        <Button icon={Robot} label="Agent" variant="outline" size="sm" />
-        <Button label="More" variant="outline" size="sm" />
+        <Button icon={Plus} label="Add" variant="outline" size="md" />
+        <Button icon={Robot} label="Agent" variant="outline" size="md" />
+        <Button label="More" variant="outline" size="md" />
       </>
     ),
   },
@@ -106,21 +106,21 @@ export const WithCounters: Story = {
           isCounter
           counterValue="5"
           variant="outline"
-          size="sm"
+          size="md"
         />
         <Button
           label="Sent"
           isCounter
           counterValue="12"
           variant="outline"
-          size="sm"
+          size="md"
         />
         <Button
           label="Drafts"
           isCounter
           counterValue="3"
           variant="outline"
-          size="sm"
+          size="md"
         />
       </>
     ),
@@ -148,23 +148,19 @@ export const WithGaps: Story = {
   },
 };
 
-const ButtonGroupByVariant = ({
-  variant,
-}: {
-  variant: DeprecatedButtonVariantType;
-}) => (
+const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
   <>
     <Separator />
     <h3 className="s-text-primary dark:s-text-primary-50">{variant}</h3>
     <div className="s-flex s-items-center s-gap-4">
       <ButtonGroup>
-        <DefaultButtons variant={variant} size="xs" />
-      </ButtonGroup>
-      <ButtonGroup>
         <DefaultButtons variant={variant} size="sm" />
       </ButtonGroup>
       <ButtonGroup>
         <DefaultButtons variant={variant} size="md" />
+      </ButtonGroup>
+      <ButtonGroup>
+        <DefaultButtons variant={variant} size="lg" />
       </ButtonGroup>
     </div>
   </>
@@ -173,7 +169,7 @@ const ButtonGroupByVariant = ({
 export const Gallery: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
-      {DEPRECATED_BUTTON_VARIANTS.map((variant) => (
+      {BUTTON_VARIANTS.map((variant) => (
         <ButtonGroupByVariant key={variant} variant={variant} />
       ))}
     </div>
@@ -192,10 +188,10 @@ export const WithDropdownMenu: Story = {
             icon={Clipboard}
             tooltip="Copy to clipboard"
             variant="outline"
-            size="xs"
+            size="sm"
           />
           <ButtonGroupDropdown
-            trigger={<Button variant="outline" size="xs" icon={ChevronDown} />}
+            trigger={<Button variant="outline" size="sm" icon={ChevronDown} />}
             items={[
               { label: "Retry", icon: RefreshCw02 },
               { label: "Delete", icon: Trash01, variant: "warning" },
@@ -208,10 +204,10 @@ export const WithDropdownMenu: Story = {
         <h3 className="s-mb-2 s-text-sm s-font-medium">Multiple variations</h3>
         <div className="s-flex s-flex-wrap s-gap-4">
           <ButtonGroup>
-            <Button label="Copy" variant="outline" size="sm" />
+            <Button label="Copy" variant="outline" size="md" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="outline" size="sm" icon={ChevronDown} />
+                <Button variant="outline" size="md" icon={ChevronDown} />
               }
               items={[
                 { label: "Option 1" },
@@ -222,21 +218,21 @@ export const WithDropdownMenu: Story = {
           </ButtonGroup>
 
           <ButtonGroup>
-            <Button label="Save" variant="primary" size="sm" />
+            <Button label="Save" variant="primary" size="md" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="primary" size="sm" icon={ChevronDown} />
+                <Button variant="primary" size="md" icon={ChevronDown} />
               }
               items={[{ label: "Save and close" }, { label: "Save as draft" }]}
             />
           </ButtonGroup>
 
           <ButtonGroup>
-            <Button icon={Plus} label="Add" variant="outline" size="sm" />
-            <Button icon={Robot} label="Agent" variant="outline" size="sm" />
+            <Button icon={Plus} label="Add" variant="outline" size="md" />
+            <Button icon={Robot} label="Agent" variant="outline" size="md" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="outline" size="sm" icon={ChevronDown} />
+                <Button variant="outline" size="md" icon={ChevronDown} />
               }
               items={[
                 { label: "More options", icon: Plus },
