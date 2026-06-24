@@ -263,7 +263,7 @@ export function MarkdownFilePreview({
               "min-h-0 flex-1 overflow-y-auto overflow-x-hidden",
               canEdit && "cursor-text"
             )}
-            onClick={handlePreviewClick}
+            onDoubleClick={handlePreviewClick}
           >
             <div ref={previewRef}>
               <Markdown
