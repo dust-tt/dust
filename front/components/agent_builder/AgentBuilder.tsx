@@ -561,8 +561,17 @@ export default function AgentBuilder({
     });
   };
 
+  const { isDirty, isSubmitting } = form.formState;
+
+  const isSaveDisabled =
+    isSubmitting ||
+    isActionsLoading ||
+    isSkillsLoading ||
+    isTriggersLoading ||
+    isEditorsLoading;
+
   const handleSave = async () => {
-    if (isSaving) {
+    if (isSaving || isSaveDisabled) {
       return;
     }
 
@@ -587,14 +596,8 @@ export default function AgentBuilder({
     }
   };
 
-  const { isDirty, isSubmitting } = form.formState;
-
   // Disable navigation lock during save process for new agents
   useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
-
-  const isSaveDisabled = duplicateAgentId
-    ? false
-    : isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
