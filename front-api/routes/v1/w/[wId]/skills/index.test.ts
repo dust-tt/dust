@@ -5,10 +5,7 @@ import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import {
-  importSkillsFromFiles,
-  type UploadedSkillFile,
-} from "@app/lib/api/skills/detection/files/import_skills";
+import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -18,6 +15,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
+import type formidable from "formidable";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/skills/icon_suggestion", () => ({
@@ -56,7 +54,7 @@ async function makeSkillZipFile({
 }: {
   instructions: string;
   name: string;
-}): Promise<UploadedSkillFile> {
+}): Promise<formidable.File> {
   const zip = new AdmZip();
   zip.addFile(
     "skills/imported/SKILL.md",
@@ -65,10 +63,31 @@ async function makeSkillZipFile({
   const buffer = zip.toBuffer();
   const filepath = path.join(tmpdir(), `skill-import-${randomUUID()}.zip`);
   await writeFile(filepath, buffer);
+  const newFilename = path.basename(filepath);
 
   return {
     filepath,
-  };
+    hashAlgorithm: false,
+    mimetype: "application/zip",
+    newFilename,
+    originalFilename: "skills.zip",
+    size: buffer.length,
+    toJSON() {
+      return {
+        filepath,
+        hash: null,
+        length: buffer.length,
+        mimetype: "application/zip",
+        mtime: null,
+        newFilename,
+        originalFilename: "skills.zip",
+        size: buffer.length,
+      };
+    },
+    toString() {
+      return `PersistentFile: ${newFilename}, Original: skills.zip, Path: ${filepath}`;
+    },
+  } satisfies formidable.File;
 }
 
 describe("GET /api/v1/w/[wId]/skills", () => {

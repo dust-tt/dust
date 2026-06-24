@@ -40,8 +40,6 @@ export function isImportConflictStrategy(
 
 type FileImportSource = Extract<SkillSourceType, "api" | "local_file">;
 
-export type UploadedSkillFile = Pick<formidable.File, "filepath">;
-
 type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
@@ -66,7 +64,7 @@ export async function importSkillsFromFiles(
     source = "local_file",
     onConflict = "skip",
   }: {
-    uploadedFiles: UploadedSkillFile[];
+    uploadedFiles: formidable.File[];
     names?: string[];
     editors?: string[];
     source?: FileImportSource;
@@ -367,7 +365,7 @@ async function uploadAttachment(
   return uploadResult.value;
 }
 
-async function cleanupTempFiles(files: UploadedSkillFile[]): Promise<void> {
+async function cleanupTempFiles(files: formidable.File[]): Promise<void> {
   await concurrentExecutor(files, (f) => unlink(f.filepath).catch(() => {}), {
     concurrency: 8,
   });
