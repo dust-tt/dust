@@ -17,8 +17,10 @@ process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
 export async function createSandboxTokenTestContext({
   enableSandboxTools = false,
+  disableComputerFeature = false,
 }: {
   enableSandboxTools?: boolean;
+  disableComputerFeature?: boolean;
 } = {}) {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
@@ -32,6 +34,9 @@ export async function createSandboxTokenTestContext({
 
   if (enableSandboxTools) {
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
+  }
+  if (disableComputerFeature) {
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
   }
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {

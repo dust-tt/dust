@@ -150,6 +150,23 @@ describe("createSandboxTools", () => {
     expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
   });
 
+  it("omits add_egress_domain when Computer is disabled", async () => {
+    const { workspace, user } = await createResourceTest({});
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      sandboxAllowAgentEgressRequests: true,
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const tools = await createSandboxTools(auth);
+
+    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+  });
+
   it("omits add_egress_domain when flag is off, even if metadata is set", async () => {
     const { workspace, user } = await createResourceTest({});
     await WorkspaceResource.updateMetadata(workspace.id, {
@@ -197,6 +214,22 @@ describe("buildDescribeToolsetOutput", () => {
     }
 
     expect(visibleResult.value[0].text).toContain("name: dsbx");
+  });
+
+  it("hides dsbx manifest entry when Computer is disabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const result = await buildDescribeToolsetOutput(auth, "openai", "yaml");
+    expect(result.isOk()).toBe(true);
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value[0].text).not.toContain("name: dsbx");
   });
 });
 

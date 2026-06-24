@@ -52,6 +52,24 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     }
   }
 
+  static async setLegacyRolloutPercentage(
+    name: string,
+    rolloutPercentage: number
+  ): Promise<void> {
+    if (rolloutPercentage < 0 || rolloutPercentage > 100) {
+      throw new Error(
+        `Invalid rollout percentage: ${rolloutPercentage}. Must be between 0 and 100.`
+      );
+    }
+
+    if (rolloutPercentage === 0) {
+      await GlobalFeatureFlagModel.destroy({ where: { name } });
+      return;
+    }
+
+    await GlobalFeatureFlagModel.upsert({ name, rolloutPercentage });
+  }
+
   async delete(
     _auth: Authenticator,
     { transaction }: { transaction?: Transaction }

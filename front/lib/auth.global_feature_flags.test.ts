@@ -118,10 +118,10 @@ describe("getFeatureFlags with global flags", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    await GlobalFeatureFlagModel.create({
-      name: "legacy_removed_feature",
-      rolloutPercentage: 100,
-    });
+    await GlobalFeatureFlagResource.setLegacyRolloutPercentage(
+      "legacy_removed_feature",
+      100
+    );
     invalidateAllCaches(auth);
 
     const flags = await getFeatureFlags(auth);

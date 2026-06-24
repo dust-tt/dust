@@ -17,9 +17,8 @@ export function formatSandboxImageId(id: SandboxImageId): string {
 // Tool Names
 // ---------------------------------------------------------------------------
 
-// TODO(dsbx-tools): Hacky temporary — exported so the `dsbx` entry can be
-// filtered out of the sandbox tool manifest by name when the sandbox tools flag
-// is off.
+// Hacky temporary: exported so the `dsbx` entry can be filtered out of the
+// sandbox tool manifest by name when sandbox tools are off.
 export const DSBX_TOOL_NAME = "dsbx";
 
 // UID of the `agent-proxied` user that runs untrusted agent code. Egress
