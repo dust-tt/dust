@@ -33,6 +33,7 @@ export function ModelProvidersPage() {
           isWorkspaceValidating={isWorkspaceValidating}
           onToggleProvider={toggleProvider}
           onSelectAllProviders={selectAllProviders}
+          mutateWorkspace={mutateWorkspace}
         />
       </Page.Vertical>
     </Page.Vertical>

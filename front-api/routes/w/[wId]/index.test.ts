@@ -143,3 +143,78 @@ describe("POST /api/w/:wId (workspace default agent)", () => {
     }
   });
 });
+
+describe("POST /api/w/:wId (workspace default model)", () => {
+  const sonnet = {
+    providerId: "anthropic",
+    modelId: "claude-sonnet-4-6",
+  };
+
+  it("pins a valid, enabled model when the flag is enabled", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "workspace_default_model");
+
+    const response = await post(workspace, {
+      workspaceDefaultModel: sonnet,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.metadata?.workspaceDefaultModel).toEqual(sonnet);
+  });
+
+  it("clears the default and preserves other metadata when passed null", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "workspace_default_model");
+
+    await post(workspace, { reinforcementCapAwuCredits: 5_000 });
+    await post(workspace, { workspaceDefaultModel: sonnet });
+
+    const response = await post(workspace, { workspaceDefaultModel: null });
+    expect(response.status).toBe(200);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.metadata?.workspaceDefaultModel).toBeUndefined();
+    expect(updated?.metadata?.reinforcementCapAwuCredits).toBe(5_000);
+  });
+
+  it("returns 400 for an unknown model", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "workspace_default_model");
+
+    const response = await post(workspace, {
+      workspaceDefaultModel: {
+        providerId: "anthropic",
+        modelId: "not-a-real-model",
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("returns 403 when the feature flag is disabled", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      workspaceDefaultModel: sonnet,
+    });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("feature_flag_not_found");
+  });
+
+  it("returns 403 for non-admin users", async () => {
+    for (const role of ["builder", "user"] as const) {
+      const { workspace } = await setup(role);
+
+      const response = await post(workspace, {
+        workspaceDefaultModel: sonnet,
+      });
+
+      expect(response.status).toBe(403);
+      expect((await response.json()).error.type).toBe("workspace_auth_error");
+    }
+  });
+});

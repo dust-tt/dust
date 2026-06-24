@@ -1,4 +1,5 @@
 import { AllProvidersToggle } from "@app/components/pages/workspace/model_providers/AllProvidersToggle";
+import { DefaultModelSelect } from "@app/components/pages/workspace/model_providers/DefaultModelSelect";
 import { EmbeddingModelSelect } from "@app/components/pages/workspace/model_providers/EmbeddingModelSelect";
 import { ProvidersConfigurationList } from "@app/components/pages/workspace/model_providers/ProvidersConfigurationList";
 import { ProvidersToggleList } from "@app/components/pages/workspace/model_providers/ProvidersToggleList";
@@ -23,6 +24,7 @@ interface ModelProvidersPageContentProps {
   isWorkspaceValidating: boolean;
   onToggleProvider: (provider: ModelProviderIdType) => void;
   onSelectAllProviders: () => void;
+  mutateWorkspace: () => Promise<unknown>;
 }
 
 export function ModelProvidersPageContent({
@@ -31,10 +33,11 @@ export function ModelProvidersPageContent({
   isWorkspaceValidating,
   onToggleProvider,
   onSelectAllProviders,
+  mutateWorkspace,
 }: ModelProvidersPageContentProps) {
   const { subscription } = useAuth();
   const { plan } = subscription;
-  const { featureFlags } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const { regionInfo } = useRegionContext();
 
   // Filter models based on feature flags and build modelProviders dynamically
@@ -78,6 +81,12 @@ export function ModelProvidersPageContent({
             modelsDescriptionByProvider={modelsDescriptionByProvider}
           />
         </>
+      )}
+      {hasFeature("workspace_default_model") && (
+        <DefaultModelSelect
+          workspace={workspace}
+          mutateWorkspace={mutateWorkspace}
+        />
       )}
       <EmbeddingModelSelect workspace={workspace} />
     </div>

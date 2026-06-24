@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { isModelEnabledForWorkspace } from "@app/lib/api/assistant/models";
 import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditLogTarget,
@@ -203,6 +204,17 @@ const WorkspaceDefaultAgentUpdateBodySchema = z.object({
   workspaceDefaultAgentId: z.string().nullable(),
 });
 
+// A null value clears the workspace default model ("automatic": resolve live to
+// the best available model).
+const WorkspaceDefaultModelUpdateBodySchema = z.object({
+  workspaceDefaultModel: z
+    .object({
+      providerId: z.string(),
+      modelId: z.string(),
+    })
+    .nullable(),
+});
+
 const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -229,6 +241,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
+  WorkspaceDefaultModelUpdateBodySchema,
 ]);
 
 const app = workspaceApp();
@@ -698,6 +711,53 @@ app.post(
       owner.metadata = {
         ...(owner.metadata ?? {}),
         workspaceDefaultAgentId,
+      };
+    } else if ("workspaceDefaultModel" in body) {
+      if (!(await hasFeatureFlag(auth, "workspace_default_model"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message:
+              "The workspace default model feature is not enabled for this workspace.",
+          },
+        });
+      }
+
+      // Validate the pinned model is a real model enabled for the workspace. A
+      // null value clears the default (falls back to the live best model).
+      if (body.workspaceDefaultModel) {
+        const isValid = await isModelEnabledForWorkspace(
+          auth,
+          body.workspaceDefaultModel
+        );
+        if (!isValid) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Model "${body.workspaceDefaultModel.modelId}" was not found or is not enabled for this workspace.`,
+            },
+          });
+        }
+      }
+
+      const workspaceDefaultModel = body.workspaceDefaultModel ?? undefined;
+      const updateRes = await updateWorkspaceMetadata(owner, {
+        workspaceDefaultModel,
+      });
+      if (updateRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: updateRes.error.message,
+          },
+        });
+      }
+      owner.metadata = {
+        ...(owner.metadata ?? {}),
+        workspaceDefaultModel,
       };
     } else if ("domainUpdates" in body) {
       for (const update of body.domainUpdates) {
