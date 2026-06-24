@@ -2,6 +2,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
+import type { FilePreviewCategory } from "@app/components/file_explorer/utils";
 import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
@@ -9,7 +10,7 @@ import { getFilePathDownloadUrl, getFilePathViewUrl } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { contentTypeFromFileName } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Download01, Icon, RefreshCw01 } from "@dust-tt/sparkle";
+import { Button, Download01, Icon } from "@dust-tt/sparkle";
 
 interface FilePreviewPanelProps {
   conversation: ConversationWithoutContentType;
@@ -26,7 +27,7 @@ export function FilePreviewPanel({
   // bust it with the file's lastModifiedMs. SWR revalidates this list on mount
   // and window focus, so the preview refreshes after the file is touched (and
   // the reload button forces an immediate revalidation).
-  const { sandboxFiles, mutateSandboxFiles } = useConversationSandboxFiles({
+  const { sandboxFiles } = useConversationSandboxFiles({
     conversationId: conversation.sId,
     owner,
     options: { disabled: !filePath },
@@ -46,28 +47,6 @@ export function FilePreviewPanel({
   const version = sandboxFiles.find((f) => f.path === filePath)?.lastModifiedMs;
   const baseUrl = getFilePathViewUrl(owner, filePath);
 
-  const renderContent = () => {
-    // Office documents (presentations, etc.) are rendered as a server-side PDF
-    // conversion (?preview=pdf); native PDFs are rendered directly. Both are
-    // only available through the path-based file route.
-    if (category === "viewer") {
-      const url = `${baseUrl}?preview=pdf` + (version ? `&v=${version}` : "");
-      return <PDFViewer key={url} url={url} />;
-    }
-    if (category === "pdf") {
-      const url = baseUrl + (version ? `?v=${version}` : "");
-      return <PDFViewer key={url} url={url} />;
-    }
-
-    return (
-      <CenteredState>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Unable to preview this file. You can download it instead.
-        </p>
-      </CenteredState>
-    );
-  };
-
   return (
     <div className="flex h-panel min-h-0 flex-col">
       <InteractiveContentHeader onClose={closePanel}>
@@ -76,13 +55,6 @@ export function FilePreviewPanel({
           <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
         </div>
         <div className="ml-2 flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={RefreshCw01}
-            tooltip="Reload"
-            onClick={() => void mutateSandboxFiles()}
-          />
           <Button
             variant="ghost"
             size="sm"
@@ -95,8 +67,39 @@ export function FilePreviewPanel({
         </div>
       </InteractiveContentHeader>
       <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
-        {renderContent()}
+        <FilePreviewContent
+          category={category}
+          baseUrl={baseUrl}
+          version={version}
+        />
       </div>
     </div>
+  );
+}
+
+interface FilePreviewContentProps {
+  category: FilePreviewCategory;
+  baseUrl: string;
+  version: number | undefined;
+}
+
+function FilePreviewContent({
+  category,
+  baseUrl,
+  version,
+}: FilePreviewContentProps) {
+  // Office documents (presentations, etc.) are rendered as a server-side PDF
+  // conversion (?preview=pdf), available only through the path-based file route.
+  if (category === "viewer") {
+    const url = `${baseUrl}?preview=pdf` + (version ? `&v=${version}` : "");
+    return <PDFViewer key={url} url={url} />;
+  }
+
+  return (
+    <CenteredState>
+      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Unable to preview this file. You can download it instead.
+      </p>
+    </CenteredState>
   );
 }
