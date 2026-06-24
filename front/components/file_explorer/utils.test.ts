@@ -7,7 +7,10 @@ import {
   buildFolderTree,
   findTreeNodeByPath,
   getChildrenAtFolderPath,
+  getExplorerRelativePath,
+  getVirtualScopeRootNodes,
   isFileExplorerMovableFile,
+  withVirtualExplorerPath,
 } from "@app/components/file_explorer/utils";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
@@ -246,5 +249,70 @@ describe("buildFolderTree", () => {
     expect(collectTreeNodes(tree).every((n) => n.isDirectory)).toBe(true);
     expect(findTreeNodeByPath(tree, "docs/readme.txt")).toBeUndefined();
     expect(findTreeNodeByPath(tree, "docs")?.isDirectory).toBe(true);
+  });
+});
+
+describe("getExplorerRelativePath", () => {
+  it("uses virtualPath when set", () => {
+    expect(
+      getExplorerRelativePath({
+        path: "conversation-abc/report.pdf",
+        virtualPath: "conversation/report.pdf",
+      })
+    ).toBe("conversation/report.pdf");
+  });
+
+  it("falls back to stripping the scoped prefix from path", () => {
+    expect(getExplorerRelativePath({ path: "pod-xyz/data.csv" })).toBe(
+      "data.csv"
+    );
+  });
+});
+
+describe("withVirtualExplorerPath", () => {
+  it("prefixes the mount-relative path with a scope label", () => {
+    const entry = withVirtualExplorerPath(
+      mountFile("reports/q1.pdf", "conversation"),
+      "conversation"
+    );
+    expect(entry.virtualPath).toBe("conversation/reports/q1.pdf");
+    expect(entry.path).toBe("conversation/reports/q1.pdf");
+  });
+});
+
+describe("buildFileSystemTree with virtualPath", () => {
+  it("builds a merged tree with conversation and pod scope folders", () => {
+    const tree = buildFileSystemTree([
+      withVirtualExplorerPath(
+        mountFile("notes.txt", "conversation"),
+        "conversation"
+      ),
+      withVirtualExplorerPath(mountFile("shared/readme.md"), "pod"),
+    ]);
+
+    expect(
+      getChildrenAtFolderPath(tree, "")
+        .map((n) => n.path)
+        .sort()
+    ).toEqual(["conversation", "pod"]);
+    expect(
+      getChildrenAtFolderPath(tree, "conversation").map((n) => n.path)
+    ).toEqual(["conversation/notes.txt"]);
+    expect(
+      getChildrenAtFolderPath(tree, "pod/shared").map((n) => n.path)
+    ).toEqual(["pod/shared/readme.md"]);
+  });
+});
+
+describe("getVirtualScopeRootNodes", () => {
+  it("includes empty scope folders missing from the tree", () => {
+    const tree = buildFileSystemTree([
+      withVirtualExplorerPath(mountFile("a.txt"), "pod"),
+    ]);
+
+    const roots = getVirtualScopeRootNodes(tree, ["conversation", "pod"]);
+    expect(roots.map((n) => n.path)).toEqual(["conversation", "pod"]);
+    expect(roots[0]?.children).toEqual([]);
+    expect(roots[1]?.children).toHaveLength(1);
   });
 });

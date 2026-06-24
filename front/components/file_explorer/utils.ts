@@ -127,6 +127,7 @@ import type {
   FileEntry,
   FileExplorerBucket,
   FileExplorerEntry,
+  FileExplorerPathEntry,
   FileExplorerSortMode,
   FilePanelCategory,
   FileSystemTreeNode,
@@ -350,22 +351,64 @@ function ensureDirectoryNode(
   }
 }
 
+/** Explorer navigation path: `virtualPath` when set, else mount-relative path. */
+export function getExplorerRelativePath(
+  entry: Pick<FileSystemEntry, "path"> & { virtualPath?: string }
+): string {
+  if (entry.virtualPath !== undefined) {
+    return entry.virtualPath;
+  }
+  return getScopedRelativePath(entry.path);
+}
+
+/** Attach a UI-only path prefix for merged multi-scope explorers. */
+export function withVirtualExplorerPath(
+  entry: FileSystemEntry,
+  scopeLabel: string
+): FileExplorerPathEntry {
+  return {
+    ...entry,
+    virtualPath: `${scopeLabel}/${getScopedRelativePath(entry.path)}`,
+  };
+}
+
+/** Top-level scope folders shown at the virtual root (includes empty scopes). */
+export function getVirtualScopeRootNodes(
+  tree: FileSystemTreeNode[],
+  scopeRoots: readonly string[]
+): FileSystemTreeNode[] {
+  const topLevelDirs = new Map<string, FileSystemTreeNode>();
+  for (const node of tree) {
+    if (node.isDirectory && !node.path.includes("/")) {
+      topLevelDirs.set(node.path, node);
+    }
+  }
+
+  return scopeRoots.map(
+    (label) =>
+      topLevelDirs.get(label) ?? {
+        name: label,
+        path: label,
+        isDirectory: true,
+        contentType: null,
+        fileId: null,
+        children: [],
+      }
+  );
+}
+
 /**
  * Build a tree from flat file entries by inferring directories from paths.
- * entry.path is a scoped path (e.g. "conversation/subdir/file.png"); the
- * use-case prefix (first segment) is stripped so tree paths start at the
- * sandbox working directory root.
+ * Uses `virtualPath` when set; otherwise strips the scoped prefix from `path`.
  */
 export function buildFileSystemTree(
-  entries: FileSystemEntry[]
+  entries: FileExplorerPathEntry[]
 ): FileSystemTreeNode[] {
   const root: FileSystemTreeNode[] = [];
   const nodeMap = new Map<string, FileSystemTreeNode>();
 
   for (const entry of entries) {
-    const slashIdx = entry.path.indexOf("/");
-    const relativePath =
-      slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
+    const relativePath = getExplorerRelativePath(entry);
 
     if (!relativePath) {
       continue;
@@ -447,7 +490,7 @@ function filterDirectoryNodes(
 
 /** Folder-only view of the sandbox tree (no files). */
 export function buildFolderTree(
-  entries: FileSystemEntry[]
+  entries: FileExplorerPathEntry[]
 ): FileSystemTreeNode[] {
   return filterDirectoryNodes(buildFileSystemTree(entries));
 }

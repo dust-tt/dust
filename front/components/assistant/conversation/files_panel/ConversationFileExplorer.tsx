@@ -1,6 +1,8 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
+import type { FileExplorerPathEntry } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
@@ -10,10 +12,10 @@ import {
   isPodConversation,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, ButtonGroup, cn, XClose } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { Button, XClose } from "@dust-tt/sparkle";
+import { useCallback, useMemo } from "react";
 
-type FilesTab = "conversation" | "pod";
+const POD_CONVERSATION_SCOPE_ROOTS = ["conversation", "pod"] as const;
 
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
@@ -26,7 +28,6 @@ export function ConversationFileExplorer({
 }: ConversationFileExplorerProps) {
   const { closePanel, openPanel } = useConversationSidePanelContext();
   const isPod = isPodConversation(conversation);
-  const [activeTab, setActiveTab] = useState<FilesTab>("conversation");
 
   const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
     conversationId: conversation.sId,
@@ -38,6 +39,17 @@ export function ConversationFileExplorer({
     podId: isPod ? conversation.spaceId : "",
     disabled: !isPod,
   });
+
+  const files = useMemo((): FileExplorerPathEntry[] => {
+    if (!isPod) {
+      return sandboxFiles;
+    }
+
+    return [
+      ...sandboxFiles.map((f) => withVirtualExplorerPath(f, "conversation")),
+      ...podFiles.map((f) => withVirtualExplorerPath(f, "pod")),
+    ];
+  }, [isPod, podFiles, sandboxFiles]);
 
   const getFileUrl = useCallback(
     (path: string) => getFilePathViewUrl(owner, path),
@@ -61,29 +73,9 @@ export function ConversationFileExplorer({
     <div className="flex h-panel min-h-0 flex-col">
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-2">
-          {isPod ? (
-            <ButtonGroup
-              removeGaps={false}
-              className="rounded-lg bg-muted p-0.5 dark:bg-muted-night"
-            >
-              <Button
-                size="xs"
-                variant={activeTab === "conversation" ? "outline" : "ghost"}
-                label="Conversation Files"
-                onClick={() => setActiveTab("conversation")}
-              />
-              <Button
-                size="xs"
-                variant={activeTab === "pod" ? "outline" : "ghost"}
-                label="Pod Files"
-                onClick={() => setActiveTab("pod")}
-              />
-            </ButtonGroup>
-          ) : (
-            <span className="text-sm text-foreground dark:text-foreground-night">
-              Conversation Files
-            </span>
-          )}
+          <span className="text-sm text-foreground dark:text-foreground-night">
+            {isPod ? "Files" : "Conversation Files"}
+          </span>
           <Button
             variant="ghost"
             size="sm"
@@ -94,42 +86,21 @@ export function ConversationFileExplorer({
       </AppLayoutTitle>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col",
-            isPod && activeTab !== "conversation" && "hidden"
-          )}
-        >
-          <FileExplorer
-            files={sandboxFiles}
-            hideBreadcrumbAtRoot
-            isLoading={isSandboxFilesLoading}
-            getFileUrl={getFileUrl}
-            onFileDownload={onFileDownload}
-            onOpenInteractive={onOpenInteractive}
-            owner={owner}
-          />
-        </div>
-
-        {isPod && (
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col",
-              activeTab !== "pod" && "hidden"
-            )}
-          >
-            <FileExplorer
-              defaultViewMode="list"
-              files={podFiles}
-              hideBreadcrumbAtRoot
-              isLoading={isPodFilesLoading}
-              getFileUrl={getFileUrl}
-              onFileDownload={onFileDownload}
-              onOpenInteractive={onOpenInteractive}
-              owner={owner}
-            />
-          </div>
-        )}
+        <FileExplorer
+          defaultViewMode={isPod ? "list" : "grid"}
+          files={files}
+          hideBreadcrumbAtRoot={!isPod}
+          isLoading={
+            isPod
+              ? isSandboxFilesLoading || isPodFilesLoading
+              : isSandboxFilesLoading
+          }
+          getFileUrl={getFileUrl}
+          onFileDownload={onFileDownload}
+          onOpenInteractive={onOpenInteractive}
+          owner={owner}
+          virtualScopeRoots={isPod ? POD_CONVERSATION_SCOPE_ROOTS : undefined}
+        />
       </div>
     </div>
   );

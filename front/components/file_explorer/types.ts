@@ -1,8 +1,20 @@
-import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
+import type {
+  FileSystemEntry,
+  FileSystemFileEntry,
+} from "@app/types/api/file_system/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type React from "react";
 
-export type FileEntry = FileSystemFileEntry & { kind: "file" };
+/** Explorer input: canonical `path` plus an optional UI-only navigation path. */
+export type FileExplorerPathEntry = FileSystemEntry & {
+  virtualPath?: string;
+};
+
+export type FileEntry = FileSystemFileEntry & {
+  kind: "file";
+  /** UI navigation path when entries from multiple scopes are merged. */
+  virtualPath?: string;
+};
 export type FileEntryWithId = FileEntry & { fileId: string };
 
 export type ContentNodeEntry = {
@@ -44,7 +56,7 @@ export type FilePanelCategory =
 
 export type FileSystemTreeNode = {
   name: string;
-  /** Relative path within the mount (scope prefix stripped), e.g. `"reports/q1.pdf"`. */
+  /** Explorer-relative path (mount-relative, or virtual when `virtualPath` is used). */
   path: string;
   isDirectory: boolean;
   contentType: string | null;
