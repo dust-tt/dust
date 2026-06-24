@@ -35,7 +35,6 @@ describe("buildEditorExtensions", () => {
           selectedMCPServerViewIdsRef: { current: new Set<string>() },
           slashCommandsRef: { current: [] },
           includeAttachKnowledgeRef: { current: false },
-          includeContextFilesRef: { current: false },
         }),
       ],
     });

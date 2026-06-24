@@ -138,7 +138,6 @@ function KnowledgeSearchComponent({
 
   return (
     <KnowledgeSlashSearch
-      excludeNonRemoteDatabaseTables
       onCancel={onCancel}
       onSelect={(node) => onSelect(knowledgeNodeToItem(node))}
       owner={owner}

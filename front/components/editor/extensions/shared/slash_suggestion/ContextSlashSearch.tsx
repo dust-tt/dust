@@ -63,25 +63,43 @@ function contextFileItemToSearchItem(
   };
 }
 
+export type ContextSlashSearchUseCase = "conversation-input" | "skill-builder";
+
+const CONTEXT_SLASH_SEARCH_USE_CASES = {
+  "conversation-input": {
+    excludeNonRemoteDatabaseTables: false,
+    includeDataSources: true,
+  },
+  "skill-builder": {
+    excludeNonRemoteDatabaseTables: true,
+    includeDataSources: false,
+  },
+} as const;
+
 export interface ContextSlashSearchProps {
-  conversationId: string | null;
-  includeFiles: boolean;
+  conversationId?: string | null;
   isNodeAttached?: (node: DataSourceViewContentNode) => boolean;
   onCancel: () => void;
   onSelect: (selection: ContextSlashSearchSelection) => void;
   owner: LightWorkspaceType;
+  useCase: ContextSlashSearchUseCase;
   spaceId?: string | null;
 }
 
 export function ContextSlashSearch({
-  conversationId,
-  includeFiles,
+  conversationId = null,
   isNodeAttached,
   onCancel,
   onSelect,
   owner,
-  spaceId,
+  useCase,
+  spaceId = null,
 }: ContextSlashSearchProps) {
+  const { excludeNonRemoteDatabaseTables, includeDataSources } =
+    CONTEXT_SLASH_SEARCH_USE_CASES[useCase];
+  const includeFiles =
+    useCase === "conversation-input" &&
+    (Boolean(conversationId) || Boolean(spaceId));
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -129,7 +147,8 @@ export function ContextSlashSearch({
       spaceIds,
       projectId,
       viewType: "all",
-      includeDataSources: true,
+      excludeNonRemoteDatabaseTables,
+      includeDataSources,
       searchSourceUrls: true,
       includeTools: false,
       prioritizeSpaceAccess: true,
@@ -204,21 +223,30 @@ export function ContextSlashSearch({
     isFileItemsLoading ||
     (shouldSearchKnowledge && isSearchLoading);
 
+  const isDropdownOpen =
+    searchQuery.trim().length > 0 || items.length > 0 || isLoading;
+
+  const emptyMessage = !shouldSearchKnowledge
+    ? "Type at least 2 characters to search"
+    : "No results found";
+
+  const loadingMessage = includeFiles
+    ? "Searching..."
+    : "Searching knowledge...";
+
   const dropdownContent =
     isLoading && items.length === 0 ? (
       <div className="flex h-14 items-center justify-center">
         <Spinner size="sm" />
         <span className="ml-2 text-sm text-gray-500 dark:text-gray-500-night">
-          Searching...
+          {loadingMessage}
         </span>
       </div>
     ) : items.length === 0 ? (
       <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500 dark:text-gray-500-night">
-        {!shouldSearchKnowledge && !includeFiles
-          ? "Type at least 2 characters to search"
-          : !shouldSearchKnowledge && includeFiles
-            ? "No files found"
-            : "No results found"}
+        {!shouldSearchKnowledge && includeFiles && fileItems.length === 0
+          ? "No files found"
+          : emptyMessage}
       </div>
     ) : (
       items.map((item, index) => (
@@ -271,7 +299,7 @@ export function ContextSlashSearch({
       deferDropdownUntilFocus
       dropdownContent={dropdownContent}
       highlightedItemId={items[selectedIndex]?.id}
-      isDropdownOpen={items.length > 0 || isLoading}
+      isDropdownOpen={isDropdownOpen}
       itemCount={items.length}
       onCancel={onCancel}
       onSearchQueryChange={(text) => {

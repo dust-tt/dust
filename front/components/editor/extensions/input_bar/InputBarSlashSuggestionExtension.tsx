@@ -20,7 +20,6 @@ interface InputBarSlashSuggestionStorage {
 export interface InputBarSlashSuggestionExtensionOptions {
   conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
-  includeContextFilesRef: RefObject<boolean>;
   includeAttachKnowledgeRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
   onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
@@ -49,7 +48,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     conversationIdRef: { current: null },
     enabledRef: { current: false },
     includeAttachKnowledgeRef: { current: false },
-    includeContextFilesRef: { current: false },
     onSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
     selectedMCPServerViewIdsRef: { current: new Set<string>() },

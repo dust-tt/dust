@@ -314,7 +314,6 @@ export interface CustomEditorProps {
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
-    includeContextFilesRef: React.RefObject<boolean>;
     attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
     onNodeSelectRef: React.RefObject<
       ((node: DataSourceViewContentNode) => void) | undefined
@@ -465,7 +464,6 @@ export const buildEditorExtensions = ({
       InputBarContextSearchNode.configure({
         attachedNodesRef: slashSuggestion.attachedNodesRef,
         conversationIdRef: slashSuggestion.conversationIdRef,
-        includeFilesRef: slashSuggestion.includeContextFilesRef,
         onNodeSelectRef: slashSuggestion.onNodeSelectRef,
         owner,
         spaceIdRef: slashSuggestion.spaceIdRef,
@@ -479,7 +477,6 @@ export const buildEditorExtensions = ({
         onActiveChangeRef: onSuggestionActiveChangeRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
-        includeContextFilesRef: slashSuggestion.includeContextFilesRef,
       })
     );
   }

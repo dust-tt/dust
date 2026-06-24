@@ -13,7 +13,6 @@ import { useCallback } from "react";
 export interface ContextSearchNodeOptions {
   attachedNodesRef?: RefObject<DataSourceViewContentNode[]>;
   conversationIdRef?: RefObject<string | null>;
-  includeFilesRef?: RefObject<boolean>;
   onNodeSelectRef?: RefObject<
     ((node: DataSourceViewContentNode) => void) | undefined
   >;
@@ -50,7 +49,6 @@ export function ContextSearchNodeView({
 }: ContextSearchNodeViewProps) {
   const owner = options.owner;
   const conversationId = options.conversationIdRef?.current ?? null;
-  const includeFiles = options.includeFilesRef?.current ?? false;
 
   const handleCancel = useCallback(() => {
     deleteNode();
@@ -111,11 +109,11 @@ export function ContextSearchNodeView({
     <NodeViewWrapper className="inline">
       <ContextSlashSearch
         conversationId={conversationId}
-        includeFiles={includeFiles}
         isNodeAttached={isNodeAttached}
         onCancel={handleCancel}
         onSelect={handleSelect}
         owner={owner}
+        useCase="conversation-input"
         spaceId={options.spaceIdRef?.current ?? null}
       />
     </NodeViewWrapper>

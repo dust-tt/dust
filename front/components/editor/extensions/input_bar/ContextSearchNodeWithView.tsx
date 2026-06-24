@@ -14,7 +14,6 @@ export { CONTEXT_SEARCH_NODE_TYPE };
 const DEFAULT_CONTEXT_SEARCH_NODE_OPTIONS: ContextSearchNodeOptions = {
   attachedNodesRef: { current: [] },
   conversationIdRef: { current: null },
-  includeFilesRef: { current: false },
   onNodeSelectRef: { current: undefined },
   owner: undefined,
   spaceIdRef: { current: null },
