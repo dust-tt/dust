@@ -204,11 +204,7 @@ async function buildReplyContext(params: {
   const headers = originalMessage.payload?.headers || [];
   const originalFrom = getHeaderValue(headers, "From");
   const originalDate = getHeaderValue(headers, "Date");
-  const rawBody = decodeMessageBody(originalMessage.payload);
-  const originalBody = unescape(rawBody)
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const decodedBody = decodeMessageBody(originalMessage.payload);
   const originalCc = getHeaderValue(headers, "Cc");
   const originalBcc = getHeaderValue(headers, "Bcc");
   const originalSubject = getHeaderValue(headers, "Subject") ?? null;
@@ -224,7 +220,8 @@ async function buildReplyContext(params: {
   const fullBody = buildReplyBody(
     params.body,
     "text/html",
-    originalBody,
+    decodedBody?.body ?? "",
+    decodedBody?.mimeType ?? "text/plain",
     originalDate,
     originalFrom
   );
@@ -623,7 +620,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         const date = getHeaderValue(headers, "Date");
         const subject = getHeaderValue(headers, "Subject");
         const body = unescape(
-          decodeMessageBody(message.payload)
+          (decodeMessageBody(message.payload)?.body ?? "")
             .replace(/<[^>]*>/g, " ")
             .replace(/\s+/g, " ")
             .trim()
@@ -779,7 +776,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         const date = getHeaderValue(headers, "Date");
 
         // Decode the full email body
-        const body = decodeMessageBody(messageData.payload);
+        const body = decodeMessageBody(messageData.payload)?.body ?? "";
 
         // Extract attachment metadata
         const attachments = includeAttachments
