@@ -1,6 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { CreationOptional } from "sequelize";
 
 export class GlobalFeatureFlagModel extends BaseModel<GlobalFeatureFlagModel> {
@@ -8,7 +9,7 @@ export class GlobalFeatureFlagModel extends BaseModel<GlobalFeatureFlagModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare name: string;
+  declare name: WhitelistableFeature;
   declare rolloutPercentage: number;
 }
 

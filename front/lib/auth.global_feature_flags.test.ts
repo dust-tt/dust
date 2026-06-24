@@ -114,20 +114,6 @@ describe("getFeatureFlags with global flags", () => {
     expect(flags).toContain("labs_transcripts");
   });
 
-  it("ignores legacy global flags that are no longer whitelistable", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    await GlobalFeatureFlagResource.setLegacyRolloutPercentage(
-      "legacy_removed_feature",
-      100
-    );
-    invalidateAllCaches(auth);
-
-    const flags = await getFeatureFlags(auth);
-    expect(flags).not.toContain("legacy_removed_feature");
-  });
-
   it("returns disable_computer_feature alongside sandbox_tools", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);

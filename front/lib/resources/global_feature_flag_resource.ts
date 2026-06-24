@@ -2,10 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import {
-  isWhitelistableFeature,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
@@ -28,11 +25,9 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
   static async listAll(): Promise<GlobalFeatureFlagResource[]> {
     const flags = await GlobalFeatureFlagModel.findAll();
 
-    return flags
-      .map(
-        (f) => new GlobalFeatureFlagResource(GlobalFeatureFlagModel, f.get())
-      )
-      .filter((flag) => isWhitelistableFeature(flag.name));
+    return flags.map(
+      (f) => new GlobalFeatureFlagResource(GlobalFeatureFlagModel, f.get())
+    );
   }
 
   static async setRolloutPercentage(
@@ -50,24 +45,6 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     } else {
       await GlobalFeatureFlagModel.upsert({ name, rolloutPercentage });
     }
-  }
-
-  static async setLegacyRolloutPercentage(
-    name: string,
-    rolloutPercentage: number
-  ): Promise<void> {
-    if (rolloutPercentage < 0 || rolloutPercentage > 100) {
-      throw new Error(
-        `Invalid rollout percentage: ${rolloutPercentage}. Must be between 0 and 100.`
-      );
-    }
-
-    if (rolloutPercentage === 0) {
-      await GlobalFeatureFlagModel.destroy({ where: { name } });
-      return;
-    }
-
-    await GlobalFeatureFlagModel.upsert({ name, rolloutPercentage });
   }
 
   async delete(
