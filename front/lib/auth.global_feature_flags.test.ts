@@ -111,6 +111,50 @@ describe("getFeatureFlags with global flags", () => {
     expect(flags).toContain("deepseek_feature");
     expect(flags).toContain("labs_transcripts");
   });
+
+  it("disable_computer_feature disables workspace sandbox flags", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await FeatureFlagResource.enableMany(workspace, [
+      "disable_computer_feature",
+      "sandbox_tools",
+      "sandbox_dsbx_tools",
+      "sandbox_workspace_admin",
+      "deepseek_feature",
+    ]);
+    invalidateAllCaches(auth);
+
+    const flags = await getFeatureFlags(auth);
+    expect(flags).toContain("disable_computer_feature");
+    expect(flags).toContain("deepseek_feature");
+    expect(flags).not.toContain("sandbox_tools");
+    expect(flags).not.toContain("sandbox_dsbx_tools");
+    expect(flags).not.toContain("sandbox_workspace_admin");
+  });
+
+  it("disable_computer_feature disables globally rolled out sandbox flags", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await FeatureFlagResource.enable(workspace, "disable_computer_feature");
+    await GlobalFeatureFlagResource.setRolloutPercentage("sandbox_tools", 100);
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "sandbox_dsbx_tools",
+      100
+    );
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "sandbox_workspace_admin",
+      100
+    );
+    invalidateAllCaches(auth);
+
+    const flags = await getFeatureFlags(auth);
+    expect(flags).toContain("disable_computer_feature");
+    expect(flags).not.toContain("sandbox_tools");
+    expect(flags).not.toContain("sandbox_dsbx_tools");
+    expect(flags).not.toContain("sandbox_workspace_admin");
+  });
 });
 
 describe("GlobalFeatureFlagResource.isInRollout", () => {

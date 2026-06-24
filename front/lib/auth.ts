@@ -38,7 +38,11 @@ import type {
 import { hasRolePermissions } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
+import {
+  DISABLE_COMPUTER_FEATURE,
+  isComputerFeatureFlag,
+  WHITELISTABLE_FEATURES,
+} from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1583,10 +1587,24 @@ function getGlobalFeatureFlags(): Promise<GlobalFeatureFlagResource[]> {
   });
 }
 
+const ACTIVATE_ALL_DEV_FEATURES = WHITELISTABLE_FEATURES.filter(
+  (flag) => flag !== DISABLE_COMPUTER_FEATURE
+);
+
+function applyFeatureFlagOverrides(
+  flags: WhitelistableFeature[]
+): WhitelistableFeature[] {
+  if (!flags.includes(DISABLE_COMPUTER_FEATURE)) {
+    return flags;
+  }
+
+  return flags.filter((flag) => !isComputerFeatureFlag(flag));
+}
+
 const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
   load: (workspace, callback) => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-      callback(null, [...WHITELISTABLE_FEATURES]);
+      callback(null, [...ACTIVATE_ALL_DEV_FEATURES]);
       return;
     }
 
@@ -1615,7 +1633,7 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
           }
         }
 
-        callback(null, effectiveFlags);
+        callback(null, applyFeatureFlagOverrides(effectiveFlags));
       })
       .catch((err: Error) => callback(err));
   },
