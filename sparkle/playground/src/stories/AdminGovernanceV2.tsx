@@ -661,15 +661,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "billing",
     "usage",
   ],
-  admin: [
-    "people",
-    "capabilities",
-    "analytics",
-    "api_keys",
-    "programmatic",
-    "credentials",
-    "secrets",
-  ],
+  admin: ["people", "governance", "analytics", "usage"],
   security_admin: ["people", "identity"],
   billing_admin: ["billing", "usage"],
 };
@@ -3529,15 +3521,42 @@ function ManageConnectionSheet({
   open,
   onClose,
   onUpdateDelegates,
+  role,
+  members,
 }: {
   connection: ConnectionRow | null;
   open: boolean;
   onClose: () => void;
   onUpdateDelegates: (name: string, delegates: string[]) => void;
+  role: Role;
+  members: MemberRow[];
 }) {
+  const businessAdmins = members.filter((m) => m.role === "admin");
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    businessAdmins
+      .filter((m) => connection?.delegates.includes(m.name))
+      .map((m) => m.id)
+  );
+  const [delegateSearch, setDelegateSearch] = useState("");
+
+  const filteredAdmins = businessAdmins.filter(
+    (m) =>
+      !delegateSearch ||
+      m.name.toLowerCase().includes(delegateSearch.toLowerCase()) ||
+      m.email.toLowerCase().includes(delegateSearch.toLowerCase())
+  );
+
+  const toggle = (id: string) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
   const handleSave = () => {
     if (connection) {
-      onUpdateDelegates(connection.name, connection.delegates);
+      const names = businessAdmins
+        .filter((m) => selectedIds.includes(m.id))
+        .map((m) => m.name);
+      onUpdateDelegates(connection.name, names);
     }
     onClose();
   };
@@ -3573,6 +3592,63 @@ function ManageConnectionSheet({
               <SliderToggle selected={true} onClick={() => {}} />
             </div>
           </Page.Vertical>
+
+          {/* Delegate management — Super Admin only */}
+          {role === "super_admin" && (
+            <Page.Vertical gap="sm">
+              <Page.SectionHeader
+                title="Delegate to Business Admins"
+                description="Business Admins selected here can edit this connection's settings and select which data is synced."
+              />
+              <SearchInput
+                name="delegate-search"
+                placeholder="Search by name or email"
+                value={delegateSearch}
+                onChange={setDelegateSearch}
+                className="s-w-full"
+              />
+              {filteredAdmins.length === 0 ? (
+                <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-py-2">
+                  No business admins found
+                </p>
+              ) : (
+                <ListGroup className="s-w-full">
+                  {filteredAdmins.map((m, i) => (
+                    <ListItem
+                      key={m.id}
+                      onClick={() => toggle(m.id)}
+                      hasSeparator={i < filteredAdmins.length - 1}
+                      itemsAlignment="center"
+                    >
+                      <Checkbox
+                        checked={selectedIds.includes(m.id)}
+                        onCheckedChange={() => toggle(m.id)}
+                      />
+                      <Avatar
+                        size="sm"
+                        name={m.name}
+                        visual={m.visual}
+                        isRounded
+                      />
+                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
+                        <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                          {m.name}
+                        </span>
+                        <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                          {m.email}
+                        </span>
+                      </div>
+                      <Chip
+                        label={ROLE_DISPLAY[m.role].label}
+                        color={ROLE_DISPLAY[m.role].color}
+                        size="xs"
+                      />
+                    </ListItem>
+                  ))}
+                </ListGroup>
+              )}
+            </Page.Vertical>
+          )}
 
           {/* Select tables */}
           <Page.Vertical gap="sm">
@@ -3611,6 +3687,9 @@ function ManageConnectionSheet({
 
 // ─── Connections Page ─────────────────────────────────────────────────────────
 
+// Connections the business admin currently has access to (simulates delegation)
+const ADMIN_ACCESSIBLE = new Set(["Notion", "Slack", "Google Drive"]);
+
 function ConnectionsPage({
   connections,
   onManage,
@@ -3632,7 +3711,8 @@ function ConnectionsPage({
     null
   );
 
-  const canManage = role === "super_admin" || role === "admin";
+  const isAccessible = (conn: ConnectionRow) =>
+    role === "super_admin" || ADMIN_ACCESSIBLE.has(conn.name);
 
   const columns = useMemo<ColumnDef<ConnectionRow>[]>(
     () => [
@@ -3643,9 +3723,12 @@ function ConnectionsPage({
         cell: (info) => {
           const row = info.row.original;
           const Logo = row.logo;
+          const accessible = isAccessible(row);
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-3">
+              <div
+                className={`s-flex s-items-center s-gap-3${!accessible ? " s-opacity-40" : ""}`}
+              >
                 <div className="s-h-6 s-w-6 s-shrink-0">
                   <Logo className="s-h-6 s-w-6" />
                 </div>
@@ -3662,9 +3745,13 @@ function ConnectionsPage({
         header: "Used By",
         meta: { className: "s-w-28" },
         cell: (info) => {
+          const row = info.row.original;
+          const accessible = isAccessible(row);
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <div
+                className={`s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night${!accessible ? " s-opacity-40" : ""}`}
+              >
                 <Users01 className="s-h-3.5 s-w-3.5" />
                 <span>{info.getValue() as number}</span>
               </div>
@@ -3677,9 +3764,13 @@ function ConnectionsPage({
         header: "Managed By",
         meta: { className: "s-w-28" },
         cell: (info) => {
+          const row = info.row.original;
+          const accessible = isAccessible(row);
           return (
             <DataTable.CellContent>
-              <Avatar name={info.getValue() as string} size="xs" isRounded />
+              <div className={!accessible ? "s-opacity-40" : ""}>
+                <Avatar name={info.getValue() as string} size="xs" isRounded />
+              </div>
             </DataTable.CellContent>
           );
         },
@@ -3689,9 +3780,13 @@ function ConnectionsPage({
         header: "Last Sync",
         meta: { className: "s-w-32" },
         cell: (info) => {
+          const row = info.row.original;
+          const accessible = isAccessible(row);
           return (
             <DataTable.CellContent>
-              <span className="s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap">
+              <span
+                className={`s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap${!accessible ? " s-opacity-40" : ""}`}
+              >
                 {info.getValue() as string}
               </span>
             </DataTable.CellContent>
@@ -3704,8 +3799,9 @@ function ConnectionsPage({
         meta: { className: "s-w-36" },
         cell: (info: { row: { original: ConnectionRow } }) => {
           const row = info.row.original;
+          const accessible = isAccessible(row);
           const requested = requestedIds.includes(row.name);
-          if (canManage) {
+          if (role === "super_admin" || (role === "admin" && accessible)) {
             return (
               <DataTable.CellContent>
                 {row.configured ? (
@@ -3719,7 +3815,7 @@ function ConnectionsPage({
                       onManage(row);
                     }}
                   />
-                ) : (
+                ) : role === "super_admin" ? (
                   <Button
                     variant="primary"
                     size="xs"
@@ -3729,7 +3825,7 @@ function ConnectionsPage({
                       setConfigureTarget(row);
                     }}
                   />
-                )}
+                ) : null}
               </DataTable.CellContent>
             );
           }
@@ -3753,7 +3849,7 @@ function ConnectionsPage({
         },
       },
     ],
-    [role, onManage, requestedIds, canManage]
+    [role, onManage, requestedIds]
   );
 
   const rows = connections
@@ -3763,7 +3859,7 @@ function ConnectionsPage({
     .sort((a, b) => (a.configured === b.configured ? 0 : a.configured ? -1 : 1))
     .map((c) => ({
       ...c,
-      onClick: canManage ? () => onOpenDetail(c) : undefined,
+      onClick: isAccessible(c) ? () => onOpenDetail(c) : undefined,
     }));
 
   return (
@@ -3943,10 +4039,12 @@ function ConnectionDetailPage({
   connectionId,
   onBack,
   role,
+  members,
 }: {
   connectionId: string;
   onBack: () => void;
   role: Role;
+  members: MemberRow[];
 }) {
   const [managingConn, setManagingConn] = useState<ConnectionRow | null>(null);
   const connection = INITIAL_CONNECTIONS.find((c) => c.name === connectionId);
@@ -4034,6 +4132,8 @@ function ConnectionDetailPage({
         open={!!managingConn}
         onClose={() => setManagingConn(null)}
         onUpdateDelegates={() => setManagingConn(null)}
+        role={role}
+        members={members}
       />
     </>
   );
@@ -4859,6 +4959,7 @@ export default function AdminGovernanceV2() {
             <ConnectionDetailPage
               connectionId={selectedConnectionId}
               role={role}
+              members={members}
               onBack={() => setSelectedConnectionId(null)}
             />
           ) : spacesPage === "connections" ? (
@@ -4956,6 +5057,8 @@ export default function AdminGovernanceV2() {
             connections.map((c) => (c.name === name ? { ...c, delegates } : c))
           );
         }}
+        role={role}
+        members={members}
       />
 
       {/* Locked section dialog */}
