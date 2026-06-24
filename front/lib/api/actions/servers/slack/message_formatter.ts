@@ -8,6 +8,19 @@ import { z } from "zod";
 
 const TextObjectSchema = z.object({ text: z.string() });
 
+// Interactive elements (buttons in `actions` blocks or a section `accessory`): a `text`
+// object and an optional url. Other element kinds (datepicker, select) leave these unset.
+const InteractiveElementSchema = z.object({
+  text: TextObjectSchema.optional(),
+  url: z.string().optional(),
+});
+
+// Context elements are text objects (text at element level) or images (alt_text).
+const ContextElementSchema = z.object({
+  text: z.string().optional(),
+  alt_text: z.string().optional(),
+});
+
 const HeaderBlockSchema = z.object({
   type: z.literal("header"),
   text: TextObjectSchema,
@@ -17,17 +30,17 @@ const SectionBlockSchema = z.object({
   type: z.literal("section"),
   text: TextObjectSchema.optional(),
   fields: z.array(TextObjectSchema).optional(),
-  accessory: z.record(z.string(), z.unknown()).optional(),
+  accessory: InteractiveElementSchema.optional(),
 });
 
 const ContextBlockSchema = z.object({
   type: z.literal("context"),
-  elements: z.array(z.record(z.string(), z.unknown())).optional(),
+  elements: z.array(ContextElementSchema).optional(),
 });
 
 const ActionsBlockSchema = z.object({
   type: z.literal("actions"),
-  elements: z.array(z.record(z.string(), z.unknown())).optional(),
+  elements: z.array(InteractiveElementSchema).optional(),
 });
 
 const ImageBlockSchema = z.object({
@@ -36,9 +49,39 @@ const ImageBlockSchema = z.object({
   alt_text: z.string().optional(),
 });
 
+type RichTextElement = {
+  type?: string;
+  text?: string;
+  url?: string;
+  user_id?: string;
+  channel_id?: string;
+  usergroup_id?: string;
+  name?: string;
+  range?: string;
+  fallback?: string;
+  elements?: RichTextElement[];
+};
+
+const RichTextElementSchema: z.ZodType<RichTextElement> = z.lazy(() =>
+  z.object({
+    type: z.string().optional(),
+    text: z.string().optional(),
+    url: z.string().optional(),
+    user_id: z.string().optional(),
+    channel_id: z.string().optional(),
+    usergroup_id: z.string().optional(),
+    name: z.string().optional(),
+    range: z.string().optional(),
+    fallback: z.string().optional(),
+    elements: z.array(RichTextElementSchema).optional(),
+  })
+);
+
+type t = z.infer<typeof RichTextElementSchema>
+
 const RichTextBlockSchema = z.object({
   type: z.literal("rich_text"),
-  elements: z.array(z.unknown()).optional(),
+  elements: z.array(RichTextElementSchema).optional(),
 });
 
 const DividerBlockSchema = z.object({
@@ -84,83 +127,65 @@ const SlackMessageSchema = z.object({
   files: z.array(FileSchema).optional(),
 });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function asArray(value: unknown): unknown[] | undefined {
-  return Array.isArray(value) ? value : undefined;
-}
-
-function readTextObject(value: unknown): string | undefined {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  return isString(value.text) ? value.text : undefined;
-}
-
 function toSingleLine(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-function renderRichTextLeaf(element: Record<string, unknown>): string {
-  const type = isString(element.type) ? element.type : undefined;
-  switch (type) {
+function renderRichTextLeaf(element: RichTextElement): string {
+  switch (element.type) {
     case "text":
-      return isString(element.text) ? element.text : "";
-    case "link": {
-      const url = isString(element.url) ? element.url : "";
-      const label = isString(element.text) ? element.text : undefined;
-      return label ? `${label} (${url})` : url;
-    }
+      return element.text ?? "";
+
+    case "link":
+      return element.text
+        ? `${element.text} (${element.url ?? ""})`
+         : (element.url ?? "");
+
     case "user":
-      return isString(element.user_id) ? `@${element.user_id}` : "";
+      return element.user_id ? `@${element.user_id}` : "";
+
     case "usergroup":
-      return isString(element.usergroup_id) ? `@${element.usergroup_id}` : "";
+      return element.usergroup_id ? `@${element.usergroup_id}` : "";
+
     case "channel":
-      return isString(element.channel_id) ? `#${element.channel_id}` : "";
+      return element.channel_id ? `#${element.channel_id}` : "";
+
     case "emoji":
-      return isString(element.name) ? `:${element.name}:` : "";
+      return element.name ? `:${element.name}:` : "";
+
     case "broadcast":
-      return isString(element.range) ? `@${element.range}` : "";
+      return element.range ? `@${element.range}` : "";
+
     case "date":
-      // `date` carries a fallback string suitable for display.
-      return isString(element.fallback) ? element.fallback : "";
+      return element.fallback ?? "";
+
     default:
       // Unknown leaf type (e.g. `color`): fall back to any `text` it might carry.
-      return isString(element.text) ? element.text : "";
+      return element.text ?? "";
   }
 }
 
-function renderRichTextSection(section: unknown): string[] {
-  if (!isRecord(section)) {
-    return [];
-  }
-  const type = isString(section.type) ? section.type : undefined;
-  const elements = asArray(section.elements) ?? [];
+function renderRichTextSection(section: RichTextElement): string[] {
+  const elements = section.elements ?? [];
 
   // Lists nest one rich_text_section per item.
-  if (type === "rich_text_list") {
+  if (section.type === "rich_text_list") {
     return elements
       .flatMap((item) => renderRichTextSection(item))
       .filter((line) => line.length > 0)
       .map((line) => `- ${line}`);
   }
 
-  const joined = elements
-    .map((element) => (isRecord(element) ? renderRichTextLeaf(element) : ""))
-    .join("");
+  const joined = elements.map((element) => renderRichTextLeaf(element)).join("");
 
   if (!joined) {
     return [];
   }
-  if (type === "rich_text_quote") {
+  
+  if (section.type === "rich_text_quote") {
     return [`> ${joined}`];
   }
+
   return [joined];
 }
 
@@ -188,10 +213,8 @@ function extractLinesFromBlock(block: SlackBlock): string[] {
       }
       // A section can carry an accessory (often a button with a label and url).
       if (block.accessory) {
-        const label = readTextObject(block.accessory.text);
-        const url = isString(block.accessory.url)
-          ? block.accessory.url
-          : undefined;
+        const label = block.accessory.text?.text;
+        const url = block.accessory.url;
         if (label && url) {
           lines.push(`${label} (${url})`);
         } else if (label) {
@@ -206,12 +229,7 @@ function extractLinesFromBlock(block: SlackBlock): string[] {
 
       const parts: string[] = [];
       for (const element of elements) {
-        let text: string | undefined;
-        if (isString(element.text)) {
-          text = element.text;
-        } else if (isString(element.alt_text)) {
-          text = element.alt_text;
-        }
+        const text = element.text ?? element.alt_text;
         if (text) {
           parts.push(text);
         }
@@ -225,8 +243,8 @@ function extractLinesFromBlock(block: SlackBlock): string[] {
 
       const lines: string[] = [];
       for (const element of elements) {
-        const label = readTextObject(element.text);
-        const url = isString(element.url) ? element.url : undefined;
+        const label = element.text?.text;
+        const url = element.url;
         if (label && url) {
           lines.push(`${label} (${url})`);
         } else if (label) {
