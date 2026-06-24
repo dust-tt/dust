@@ -9,7 +9,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isUserMessageType } from "@app/types/assistant/conversation";
+import {
+  isCompactionMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
 
 async function findAvailableSkillForAgentLoop({
@@ -26,13 +29,29 @@ async function findAvailableSkillForAgentLoop({
   const userMessageSkillIds = new Set(
     extractUniqueSkillIds(agentLoopData.userMessage.content)
   );
-  for (const messageVersions of agentLoopData.conversation.content) {
+  let startIndex = 0;
+  for (let i = agentLoopData.conversation.content.length - 1; i >= 0; i--) {
+    const message = agentLoopData.conversation.content[i].at(-1);
+
+    if (
+      message &&
+      isCompactionMessageType(message) &&
+      message.status === "succeeded"
+    ) {
+      startIndex = i;
+      break;
+    }
+  }
+
+  for (let i = startIndex; i < agentLoopData.conversation.content.length; i++) {
+    const messageVersions = agentLoopData.conversation.content[i];
     const message = messageVersions.at(-1);
 
     if (
       message &&
       isUserMessageType(message) &&
-      message.visibility === "visible"
+      message.visibility === "visible" &&
+      message.rank <= agentLoopData.userMessage.rank
     ) {
       for (const skillId of extractUniqueSkillIds(message.content)) {
         userMessageSkillIds.add(skillId);

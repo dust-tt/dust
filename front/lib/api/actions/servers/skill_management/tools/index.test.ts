@@ -37,17 +37,34 @@ vi.mock("@app/lib/resources/skill/skill_resource", () => ({
 import { TOOLS } from "./index";
 
 describe("skill_management enable_skill tool", () => {
+  type TestUserMessage = {
+    content: string;
+    rank: number;
+    sId: string;
+    type: "user_message";
+    visibility: "visible";
+  };
+  type TestCompactionMessage = {
+    content: string | null;
+    sId: string;
+    status: "succeeded";
+    type: "compaction_message";
+    visibility: "visible";
+  };
+  type TestMessage = TestUserMessage | TestCompactionMessage;
+
   const auth = {};
   const agentConfiguration = { sId: "agent-id" };
   const agentMessage = { sId: "agent-message-id" };
-  const userMessage = {
+  const userMessage: TestUserMessage = {
     content: "",
+    rank: 2,
     sId: "user-message-id",
     type: "user_message",
     visibility: "visible",
   };
   const conversation: {
-    content: (typeof userMessage)[][];
+    content: TestMessage[][];
     sId: string;
   } = { content: [], sId: "conversation-id" };
   const skill = {
@@ -372,6 +389,7 @@ describe("skill_management enable_skill tool", () => {
     const earlierUserMessage = {
       ...userMessage,
       content: '<skill id="skill-id" name="commit" />',
+      rank: 1,
       sId: "earlier-user-message-id",
     };
     const conversationWithEarlierSkill = {
@@ -404,5 +422,46 @@ describe("skill_management enable_skill tool", () => {
       }
     );
     expect(mockEnableForAgent).toHaveBeenCalled();
+  });
+
+  it("does not enable skills referenced before the latest compaction", async () => {
+    const earlierUserMessage = {
+      ...userMessage,
+      content: '<skill id="skill-id" name="commit" />',
+      rank: 1,
+      sId: "earlier-user-message-id",
+    };
+    const compactionMessage: TestCompactionMessage = {
+      content: "Earlier messages summarized.",
+      sId: "compaction-message-id",
+      status: "succeeded",
+      type: "compaction_message",
+      visibility: "visible",
+    };
+    const conversationWithCompaction = {
+      ...conversation,
+      content: [[earlierUserMessage], [compactionMessage], [userMessage]],
+    };
+    mockListForAgentLoop.mockResolvedValue({
+      enabledSkills: [],
+      equippedSkills: [],
+      systemSkills: [],
+    });
+
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra({
+        conversationOverride: conversationWithCompaction,
+      })
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockFetchActiveByIdsForAgentLoop).toHaveBeenCalledWith(auth, [], {
+      agentConfiguration,
+      agentMessage,
+      conversation: conversationWithCompaction,
+      userMessage,
+    });
+    expect(mockEnableForAgent).not.toHaveBeenCalled();
   });
 });
