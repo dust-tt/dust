@@ -43,10 +43,9 @@ import {
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
-import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
@@ -67,10 +66,7 @@ import {
 } from "@app/types/assistant/mentions";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -277,7 +273,6 @@ const InputBarContainer = ({
   placeholder,
   onShake,
   isCompact = false,
-  onExpandInputBar,
   onEditorFocusChange,
   onOverlayOpenChange,
   onVoiceActiveChange,
@@ -851,42 +846,6 @@ const InputBarContainer = ({
     });
   }, [attachedNodes]);
 
-  const { hasFeature } = useFeatureFlags();
-  const isLiveStt = hasFeature("live_speech_to_text");
-
-  const voiceTranscriberService = useVoiceTranscriberService({
-    owner,
-    fileUploaderService,
-    onTranscribeComplete: (transcript) => {
-      for (const message of transcript) {
-        switch (message.type) {
-          case "text":
-            editorService.insertText(message.text);
-            break;
-          case "mention": {
-            const agent = agentsById.get(message.id);
-            if (agent) {
-              handleSingleAgentSelect(toRichAgentMentionType(agent));
-            }
-            break;
-          }
-          default:
-            assertNever(message);
-        }
-      }
-      if (isCompactRef.current) {
-        void submitCompactVoiceMessageRef.current?.();
-      }
-    },
-    onError: (error) => {
-      sendNotification({
-        type: "error",
-        title: "Failed to transcribe voice",
-        description: normalizeError(error).message,
-      });
-    },
-  });
-
   const voiceLiveTranscriberService = useVoiceLiveTranscriberService({
     owner,
     onPartialTranscript: (text) => {
@@ -909,10 +868,6 @@ const InputBarContainer = ({
       });
     },
   });
-
-  const activeVoiceService = isLiveStt
-    ? voiceLiveTranscriberService
-    : voiceTranscriberService;
 
   // Keep the editor non-editable while the input is fully disabled (e.g. a
   // non-owner viewing a conversation with an active wake-up). The placeholder
@@ -1415,7 +1370,7 @@ const InputBarContainer = ({
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
     isSubmitBlocked ||
-    activeVoiceService.status !== "idle";
+    voiceLiveTranscriberService.status !== "idle";
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
@@ -1434,8 +1389,8 @@ const InputBarContainer = ({
     "px-3 md:pl-4 pt-3 md:pt-3.5"
   );
 
-  const isRecording = activeVoiceService.status === "recording";
-  const isVoiceActive = activeVoiceService.status !== "idle";
+  const isRecording = voiceLiveTranscriberService.status === "recording";
+  const isVoiceActive = voiceLiveTranscriberService.status !== "idle";
   const compactPreviewText = editorService.getTrimmedText();
   const compactDisplayPlaceholder =
     (disableInput ? submitBlockMessage : placeholder) ?? "Get work done";
@@ -1453,7 +1408,7 @@ const InputBarContainer = ({
         editorService.setLoading(false);
       }
     }
-    await onEnterKeyDownWithShake(
+    onEnterKeyDownWithShake(
       editorService.isEmpty() && !canSubmitEmpty,
       editorService.getMarkdownAndMentions(),
       () => {
@@ -1519,12 +1474,12 @@ const InputBarContainer = ({
                 data-compact-voice
               >
                 <VoicePicker
-                  status={activeVoiceService.status}
-                  level={activeVoiceService.level}
-                  elapsedSeconds={activeVoiceService.elapsedSeconds}
-                  onRecordStart={activeVoiceService.startRecording}
-                  onRecordStop={activeVoiceService.stopRecording}
-                  size="sm"
+                  status={voiceLiveTranscriberService.status}
+                  level={voiceLiveTranscriberService.level}
+                  elapsedSeconds={voiceLiveTranscriberService.elapsedSeconds}
+                  onRecordStart={voiceLiveTranscriberService.startRecording}
+                  onRecordStop={voiceLiveTranscriberService.stopRecording}
+                  size="xs"
                   compact
                   showStopLabel={false}
                   disabled={disableInput}
@@ -1806,11 +1761,11 @@ const InputBarContainer = ({
                 actions.includes("voice") &&
                 !isCompact && (
                   <VoicePicker
-                    status={activeVoiceService.status}
-                    level={activeVoiceService.level}
-                    elapsedSeconds={activeVoiceService.elapsedSeconds}
-                    onRecordStart={activeVoiceService.startRecording}
-                    onRecordStop={activeVoiceService.stopRecording}
+                    status={voiceLiveTranscriberService.status}
+                    level={voiceLiveTranscriberService.level}
+                    elapsedSeconds={voiceLiveTranscriberService.elapsedSeconds}
+                    onRecordStart={voiceLiveTranscriberService.startRecording}
+                    onRecordStop={voiceLiveTranscriberService.stopRecording}
                     size={buttonSize}
                     showStopLabel={!isMobile}
                     disabled={disableInput}
@@ -1840,7 +1795,7 @@ const InputBarContainer = ({
                     size={buttonSize}
                     isLoading={
                       isSubmitting &&
-                      activeVoiceService.status !== "transcribing"
+                      voiceLiveTranscriberService.status !== "transcribing"
                     }
                     icon={ArrowUp}
                     variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
