@@ -12,6 +12,7 @@ import {
   FILE_GENERATION_TOOLS_METADATA,
   OUTPUT_FORMATS,
 } from "@app/lib/api/actions/servers/file_generation/metadata";
+import config from "@app/lib/api/config";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
@@ -57,13 +58,10 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     { file_name, file_id_or_url, source_format, output_format },
     { auth }
   ) => {
-    if (!process.env.CONVERTAPI_API_KEY) {
-      return new Err(new MCPError("Missing environment variable."));
-    }
-
+    const convertAPIKey = config.getConvertAPIKey();
     const contentType = getContentTypeFromOutputFormat(output_format);
 
-    const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
+    const convertapi = new ConvertAPI(convertAPIKey);
     let url: string | UploadResult = file_id_or_url;
 
     if (!validateUrl(file_id_or_url).valid) {
@@ -134,10 +132,7 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
     file_content,
     source_format = "text",
   }) => {
-    if (!process.env.CONVERTAPI_API_KEY) {
-      return new Err(new MCPError("Missing environment variable."));
-    }
-
+    const convertAPIKey = config.getConvertAPIKey();
     const fileNameWithoutExtension = basename(file_name);
     // Remove the leading dot from the extension.
     const extension = extname(file_name).replace(/^\./, "");
@@ -157,7 +152,7 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
       !validateUrl(file_content).valid &&
       !getResourceNameAndIdFromSId(file_content)
     ) {
-      const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
+      const convertapi = new ConvertAPI(convertAPIKey);
 
       try {
         let htmlContent: string;

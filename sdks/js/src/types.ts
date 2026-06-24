@@ -729,7 +729,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "gpt_image_2_feature"
   | "hootl_subscriptions"
   | "http_client_tool"
-  | "imgproxy_image_resize"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
