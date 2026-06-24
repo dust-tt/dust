@@ -1,7 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -14,6 +14,9 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 const DEFAULT_ZOOM_IDX = 2;
 const BASE_PAGE_WIDTH = 680;
+// Horizontal breathing room so a fit-to-width page does not touch the panel
+// edges (and so the vertical scrollbar does not force a horizontal one).
+const PAGE_HORIZONTAL_MARGIN = 32;
 
 type State = {
   isFetching: boolean;
@@ -79,10 +82,35 @@ interface PDFViewerProps {
 }
 
 export function PDFViewer({ url }: PDFViewerProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [state, dispatch] = useReducer(reducer, initialState);
   const { isFetching, hasError, objectUrl, numPages, currentPage, zoomIdx } =
     state;
+
+  // Track the scroll container width so pages can fit-to-width: shrinking the
+  // panel resizes the page down to fit before any cropping (scroll) kicks in.
+  // A callback ref wires the ResizeObserver as the container mounts/unmounts,
+  // which avoids depending on render state to (re)attach the observer.
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  const setScrollNode = (node: HTMLDivElement | null) => {
+    scrollRef.current = node;
+
+    resizeObserverRef.current?.disconnect();
+    resizeObserverRef.current = null;
+
+    if (node) {
+      const observer = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width;
+        if (width) {
+          setContainerWidth(width);
+        }
+      });
+      observer.observe(node);
+      resizeObserverRef.current = observer;
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +181,14 @@ export function PDFViewer({ url }: PDFViewerProps) {
   }, [numPages]);
 
   const zoom = ZOOM_LEVELS[zoomIdx] ?? 1.0;
-  const pageWidth = Math.round(BASE_PAGE_WIDTH * zoom);
+  // At zoom 1.0 a page is rendered at most BASE_PAGE_WIDTH wide, but never
+  // wider than the available panel width, so narrowing the panel shrinks the
+  // page to fit. Zooming in scales past the fit width and lets it crop/scroll.
+  const fitWidth = containerWidth
+    ? Math.max(0, containerWidth - PAGE_HORIZONTAL_MARGIN)
+    : BASE_PAGE_WIDTH;
+  const basePageWidth = Math.min(BASE_PAGE_WIDTH, fitWidth);
+  const pageWidth = Math.round(basePageWidth * zoom);
 
   const isLoading = isFetching || (!hasError && numPages === null);
 
@@ -202,7 +237,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
             </div>
           )}
           <div
-            ref={scrollRef}
+            ref={setScrollNode}
             className={
               numPages !== null
                 ? "flex-1 min-h-0 overflow-auto rounded-lg"
