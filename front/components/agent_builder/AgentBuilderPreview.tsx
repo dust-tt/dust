@@ -11,6 +11,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
@@ -98,6 +99,17 @@ function PreviewContent({
     [draftAgent]
   );
 
+  const agentBuilderContext = useMemo<
+    VirtuosoMessageListContext["agentBuilderContext"]
+  >(() => {
+    return {
+      draftAgent: draftAgent ?? undefined,
+      isSubmitting: isSavingDraftAgent,
+      resetConversation,
+      actionsToShow: ["attachment", "agents-list"],
+    };
+  }, [draftAgent, isSavingDraftAgent, resetConversation]);
+
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
@@ -112,12 +124,7 @@ function PreviewContent({
               owner={owner}
               user={user}
               conversationId={conversation.sId}
-              agentBuilderContext={{
-                draftAgent: draftAgent ?? undefined,
-                isSubmitting: isSavingDraftAgent,
-                resetConversation,
-                actionsToShow: ["attachment", "agents-list"],
-              }}
+              agentBuilderContext={agentBuilderContext}
               key={conversation.sId}
             />
           )}
