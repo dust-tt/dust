@@ -8,6 +8,7 @@ import {
   findTreeNodeByPath,
   getChildrenAtFolderPath,
   getExplorerRelativePath,
+  getFileExplorerSearchResultTitle,
   getVirtualScopeRootNodes,
   isFileExplorerMovableFile,
   withVirtualExplorerPath,
@@ -266,6 +267,38 @@ describe("getExplorerRelativePath", () => {
     expect(getExplorerRelativePath({ path: "pod-xyz/data.csv" })).toBe(
       "data.csv"
     );
+  });
+});
+
+describe("getFileExplorerSearchResultTitle", () => {
+  it("strips the current folder prefix from the explorer path", () => {
+    expect(
+      getFileExplorerSearchResultTitle(
+        {
+          path: "conversation-c1/reports/q1/summary.txt",
+          virtualPath: "conversation/reports/q1/summary.txt",
+        },
+        "conversation"
+      )
+    ).toBe("reports/q1/summary.txt");
+  });
+
+  it("returns the full explorer path at the virtual root", () => {
+    expect(
+      getFileExplorerSearchResultTitle(
+        {
+          path: "pod-p1/archive/readme.md",
+          virtualPath: "pod/archive/readme.md",
+        },
+        ""
+      )
+    ).toBe("pod/archive/readme.md");
+  });
+
+  it("falls back to mount-relative path when virtualPath is unset", () => {
+    expect(
+      getFileExplorerSearchResultTitle({ path: "pod-xyz/data.csv" }, "")
+    ).toBe("data.csv");
   });
 });
 

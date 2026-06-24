@@ -8,13 +8,15 @@ import type {
 } from "@app/components/file_explorer/types";
 import {
   buildFileSystemTree,
+  collectFileTreeNodesAtOrBelow,
   compareTreeNodesForSort,
+  fileExplorerNodeMatchesSearch,
   getChildrenAtFolderPath,
   getExplorerRelativePath,
   getFileExplorerBucket,
   getVirtualScopeRootNodes,
+  isFileExplorerNodeHidden,
 } from "@app/components/file_explorer/utils";
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 
 export interface FileExplorerPipeline {
   /** Tree nodes at the current folder level, filtered + sorted. */
@@ -38,6 +40,23 @@ interface GetFileExplorerPipelineParams {
   sortMode: FileExplorerSortMode;
   /** Top-level scope folders at the virtual root (e.g. `conversation`, `pod`). */
   virtualScopeRoots?: readonly string[];
+}
+
+function filterVisibleNodes(
+  nodes: FileSystemTreeNode[],
+  q: string
+): FileSystemTreeNode[] {
+  return nodes.filter((node) => {
+    if (isFileExplorerNodeHidden(node)) {
+      return false;
+    }
+
+    if (q.length > 0 && !fileExplorerNodeMatchesSearch(node, q)) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 /**
@@ -81,24 +100,20 @@ export function getFileExplorerPipeline({
     children: [],
   }));
 
-  const currentNodes = currentFolderPath
-    ? getChildrenAtFolderPath(tree, currentFolderPath)
-    : virtualScopeRoots
-      ? getVirtualScopeRootNodes(tree, virtualScopeRoots)
-      : [...tree, ...contentNodeTreeNodes];
-
   const q = searchQuery.trim().toLowerCase();
-  const visibleNodes = currentNodes.filter((node) => {
-    if (node.name.startsWith(".") && node.name !== TOOL_OUTPUTS_FOLDER_NAME) {
-      return false;
-    }
+  const isSearching = q.length > 0;
+  const currentNodes = isSearching
+    ? [
+        ...collectFileTreeNodesAtOrBelow(tree, currentFolderPath),
+        ...(currentFolderPath ? [] : contentNodeTreeNodes),
+      ]
+    : currentFolderPath
+      ? getChildrenAtFolderPath(tree, currentFolderPath)
+      : virtualScopeRoots
+        ? getVirtualScopeRootNodes(tree, virtualScopeRoots)
+        : [...tree, ...contentNodeTreeNodes];
 
-    if (q.length > 0 && !node.name.toLowerCase().includes(q)) {
-      return false;
-    }
-
-    return true;
-  });
+  const visibleNodes = filterVisibleNodes(currentNodes, q);
 
   const filterCounts: Partial<Record<FileExplorerFilter, number>> = {};
   for (const node of visibleNodes) {

@@ -101,6 +101,7 @@ export function FileExplorer({
 
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [searchQuery, setSearchQuery] = useState("");
+  const searchFolderPath = searchQuery.trim() ? currentFolderPath : undefined;
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
   const [sortMode, setSortMode] =
     useState<FileExplorerSortMode>("last-modified");
@@ -333,6 +334,7 @@ export function FileExplorer({
                 ? getMenuItems
                 : undefined
             }
+            searchFolderPath={searchFolderPath}
           />
         </div>
       </div>

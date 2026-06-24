@@ -1,3 +1,4 @@
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
   frameSlideshowContentType,
@@ -394,6 +395,61 @@ export function getVirtualScopeRootNodes(
         fileId: null,
         children: [],
       }
+  );
+}
+
+/** Search result card title: explorer path with the current folder prefix stripped. */
+export function getFileExplorerSearchResultTitle(
+  entry: Pick<FileExplorerPathEntry, "path"> & { virtualPath?: string },
+  currentFolderPath: string
+): string {
+  const explorerPath = getExplorerRelativePath(entry);
+  if (!currentFolderPath) {
+    return explorerPath;
+  }
+
+  const prefix = `${currentFolderPath}/`;
+  if (explorerPath.startsWith(prefix)) {
+    return explorerPath.slice(prefix.length);
+  }
+
+  return explorerPath;
+}
+
+/** All file leaves in a tree (folders excluded). */
+export function collectAllFileTreeNodes(
+  nodes: FileSystemTreeNode[]
+): FileSystemTreeNode[] {
+  return nodes.flatMap((node) =>
+    node.isDirectory ? collectAllFileTreeNodes(node.children) : [node]
+  );
+}
+
+/** File leaves at `folderPath` and in descendant folders (empty path = entire tree). */
+export function collectFileTreeNodesAtOrBelow(
+  tree: FileSystemTreeNode[],
+  folderPath: string
+): FileSystemTreeNode[] {
+  const allFiles = collectAllFileTreeNodes(tree);
+  if (!folderPath) {
+    return allFiles;
+  }
+
+  const prefix = `${folderPath}/`;
+  return allFiles.filter((node) => node.path.startsWith(prefix));
+}
+
+export function isFileExplorerNodeHidden(node: FileSystemTreeNode): boolean {
+  return node.name.startsWith(".") && node.name !== TOOL_OUTPUTS_FOLDER_NAME;
+}
+
+/** Match file name or explorer-relative path (query must be lowercased). */
+export function fileExplorerNodeMatchesSearch(
+  node: FileSystemTreeNode,
+  q: string
+): boolean {
+  return (
+    node.name.toLowerCase().includes(q) || node.path.toLowerCase().includes(q)
   );
 }
 

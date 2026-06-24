@@ -12,6 +12,7 @@ import type {
 } from "@app/components/file_explorer/types";
 import {
   getCategoryFromContentType,
+  getFileExplorerSearchResultTitle,
   getSingularFileCategoryLabelForContentType,
 } from "@app/components/file_explorer/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
@@ -312,6 +313,8 @@ export function FileExplorerFolderCard({
 export interface FileExplorerFileCardProps {
   draggable?: boolean;
   entry: FileEntry;
+  /** When set, title shows path relative to this folder (search mode). */
+  searchFolderPath?: string;
   viewMode: ViewMode;
   onOpen: (entry: FileEntry) => void;
   onDownload: (entry: FileEntry) => Promise<void>;
@@ -358,12 +361,17 @@ function FileExplorerDraggableWrapper({
 export function FileExplorerFileCard({
   draggable: draggableProp = false,
   entry,
+  searchFolderPath,
   viewMode,
   onOpen,
   onDownload,
   extraMenuItems,
 }: FileExplorerFileCardProps) {
   const subtitle = getFileSubtitle(entry, viewMode);
+  const title =
+    searchFolderPath !== undefined
+      ? getFileExplorerSearchResultTitle(entry, searchFolderPath)
+      : entry.fileName;
 
   const handleDragStart = (e: React.DragEvent) => {
     if (e.target instanceof HTMLElement && e.target.closest("button")) {
@@ -384,7 +392,7 @@ export function FileExplorerFileCard({
         kind="thumbnail"
         thumbnailSrc={entry.thumbnailUrl}
         viewMode={viewMode}
-        title={entry.fileName}
+        title={title}
         subtitle={subtitle}
         containerClassName={dragContainerClassName}
         onOpen={() => onOpen(entry)}
@@ -396,7 +404,7 @@ export function FileExplorerFileCard({
         kind="icon"
         visual={getFileTypeIcon(entry.contentType, entry.fileName)}
         viewMode={viewMode}
-        title={entry.fileName}
+        title={title}
         subtitle={subtitle}
         containerClassName={dragContainerClassName}
         onOpen={() => onOpen(entry)}
