@@ -93,6 +93,11 @@ function PreviewContent({
   isTrialPlan,
   isAdmin,
 }: PreviewContentProps) {
+  const stickyMentions = useMemo<RichMention[]>(
+    () => (draftAgent ? [toRichAgentMentionType(draftAgent)] : []),
+    [draftAgent]
+  );
+
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
@@ -133,9 +138,7 @@ function PreviewContent({
               owner={owner}
               user={user}
               onSubmit={createConversation}
-              stickyMentions={
-                draftAgent ? [toRichAgentMentionType(draftAgent)] : []
-              }
+              stickyMentions={stickyMentions}
               draftKey={`agent-${draftAgent?.name}-builder-preview`}
               actions={["attachment", "agents-list"]}
               disableAutoFocus
