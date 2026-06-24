@@ -1,19 +1,13 @@
 # Support
 
-Thanks for using [Dust](https://dust.tt)! This page tells you where to go depending on what you need.
-
-**GitHub issues track bugs and feature requests only.** For usage questions, account help, and billing, use the channels below — you'll get a faster answer.
+Thanks for using [Dust](https://dust.tt)! For any question or issue, email [support@dust.tt](mailto:support@dust.tt) — that's the fastest way to get help.
 
 ## Documentation
 
-For "how do I…?" questions, API guidance, and developer documentation, start here:
+For "how do I…?" questions, API guidance, and developer documentation:
 
 - **User guides & developer platform:** https://docs.dust.tt
 - **API reference:** https://docs.dust.tt/reference/developer-platform-overview
-
-## Account, billing & product help
-
-For account-specific, billing, or workspace issues, use the in-app support widget inside your Dust workspace, or email [support@dust.tt](mailto:support@dust.tt).
 
 ## Bug reports
 
@@ -27,4 +21,4 @@ Open an issue describing the problem you want to solve and the outcome you need.
 
 ## Security
 
-**Do not report security vulnerabilities in public issues.** Follow [`SECURITY.md`](SECURITY.md) and use our vulnerability disclosure program at https://dust.tt/home/vulnerability.
+**Do not report security vulnerabilities in public issues or by email.** Follow [`SECURITY.md`](SECURITY.md) and use our vulnerability disclosure program at https://dust.tt/home/vulnerability.
