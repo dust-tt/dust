@@ -26,9 +26,9 @@ export default defineConfig({
     // annotation action resolves the right source file. Without file=, the
     // action guesses from the classname, which ends in ".ts" and matches
     // node_modules/thread-stream/test/ts.test.ts instead of the actual file.
-    reporters: process.env.CI
-      ? [["junit", { addFileAttribute: true }]]
-      : undefined,
+    ...(process.env.CI
+      ? { reporters: [["junit", { addFileAttribute: true }]] }
+      : {}),
   },
   resolve: {
     alias: {
