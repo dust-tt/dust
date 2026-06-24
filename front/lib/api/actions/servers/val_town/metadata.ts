@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   create_val: {
     description:
-      "Creates a new val (project) in Val Town — a serverless TypeScript/JavaScript container that can hold HTTP endpoints, scripts, email handlers, or scheduled tasks. Use create_file to add files to the val.",
+      "Creates a new val (project) in Val Town: a serverless TypeScript/JavaScript container that can hold HTTP endpoints, scripts, email handlers, or scheduled tasks. Use create_file to add files to the val.",
     schema: {
       name: z
         .string()
@@ -42,7 +42,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   get_val: {
     description:
-      "Gets a specific Val Town val (serverless script/project) by its ID, including its files and metadata.",
+      "Gets a specific Val Town val (serverless script or project) by its ID, including its files and metadata.",
     schema: {
       valId: z.string().describe("The ID of the val to retrieve"),
     },
