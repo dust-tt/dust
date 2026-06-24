@@ -30,11 +30,8 @@ export type PerUserCreditAlerts = {
 // so the seat-balance alert can't track it. Metronome alerts can filter on a
 // credit's custom field but not on its presentation specifier, so we scope a
 // per-user `low_remaining_contract_credit_balance_reached` alert to the credit
-// stamped with this user's sId (`DUST_PER_USER_CREDIT_USER`). Two alerts per
-// user mirror the seat-balance bands, distinguished by `threshold` in the
-// webhook payload (the same way `low_remaining_seat_balance_reached` is
-// handled): the exhaustion alert (threshold 0) drives `capped`, the low-balance
-// alert (threshold = 20% of the allowance) drives `user_seat_low_balance`.
+// stamped with this user's sId (`DUST_PER_USER_CREDIT_USER`). Two thresholds:
+// exhaustion (0) drives `capped`; low-balance (20% remaining) sets `nearLimit`.
 
 // The alert NAME embeds the workspace and user for readability in the Metronome
 // dashboard, but it is NOT the source of truth for resolution — names aren't

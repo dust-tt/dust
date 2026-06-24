@@ -54,10 +54,7 @@ const USER_CREDIT_STATE_CHIP_COLOR: Record<
   "success" | "warning" | "rose" | "info"
 > = {
   user_seat: "info",
-  user_seat_low_balance: "warning",
-  normal: "success",
   on_pool: "success",
-  on_pool_low_balance: "warning",
   capped: "rose",
 };
 

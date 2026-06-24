@@ -197,31 +197,17 @@ export function isPaidSeatType(seatType: MembershipSeatType): boolean {
 //
 // Two customer shapes:
 //   - pool-based only: users spend from a shared workspace credits pool (they
-//     may be capped). Such users sit in the `on_pool*` states.
+//     may be capped). Such users sit in the `on_pool` state.
 //   - seat-based: each user has a personal credit balance they spend first,
-//     then fall back to the workspace pool. Such users start in `user_seat*`
-//     and move to `on_pool*` once their personal balance is exhausted.
+//     then fall back to the workspace pool. Such users start in `user_seat`
+//     and move to `on_pool` once their personal balance is exhausted.
 //
-//   user_seat:             spending from personal credits.
-//   user_seat_low_balance: same, but ≥80% of personal credits already used.
-//   on_pool:               personal credits exhausted (or pool-based workspace);
-//                          spending from the workspace pool. (Formerly "normal".)
-//   on_pool_low_balance:   same, but ≥80% of the per-user cap already used.
-//   capped:                per-user spend cap hit; can no longer spend.
+//   user_seat: spending from personal credits.
+//   on_pool:   personal credits exhausted (or pool-based workspace);
+//              spending from the workspace pool.
+//   capped:    per-user spend cap hit; can no longer spend.
 //
-// MIGRATION (transitional): "normal" is the legacy name for "on_pool" and is
-// kept as an accepted alias so the deployed code reads existing rows without
-// breaking. It is treated as equivalent to "on_pool" everywhere (see the state
-// machine). Remove it once migration 665 has renamed all rows and the
-// follow-up PR lands.
-export const USER_CREDIT_STATES = [
-  "user_seat",
-  "user_seat_low_balance",
-  "normal",
-  "on_pool",
-  "on_pool_low_balance",
-  "capped",
-] as const;
+export const USER_CREDIT_STATES = ["user_seat", "on_pool", "capped"] as const;
 
 export type UserCreditState = (typeof USER_CREDIT_STATES)[number];
 
@@ -242,11 +228,8 @@ export function isUserCreditState(value: unknown): value is UserCreditState {
 export function isSpendingFromPersonalSeat(state: UserCreditState): boolean {
   switch (state) {
     case "user_seat":
-    case "user_seat_low_balance":
       return true;
-    case "normal":
     case "on_pool":
-    case "on_pool_low_balance":
     case "capped":
       return false;
     default:

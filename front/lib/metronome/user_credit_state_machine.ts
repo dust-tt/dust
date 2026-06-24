@@ -31,15 +31,15 @@ export type UserCreditContext = {
   seatType?: MembershipSeatType | null;
   /**
    * Live balance snapshot. When present, the `per_user_cap_resolved` transition
-   * recomputes the correct seat↔pool band from it (user_seat /
-   * user_seat_low_balance / on_pool / on_pool_low_balance) instead of defaulting
-   * to `on_pool`. Absent for events that don't carry balance data.
+   * recomputes the correct seat↔pool band from it (user_seat or on_pool)
+   * instead of defaulting to `on_pool`. Absent for events that don't carry
+   * balance data.
    */
   liveBalance?: LiveUserSeatBalance;
   /**
    * Fraction of the user's per-user cap credits still remaining (0–1).
    * Required by guards on `seat_balance_exhausted` for paid seats to decide
-   * whether to land on `on_pool`, `on_pool_low_balance`, or `capped`.
+   * whether to land on `on_pool` or `capped`.
    */
   remainingCapCreditsPercentage?: number | null;
   /**
@@ -188,25 +188,14 @@ export async function transitionUserCreditState(
   { transaction }: { transaction?: Transaction } = {}
 ): Promise<Result<UserCreditState, Error>> {
   const rawState = membership.creditState;
-  // Legacy aliases (migration window): normalize to canonical states so
-  // transitions match correctly, and the next write persists the canonical value.
-  //   "normal"                → "on_pool"
-  //   "on_pool_low_balance"   → "on_pool"
-  //   "user_seat_low_balance" → "user_seat"
-  const currentState =
-    rawState === "normal" || rawState === "on_pool_low_balance"
-      ? "on_pool"
-      : rawState === "user_seat_low_balance"
-        ? "user_seat"
-        : rawState;
-  const match = findTransition(currentState, event, ctx);
+  const match = findTransition(rawState, event, ctx);
 
   if (!match) {
     logger.warn(
       {
         workspaceId: ctx.workspaceId,
         userId: ctx.userId,
-        fromState: currentState,
+        fromState: rawState,
         event,
         eventType: event.type,
       },
@@ -214,13 +203,11 @@ export async function transitionUserCreditState(
     );
     return new Err(
       new Error(
-        `[UserCreditStateMachine] Illegal transition: ${currentState} + ${event.type}`
+        `[UserCreditStateMachine] Illegal transition: ${rawState} + ${event.type}`
       )
     );
   }
 
-  // Compare against the raw value so a legacy "normal" row is rewritten to the
-  // canonical "on_pool" even when the normalized state already matches.
   if (rawState !== match.to) {
     await membership.updateCreditState(match.to, transaction);
   }
@@ -249,8 +236,7 @@ export async function transitionUserCreditState(
  * state directly from the live source of truth (Metronome seat balance + cap +
  * usage) — the seat↔pool dimension is not reachable from the event-driven
  * transitions alone (e.g. nothing dispatches a user back to `user_seat` outside
- * a billing-cycle webhook). Persists the new state (treating the legacy
- * "normal" alias as "on_pool" so such rows migrate) and syncs the same caches
+ * a billing-cycle webhook). Persists the new state and syncs the same caches
  * the transitions do.
  */
 export async function setUserCreditStateReconciled(
