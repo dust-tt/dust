@@ -9,7 +9,7 @@ import type {
   FetchConversationMessagesResponse,
 } from "@app/types/api/assistant/messages";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 export function useConversationMessages({
   conversationId,
@@ -75,7 +75,8 @@ export function useConversationMessage({
   workspaceId: string;
   messageId: string | null;
   options?: {
-    disabled: boolean;
+    disabled?: boolean;
+    refreshInterval?: SWRConfiguration<FetchConversationMessageResponse>["refreshInterval"];
   };
 }) {
   const { fetcher } = useFetcher();

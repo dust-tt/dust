@@ -57,6 +57,7 @@ import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/out
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -80,6 +81,7 @@ import {
   isInteractiveContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
@@ -109,6 +111,7 @@ import {
   InfoCircle,
   InteractiveImageGrid,
   Link01,
+  LoadingBlock,
   RefreshCw02,
   Stop,
   Tooltip,
@@ -131,6 +134,14 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 const RUN_AGENT_TOOL_NAME = "run_agent";
+
+// How often to poll the message endpoint for a credit cost that is still being
+// computed after a message finishes (only used by the always-on credits header).
+const CREDIT_COST_POLL_INTERVAL_MS = 2000;
+// The cost is written shortly after a message finishes. If it is still missing
+// past this window, it never landed (e.g. legacy messages): we stop polling and
+// stop showing the loader rather than spin forever.
+const CREDIT_COST_PENDING_WINDOW_MS = 2 * 60 * 1000;
 
 function PrunedContextChip() {
   return (
@@ -238,7 +249,13 @@ export function AgentMessage({
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
+  const { subscription } = useAuth();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
+  // When enabled, the credit cost is displayed at all times next to the
+  // timestamp in the message header instead of only in the message menu.
+  const alwaysShowCredits =
+    hasFeature("always_show_message_credits") &&
+    isCreditPricedPlan(subscription.plan);
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -248,30 +265,74 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // Re-fetch (on menu open) only if a cost we want to show is still missing:
-  // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
+
+  // The credit cost we want to show may still be missing on the message we hold:
+  // - Own cost: null until the agentic loop finalizes; the cost is written to the
+  //   DB asynchronously after completion, so it is absent while streaming/listed
+  //   and for a short window right after the message finishes.
   // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
   //   when a `run_agent` action is present (it triggers both run_agent and handover).
-  // Messages with no sub-agents only fetch if their own cost is still missing.
-  const needsCostFetch =
-    agentMessage.costCredits == null ||
-    (hasMessageSpawnedSubAgent(agentMessage) &&
-      agentMessage.subAgentCostCredits == null);
+  const spawnedSubAgent = hasMessageSpawnedSubAgent(agentMessage);
+  const isMessageDone = agentMessage.status !== "created";
+  // The cost lands within seconds of completion; only treat it as still pending
+  // (poll + show a loader) within a short window after the message finished. Older
+  // messages with no cost never recorded one, so we stop expecting it.
+  const isCostPossiblyPending =
+    isMessageDone &&
+    Date.now() - (agentMessage.completedTs ?? agentMessage.created) <
+      CREDIT_COST_PENDING_WINDOW_MS;
+
+  // Determines whether the credit cost is still missing on a given message snapshot.
+  const isCostMissingFor = useCallback(
+    (
+      message: {
+        costCredits?: number | null;
+        subAgentCostCredits?: number | null;
+      } | null
+    ) =>
+      !message ||
+      message.costCredits == null ||
+      (spawnedSubAgent && message.subAgentCostCredits == null),
+    [spawnedSubAgent]
+  );
+
+  // Fetch (and, for the always-on header, poll) the message-level cost when it is
+  // still missing and either the menu is open or the header always shows credits.
+  const needsCostFetch = isCostMissingFor(agentMessage);
   const { message: refreshedMessage } = useConversationMessage({
     conversationId,
     workspaceId: owner.sId,
     messageId: agentMessage.sId,
     options: {
-      disabled: !isMenuOpen || !needsCostFetch,
+      disabled:
+        !needsCostFetch ||
+        (!isMenuOpen && !(alwaysShowCredits && isMessageDone)),
+      // While the always-on header is waiting on a cost that hasn't been written
+      // yet, poll until it lands, then stop. Returning 0 disables refreshing.
+      refreshInterval: (latest) => {
+        if (!alwaysShowCredits || !isCostPossiblyPending) {
+          return 0;
+        }
+        const message = latest?.message;
+        const agentMessageData =
+          message?.type === "agent_message" ? message : null;
+        return isCostMissingFor(agentMessageData)
+          ? CREDIT_COST_POLL_INTERVAL_MS
+          : 0;
+      },
     },
   });
   const refreshedAgentMessage =
     refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
+  const ownCostCredits =
+    refreshedAgentMessage?.costCredits ?? agentMessage.costCredits;
+  const subAgentCostCredits =
+    refreshedAgentMessage?.subAgentCostCredits ??
+    agentMessage.subAgentCostCredits;
+  // When the header always shows credits, drop the (now duplicate) menu entry.
   const creditCostItem = useCreditCostMenuItem({
-    credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
-    subAgentCredits:
-      refreshedAgentMessage?.subAgentCostCredits ??
-      agentMessage.subAgentCostCredits,
+    credits: alwaysShowCredits ? null : ownCostCredits,
+    subAgentCredits: alwaysShowCredits ? null : subAgentCostCredits,
   });
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -973,6 +1034,21 @@ export function AgentMessage({
     ? undefined
     : formatTimestring(agentMessage.completedTs ?? agentMessage.created);
 
+  const totalCostCredits = (ownCostCredits ?? 0) + (subAgentCostCredits ?? 0);
+  // Only render the header credits once the message is finished. While the cost
+  // is still being computed, show a subtle skeleton loader (the poll above keeps
+  // fetching until it lands); once it's in, show the value (hidden when free / 0).
+  const creditsDisplay =
+    alwaysShowCredits && !parentAgent && isMessageDone ? (
+      isCostMissingFor(refreshedAgentMessage ?? agentMessage) ? (
+        isCostPossiblyPending ? (
+          <LoadingBlock className="inline-block h-3 w-12 rounded-sm" />
+        ) : undefined
+      ) : totalCostCredits > 0 ? (
+        `${formatCredits(totalCostCredits)} credits`
+      ) : undefined
+    ) : undefined;
+
   const messageContent = (
     <ConversationMessageContent
       citations={isDeleted ? undefined : citations}
@@ -1057,6 +1133,7 @@ export function AgentMessage({
           <ConversationMessageTitle
             name={agentConfiguration.name}
             timestamp={timestamp}
+            credits={creditsDisplay}
             infoChip={
               agentMessage.prunedContext ? <PrunedContextChip /> : undefined
             }

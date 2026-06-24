@@ -355,6 +355,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
     stage: "on_demand",
   },
+  always_show_message_credits: {
+    description:
+      "Always display the credit cost next to the timestamp in agent message headers, instead of only in the message menu.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
