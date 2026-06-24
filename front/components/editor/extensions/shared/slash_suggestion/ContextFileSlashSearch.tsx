@@ -6,6 +6,7 @@ import { usePodFiles } from "@app/lib/swr/pods";
 import type { ProjectFileSearchResult } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { FileAttachmentType } from "@app/types/api/assistant/conversation/attachments";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
@@ -58,10 +59,13 @@ export function useContextFileSlashSearchItems({
   owner: LightWorkspaceType;
   spaceId?: string | null;
 }) {
+  const shouldSearchFiles =
+    includeFiles && normalizedQuery.length >= MIN_SEARCH_QUERY_SIZE;
+
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global", "regular", "project"],
-    disabled: !includeFiles,
+    disabled: !shouldSearchFiles,
   });
 
   const spacesMap = useMemo(
@@ -77,18 +81,18 @@ export function useContextFileSlashSearchItems({
   const { files: podFiles, isPodFilesLoading } = usePodFiles({
     owner,
     podId: projectId ?? "",
-    disabled: !includeFiles || !projectId,
+    disabled: !shouldSearchFiles || !projectId,
   });
 
   const { attachments, isConversationAttachmentsLoading } =
     useConversationAttachments({
       conversationId,
       owner,
-      options: { disabled: !includeFiles || !conversationId },
+      options: { disabled: !shouldSearchFiles || !conversationId },
     });
 
   const fileItems = useMemo<ContextFileSlashSearchItem[]>(() => {
-    if (!includeFiles) {
+    if (!shouldSearchFiles) {
       return [];
     }
 
@@ -159,10 +163,10 @@ export function useContextFileSlashSearchItems({
       ...sortContextFileItemsByLabel(conversationFiles),
       ...sortContextFileItemsByLabel(podContextFiles),
     ];
-  }, [attachments, includeFiles, normalizedQuery, podFiles, projectName]);
+  }, [attachments, podFiles, projectName, shouldSearchFiles, normalizedQuery]);
 
   const isFileItemsLoading =
-    includeFiles &&
+    shouldSearchFiles &&
     (isSpacesLoading ||
       (Boolean(conversationId) && isConversationAttachmentsLoading) ||
       (Boolean(projectId) && isPodFilesLoading));

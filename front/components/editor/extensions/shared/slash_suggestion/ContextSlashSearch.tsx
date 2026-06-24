@@ -128,7 +128,7 @@ export function ContextSlashSearch({
     spaceId && spacesMap[spaceId]?.kind === "project" ? spaceId : undefined;
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const shouldSearchKnowledge = normalizedQuery.length >= MIN_SEARCH_QUERY_SIZE;
+  const hasMinimalQuery = normalizedQuery.length >= MIN_SEARCH_QUERY_SIZE;
 
   const { fileItems, isFileItemsLoading } = useContextFileSlashSearchItems({
     conversationId,
@@ -143,7 +143,7 @@ export function ContextSlashSearch({
       owner,
       query: searchQuery,
       pageSize: 10,
-      disabled: isSpacesLoading || !shouldSearchKnowledge,
+      disabled: isSpacesLoading || !hasMinimalQuery,
       spaceIds,
       projectId,
       viewType: "all",
@@ -221,12 +221,9 @@ export function ContextSlashSearch({
   const isLoading =
     isSpacesLoading ||
     isFileItemsLoading ||
-    (shouldSearchKnowledge && isSearchLoading);
+    (hasMinimalQuery && isSearchLoading);
 
-  const isDropdownOpen =
-    searchQuery.trim().length > 0 || items.length > 0 || isLoading;
-
-  const emptyMessage = !shouldSearchKnowledge
+  const emptyMessage = !hasMinimalQuery
     ? "Type at least 2 characters to search"
     : "No results found";
 
@@ -244,9 +241,7 @@ export function ContextSlashSearch({
       </div>
     ) : items.length === 0 ? (
       <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500 dark:text-gray-500-night">
-        {!shouldSearchKnowledge && includeFiles && fileItems.length === 0
-          ? "No files found"
-          : emptyMessage}
+        {emptyMessage}
       </div>
     ) : (
       items.map((item, index) => (
@@ -299,7 +294,7 @@ export function ContextSlashSearch({
       deferDropdownUntilFocus
       dropdownContent={dropdownContent}
       highlightedItemId={items[selectedIndex]?.id}
-      isDropdownOpen={isDropdownOpen}
+      isDropdownOpen={true}
       itemCount={items.length}
       onCancel={onCancel}
       onSearchQueryChange={(text) => {
