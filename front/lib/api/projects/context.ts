@@ -1,4 +1,3 @@
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
   isContentNodeAttachmentType,
@@ -37,6 +36,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";

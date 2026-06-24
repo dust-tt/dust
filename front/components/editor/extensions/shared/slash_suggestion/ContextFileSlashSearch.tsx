@@ -2,14 +2,12 @@ import { matchesSlashCommandCapabilityQuery } from "@app/components/editor/exten
 import { InlineSlashSearch } from "@app/components/editor/extensions/shared/slash_suggestion/InlineSlashSearch";
 import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
-import {
-  type FileAttachmentType,
-  isFileAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
+import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { usePodFiles } from "@app/lib/swr/pods";
 import type { ProjectFileSearchResult } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
+import type { FileAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { DropdownMenuItem, Icon, Spinner } from "@dust-tt/sparkle";

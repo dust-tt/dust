@@ -1,7 +1,5 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import {
-  type ContentNodeAttachmentType,
-  type FileAttachmentType,
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
@@ -34,6 +32,10 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/assistant";
+import type {
+  ContentNodeAttachmentType,
+  FileAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
 import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
 import type {
   ConversationType,

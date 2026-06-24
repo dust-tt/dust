@@ -2,16 +2,11 @@ import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observabili
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentCostStats } from "@app/types/api/assistant/observability/overview";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
-
-export type AgentCostStats = {
-  totalCostCredits: number | null;
-  avgCostCredits: number | null;
-  medianCostCredits: number | null;
-};
 
 export type AgentOverview = {
   activeUsers: number;
@@ -192,18 +187,3 @@ export function getAgentCostStats(
 ): AgentCostStats {
   return map.get(agentId) ?? EMPTY_COST_STATS;
 }
-
-export type GetAgentOverviewResponseBody = {
-  activeUsers: number;
-  mentions: {
-    messageCount: number;
-    conversationCount: number;
-    timePeriodSec: number;
-  };
-  feedbacks: {
-    positiveFeedbacks: number;
-    negativeFeedbacks: number;
-    timePeriodSec: number;
-  };
-  costs: AgentCostStats;
-};

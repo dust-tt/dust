@@ -20,7 +20,6 @@ import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
-import type { ContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { useAppRouter } from "@app/lib/platform";
 import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
@@ -34,6 +33,7 @@ import {
 } from "@app/lib/swr/pods";
 import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
 import { isManualPodFilesManagementAllowed } from "@app/lib/workspace_policies";
+import type { ContentNodeAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type {
   DataSourceViewSelectionConfigurations,

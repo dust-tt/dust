@@ -13,7 +13,6 @@ import type {
   GetLatencyResponse,
   GetUsageMetricsResponse,
 } from "@app/lib/api/assistant/observability/messages_metrics";
-import type { GetAgentOverviewResponseBody } from "@app/lib/api/assistant/observability/overview";
 import type { GetSkillExecutionResponse } from "@app/lib/api/assistant/observability/skill_execution";
 import type { GetToolExecutionResponse } from "@app/lib/api/assistant/observability/tool_execution";
 import type {
@@ -40,6 +39,7 @@ import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_u
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
+import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
 import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/user_relation";
 import type { GetMemberResponseBody } from "@app/types/api/user";

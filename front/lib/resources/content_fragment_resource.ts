@@ -1,4 +1,3 @@
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
@@ -37,6 +36,7 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type {

@@ -8,8 +8,15 @@ import {
 import logger from "@app/logger/logger";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
+  AttachmentCreator,
+  BaseConversationAttachmentType,
+  ContentNodeAttachmentType,
+  ConversationAttachmentType,
+  FileAttachmentType,
+  LargePasteType,
+} from "@app/types/api/assistant/conversation/attachments";
+import type {
   ContentFragmentType,
-  ContentFragmentVersion,
   ContentNodeContentFragmentType,
   FileContentFragmentType,
   SupportedContentFragmentType,
@@ -19,65 +26,12 @@ import {
   isExpiredContentFragment,
   isFileContentFragment,
 } from "@app/types/content_fragment";
-import type { ContentNodeType } from "@app/types/core/content_node";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
-
-export type AttachmentCreator = {
-  type: "agent" | "user";
-  name: string;
-  pictureUrl: string;
-};
-
-export type BaseConversationAttachmentType = {
-  title: string;
-  contentType: SupportedContentFragmentType;
-  contentFragmentVersion: ContentFragmentVersion;
-  snippet: string | null;
-  generatedTables: string[];
-  isIncludable: boolean;
-  isSearchable: boolean;
-  isQueryable: boolean;
-  isInProjectContext: boolean;
-  creator: AttachmentCreator | null;
-  hidden: boolean; // Do not show this attachment to the user.
-};
-
-export type FileAttachmentType = BaseConversationAttachmentType & {
-  fileId: string;
-  path: string | null;
-  source: "agent" | "user" | null;
-  createdAt?: number;
-  updatedAt?: number;
-};
-
-export type ContentNodeAttachmentType = BaseConversationAttachmentType & {
-  contentFragmentId: string;
-  nodeId: string;
-  nodeDataSourceViewId: string;
-  nodeType: ContentNodeType;
-  sourceUrl: string | null;
-  lastUpdatedAt?: number | null; //Last sync / update timestamp for the underlying data source node (Core node timestamp).
-};
-
-export type LargePasteType = {
-  title: string;
-};
-
-export type ConversationAttachmentType =
-  | FileAttachmentType
-  | ContentNodeAttachmentType;
-
-/** Same item shape as GET `/assistant/conversations/[cId]/attachments` and GET project context. */
-export type ContextAttachmentItem = ConversationAttachmentType;
-
-export type GetConversationAttachmentsResponseBody = {
-  attachments: ConversationAttachmentType[];
-};
 
 export function isFileAttachmentType(
   attachment: ConversationAttachmentType
