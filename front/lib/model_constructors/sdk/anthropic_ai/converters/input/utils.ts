@@ -54,9 +54,7 @@ type SupportedImageMediaType = (typeof SUPPORTED_IMAGE_MEDIA_TYPES)[number];
 function isSupportedImageMediaType(
   mediaType: string
 ): mediaType is SupportedImageMediaType {
-  return SUPPORTED_IMAGE_MEDIA_TYPES.includes(
-    mediaType as SupportedImageMediaType
-  );
+  return SUPPORTED_IMAGE_MEDIA_TYPES.some((t) => t === mediaType);
 }
 
 // Kept byte-identical to the legacy AnthropicLLM client so the model-visible
