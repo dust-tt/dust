@@ -1,41 +1,30 @@
 # Support
 
-Thanks for using [Dust](https://dust.tt)! Here's how to get help, depending on what
-you need.
+Thanks for using [Dust](https://dust.tt)! This page tells you where to go depending on what you need.
 
-## 📚 Questions & how-to
+**GitHub issues track bugs and feature requests only.** For usage questions, account help, and billing, use the channels below — you'll get a faster answer.
 
-For "how do I…?" questions, product usage, and developer/API guidance, start with
-our documentation:
+## Documentation
+
+For "how do I…?" questions, API guidance, and developer documentation, start here:
 
 - **User guides & developer platform:** https://docs.dust.tt
 - **API reference:** https://docs.dust.tt/reference/developer-platform-overview
 
-Please don't open a GitHub issue just to ask a usage question — the docs (or the
-channels below) will get you a faster answer.
+## Account, billing & product help
 
-## 💬 Account, billing & product help
+For account-specific, billing, or workspace issues, use the in-app support widget inside your Dust workspace, or email **support@dust.tt**.
 
-For account-specific, billing, or workspace issues, use **in-app support** (the
-help/chat widget inside your Dust workspace), or email **support@dust.tt**.
+## Bug reports
 
-## 🐛 Bug reports
+Search [existing issues](https://github.com/dust-tt/dust/issues) (open and closed) before filing to avoid duplicates. Then open a new issue in the [issue tracker](https://github.com/dust-tt/dust/issues).
 
-Found something broken? Open an issue in the
-[issue tracker](https://github.com/dust-tt/dust/issues), and please follow our
-[How to Write a Good Bug Report](.github/BUG_REPORT_GUIDELINES.md) guide — clear
-reports (exact error, region, a URL to where it happens) get fixed much faster.
+Read [How to Write a Good Bug Report](.github/BUG_REPORT_GUIDELINES.md) before filing. Reports that include the exact error, your region (US or EU), and a URL to where the problem occurs get resolved significantly faster.
 
-Search existing issues first to avoid duplicates.
+## Feature requests
 
-## 💡 Feature requests
+Open an issue describing the problem you want to solve and the outcome you need. Search first — adding your use case to an existing request helps us prioritize.
 
-Open an issue describing the problem you're trying to solve and the outcome you
-want. Search first in case it's already been requested — adding your use case to an
-existing request helps us prioritize.
+## Security
 
-## 🔒 Security
-
-**Do not report security vulnerabilities in public issues.** Follow
-[`SECURITY.md`](SECURITY.md) and use our vulnerability disclosure program at
-https://dust.tt/home/vulnerability.
+**Do not report security vulnerabilities in public issues.** Follow [`SECURITY.md`](SECURITY.md) and use our vulnerability disclosure program at https://dust.tt/home/vulnerability.
