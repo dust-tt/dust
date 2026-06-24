@@ -17,6 +17,11 @@ import {
 
 const REAPER_CONCURRENCY = 16;
 
+type ConversationMaps = {
+  conversationModelIdsBySandboxModelId: Map<ModelId, ModelId>;
+  conversationsBySandboxModelId: Map<ModelId, ConversationResource>;
+};
+
 /**
  * Build a workspace-scoped internal Authenticator for each workspace touched by
  * the batch. One query for all workspaces, then one builder per workspace.
@@ -48,17 +53,42 @@ async function fetchAuthMap(
 
 /**
  * Fetch the ConversationResource for each sandbox, keyed by conversation
- * ModelId. The reaper spans every workspace, so we issue a single
+ * sandbox ModelId. The reaper spans every workspace, so we issue a single
  * cross-workspace query instead of one scoped query per workspace.
  */
 async function fetchConversationMap(
   sandboxes: SandboxResource[]
-): Promise<Map<ModelId, ConversationResource>> {
-  const conversations = await ConversationResource.dangerouslyFetchByModelIds(
-    sandboxes.map((s) => s.conversationId)
-  );
+): Promise<ConversationMaps> {
+  const conversationModelIdsBySandboxModelId =
+    await SandboxResource.dangerouslyFetchConversationModelIdsBySandboxes(
+      sandboxes
+    );
+  const conversationModelIds = [
+    ...new Set(
+      sandboxes.map(
+        (sandbox) =>
+          conversationModelIdsBySandboxModelId.get(sandbox.id) ??
+          sandbox.conversationId
+      )
+    ),
+  ];
+  const conversations =
+    await ConversationResource.dangerouslyFetchByModelIds(conversationModelIds);
+  const conversationsById = new Map(conversations.map((c) => [c.id, c]));
 
-  return new Map(conversations.map((c) => [c.id, c]));
+  return {
+    conversationModelIdsBySandboxModelId,
+    conversationsBySandboxModelId: new Map(
+      sandboxes.flatMap((sandbox) => {
+        const conversationModelId =
+          conversationModelIdsBySandboxModelId.get(sandbox.id) ??
+          sandbox.conversationId;
+        const conversation = conversationsById.get(conversationModelId);
+
+        return conversation ? [[sandbox.id, conversation] as const] : [];
+      })
+    ),
+  };
 }
 
 /**
@@ -76,18 +106,25 @@ async function processSandboxes(
   errorMessage: string
 ): Promise<void> {
   const authMap = await fetchAuthMap(sandboxes);
-  const conversationMap = await fetchConversationMap(sandboxes);
+  const conversationMaps = await fetchConversationMap(sandboxes);
 
   await concurrentExecutor(
     sandboxes,
     async (sandbox) => {
       const auth = authMap.get(sandbox.workspaceId);
-      const conversation = conversationMap.get(sandbox.conversationId);
+      const conversation = conversationMaps.conversationsBySandboxModelId.get(
+        sandbox.id
+      );
 
       if (!auth || !conversation) {
         logger.warn(
           {
-            conversationModelId: sandbox.conversationId,
+            legacyConversationModelId: sandbox.conversationId,
+            ownershipConversationModelId:
+              conversationMaps.conversationModelIdsBySandboxModelId.get(
+                sandbox.id
+              ) ?? null,
+            sandboxModelId: sandbox.id,
             workspaceModelId: sandbox.workspaceId,
           },
           "Reaper: workspace or conversation not found, skipping."

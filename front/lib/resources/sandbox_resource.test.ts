@@ -531,6 +531,96 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
   });
 });
 
+describe("SandboxResource.fetchByConversation", () => {
+  let authenticator: Authenticator;
+  let agentConfigId: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    agentConfigId = agentConfig.sId;
+  });
+
+  async function makeConversation(): Promise<ConversationType> {
+    return ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfigId,
+      messagesCreatedAt: [new Date()],
+    });
+  }
+
+  it("reads from conversation_sandboxes before the legacy conversationId column", async () => {
+    const conversation = await makeConversation();
+    const otherConversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+
+    await SandboxModel.update(
+      { conversationId: otherConversation.id },
+      { where: { id: sandbox.id } }
+    );
+
+    const fetched = await SandboxResource.fetchByConversation(
+      authenticator,
+      conversation
+    );
+
+    expect(fetched?.id).toBe(sandbox.id);
+  });
+
+  it("falls back to the legacy conversationId column when no ownership row exists", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+
+    await ConversationSandboxModel.destroy({
+      where: {
+        sandboxId: sandbox.id,
+        workspaceId: authenticator.getNonNullableWorkspace().id,
+      },
+    });
+
+    const fetched = await SandboxResource.fetchByConversation(
+      authenticator,
+      conversation
+    );
+
+    expect(fetched?.id).toBe(sandbox.id);
+  });
+
+  it("loads conversation ownership mappings by sandboxes", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+
+    const conversationModelIdsBySandboxModelId =
+      await SandboxResource.dangerouslyFetchConversationModelIdsBySandboxes([
+        sandbox,
+      ]);
+
+    expect(conversationModelIdsBySandboxModelId.get(sandbox.id)).toBe(
+      conversation.id
+    );
+  });
+
+  it("does not load ownership mappings for the wrong workspace", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+
+    const conversationModelIdsBySandboxModelId =
+      await SandboxResource.dangerouslyFetchConversationModelIdsBySandboxes([
+        {
+          id: sandbox.id,
+          workspaceId: sandbox.workspaceId + 1,
+        },
+      ]);
+
+    expect(
+      conversationModelIdsBySandboxModelId.get(sandbox.id)
+    ).toBeUndefined();
+  });
+});
+
 describe("SandboxResource.ensureActive", () => {
   let authenticator: Authenticator;
   let conversation: ConversationType;

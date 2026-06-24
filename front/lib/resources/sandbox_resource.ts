@@ -53,6 +53,8 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
+  private static conversationSandboxModel: ModelStaticWorkspaceAware<ConversationSandboxModel> =
+    ConversationSandboxModel;
 
   private static deleteEgressPolicyAfterDestroy(
     sandbox: SandboxResource
@@ -196,19 +198,36 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
-   * Fetch the sandbox for a conversation across all workspaces (no auth).
-   * Only used by the reaper inside the lifecycle lock.
-   *
-   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   * Fetch the sandbox for a conversation without an Authenticator. Only used by
+   * the reaper inside the lifecycle lock. Every query remains scoped to the
+   * conversation workspace.
    */
   private static async dangerouslyFetchByConversation(
     conversation: ConversationResource
   ): Promise<SandboxResource | null> {
+    const link = await this.conversationSandboxModel.findOne({
+      where: {
+        workspaceId: conversation.workspaceId,
+        conversationId: conversation.id,
+      },
+    });
+    if (link) {
+      const sandbox = await this.model.findOne({
+        where: {
+          id: link.sandboxId,
+          workspaceId: conversation.workspaceId,
+        },
+      });
+
+      if (sandbox) {
+        return new this(this.model, sandbox.get());
+      }
+    }
+
     const row = await this.model.findOne({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         conversationId: conversation.id,
+        workspaceId: conversation.workspaceId,
       },
     });
 
@@ -219,6 +238,25 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     auth: Authenticator,
     conversation: ConversationWithoutContentType
   ): Promise<SandboxResource | null> {
+    const link = await this.conversationSandboxModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    if (link) {
+      const sandboxes = await this.baseFetch(auth, {
+        where: {
+          id: link.sandboxId,
+        },
+      });
+
+      if (sandboxes[0]) {
+        return sandboxes[0];
+      }
+    }
+
     const sandboxes = await this.baseFetch(auth, {
       where: {
         conversationId: conversation.id,
@@ -230,6 +268,49 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     return sandboxes[0];
+  }
+
+  /**
+   * Fetch conversation owners for sandbox rows touched by the reaper. Queries
+   * are grouped by workspace so every lookup remains workspace-scoped without
+   * issuing unbounded parallel DB queries.
+   */
+  static async dangerouslyFetchConversationModelIdsBySandboxes(
+    sandboxes: Pick<SandboxResource, "id" | "workspaceId">[]
+  ): Promise<Map<ModelId, ModelId>> {
+    if (sandboxes.length === 0) {
+      return new Map();
+    }
+
+    const sandboxModelIdsByWorkspaceModelId = new Map<ModelId, ModelId[]>();
+    for (const sandbox of sandboxes) {
+      const sandboxModelIds =
+        sandboxModelIdsByWorkspaceModelId.get(sandbox.workspaceId) ?? [];
+      sandboxModelIds.push(sandbox.id);
+      sandboxModelIdsByWorkspaceModelId.set(
+        sandbox.workspaceId,
+        sandboxModelIds
+      );
+    }
+
+    const rows: ConversationSandboxModel[] = [];
+    for (const [
+      workspaceModelId,
+      sandboxModelIds,
+    ] of sandboxModelIdsByWorkspaceModelId.entries()) {
+      const workspaceRows = await this.conversationSandboxModel.findAll({
+        where: {
+          workspaceId: workspaceModelId,
+          sandboxId: {
+            [Op.in]: sandboxModelIds,
+          },
+        },
+        attributes: ["sandboxId", "conversationId"],
+      });
+      rows.push(...workspaceRows);
+    }
+
+    return new Map(rows.map((r) => [r.sandboxId, r.conversationId]));
   }
 
   async updateStatus(
@@ -620,8 +701,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Sleep a running sandbox for the given conversation. Acquires the lifecycle
    * lock, re-fetches the sandbox inside it, and only sleeps if still running.
    * If the provider reports the sandbox as gone, marks it deleted instead.
-   *
-   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslySleepIfRunning(
     auth: Authenticator,
@@ -711,8 +790,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Transition a pending_approval sandbox to sleeping. The sandbox is already
    * paused via betaPause(), so no provider call is needed — we just update the
    * DB status so the regular destroy phase can reap it later.
-   *
-   * WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslySleepIfPendingApproval(
     auth: Authenticator,
@@ -740,8 +817,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * lifecycle lock, re-fetches the sandbox inside it, and only destroys if
    * still sleeping. If the provider reports the sandbox as gone, marks it
    * deleted anyway.
-   *
-   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslyDestroyIfSleeping(
     auth: Authenticator,
@@ -870,8 +945,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * status. Acquires the lifecycle lock, re-fetches the sandbox, and only
    * destroys if it is non-deleted and still has `killRequestedAt`. Treats
    * `SandboxNotFoundError` as success.
-   *
-   * WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
   static async dangerouslyDestroyIfKillRequested(
     auth: Authenticator,
