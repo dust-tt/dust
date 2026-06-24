@@ -5,6 +5,7 @@ import {
   LinkWrapper,
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
+import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { ChevronDown } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
@@ -227,40 +228,6 @@ const COUNTER_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
   lg: "sm",
 };
 
-// Loading spinner sized to match the icon slot.
-const SPINNER_SIZE_CLASS: Record<"xs" | "sm", string> = {
-  xs: "s-size-4",
-  sm: "s-size-5",
-};
-
-// The loader is a plain SVG that strokes with `currentColor`, so it always
-// matches the button's text color in every variant and in both themes (the
-// Lottie Spinner can only render a fixed palette and can't follow text color).
-function ButtonSpinner({ sizeClass }: { sizeClass: string }) {
-  return (
-    <svg
-      className={cn(sizeClass, "s-shrink-0 s-animate-spin")}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle
-        className="s-opacity-25"
-        cx="12"
-        cy="12"
-        r="9"
-        stroke="currentColor"
-        strokeWidth="2.5"
-      />
-      <path
-        d="M12 3a9 9 0 0 1 9 9"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 const chevronVariantMap: Record<ButtonVariantType, string> = {
   primary: "s-text-white/60",
@@ -348,7 +315,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const content = (
       <>
         {isLoading ? (
-          <ButtonSpinner sizeClass={SPINNER_SIZE_CLASS[iconSize]} />
+          <Spinner size="xs" variant="mono" />
         ) : (
           icon && renderIcon(icon, iconShadow)
         )}
