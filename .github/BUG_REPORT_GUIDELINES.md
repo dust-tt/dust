@@ -12,7 +12,7 @@ workspace via a triage agent, in our support queue, or in the
 
 ## TL;DR — the copy-paste template
 
-```markdown
+````markdown
 ### Summary
 <one sentence: what's broken + the symptom>
 
@@ -47,7 +47,7 @@ workspace via a triage agent, in our support queue, or in the
 
 ### Screenshots / logs
 <attach images, screen recording, console/network errors, server logs>
-```
+````
 
 ## What's most often missing
 
