@@ -5,6 +5,7 @@ import {
   getFeatureFlags,
 } from "@app/lib/auth";
 import { getClientIp } from "@app/lib/utils/request";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { SandboxCtx } from "@front-api/middlewares/ctx";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -77,7 +78,7 @@ export const sandboxAuth = createMiddleware<SandboxCtx>(async (ctx, next) => {
   const auth = authRes.value;
 
   const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("sandbox_dsbx_tools")) {
+  if (!isComputerFeatureEnabled(featureFlags, "sandbox_dsbx_tools")) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {

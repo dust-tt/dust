@@ -82,6 +82,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isTextContent } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -392,7 +393,10 @@ export async function runModel(
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
   const featureFlags = await getFeatureFlags(auth);
-  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const hasSandboxTools = isComputerFeatureEnabled(
+    featureFlags,
+    "sandbox_tools"
+  );
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
   );

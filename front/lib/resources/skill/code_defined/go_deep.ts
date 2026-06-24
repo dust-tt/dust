@@ -5,6 +5,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 export const goDeepSkill = {
   sId: "go-deep",
@@ -24,7 +25,7 @@ export const goDeepSkill = {
     _params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const flags = await getFeatureFlags(auth);
-    const hasSandbox = flags.includes("sandbox_tools");
+    const hasSandbox = isComputerFeatureEnabled(flags, "sandbox_tools");
     return getDeepDiveInstructions({
       includeToolsetsPrompt: false,
       hasSandbox,

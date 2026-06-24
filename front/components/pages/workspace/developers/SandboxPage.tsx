@@ -1,14 +1,15 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { ContentMessage, Globe01, InfoCircle, Page } from "@dust-tt/sparkle";
 
 export function SandboxPage() {
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const hasSandboxAdmin =
-    featureFlags.includes("sandbox_tools") &&
-    featureFlags.includes("sandbox_workspace_admin");
+    isComputerFeatureEnabled(featureFlags, "sandbox_tools") &&
+    isComputerFeatureEnabled(featureFlags, "sandbox_workspace_admin");
 
   const renderBody = () => {
     if (!isAdmin) {

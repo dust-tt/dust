@@ -123,7 +123,10 @@ import {
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 
 // Exhaustive map of flags for each global agent. This is used to control which agents inject
 // per-user dynamic content (like memories) into the prompt context. This approach is not ideal but
@@ -1646,7 +1649,7 @@ export async function getGlobalAgents(
       mcpServerViews,
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
-      hasSandbox: flags.includes("sandbox_tools"),
+      hasSandbox: isComputerFeatureEnabled(flags, "sandbox_tools"),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
       preferGpt55DefaultModel: flags.includes("dust_agent_gpt_5_5_default"),

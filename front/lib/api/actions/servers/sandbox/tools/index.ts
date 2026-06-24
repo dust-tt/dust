@@ -45,6 +45,7 @@ import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_san
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
@@ -240,7 +241,7 @@ export async function createSandboxTools(
   // per-workspace setting that admins toggle on top of it.
   const flags = await getFeatureFlags(auth);
   if (
-    flags.includes("sandbox_workspace_admin") &&
+    isComputerFeatureEnabled(flags, "sandbox_workspace_admin") &&
     isSandboxAgentEgressRequestsAllowed(auth)
   ) {
     return tools;
@@ -256,7 +257,7 @@ export async function buildDescribeToolsetOutput(
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
   const flags = await getFeatureFlags(auth);
   const toolsResult = getToolsForProvider(auth, providerId, {
-    includeDsbxTools: flags.includes("sandbox_dsbx_tools"),
+    includeDsbxTools: isComputerFeatureEnabled(flags, "sandbox_dsbx_tools"),
   });
   if (toolsResult.isErr()) {
     return new Err(new MCPError(toolsResult.error.message));

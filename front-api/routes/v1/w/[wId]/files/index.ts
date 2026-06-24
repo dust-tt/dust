@@ -9,6 +9,7 @@ import {
   isPubliclySupportedUseCase,
   isSupportedFileContentType,
 } from "@app/types/files";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { FileUploadRequestResponseType } from "@dust-tt/client";
 import { FileUploadUrlRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -154,7 +155,7 @@ app.post(
     }
 
     const flags = await getFeatureFlags(auth);
-    const hasSandboxTools = flags.includes("sandbox_tools");
+    const hasSandboxTools = isComputerFeatureEnabled(flags, "sandbox_tools");
 
     if (
       !ensureFileSize(contentType, fileSize, {

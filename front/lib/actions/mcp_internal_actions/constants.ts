@@ -97,7 +97,10 @@ import type {
 } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1053,7 +1056,7 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("sandbox_tools");
+      return !isComputerFeatureEnabled(featureFlags, "sandbox_tools");
     },
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,

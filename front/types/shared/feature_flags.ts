@@ -385,12 +385,24 @@ export const COMPUTER_FEATURE_FLAGS = [
   "sandbox_workspace_admin",
 ] as const satisfies readonly WhitelistableFeature[];
 
-const COMPUTER_FEATURE_FLAG_SET = new Set<WhitelistableFeature>(
-  COMPUTER_FEATURE_FLAGS
-);
+export type ComputerFeatureFlag = (typeof COMPUTER_FEATURE_FLAGS)[number];
 
-export function isComputerFeatureFlag(feature: WhitelistableFeature): boolean {
-  return COMPUTER_FEATURE_FLAG_SET.has(feature);
+export function isComputerFeatureFlag(
+  feature: WhitelistableFeature
+): feature is ComputerFeatureFlag {
+  return COMPUTER_FEATURE_FLAGS.some(
+    (computerFeature) => computerFeature === feature
+  );
+}
+
+export function isComputerFeatureEnabled(
+  featureFlags: WhitelistableFeature[],
+  feature: ComputerFeatureFlag
+): boolean {
+  return (
+    featureFlags.includes(feature) &&
+    !featureFlags.includes(DISABLE_COMPUTER_FEATURE)
+  );
 }
 
 export function isWhitelistableFeature(

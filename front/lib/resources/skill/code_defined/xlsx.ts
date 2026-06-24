@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 const XLSX_SKILL_INSTRUCTIONS = `# Spreadsheets (.xlsx, .xlsm, .csv, .tsv)
 
@@ -137,6 +138,6 @@ export const xlsxSkill = {
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
-    return !flags.includes("sandbox_tools");
+    return !isComputerFeatureEnabled(flags, "sandbox_tools");
   },
 } as const satisfies GlobalSkillDefinition;

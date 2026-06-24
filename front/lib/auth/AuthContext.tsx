@@ -6,7 +6,11 @@ import {
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  isComputerFeatureFlag,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   createContext,
@@ -64,6 +68,10 @@ export function useFeatureFlags() {
       if (!flag) {
         return true;
       }
+      if (isComputerFeatureFlag(flag)) {
+        return isComputerFeatureEnabled(featureFlags, flag);
+      }
+
       return featureFlags.includes(flag);
     },
     [featureFlags]

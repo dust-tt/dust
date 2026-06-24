@@ -9,6 +9,7 @@ import {
   useWorkspaceEgressPolicy,
 } from "@app/lib/swr/sandbox";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   Button,
   ContentMessage,
@@ -33,8 +34,8 @@ export function NetworkSection() {
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const hasSandboxAdmin =
-    featureFlags.includes("sandbox_tools") &&
-    featureFlags.includes("sandbox_workspace_admin");
+    isComputerFeatureEnabled(featureFlags, "sandbox_tools") &&
+    isComputerFeatureEnabled(featureFlags, "sandbox_workspace_admin");
   const [domainInput, setDomainInput] = useState("");
   const [isEnableAgentRequestsDialogOpen, setIsEnableAgentRequestsDialogOpen] =
     useState(false);
