@@ -9,6 +9,7 @@ import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { getFilePathDownloadUrl, getFilePathViewUrl } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { contentTypeFromFileName } from "@app/types/files";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Download01, Icon } from "@dust-tt/sparkle";
 
@@ -88,11 +89,27 @@ function FilePreviewContent({
   baseUrl,
   version,
 }: FilePreviewContentProps) {
-  // Office documents (presentations, etc.) are rendered as a server-side PDF
-  // conversion (?preview=pdf), available only through the path-based file route.
-  if (category === "viewer") {
-    const url = `${baseUrl}?preview=pdf` + (version ? `&v=${version}` : "");
-    return <PDFViewer key={url} url={url} />;
+  switch (category) {
+    case "viewer": {
+      // Office documents (presentations, etc.) are rendered as a server-side
+      // PDF conversion (?preview=pdf), available only through the path-based
+      // file route.
+      const url = `${baseUrl}?preview=pdf` + (version ? `&v=${version}` : "");
+      return <PDFViewer key={url} url={url} />;
+    }
+
+    case "frame":
+    case "code":
+    case "pdf":
+    case "audio":
+    case "markdown":
+    case "delimited":
+    case "text":
+    case "image":
+      break;
+
+    default:
+      assertNeverAndIgnore(category);
   }
 
   return (

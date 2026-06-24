@@ -113,7 +113,7 @@ export function AttachmentCitation({
         icon={attachmentCitation.visual}
         title={title}
         description={attachmentCitation.description}
-        compact={compact}
+        size={size}
         onClick={() => sidePanel.openPanel({ type: "file_preview", filePath })}
         onRemove={attachmentCitation.onRemove}
         tooltipLabel={title}
