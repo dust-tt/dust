@@ -624,11 +624,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "remove_reaction": "low",
     "search_user": "never_ask",
   },
-  "slideshow": {
-    "create_slideshow_file": "never_ask",
-    "edit_slideshow_file": "never_ask",
-    "retrieve_slideshow_file": "never_ask",
-  },
   "snowflake": {
     "describe_semantic_view": "never_ask",
     "describe_table": "never_ask",
