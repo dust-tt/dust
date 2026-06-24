@@ -1,6 +1,8 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { getWorkspaceDefaultModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -14,11 +16,36 @@ import type {
   AgentFetchVariant,
   AgentModelConfigurationType,
 } from "@app/types/assistant/agent";
+import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { isFollowingWorkspaceDefaultModel } from "@app/types/assistant/models/workspace_default";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 
 function getModelForAgentConfiguration(
-  agent: AgentConfigurationModel
+  auth: Authenticator,
+  agent: AgentConfigurationModel,
+  { featureFlags }: { featureFlags: WhitelistableFeature[] }
 ): AgentModelConfigurationType {
+  // Agents that follow the workspace default store a sentinel model. Resolve it
+  // here, the single serialization boundary, to a concrete model so it never
+  // reaches execution. The `usesWorkspaceDefault` flag lets the UI display
+  // "Workspace default (currently X)" while everything downstream sees a real
+  // model.
+  if (isFollowingWorkspaceDefaultModel(agent)) {
+    const resolved =
+      getWorkspaceDefaultModel(auth, { featureFlags }) ??
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+
+    return {
+      providerId: resolved.providerId,
+      modelId: resolved.modelId,
+      temperature: agent.temperature,
+      reasoningEffort: resolved.defaultReasoningEffort,
+      ...(agent.responseFormat ? { responseFormat: agent.responseFormat } : {}),
+      usesWorkspaceDefault: true,
+    };
+  }
+
   const model: AgentModelConfigurationType = {
     providerId: agent.providerId,
     modelId: agent.modelId,
@@ -134,6 +161,10 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       : Promise.resolve([]),
   ]);
 
+  // Fetched once (memoized per workspace) and reused to resolve the workspace
+  // default model for agents that follow it.
+  const featureFlags = await getFeatureFlags(auth);
+
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
     const actions =
@@ -141,7 +172,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
         ? (mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [])
         : [];
 
-    const model = getModelForAgentConfiguration(agent);
+    const model = getModelForAgentConfiguration(auth, agent, { featureFlags });
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const isAuthor = agent.authorId === auth.user()?.id;

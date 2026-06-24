@@ -22,6 +22,7 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import {
   getLargeWhitelistedModel,
+  getPinnedWorkspaceDefaultModel,
   getSmallWhitelistedModel,
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
@@ -493,6 +494,17 @@ export function shouldUseOpus(auth: Authenticator): boolean {
   return isDustCompanyPlan(planCode) || isEnterprisePlanPrefix(planCode);
 }
 
+// The model the standard Dust agent (and its reasoning-effort variants) should
+// prefer: the admin-pinned workspace default when set, otherwise the historical
+// hardcoded fallback. `_getDustLikeGlobalAgent` still validates availability and
+// falls back to the best large model if the preferred one is disabled.
+function getDustPreferredModelConfiguration(
+  auth: Authenticator,
+  fallback: ModelConfigurationType
+): ModelConfigurationType {
+  return getPinnedWorkspaceDefaultModel(auth) ?? fallback;
+}
+
 export function _getDustGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -500,9 +512,12 @@ export function _getDustGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
     name: "dust",
-    preferredModelConfiguration: args.preferGpt55DefaultModel
-      ? GPT_5_5_MODEL_CONFIG
-      : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: getDustPreferredModelConfiguration(
+      auth,
+      args.preferGpt55DefaultModel
+        ? GPT_5_5_MODEL_CONFIG
+        : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG
+    ),
     preferredReasoningEffort: "medium",
   });
 }
@@ -514,7 +529,10 @@ export function _getDustHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_HIGH,
     name: "dust-high",
-    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: getDustPreferredModelConfiguration(
+      auth,
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG
+    ),
     preferredReasoningEffort: "high",
   });
 }
@@ -526,7 +544,10 @@ export function _getDustHighOmittedGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED,
     name: "dust-high-omitted",
-    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: getDustPreferredModelConfiguration(
+      auth,
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG
+    ),
     preferredReasoningEffort: "high",
     omittedThinking: true,
   });
@@ -539,7 +560,10 @@ export function _getDustOmittedGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OMITTED,
     name: "dust-omitted",
-    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: getDustPreferredModelConfiguration(
+      auth,
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG
+    ),
     preferredReasoningEffort: "medium",
     omittedThinking: true,
   });

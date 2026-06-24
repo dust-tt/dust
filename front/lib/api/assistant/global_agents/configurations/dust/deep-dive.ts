@@ -21,6 +21,7 @@ import {
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import {
   getLargeWhitelistedModel,
+  getPinnedWorkspaceDefaultModel,
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
@@ -360,7 +361,12 @@ function getModelConfig(
   modelConfiguration: ModelConfigurationType;
   reasoningEffort: ReasoningEffort;
 } | null {
+  // Prefer the admin-pinned workspace default when set; otherwise keep the
+  // historical Anthropic-then-OpenAI order. `selectEnabledModel` skips it if it
+  // is not available for the workspace.
+  const pinnedDefault = getPinnedWorkspaceDefaultModel(auth);
   const candidates = [
+    ...(pinnedDefault ? [pinnedDefault] : []),
     CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     GPT_5_5_MODEL_CONFIG,
   ];
