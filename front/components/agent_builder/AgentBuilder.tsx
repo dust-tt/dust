@@ -149,10 +149,12 @@ export default function AgentBuilder({
     }
   );
 
+  const shouldLoadEditors = !!agentConfiguration && !duplicateAgentId;
   const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
     useEditors({
       owner,
       agentConfigurationId: agentConfiguration?.sId ?? null,
+      disabled: !shouldLoadEditors,
     });
   const updateEditors = useUpdateEditors({
     owner,
