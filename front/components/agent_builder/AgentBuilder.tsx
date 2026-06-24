@@ -564,7 +564,11 @@ export default function AgentBuilder({
   const { isDirty, isSubmitting } = form.formState;
 
   const isSaveDisabled =
-    isSubmitting || isActionsLoading || isSkillsLoading || isTriggersLoading;
+    isSubmitting ||
+    isActionsLoading ||
+    isSkillsLoading ||
+    isTriggersLoading ||
+    isEditorsLoading;
 
   const handleSave = async () => {
     if (isSaving || isSaveDisabled) {
