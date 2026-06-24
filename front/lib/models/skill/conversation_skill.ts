@@ -3,7 +3,7 @@ import {
   ConversationModel,
 } from "@app/lib/models/agent/conversation";
 import {
-  eitherGlobalOrCustomSkillValidation,
+  globalOrCustomSkillValidation,
   SkillConfigurationModel,
 } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -117,7 +117,7 @@ ConversationSkillModel.init(SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES, {
     },
   ],
   validate: {
-    eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
+    eitherGlobalOrCustomSkill: globalOrCustomSkillValidation,
   },
 });
 
@@ -190,7 +190,7 @@ AgentMessageSkillModel.init(
       },
     ],
     validate: {
-      eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
+      eitherGlobalOrCustomSkill: globalOrCustomSkillValidation,
     },
   }
 );

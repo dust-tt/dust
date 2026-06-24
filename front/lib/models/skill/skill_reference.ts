@@ -1,5 +1,5 @@
 import {
-  eitherGlobalOrCustomSkillValidation,
+  globalOrCustomSkillValidation,
   SkillConfigurationModel,
 } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -78,7 +78,7 @@ SkillReferenceModel.init(
     ],
     validate: {
       eitherGlobalOrCustomSkill(this: SkillReferenceModel): void {
-        eitherGlobalOrCustomSkillValidation.call({
+        globalOrCustomSkillValidation.call({
           customSkillId: this.childCustomSkillId,
           globalSkillId: this.childGlobalSkillId,
         });

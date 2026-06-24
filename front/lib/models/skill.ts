@@ -80,7 +80,7 @@ const SKILL_MODEL_ATTRIBUTES = {
  * Shared validation for skill in conversation models.
  * Ensures exactly one of customSkillId or globalSkillId is set.
  */
-export function eitherGlobalOrCustomSkillValidation(this: {
+export function globalOrCustomSkillValidation(this: {
   customSkillId: unknown;
   globalSkillId: unknown;
 }): void {

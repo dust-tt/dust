@@ -1,6 +1,6 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
-  eitherGlobalOrCustomSkillValidation,
+  globalOrCustomSkillValidation,
   SkillConfigurationModel,
 } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -60,7 +60,7 @@ AgentSkillModel.init(
       },
     ],
     validate: {
-      eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,
+      globalOrCustomSkill: globalOrCustomSkillValidation,
     },
   }
 );
