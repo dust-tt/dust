@@ -789,7 +789,10 @@ export async function deleteWorkspaceActivity({
 
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
   if (workspaceResource) {
-    await workspaceResource.delete(auth, {});
+    const deleteResult = await workspaceResource.delete(auth, {});
+    if (deleteResult.isErr()) {
+      throw deleteResult.error;
+    }
   }
 }
 
