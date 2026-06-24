@@ -234,7 +234,7 @@ export const Overview: Story = {
       <Surface
         dark
         title="Dark"
-        caption="Interim dark pass (auto -night ramp mirror) — provisional, pending the designer's dark spec (Outline Dark + primary/outline swap)."
+        caption="Primary and outline swap in dark mode (designer spec); every other variant is unchanged — its tokens adapt on their own."
       >
         <VariantGrid size="md" />
       </Surface>

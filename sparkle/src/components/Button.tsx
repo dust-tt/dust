@@ -5,8 +5,6 @@ import {
   LinkWrapper,
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
-import type { SpinnerProps } from "@sparkle/components/Spinner";
-import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { ChevronDown } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
@@ -54,6 +52,19 @@ const OVERLAY = cn(
   "after:s-transition-colors disabled:after:s-hidden"
 );
 
+// In dark mode the primary and outline buttons swap appearances (designer
+// spec): primary takes the light-outline design under `.s-dark`, and outline
+// takes the light-primary design. The dark classes are written out literally
+// (below, per variant) because Tailwind's JIT only emits CSS for class names it
+// sees verbatim in source — a computed `dark:` prefix would never be generated.
+//
+// Dark shadow literals for that swap (the `dark:` form of OUTLINE_SHADOW /
+// SOLID_SHADOW("#44403b"), spelled out so the scanner picks them up).
+const DARK_OUTLINE_SHADOW =
+  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#DFE0E2,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
+const DARK_SOLID_SHADOW =
+  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#44403b,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
+
 const buttonVariants = cva(
   cn(
     "s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
@@ -72,63 +83,69 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // Light: solid neutral. Dark: the light-outline design (primary/outline
+        // swap) — written out literally for the JIT scanner.
         primary: cn(
           OVERLAY,
-          // Dark = the ramp mirror (-night): the neutral fill flips light, so the
-          // text flips dark (as the legacy button did). Disabled mirrors the
-          // other way (dark fill) and needs muted light text.
           "s-bg-gradient-to-b s-from-stone-700 s-to-stone-800",
-          "dark:s-from-stone-700-night dark:s-to-stone-800-night",
-          "s-text-white dark:s-text-foreground",
+          "s-text-white",
           SOLID_SHADOW("#44403b"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
           "disabled:s-from-stone-300 disabled:s-to-stone-400 disabled:s-shadow-none",
-          "dark:disabled:s-from-stone-300-night dark:disabled:s-to-stone-400-night dark:disabled:s-text-faint-night"
+          "dark:s-border dark:s-border-border-dark",
+          "dark:s-from-white dark:s-to-stone-50 dark:s-text-muted-foreground",
+          DARK_OUTLINE_SHADOW,
+          "dark:hover:after:s-bg-gray-950/[0.02] dark:active:after:s-bg-gray-950/[0.04]",
+          "dark:disabled:s-from-white dark:disabled:s-to-stone-50 dark:disabled:s-shadow-none dark:disabled:s-text-faint"
         ),
+        // Brand solids are unchanged in dark mode (no dark: overrides).
         highlight: cn(
           OVERLAY,
-          // Dark = ramp mirror (-night): blue stays saturated, white text holds.
           "s-bg-gradient-to-b s-from-blue-400 s-to-blue-500",
-          "dark:s-from-blue-400-night dark:s-to-blue-500-night",
           "s-text-white",
           SOLID_SHADOW("#4BABFF"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
-          "disabled:s-from-blue-200 disabled:s-to-blue-300 disabled:s-shadow-none",
-          "dark:disabled:s-from-blue-200-night dark:disabled:s-to-blue-300-night"
+          "disabled:s-from-blue-200 disabled:s-to-blue-300 disabled:s-shadow-none"
         ),
         warning: cn(
           OVERLAY,
           // The design's "critical" reds come from the preset's red palette
           // (red-400/500), not the rose ramp the legacy warning variant uses.
           "s-bg-gradient-to-b s-from-red-400 s-to-red-500",
-          "dark:s-from-red-400-night dark:s-to-red-500-night",
           "s-text-white",
           SOLID_SHADOW("#E76449"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
-          "disabled:s-from-red-200 disabled:s-to-red-300 disabled:s-shadow-none",
-          "dark:disabled:s-from-red-200-night dark:disabled:s-to-red-300-night"
+          "disabled:s-from-red-200 disabled:s-to-red-300 disabled:s-shadow-none"
         ),
+        // Light: bordered light. Dark: the light-primary design (swap).
         outline: cn(
           OVERLAY,
-          "s-border s-border-border-dark dark:s-border-border-dark-night",
+          "s-border s-border-border-dark",
           "s-bg-gradient-to-b s-from-white s-to-stone-50",
-          "dark:s-from-gray-800 dark:s-to-gray-900",
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
+          "s-text-muted-foreground",
           OUTLINE_SHADOW,
           "hover:after:s-bg-gray-950/[0.02] active:after:s-bg-gray-950/[0.04]",
-          "disabled:s-shadow-none disabled:s-text-faint dark:disabled:s-text-faint-night"
+          "disabled:s-shadow-none disabled:s-text-faint",
+          "dark:s-border-0 dark:s-from-stone-700 dark:s-to-stone-800 dark:s-text-white",
+          DARK_SOLID_SHADOW,
+          "dark:hover:after:s-bg-white/10 dark:active:after:s-bg-black/10",
+          "dark:disabled:s-from-stone-300 dark:disabled:s-to-stone-400 dark:disabled:s-text-white dark:disabled:s-shadow-none"
         ),
+        // Ghost variants are unchanged in dark mode: the text token adapts
+        // (foreground/muted-foreground -> -night) and the hover is a subtle
+        // transparency overlay that flips (matching the design's
+        // transparency-hover token).
         ghost: cn(
           "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-bg-stone-200 active:s-bg-stone-300",
-          "dark:hover:s-bg-stone-200-night dark:active:s-bg-stone-300-night",
+          "hover:s-bg-gray-950/[0.02] active:s-bg-gray-950/[0.04]",
+          "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.08]",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
         "ghost-secondary": cn(
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
-          "hover:s-bg-stone-200 active:s-bg-stone-300",
-          "dark:hover:s-bg-stone-200-night dark:active:s-bg-stone-300-night",
+          "hover:s-bg-gray-950/[0.02] active:s-bg-gray-950/[0.04]",
+          "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.08]",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
@@ -210,22 +227,40 @@ const COUNTER_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
   lg: "sm",
 };
 
-type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
-
-// A loading button is also `disabled`, which now renders the pale disabled
-// fill — so the spinner always sits on a light background. Use the dark "mono"
-// spinner across the board so it stays visible (a white spinner would vanish
-// on the pale disabled gradient).
-const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
-  primary: "mono",
-  highlight: "mono",
-  warning: "mono",
-  outline: "mono",
-  ghost: "mono",
-  "ghost-secondary": "mono",
-  "highlight-ghost": "mono",
-  "warning-ghost": "mono",
+// Loading spinner sized to match the icon slot.
+const SPINNER_SIZE_CLASS: Record<"xs" | "sm", string> = {
+  xs: "s-size-4",
+  sm: "s-size-5",
 };
+
+// The loader is a plain SVG that strokes with `currentColor`, so it always
+// matches the button's text color in every variant and in both themes (the
+// Lottie Spinner can only render a fixed palette and can't follow text color).
+function ButtonSpinner({ sizeClass }: { sizeClass: string }) {
+  return (
+    <svg
+      className={cn(sizeClass, "s-shrink-0 s-animate-spin")}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        className="s-opacity-25"
+        cx="12"
+        cy="12"
+        r="9"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      />
+      <path
+        d="M12 3a9 9 0 0 1 9 9"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 const chevronVariantMap: Record<ButtonVariantType, string> = {
   primary: "s-text-white/60",
@@ -313,10 +348,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const content = (
       <>
         {isLoading ? (
-          <Spinner
-            size="xs"
-            variant={(variant && spinnerVariantsMap[variant]) || "mono"}
-          />
+          <ButtonSpinner sizeClass={SPINNER_SIZE_CLASS[iconSize]} />
         ) : (
           icon && renderIcon(icon, iconShadow)
         )}
