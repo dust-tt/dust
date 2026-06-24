@@ -188,10 +188,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "on_demand",
   },
-  slideshow: {
-    description: "Slideshow MCP tool",
-    stage: "dust_only",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",

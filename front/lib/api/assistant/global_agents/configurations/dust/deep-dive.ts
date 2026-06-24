@@ -291,7 +291,6 @@ Do not use the interactive_content tool for markdown documents. Only use it for 
 Markdown documents can be written directly in the response, they will be properly rendered by the client.
 
 Heavily bias against using the interactive_content tool for what could be written directly as Markdown in the conversation (unless explicitly requested by the user).
-Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
 export function getDeepDiveInstructions({

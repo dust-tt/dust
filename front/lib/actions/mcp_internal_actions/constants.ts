@@ -72,8 +72,6 @@ import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_mana
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
-import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/api/actions/servers/slideshow/instructions";
-import { SLIDESHOW_SERVER } from "@app/lib/api/actions/servers/slideshow/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
@@ -140,7 +138,7 @@ export const ASHBY_SERVER_NAME = "ashby";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
-export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4, 28];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -175,7 +173,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "image_generation",
   "include_data",
   "interactive_content",
-  "slideshow",
   "jira",
   "luma",
   "microsoft_drive",
@@ -543,26 +540,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     metadata: GOOGLE_DRIVE_SERVER,
-  },
-  slideshow: {
-    id: 28,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("slideshow");
-    },
-    isPreview: true,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: {
-      ...SLIDESHOW_SERVER,
-      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
-      serverInfo: {
-        ...SLIDESHOW_SERVER.serverInfo,
-        instructions: SLIDESHOW_INSTRUCTIONS,
-      },
-    },
   },
   slack_bot: {
     id: 31,

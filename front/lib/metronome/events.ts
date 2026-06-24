@@ -110,7 +110,6 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   image_generation: "advanced",
   sound_studio: "advanced",
   speech_generator: "advanced",
-  slideshow: "advanced",
   interactive_content: "advanced",
   confluence: "advanced",
   databricks: "advanced",

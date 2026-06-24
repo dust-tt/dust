@@ -74,7 +74,6 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "agent_memory",
   "deep_dive",
   "interactive_content",
-  "slideshow",
   "speech_generator",
   "sound_studio",
   // Web search is internal
