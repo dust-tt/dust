@@ -348,6 +348,7 @@ export async function sync({
   connector,
   mimeTypes,
   internalTableIdToRemoteTableId = (internalTableId: string) => internalTableId,
+  preserveSelectedPermissions = false,
   tags,
 }: {
   remoteDBTree?: RemoteDBTree;
@@ -357,6 +358,7 @@ export async function sync({
     | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
     | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId?: (internalTableId: string) => string;
+  preserveSelectedPermissions?: boolean;
   tags: string[];
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -583,9 +585,16 @@ export async function sync({
       dataSourceConfig,
       folderId: unusedDb.internalId,
     });
-    await unusedDb.destroy();
 
-    if (unusedDb.permission === "selected") {
+    if (unusedDb.permission === "selected" && preserveSelectedPermissions) {
+      await unusedDb.update({
+        lastUpsertedAt: null,
+      });
+    } else {
+      await unusedDb.destroy();
+    }
+
+    if (unusedDb.permission === "selected" && !preserveSelectedPermissions) {
       localLogger.error(
         {
           databaseInternalId: unusedDb.internalId,
@@ -602,9 +611,16 @@ export async function sync({
       dataSourceConfig,
       folderId: unusedSchema.internalId,
     });
-    await unusedSchema.destroy();
 
-    if (unusedSchema.permission === "selected") {
+    if (unusedSchema.permission === "selected" && preserveSelectedPermissions) {
+      await unusedSchema.update({
+        lastUpsertedAt: null,
+      });
+    } else {
+      await unusedSchema.destroy();
+    }
+
+    if (unusedSchema.permission === "selected" && !preserveSelectedPermissions) {
       localLogger.error(
         {
           schemaInternalId: unusedSchema.internalId,
@@ -621,9 +637,16 @@ export async function sync({
       dataSourceConfig,
       tableId: unusedTable.internalId,
     });
-    await unusedTable.destroy();
 
-    if (unusedTable.permission === "selected") {
+    if (unusedTable.permission === "selected" && preserveSelectedPermissions) {
+      await unusedTable.update({
+        lastUpsertedAt: null,
+      });
+    } else {
+      await unusedTable.destroy();
+    }
+
+    if (unusedTable.permission === "selected" && !preserveSelectedPermissions) {
       localLogger.error(
         {
           tableInternalId: unusedTable.internalId,
