@@ -63,7 +63,7 @@ export function FilePreviewBlock({
       contentType={fileContentType}
       title={fileName}
       description={typeLabel}
-      size="xs"
+      variant="inline"
     />
   );
 }

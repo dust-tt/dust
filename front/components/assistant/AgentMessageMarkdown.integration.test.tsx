@@ -117,16 +117,19 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
           <AgentMessageMarkdown
             owner={mockOwner}
             content={
-              'Preview\n:preview_file{path="conversation-c1/booklet.pdf" title="booklet.pdf" contentType="application/pdf"}'
+              'Open :preview_file{path="conversation-c1/booklet.pdf" title="booklet.pdf" contentType="application/pdf"} for the details.'
             }
           />
         </FilePreviewProvider>
       );
 
-      expect(screen.getByText("booklet.pdf")).toBeInTheDocument();
+      const fileLink = screen.getByRole("button", { name: "booklet.pdf" });
+      expect(fileLink.parentElement).toHaveTextContent(
+        "Open booklet.pdf for the details."
+      );
       expect(container.querySelector("a[href*='download=1']")).toBeNull();
 
-      fireEvent.click(screen.getByText("booklet.pdf"));
+      fireEvent.click(fileLink);
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(

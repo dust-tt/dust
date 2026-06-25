@@ -6,7 +6,13 @@ import { FileCitationCard } from "@app/components/assistant/conversation/attachm
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { isSupportedImageContentType } from "@app/types/files";
-import { Citation, CitationImage, Tooltip } from "@dust-tt/sparkle";
+import {
+  Citation,
+  CitationImage,
+  Hoverable,
+  Icon,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import type React from "react";
 
 interface PreviewableCitationProps {
@@ -26,6 +32,7 @@ interface PreviewableCitationProps {
   thumbnailUrl?: string;
   title: string;
   tooltipLabel?: React.ReactNode;
+  variant?: "card" | "inline";
 }
 
 export function PreviewableCitation({
@@ -43,11 +50,51 @@ export function PreviewableCitation({
   thumbnailUrl,
   title,
   tooltipLabel,
+  variant = "card",
 }: PreviewableCitationProps) {
   const { openFilePreview } = useFilePreviewContext();
 
   const handleClick = () =>
     openFilePreview({ fileId, filePath, title, contentType });
+
+  if (variant === "inline") {
+    const FileIcon = getFileTypeIcon(contentType, title);
+    const inlineTooltipLabel =
+      tooltipLabel ??
+      (description ? (
+        <div className="flex flex-col gap-0.5">
+          <div>{title}</div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {description}
+          </div>
+        </div>
+      ) : (
+        title
+      ));
+
+    return (
+      <Tooltip
+        tooltipTriggerAsChild
+        trigger={
+          <Hoverable variant="highlight" asChild>
+            <button
+              type="button"
+              onClick={handleClick}
+              className="inline-flex max-w-full items-baseline gap-1 align-baseline"
+            >
+              <Icon
+                visual={FileIcon}
+                size="xs"
+                className="shrink-0 self-center"
+              />
+              <span className="truncate">{title}</span>
+            </button>
+          </Hoverable>
+        }
+        label={inlineTooltipLabel}
+      />
+    );
+  }
 
   if (isSupportedImageContentType(contentType) && thumbnailUrl) {
     return (
