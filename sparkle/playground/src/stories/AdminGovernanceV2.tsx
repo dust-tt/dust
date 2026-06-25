@@ -71,6 +71,7 @@ import {
   CloudArrowLeftRight,
   Lightning01,
   ShapesPlus,
+  ChevronRight,
 } from "@dust-tt/sparkle";
 import {
   AmplitudeLogo,
@@ -2783,6 +2784,144 @@ function UsagePage({
   );
 }
 
+// ─── Space Page ───────────────────────────────────────────────────────────────
+
+interface SpaceCategoryRow {
+  id: string;
+  name: string;
+  count: number;
+  icon: React.ComponentType<{ className?: string }>;
+  usedBy: number;
+  onClick?: () => void;
+}
+
+const SPACE_MOCK_DATA: Record<string, SpaceCategoryRow[]> = {
+  default: [
+    {
+      id: "connected",
+      name: "Connected Data",
+      count: 12,
+      icon: CloudArrowLeftRight,
+      usedBy: 24,
+    },
+    { id: "folders", name: "Folders", count: 155, icon: Folder, usedBy: 18 },
+    { id: "websites", name: "Websites", count: 258, icon: Globe01, usedBy: 31 },
+    { id: "apps", name: "Apps", count: 135, icon: Code01, usedBy: 12 },
+    { id: "tools", name: "Tools", count: 164, icon: PuzzlePiece01, usedBy: 9 },
+  ],
+  GTM: [
+    {
+      id: "connected",
+      name: "Connected Data",
+      count: 4,
+      icon: CloudArrowLeftRight,
+      usedBy: 8,
+    },
+    { id: "folders", name: "Folders", count: 47, icon: Folder, usedBy: 6 },
+    { id: "websites", name: "Websites", count: 12, icon: Globe01, usedBy: 5 },
+    { id: "apps", name: "Apps", count: 8, icon: Code01, usedBy: 3 },
+    { id: "tools", name: "Tools", count: 21, icon: PuzzlePiece01, usedBy: 4 },
+  ],
+  ProjectManagement: [
+    {
+      id: "connected",
+      name: "Connected Data",
+      count: 3,
+      icon: CloudArrowLeftRight,
+      usedBy: 15,
+    },
+    { id: "folders", name: "Folders", count: 92, icon: Folder, usedBy: 11 },
+    { id: "websites", name: "Websites", count: 5, icon: Globe01, usedBy: 2 },
+    { id: "apps", name: "Apps", count: 17, icon: Code01, usedBy: 7 },
+    { id: "tools", name: "Tools", count: 43, icon: PuzzlePiece01, usedBy: 5 },
+  ],
+};
+
+function SpacePage({
+  name,
+  isRestricted,
+  role,
+}: {
+  name: string;
+  isRestricted: boolean;
+  role: Role;
+}) {
+  const [search, setSearch] = useState("");
+  const rows = SPACE_MOCK_DATA[name] ?? SPACE_MOCK_DATA.default;
+  const filtered = rows.filter((r) =>
+    r.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const columns = useMemo<ColumnDef<SpaceCategoryRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => {
+          const row = info.row.original;
+          const Icon = row.icon;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-2">
+                <Icon className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <span className="s-font-medium s-text-foreground dark:s-text-foreground-night">
+                  {row.name}
+                </span>
+                <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  ({row.count})
+                </span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "usedBy",
+        header: "Used By",
+        meta: { className: "s-w-40" },
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-1.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <Users01 className="s-h-3.5 s-w-3.5 s-shrink-0" />
+                <span className="s-text-sm">{row.usedBy}</span>
+                <ChevronRight className="s-h-3.5 s-w-3.5 s-shrink-0" />
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  const SpaceIcon = isRestricted ? Lock01 : Globe01;
+  const canEdit = role === "super_admin";
+
+  return (
+    <Page>
+      <SearchInput
+        name="search-space"
+        placeholder={`Search in ${name}`}
+        value={search}
+        onChange={setSearch}
+      />
+      <div className="s-flex s-items-center s-justify-between">
+        <div className="s-flex s-items-center s-gap-2">
+          <SpaceIcon className="s-h-5 s-w-5 s-text-primary-400 dark:s-text-primary-500" />
+          <Page.H variant="h3">{name}</Page.H>
+        </div>
+        {canEdit && (
+          <Button icon={Plus} label="Add data" variant="primary" size="sm" />
+        )}
+      </div>
+      <DataTable data={filtered} columns={columns} />
+    </Page>
+  );
+}
+
 // ─── Placeholder Page ─────────────────────────────────────────────────────────
 
 function PlaceholderPage({
@@ -4885,15 +5024,13 @@ export default function AdminGovernanceV2() {
       >
         {activeTab === "spaces" ? (
           spacesPage === "space" ? (
-            <PlaceholderPage
-              title={selectedSpace}
-              description={`Content of the ${selectedSpace} space.`}
-              icon={
+            <SpacePage
+              name={selectedSpace}
+              isRestricted={
                 RESTRICTED_SPACES_MEMBER.includes(selectedSpace) ||
                 RESTRICTED_SPACES_NO_ACCESS.includes(selectedSpace)
-                  ? Lock01
-                  : Globe01
               }
+              role={role}
             />
           ) : selectedConnectionId ? (
             <ConnectionDetailPage
