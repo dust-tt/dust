@@ -20,10 +20,10 @@ import { Op } from "sequelize";
 
 const WORKSPACE_CONCURRENCY = 16;
 
-const PRODUCTBOARD_SKILL_NAME = "Productboard API Guidance";
+const PRODUCTBOARD_SKILL_NAME = "Working with Productboard";
 const PRODUCTBOARD_SKILL_ICON = "ProductboardLogo";
 const PRODUCTBOARD_SKILL_USER_DESCRIPTION =
-  "Guidance for using Productboard tools safely with workspace-specific configurations, pagination, and field value formats.";
+  "Helps agents create, update, and query Productboard content using the right workspace setup.";
 const PRODUCTBOARD_SKILL_AGENT_DESCRIPTION =
   "Use this skill whenever you use Productboard tools to create, update, query, or inspect Productboard notes, entities, relationships, or configuration.";
 
@@ -451,13 +451,13 @@ async function backfillWorkspace(
   const productboardAgentIds = productboardAgents.map((agent) => agent.id);
   const existingAgentSkillLinks = existingSkill
     ? await AgentSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        customSkillId: existingSkill.id,
-        agentConfigurationId: { [Op.in]: productboardAgentIds },
-      },
-      attributes: ["agentConfigurationId"],
-    })
+        where: {
+          workspaceId: workspace.id,
+          customSkillId: existingSkill.id,
+          agentConfigurationId: { [Op.in]: productboardAgentIds },
+        },
+        attributes: ["agentConfigurationId"],
+      })
     : [];
   const alreadyLinkedAgentIds = new Set(
     existingAgentSkillLinks.map((link) => link.agentConfigurationId)
@@ -481,8 +481,8 @@ async function backfillWorkspace(
       workspaceModelId: workspace.id,
     },
     execute
-      ? "Backfilling Productboard guidance skill for workspace"
-      : "Would backfill Productboard guidance skill for workspace"
+      ? "Backfilling Productboard skill for workspace"
+      : "Would backfill Productboard skill for workspace"
   );
 
   if (!execute) {
@@ -513,7 +513,7 @@ async function backfillWorkspace(
       skillId: skill.sId,
       workspaceId: workspace.sId,
     },
-    "Backfilled Productboard guidance skill for workspace"
+    "Backfilled Productboard skill for workspace"
   );
 }
 
@@ -530,17 +530,17 @@ makeScript(
       type: "string" as const,
     },
   },
-  async ({ concurrency, execute, fromWorkspaceId, workspaceId }, logger) => {
+  async ({ execute, fromWorkspaceId, workspaceId }, logger) => {
     logger.info(
       {
-        concurrency,
+        concurrency: WORKSPACE_CONCURRENCY,
         execute,
         fromWorkspaceId,
         workspaceId: workspaceId ?? "all",
       },
       execute
-        ? "Starting Productboard guidance skill backfill"
-        : "Starting Productboard guidance skill backfill dry-run"
+        ? "Starting Productboard skill backfill"
+        : "Starting Productboard skill backfill dry-run"
     );
 
     await runOnAllWorkspaces(
@@ -561,7 +561,7 @@ makeScript(
         execute,
         workspaceId: workspaceId ?? "all",
       },
-      "Finished Productboard guidance skill backfill"
+      "Finished Productboard skill backfill"
     );
   }
 );
