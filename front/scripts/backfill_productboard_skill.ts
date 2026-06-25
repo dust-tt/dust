@@ -182,27 +182,27 @@ async function findLatestActiveProductboardAgents(
       internalMCPServerId: { [Op.ne]: null },
     },
   });
-  const productboardMCPServerViewIds = productboardMCPServerViews
+  const productboardMCPServerViewModelIds = productboardMCPServerViews
     .filter((view) =>
       matchesInternalMCPServerName(view.internalMCPServerId, "productboard")
     )
     .map((view) => view.id);
 
-  if (productboardMCPServerViewIds.length === 0) {
+  if (productboardMCPServerViewModelIds.length === 0) {
     return [];
   }
 
   const mcpConfigurations = await AgentMCPServerConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
-      mcpServerViewId: { [Op.in]: productboardMCPServerViewIds },
+      mcpServerViewId: { [Op.in]: productboardMCPServerViewModelIds },
     },
   });
-  const productboardAgentConfigurationIds = new Set(
+  const productboardAgentConfigurationModelIds = new Set(
     mcpConfigurations.map((config) => config.agentConfigurationId)
   );
 
-  if (productboardAgentConfigurationIds.size === 0) {
+  if (productboardAgentConfigurationModelIds.size === 0) {
     return [];
   }
 
@@ -210,7 +210,7 @@ async function findLatestActiveProductboardAgents(
     {
       where: {
         workspaceId: workspace.id,
-        id: [...productboardAgentConfigurationIds],
+        id: [...productboardAgentConfigurationModelIds],
         status: "active",
       },
     }
@@ -332,16 +332,16 @@ async function addAgentEditorsToSkill(
     skillEditorLink.groupId,
     ...agentEditorGroupModelIds,
   ]);
-  const groupById = new Map(groups.map((group) => [group.id, group]));
+  const groupByModelId = new Map(groups.map((group) => [group.id, group]));
 
-  const skillEditorGroup = groupById.get(skillEditorLink.groupId);
+  const skillEditorGroup = groupByModelId.get(skillEditorLink.groupId);
   if (!skillEditorGroup) {
     throw new Error(
       `Could not fetch editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
     );
   }
   const agentEditorGroups = agentEditorGroupModelIds
-    .map((groupId) => groupById.get(groupId) ?? null)
+    .map((groupModelId) => groupByModelId.get(groupModelId) ?? null)
     .filter((group): group is GroupResource => group !== null);
 
   const activeAgentEditorMemberships =
@@ -370,12 +370,13 @@ async function addAgentEditorsToSkill(
   );
 
   const existingSkillEditors = await skillEditorGroup.getActiveMembers(auth);
-  const existingSkillEditorIds = new Set(
+  const existingSkillEditorModelIds = new Set(
     existingSkillEditors.map((user) => user.id)
   );
   const usersToAdd = users.filter(
     (user) =>
-      builderUserModelIds.has(user.id) && !existingSkillEditorIds.has(user.id)
+      builderUserModelIds.has(user.id) &&
+      !existingSkillEditorModelIds.has(user.id)
   );
 
   if (usersToAdd.length === 0) {
@@ -460,15 +461,15 @@ async function backfillWorkspace(
     // We add some editors to the skill to make sure we're not creating a skill with 0 editor.
     // We take the agent editors as they are the most prone to know about Productboard at their company.
     await addAgentEditorsToSkill(auth, {
-      agentConfigurationIds: productboardAgentModelIds,
+      agentConfigurationModelIds: productboardAgentModelIds,
       logger,
       skill,
     });
   }
 
   await AgentSkillModel.bulkCreate(
-    productboardAgentModelIds.map((agentConfigurationId) => ({
-      agentConfigurationId,
+    productboardAgentModelIds.map((agentConfigurationModelId) => ({
+      agentConfigurationId: agentConfigurationModelId,
       customSkillId: skill.id,
       globalSkillId: null,
       workspaceId: workspace.id,
