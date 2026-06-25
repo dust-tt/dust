@@ -205,7 +205,7 @@ export function PodConversationsTab({
               )}
             </div>
             {podInfo.archivedAt ? (
-              <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+              <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
                 <EmptyCTA
                   message="This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}

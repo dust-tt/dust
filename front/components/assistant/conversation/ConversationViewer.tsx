@@ -3,7 +3,6 @@ import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimi
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
-import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
@@ -103,6 +102,7 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
+import { ConversationErrorDisplay } from "./ConversationError";
 import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -1526,7 +1526,7 @@ export const ConversationViewer = ({
           EmptyPlaceholder={ConversationViewerEmptyState}
           // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
           increaseViewportBy={8192}
-          enforceStickyFooterAtBottom={!isMobile}
+          enforceStickyFooterAtBottom
         />
       </VirtuosoMessageListLicense>
     </>

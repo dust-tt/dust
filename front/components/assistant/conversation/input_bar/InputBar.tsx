@@ -440,7 +440,7 @@ export const InputBar = React.memo(function InputBar({
         }}
         className={classNames(
           isShaking && "animate-shake",
-          "relative flex flex-col items-stretch gap-0 sm:flex-row",
+          "relative flex flex-col items-stretch gap-0 md:flex-row",
           INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
           !effectiveIsCompact && "w-full flex-1 self-stretch",
           effectiveIsCompact
@@ -454,13 +454,13 @@ export const InputBar = React.memo(function InputBar({
                 "bg-muted-background dark:bg-muted-background-night",
                 "border",
                 "border-border-dark dark:border-border-dark/10",
-                "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
-                "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
+                "md:border-border-dark/50 md:has-[.tiptap:focus]:border-border-dark",
+                "dark:has-[.tiptap:focus]:border-border-dark-night md:has-[.tiptap:focus]:border-border-dark",
                 isFloating
                   ? classNames(
                       "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
                       "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
-                      "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
+                      "md:has-[.tiptap:focus]:ring-2 dark:md:has-[.tiptap:focus]:ring-2"
                     )
                   : classNames(
                       "has-[.tiptap:focus]:border-highlight-300",

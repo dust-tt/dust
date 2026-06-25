@@ -26,6 +26,7 @@ import {
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
@@ -47,7 +48,7 @@ function isLongTextPaste(text: string, maxCharThreshold?: number) {
   return text.length > maxChars;
 }
 
-const useEditorService = (editor: Editor | null) => {
+const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
   return useMemo(() => {
     // Return the service object with utility functions.
     return {
@@ -65,6 +66,7 @@ const useEditorService = (editor: Editor | null) => {
         if (!editor) {
           return;
         }
+        const shouldFocus = !isMobileViewport;
         let partialPos: number | null = null;
         editor.state.doc.descendants((node, pos) => {
           if (node.type.name === "voicePartial" && partialPos === null) {
@@ -83,11 +85,17 @@ const useEditorService = (editor: Editor | null) => {
             })
             .run();
         } else {
-          editor
-            .chain()
-            .focus("end")
-            .insertContent({ type: "voicePartial", attrs: { text } })
-            .run();
+          const content = { type: "voicePartial", attrs: { text } };
+          if (shouldFocus) {
+            editor.chain().focus("end").insertContent(content).run();
+          } else {
+            editor
+              .chain()
+              .insertContentAt(editor.state.doc.content.size, content, {
+                updateSelection: false,
+              })
+              .run();
+          }
         }
       },
       // Replace the voicePartial node with the committed plain text.
@@ -96,6 +104,7 @@ const useEditorService = (editor: Editor | null) => {
         if (!editor) {
           return;
         }
+        const shouldFocus = !isMobileViewport;
         let found = false;
         editor.state.doc.descendants((node, pos) => {
           if (node.type.name === "voicePartial" && !found) {
@@ -121,7 +130,16 @@ const useEditorService = (editor: Editor | null) => {
           return true;
         });
         if (!found && committedText) {
-          editor.chain().focus("end").insertContent(committedText).run();
+          if (shouldFocus) {
+            editor.chain().focus("end").insertContent(committedText).run();
+          } else {
+            editor
+              .chain()
+              .insertContentAt(editor.state.doc.content.size, committedText, {
+                updateSelection: false,
+              })
+              .run();
+          }
         }
       },
       // Convert any pending voicePartial node to plain text in place.
@@ -269,7 +287,7 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.setEditable(!loading);
       },
     };
-  }, [editor]);
+  }, [editor, isMobileViewport]);
 };
 
 export type EditorService = ReturnType<typeof useEditorService>;
@@ -552,7 +570,8 @@ const useCustomEditor = ({
     [conversationId, placeholderOverride]
   );
 
-  const editorService = useEditorService(editor);
+  const isMobileViewport = useIsMobile();
+  const editorService = useEditorService(editor, isMobileViewport);
   const lastSubmitTimestampMsRef = useRef(0);
 
   // Set keydown handler after editor is initialized to avoid synchronous updates during render.

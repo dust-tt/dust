@@ -1,3 +1,4 @@
+import { INPUT_BAR_COMPACT_SURFACE_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   NavigationSidebar,
@@ -23,8 +24,8 @@ import type React from "react";
 import { useContext } from "react";
 
 const MOBILE_NAV_MENU_BUTTON_CLASSES = cn(
-  "border border-border/30 bg-muted-background/60 backdrop-blur-sm transition-none",
-  "dark:border-border-night/30 dark:bg-muted-background-night/60",
+  INPUT_BAR_COMPACT_SURFACE_CLASSES,
+  "transition-none",
   "hover:border-transparent hover:bg-hover hover:backdrop-blur-none",
   "dark:hover:bg-hover-night",
   "active:border-transparent active:bg-primary-300 active:backdrop-blur-none",

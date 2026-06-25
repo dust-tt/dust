@@ -164,7 +164,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                   >
                     <div
                       className={cn(
-                        "flex w-full grow flex-col px-4 sm:px-8",
+                        "flex w-full grow flex-col px-4 md:px-8",
                         contentWidth === "centered" && "max-w-4xl"
                       )}
                     >
@@ -205,7 +205,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                     >
                       <div
                         className={cn(
-                          "flex w-full grow flex-col px-4 sm:px-8",
+                          "flex w-full grow flex-col px-4 md:px-8",
                           contentWidth === "centered" && "max-w-4xl"
                         )}
                       >
