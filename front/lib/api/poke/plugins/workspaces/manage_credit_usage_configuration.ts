@@ -106,7 +106,7 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
       defaultPoolCapCredits: {
         type: "number",
         variant: "text",
-        label: "Default Per-User Pool Limit (credits)",
+        label: "Default Per-User Pool Access (credits)",
         description:
           "Default pool credit limit added on top of each seat's allowance. Set to 0 to prevent pool usage.",
         async: true,

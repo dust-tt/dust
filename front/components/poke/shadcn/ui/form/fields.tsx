@@ -158,7 +158,7 @@ export function InputField<T extends FieldValues>({
               min={min}
               step={step}
               {...field}
-              value={field.value}
+              value={field.value ?? ""}
               onChange={(e) => {
                 if (transformValue) {
                   field.onChange(transformValue(e.target.value));
@@ -166,6 +166,10 @@ export function InputField<T extends FieldValues>({
                 }
 
                 if (type === "number") {
+                  if (e.target.value === "") {
+                    field.onChange(undefined);
+                    return;
+                  }
                   const parsed = Number(e.target.value);
                   if (isFinite(parsed)) {
                     field.onChange(parsed);
