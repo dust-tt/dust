@@ -3479,7 +3479,10 @@ export async function listMetronomeSeatBalances({
   try {
     type SeatBalancesPage = {
       data?: unknown[];
-      pagination?: { next_page?: string | null };
+      pagination?: {
+        next_page?: string | null;
+        seats_available_for_next_page?: number | null;
+      };
     };
     const allBalances: MetronomeSeatBalance[] = [];
     let nextPage: string | null | undefined = undefined;
@@ -3493,12 +3496,13 @@ export async function listMetronomeSeatBalances({
               contract_id: metronomeContractId,
               include_credits_and_commits: true,
               covering_date: coveringDate.toISOString(),
-              ...(nextPage ? { next_page: nextPage } : {}),
+              ...(nextPage ? { cursor: nextPage } : {}),
             },
           }
         );
       allBalances.push(...(page.data ?? []).filter(isMetronomeSeatBalance));
-      nextPage = page.pagination?.next_page;
+      const hasMore = (page.pagination?.seats_available_for_next_page ?? 0) > 0;
+      nextPage = hasMore ? page.pagination?.next_page : null;
     } while (nextPage);
     return new Ok(allBalances);
   } catch (err) {
