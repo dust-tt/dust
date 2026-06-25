@@ -1,65 +1,69 @@
 # Plug DustHive into Conductor
 
-This guide wires Conductor as the workspace creator and DustHive as the
-environment manager.
+Use this when Conductor should create each Git worktree, while DustHive should
+own the per-worktree Dust environment.
 
-The important rule: Conductor owns the Git worktree, then DustHive adopts that
-worktree. Do not make Conductor warm DustHive environments. Starting the
-environment in the cold state is enough for normal agent work.
+The same pattern works for any external workspace manager:
 
-## What this gives you
+1. Put the external tool's worktrees under the main Dust checkout.
+2. Run `dust-hive adopt --path <worktree> --name <env>` after the tool creates a
+   worktree.
+3. Run `dust-hive start <env>` to keep the cold environment ready.
+4. Run `dust-hive unregister <env>` when the external workspace is archived.
 
-- Conductor creates one worktree per workspace.
-- DustHive registers that worktree as an environment.
-- DustHive creates the per-environment `env.sh`, `.envrc`, ports, test database,
-  and cold build watchers.
-- `sdk` and `sparkle` run in cold state.
-- Docker and the full app stack stay stopped unless you explicitly warm the
-  environment.
+Do not warm environments from hooks. A cold environment with `sdk` and `sparkle`
+running is enough for normal agent work. Run `dust-hive warm <env>` manually
+only when you need the full app stack.
 
-## Prerequisites
+## 0. Pick your Dust checkout path
 
-1. Install and set up DustHive.
-
-   ```bash
-   cd /Users/henryfontanier/dev/dust/x/henry/dust-hive
-   bun install
-   bun link
-   dust-hive doctor
-   ```
-
-2. Install `direnv` and add the shell hook.
-
-   ```bash
-   brew install direnv
-   echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
-   ```
-
-3. Optional: hide direnv's verbose environment diff.
-
-   ```bash
-   mkdir -p ~/.config/direnv
-   cat > ~/.config/direnv/direnv.toml <<'EOF'
-   [global]
-   hide_env_diff = true
-   EOF
-   ```
-
-4. Restart your shell or run:
-
-   ```bash
-   source ~/.zshrc
-   ```
-
-## 1. Put Conductor worktrees under `.hives`
-
-DustHive's adopted worktrees must live inside the main Dust repo. This is what
-keeps the shared `node_modules` and workspace overrides working.
-
-Create a Conductor root inside the Dust repo:
+Set this to your main Dust checkout:
 
 ```bash
-DUST_REPO=/Users/henryfontanier/dev/dust
+export DUST_REPO="$HOME/dev/dust"
+```
+
+All commands below assume that variable is set.
+
+## 1. Check prerequisites
+
+Install DustHive from the Dust checkout:
+
+```bash
+cd "$DUST_REPO/x/henry/dust-hive"
+bun install
+bun link
+dust-hive doctor
+```
+
+Install `direnv` and enable it for zsh:
+
+```bash
+brew install direnv
+grep -q 'direnv hook zsh' ~/.zshrc || echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
+```
+
+Optional: silence the verbose direnv diff:
+
+```bash
+mkdir -p ~/.config/direnv
+cat > ~/.config/direnv/direnv.toml <<'EOF'
+[global]
+hide_env_diff = true
+EOF
+```
+
+Restart the shell:
+
+```bash
+exec zsh -l
+```
+
+## 2. Point Conductor at `.hives`
+
+Create a Conductor root inside the main Dust checkout:
+
+```bash
 mkdir -p "$DUST_REPO/.hives/external/conductor"
 ```
 
@@ -71,28 +75,26 @@ In Conductor:
 4. Set the Conductor root directory to:
 
    ```text
-   /Users/henryfontanier/dev/dust/.hives/external/conductor
+   <your Dust checkout>/.hives/external/conductor
    ```
 
-If the file picker hides `.hives`, use macOS "Go to Folder" in the picker:
+If the macOS file picker hides `.hives`, press `Cmd+Shift+G` in the picker and
+paste the full path.
 
-```text
-Cmd+Shift+G
-```
+The root must be under the main Dust checkout. DustHive relies on this for the
+shared repo layout and `node_modules` behavior.
 
-Then paste the full path.
+## 3. Add Conductor scripts
 
-## 2. Add local Conductor repo settings
-
-Create a machine-local Conductor settings file in the main Dust checkout:
+Create a machine-local Conductor config in the main Dust checkout:
 
 ```bash
-cd /Users/henryfontanier/dev/dust
+cd "$DUST_REPO"
 mkdir -p .conductor
 $EDITOR .conductor/settings.local.toml
 ```
 
-Use this content:
+Paste this:
 
 ```toml
 "$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
@@ -135,21 +137,11 @@ dust-hive unregister "$CONDUCTOR_WORKSPACE_NAME" || true
 run_mode = "concurrent"
 ```
 
-Why each piece is there:
+Leave "Auto-run after setup" off in Conductor. The setup script already starts
+the cold DustHive environment. Use the Run button only when you want to call
+`dust-hive start` again.
 
-- `setup`: runs after Conductor creates the worktree. It adopts the worktree
-  into DustHive, starts the cold watchers, and copies Dust skills into the
-  Codex skill location.
-- `run`: keeps the environment started, but does not warm it.
-- `archive`: removes DustHive's registration and generated resources while
-  leaving Conductor to archive or remove its own worktree.
-- `spotlight_testing = false`: keeps Conductor testing workspace-local.
-
-Do not enable "Auto-run after setup" for this repository. The setup script
-already starts the DustHive environment in cold state. The run script is only
-for the Run button.
-
-Optional validation:
+Validate the TOML:
 
 ```bash
 npx -y @taplo/cli lint \
@@ -157,21 +149,19 @@ npx -y @taplo/cli lint \
   .conductor/settings.local.toml
 ```
 
-## 3. Create a Conductor workspace
+## 4. Create a Conductor workspace
 
-Create a new workspace in Conductor. Conductor will:
+Create a new Conductor workspace for Dust.
 
-1. Pick a city name, for example `kyoto`.
-2. Create a worktree under:
+Conductor will create a city-named worktree such as:
 
-   ```text
-   /Users/henryfontanier/dev/dust/.hives/external/conductor/workspaces/dust/kyoto
-   ```
+```text
+<your Dust checkout>/.hives/external/conductor/workspaces/dust/kyoto
+```
 
-3. Run the setup script.
-4. Let DustHive adopt that worktree as env `kyoto`.
+The setup script registers that worktree with DustHive as env `kyoto`.
 
-Verify from any terminal:
+Check it from any terminal:
 
 ```bash
 dust-hive status kyoto
@@ -188,97 +178,84 @@ Services:
 Docker: Stopped
 ```
 
-That is the intended default. Only run `dust-hive warm kyoto` when you actually
-need the full app stack.
+## 5. Make direnv work in Conductor terminals
 
-## 4. Understand where env files live
-
-DustHive writes two different files:
+DustHive creates these files for each adopted env:
 
 ```text
 <worktree>/.envrc
 ~/.dust-hive/envs/<env-name>/env.sh
 ```
 
-For a Conductor workspace named `kyoto`:
-
-```text
-/Users/henryfontanier/dev/dust/.hives/external/conductor/workspaces/dust/kyoto/.envrc
-/Users/henryfontanier/.dust-hive/envs/kyoto/env.sh
-```
-
-The `.envrc` file is hidden because it starts with a dot. Use:
+Open a Conductor terminal in the workspace and run this exact check:
 
 ```bash
-ls -la "$(dust-hive cd kyoto)"
-```
+workspace="$(git rev-parse --show-toplevel)"
+env_name="$(basename "$workspace")"
 
-The `env.sh` file is not inside the worktree. It lives in DustHive's state
-directory under `~/.dust-hive/envs/<env-name>/`.
+test -f "$workspace/.envrc" || {
+  echo "Missing $workspace/.envrc. DustHive did not adopt this worktree."
+  exit 1
+}
 
-## 5. Make direnv load in Conductor terminals
+test -f "$HOME/.dust-hive/envs/$env_name/env.sh" || {
+  echo "Missing $HOME/.dust-hive/envs/$env_name/env.sh. DustHive did not adopt this worktree."
+  exit 1
+}
 
-First, make sure normal direnv is installed:
-
-```bash
-command -v direnv
-grep -n 'direnv hook zsh' ~/.zshrc
-```
-
-Open a fresh Conductor terminal in the workspace and run:
-
-```bash
+cd "$workspace"
+direnv allow
+eval "$(direnv export zsh)"
 echo "$PORT"
 echo "$FRONT_DATABASE_URI"
 ```
 
-If those are set, direnv is working.
+If `PORT` and `FRONT_DATABASE_URI` print values, the env is loaded.
 
-If they are missing, check whether direnv sees the worktree:
+If either file is missing, the Conductor setup script did not run or failed.
+For a new setup, archive that Conductor workspace and create a new one after
+adding the scripts in step 3.
 
-```bash
-pwd
-direnv status
-direnv allow
-exec zsh -l
-```
-
-Then check again:
+For an existing workspace you want to keep, adopt it once:
 
 ```bash
-echo "$PORT"
+workspace="$(git rev-parse --show-toplevel)"
+env_name="$(basename "$workspace")"
+dust-hive adopt --path "$workspace" --name "$env_name" --base-branch main --wait
 ```
 
-### Fallback zsh hook
+Then run the check above again.
 
-Some Conductor terminal startup paths can enter the workspace after zsh startup,
-which means a one-time `.zshrc` check can run too early. Add this fallback hook
-to `~/.zshrc` after the normal direnv hook:
+If both files exist but new Conductor terminals still open without env vars,
+add a Conductor-specific direnv hook. This is needed because some Conductor
+terminal sessions enter the workspace after zsh startup, so the normal
+`eval "$(direnv hook zsh)"` line can run too early.
 
-```zsh
-# Conductor + DustHive: load the Hive env for Conductor-managed workspaces.
-_dust_hive_load_conductor_env() {
+Run this once from a normal terminal where `DUST_REPO` is set. It appends the
+Conductor direnv hook to `~/.zshrc` with your actual Dust checkout path:
+
+```bash
+cat >> ~/.zshrc <<EOF
+
+# DustHive + Conductor direnv fallback.
+export DUST_HIVE_CONDUCTOR_WORKSPACES="$DUST_REPO/.hives/external/conductor/workspaces/dust"
+EOF
+
+cat >> ~/.zshrc <<'EOF'
+
+_dust_hive_conductor_direnv() {
   emulate -L zsh
+  command -v direnv >/dev/null 2>&1 || return 0
 
-  local workspace_root="/Users/henryfontanier/dev/dust/.hives/external/conductor/workspaces/dust"
-  [[ "$PWD/" == "$workspace_root/"* ]] || return 0
-
-  local workspace_tail="${PWD#$workspace_root/}"
-  local env_name="${CONDUCTOR_WORKSPACE_NAME:-${workspace_tail%%/*}}"
-  [[ -n "$env_name" ]] || return 0
-
-  local env_file="$HOME/.dust-hive/envs/$env_name/env.sh"
-  [[ -f "$env_file" ]] || return 0
-  [[ "${DUST_HIVE_ENV_NAME:-}" == "$env_name" ]] && return 0
-
-  source "$env_file"
-  export DUST_HIVE_ENV_NAME="$env_name"
+  local root="${DUST_HIVE_CONDUCTOR_WORKSPACES%/}"
+  if [[ "$PWD/" == "$root/"* || -n "${DIRENV_DIR:-}" ]]; then
+    eval "$(direnv export zsh)"
+  fi
 }
 
-_dust_hive_load_conductor_env
 autoload -Uz add-zsh-hook
-add-zsh-hook chpwd _dust_hive_load_conductor_env
-add-zsh-hook precmd _dust_hive_load_conductor_env
+add-zsh-hook precmd _dust_hive_conductor_direnv
+EOF
 ```
 
 Restart the Conductor terminal:
@@ -287,15 +264,22 @@ Restart the Conductor terminal:
 exec zsh -l
 ```
 
-This fallback does not depend on Conductor exporting
-`CONDUCTOR_WORKSPACE_NAME`. It derives the env name from the workspace path and
-then sources `~/.dust-hive/envs/<env-name>/env.sh` directly.
+Do not add `source ~/.dust-hive/envs/<env-name>/env.sh` directly to `~/.zshrc`.
+That loads one env globally and does not unload it when you leave the
+workspace. The hook above asks direnv to load and unload the right env based on
+the current directory.
 
-## 6. Optional `cn` helper for workspace names
+## 6. Optional `cn` CLI for nicer names
 
-Conductor gives workspaces city names. Keep the city directory and DustHive env
-name stable, but rename the Git branch and Conductor display metadata with a
-small helper.
+Conductor creates city-named workspaces. The city directory and DustHive env
+name should stay stable, but you can rename the Git branch and Conductor display
+metadata.
+
+Install dependencies:
+
+```bash
+brew install jq sqlite
+```
 
 Install the helper:
 
@@ -314,7 +298,10 @@ Usage:
 Examples:
   conductor-name fix-workspace-env
   conductor-name "external worktree docs"
-  conductor-name fontanierh/external-worktree-docs
+  conductor-name username/external-worktree-docs
+
+Optional:
+  export CONDUCTOR_BRANCH_PREFIX=username
 USAGE
 }
 
@@ -329,7 +316,15 @@ if [[ $# -eq 0 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
+for bin in git jq sqlite3 sed mktemp; do
+  if ! command -v "$bin" >/dev/null 2>&1; then
+    echo "Missing required command: $bin" >&2
+    exit 1
+  fi
+done
+
 label="$*"
+branch_prefix="${CONDUCTOR_BRANCH_PREFIX:-}"
 
 slugify() {
   printf '%s' "$1" \
@@ -347,7 +342,12 @@ else
     echo "Could not derive a branch slug from: $display_name" >&2
     exit 1
   fi
-  branch="fontanierh/$slug"
+
+  if [[ -n "$branch_prefix" ]]; then
+    branch="$branch_prefix/$slug"
+  else
+    branch="$slug"
+  fi
 fi
 
 workspace_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
@@ -375,12 +375,6 @@ if [[ "$current_branch" != "$branch" ]] && git -C "$workspace_root" show-ref --v
   exit 1
 fi
 
-db="$HOME/Library/Application Support/com.conductor.app/conductor.db"
-
-sql_quote() {
-  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/''/g")"
-}
-
 echo "Workspace: $workspace_root"
 echo "Hive env:   $hive_env"
 echo "Branch:     $current_branch -> $branch"
@@ -390,15 +384,25 @@ if [[ "$dry_run" -eq 1 ]]; then
   exit 0
 fi
 
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+jq --arg branch "$branch" '.workspaceBranch = $branch' "$metadata" > "$tmp"
+
 if [[ "$current_branch" != "$branch" ]]; then
   git -C "$workspace_root" branch -m "$branch"
 fi
+
+db="$HOME/Library/Application Support/com.conductor.app/conductor.db"
+
+sql_quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/''/g")"
+}
 
 if [[ -f "$db" ]]; then
   root_sql="$(sql_quote "$workspace_root")"
   branch_sql="$(sql_quote "$branch")"
   label_sql="$(sql_quote "$display_name")"
-  sqlite3 "$db" "
+  if updated_rows="$(sqlite3 "$db" "
     update workspaces
        set branch = $branch_sql,
            placeholder_branch_name = $branch_sql,
@@ -407,12 +411,18 @@ if [[ -f "$db" ]]; then
            user_set_branch_name = 1,
            updated_at = datetime('now')
      where workspace_path = $root_sql;
-  "
+    select changes();
+  " 2>/dev/null)"; then
+    if [[ "$updated_rows" == "0" ]]; then
+      echo "Warning: Conductor database did not contain this workspace path." >&2
+    fi
+  else
+    echo "Warning: could not update Conductor display metadata." >&2
+  fi
 fi
 
-tmp="$(mktemp)"
-jq --arg branch "$branch" '.workspaceBranch = $branch' "$metadata" > "$tmp"
 mv "$tmp" "$metadata"
+trap - EXIT
 
 echo "Done. If Conductor does not refresh immediately, switch workspaces or restart the app."
 EOF
@@ -423,86 +433,91 @@ chmod +x ~/.local/bin/conductor-name
 Add the alias:
 
 ```bash
-echo 'alias cn="conductor-name"' >> ~/.zshrc
-source ~/.zshrc
+grep -q 'alias cn=' ~/.zshrc || echo 'alias cn="conductor-name"' >> ~/.zshrc
 ```
 
-Use it from inside the Conductor workspace:
+Optional: set a branch prefix:
 
 ```bash
-cn "external worktree docs"
+echo 'export CONDUCTOR_BRANCH_PREFIX="<your-github-username>"' >> ~/.zshrc
 ```
 
-That turns the branch into:
+Restart the shell:
 
-```text
-fontanierh/external-worktree-docs
+```bash
+exec zsh -l
 ```
 
-It also updates DustHive's `workspaceBranch` metadata and Conductor's local
-display metadata. It does not rename the worktree directory or DustHive env.
-
-Always dry-run first if you are not sure which workspace the terminal is in:
+Use it from inside a Conductor workspace:
 
 ```bash
 cn --dry-run "external worktree docs"
+cn "external worktree docs"
 ```
+
+Without `CONDUCTOR_BRANCH_PREFIX`, that renames the branch to:
+
+```text
+external-worktree-docs
+```
+
+With `CONDUCTOR_BRANCH_PREFIX=username`, it renames the branch to:
+
+```text
+username/external-worktree-docs
+```
+
+`cn` does not rename the worktree directory or DustHive env.
 
 ## Troubleshooting
 
 ### Conductor cannot browse to `.hives`
 
-Use `Cmd+Shift+G` in the file picker and paste the full path:
+Press `Cmd+Shift+G` in the macOS file picker and paste:
 
 ```text
-/Users/henryfontanier/dev/dust/.hives/external/conductor
+<your Dust checkout>/.hives/external/conductor
 ```
 
 ### Setup says the env already exists at another path
 
-The same Conductor city name was already registered in DustHive. Either archive
-the old Conductor workspace or unregister the stale env:
+The city name is already registered in DustHive. Archive the old Conductor
+workspace or unregister the stale env:
 
 ```bash
 dust-hive unregister <env-name>
 ```
 
-Only unregister if you are sure the old Conductor workspace no longer needs
-that DustHive state.
+### `echo "$PORT"` is empty
 
-### `echo "$PORT"` is empty in the terminal
-
-Check the generated env directly:
+Check the generated DustHive env:
 
 ```bash
 source "$HOME/.dust-hive/envs/<env-name>/env.sh"
 echo "$PORT"
 ```
 
-If that works, the DustHive env exists and only shell loading is broken. Fix
-direnv or add the fallback zsh hook above.
+If that works, DustHive is fine and only terminal loading is broken. Fix direnv
+or add the zsh hook in step 5.
 
 ### The workspace is warm after creation
 
-The setup or run script is calling `dust-hive warm`. Remove that call. The
-Conductor integration should use only:
+Remove any `dust-hive warm` call from Conductor scripts. The scripts should use
+only:
 
 ```bash
 dust-hive adopt ...
 dust-hive start ...
 ```
 
-Warm manually only when you need the full app stack.
+### Conductor still shows the city name
 
-### The Conductor sidebar still shows the city name
-
-Use the `cn` helper to rename the branch and local display metadata. If the UI
-does not refresh immediately, switch away from the workspace and back, or
-restart Conductor.
+Run `cn` from inside the workspace. If the UI does not refresh immediately,
+switch workspaces or restart Conductor.
 
 ## References
 
-- Conductor workspace model: https://www.conductor.build/docs/concepts/workspaces-and-branches
+- Conductor workspaces: https://www.conductor.build/docs/concepts/workspaces-and-branches
 - Conductor Git worktrees: https://www.conductor.build/docs/concepts/git-worktrees
 - Conductor project scripts: https://www.conductor.build/docs/reference/scripts
 - Conductor variables: https://www.conductor.build/docs/reference/environment-variables
