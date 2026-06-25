@@ -1179,11 +1179,15 @@ type IsRestrictedCallback = (params: {
   isDeepDiveDisabled: boolean;
 }) => boolean;
 
-type RuntimeToolStakeLevelOverride = (params: {
+type RuntimeToolStakeLevelCallbackParams = {
   toolName: string;
   plan: PlanType | null;
   configuredStakeLevel: MCPToolStakeLevelType;
-}) => MCPToolStakeLevelType;
+};
+
+type RuntimeToolStakeLevelCallback = (
+  params: RuntimeToolStakeLevelCallbackParams
+) => MCPToolStakeLevelType;
 
 type InternalMCPServerEntryCommon = {
   id: number;
@@ -1191,7 +1195,7 @@ type InternalMCPServerEntryCommon = {
   allowMultipleInstances: boolean;
   isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
-  runtimeToolStakeLevelOverride?: RuntimeToolStakeLevelOverride;
+  runtimeToolStakeLevelCallback?: RuntimeToolStakeLevelCallback;
   // Defines which arguments require per-agent approval for "medium" stake tools.
   // When a tool has "medium" stake, the user must approve the specific combination
   // of (agent, tool, argument values) before the tool can execute.
@@ -1428,12 +1432,12 @@ export function getInternalMCPServerToolStakes(
 
 export function resolveInternalMCPServerToolStakeLevel(
   name: InternalMCPServerNameType,
-  params: Parameters<RuntimeToolStakeLevelOverride>[0]
+  params: RuntimeToolStakeLevelCallbackParams
 ): MCPToolStakeLevelType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return (
-    server.runtimeToolStakeLevelOverride?.(params) ??
+    server.runtimeToolStakeLevelCallback?.(params) ??
     params.configuredStakeLevel
   );
 }

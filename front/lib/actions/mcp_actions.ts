@@ -36,7 +36,6 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
-  type InternalMCPServerNameType,
   resolveInternalMCPServerToolStakeLevel,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -1264,16 +1263,10 @@ export async function buildToolConfigurationsFromRawTools(
   } = r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(mcpServerId);
-  const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
-  let internalServerName: InternalMCPServerNameType | null = null;
-  if (serverType === "internal") {
-    const serverNameResult =
-      getInternalMCPServerNameAndWorkspaceId(mcpServerId);
-    if (serverNameResult.isErr()) {
-      return serverNameResult;
-    }
-    internalServerName = serverNameResult.value.name;
-  }
+  const serverNameResult = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+  const internalServerName = serverNameResult.isOk()
+    ? serverNameResult.value.name
+    : null;
 
   const toolsWithStakesRetryPoliciesAndTimeout = allToolsRaw
     .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
