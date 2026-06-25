@@ -6,7 +6,7 @@ import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 const BEGINNING_AGENT_TOOLTIP =
   "Credits used for this message (tokens and actions).";
 
-const ITEM_CLASS_NAME =
+export const CREDIT_COST_ITEM_CLASS_NAME =
   "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent dark:text-muted-foreground-night dark:hover:bg-transparent dark:focus:bg-transparent";
 
 interface UseCreditCostMenuItemProps {
@@ -14,14 +14,22 @@ interface UseCreditCostMenuItemProps {
   subAgentCredits: number | null | undefined;
 }
 
+interface UseCreditCostMenuItemResult {
+  creditCostItem: DropdownMenuItemProps | null;
+  // Whether the current plan bills with credits. Gates whether the menu
+  // section should be shown at all: on a credit-priced plan we keep it visible
+  // (with a loader) while the cost is still being fetched.
+  isCreditPriced: boolean;
+}
+
 export function useCreditCostMenuItem({
   credits,
   subAgentCredits,
-}: UseCreditCostMenuItemProps): DropdownMenuItemProps | null {
+}: UseCreditCostMenuItemProps): UseCreditCostMenuItemResult {
   const { subscription } = useAuth();
 
   if (!isCreditPricedPlan(subscription.plan)) {
-    return null;
+    return { creditCostItem: null, isCreditPriced: false };
   }
 
   const ownCredits = credits ?? 0;
@@ -29,7 +37,7 @@ export function useCreditCostMenuItem({
   const totalCredits = ownCredits + subCredits;
 
   if (totalCredits <= 0) {
-    return null;
+    return { creditCostItem: null, isCreditPriced: true };
   }
 
   const tooltip =
@@ -39,10 +47,13 @@ export function useCreditCostMenuItem({
       : "");
 
   return {
-    label: "Credit cost",
-    endComponent: formatCredits(totalCredits),
-    tooltip,
-    className: ITEM_CLASS_NAME,
-    onSelect: (e) => e.preventDefault(),
+    creditCostItem: {
+      label: "Credit cost",
+      endComponent: formatCredits(totalCredits),
+      tooltip,
+      className: CREDIT_COST_ITEM_CLASS_NAME,
+      onSelect: (e) => e.preventDefault(),
+    },
+    isCreditPriced: true,
   };
 }
