@@ -456,23 +456,24 @@ async function backfillWorkspace(
   let skill = existingSkill;
   if (!skill) {
     skill = await createProductboardSkill(auth);
+
+    // We add some editors to the skill to make sure we're not creating a skill with 0 editor.
+    // We take the agent editors as they are the most prone to know about Productboard at their company.
+    await addAgentEditorsToSkill(auth, {
+      agentConfigurationIds: productboardAgentIds,
+      logger,
+      skill,
+    });
   }
 
-  await addAgentEditorsToSkill(auth, {
-    agentConfigurationIds: productboardAgentIds,
-    logger,
-    skill,
-  });
-  if (productboardAgentIds.length > 0) {
-    await AgentSkillModel.bulkCreate(
-      productboardAgentIds.map((agentConfigurationId) => ({
-        agentConfigurationId,
-        customSkillId: skill.id,
-        globalSkillId: null,
-        workspaceId: workspace.id,
-      }))
-    );
-  }
+  await AgentSkillModel.bulkCreate(
+    productboardAgentIds.map((agentConfigurationId) => ({
+      agentConfigurationId,
+      customSkillId: skill.id,
+      globalSkillId: null,
+      workspaceId: workspace.id,
+    }))
+  );
 
   logger.info(
     {
