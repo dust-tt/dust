@@ -77,8 +77,6 @@ const RichTextElementSchema: z.ZodType<RichTextElement> = z.lazy(() =>
   })
 );
 
-type t = z.infer<typeof RichTextElementSchema>;
-
 const RichTextBlockSchema = z.object({
   type: z.literal("rich_text"),
   elements: z.array(RichTextElementSchema).optional(),
