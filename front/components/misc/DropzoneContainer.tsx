@@ -54,7 +54,7 @@ export function DropzoneContainer({
   return (
     <div
       {...getRootProps()}
-      className="flex min-h-0 w-full flex-col items-center h-panel"
+      className="dropzone-container flex min-h-0 h-panel w-full flex-col items-center"
       onPaste={onPaste}
     >
       <DropzoneOverlay

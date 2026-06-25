@@ -17,6 +17,7 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -238,6 +239,7 @@ export function ConversationContainerVirtuoso({
   }, [user]);
 
   const { startConversationRef } = useWelcomeTourGuide();
+  const isMobile = useIsMobile();
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -337,6 +339,8 @@ export function ConversationContainerVirtuoso({
   // when there is no active conversation
   return activeConversationId ? (
     body
+  ) : isMobile ? (
+    <div className="px-4">{body}</div>
   ) : (
     <ScrollArea className="px-4 md:px-8">{body}</ScrollArea>
   );

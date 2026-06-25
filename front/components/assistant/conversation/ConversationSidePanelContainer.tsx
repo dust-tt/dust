@@ -28,23 +28,44 @@ export default function ConversationSidePanelContainer({
   const isMobile = useIsMobile();
 
   useEffect(() => {
+    if (isMobile) {
+      setPanelRef(null);
+      return;
+    }
+
     setPanelRef(panelRef.current);
-  }, [setPanelRef]);
+  }, [isMobile, setPanelRef]);
 
   useEffect(() => {
-    if (!currentPanel || !panelRef.current) {
+    if (isMobile || !currentPanel || !panelRef.current) {
       return;
     }
 
     panelRef.current?.expand(DEFAULT_RIGHT_PANEL_SIZE);
-  }, [currentPanel]);
+  }, [currentPanel, isMobile]);
+
+  if (isMobile) {
+    if (!currentPanel || !conversation) {
+      return null;
+    }
+
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-panel-background dark:bg-panel-background-night">
+        <ConversationSidePanelContent
+          conversation={conversation}
+          owner={owner}
+          currentPanel={currentPanel}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
       {!!conversation && (
         <ResizableHandle
-          withHandle={currentPanel && !isMobile && !isFullScreen}
-          disabled={!currentPanel || isMobile || isFullScreen}
+          withHandle={currentPanel && !isFullScreen}
+          disabled={!currentPanel || isFullScreen}
           className="z-50"
         />
       )}

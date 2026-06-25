@@ -6,6 +6,7 @@ import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
 import { useAppLayout } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import { useDocumentScrollMode } from "@app/hooks/useDocumentScrollMode";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -46,11 +47,7 @@ function AppContentInnerWrapper({
   children,
 }: AppContentInnerWrapperProps) {
   if (isMobile) {
-    return (
-      <div className="bg-panel-background dark:bg-panel-background-night">
-        {children}
-      </div>
-    );
+    return children;
   }
 
   return (
@@ -95,14 +92,16 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
 
+  useDocumentScrollMode(isMobile);
+
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="app-content-root flex h-dvh flex-col">
       <SubscriptionEndBanner
         isAdmin={isAdmin(owner)}
         owner={owner}
         subscription={subscription}
       />
-      <div className="flex min-h-0 flex-1 flex-row">
+      <div className="app-content-row flex min-h-0 flex-1 flex-row">
         <Navigation
           hideSidebar={hideSidebar}
           isNavigationBarOpen={isNavigationBarOpen}
@@ -116,7 +115,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
         />
         <div
           className={cn(
-            "relative flex h-full w-full flex-1 flex-col overflow-x-hidden",
+            "app-content-main relative flex h-full w-full flex-1 flex-col overflow-x-hidden",
             "bg-app-background text-foreground",
             "dark:bg-app-background-night dark:text-foreground-night"
           )}
@@ -129,12 +128,12 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             {/* Temporary measure to preserve title existence on smaller screens.
              * Page has no title, prepend empty AppLayoutTitle. */}
             {!hasTitleBar && (
-              <div className="flex min-h-0 flex-1 flex-col h-panel overflow-y-auto">
+              <div className="app-content-pane flex min-h-0 flex-1 flex-col h-panel overflow-y-auto">
                 <AppLayoutTitle />
                 {contentWidth ? (
                   <div
                     className={cn(
-                      "flex h-full w-full flex-col items-center overflow-y-auto",
+                      "app-content-scroll flex h-full w-full flex-col items-center overflow-y-auto",
                       contentWidth === "centered" ? "pt-4" : "pt-8",
                       contentClassName
                     )}
@@ -154,13 +153,13 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
               </div>
             )}
             {hasTitleBar && (
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <div className="app-content-pane flex min-h-0 flex-1 flex-col overflow-y-auto">
                 {contentWidth ? (
                   <>
                     {title}
                     <div
                       className={cn(
-                        "flex w-full flex-col items-center overflow-y-auto",
+                        "app-content-scroll flex w-full flex-col items-center overflow-y-auto",
                         contentWidth === "centered"
                           ? cn(
                               title ? "h-[calc(100vh-3.5rem)]" : "h-full",

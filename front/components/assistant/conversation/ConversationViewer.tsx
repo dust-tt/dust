@@ -336,6 +336,11 @@ export const ConversationViewer = ({
     useRef<
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
+  const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile);
+  useEffect(() => {
+    isMobileRef.current = isMobile;
+  }, [isMobile]);
   const isAutoScrollEnabledRef = useRef(true);
   const prevScrollLocationRef = useRef({
     scrollHeight: 0,
@@ -738,12 +743,6 @@ export const ConversationViewer = ({
   useEffect(() => {
     currentPanelRef.current = currentPanel;
   }, [currentPanel]);
-
-  const isMobile = useIsMobile();
-  const isMobileRef = useRef(isMobile);
-  useEffect(() => {
-    isMobileRef.current = isMobile;
-  }, [isMobile]);
 
   // Only conversation related events are handled here.
   const onEventCallback = useCallback(
@@ -1498,6 +1497,7 @@ export const ConversationViewer = ({
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
           onRenderedDataChange={onRenderedDataChange}
           StickyHeader={ConversationBranchApprovalModal}
+          useWindowScroll={isMobile}
           data={{
             data: initialListData,
             scrollModifier: {
@@ -1518,8 +1518,8 @@ export const ConversationViewer = ({
             "dd-privacy-mask",
             "@container/conversation",
             "touch-pan-y",
-            "overscroll-contain",
-            "h-full w-full px-5",
+            "w-full px-5",
+            !isMobile && "overscroll-contain h-full",
             !agentBuilderContext && "md:px-8"
           )}
           shortSizeAlign="top"
@@ -1530,7 +1530,7 @@ export const ConversationViewer = ({
           EmptyPlaceholder={ConversationViewerEmptyState}
           // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
           increaseViewportBy={8192}
-          enforceStickyFooterAtBottom
+          enforceStickyFooterAtBottom={!isMobile}
         />
       </VirtuosoMessageListLicense>
     </>
