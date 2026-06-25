@@ -264,6 +264,7 @@ async function createProductboardSkill(
       isDefault: false,
       name: PRODUCTBOARD_SKILL_NAME,
       reinforcement: "on",
+      // The MCP server views are all on the global space in practice.
       requestedSpaceIds: [],
       source: null,
       sourceMetadata: null,
@@ -428,16 +429,16 @@ async function backfillWorkspace(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   const existingSkill = await fetchActiveProductboardSkill(auth);
+
   const productboardAgentIds = productboardAgents.map((agent) => agent.id);
   const existingAgentSkillLinks = existingSkill
     ? await AgentSkillModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          customSkillId: existingSkill.id,
-          agentConfigurationId: { [Op.in]: productboardAgentIds },
-        },
-        attributes: ["agentConfigurationId"],
-      })
+      where: {
+        workspaceId: workspace.id,
+        customSkillId: existingSkill.id,
+        agentConfigurationId: { [Op.in]: productboardAgentIds },
+      },
+    })
     : [];
   const alreadyLinkedAgentIds = new Set(
     existingAgentSkillLinks.map((link) => link.agentConfigurationId)
@@ -469,7 +470,11 @@ async function backfillWorkspace(
     return;
   }
 
-  const skill = existingSkill ?? (await createProductboardSkill(auth));
+  let skill = existingSkill;
+  if (!skill) {
+    skill = await createProductboardSkill(auth);
+  }
+
   await addAgentEditorsToSkill(auth, {
     agentConfigurationIds: productboardAgentIds,
     logger,
