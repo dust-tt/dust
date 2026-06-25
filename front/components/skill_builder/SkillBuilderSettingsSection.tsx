@@ -40,7 +40,7 @@ export function SkillBuilderSettingsSection({
               href={githubSkillFolderUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 underline hover:text-foreground dark:hover:text-foreground-night"
+              className="inline-flex items-center gap-1 hover:text-foreground hover:underline dark:hover:text-foreground-night"
             >
               <span>GitHub</span>
               <Icon visual={LinkExternal01} size="xs" />
