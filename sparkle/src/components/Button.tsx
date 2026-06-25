@@ -15,9 +15,14 @@ import * as React from "react";
 // New button design (Figma "Product - WIP" > Controls & input > Button).
 // Replaces Button incrementally: sizes follow the new S/M/L control scale
 // (24/32/40px) where every old size maps one step down (md->lg, sm->md,
-// xs/mini/xmini->sm). Dark mode is an interim pass built from the palette's
-// auto-generated `-night` ramp mirror ({shade}-night = ramp[1000-shade]); it is
-// internally consistent but not yet reconciled with the designer's dark spec.
+// xs/mini/xmini->sm).
+//
+// Dark mode (designer spec):
+//  - primary and outline SWAP — under .s-dark each renders the other's light
+//    design (literal light values, spelled out per variant for the JIT scanner).
+//  - highlight and warning are unchanged in dark (no dark: overrides).
+//  - the ghost variants are unchanged too; only their text and colored hover
+//    tints flip, via the semantic `-night` token pairs (foreground-night, etc.).
 
 export const BUTTON_VARIANTS = [
   "primary",
