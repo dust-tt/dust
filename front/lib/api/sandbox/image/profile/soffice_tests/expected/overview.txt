@@ -1,0 +1,16 @@
+[File: cleanroom3_a.pptx | <size>]
+[Slides: 12 | size: 10.0x5.6" | masters: 1 | layouts: 15 | words/slide: avg=27 max=44]
+[theme:Simple Light | bg1:#107ACA | tx1:#00264C | accents:#00BFFF #FF4773 #E7F4FD #FFECB2 #FFE5E8 #FFFFFF]
+[fonts: title=Montserrat 22pt bold (varies) | body=Montserrat Medium 16pt (varies) | theme-fallback=Arial/Arial]
+  1   TITLE                     "Work doesn't just get done. It gets rew…"  shapes:2  text:2  pic:0  chart:0  table:0  words:13
+  2   CUSTOM_2_1                                                            shapes:13  text:4  pic:6  chart:0  table:0  words:21
+  3   CUSTOM_3                                                              shapes:8  text:5  pic:3  chart:0  table:0  words:30
+  4   CUSTOM_2_1                "One platform. Every team. Compounding v…"  shapes:11  text:9  pic:2  chart:0  table:0  words:38
+  5   TITLE_1_1                 "01"                                        shapes:7  text:7  pic:0  chart:0  table:0  words:26
+  6   CUSTOM_2                  "Every department runs on Dust"             shapes:13  text:6  pic:7  chart:0  table:0  words:44
+  7   CUSTOM_2_1                "The best teams aren't using AI. They're…"  shapes:5  text:3  pic:1  chart:0  table:0  words:27
+  8   CUSTOM_2_1                                                            shapes:9  text:5  pic:1  chart:0  table:0  words:29
+  9   TITLE_1_1                 "01"                                        shapes:11  text:11  pic:0  chart:0  table:0  words:36
+  10  TITLE_1_1                 "Free"                                      shapes:9  text:9  pic:0  chart:0  table:0  words:22
+  11  CUSTOM_2_1_1                                                          shapes:3  text:2  pic:1  chart:0  table:0  words:21  [notes]
+  12  CUSTOM_2_1                                                            shapes:3  text:3  pic:0  chart:0  table:0  words:17

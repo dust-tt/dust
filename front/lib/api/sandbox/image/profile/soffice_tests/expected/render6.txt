@@ -1,0 +1,4 @@
+[File: cleanroom3_a.pptx | <size>]
+[Rendered: 1 slide | jpeg + bbox overlay | <render_path>]
+[Boxes: each rectangle is a shape's bounding box, labeled '#id' just outside it. A red wash marks peer-overlap regions; an unaligned-markers note means a decorative run (checkmarks/icons) has no text row beside it. Read each slide image directly.]
+<render_path>

@@ -1,0 +1,38 @@
+[File: Copy of B2B_C1.pptx | <size>]
+[Slide 18/26 | layout: CUSTOM_2 | shapes: 14]
+#389    text    (1.3,2.1) 3.0x2.0"        vanchor=top  holds~297ch@12pt
+  p[0]: Write the title if needed  [Montserrat, 12pt, bold, color:#FFFFFF, algn=left]
+  p[1]: (empty)  [algn=center]
+  p[2]: Write your text  [Montserrat Medium, 12pt, color:#FFFFFF, algn=left]
+  p[3]: (empty)  [algn=left]
+  p[4]: Write your text  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[5]: (empty)  [algn=left]
+  p[6]: Write your text  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[7]: (empty)  [algn=left]
+  p[8]: Write your text  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[9..9]: (empty x1)
+#390    ph      (2.7,0.4) 4.6x0.4"        ph=title        name:"Google Shape;390;p34"  [!] empty placeholder (renders the layout's prompt text)
+#391    ph      (2.7,1.1) 4.6x0.4"        ph=title        name:"Google Shape;391;p34"  [!] empty placeholder (renders the layout's prompt text)
+#392    pic     (1.0,2.5) 0.2x0.2"        image.png  592x444px  image/png
+#393    pic     (1.0,2.9) 0.2x0.2"        image.png  592x444px  image/png
+#394    pic     (1.0,3.3) 0.2x0.2"        image.png  592x444px  image/png
+#395    pic     (1.0,3.7) 0.2x0.2"        image.png  592x444px  image/png
+#396    text    (5.4,2.1) 3.0x2.0"        vanchor=top  holds~297ch@12pt
+  p[0]: Write the title if needed  [Montserrat, 12pt, bold, color:#FFFFFF, algn=left]
+  p[1]: (empty)  [algn=center]
+  p[2]: Write your text  [Montserrat Medium, 12pt, color:#FFFFFF, algn=left]
+  p[3]: (empty)  [algn=left]
+  p[4]: Write your text  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[5]: (empty)  [algn=left]
+  p[6]: Write your text  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[7]: (empty)  [algn=left]
+  p[8]: Write your text  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[9..9]: (empty x1)
+#397    pic     (5.1,2.5) 0.2x0.2"        image.png  592x444px  image/png
+#398    pic     (5.1,2.9) 0.2x0.2"        image.png  592x444px  image/png
+#399    pic     (5.1,3.3) 0.2x0.2"        image.png  592x444px  image/png
+#400    pic     (5.1,3.7) 0.2x0.2"        image.png  592x444px  image/png
+#401    auto    (6.4,1.6) 0.9x0.3"        vanchor=middle  ~11ch/line@9pt
+  p[0]: FOCUS 2  [Montserrat, 9pt, bold, color:#FFFFFF, algn=center]
+#402    auto    (2.2,1.6) 0.9x0.3"        vanchor=middle  ~11ch/line@9pt
+  p[0]: FOCUS 1  [Montserrat, 9pt, bold, color:#FFFFFF, algn=center]

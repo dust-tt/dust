@@ -1,0 +1,37 @@
+[File: cleanroom3_a.pptx | <size>]
+[Slide 6/12 | layout: CUSTOM_2 | "Every department runs on Dust" | shapes: 13]
+#389    text    (1.3,2.1) 3.0x2.0"        vanchor=top  holds~297ch@12pt
+  p[0]: Build & operate  [Montserrat, 12pt, bold, color:#FFFFFF, algn=left]
+  p[1]: (empty)  [algn=center]
+  p[2]: Engineering: code review  [Montserrat Medium, 12pt, color:#FFFFFF, algn=left]
+  p[3]: (empty)  [algn=left]
+  p[4]: Support: ticket triage  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[5]: (empty)  [algn=left]
+  p[6]: IT: first-line support  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[7]: (empty)  [algn=left]
+  p[8]: Knowledge: cross-silo search  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[9..9]: (empty x1)
+#390    ph      (0.4,0.3) 9.2x0.5"        ph=title        vanchor=middle  ~58ch/line@22pt
+  p[0]: Every department runs on Dust
+#391    ph      (0.4,0.9) 9.2x0.4"        ph=title        vanchor=top  ~58ch/line@22pt
+  p[0]: One platform, every team
+#392    pic     (1.0,2.5) 0.2x0.2"        image.png  592x444px  image/png
+#393    pic     (1.0,2.9) 0.2x0.2"        image.png  592x444px  image/png
+#394    pic     (1.0,3.3) 0.2x0.2"        image.png  592x444px  image/png
+#395    pic     (1.0,3.7) 0.2x0.2"        image.png  592x444px  image/png
+#396    text    (5.4,2.1) 3.0x2.0"        vanchor=top  holds~297ch@12pt
+  p[0]: Engage & analyze  [Montserrat, 12pt, bold, color:#FFFFFF, algn=left]
+  p[1]: (empty)  [algn=center]
+  p[2]: Sales: account research  [Montserrat Medium, 12pt, color:#FFFFFF, algn=left]
+  p[3]: (empty)  [algn=left]
+  p[4]: Marketing: on-brand content  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[5]: (empty)  [algn=left]
+  p[6]: Data: NL querying & reporting  [Montserrat Medium, 12pt, color:dark_2, algn=left]
+  p[7..9]: (empty x3)
+#397    pic     (5.1,2.5) 0.2x0.2"        image.png  592x444px  image/png
+#398    pic     (5.1,2.9) 0.2x0.2"        image.png  592x444px  image/png
+#399    pic     (5.1,3.3) 0.2x0.2"        image.png  592x444px  image/png
+#401    auto    (6.4,1.6) 0.9x0.3"        vanchor=middle  ~11ch/line@9pt
+  p[0]: ENGAGE & ANALYZE  [Montserrat, 9pt, bold, color:#FFFFFF, algn=center]
+#402    auto    (2.2,1.6) 0.9x0.3"        vanchor=middle  ~11ch/line@9pt
+  p[0]: BUILD & RUN  [Montserrat, 9pt, bold, color:#FFFFFF, algn=center]

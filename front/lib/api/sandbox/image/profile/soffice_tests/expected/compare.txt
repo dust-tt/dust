@@ -1,0 +1,26 @@
+[File: cleanroom3_a.pptx | <size>]
+[Compare: cleanroom3_a.pptx  vs source Copy of B2B_C1.pptx]
+  slides:  12   (source 26)  -14
+  media:   23   (source 37)  -14
+    14 media in source not in output:
+      - image13.png
+      - image14.png
+      - image15.png
+      - image16.png
+      - image17.png
+      - image22.png
+      - image23.png
+      - image27.png
+      - image29.png
+      - image31.png
+      - image37.png
+      - image39.png
+      - image40.png
+      - image41.png
+  fonts:   12   (source 12)  0
+  imagery: pics/charts/tables on 7/12 slides (21 objects; template 17/26)
+  layouts: 6 used; 1/12 slides on an empty canvas (template 6/26)
+  density: max 44 words/slide (template ceiling 59)
+  shapes:  1 structural issue(s) across slides — stacked:0 distorted-img:0 off-slide:1
+
+[QA: PASS]

@@ -1,0 +1,87 @@
+[File: cleanroom3_a.pptx | <size>]
+[Masters: 1]
+
+# Master 1: simple-light-2  layouts: 15
+- TITLE                        placeholders: 3
+    [0] center_title   (1.1,2.2) 8.0x0.8"        Montserrat 52pt bold #FFFFFF algn=ctr
+    [1] subtitle       (0.3,3.1) 9.3x0.9"        Montserrat Medium 28pt #FFFFFF algn=ctr
+    [12] slide_number   (9.3,5.1) 0.6x0.4"        Arial 10pt #FFFFFF algn=r
+- TITLE_2                      placeholders: 3
+    [1] subtitle       (0.3,3.1) 9.3x0.9"        Montserrat Medium 28pt #FFFFFF algn=ctr
+    [12] slide_number   (9.3,5.1) 0.6x0.4"        Arial 10pt #FFFFFF algn=r
+    [0] center_title   (1.1,2.2) 8.0x0.8"        Montserrat 52pt bold #FFE5E8 algn=ctr
+- CUSTOM_5                     placeholders: 3
+    [0] title          (0.2,3.6) 4.3x1.1"        Montserrat 40pt bold #FFFFFF algn=ctr
+    [2] title          (1.3,1.3) 2.1x0.8"        Montserrat 40pt bold #FFFFFF algn=ctr
+    [3] title          (0.2,2.3) 4.3x1.1"        Montserrat 40pt bold #FFFFFF algn=ctr
+- TITLE_1                      placeholders: 13
+    [0] title          (0.3,1.6) 2.9x0.9"        Montserrat 35pt bold #FFECB2 algn=ctr
+    [2] title          (3.5,1.6) 2.9x0.9"        Montserrat 35pt bold #FFECB2 algn=ctr
+    [3] title          (6.7,1.6) 2.9x0.9"        Montserrat 35pt bold #FFECB2 algn=ctr
+    [1] subtitle       (0.5,2.3) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [12] slide_number   (9.3,5.1) 0.6x0.4"        Arial 10pt #FFFFFF algn=r
+    [4] subtitle       (3.7,2.3) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [5] subtitle       (6.8,2.3) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [6] title          (0.3,3.2) 2.9x0.7"        Montserrat 35pt bold #FFECB2 algn=ctr
+    [7] title          (3.5,3.2) 2.9x0.7"        Montserrat 35pt bold #FFECB2 algn=ctr
+    [8] title          (6.7,3.2) 2.9x0.7"        Montserrat 35pt bold #FFECB2 algn=ctr
+    [9] subtitle       (0.5,3.9) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [13] subtitle       (3.7,3.9) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [14] subtitle       (6.8,3.9) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+- TITLE_1_1                    placeholders: 13
+    [12] slide_number   (9.3,5.1) 0.6x0.4"        Arial 10pt #FFFFFF algn=r
+    [0] title          (0.3,1.6) 2.9x0.9"        Montserrat 35pt bold #FFE5E8 algn=ctr
+    [2] title          (3.5,1.6) 2.9x0.9"        Montserrat 35pt bold #FFE5E8 algn=ctr
+    [3] title          (6.7,1.6) 2.9x0.9"        Montserrat 35pt bold #FFE5E8 algn=ctr
+    [1] subtitle       (0.5,2.3) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [4] subtitle       (3.7,2.3) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [5] subtitle       (6.8,2.3) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [6] title          (0.3,3.2) 2.9x0.7"        Montserrat 35pt bold #FFE5E8 algn=ctr
+    [7] title          (3.5,3.2) 2.9x0.7"        Montserrat 35pt bold #FFE5E8 algn=ctr
+    [8] title          (6.7,3.2) 2.9x0.7"        Montserrat 35pt bold #FFE5E8 algn=ctr
+    [9] subtitle       (0.5,3.9) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [13] subtitle       (3.7,3.9) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+    [14] subtitle       (6.8,3.9) 2.7x0.9"        Montserrat Medium 16pt #FFFFFF algn=ctr
+- CUSTOM                       placeholders: 4
+    [0] title          (0.8,3.4) 3.9x0.6"        Montserrat 16pt bold #FFFFFF algn=ctr
+    [2] title          (0.7,4.1) 3.9x0.6"        Montserrat 16pt bold #FFFFFF algn=ctr
+    [3] title          (5.3,3.4) 3.9x0.6"        Montserrat 16pt bold #FFFFFF algn=ctr
+    [4] title          (5.3,4.1) 3.9x0.6"        Montserrat 16pt bold #FFFFFF algn=ctr
+- CUSTOM_1                     placeholders: 2
+    [0] title          (3.5,1.5) 2.9x2.9"        Montserrat 50pt bold #FFFFFF algn=ctr
+    [2] title          (1.3,3.0) 7.4x2.7"        Montserrat 50pt bold #FFFFFF algn=ctr
+- CUSTOM_2                     placeholders: 5
+    [0] title          (2.7,0.4) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [2] title          (2.7,1.1) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [3] title          (0.3,2.2) 9.1x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [4] title          (0.3,2.5) 9.1x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [1] body           (0.5,3.0) 8.9x2.0"        Montserrat 10pt #FFFFFF algn=ctr
+- CUSTOM_2_1                   placeholders: 6
+    [0] title          (2.7,0.4) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [2] title          (2.7,1.1) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [3] title          (2.7,3.1) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [4] title          (2.7,3.5) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [1] body           (3.5,4.0) 2.9x2.0"        Montserrat 10pt #FFFFFF algn=ctr
+    [5] title          (2.7,2.7) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+- CUSTOM_2_1_1                 placeholders: 6
+    [0] title          (2.7,0.4) 4.6x0.4"        Montserrat 22pt bold #00264C algn=ctr
+    [2] title          (2.7,1.1) 4.6x0.4"        Montserrat 22pt bold #00264C algn=ctr
+    [3] title          (2.7,3.1) 4.6x0.4"        Montserrat 22pt bold #00264C algn=ctr
+    [4] title          (2.7,3.5) 4.6x0.4"        Montserrat 22pt bold #00264C algn=ctr
+    [1] body           (3.5,4.0) 2.9x2.0"        Montserrat 10pt #00264C algn=ctr
+    [5] title          (2.7,2.7) 4.6x0.4"        Montserrat 22pt bold #00264C algn=ctr
+- CUSTOM_3                     placeholders: 6
+    [0] title          (0.5,2.5) 4.1x0.4"        Montserrat 12pt bold #FFFFFF algn=ctr
+    [1] body           (0.5,2.8) 4.1x1.3"        Montserrat Medium 10pt #FFFFFF algn=ctr
+    [2] title          (2.7,0.4) 4.6x0.4"        Montserrat 12pt bold #FFFFFF algn=ctr
+    [3] title          (2.7,1.1) 4.6x0.4"        Montserrat 12pt bold #FFFFFF algn=ctr
+    [4] title          (5.4,2.5) 4.1x0.4"        Montserrat 12pt bold #FFFFFF algn=ctr
+    [5] body           (5.4,2.8) 4.1x1.3"        Montserrat Medium 10pt #FFFFFF algn=ctr
+- CUSTOM_4                     placeholders: 0
+- TITLE_1_2_1_1_6_1            placeholders: 4
+    [1] body           (0.4,2.6) 9.1x1.7"        Montserrat 10pt #FFFFFF algn=ctr
+    [2] subtitle       (0.4,1.9) 9.1x0.3"        Montserrat 14pt bold #FFFFFF algn=ctr
+    [0] title          (2.7,0.4) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+    [3] title          (2.7,1.1) 4.6x0.4"        Montserrat 22pt bold #FFFFFF algn=ctr
+- TITLE_1_2_1_1_6_1_1          placeholders: 0
+- BLANK                        placeholders: 0

@@ -1,0 +1,108 @@
+[File: cleanroom3_a.pptx | <size>]
+[Text: 3066 chars across 12 slides | each line is tagged with its shape #id — match against --render box labels for readback]
+
+# Slide 1 (words:13): "Work doesn't just get done. It gets rewired."
+  #141 p0: Work doesn't just get done. It gets rewired.
+  #142 p0: Multiplayer AI for human-agent collaboration.
+
+# Slide 2 (words:21)
+  #375 p0: Most companies are stuck in single-player AI mode
+  #376 p0: Knowledge siloed with individuals
+  #377 p0: Isolated, per-user AI chat tools
+  #378 p0: Productivity resets every chat
+
+# Slide 3 (words:30)
+  #330 p0: Orchestration: multi-agent workflows at scale
+  #331 p0: Knowledge layer: your data, synthesized and searchable
+  #332 p0: Shared workspace: agents and humans co-contribute
+  #336 p0: The AI operating system for the enterprise
+  #337 p0: Agents and humans, one workspace
+
+# Slide 4 (words:38): "One platform. Every team. Compounding value."
+  #407 p0: One platform. Every team.
+  #407 p0: Compounding value.
+  #408 p0: SILOED
+  #409 p0: AI, one person at a time
+  #410 p0: Knowledge trapped with individuals;
+  #410 p0: productivity resets each chat.
+  #411 p0: Single-player
+  #413 p0: SHARED
+  #414 p0: AI across the whole org
+  #415 p0: Shared agents and knowledge;
+  #415 p0: every interaction makes agents smarter.
+  #416 p0: Multiplayer
+
+# Slide 5 (words:26): "01"
+  #278 p0: Knowledge: 20+ connectors, hybrid search + MCP
+  #279 p0: Agents: no-code builder, skills, 20+ models
+  #280 p0: 02
+  #281 p0: 01
+  #282 p0: Collaboration: pods, @mentions, handoffs
+  #283 p0: 03
+  #284 p0: Dust connects people, agents, and knowledge
+
+# Slide 6 (words:44): "Every department runs on Dust"
+  #389 p0: Build & operate
+  #389 p0: Engineering: code review
+  #389 p0: Support: ticket triage
+  #389 p0: IT: first-line support
+  #389 p0: Knowledge: cross-silo search
+  #390 p0: Every department runs on Dust
+  #391 p0: One platform, every team
+  #396 p0: Engage & analyze
+  #396 p0: Sales: account research
+  #396 p0: Marketing: on-brand content
+  #396 p0: Data: NL querying & reporting
+  #401 p0: ENGAGE & ANALYZE
+  #402 p0: BUILD & RUN
+
+# Slide 7 (words:27): "The best teams aren't using AI. They're running it."
+  #269 p0: The best teams aren't using AI. They're running it.
+  #270 p0: "We used to do the work. Now we build the agents that do it."
+  #271 p0: AI Operator at Vanta
+
+# Slide 8 (words:29)
+  #422 p0: 3,000+ organizations. 300,000+ agents deployed.
+  #423 p0: Clay, Vanta, Assembled, Datadog, Cursor, 1Password, Alan, Kyriba
+  #425 p0: 300K+ agents deployed
+  #425 p0: across 3,000+ orgs
+  #428 p0: 80% agent adoption at Persona
+  #430 p0: 11 departments live  at Persona
+
+# Slide 9 (words:36): "01"
+  #288 p0: SOC 2 Type II, GDPR, HIPAA-enabling
+  #289 p0: AES-256 at rest, TLS in transit
+  #290 p0: 02
+  #291 p0: 01
+  #292 p0: US & EU residency, single-tenant
+  #293 p0: 03
+  #294 p0: Zero training on your data
+  #295 p0: 04
+  #296 p0: SSO, SCIM, audit logs, RBAC
+  #297 p0: 05
+  #298 p0: Enterprise-grade security. Zero compromise.
+
+# Slide 10 (words:22): "Free"
+  #288 p0: $0 forever, 500 credits
+  #289 p0: $24/seat/mo, 8,000 credits
+  #290 p0: Pro
+  #291 p0: Free
+  #292 p0: $120/seat/mo, 40,000 credits
+  #293 p0: Max
+  #294 p0: Custom, pooled credits
+  #295 p0: Ent.
+  #298 p0: Start free. Scale without surprises.
+
+# Slide 11 (words:21)
+  #323 p0: Building the future
+  #323 p0: of work
+  #324 p0: Gabriel Hubert (CEO)
+  #324 p0: Stanislas Polu (CTO)
+  #324 p0: $40M Series B — Sequoia, Snowflake, Datadog
+  #324 p0: Open-source on GitHub
+  [notes] Active developer ecosystem: MCP servers, Zapier/Make/n8n integrations, Chrome E…
+
+# Slide 12 (words:17)
+  #478 p0: dust.tt
+  #479 p0: Your team's AI OS is ready
+  #480 p0: Try free  ·  Book a demo  ·  Build on docs.dust.tt
