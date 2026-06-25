@@ -10,49 +10,9 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
+import uniqBy from "lodash/uniqBy";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
-
-function sortSelectedSpaceRowsBySelectionOrder<T extends { id: ModelId }>(
-  rows: T[]
-): T[] {
-  // Selection order is insertion order. Reactivating a row keeps its original position.
-  return [...rows].sort((left, right) => left.id - right.id);
-}
-
-// `fetchByModelIds` uses an IN query, so it does not preserve the requested id order.
-function pickSpacesInModelIdOrder({
-  spaces,
-  orderedSpaceModelIds,
-}: {
-  spaces: SpaceResource[];
-  orderedSpaceModelIds: ModelId[];
-}): SpaceResource[] {
-  const spacesByModelId = new Map(spaces.map((space) => [space.id, space]));
-
-  return removeNulls(
-    orderedSpaceModelIds.map((spaceModelId) =>
-      spacesByModelId.get(spaceModelId)
-    )
-  );
-}
-
-function dedupeSpacesByFirstModelId(spaces: SpaceResource[]): SpaceResource[] {
-  const seenSpaceModelIds = new Set<ModelId>();
-  const uniqueSpaces: SpaceResource[] = [];
-
-  for (const space of spaces) {
-    if (seenSpaceModelIds.has(space.id)) {
-      continue;
-    }
-
-    seenSpaceModelIds.add(space.id);
-    uniqueSpaces.push(space);
-  }
-
-  return uniqueSpaces;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationSelectedSpaceResource
@@ -91,9 +51,7 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
       transaction,
     });
 
-    return sortSelectedSpaceRowsBySelectionOrder(rows).map(
-      (row) => new this(this.model, row.get())
-    );
+    return rows.map((row) => new this(this.model, row.get()));
   }
 
   static async listActiveSpacesByConversation(
@@ -114,15 +72,9 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
     const selectedSpaceModelIds = selectedSpaces.map(
       (selectedSpace) => selectedSpace.spaceId
     );
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      selectedSpaceModelIds,
-      { transaction }
-    );
-
-    return pickSpacesInModelIdOrder({
-      spaces,
-      orderedSpaceModelIds: selectedSpaceModelIds,
+    // Fetch through SpaceResource so the returned spaces include their groups.
+    return SpaceResource.fetchByModelIds(auth, selectedSpaceModelIds, {
+      transaction,
     });
   }
 
@@ -147,7 +99,7 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
     return withTransaction(async (t) => {
       const workspace = auth.getNonNullableWorkspace();
       const user = auth.getNonNullableUser();
-      const uniqueSpaces = dedupeSpacesByFirstModelId(spaces);
+      const uniqueSpaces = uniqBy(spaces, "id");
       const spaceModelIds = uniqueSpaces.map((space) => space.id);
 
       if (spaceModelIds.length === 0) {
@@ -168,22 +120,14 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
         },
         transaction: t,
       });
-      const orderedExistingRows =
-        sortSelectedSpaceRowsBySelectionOrder(existingRows);
       const existingSpaceModelIds = new Set(
         existingRows.map((row) => row.spaceId)
       );
-      const reactivatedRows = orderedExistingRows.filter(
-        (row) => row.removedAt !== null
-      );
-      const reactivatedSpaceModelIds = reactivatedRows.map(
-        (row) => row.spaceId
-      );
-      const reactivatedRowModelIds = reactivatedRows.map((row) => row.id);
+      const removedRows = existingRows.filter((row) => row.removedAt !== null);
       const missingSpaces = uniqueSpaces.filter(
         (space) => !existingSpaceModelIds.has(space.id)
       );
-      let createdSpaceModelIds: ModelId[] = [];
+      let createdSpaceModelIds = new Set<ModelId>();
 
       if (missingSpaces.length > 0) {
         const createdRows = await this.model.bulkCreate(
@@ -199,13 +143,16 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
         );
 
         // With `ignoreDuplicates`, rows skipped by a concurrent insert come back without an id.
-        createdSpaceModelIds = createdRows
-          .filter((row) => Number.isInteger(row.id))
-          .map((row) => row.spaceId);
+        createdSpaceModelIds = new Set(
+          createdRows
+            .filter((row) => Number.isInteger(row.id))
+            .map((row) => row.spaceId)
+        );
       }
 
-      if (reactivatedRowModelIds.length > 0) {
-        await this.model.update(
+      let reactivatedSpaceModelIds = new Set<ModelId>();
+      if (removedRows.length > 0) {
+        const [, reactivatedRows] = await this.model.update(
           {
             selectedByUserId: user.id,
             origin,
@@ -215,11 +162,15 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
             where: {
               workspaceId: workspace.id,
               id: {
-                [Op.in]: reactivatedRowModelIds,
+                [Op.in]: removedRows.map((row) => row.id),
               },
             },
             transaction: t,
+            returning: true,
           }
+        );
+        reactivatedSpaceModelIds = new Set(
+          reactivatedRows.map((row) => row.spaceId)
         );
       }
 
@@ -235,17 +186,15 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
       });
 
       return {
-        selectedSpaces: sortSelectedSpaceRowsBySelectionOrder(selectedRows).map(
+        selectedSpaces: selectedRows.map(
           (row) => new this(this.model, row.get())
         ),
-        createdSpaces: pickSpacesInModelIdOrder({
-          spaces: uniqueSpaces,
-          orderedSpaceModelIds: createdSpaceModelIds,
-        }),
-        reactivatedSpaces: pickSpacesInModelIdOrder({
-          spaces: uniqueSpaces,
-          orderedSpaceModelIds: reactivatedSpaceModelIds,
-        }),
+        createdSpaces: uniqueSpaces.filter((space) =>
+          createdSpaceModelIds.has(space.id)
+        ),
+        reactivatedSpaces: uniqueSpaces.filter((space) =>
+          reactivatedSpaceModelIds.has(space.id)
+        ),
       };
     }, transaction);
   }
@@ -262,9 +211,7 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
       transaction?: Transaction;
     }
   ): Promise<number> {
-    const spaceModelIds = dedupeSpacesByFirstModelId(spaces).map(
-      (space) => space.id
-    );
+    const spaceModelIds = uniqBy(spaces, "id").map((space) => space.id);
 
     if (spaceModelIds.length === 0) {
       return 0;

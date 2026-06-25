@@ -65,7 +65,7 @@ describe("ConversationSelectedSpaceResource", () => {
     expect(result.reactivatedSpaces).toEqual([]);
   });
 
-  it("lists active rows and hydrates Spaces in selection order", async () => {
+  it("lists active rows and hydrates Spaces", async () => {
     const conversation = await createConversation();
     const firstSpace = await createMemberRestrictedRegularSpace();
     const secondSpace = await createMemberRestrictedRegularSpace();
@@ -93,10 +93,10 @@ describe("ConversationSelectedSpaceResource", () => {
         conversation,
       }
     );
-    expect(allRows.map((row) => row.spaceId)).toEqual([
-      secondSpace.id,
-      firstSpace.id,
-    ]);
+    expect(allRows.map((row) => row.spaceId)).toHaveLength(2);
+    expect(allRows.map((row) => row.spaceId)).toEqual(
+      expect.arrayContaining([secondSpace.id, firstSpace.id])
+    );
 
     const activeSpaces =
       await ConversationSelectedSpaceResource.listActiveSpacesByConversation(
