@@ -50,7 +50,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Icon,
-  DeprecatedInput as Input,
   LoadingBlock,
   SearchMd,
   Spinner,
@@ -615,7 +614,9 @@ export const InputBarAttachmentsPicker = ({
             })}
         dropdownHeaders={
           <>
-            <Input
+            {/* Hidden native file input (triggered by the button below); a
+                styled sparkle Input would render visible wrapper boxes. */}
+            <input
               type="file"
               ref={fileInputRef}
               style={{ display: "none" }}

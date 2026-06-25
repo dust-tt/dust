@@ -228,7 +228,6 @@ const COUNTER_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
   lg: "sm",
 };
 
-
 const chevronVariantMap: Record<ButtonVariantType, string> = {
   primary: "s-text-white/60",
   highlight: "s-text-white/60",
@@ -262,7 +261,6 @@ export interface ButtonProps
   isPulsing?: boolean;
   tooltip?: string;
   tooltipShortcut?: string;
-  asChild?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -353,7 +351,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       return {};
     }, [isLoading, props.disabled]);
 
-    const shouldUseSlot = !!href && !props.disabled;
+    // A disabled or loading button must never navigate: render a real
+    // <button> (so the disabled attribute applies) and skip the LinkWrapper
+    // below, rather than wrapping a dead button in a live <a href>.
+    const isInteractive = !props.disabled && !isLoading;
+    const shouldUseSlot = !!href && isInteractive;
     const Comp = shouldUseSlot ? Slot : "button";
 
     const innerButton = (
@@ -392,7 +394,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       innerButton
     );
 
-    return href ? (
+    return href && isInteractive ? (
       <LinkWrapper
         href={href}
         target={target}
