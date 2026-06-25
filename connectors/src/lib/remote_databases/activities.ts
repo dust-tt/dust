@@ -620,7 +620,10 @@ export async function sync({
       await unusedSchema.destroy();
     }
 
-    if (unusedSchema.permission === "selected" && !preserveSelectedPermissions) {
+    if (
+      unusedSchema.permission === "selected" &&
+      !preserveSelectedPermissions
+    ) {
       localLogger.error(
         {
           schemaInternalId: unusedSchema.internalId,
