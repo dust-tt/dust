@@ -181,7 +181,6 @@ async function findLatestActiveProductboardAgents(
       serverType: "internal",
       internalMCPServerId: { [Op.ne]: null },
     },
-    attributes: ["id", "internalMCPServerId"],
   });
   const productboardMCPServerViewIds = productboardMCPServerViews
     .filter((view) =>
@@ -198,7 +197,6 @@ async function findLatestActiveProductboardAgents(
       workspaceId: workspace.id,
       mcpServerViewId: { [Op.in]: productboardMCPServerViewIds },
     },
-    attributes: ["agentConfigurationId"],
   });
   const productboardAgentConfigurationIds = new Set(
     mcpConfigurations.map((config) => config.agentConfigurationId)
@@ -212,58 +210,28 @@ async function findLatestActiveProductboardAgents(
     {
       where: {
         workspaceId: workspace.id,
-        id: { [Op.in]: [...productboardAgentConfigurationIds] },
+        id: [...productboardAgentConfigurationIds],
+        status: "active",
       },
-      attributes: ["id", "sId"],
     }
   );
-  const productboardAgentIds = [
-    ...new Set(productboardAgentConfigurations.map((agent) => agent.sId)),
-  ];
 
-  if (productboardAgentIds.length === 0) {
-    return [];
-  }
-
-  const agentConfigurations = await AgentConfigurationModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      sId: { [Op.in]: productboardAgentIds },
-    },
-    attributes: ["id", "sId", "name", "status", "version"],
-    order: [
-      ["sId", "ASC"],
-      ["version", "DESC"],
-    ],
-  });
-
-  const latestAgentConfigurations = new Map<string, AgentConfigurationModel>();
-  for (const agentConfiguration of agentConfigurations) {
-    if (!latestAgentConfigurations.has(agentConfiguration.sId)) {
-      latestAgentConfigurations.set(agentConfiguration.sId, agentConfiguration);
-    }
-  }
-
-  return Array.from(latestAgentConfigurations.values())
-    .filter(
-      (agentConfiguration) =>
-        productboardAgentConfigurationIds.has(agentConfiguration.id) &&
-        agentConfiguration.status === "active"
-    )
-    .sort((left, right) => left.name.localeCompare(right.name));
+  return productboardAgentConfigurations.sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
 }
 
 async function fetchActiveProductboardSkill(
-  auth: Authenticator,
-  workspace: LightWorkspaceType
+  auth: Authenticator
 ): Promise<SkillResource | null> {
+  const owner = auth.getNonNullableWorkspace();
+
   const skillModel = await SkillConfigurationModel.findOne({
     where: {
-      workspaceId: workspace.id,
+      workspaceId: owner.id,
       name: PRODUCTBOARD_SKILL_NAME,
       status: "active",
     },
-    attributes: ["id"],
   });
 
   if (!skillModel) {
@@ -273,7 +241,7 @@ async function fetchActiveProductboardSkill(
   const skill = await SkillResource.fetchByModelIdWithAuth(auth, skillModel.id);
   if (!skill) {
     throw new Error(
-      `Failed to fetch existing skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${workspace.sId}.`
+      `Failed to fetch existing skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
     );
   }
 
@@ -460,7 +428,8 @@ async function backfillWorkspace(
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const existingSkill = await fetchActiveProductboardSkill(auth, workspace);
+
+  const existingSkill = await fetchActiveProductboardSkill(auth);
   const productboardAgentIds = productboardAgents.map((agent) => agent.id);
   const existingAgentSkillLinks = existingSkill
     ? await AgentSkillModel.findAll({
