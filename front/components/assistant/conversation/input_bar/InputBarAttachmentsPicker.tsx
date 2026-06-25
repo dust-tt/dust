@@ -618,6 +618,7 @@ export const InputBarAttachmentsPicker = ({
                 styled sparkle Input would render visible wrapper boxes. */}
             <input
               type="file"
+              aria-label="Upload File"
               ref={fileInputRef}
               style={{ display: "none" }}
               onChange={async (e) => {
