@@ -21,7 +21,7 @@ import { Op } from "sequelize";
 
 const WORKSPACE_CONCURRENCY = 16;
 
-const SALESFORCE_SKILL_NAME = "Working with Salesforce";
+const SALESFORCE_SKILL_NAME = "Work with Salesforce";
 const SALESFORCE_SKILL_ICON = "SalesforceLogo";
 const SALESFORCE_SKILL_USER_DESCRIPTION =
   "Helps agents inspect Salesforce metadata and write reliable SOQL read queries.";
