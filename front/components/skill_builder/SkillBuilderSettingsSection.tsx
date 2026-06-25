@@ -44,7 +44,6 @@ export function SkillBuilderSettingsSection({
             >
               <span>GitHub</span>
               <Icon visual={LinkExternal01} size="xs" />
-              <span className="sr-only">Open GitHub repository</span>
             </LinkWrapper>
             <span>.</span>
           </div>
@@ -104,7 +103,7 @@ function getGitHubSkillFolderUrl(skill?: SkillType): string | null {
   }
 
   const { owner, repo } = parsedRepoUrl.value;
-  const repoUrl = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const repoUrl = `https://github.com/${owner}/${repo}`;
 
   if (!skill.sourceMetadata.filePath) {
     return repoUrl;
@@ -114,7 +113,6 @@ function getGitHubSkillFolderUrl(skill?: SkillType): string | null {
     .split("/")
     .filter(Boolean)
     .slice(0, -1)
-    .map(encodeURIComponent)
     .join("/");
 
   return `${repoUrl}/tree/main${folderPath ? `/${folderPath}` : ""}`;
