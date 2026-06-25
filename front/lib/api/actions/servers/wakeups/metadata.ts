@@ -39,10 +39,8 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
             "If omitted, falls back to the user's timezone."
         ),
     },
-    // We want the wake-up creation high stake to ensure a human is in the loop to avoid agents
-    // scheduling themselves automatically for recurring wake-ups in an cascading way (we had an
-    // incident where an agent would wake-up itself every 2 minutes to process data in batch out of
-    // triggered conversations every hour creating a blowup of usage).
+    // This static default remains high to avoid cascading usage on legacy plans. At runtime,
+    // credit-priced subscriptions resolve this tool to low stake because usage is credit-limited.
     stake: "high",
     displayLabels: {
       running: "Scheduling wake-up",

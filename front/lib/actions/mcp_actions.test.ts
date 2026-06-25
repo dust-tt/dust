@@ -15,6 +15,7 @@ import {
   autoInternalMCPServerNameToSId,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
@@ -41,6 +42,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { assert, describe, expect, it, vi } from "vitest";
@@ -162,9 +164,14 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
 });
 
 // Sets up test environment with workspace, auth, MCP server, client connection, and configuration.
-async function setupTest() {
+async function setupTest(
+  options: {
+    workspace?: WorkspaceType;
+    serverName?: InternalMCPServerNameType;
+  } = {}
+) {
   const user = await UserFactory.basic();
-  const workspace = await WorkspaceFactory.basic();
+  const workspace = options.workspace ?? (await WorkspaceFactory.basic());
   // Membership need to be set before auth.
   await MembershipFactory.associate(workspace, user, {
     role: "admin",
@@ -182,7 +189,7 @@ async function setupTest() {
   const internalMCPServer = await InternalMCPServerInMemoryResource.makeNew(
     auth,
     {
-      name: "google_calendar",
+      name: options.serverName ?? "google_calendar",
       useCase: null,
     }
   );
@@ -231,6 +238,53 @@ async function setupTest() {
 }
 
 describe("MCP Actions", () => {
+  it.each([
+    {
+      planType: "credit-priced",
+      createWorkspace: () => WorkspaceFactory.creditPriced(),
+      expectedStake: "low",
+    },
+    {
+      planType: "legacy",
+      createWorkspace: () => WorkspaceFactory.basic(),
+      expectedStake: "high",
+    },
+  ])("sets schedule_wakeup to $expectedStake stake for $planType plans", async ({
+    createWorkspace,
+    expectedStake,
+  }) => {
+    const workspace = await createWorkspace();
+    const { auth, connectionParams, mcpClient, config } = await setupTest({
+      workspace,
+      serverName: "wakeups",
+    });
+
+    const toolsResult = await listToolsForServerSideMCPServer(
+      auth,
+      connectionParams,
+      mcpClient,
+      config
+    );
+
+    assert(toolsResult.isOk());
+    expect(toolsResult.value).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "schedule_wakeup",
+          permission: expectedStake,
+        }),
+        expect.objectContaining({
+          name: "list_wakeups",
+          permission: "never_ask",
+        }),
+        expect.objectContaining({
+          name: "cancel_wakeup",
+          permission: "never_ask",
+        }),
+      ])
+    );
+  });
+
   it("should filter disabled tools and store metadata settings", async () => {
     const { auth, mcpServerId, connectionParams, mcpClient, config } =
       await setupTest();
