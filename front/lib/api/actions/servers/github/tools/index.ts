@@ -370,6 +370,54 @@ export function createGithubTools(auth: Authenticator): ToolDefinition[] {
       }
     },
 
+    update_issue: async (
+      {
+        owner,
+        repo,
+        issueNumber,
+        title,
+        body,
+        state,
+        stateReason,
+        assignees,
+        labels,
+        milestone,
+      },
+      { authInfo }
+    ) => {
+      const octokit = await createOctokit(auth, {
+        accessToken: authInfo?.token,
+      });
+
+      try {
+        const { data: issue } = await octokit.request(
+          "PATCH /repos/{owner}/{repo}/issues/{issue_number}",
+          {
+            owner,
+            repo,
+            issue_number: issueNumber,
+            title,
+            body,
+            state,
+            state_reason: stateReason,
+            assignees,
+            labels,
+            milestone,
+          }
+        );
+
+        return new Ok([
+          { type: "text" as const, text: `Issue #${issue.number} updated` },
+        ]);
+      } catch (e) {
+        return new Err(
+          new MCPError(
+            `Error updating GitHub issue: ${normalizeError(e).message}`
+          )
+        );
+      }
+    },
+
     create_pull_request_review: async (
       { owner, repo, pullNumber, body, event, comments = [] },
       { authInfo }

@@ -31,6 +31,66 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       done: "Create GitHub issue",
     },
   },
+  update_issue: {
+    description:
+      "Update an existing issue on a GitHub repository: its title, body," +
+      " labels, assignees, milestone, and open/closed state (closing or" +
+      " reopening the issue). Only the provided fields are changed.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      issueNumber: z.number().describe("The number that identifies the issue."),
+      title: z.string().optional().describe("The new title of the issue."),
+      body: z
+        .string()
+        .optional()
+        .describe("The new contents of the issue (GitHub markdown)."),
+      state: z
+        .enum(["open", "closed"])
+        .optional()
+        .describe(
+          "The open or closed state of the issue. Set to 'closed' to close the" +
+            " issue, or 'open' to reopen it."
+        ),
+      stateReason: z
+        .enum(["completed", "not_planned", "reopened"])
+        .optional()
+        .describe(
+          "The reason for the state change. Ignored unless state is changed."
+        ),
+      assignees: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Logins for Users to assign to this issue. Replaces the current set" +
+            " of assignees; pass an empty array to clear all assignees."
+        ),
+      labels: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Labels to associate with this issue. Replaces the current set of" +
+            " labels; pass an empty array to clear all labels."
+        ),
+      milestone: z
+        .number()
+        .nullable()
+        .optional()
+        .describe(
+          "The number of the milestone to associate this issue with, or null" +
+            " to remove the current milestone."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating GitHub issue",
+      done: "Update GitHub issue",
+    },
+  },
   get_pull_request: {
     description:
       "Retrieve a pull request from a specified GitHub repository including" +
