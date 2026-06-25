@@ -80,9 +80,7 @@ export abstract class LLM<TPayload = unknown> {
     this.modelConfig = modelConfig;
     this.temperature = temperature;
     this.reasoningEffort =
-      reasoningEffort !== undefined
-        ? reasoningEffort
-        : modelConfig.defaultReasoningEffort;
+      reasoningEffort ?? modelConfig.defaultReasoningEffort;
     this.responseFormat = responseFormat;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = {
