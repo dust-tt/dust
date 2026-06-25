@@ -1,9 +1,12 @@
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import {
   fetchAgentMetadata,
   fetchUserEmails,
 } from "@app/lib/api/analytics/enrichment";
+import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -20,7 +23,7 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   user_id: string;
   context_origin: string;
   status: string;
-  tools_used?: { tool_name: string }[];
+  tools_used?: { server_name: string; tool_name: string }[];
   skills_used?: { skill_name: string }[];
 }
 
@@ -94,11 +97,13 @@ async function fetchAllMessageDocuments(
 }
 
 export async function fetchMessageExportRows({
+  auth,
   owner,
   startDate,
   endDate,
   timezone,
 }: {
+  auth: Authenticator;
   owner: WorkspaceType;
   startDate: string;
   endDate: string;
@@ -127,10 +132,16 @@ export async function fetchMessageExportRows({
   const uniqueUserIds = [
     ...new Set(docs.map((d) => d.user_id).filter(Boolean)),
   ];
+  const uniqueServerNames = [
+    ...new Set(
+      docs.flatMap((d) => (d.tools_used ?? []).map((t) => t.server_name))
+    ),
+  ];
 
-  const [agentMeta, userEmails] = await Promise.all([
+  const [agentMeta, userEmails, serverDisplayNames] = await Promise.all([
     fetchAgentMetadata(uniqueAgentIds, owner),
     fetchUserEmails(uniqueUserIds),
+    resolveServerDisplayNames(auth, uniqueServerNames),
   ]);
 
   const rows: MessageExportRow[] = docs.map((doc) => {
@@ -148,7 +159,10 @@ export async function fetchMessageExportRows({
       userEmail: userEmails.get(doc.user_id) ?? "",
       source: doc.context_origin ?? "",
       toolsUsed: joinDistinctSorted(
-        (doc.tools_used ?? []).map((t) => t.tool_name)
+        (doc.tools_used ?? []).map(
+          (t) =>
+            `${serverDisplayNames.get(t.server_name) ?? t.server_name}${TOOL_NAME_SEPARATOR}${t.tool_name}`
+        )
       ),
       skillsUsed: joinDistinctSorted(
         (doc.skills_used ?? []).map((s) => s.skill_name)
