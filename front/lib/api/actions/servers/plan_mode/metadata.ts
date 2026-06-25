@@ -19,13 +19,15 @@ export const CREATE_PLAN_TOOL_NAME = "create_plan" as const;
 export const EDIT_PLAN_TOOL_NAME = "edit_plan" as const;
 export const CLOSE_PLAN_TOOL_NAME = "close_plan" as const;
 
+export const PLAN_FILE_NAME = "plan.md" as const;
+
 export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
   create_plan: {
     description:
-      "Create the conversation's `plan.md` with the markdown you pass as `content`. Write the " +
+      `Create the conversation's \`${PLAN_FILE_NAME}\` with the markdown you pass as \`content\`. Write the ` +
       "full plan directly; do not create an empty plan and then edit it. Exactly one active " +
-      "plan is allowed per conversation; call `close_plan` to retire the current one first if " +
-      "the user wants a fresh plan. Use `edit_plan` for subsequent updates.\n\n" +
+      `plan is allowed per conversation; call \`${CLOSE_PLAN_TOOL_NAME}\` to retire the current one first if ` +
+      `the user wants a fresh plan. Use \`${EDIT_PLAN_TOOL_NAME}\` for subsequent updates.\n\n` +
       "Recommended structure:\n\n" +
       "```markdown\n" +
       PLAN_MODE_SKELETON +
@@ -47,8 +49,8 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
   },
   edit_plan: {
     description:
-      "Edit the active `plan.md` by replacing `old_string` with `new_string`. The full updated " +
-      "contents of plan.md are returned so you can see your change.\n\n" +
+      `Edit the active \`${PLAN_FILE_NAME}\` by replacing \`old_string\` with \`new_string\`. The full updated ` +
+      `contents of ${PLAN_FILE_NAME} are returned so you can see your change.\n\n` +
       "`old_string` must match exactly once in the current file. If it matches zero or multiple " +
       "times, the edit fails and you must retry with a more specific string. Use an empty " +
       "`new_string` to delete `old_string`.\n\n" +
@@ -57,7 +59,7 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
       old_string: z
         .string()
         .describe(
-          "The exact string in plan.md to replace. Must match exactly once."
+          `The exact string in ${PLAN_FILE_NAME} to replace. Must match exactly once.`
         ),
       new_string: z
         .string()
@@ -73,9 +75,9 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
   },
   close_plan: {
     description:
-      "Retire the current plan. After close_plan, the plan is hidden from the UI and this " +
-      "skill will not reference it again. You can call `create_plan` to start a fresh plan " +
-      "later. Close is terminal; use `edit_plan` to iterate on the plan instead of closing it.\n\n" +
+      `Retire the current plan. After ${CLOSE_PLAN_TOOL_NAME}, the plan is hidden from the UI and this ` +
+      `skill will not reference it again. You can call \`${CREATE_PLAN_TOOL_NAME}\` to start a fresh plan ` +
+      `later. Close is terminal; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate on the plan instead of closing it.\n\n` +
       "See skill instructions for when to call this.",
     schema: {
       reason: z
@@ -99,7 +101,7 @@ export const PLAN_MODE_SERVER = {
     name: PLAN_MODE_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Create and maintain a living `plan.md` that gives the user visibility on non-trivial " +
+      `Create and maintain a living \`${PLAN_FILE_NAME}\` that gives the user visibility on non-trivial ` +
       "work. When you need explicit sign-off before proceeding, ask the user with the standard " +
       "question flow.",
     icon: "ActionDocumentTextIcon" as const,

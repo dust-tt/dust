@@ -1,7 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { PLAN_MODE_TOOLS_METADATA } from "@app/lib/api/actions/servers/plan_mode/metadata";
+import {
+  CLOSE_PLAN_TOOL_NAME,
+  CREATE_PLAN_TOOL_NAME,
+  EDIT_PLAN_TOOL_NAME,
+  PLAN_FILE_NAME,
+  PLAN_MODE_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/plan_mode/metadata";
 import {
   closePlan,
   getActivePlanContent,
@@ -44,8 +50,8 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
       if (existing.value !== null) {
         return new Err(
           new MCPError(
-            "A plan already exists for this conversation. Use `edit_plan` to update it, or " +
-              "`close_plan` first if the user explicitly wants to drop it and start over."
+            `A plan already exists for this conversation. Use \`${EDIT_PLAN_TOOL_NAME}\` to update it, or ` +
+              `\`${CLOSE_PLAN_TOOL_NAME}\` first if the user explicitly wants to drop it and start over.`
           )
         );
       }
@@ -60,7 +66,7 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text",
-          text: `plan.md created. Current contents:\n\n${content}`,
+          text: `${PLAN_FILE_NAME} created. Current contents:\n\n${content}`,
         },
       ]);
     });
@@ -76,13 +82,13 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
       return await withPlanModeLock(conversation.sId, async () => {
         const contentRes = await getActivePlanContent(auth, conversation);
         if (contentRes.isErr()) {
-          return new Err(new MCPError("Failed to read plan.md."));
+          return new Err(new MCPError(`Failed to read ${PLAN_FILE_NAME}.`));
         }
         const currentContent = contentRes.value;
         if (currentContent === null) {
           return new Err(
             new MCPError(
-              "No active plan.md for this conversation. Call `create_plan` first to start one."
+              `No active ${PLAN_FILE_NAME} for this conversation. Call \`${CREATE_PLAN_TOOL_NAME}\` first to start one.`
             )
           );
         }
@@ -98,7 +104,7 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         if (occurrences === 0) {
           return new Err(
             new MCPError(
-              `\`old_string\` not found in plan.md. Make sure it matches the file content ` +
+              `\`old_string\` not found in ${PLAN_FILE_NAME}. Make sure it matches the file content ` +
                 `exactly (including whitespace).`
             )
           );
@@ -106,7 +112,7 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         if (occurrences > 1) {
           return new Err(
             new MCPError(
-              `\`old_string\` matches ${occurrences} locations in plan.md. Provide a more ` +
+              `\`old_string\` matches ${occurrences} locations in ${PLAN_FILE_NAME}. Provide a more ` +
                 `specific string so it matches exactly once.`
             )
           );
@@ -126,14 +132,14 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         return new Ok([
           {
             type: "text",
-            text: `plan.md updated. Current contents:\n\n${updatedContent}`,
+            text: `${PLAN_FILE_NAME} updated. Current contents:\n\n${updatedContent}`,
           },
         ]);
       });
     } catch (err) {
       return new Err(
         new MCPError(
-          `plan.md is currently being edited by another operation: ${normalizeError(err).message}`
+          `${PLAN_FILE_NAME} is currently being edited by another operation: ${normalizeError(err).message}`
         )
       );
     }
@@ -153,7 +159,7 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
       if (existing.value === null) {
         return new Err(
           new MCPError(
-            "No active plan.md for this conversation. Nothing to close."
+            `No active ${PLAN_FILE_NAME} for this conversation. Nothing to close.`
           )
         );
       }
@@ -180,8 +186,8 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         {
           type: "text",
           text:
-            "Plan closed. The plan.md is now archived and will no longer be referenced. If the " +
-            "user later asks for a new plan, call `create_plan` to start a fresh one.",
+            `Plan closed. The ${PLAN_FILE_NAME} is now archived and will no longer be referenced. If the ` +
+            `user later asks for a new plan, call \`${CREATE_PLAN_TOOL_NAME}\` to start a fresh one.`,
         },
       ]);
     });

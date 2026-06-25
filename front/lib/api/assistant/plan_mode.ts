@@ -1,3 +1,4 @@
+import { PLAN_FILE_NAME } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import { writeToConversationFolder } from "@app/lib/api/files/action_output_fs";
@@ -7,7 +8,6 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 // Plan mode has no database model: all state is derived from the conversation file system.
-const PLAN_FILE_NAME = "plan.md";
 const ARCHIVED_PLANS_DIR = "archived_plans";
 
 function planPath(conversation: ConversationWithoutContentType): string {
