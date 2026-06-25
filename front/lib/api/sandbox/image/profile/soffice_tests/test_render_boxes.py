@@ -85,6 +85,26 @@ def test_text_row_centers_empty_on_blank():
     assert R._text_row_centers(img, (0, 0, 200, 100)) == []
 
 
+def test_is_full_span_flags_banners_and_backgrounds():
+    W, H = int(13.333 * EMU), int(7.5 * EMU)
+    band = (0, int(3 * EMU), int(12 * EMU), int(0.3 * EMU))  # full-width band
+    backdrop = (0, 0, int(0.4 * EMU), int(7.0 * EMU))  # full-height backdrop
+    photo = (int(EMU), int(EMU), int(3 * EMU), int(2 * EMU))  # normal box
+    assert R._is_full_span(band, W, H)
+    assert R._is_full_span(backdrop, W, H)
+    assert not R._is_full_span(photo, W, H)
+
+
+def test_rects_overlap():
+    assert R._rects_overlap((0, 0, 10, 10), (5, 5, 15, 15))
+    assert not R._rects_overlap((0, 0, 10, 10), (11, 0, 20, 10))
+
+
+def test_contrast_text_picks_legible_color():
+    assert R._contrast_text((255, 64, 64)) == (255, 255, 255, 255)  # dark -> white
+    assert R._contrast_text((150, 210, 0)) == (0, 0, 0, 255)  # light -> black
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

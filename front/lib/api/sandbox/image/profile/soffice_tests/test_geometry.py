@@ -154,15 +154,52 @@ def test_render_collision_overflow_spill_surfaced():
     eff_a = box(1, 1, 8, 2)  # grew down past b
     flag, pen = G._render_collision(decl_a, decl_b, eff_a, decl_b)
     assert flag and pen > 0
-    # middle-anchored overflow grows both ways, preserving the box centre.
+
+
+def test_extent_middle_grows_down_not_symmetric():
+    # a MIDDLE-anchored box is grown DOWNWARD from its declared top, never
+    # symmetrically (which used to drift it up off its own position).
     shape = FakeTextShape(1.0, 1.5, 8.0, 0.7, ["First", "Second"], "MIDDLE")
     ext = G._text_extent_box(shape, 40.0)
     assert ext is not None
     _, top, _, h = ext
-    old_center = shape.top + shape.height / 2
-    new_center = top + h / 2
-    assert top < shape.top  # extends upward too
-    assert abs(new_center - old_center) <= EMU * 0.02  # centre preserved
+    assert top == shape.top  # declared top kept, not raised
+    assert h > shape.height
+
+
+def test_extent_bottom_grows_up():
+    # a BOTTOM-anchored box, whose text spills upward, grows up with room above:
+    # the bottom edge stays put and the top rises.
+    shape = FakeTextShape(1.0, 3.0, 8.0, 0.7, ["word " * 40], "BOTTOM")
+    ext = G._text_extent_box(shape, 40.0)
+    assert ext is not None
+    _, top, _, h = ext
+    assert top < shape.top  # grew upward
+    assert top + h == shape.top + shape.height  # bottom edge unchanged
+
+
+def test_extent_bottom_clamped_to_slide_top():
+    # near the slide top, upward growth is clamped so the box never goes off-slide.
+    shape = FakeTextShape(1.0, 0.2, 8.0, 0.7, ["word " * 40], "BOTTOM")
+    ext = G._text_extent_box(shape, 40.0)
+    assert ext is not None
+    assert ext[1] == 0  # top clamped to the slide edge
+
+
+def test_extent_capped_to_max_growth():
+    # a gross overflow is capped at EXTENT_MAX_GROWTH x the declared height so a
+    # mis-estimated wrap can't balloon the box across the slide.
+    shape = FakeTextShape(1.0, 1.0, 8.0, 0.6, ["word " * 200])
+    ext = G._text_extent_box(shape, 40.0)
+    assert ext is not None
+    assert ext[3] <= round(shape.height * G.EXTENT_MAX_GROWTH) + 1  # +1: rounding
+
+
+def test_extent_none_on_minor_overflow():
+    # one line over capacity is within EXTENT_OVERFLOW_SLACK (a wrap-estimate
+    # artifact, not real overflow) -> not grown.
+    shape = FakeTextShape(1.0, 1.5, 4.0, 1.4, ["alpha", "bravo", "charlie"])
+    assert G._text_extent_box(shape, 24.0) is None
 
 
 if __name__ == "__main__":
