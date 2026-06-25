@@ -77,7 +77,7 @@ const RichTextElementSchema: z.ZodType<RichTextElement> = z.lazy(() =>
   })
 );
 
-type t = z.infer<typeof RichTextElementSchema>
+type t = z.infer<typeof RichTextElementSchema>;
 
 const RichTextBlockSchema = z.object({
   type: z.literal("rich_text"),
@@ -139,7 +139,7 @@ function renderRichTextLeaf(element: RichTextElement): string {
     case "link":
       return element.text
         ? `${element.text} (${element.url ?? ""})`
-         : (element.url ?? "");
+        : (element.url ?? "");
 
     case "user":
       return element.user_id ? `@${element.user_id}` : "";
@@ -176,12 +176,14 @@ function renderRichTextSection(section: RichTextElement): string[] {
       .map((line) => `- ${line}`);
   }
 
-  const joined = elements.map((element) => renderRichTextLeaf(element)).join("");
+  const joined = elements
+    .map((element) => renderRichTextLeaf(element))
+    .join("");
 
   if (!joined) {
     return [];
   }
-  
+
   if (section.type === "rich_text_quote") {
     return [`> ${joined}`];
   }
