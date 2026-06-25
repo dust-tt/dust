@@ -1,5 +1,5 @@
-import { Authenticator } from "@app/lib/auth";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+import { Authenticator } from "@app/lib/auth";
 import {
   archiveMetronomeContract,
   listMetronomePackages,
@@ -217,7 +217,9 @@ function postSwitchContract(workspaceId: string, body: unknown) {
 
 beforeEach(() => {
   vi.mocked(getOrCreateWorkOSOrganization).mockResolvedValue(
-    new Ok({ id: "org_test" } as unknown as import("@workos-inc/node").Organization)
+    new Ok({
+      id: "org_test",
+    } as unknown as import("@workos-inc/node").Organization)
   );
   vi.mocked(archiveMetronomeContract).mockResolvedValue(new Ok(undefined));
   vi.mocked(reactivateMetronomeContract).mockResolvedValue(new Ok(undefined));

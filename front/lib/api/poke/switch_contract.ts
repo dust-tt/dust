@@ -3,7 +3,6 @@ import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
-import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import {
   ceilToHourISO,
   editMetronomeContract,
@@ -49,13 +48,14 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { LightWorkspaceType } from "@app/types/user";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { isMembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import { z } from "zod";
 
 const paymentScheduleSchema = z
@@ -164,8 +164,8 @@ export type SwitchContractErrorKind =
   | "invalid_request"
   // Metronome (or other upstream) API failure before any state was changed.
   | "metronome_api_error"
-  // PAYG configuration update/create failed (pre-provision, clean abort).
-  | "payg_config_failed"
+  // Credit configuration update/create failed (pre-provision, clean abort).
+  | "credit_config_failed"
   // Contract was provisioned but one or more post-provision steps failed.
   // The contract is live; the operator must address each listed item manually.
   | "provision_inconsistent";
@@ -371,7 +371,9 @@ async function resolveStripeCustomer(
 ): Promise<
   Result<{ resolvedCurrency: SupportedCurrency | null }, SwitchContractError>
 > {
-  if (!stripeCustomerId) return new Ok({ resolvedCurrency: null });
+  if (!stripeCustomerId) {
+    return new Ok({ resolvedCurrency: null });
+  }
   const stripeCustomer = await getStripeCustomer(stripeCustomerId);
   if (!stripeCustomer) {
     return new Err(
@@ -491,7 +493,9 @@ async function resolveAndValidatePackage(
   }
   const pkgSeatByType = new Map(pkg.seats.map((s) => [s.seatType, s]));
   for (const seat of body.seats ?? []) {
-    if (!isMembershipSeatType(seat.seatType)) continue;
+    if (!isMembershipSeatType(seat.seatType)) {
+      continue;
+    }
     const pkgSeat = pkgSeatByType.get(seat.seatType);
     if (
       seat.selected &&
@@ -554,7 +558,9 @@ async function persistSeatFloors(
   body: SwitchContractBody
 ): Promise<Result<void, SwitchContractError>> {
   for (const seat of body.seats ?? []) {
-    if (!isMembershipSeatType(seat.seatType)) continue;
+    if (!isMembershipSeatType(seat.seatType)) {
+      continue;
+    }
     if (seat.selected && seat.minSeats > 0) {
       const result = await WorkspaceSeatLimitResource.upsert({
         workspace,
@@ -589,7 +595,9 @@ async function cancelExistingPendingContract(
 ): Promise<Result<void, SwitchContractError>> {
   const existingPending =
     await SubscriptionResource.fetchPendingByWorkspaceModelId(workspaceModelId);
-  if (!existingPending) return new Ok(undefined);
+  if (!existingPending) {
+    return new Ok(undefined);
+  }
   const result = await cancelPendingContract({ auth });
   if (result.isErr()) {
     return new Err(
@@ -606,10 +614,11 @@ async function cancelExistingPendingContract(
 // Ensure the workspace has a WorkOS organization for any paid tier.
 async function ensureWorkOSOrg(
   ownerLight: LightWorkspaceType,
-  pkgTier: MetronomePackageTier,
-  workspaceId: string
+  pkgTier: MetronomePackageTier
 ): Promise<Result<void, SwitchContractError>> {
-  if (pkgTier === "free") return new Ok(undefined);
+  if (pkgTier === "free") {
+    return new Ok(undefined);
+  }
   const result = await getOrCreateWorkOSOrganization(ownerLight);
   if (result.isErr()) {
     return new Err(
@@ -646,7 +655,7 @@ async function persistCreditConfig(
     if (result.isErr()) {
       return new Err(
         new SwitchContractError(
-          "payg_config_failed",
+          "credit_config_failed",
           `Failed to update credit configuration: ${result.error.message}`
         )
       );
@@ -659,7 +668,7 @@ async function persistCreditConfig(
     if (result.isErr()) {
       return new Err(
         new SwitchContractError(
-          "payg_config_failed",
+          "credit_config_failed",
           `Failed to create credit configuration: ${result.error.message}`
         )
       );
@@ -746,7 +755,9 @@ async function stepContractEdits({
 
   // Seat commitment commits and rate overrides.
   for (const seat of body.seats ?? []) {
-    if (!isMembershipSeatType(seat.seatType)) continue;
+    if (!isMembershipSeatType(seat.seatType)) {
+      continue;
+    }
     const pkgSeat = pkgSeatByType.get(seat.seatType);
     const billingFrequency = seat.seatType.endsWith("_yearly")
       ? "ANNUAL"
@@ -906,7 +917,9 @@ async function stepStripeCancellation({
   workspaceId,
   metronomeContractId,
 }: PostProvisionCtx): Promise<string | null> {
-  if (!stripeSubscriptionId) return null;
+  if (!stripeSubscriptionId) {
+    return null;
+  }
   const stripeCancelAt =
     alignedStart.getTime() > Date.now()
       ? alignedStart
@@ -1014,13 +1027,17 @@ export async function switchContract({
   // ─── Pre-provision ────────────────────────────────────────────────────────
 
   const eligibilityResult = await checkEligibility(auth);
-  if (eligibilityResult.isErr()) return new Err(eligibilityResult.error);
+  if (eligibilityResult.isErr()) {
+    return new Err(eligibilityResult.error);
+  }
 
   const creditConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
   const stripeResult = await resolveStripeCustomer(body.stripeCustomerId);
-  if (stripeResult.isErr()) return new Err(stripeResult.error);
+  if (stripeResult.isErr()) {
+    return new Err(stripeResult.error);
+  }
   const { resolvedCurrency } = stripeResult.value;
 
   const customerResult = await resolveMetronomeCustomer({
@@ -1028,28 +1045,46 @@ export async function switchContract({
     stripeCustomerId: body.stripeCustomerId,
     stripeCollectionMethod: body.stripeCollectionMethod,
   });
-  if (customerResult.isErr()) return new Err(customerResult.error);
+  if (customerResult.isErr()) {
+    return new Err(customerResult.error);
+  }
   const { metronomeCustomerId } = customerResult.value;
 
   const packageResult = await resolveAndValidatePackage(body, resolvedCurrency);
-  if (packageResult.isErr()) return new Err(packageResult.error);
+  if (packageResult.isErr()) {
+    return new Err(packageResult.error);
+  }
   const { pkg, pkgSeatByType, packageAlias } = packageResult.value;
 
   const timingResult = resolveSwapTiming(body.startingAt);
-  if (timingResult.isErr()) return new Err(timingResult.error);
+  if (timingResult.isErr()) {
+    return new Err(timingResult.error);
+  }
   const { startingAtDate, swapAt } = timingResult.value;
 
-  const workosResult = await ensureWorkOSOrg(ownerLight, pkg.tier, owner.sId);
-  if (workosResult.isErr()) return new Err(workosResult.error);
+  const workosResult = await ensureWorkOSOrg(ownerLight, pkg.tier);
+  if (workosResult.isErr()) {
+    return new Err(workosResult.error);
+  }
 
   const seatFloorsResult = await persistSeatFloors(ownerLight, body);
-  if (seatFloorsResult.isErr()) return new Err(seatFloorsResult.error);
+  if (seatFloorsResult.isErr()) {
+    return new Err(seatFloorsResult.error);
+  }
 
-  const paygResult = await persistCreditConfig(auth, creditConfig, body);
-  if (paygResult.isErr()) return new Err(paygResult.error);
+  const creditsConfigResult = await persistCreditConfig(
+    auth,
+    creditConfig,
+    body
+  );
+  if (creditsConfigResult.isErr()) {
+    return new Err(creditsConfigResult.error);
+  }
 
   const cancelResult = await cancelExistingPendingContract(auth, owner.id);
-  if (cancelResult.isErr()) return new Err(cancelResult.error);
+  if (cancelResult.isErr()) {
+    return new Err(cancelResult.error);
+  }
 
   // ─── Provision ────────────────────────────────────────────────────────────
   // Disable the internal seat sync — switchContract always runs its own
@@ -1104,7 +1139,9 @@ export async function switchContract({
 
   const warnings: string[] = [];
   const warn = (w: string | null): void => {
-    if (w) warnings.push(w);
+    if (w) {
+      warnings.push(w);
+    }
   };
 
   warn(await stepContractEdits(ctx));

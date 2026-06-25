@@ -24,7 +24,7 @@ import { z } from "zod";
 export const MAX_AWU_USAGE_CAP_CREDITS = 2_000_000;
 const POKE_AUDIT_CONTEXT = { location: "poke" };
 
-const CreditUsageConfigurationSchema = z.object({
+export const CreditUsageConfigurationSchema = z.object({
   defaultDiscountPercent: z
     .number()
     .min(0, "Discount percentage must be at least 0")

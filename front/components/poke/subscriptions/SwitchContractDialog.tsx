@@ -3,6 +3,7 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
+import { CreditUsageConfigurationSchema } from "@app/lib/api/poke/plugins/workspaces/manage_credit_usage_configuration";
 import type { SwitchContractBodySchema } from "@app/lib/api/poke/switch_contract";
 import { clientFetch } from "@app/lib/egress/client";
 import { amountCents } from "@app/lib/metronome/amounts";
@@ -20,8 +21,8 @@ import {
   usePokePlans,
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
-import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
 import assert from "@app/lib/utils/assert";
+import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -289,57 +290,38 @@ export default function SwitchContractDialog({
       creditConfigAppliedRef.current = false;
       return;
     }
-    if (!existingCreditConfig || creditConfigAppliedRef.current) return;
+    if (!existingCreditConfig || creditConfigAppliedRef.current) {
+      return;
+    }
     creditConfigAppliedRef.current = true;
-    const c = existingCreditConfig as Record<string, unknown>;
+    const parsed =
+      CreditUsageConfigurationSchema.safeParse(existingCreditConfig);
+    if (!parsed.success) {
+      return;
+    }
+    const d = parsed.data;
+    // The plugin uses 0 for "no cap/limit"; the form uses undefined.
+    const orUndefined = (n: number) => (n > 0 ? n : undefined);
+    form.setValue("defaultDiscountPercent", d.defaultDiscountPercent);
+    form.setValue("paygEnabled", d.paygEnabled);
+    form.setValue("usageCapCredits", orUndefined(d.usageCapCredits));
     form.setValue(
-      "defaultDiscountPercent",
-      typeof c.defaultDiscountPercent === "number"
-        ? c.defaultDiscountPercent
-        : 0
+      "balanceThresholdCredits",
+      orUndefined(d.balanceThresholdCredits)
     );
     form.setValue(
-      "paygEnabled",
-      typeof c.paygEnabled === "boolean" ? c.paygEnabled : false
-    );
-    // The plugin uses 0 for "no cap"; the form uses undefined.
-    const usageCap =
-      typeof c.usageCapCredits === "number" && c.usageCapCredits > 0
-        ? c.usageCapCredits
-        : undefined;
-    form.setValue("usageCapCredits", usageCap);
-    const balanceThreshold =
-      typeof c.balanceThresholdCredits === "number" &&
-      c.balanceThresholdCredits > 0
-        ? c.balanceThresholdCredits
-        : undefined;
-    form.setValue("balanceThresholdCredits", balanceThreshold);
-    const poolCap =
-      typeof c.defaultPoolCapCredits === "number" && c.defaultPoolCapCredits > 0
-        ? c.defaultPoolCapCredits
-        : undefined;
-    form.setValue("defaultPoolCapCredits", poolCap);
-    const programmaticCap =
-      typeof c.programmaticMonthlyCapCredits === "number" &&
-      c.programmaticMonthlyCapCredits > 0
-        ? c.programmaticMonthlyCapCredits
-        : undefined;
-    form.setValue("programmaticMonthlyCapCredits", programmaticCap);
-    form.setValue(
-      "autoSeatUpgradeEnabled",
-      typeof c.autoSeatUpgradeEnabled === "boolean"
-        ? c.autoSeatUpgradeEnabled
-        : false
+      "defaultPoolCapCredits",
+      orUndefined(d.defaultPoolCapCredits)
     );
     form.setValue(
-      "topUpEnabled",
-      typeof c.topUpEnabled === "boolean" ? c.topUpEnabled : false
+      "programmaticMonthlyCapCredits",
+      orUndefined(d.programmaticMonthlyCapCredits)
     );
+    form.setValue("autoSeatUpgradeEnabled", d.autoSeatUpgradeEnabled);
+    form.setValue("topUpEnabled", d.topUpEnabled);
     form.setValue(
       "autoInvoiceFinalizationEnabled",
-      typeof c.autoInvoiceFinalizationEnabled === "boolean"
-        ? c.autoInvoiceFinalizationEnabled
-        : true
+      d.autoInvoiceFinalizationEnabled
     );
   }, [open, existingCreditConfig, form]);
 
