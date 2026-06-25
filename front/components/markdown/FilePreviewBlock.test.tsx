@@ -130,8 +130,9 @@ describe("getFilePreviewPlugin", () => {
 
     expect(screen.getByText("report final.pdf")).toBeInTheDocument();
     expect(container.querySelector("a[href*='download=1']")).toBeNull();
+    expect(container.querySelector("button button")).toBeNull();
 
-    fireEvent.click(screen.getByText("report final.pdf"));
+    fireEvent.click(screen.getByRole("button", { name: "report final.pdf" }));
 
     expect(
       await screen.findByRole("dialog", { name: "report final.pdf" })

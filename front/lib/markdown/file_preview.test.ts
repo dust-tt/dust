@@ -2,10 +2,29 @@ import { describe, expect, it } from "vitest";
 
 import {
   getFilePreviewContentType,
+  getFilePreviewDirectiveInstruction,
   getFilePreviewMarkdownDirective,
   getFilePreviewTypeLabel,
   parseFilePreviewMarkdownDirective,
 } from "./file_preview";
+
+describe("getFilePreviewDirectiveInstruction", () => {
+  it("instructs the agent to place the file link inline", () => {
+    const instruction = getFilePreviewDirectiveInstruction({
+      path: "conversation-c1/report.pdf",
+    });
+
+    expect(instruction).toContain(
+      "Always place the previewable file directive inline within the sentence"
+    );
+    expect(instruction).toContain(
+      "rather than as a standalone element at the end of the response"
+    );
+    expect(instruction).toContain(
+      'Here is your file :preview_file{path="conversation-c1/report.pdf"'
+    );
+  });
+});
 
 describe("getFilePreviewMarkdownDirective", () => {
   it("infers the title from the scoped path", () => {
