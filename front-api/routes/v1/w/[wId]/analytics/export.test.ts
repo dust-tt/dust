@@ -126,7 +126,7 @@ vi.mock("@app/lib/api/analytics/messages_export", async () => ({
           userId: "user-1",
           userEmail: "alice@example.com",
           source: "web",
-          toolsUsed: "github,slack",
+          toolsUsed: "post_message,search_messages",
           skillsUsed: "research",
         },
       ])
@@ -379,7 +379,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     );
     expect(csv).toContain("msg-1");
     expect(csv).toContain("alice@example.com");
-    expect(csv).toContain('"github,slack"');
+    expect(csv).toContain('"post_message,search_messages"');
   });
 
   it("returns CSV for feedback table", async () => {
@@ -530,7 +530,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
       userId: "user-1",
       userEmail: "alice@example.com",
       source: "web",
-      toolsUsed: "github,slack",
+      toolsUsed: "post_message,search_messages",
       skillsUsed: "research",
     });
   });

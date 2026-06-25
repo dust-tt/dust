@@ -20,7 +20,7 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   user_id: string;
   context_origin: string;
   status: string;
-  tools_used?: { server_name: string }[];
+  tools_used?: { tool_name: string }[];
   skills_used?: { skill_name: string }[];
 }
 
@@ -148,7 +148,7 @@ export async function fetchMessageExportRows({
       userEmail: userEmails.get(doc.user_id) ?? "",
       source: doc.context_origin ?? "",
       toolsUsed: joinDistinctSorted(
-        (doc.tools_used ?? []).map((t) => t.server_name)
+        (doc.tools_used ?? []).map((t) => t.tool_name)
       ),
       skillsUsed: joinDistinctSorted(
         (doc.skills_used ?? []).map((s) => s.skill_name)
