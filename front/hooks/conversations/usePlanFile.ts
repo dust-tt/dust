@@ -72,7 +72,9 @@ export function useClosePlan({
         return false;
       }
 
-      await mutate(key);
+      // Write the cache directly instead of refetching: a refetch could race a quick subsequent
+      // create and leave a stale null.
+      await mutate(key, { content: null }, { revalidate: false });
       return true;
     } finally {
       setIsClosing(false);
