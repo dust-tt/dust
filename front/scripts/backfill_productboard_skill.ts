@@ -284,24 +284,23 @@ async function addAgentEditorsToSkill(
     agentConfigurationIds,
     logger,
     skill,
-    workspace,
   }: {
     agentConfigurationIds: ModelId[];
     logger: Logger;
     skill: SkillResource;
-    workspace: LightWorkspaceType;
   }
 ): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+
   if (agentConfigurationIds.length === 0) {
     return;
   }
 
   const agentEditorLinks = await GroupAgentModel.findAll({
     where: {
-      workspaceId: workspace.id,
+      workspaceId: owner.id,
       agentConfigurationId: { [Op.in]: agentConfigurationIds },
     },
-    attributes: ["groupId"],
   });
   const agentEditorGroupIds = [
     ...new Set(agentEditorLinks.map((link) => link.groupId)),
@@ -309,7 +308,7 @@ async function addAgentEditorsToSkill(
 
   if (agentEditorGroupIds.length === 0) {
     logger.warn(
-      { skillId: skill.sId, workspaceId: workspace.sId },
+      { skillId: skill.sId, workspaceId: owner.sId },
       "No agent editor groups found for Productboard agents"
     );
     return;
@@ -317,15 +316,14 @@ async function addAgentEditorsToSkill(
 
   const skillEditorLink = await GroupSkillModel.findOne({
     where: {
-      workspaceId: workspace.id,
+      workspaceId: owner.id,
       skillConfigurationId: skill.id,
     },
-    attributes: ["groupId"],
   });
 
   if (!skillEditorLink) {
     throw new Error(
-      `Could not find editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${workspace.sId}.`
+      `Could not find editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
     );
   }
 
@@ -338,7 +336,7 @@ async function addAgentEditorsToSkill(
   const skillEditorGroup = groupById.get(skillEditorLink.groupId);
   if (!skillEditorGroup) {
     throw new Error(
-      `Could not fetch editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${workspace.sId}.`
+      `Could not fetch editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
     );
   }
   const agentEditorGroups = agentEditorGroupIds
@@ -353,7 +351,7 @@ async function addAgentEditorsToSkill(
 
   if (agentEditorUserModelIds.length === 0) {
     logger.warn(
-      { skillId: skill.sId, workspaceId: workspace.sId },
+      { skillId: skill.sId, workspaceId: owner.sId },
       "No agent editor members found for Productboard agents"
     );
     return;
@@ -385,7 +383,7 @@ async function addAgentEditorsToSkill(
         skippedNonBuilderEditorCount:
           agentEditorUserModelIds.length - builderUserModelIds.size,
         skillId: skill.sId,
-        workspaceId: workspace.sId,
+        workspaceId: owner.sId,
       },
       "Productboard skill editors already up to date"
     );
@@ -405,7 +403,7 @@ async function addAgentEditorsToSkill(
       skippedNonBuilderEditorCount:
         agentEditorUserModelIds.length - builderUserModelIds.size,
       skillId: skill.sId,
-      workspaceId: workspace.sId,
+      workspaceId: owner.sId,
     },
     "Added Productboard skill editors"
   );
@@ -476,7 +474,6 @@ async function backfillWorkspace(
     agentConfigurationIds: productboardAgentIds,
     logger,
     skill,
-    workspace,
   });
   if (agentIdsToLink.length > 0) {
     await AgentSkillModel.bulkCreate(
