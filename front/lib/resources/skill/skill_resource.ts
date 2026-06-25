@@ -122,6 +122,8 @@ type SkillResourceConstructorOptions =
       // For global skills, there is no editor group.
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
+      // When true, the global skill's instructions are exposed to the front-end.
+      exposeInstructions?: boolean;
       fileAttachments: FileResource[];
       globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
@@ -130,6 +132,8 @@ type SkillResourceConstructorOptions =
   | {
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: GroupResource;
+      // Custom skills always expose their own instructions; this flag is unused.
+      exposeInstructions?: undefined;
       fileAttachments: FileResource[];
       globalSId?: undefined;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
@@ -228,6 +232,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly version: number | null = null;
 
   private readonly globalSId: string | null;
+  // Only meaningful for global skills: whether their instructions may be
+  // serialized to the front-end. Custom skills always expose their own.
+  private readonly exposeInstructions: boolean;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
@@ -236,6 +243,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Attributes<SkillConfigurationModel>,
     {
       dataSourceConfigurations,
+      exposeInstructions,
       fileAttachments,
       globalSId,
       mcpServerConfigurations,
@@ -247,6 +255,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     this.dataSourceConfigurations = dataSourceConfigurations;
     this.editorGroup = editorGroup ?? null;
+    this.exposeInstructions = exposeInstructions ?? false;
     this.fileAttachments = fileAttachments ?? [];
     this.globalSId = globalSId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
@@ -1755,6 +1764,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
+        exposeInstructions: def.exposeInstructions,
         globalSId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
@@ -3633,6 +3643,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })
     );
 
+    // Code-defined (global) skills hide their instructions from the front-end by
+    // default; a skill opts in via `exposeInstructions` in its definition (e.g.
+    // docs/pptx/xlsx) so builders can read and build on top of it. System skills
+    // and the rest stay opaque. Custom skills always expose their own
+    // instructions. The list endpoints strip instructions/tools regardless, and
+    // the public v1 API only returns custom skills, so this only surfaces on the
+    // single-skill detail fetch.
+    const hideInstructions =
+      this.globalSId !== null && !this.exposeInstructions;
+
     return {
       id: this.id,
       sId: this.sId,
@@ -3643,9 +3663,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
       userFacingDescription: this.userFacingDescription,
-      // We don't want to expose global skills instructions to the front-end.
-      instructions: this.globalSId ? null : this.instructions,
-      instructionsHtml: this.globalSId ? null : this.instructionsHtml,
+      instructions: hideInstructions ? null : this.instructions,
+      instructionsHtml: hideInstructions ? null : this.instructionsHtml,
       requestedSpaceIds,
       icon: this.icon ?? null,
       reinforcement: this.reinforcement,
