@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-/** Mobile-only: toggles `document-scroll-mode` on `<body>`. See global.css. */
+/** Mobile-only: toggles `document-scroll-mode` on `<body>`. See global.css + MOBILE_DOCUMENT_SCROLL_CLASSES. */
 export function useDocumentScrollMode(enabled: boolean) {
   useEffect(() => {
     if (!enabled) {

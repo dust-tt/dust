@@ -64,11 +64,11 @@ body {
 
 /*
  * Mobile document scroll (body.document-scroll-mode via useDocumentScrollMode).
- * Unlocks height chain, document/window scroll, panel background through full range.
+ * Top-level height chain + panel background. Component layout overrides live in
+ * MOBILE_DOCUMENT_SCROLL_CLASSES (see AppContentLayout, DropzoneContainer).
  */
 html:has(body.document-scroll-mode),
 html:has(body.document-scroll-mode) body,
-html:has(body.document-scroll-mode) #__next,
 html:has(body.document-scroll-mode) #root {
   height: auto;
   min-height: 100dvh;
@@ -102,36 +102,6 @@ body.document-scroll-mode #root {
   width: 100%;
 }
 
-body.document-scroll-mode .dropzone-container {
-  height: auto;
-  min-height: 0;
-}
-
-body.document-scroll-mode .app-content-root {
-  height: auto;
-  min-height: 100dvh;
-  width: 100%;
-}
-
-body.document-scroll-mode .app-content-row {
-  flex: 0 1 auto;
-  min-height: auto;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: clip;
-}
-
-body.document-scroll-mode .app-content-main {
-  height: auto;
-  min-height: var(--panel-height);
-  flex: 0 1 auto;
-  width: 100%;
-  max-width: 100%;
-  /* Contain wide message content; table scroll is handled via #BlockWrapper rules below */
-  overflow-x: clip;
-  background-color: transparent;
-}
-
 /*
  * Markdown tables (TableBlock) use ScrollArea (overflow-hidden) + sticky copy
  * actions (ContentBlockWrapper). Nested scroll + sticky inside document scroll
@@ -150,16 +120,6 @@ body.document-scroll-mode #BlockWrapper .s-overflow-hidden {
 body.document-scroll-mode #BlockWrapper .s-sticky {
   position: relative;
   top: auto;
-}
-
-body.document-scroll-mode .app-content-pane,
-body.document-scroll-mode .app-content-scroll {
-  height: auto;
-  flex: 0 1 auto;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: clip;
-  overflow-y: visible;
 }
 
 #__next {
