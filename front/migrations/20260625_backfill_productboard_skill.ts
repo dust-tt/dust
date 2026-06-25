@@ -12,7 +12,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -495,24 +494,20 @@ async function backfillWorkspace(
     });
   }
 
-  await withTransaction(async (transaction) => {
-    await AgentSkillModel.bulkCreate(
-      productboardAgentModelIds.map((agentConfigurationModelId) => ({
-        agentConfigurationId: agentConfigurationModelId,
-        customSkillId: skill.id,
-        globalSkillId: null,
-        workspaceId: workspace.id,
-      })),
-      { transaction }
-    );
+  await AgentSkillModel.bulkCreate(
+    productboardAgentModelIds.map((agentConfigurationModelId) => ({
+      agentConfigurationId: agentConfigurationModelId,
+      customSkillId: skill.id,
+      globalSkillId: null,
+      workspaceId: workspace.id,
+    }))
+  );
 
-    await AgentMCPServerConfigurationModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-        id: { [Op.in]: productboardMCPServerConfigurationModelIds },
-      },
-      transaction,
-    });
+  await AgentMCPServerConfigurationModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+      id: { [Op.in]: productboardMCPServerConfigurationModelIds },
+    },
   });
 
   logger.info(
