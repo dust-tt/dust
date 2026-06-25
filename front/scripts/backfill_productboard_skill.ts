@@ -443,7 +443,6 @@ async function backfillWorkspace(
       })),
       skillExists: existingSkill !== null,
       workspaceId: workspace.sId,
-      workspaceModelId: workspace.id,
     },
     execute
       ? "Backfilling Productboard skill for workspace"
