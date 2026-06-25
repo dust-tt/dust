@@ -400,8 +400,9 @@ export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
   return (
     <div
       className={cn(
+        "s-max-w-full s-min-w-0 s-overflow-x-auto s-overflow-y-visible",
         "s-bg-structure-50 dark:s-bg-structure-50-night",
-        "s-overflow-hidden s-rounded-lg s-px-4 s-py-4 s-text-base",
+        "s-rounded-lg s-px-4 s-py-4 s-text-base",
         className
       )}
     >

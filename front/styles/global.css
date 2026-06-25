@@ -102,26 +102,6 @@ body.document-scroll-mode #root {
   width: 100%;
 }
 
-/*
- * Markdown tables (TableBlock) use ScrollArea (overflow-hidden) + sticky copy
- * actions (ContentBlockWrapper). Nested scroll + sticky inside document scroll
- * clips content and breaks iOS window scroll once the table leaves the viewport.
- */
-body.document-scroll-mode #BlockWrapper {
-  max-width: 100%;
-  min-width: 0;
-}
-
-body.document-scroll-mode #BlockWrapper .s-overflow-hidden {
-  overflow-x: auto;
-  overflow-y: visible;
-}
-
-body.document-scroll-mode #BlockWrapper .s-sticky {
-  position: relative;
-  top: auto;
-}
-
 #__next {
   @apply h-full;
 }

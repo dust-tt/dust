@@ -16,29 +16,20 @@ const contentTypeExtensions: Record<SupportedContentType, string> = {
   "text/csv": ".csv",
 };
 
-const wrapperVariants = cva("s-group s-relative s-w-full !s-overflow-visible", {
-  variants: {
-    buttonDisplay: {
-      inside: "s-mt-0",
-      outside: "s-mt-11",
+const wrapperVariants = cva(
+  "s-group s-relative s-w-full s-max-w-full s-min-w-0 !s-overflow-visible",
+  {
+    variants: {
+      buttonDisplay: {
+        inside: "s-mt-0",
+        outside: "s-mt-11",
+      },
     },
-  },
-  defaultVariants: {
-    buttonDisplay: "outside",
-  },
-});
-
-const stickyContainerVariants = cva("s-sticky s-z-[1] s-h-0", {
-  variants: {
-    buttonDisplay: {
-      inside: "s-top-0",
-      outside: "s-top-11",
+    defaultVariants: {
+      buttonDisplay: "outside",
     },
-  },
-  defaultVariants: {
-    buttonDisplay: "outside",
-  },
-});
+  }
+);
 
 const actionsVariants = cva(
   "s-absolute s-right-2 s-flex s-items-center s-gap-1 s-py-2",
@@ -147,12 +138,9 @@ export function ContentBlockWrapper({
   );
 
   return (
-    <div
-      id="BlockWrapper"
-      className={cn(wrapperVariants({ buttonDisplay }), className)}
-    >
+    <div className={cn(wrapperVariants({ buttonDisplay }), className)}>
       {buttonDisplay !== null && (
-        <div className={stickyContainerVariants({ buttonDisplay })}>
+        <div className="s-relative s-z-[1] s-h-0">
           <div
             id="BlockActions"
             className={actionsVariants({ buttonDisplay, displayActions })}
@@ -179,7 +167,9 @@ export function ContentBlockWrapper({
           </div>
         </div>
       )}
-      <div className={cn("s-z-0 s-w-full", innerClassName)}>{children}</div>
+      <div className={cn("s-z-0 s-w-full s-min-w-0", innerClassName)}>
+        {children}
+      </div>
     </div>
   );
 }
