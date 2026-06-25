@@ -2,7 +2,6 @@ import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { CAPABILITY_SEARCH_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/CapabilitySearchNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
@@ -49,7 +48,6 @@ const INSTRUCTIONS_FIELD_NAME = "instructions";
 const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
 const REFERENCED_SKILLS_FIELD_NAME = "referencedSkills";
-const REFERENCED_SKILL_IDS_FIELD_NAME = "referencedSkillIds";
 const BASE_ALLOWED_INSTRUCTIONS_TAGS = ["knowledge"];
 const BASE_ALLOWED_INSTRUCTIONS_ATTRS = ["space", "dsv", "hasChildren"];
 const SKILL_REFERENCE_ALLOWED_TAGS = [
@@ -194,16 +192,6 @@ function collectSkillReferenceIds(editor: Editor): Set<string> {
   return skillIds;
 }
 
-function haveSameSkillReferenceIds(
-  currentIds: readonly string[],
-  nextIds: ReadonlySet<string>
-): boolean {
-  return (
-    currentIds.length === nextIds.size &&
-    currentIds.every((skillId) => nextIds.has(skillId))
-  );
-}
-
 function toAttachedKnowledge(
   items: readonly KnowledgeItem[]
 ): SkillBuilderFormData["attachedKnowledge"] {
@@ -235,17 +223,17 @@ function sanitizeSkillInstructionsHtml(html: string): string {
 }
 
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[50vh]";
+const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_CONTAINER_SIZE =
+  "h-80 min-h-80 max-h-[50vh]";
 const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
-  "min-h-80 rounded-b-none border-b-0 pb-44";
+  "h-full min-h-0 max-h-none resize-none rounded-b-none border-b-0 pb-44";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
-  onOpenCapabilities?: (openCapabilities: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
-  onOpenCapabilities,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { resetField } = useFormContext<SkillBuilderFormData>();
@@ -257,9 +245,6 @@ export function SkillBuilderInstructionsEditor({
   const referencedSkillsRef = useRef<SkillBuilderFormData["referencedSkills"]>(
     []
   );
-  const referencedSkillIdsRef = useRef<
-    SkillBuilderFormData["referencedSkillIds"]
-  >([]);
   const {
     owner,
     user,
@@ -307,15 +292,6 @@ export function SkillBuilderInstructionsEditor({
     name: REFERENCED_SKILLS_FIELD_NAME,
   });
 
-  const {
-    field: { onChange: onReferencedSkillIdsChange, value: referencedSkillIds },
-  } = useController<
-    SkillBuilderFormData,
-    typeof REFERENCED_SKILL_IDS_FIELD_NAME
-  >({
-    name: REFERENCED_SKILL_IDS_FIELD_NAME,
-  });
-
   useEffect(() => {
     toolsRef.current = tools;
   }, [tools]);
@@ -324,18 +300,15 @@ export function SkillBuilderInstructionsEditor({
     referencedSkillsRef.current = referencedSkills;
   }, [referencedSkills]);
 
-  useEffect(() => {
-    referencedSkillIdsRef.current = referencedSkillIds;
-  }, [referencedSkillIds]);
-
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
   const hasInstructionReferenceSummary =
     (attachedKnowledgeField.value?.length ?? 0) > 0 ||
-    referencedSkills.length > 0 ||
     tools.length > 0 ||
     (instructionsField.value?.includes("<knowledge ") ?? false) ||
-    (instructionsField.value?.includes("<tool ") ?? false);
+    (instructionsField.value?.includes("<tool ") ?? false) ||
+    (instructionsField.value?.includes("<skill ") ?? false) ||
+    (instructionsField.value?.includes("<unavailable_skill ") ?? false);
 
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
@@ -365,17 +338,6 @@ export function SkillBuilderInstructionsEditor({
       previousInlineToolIdsRef.current = currentInlineToolIds;
 
       const currentInlineSkillIds = collectSkillReferenceIds(editor);
-      if (
-        !haveSameSkillReferenceIds(
-          referencedSkillIdsRef.current,
-          currentInlineSkillIds
-        )
-      ) {
-        const nextReferencedSkillIds = [...currentInlineSkillIds];
-        referencedSkillIdsRef.current = nextReferencedSkillIds;
-        onReferencedSkillIdsChange(nextReferencedSkillIds);
-      }
-
       const removedSkillIds = [...previousInlineSkillIdsRef.current].filter(
         (skillId) => !currentInlineSkillIds.has(skillId)
       );
@@ -391,7 +353,7 @@ export function SkillBuilderInstructionsEditor({
 
       previousInlineSkillIdsRef.current = currentInlineSkillIds;
     },
-    [onReferencedSkillIdsChange, onReferencedSkillsChange, onToolsChange]
+    [onReferencedSkillsChange, onToolsChange]
   );
 
   const syncInstructionsFromEditor = useCallback(
@@ -478,17 +440,8 @@ export function SkillBuilderInstructionsEditor({
         referencedSkillsRef.current = nextReferencedSkills;
         onReferencedSkillsChange(nextReferencedSkills);
       }
-
-      if (!referencedSkillIdsRef.current.includes(skill.sId)) {
-        const nextReferencedSkillIds = [
-          ...referencedSkillIdsRef.current,
-          skill.sId,
-        ];
-        referencedSkillIdsRef.current = nextReferencedSkillIds;
-        onReferencedSkillIdsChange(nextReferencedSkillIds);
-      }
     },
-    [onReferencedSkillIdsChange, onReferencedSkillsChange]
+    [onReferencedSkillsChange]
   );
 
   const handleSkillDetails = useCallback(
@@ -549,28 +502,7 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    // Check if there's already an empty knowledge node (in search mode).
-    // If so, do nothing - clicking the button already dismissed it via handleInteractOutside.
-    const { doc } = editor.state;
-    let hasEmptyKnowledgeNode = false;
-    doc.descendants((node) => {
-      if (node.type.name === KNOWLEDGE_NODE_TYPE) {
-        const selectedItems = node.attrs?.selectedItems as
-          | KnowledgeItem[]
-          | undefined;
-        if (!selectedItems || selectedItems.length === 0) {
-          hasEmptyKnowledgeNode = true;
-          return false;
-        }
-      }
-      return true;
-    });
-
-    if (hasEmptyKnowledgeNode) {
-      return;
-    }
-
-    editor.chain().focus().insertKnowledgeNode().run();
+    editor.commands.openAttachKnowledgeSlashCommand();
   }, [editor]);
 
   useEffect(() => {
@@ -578,27 +510,6 @@ export function SkillBuilderInstructionsEditor({
       onAddKnowledge(handleAddKnowledge);
     }
   }, [editor, handleAddKnowledge, onAddKnowledge]);
-
-  const handleOpenCapabilities = useCallback(() => {
-    if (!editor) {
-      return;
-    }
-
-    let hasEmptyCapabilitySearchNode = false;
-    editor.state.doc.descendants((node) => {
-      if (node.type.name === CAPABILITY_SEARCH_NODE_TYPE) {
-        hasEmptyCapabilitySearchNode = true;
-        return false;
-      }
-      return true;
-    });
-
-    if (hasEmptyCapabilitySearchNode) {
-      return;
-    }
-
-    editor.chain().focus().insertCapabilitySearchNode().run();
-  }, [editor]);
 
   const handleReferenceClick = useCallback(
     (target: ReferenceSummaryItem) => {
@@ -643,12 +554,6 @@ export function SkillBuilderInstructionsEditor({
     },
     [editor]
   );
-
-  useEffect(() => {
-    if (editor && onOpenCapabilities) {
-      onOpenCapabilities(handleOpenCapabilities);
-    }
-  }, [editor, handleOpenCapabilities, onOpenCapabilities]);
 
   // Register a callback that the suggestions panel can call to accept a
   // suggestion directly via the editor's ProseMirror commands.
@@ -696,15 +601,7 @@ export function SkillBuilderInstructionsEditor({
       keepTouched: true,
     });
     previousInlineToolIdsRef.current = collectToolReferenceIds(editor);
-    const inlineSkillIds = collectSkillReferenceIds(editor);
-    const inlineSkillIdList = [...inlineSkillIds];
-    previousInlineSkillIdsRef.current = inlineSkillIds;
-    referencedSkillIdsRef.current = inlineSkillIdList;
-    resetField(REFERENCED_SKILL_IDS_FIELD_NAME, {
-      defaultValue: inlineSkillIdList,
-      keepError: true,
-      keepTouched: true,
-    });
+    previousInlineSkillIdsRef.current = collectSkillReferenceIds(editor);
   }, [editor, isContentReady, isDiffMode, resetField]);
 
   // Apply pending instruction suggestions as inline diff decorations.
@@ -882,8 +779,16 @@ export function SkillBuilderInstructionsEditor({
   return (
     <>
       <div className="space-y-1 p-px">
-        <div className="group relative overflow-hidden rounded-xl">
+        <div
+          className={cn(
+            "group relative overflow-hidden rounded-xl",
+            hasInstructionReferenceSummary &&
+              INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_CONTAINER_SIZE,
+            hasInstructionReferenceSummary && !isDiffMode && "resize-y"
+          )}
+        >
           <SkillInstructionsEditorContent
+            className={hasInstructionReferenceSummary ? "h-full" : undefined}
             editor={editor}
             isReadOnly={hasSuggestions}
           />
@@ -893,7 +798,6 @@ export function SkillBuilderInstructionsEditor({
             hasError={displayError}
             instructions={instructionsField.value ?? ""}
             onReferenceClick={handleReferenceClick}
-            referencedSkills={referencedSkills}
             tools={tools}
           />
         </div>

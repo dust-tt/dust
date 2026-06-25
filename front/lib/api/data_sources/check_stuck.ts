@@ -1,4 +1,9 @@
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
+import type {
+  CheckStuckResponseBody,
+  PendingActivityInfo,
+  StuckWorkflowInfo,
+} from "@app/types/api/data_sources/check_stuck";
 import {
   getNotionWorkflowId,
   getZendeskGarbageCollectionWorkflowId,
@@ -15,28 +20,6 @@ import type { ConnectorProvider } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
 import { ScheduleNotFoundError } from "@temporalio/client";
-
-export type PendingActivityInfo = {
-  activityId: string;
-  activityType: string;
-  attempt: number;
-  lastFailure: string | null;
-  state: string;
-};
-
-export type StuckWorkflowInfo = {
-  workflowId: string;
-  status: string;
-  pendingActivities: PendingActivityInfo[];
-  stuckActivities: PendingActivityInfo[];
-  childWorkflows: StuckWorkflowInfo[];
-};
-
-export type CheckStuckResponseBody = {
-  isStuck: boolean;
-  workflows: StuckWorkflowInfo[];
-  message: string;
-};
 
 const STUCK_THRESHOLD = 5;
 

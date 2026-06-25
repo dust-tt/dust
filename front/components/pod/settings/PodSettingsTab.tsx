@@ -1,12 +1,17 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConfirmContext } from "@app/components/Confirm";
+import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
 import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
-import type { RichSpaceType } from "@app/lib/api/spaces";
+import {
+  getPodAgentsMdScopedPath,
+  POD_AGENTS_MD_FILENAME,
+  POD_AGENTS_MD_MAX_CHARACTER_COUNT,
+} from "@app/lib/api/projects/constants";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -17,8 +22,11 @@ import {
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
-import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type {
+  PatchPodMetadataBodyType,
+  RichSpaceType,
+} from "@app/types/api/spaces";
+import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   type LightWorkspaceType,
@@ -218,6 +226,7 @@ export function PodSettingsTab({
     podMetadata?.description ?? ""
   );
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
 
   const form = useForm<PatchPodMetadataBodyType>({
     resolver: zodResolver(PatchPodMetadataBodySchema),
@@ -281,8 +290,13 @@ export function PodSettingsTab({
   };
 
   const onSaveDescription = async () => {
-    await doUpdateMetadata({ description: podDescription });
-    setIsEditingDescription(false);
+    setIsSavingDescription(true);
+    try {
+      await doUpdateMetadata({ description: podDescription });
+      setIsEditingDescription(false);
+    } finally {
+      setIsSavingDescription(false);
+    }
   };
 
   const { archivePod, unarchivePod } = useArchivePod({
@@ -409,11 +423,13 @@ export function PodSettingsTab({
                 <Button
                   label="Save"
                   variant="highlight"
-                  onClick={onSaveDescription}
+                  isLoading={isSavingDescription}
+                  onClick={() => void onSaveDescription()}
                 />
                 <Button
                   label="Cancel"
                   variant="outline"
+                  disabled={isSavingDescription}
                   onClick={() => {
                     setPodDescription(podMetadata?.description ?? "");
                     setIsEditingDescription(false);
@@ -421,6 +437,25 @@ export function PodSettingsTab({
                 />
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Instructions for Agents</div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Seen by all agents in this Pod, stored as{" "}
+            <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
+            Pod's files.
+          </div>
+          <div className="flex w-full min-w-0 flex-col gap-2">
+            <MarkdownFileEditor
+              owner={owner}
+              filePath={getPodAgentsMdScopedPath(pod.sId)}
+              emptyWhenNotFound
+              readOnly={!isPodEditor}
+              placeholder="Enter instructions for agents"
+              maxCharacterCount={POD_AGENTS_MD_MAX_CHARACTER_COUNT}
+            />
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   create_val: {
     description:
-      "Creates a new val in Val Town. Use create_file to add files to the val.",
+      "Creates a new val (project) in Val Town: a serverless TypeScript/JavaScript container that can hold HTTP endpoints, scripts, email handlers, or scheduled tasks. Use create_file to add files to the val.",
     schema: {
       name: z
         .string()
@@ -41,7 +41,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_val: {
-    description: "Gets a specific val by its ID",
+    description:
+      "Gets a specific Val Town val (serverless script or project) by its ID, including its files and metadata.",
     schema: {
       valId: z.string().describe("The ID of the val to retrieve"),
     },
@@ -52,7 +53,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
     },
   },
   list_vals: {
-    description: "Lists vals available to the user's account",
+    description:
+      "Lists Val Town vals (serverless TypeScript/JavaScript functions and projects) available to the user's account.",
     schema: {
       limit: z
         .number()
@@ -81,7 +83,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
     },
   },
   search_vals: {
-    description: "Searches for vals by name, description, or content",
+    description:
+      "Searches for Val Town vals (serverless scripts and projects) by name, description, or code content.",
     schema: {
       query: z.string().describe("Search query to find vals"),
       limit: z
@@ -107,7 +110,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
     },
   },
   list_val_files: {
-    description: "Lists all files in a specific val",
+    description:
+      "Lists all files in a specific Val Town val (serverless project).",
     schema: {
       valId: z.string().describe("The ID of the val to list files for"),
       path: z
@@ -259,7 +263,8 @@ export const VAL_TOWN_SERVER = {
   serverInfo: {
     name: "val_town",
     version: "1.0.0",
-    description: "Create and execute vals in Val Town.",
+    description:
+      "Create and manage Val Town vals: serverless TypeScript/JavaScript functions, HTTP endpoints, email handlers, and scheduled scripts.",
     authorization: null,
     icon: "ValTownLogo",
     documentationUrl: "https://docs.dust.tt/docs/val-town",

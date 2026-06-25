@@ -9,6 +9,7 @@ import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/conf
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
+import { imageUrlToBase64ImageBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
@@ -76,6 +77,9 @@ export abstract class AgentPlatformStream extends WithAnthropicAIInputConverter(
 
   modelIdToApiModelId = (modelId: ModelId): Model =>
     MODEL_MAPPING[modelId] ?? modelId;
+
+  // Vertex AI rejects URL image sources, so inline images as base64.
+  imageUrlToImageBlock = imageUrlToBase64ImageBlock;
 
   async *streamRaw(
     input: MessageCreateParamsNonStreaming

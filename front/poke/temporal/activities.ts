@@ -534,14 +534,15 @@ export async function deleteMembersActivity({
           users: [user],
         });
 
-      // If the user we're removing the membership of only has one membership, we delete the user.
+      // If the user we're removing the membership of only has one membership, we delete their
+      // workspace data but keep the user row to avoid expensive FK constraint scans.
       if (membershipsOfUser.length === 1) {
         childLogger.info(
           {
             membershipId: membership.id,
             userId: user.sId,
           },
-          "Deleting Membership and user"
+          "Deleting Membership and user data"
         );
 
         // Delete the user's files.
@@ -551,6 +552,7 @@ export async function deleteMembersActivity({
         // Delete the user's agent memories.
         await AgentMemoryModel.destroy({
           where: {
+            workspaceId: workspace.id,
             userId: user.id,
           },
         });
@@ -559,8 +561,6 @@ export async function deleteMembersActivity({
         // Cancel any remaining Temporal workflows/schedules and delete wake-up rows owned by the
         // user in this workspace.
         await WakeUpResource.deleteAllForUser(auth, user.toJSON());
-
-        await user.delete(auth, {});
       }
     } else {
       hardDeleteLogger.info(
@@ -788,7 +788,10 @@ export async function deleteWorkspaceActivity({
 
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
   if (workspaceResource) {
-    await workspaceResource.delete(auth, {});
+    const deleteResult = await workspaceResource.delete(auth, {});
+    if (deleteResult.isErr()) {
+      throw deleteResult.error;
+    }
   }
 }
 

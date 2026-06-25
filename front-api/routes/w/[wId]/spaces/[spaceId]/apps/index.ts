@@ -1,11 +1,11 @@
-import type {
-  GetAppsResponseBody,
-  PostAppResponseBody,
-} from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
+import type {
+  GetAppsResponseBody,
+  PostAppResponseBody,
+} from "@app/types/api/apps";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";

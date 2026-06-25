@@ -1,6 +1,6 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/internal/assistant";
+import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/assistant";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";

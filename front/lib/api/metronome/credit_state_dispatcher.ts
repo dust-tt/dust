@@ -4,9 +4,8 @@ import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
-import { getNetBalance } from "@app/lib/metronome/client";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
+import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
 import {
   clearWorkspaceProgrammaticWarningReached,
@@ -634,18 +633,4 @@ export async function syncPoolCreditStateFromBalance({
   } else {
     await dispatchPoolExhausted({ workspace });
   }
-}
-
-/**
- * Sum the live Metronome AWU balance across all AWU credit-type schedules for
- * a customer. This is the same balance the pool credit state machine reacts
- * to via `syncPoolCreditStateFromBalance`; exposed so debug tooling can read
- * it without re-implementing the reduction.
- */
-export async function getWorkspacePoolAwuBalance(
-  metronomeCustomerId: string
-): Promise<Result<number, Error>> {
-  return getNetBalance(metronomeCustomerId, {
-    creditTypeId: getCreditTypeAwuId(),
-  });
 }

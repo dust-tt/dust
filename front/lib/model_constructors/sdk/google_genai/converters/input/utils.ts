@@ -25,6 +25,7 @@ import type {
   FunctionDeclaration,
   Part,
   SchemaUnion,
+  ThinkingConfig,
   ToolConfig,
 } from "@google/genai";
 import { FunctionCallingConfigMode, ThinkingLevel } from "@google/genai";
@@ -323,18 +324,22 @@ export function forceToolNameToToolConfig(
     : undefined;
 }
 
-export function effortToThinkingLevel(
+export function effortToThinkingConfig(
   effort: GeminiSupportedReasoningEffort
-): ThinkingLevel {
+): ThinkingConfig {
   switch (effort) {
+    case "none":
+      // Gemini 3 has no "off" thinking level; matching the legacy router, the
+      // minimum budget with thoughts hidden is the closest to disabling it.
+      return { thinkingBudget: 128, includeThoughts: false };
     case "minimal":
-      return ThinkingLevel.MINIMAL;
+      return { thinkingLevel: ThinkingLevel.MINIMAL, includeThoughts: true };
     case "low":
-      return ThinkingLevel.LOW;
+      return { thinkingLevel: ThinkingLevel.LOW, includeThoughts: true };
     case "medium":
-      return ThinkingLevel.MEDIUM;
+      return { thinkingLevel: ThinkingLevel.MEDIUM, includeThoughts: true };
     case "high":
-      return ThinkingLevel.HIGH;
+      return { thinkingLevel: ThinkingLevel.HIGH, includeThoughts: true };
     default:
       assertNever(effort);
   }

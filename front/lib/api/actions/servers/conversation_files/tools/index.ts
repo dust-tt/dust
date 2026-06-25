@@ -17,8 +17,6 @@ import {
 import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import {
-  type ContentNodeAttachmentType,
-  type ConversationAttachmentType,
   conversationAttachmentId,
   isContentNodeAttachmentType,
   renderAttachmentXml,
@@ -31,6 +29,10 @@ import {
   CONTENT_OUTDATED_MSG,
   getContentFragmentFromAttachmentFile,
 } from "@app/lib/resources/content_fragment_resource";
+import type {
+  ContentNodeAttachmentType,
+  ConversationAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ImageContent,

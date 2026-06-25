@@ -37,6 +37,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -106,6 +107,7 @@ import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
+import { ProjectDefaultSkillModel } from "@app/lib/resources/storage/models/project_default_skills";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   ProjectTaskConversationModel,
@@ -118,7 +120,10 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
+import {
+  ConversationSandboxModel,
+  SandboxModel,
+} from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -176,6 +181,7 @@ export function loadAllModels() {
     WebhookRequestModel,
     WebhookRequestTriggerModel,
     ConversationModel,
+    ConversationSelectedSpaceModel,
     ConversationParticipantModel,
     UserConversationReadsModel,
     WakeUpModel,
@@ -237,6 +243,7 @@ export function loadAllModels() {
     GroupSkillModel,
     SkillReferenceModel,
     AgentSkillModel,
+    ProjectDefaultSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
     SkillMCPServerConfigurationModel,
@@ -248,6 +255,7 @@ export function loadAllModels() {
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
     SandboxModel,
+    ConversationSandboxModel,
     ConversationBranchModel,
     ConversationForkModel,
     ProjectTaskModel,

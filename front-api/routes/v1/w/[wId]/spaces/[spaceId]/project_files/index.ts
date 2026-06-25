@@ -1,9 +1,9 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";

@@ -1,7 +1,7 @@
-import type { GetSkillHistoryResponseBody } from "@app/lib/api/assistant/skills/history";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
+import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
+import { GetSkillHistoryQuerySchema } from "@app/types/api/skill";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

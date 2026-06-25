@@ -5,7 +5,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockLookupPhoneNumber } = vi.hoisted(() => {
   return {
@@ -100,7 +100,8 @@ describe("workspace_verification", () => {
     it("should create a new verification attempt on success", async () => {
       const result = await startVerification(authW1, validPhoneNumber);
 
-      expect(result.isOk()).toBe(true);
+      assert(result.isOk());
+      expect(result.value.status).toBe("code_sent");
       expect(mockLookupPhoneNumber).toHaveBeenCalledWith(validPhoneNumber);
       expect(mockSendOtp).toHaveBeenCalledWith(validPhoneNumber);
 
@@ -131,7 +132,8 @@ describe("workspace_verification", () => {
 
       const result = await startVerification(authW1, validPhoneNumber);
 
-      expect(result.isOk()).toBe(true);
+      assert(result.isOk());
+      expect(result.value.status).toBe("code_sent");
 
       const attempt =
         await WorkspaceVerificationAttemptResource.fetchByPhoneHash(
@@ -142,7 +144,7 @@ describe("workspace_verification", () => {
       expect(attempt?.twilioVerificationSid).toBe("VA987654321");
     });
 
-    it("should return error if workspace is already verified", async () => {
+    it("should return already_verified if workspace phone is already verified", async () => {
       const phoneNumberHash =
         WorkspaceVerificationAttemptResource.hashPhoneNumber(validPhoneNumber);
       const attempt = await WorkspaceVerificationAttemptFactory.create(authW1, {
@@ -152,13 +154,10 @@ describe("workspace_verification", () => {
 
       const result = await startVerification(authW1, validPhoneNumber);
 
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
-        expect(result.error.message).toBe(
-          "This workspace is already verified."
-        );
-      }
+      assert(result.isOk());
+      expect(result.value.status).toBe("already_verified");
+      expect(mockLookupPhoneNumber).not.toHaveBeenCalled();
+      expect(mockSendOtp).not.toHaveBeenCalled();
     });
 
     it("should return error if phone is already verified in another workspace", async () => {
@@ -387,7 +386,7 @@ describe("workspace_verification", () => {
       }
     });
 
-    it("should return error if workspace is already verified", async () => {
+    it("should return verified true if workspace is already verified (idempotent)", async () => {
       const phoneNumberHash =
         WorkspaceVerificationAttemptResource.hashPhoneNumber(validPhoneNumber);
       const attempt = await WorkspaceVerificationAttemptFactory.create(authW1, {
@@ -401,13 +400,9 @@ describe("workspace_verification", () => {
         validCode
       );
 
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
-        expect(result.error.message).toBe(
-          "This workspace is already verified."
-        );
-      }
+      assert(result.isOk());
+      expect(result.value.verified).toBe(true);
+      expect(mockCheckOtp).not.toHaveBeenCalled();
     });
 
     it("should return error if OTP is invalid", async () => {

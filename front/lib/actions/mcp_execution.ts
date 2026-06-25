@@ -17,6 +17,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
@@ -442,6 +443,12 @@ export function getAugmentedInputs(
     rawInputs: Record<string, unknown>;
   }
 ): Record<string, unknown> {
+  // Remote MCP tools pass inputSchema through as-is; only Dust internal tools
+  // inject configured data sources, tables, etc. via augmentInputsWithConfiguration.
+  if (!isInternalServerSideMCPToolConfiguration(actionConfiguration)) {
+    return rawInputs;
+  }
+
   return augmentInputsWithConfiguration({
     owner: auth.getNonNullableWorkspace(),
     rawInputs,

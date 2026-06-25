@@ -1,7 +1,7 @@
-import type { BillingInvoice } from "@app/lib/api/billing/invoices";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useRecentBillingInvoices } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { BillingInvoice } from "@app/types/api/billing/invoices";
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useSubscriptionContext } from "./SubscriptionContext";
 

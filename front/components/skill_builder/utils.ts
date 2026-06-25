@@ -1,5 +1,5 @@
-import type { PostSkillSuggestionsRequestBody } from "@app/lib/api/skills/description_suggestion";
 import { clientFetch } from "@app/lib/egress/client";
+import type { PostSkillSuggestionsRequestBody } from "@app/types/api/skills/description_suggestion";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

@@ -45,6 +45,7 @@ import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_san
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
@@ -235,12 +236,11 @@ export async function createSandboxTools(
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
-  // The add_egress_domain tool requires both the workspace admin flag
-  // (gates the whole agent-egress-requests configuration) and the
-  // per-workspace setting that admins toggle on top of it.
+  // The add_egress_domain tool requires both sandbox tools and the
+  // per-workspace setting that admins toggle on top of them.
   const flags = await getFeatureFlags(auth);
   if (
-    flags.includes("sandbox_workspace_admin") &&
+    isComputerFeatureEnabled(flags) &&
     isSandboxAgentEgressRequestsAllowed(auth)
   ) {
     return tools;
@@ -256,7 +256,7 @@ export async function buildDescribeToolsetOutput(
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
   const flags = await getFeatureFlags(auth);
   const toolsResult = getToolsForProvider(auth, providerId, {
-    includeDsbxTools: flags.includes("sandbox_dsbx_tools"),
+    includeDsbxTools: isComputerFeatureEnabled(flags),
   });
   if (toolsResult.isErr()) {
     return new Err(new MCPError(toolsResult.error.message));
@@ -474,7 +474,7 @@ export async function addEgressDomainTool(
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
   // Defense-in-depth: createSandboxTools already filters this tool out when the
-  // sandbox_workspace_admin flag is off, so this metadata-only check is enough
+  // sandbox tools flag is off, so this metadata-only check is enough
   // to reject any caller that bypasses tool-list filtering.
   if (!isSandboxAgentEgressRequestsAllowed(auth)) {
     return new Err(

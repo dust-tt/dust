@@ -1,3 +1,4 @@
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import {
   archiveMetronomeContract,
@@ -64,6 +65,16 @@ vi.mock("@app/lib/metronome/seats", async () => {
   };
 });
 
+vi.mock("@app/lib/api/workos/organization", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/api/workos/organization")
+  >("@app/lib/api/workos/organization");
+  return {
+    ...actual,
+    getOrCreateWorkOSOrganization: vi.fn(),
+  };
+});
+
 vi.mock("@app/lib/metronome/plan_type", async () => {
   const actual = await vi.importActual<
     typeof import("@app/lib/metronome/plan_type")
@@ -126,7 +137,6 @@ async function ensureEnterprisePlan(): Promise<void> {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
-    isBrandedFramesAllowed: false,
   });
 }
 
@@ -206,6 +216,11 @@ function postSwitchContract(workspaceId: string, body: unknown) {
 }
 
 beforeEach(() => {
+  vi.mocked(getOrCreateWorkOSOrganization).mockResolvedValue(
+    new Ok({
+      id: "org_test",
+    } as unknown as import("@workos-inc/node").Organization)
+  );
   vi.mocked(archiveMetronomeContract).mockResolvedValue(new Ok(undefined));
   vi.mocked(reactivateMetronomeContract).mockResolvedValue(new Ok(undefined));
   vi.mocked(ensureMetronomeCustomerForWorkspace).mockResolvedValue(

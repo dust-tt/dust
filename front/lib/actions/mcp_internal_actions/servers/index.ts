@@ -67,7 +67,6 @@ import { default as skillManagementServer } from "@app/lib/api/actions/servers/s
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
 import { default as slackServer } from "@app/lib/api/actions/servers/slack_personal";
-import { default as slideshowServer } from "@app/lib/api/actions/servers/slideshow";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
@@ -154,8 +153,6 @@ export async function getInternalMCPServer(
         return dataSourcesFileSystemServer(auth, agentLoopContext);
       }
       return searchServer(auth, agentLoopContext);
-    case "slideshow":
-      return slideshowServer(auth, agentLoopContext);
     case "missing_action_catcher":
       return missingActionCatcherServer(auth, agentLoopContext);
     case "notion":

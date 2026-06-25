@@ -58,7 +58,6 @@ export const FREE_NO_PLAN_DATA: PlanAttributes = {
   trialPeriodDays: 0,
   canUseProduct: false,
   isByok: false,
-  isBrandedFramesAllowed: false,
 };
 
 /**
@@ -97,7 +96,6 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     trialPeriodDays: 0,
     canUseProduct: false,
     isByok: false,
-    isBrandedFramesAllowed: false,
   },
   {
     code: FREE_UPGRADED_PLAN_CODE,
@@ -130,7 +128,6 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
-    isBrandedFramesAllowed: false,
   },
   {
     code: FREE_TRIAL_PHONE_PLAN_CODE,
@@ -163,7 +160,6 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
-    isBrandedFramesAllowed: false,
   },
 ];
 

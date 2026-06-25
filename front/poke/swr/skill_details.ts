@@ -1,8 +1,8 @@
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   PokeGetSkillDetails,
   PokeGetSkillVersions,
-} from "@app/lib/api/poke/skills";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+} from "@app/types/api/poke/skills";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

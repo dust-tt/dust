@@ -1,4 +1,3 @@
-import { DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -27,7 +26,9 @@ export const FILESYSTEM_LIST_TOOL_NAME = "list";
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
     description:
-      "Read the contents of a document, referred to by its nodeId (named after the 'cat' unix tool). The nodeId can be obtained using the 'find', 'list' or 'search' tools.",
+      "Read and retrieve the full text content of a document or page by its nodeId (like 'cat' in Unix). " +
+      `Use to open, view, or read a specific file after locating it via '${FILESYSTEM_FIND_TOOL_NAME}', '${FILESYSTEM_LIST_TOOL_NAME}', or '${FILESYSTEM_SEARCH_TOOL_NAME}'. ` +
+      "The nodeId is the unique identifier exposed in the output of all navigation and search tools in this server.",
     schema: DataSourceFilesystemCatInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -38,11 +39,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_LIST_TOOL_NAME]: {
     description:
-      "List the direct contents of a node, like 'ls' in Unix. Should only be used on nodes with children " +
-      "(hasChildren: true). A good fit is to explore the filesystem structure step " +
-      "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
-      "the next step's nodeId. If a node output by this tool or the find tool has children " +
-      "(hasChildren: true), it means that this tool can be used again on it.",
+      "Browse or explore the direct contents of a folder, section, or container node (like 'ls' in Unix). " +
+      "Use to navigate the data source structure, see what documents or sub-folders are available, " +
+      "or enumerate items inside a known location. Only works on nodes with children (hasChildren: true). " +
+      "Call repeatedly with the 'nodeId' from each result to traverse nested folders step by step.",
     schema: DataSourceFilesystemListInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -53,7 +53,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_SEARCH_TOOL_NAME]: {
     description:
-      "Perform a semantic search within the folders and files designated by `nodeIds`. All children of the designated nodes will be searched.",
+      "Search for information, documents, or content by semantic similarity within the data source. " +
+      "Use to find relevant passages, answer questions, look up knowledge, or retrieve content from " +
+      "connected spaces. Searches all children of the designated nodeIds. " +
+      `Prefer this over '${FILESYSTEM_FIND_TOOL_NAME}' when you know what you're looking for conceptually but not the exact document title.`,
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -64,8 +67,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_FIND_TOOL_NAME]: {
     description:
-      "Find content based on their title starting from a specific node. Can be used to find specific nodes by searching for their titles. " +
-      "The query title can be omitted to list all nodes starting from a specific node. This is like using 'find' in Unix.",
+      "Locate a document, page, or folder by searching its title (like 'find' in Unix). " +
+      "Use to find a specific file or wiki page by name when you know (part of) its title — partial matches are supported. " +
+      "Omit the query to enumerate all nodes under a given root. " +
+      `Prefer '${FILESYSTEM_SEARCH_TOOL_NAME}' when looking for content by topic rather than by exact title.`,
     schema: DataSourceFilesystemFindInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -76,9 +81,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
     description:
-      "Show the complete path from a node to the data source root, displaying the hierarchy of parent nodes. " +
-      "This is useful for understanding where a specific node is located within the data source structure. " +
-      "The path is returned as a list of nodes, with the first node being the data source root and the last node being the target node.",
+      "Show the full breadcrumb path from a node back to the root of the data source (like 'pwd' in Unix). " +
+      "Use to understand where a document lives in the folder hierarchy, navigate to parent sections, " +
+      "or display the location of a search result. " +
+      "Returns an ordered list of ancestor nodes from root to the target node.",
     schema: DataSourceFilesystemLocateTreeInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -127,7 +133,6 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
   });
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "data_sources_file_system",
     version: "1.0.0",
@@ -135,7 +140,7 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon",
     documentationUrl: null,
-    instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
+    instructions: null,
   },
   tools: Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => ({
     name: t.name,

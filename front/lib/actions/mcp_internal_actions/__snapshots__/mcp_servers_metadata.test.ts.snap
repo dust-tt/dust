@@ -155,6 +155,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_solution_categories": "never_ask",
     "list_solution_folders": "never_ask",
     "list_ticket_approvals": "never_ask",
+    "list_ticket_requested_items": "never_ask",
     "list_ticket_tasks": "never_ask",
     "list_tickets": "never_ask",
     "request_service_approval": "low",
@@ -622,11 +623,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "read_thread_messages": "never_ask",
     "remove_reaction": "low",
     "search_user": "never_ask",
-  },
-  "slideshow": {
-    "create_slideshow_file": "never_ask",
-    "edit_slideshow_file": "never_ask",
-    "retrieve_slideshow_file": "never_ask",
   },
   "snowflake": {
     "describe_semantic_view": "never_ask",

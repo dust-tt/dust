@@ -25,6 +25,7 @@ import {
 import { USAGE_TAG } from "@app/lib/metronome/setup_common";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { getStripeClient } from "@app/lib/plans/stripe";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import {
@@ -129,7 +130,11 @@ async function checkAwuPurchaseEligibility(
   }
 
   if (isEnterprisePlanPrefix(subscription.plan.code)) {
-    return new Err({ code: "enterprise_plan" });
+    const config =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+    if (!config?.topUpEnabled) {
+      return new Err({ code: "enterprise_plan" });
+    }
   }
 
   const stripeCustomerResult =

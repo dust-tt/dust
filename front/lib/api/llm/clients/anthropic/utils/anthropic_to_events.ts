@@ -262,6 +262,7 @@ function* handleContentBlockStart(
     case "container_upload":
     case "compaction":
     case "advisor_tool_result":
+    case "fallback":
       // We don't use these Anthropic tools
       return;
     default:

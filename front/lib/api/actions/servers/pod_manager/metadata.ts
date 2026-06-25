@@ -5,7 +5,6 @@ import {
   IncludeInputSchema,
   SearchWithNodesInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import {
   PodMembersToAddSchema,
@@ -138,7 +137,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
     description:
       "Get information about the Pod: URL, title, description, pinned frame, and linked content nodes " +
       "attached to the Pod context. Does NOT list Pod files. Pod files live under " +
-      `\`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
+      `\`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server. ` +
+      "Pod files, metadata, and members are shared state across all conversations in this Pod.",
     schema: {
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
@@ -430,23 +430,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-const POD_MANAGER_INSTRUCTIONS =
-  "Pod files and metadata are shared across all conversations in this Pod. " +
-  `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths ` +
-  "(create, cat, grep, list, delete), not through this server. " +
-  "Use `add_content_node` to reference a Company Data node in the Pod context, and " +
-  "`remove_content_node` to remove such a reference. " +
-  "Use `edit_information` to update the Pod title, description, or pinned frame. " +
-  "Use `update_members` to add or remove Pod members. " +
-  "Use `list_pods` to discover Pods you can access (your Pods by default, or all open Pods) and obtain the dustPod uri for other tools. " +
-  "Use `retrieve_recent_documents` to load recent content from the Pod data source and from " +
-  "knowledge nodes in the Pod context. " +
-  `Use \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, SEMANTIC_SEARCH_TOOL_NAME)}\` to find relevant chunks in Pod files and/or conversations ` +
-  "(scope: files, conversations, or all). " +
-  "Requires write permissions on the Pod for state-changing operations.";
-
 export const POD_MANAGER_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "pod_manager",
     version: "1.0.0",
@@ -457,7 +441,7 @@ export const POD_MANAGER_SERVER = {
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: POD_MANAGER_INSTRUCTIONS,
+    instructions: null,
   },
   tools: Object.values(POD_MANAGER_TOOLS_METADATA).map((t) => ({
     name: t.name,

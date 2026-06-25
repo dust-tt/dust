@@ -1,8 +1,10 @@
 // Environment setup operations
-// Hives live under {repoRoot}/.hives/{name}/ so Node module resolution
-// naturally walks up to find {repoRoot}/node_modules/. We only need:
+// Worktrees live under {repoRoot} so Node module resolution naturally walks up
+// to find {repoRoot}/node_modules/. Hive-owned worktrees use
+// {repoRoot}/.hives/{name}/; adopted worktrees can use any path under
+// {repoRoot}. We only need:
 // 1. A small node_modules/@dust-tt/ override so workspace packages resolve
-//    from the hive (not the main repo).
+//    from the worktree (not the main repo).
 // 2. Shallow copies of workspace-level node_modules (version overrides).
 // NOTE: cargo target is symlinked to share Rust compilation cache.
 
@@ -36,11 +38,11 @@ function setupShallowNodeModules(srcNodeModules: string, destDir: string): void 
 }
 
 // Setup @dust-tt workspace overrides in hive's node_modules.
-// Since hives are under the repo root, Node resolution walks up to find
+// Since worktrees are under the repo root, Node resolution walks up to find
 // {repoRoot}/node_modules/ for all packages. But @dust-tt/* packages in
 // the root node_modules point to the main repo's workspaces via relative
 // symlinks. We override them here to point to the hive's workspaces instead,
-// so TypeScript and runtime resolve the hive's types (not the main repo's).
+// so TypeScript and runtime resolve the worktree's types (not the main repo's).
 function setupDustTtOverrides(repoRoot: string, worktreePath: string): void {
   const mainDustTt = join(repoRoot, "node_modules", "@dust-tt");
   const hiveDustTt = join(worktreePath, "node_modules", "@dust-tt");
@@ -221,9 +223,9 @@ async function linkWorkspaceNodeModules(worktreePath: string, repoRoot: string):
 }
 
 // Install all dependencies for a worktree
-// Since hives are under the repo root, Node module resolution walks up to
+// Since worktrees are under the repo root, Node module resolution walks up to
 // find {repoRoot}/node_modules/ automatically. We only need to:
-// 1. Override @dust-tt/* packages to point to the hive's workspaces
+// 1. Override @dust-tt/* packages to point to the worktree's workspaces
 // 2. Shallow-copy workspace-level node_modules (version overrides)
 export async function installAllDependencies(
   worktreePath: string,

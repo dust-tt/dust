@@ -1,6 +1,9 @@
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { AgentPlatformEuropeClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_haiku_four_dot_five";
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
+import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
+import { AgentPlatformEuropeGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_pro";
+import { AgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
 import { AnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
 import { AnthropicGlobalClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_seven";
 import { AnthropicGlobalClaudeOpusFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_six";
@@ -11,6 +14,10 @@ import { FireworksGlobalKimiK2Dot5Stream } from "@app/lib/model_constructors/str
 import { GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_1_pro";
 import { GoogleAiStudioGlobalGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/google_ai_studio_global_gemini_3_5_flash";
+import { MistralEuropeCodestralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_codestral";
+import { MistralEuropeMistralLargeStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_large";
+import { MistralEuropeMistralMedium35Stream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_medium_3_5";
+import { MistralEuropeMistralSmallStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_small";
 import { OpenAIResponsesGlobalGptFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five";
 import { OpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { OpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four";
@@ -20,6 +27,7 @@ import { OpenAIResponsesGlobalGptFiveDotOneStream } from "@app/lib/model_constru
 import { OpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_two";
 import { OpenAIResponsesGlobalGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_mini";
 import { OpenAIResponsesGlobalGptFiveNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_nano";
+import { TogetheraiGlobalLlama3370BInstructTurboStream } from "@app/lib/model_constructors/stream/endpoints/togetherai_global_llama_3_3_70b_instruct_turbo";
 
 export const STREAM_ENDPOINTS = {
   [AnthropicGlobalClaudeSonnetFourDotSixStream.id]:
@@ -32,6 +40,12 @@ export const STREAM_ENDPOINTS = {
     AnthropicGlobalClaudeOpusFourDotSixStream,
   [AgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
     AgentPlatformEuropeClaudeSonnetFourDotSixStream,
+  [AgentPlatformEuropeGeminiThreeDotOneProStream.id]:
+    AgentPlatformEuropeGeminiThreeDotOneProStream,
+  [AgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:
+    AgentPlatformEuropeGeminiThreeDotFiveFlashStream,
+  [AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
+    AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream,
   [GoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
     GoogleAiStudioGlobalGeminiThreeDotOneProStream,
   [GoogleAiStudioGlobalGeminiThreeDotFiveFlashStream.id]:
@@ -60,6 +74,12 @@ export const STREAM_ENDPOINTS = {
   [FireworksGlobalGlmFiveDotTwoStream.id]: FireworksGlobalGlmFiveDotTwoStream,
   [FireworksGlobalDeepSeekV4ProStream.id]: FireworksGlobalDeepSeekV4ProStream,
   [FireworksGlobalKimiK2Dot5Stream.id]: FireworksGlobalKimiK2Dot5Stream,
+  [TogetheraiGlobalLlama3370BInstructTurboStream.id]:
+    TogetheraiGlobalLlama3370BInstructTurboStream,
+  [MistralEuropeMistralLargeStream.id]: MistralEuropeMistralLargeStream,
+  [MistralEuropeMistralMedium35Stream.id]: MistralEuropeMistralMedium35Stream,
+  [MistralEuropeMistralSmallStream.id]: MistralEuropeMistralSmallStream,
+  [MistralEuropeCodestralStream.id]: MistralEuropeCodestralStream,
 } as const satisfies Record<string, StreamEndpointConstructor>;
 
 export type StreamEndpointId = keyof typeof STREAM_ENDPOINTS;

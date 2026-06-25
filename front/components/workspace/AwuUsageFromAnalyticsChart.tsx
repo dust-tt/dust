@@ -14,6 +14,7 @@ import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
+import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
 import {
@@ -32,8 +33,8 @@ interface AwuUsageFromAnalyticsChartProps {
   period: ObservabilityTimeRangeType;
 }
 
-type Granularity = "day" | "week" | "month";
-type AnalyticsGroupBy = "usage_type" | "agent" | "user" | "origin";
+export type Granularity = "day" | "week" | "month";
+export type AnalyticsGroupBy = "usage_type" | "agent" | "user" | "origin";
 
 const GROUP_BY_OPTIONS: {
   value: AnalyticsGroupBy | undefined;
@@ -80,15 +81,35 @@ function formatTimestamp(timestamp: number, granularity: Granularity): string {
   });
 }
 
-export function AwuUsageFromAnalyticsChart({
-  workspaceId,
-  period,
-}: AwuUsageFromAnalyticsChartProps) {
-  const [granularity, setGranularity] = useState<Granularity>("day");
-  const [groupBy, setGroupBy] = useState<AnalyticsGroupBy | undefined>(
-    undefined
-  );
-  const [groupByCount, setGroupByCount] = useState<number>(5);
+export interface BaseAwuUsageFromAnalyticsChartProps {
+  awuUsageData: AwuUsageAnalyticsResponse | undefined;
+  isAwuUsageLoading: boolean;
+  isAwuUsageError: boolean;
+  granularity: Granularity;
+  setGranularity: (v: Granularity) => void;
+  groupBy: AnalyticsGroupBy | undefined;
+  setGroupBy: (v: AnalyticsGroupBy | undefined) => void;
+  groupByCount: number;
+  setGroupByCount: (v: number) => void;
+  // Number of days this chart covers — used for the filename and export URL.
+  days: number;
+  // Base URL for the CSV export endpoint (without query params).
+  exportUrlPrefix: string;
+}
+
+export function BaseAwuUsageFromAnalyticsChart({
+  awuUsageData,
+  isAwuUsageLoading,
+  isAwuUsageError,
+  granularity,
+  setGranularity,
+  groupBy,
+  setGroupBy,
+  groupByCount,
+  setGroupByCount,
+  days,
+  exportUrlPrefix,
+}: BaseAwuUsageFromAnalyticsChartProps) {
   // Legend-driven drilldown: when non-null, only these series are shown.
   const [enabledKeys, setEnabledKeys] = useState<string[] | null>(null);
 
@@ -112,15 +133,6 @@ export function AwuUsageFromAnalyticsChart({
       return [...current, key];
     });
   }, []);
-
-  const { awuUsageData, isAwuUsageLoading, isAwuUsageError } =
-    useAwuUsageFromAnalytics({
-      workspaceId,
-      groupBy,
-      groupByCount,
-      granularity,
-      days: period,
-    });
 
   const groups = useMemo(() => awuUsageData?.groups ?? [], [awuUsageData]);
   const points = useMemo(() => awuUsageData?.points ?? [], [awuUsageData]);
@@ -176,7 +188,7 @@ export function AwuUsageFromAnalyticsChart({
   );
 
   const exportParams = new URLSearchParams({
-    days: period.toString(),
+    days: days.toString(),
     granularity,
     format: "csv",
   });
@@ -189,8 +201,8 @@ export function AwuUsageFromAnalyticsChart({
     exportParams.set("series", effectiveEnabledKeys.join(","));
   }
   const csvDownload = useDownloadCsv({
-    url: `/api/w/${workspaceId}/analytics/awu-usage-analytics?${exportParams.toString()}`,
-    filename: `dust_credit_usage_last_${period}_days.csv`,
+    url: `${exportUrlPrefix}?${exportParams.toString()}`,
+    filename: `dust_credit_usage_last_${days}_days.csv`,
     disabled: isAwuUsageLoading || !!isAwuUsageError || chartData.length === 0,
   });
 
@@ -338,6 +350,42 @@ export function AwuUsageFromAnalyticsChart({
         ))}
       </BarChart>
     </ChartContainer>
+  );
+}
+
+export function AwuUsageFromAnalyticsChart({
+  workspaceId,
+  period,
+}: AwuUsageFromAnalyticsChartProps) {
+  const [granularity, setGranularity] = useState<Granularity>("day");
+  const [groupBy, setGroupBy] = useState<AnalyticsGroupBy | undefined>(
+    undefined
+  );
+  const [groupByCount, setGroupByCount] = useState<number>(5);
+
+  const { awuUsageData, isAwuUsageLoading, isAwuUsageError } =
+    useAwuUsageFromAnalytics({
+      workspaceId,
+      groupBy,
+      groupByCount,
+      granularity,
+      days: period,
+    });
+
+  return (
+    <BaseAwuUsageFromAnalyticsChart
+      awuUsageData={awuUsageData}
+      isAwuUsageLoading={isAwuUsageLoading}
+      isAwuUsageError={!!isAwuUsageError}
+      granularity={granularity}
+      setGranularity={setGranularity}
+      groupBy={groupBy}
+      setGroupBy={setGroupBy}
+      groupByCount={groupByCount}
+      setGroupByCount={setGroupByCount}
+      days={period}
+      exportUrlPrefix={`/api/w/${workspaceId}/analytics/awu-usage-analytics`}
+    />
   );
 }
 

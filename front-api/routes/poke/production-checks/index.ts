@@ -1,5 +1,5 @@
-import type { GetProductionChecksResponseBody } from "@app/lib/api/poke/production_checks";
 import { getCheckSummaries } from "@app/lib/api/poke/production_checks";
+import type { GetProductionChecksResponseBody } from "@app/types/api/poke/production_checks";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 

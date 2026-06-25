@@ -1,5 +1,5 @@
 import { getBuilderSuggestions } from "@app/lib/api/assistant/suggestions";
-import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types/api/internal/assistant";
+import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types/api/assistant";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

@@ -84,6 +84,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Disable logging of agent runs",
     stage: "dust_only",
   },
+  disable_computer_feature: {
+    description:
+      "Disable all Computer (sandbox) features for this workspace, overriding sandbox opt-in flags",
+    stage: "on_demand",
+  },
   disallow_agent_creation_to_users: {
     description:
       "Prevent users from creating agents, allowing only admins and builders",
@@ -162,11 +167,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
     stage: "on_demand",
   },
-  new_analytics_page: {
-    description:
-      "Use the new Analytics page whose credit chart and tables are sourced from our analytics index (cost.full_awu) instead of Metronome.",
-    stage: "on_demand",
-  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -187,10 +187,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "on_demand",
-  },
-  slideshow: {
-    description: "Slideshow MCP tool",
-    stage: "dust_only",
   },
   slack_message_splitting: {
     description:
@@ -221,17 +217,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   sandbox_tools: {
     description:
-      "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
-    stage: "on_demand",
-  },
-  sandbox_dsbx_tools: {
-    description:
-      "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
-    stage: "on_demand",
-  },
-  sandbox_workspace_admin: {
-    description:
-      "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
+      "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
     stage: "on_demand",
   },
   run_tools_from_prompt: {
@@ -266,9 +252,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
-  metronome_billing: {
+  legacy_billing: {
     description:
-      "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
+      "Force this workspace to use legacy Stripe billing, bypassing Metronome credit-priced plans regardless of the global kill switch.",
     stage: "dust_only",
   },
   plan_mode: {
@@ -310,6 +296,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable ES-backed conversation listing in the sidebar (read path)",
     stage: "dust_only",
   },
+  restricted_spaces_in_input_bar: {
+    description:
+      "Allow users to explicitly select restricted Spaces from the conversation input bar.",
+    stage: "dust_only",
+  },
   new_file_explorer: {
     description:
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
@@ -345,11 +336,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
     stage: "dust_only",
   },
-  imgproxy_image_resize: {
-    description:
-      "Resize uploaded raster images via imgproxy instead of ConvertAPI",
-    stage: "dust_only",
-  },
   workspace_default_agent: {
     description:
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
@@ -359,6 +345,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Play a sound notification when an agent requires manual input (approval/decline).",
     stage: "dust_only",
+  },
+  whitelabel_frames: {
+    description:
+      "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
@@ -380,6 +371,18 @@ export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
+
+export const DISABLE_COMPUTER_FEATURE =
+  "disable_computer_feature" as const satisfies WhitelistableFeature;
+
+export function isComputerFeatureEnabled(
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return (
+    featureFlags.includes("sandbox_tools") &&
+    !featureFlags.includes(DISABLE_COMPUTER_FEATURE)
+  );
+}
 
 export function isWhitelistableFeature(
   feature: unknown

@@ -1,5 +1,5 @@
-import type { GetFreeSeatCountsResponseBody } from "@app/lib/api/members";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { GetFreeSeatCountsResponseBody } from "@app/types/api/members";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";

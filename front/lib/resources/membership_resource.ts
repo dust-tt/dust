@@ -659,6 +659,31 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
+  // Returns the active seat type for a user (by model id) in a workspace, or
+  // null when the user has no active membership. Lightweight single-column read
+  // for hot paths (e.g. analytics indexing) that only need the seat type.
+  static async getActiveSeatTypeForUserModelId({
+    workspace,
+    userModelId,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    userModelId: ModelId;
+    transaction?: Transaction;
+  }): Promise<MembershipSeatType | null> {
+    const row = await this.model.findOne({
+      attributes: ["seatType"],
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelId,
+        startAt: { [Op.lte]: new Date() },
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+      },
+      transaction,
+    });
+    return row ? row.seatType : null;
+  }
+
   static async getMembersCountForWorkspace({
     workspace,
     activeOnly,

@@ -1,11 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  DeleteWebhookSourceResponseBody,
-  GetWebhookSourceViewsForSourceResponseBody as GetSpecificWebhookSourceViewsResponseBody,
-  GetWebhookSourcesResponseBody,
-  GetWebhookSourceViewsResponseBody,
-  PostWebhookSourcesBody,
-} from "@app/lib/api/webhook_source";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetWebhookSourceViewsListResponseBody } from "@app/lib/resources/webhook_sources_view_resource";
 import {
@@ -15,6 +8,13 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetWebhookRequestsResponseBody } from "@app/lib/triggers/webhook";
+import type {
+  DeleteWebhookSourceResponseBody,
+  GetWebhookSourceViewsForSourceResponseBody as GetSpecificWebhookSourceViewsResponseBody,
+  GetWebhookSourcesResponseBody,
+  GetWebhookSourceViewsResponseBody,
+  PostWebhookSourcesBody,
+} from "@app/types/api/webhook_source";
 import type { SpaceType } from "@app/types/space";
 import type {
   WebhookSourceForAdminType,

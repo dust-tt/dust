@@ -28,7 +28,6 @@ export const MCP_SERVERS_FOR_GLOBAL_AGENTS = [
   "run_agent",
   "toolsets",
   "data_warehouses",
-  "slideshow",
   "agent_memory",
   "ask_user_question",
 ] as const satisfies AutoInternalMCPServerNameType[];

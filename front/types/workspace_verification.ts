@@ -8,10 +8,9 @@ export type StartVerificationRequest = {
   captchaToken: string;
 };
 
-export type StartVerificationResponse = {
-  success: true;
-  message: string;
-};
+export type StartVerificationResponse =
+  | { status: "code_sent"; message: string }
+  | { status: "already_verified" };
 
 export type VerifyCodeRequest = {
   phoneNumber: string;

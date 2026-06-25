@@ -1,8 +1,8 @@
-import type { GetWorkspaceAuthContextResponseType } from "@app/lib/api/auth_context";
 import config from "@app/lib/api/config";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
+import type { GetWorkspaceAuthContextResponseType } from "@app/types/api/auth_context";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

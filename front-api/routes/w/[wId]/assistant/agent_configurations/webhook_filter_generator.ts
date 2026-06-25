@@ -1,5 +1,5 @@
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
-import type { PostWebhookFilterGeneratorResponseBody } from "@app/lib/api/assistant/configuration/triggers/webhook_filter_generator";
+import type { PostWebhookFilterGeneratorResponseBody } from "@app/types/api/assistant/configuration/triggers/webhook_filter_generator";
 import {
   WEBHOOK_PRESETS,
   WEBHOOK_PROVIDERS,

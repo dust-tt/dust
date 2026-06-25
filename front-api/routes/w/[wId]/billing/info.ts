@@ -1,7 +1,5 @@
-import {
-  type GetBillingInfoResponseBody,
-  getWorkspaceBillingInfo,
-} from "@app/lib/api/billing/info";
+import { getWorkspaceBillingInfo } from "@app/lib/api/billing/info";
+import type { GetBillingInfoResponseBody } from "@app/types/api/billing/info";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

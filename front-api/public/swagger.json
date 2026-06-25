@@ -3511,6 +3511,14 @@
                       "override"
                     ],
                     "description": "Conflict handling strategy. Defaults to error."
+                  },
+                  "editors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "description": "Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors."
                   }
                 }
               }
@@ -13778,7 +13786,8 @@
           },
           "isExtendable": {
             "type": "boolean",
-            "description": "Whether this skill can be extended by another skill"
+            "deprecated": true,
+            "description": "Deprecated compatibility field. Always false."
           },
           "isDefault": {
             "type": "boolean",
@@ -13787,7 +13796,8 @@
           "extendedSkillId": {
             "type": "string",
             "nullable": true,
-            "description": "Identifier of the extended skill, when applicable"
+            "deprecated": true,
+            "description": "Deprecated compatibility field. Always null."
           },
           "instructions": {
             "type": "string",

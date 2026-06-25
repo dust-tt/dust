@@ -8,6 +8,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
+  UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { z } from "zod";
@@ -148,6 +149,7 @@ export type AgentLoopRunContextType = {
   conversation: ConversationType;
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;
+  userMessage: UserMessageType;
 };
 
 export type AgentLoopListToolsContextType = {

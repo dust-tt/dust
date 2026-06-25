@@ -1,4 +1,8 @@
 import config from "@app/lib/api/config";
+import {
+  getSeatPlan,
+  type SeatPlanResponseBody,
+} from "@app/lib/api/credits/seat_plan";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
@@ -66,6 +70,7 @@ export type PokeWorkspaceInfo = {
   metronomeCustomerId: string | null;
   pendingSubscription: SubscriptionType | null;
   poolCreditState: WorkspacePoolCreditState;
+  seatPlan: SeatPlanResponseBody | null;
   // The Metronome alerts backing each credit dimension — id and current status —
   // for deep-linking and display from Poke. Null when not configured / not
   // Metronome-billed.
@@ -176,10 +181,14 @@ export async function getPokeWorkspaceInfo(
     );
   const pendingSubscription = pendingSubscriptionResource?.toJSON() ?? null;
 
-  const membersCount = await MembershipResource.getMembersCountForWorkspace({
-    workspace: owner,
-    activeOnly: true,
-  });
+  const [membersCount, seatPlanResult] = await Promise.all([
+    MembershipResource.getMembersCountForWorkspace({
+      workspace: owner,
+      activeOnly: true,
+    }),
+    getSeatPlan(auth),
+  ]);
+  const seatPlan = seatPlanResult.isOk() ? seatPlanResult.value : null;
 
   let stripeSubscription: Stripe.Subscription | null = null;
   if (activeSubscription.stripeSubscriptionId) {
@@ -215,6 +224,7 @@ export async function getPokeWorkspaceInfo(
     hasMetronomeFeature,
     membersCount,
     metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
+    seatPlan,
     pendingSubscription,
     poolCreditState: workspaceResource.poolCreditState,
     poolAlert,

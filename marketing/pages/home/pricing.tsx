@@ -654,10 +654,6 @@ function PlanCard({
   );
 }
 
-// Eyebrow pill is hidden for now. Flip to `true` to show the blog link above
-// the page title.
-const SHOW_EYEBROW = false;
-
 interface HeroProps {
   billing: Billing;
   setBilling: (b: Billing) => void;
@@ -673,35 +669,33 @@ function Hero({
 }: HeroProps) {
   return (
     <section className="-mx-6 flex flex-col items-center px-4 pt-6 text-center md:mx-0 md:px-0 md:pt-10 lg:pt-14">
-      {SHOW_EYEBROW && (
-        <Link
-          href="https://dust.tt/blog/economics-of-multiplayer-ai"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={withTracking(TRACKING_AREAS.PRICING, "hero_blog_pill")}
-          className="group mb-5 inline-flex items-center gap-2 rounded-full border border-gray-100 bg-white py-1.5 pl-3 pr-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+      <Link
+        href="https://dust.tt/blog/economics-of-multiplayer-ai"
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={withTracking(TRACKING_AREAS.PRICING, "hero_blog_pill")}
+        className="group mb-5 inline-flex items-center gap-2 rounded-full border border-gray-100 bg-white py-1.5 pl-3 pr-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+      >
+        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
+        <span className="whitespace-nowrap">
+          The economics of multiplayer AI
+        </span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="flex-shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
+          aria-hidden="true"
         >
-          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
-          <span className="whitespace-nowrap">
-            The economics of multiplayer AI
-          </span>
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="flex-shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
-            aria-hidden="true"
-          >
-            <line x1="3" y1="8" x2="13" y2="8" />
-            <polyline points="9 4 13 8 9 12" />
-          </svg>
-        </Link>
-      )}
+          <line x1="3" y1="8" x2="13" y2="8" />
+          <polyline points="9 4 13 8 9 12" />
+        </svg>
+      </Link>
       <h1
         className={classNames(
           "heading-5xl md:heading-6xl lg:heading-7xl",

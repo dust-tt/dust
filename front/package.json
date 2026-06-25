@@ -39,8 +39,8 @@
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.100.1",
-    "@anthropic-ai/vertex-sdk": "^0.16.1",
+    "@anthropic-ai/sdk": "^0.104.2",
+    "@anthropic-ai/vertex-sdk": "^0.17.1",
     "@contentful/rich-text-react-renderer": "^16.1.6",
     "@contentful/rich-text-types": "^17.2.5",
     "@datadog/browser-logs": "^6.13.0",

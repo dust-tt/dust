@@ -1,6 +1,8 @@
 import { loadAllModels } from "@app/admin/db";
+import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
@@ -10,6 +12,8 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -90,6 +94,52 @@ describe("SpaceResource", () => {
       await MembershipFactory.associate(workspace, user1, { role: "user" });
       await MembershipFactory.associate(workspace, user2, { role: "user" });
       await MembershipFactory.associate(workspace, user3, { role: "user" });
+    });
+
+    it("should delete selected spaces before hard deleting a space", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+        name: "Test Agent",
+        description: "Test agent",
+        scope: "hidden",
+      });
+      const conversation = await ConversationFactory.create(adminAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date()],
+      });
+
+      await ConversationSelectedSpaceModel.create({
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        spaceId: regularSpace.id,
+        selectedByUserId: user1.id,
+        origin: "input_bar",
+      });
+
+      const softDeleteResult = await regularSpace.delete(adminAuth, {
+        hardDelete: false,
+      });
+      expect(softDeleteResult.isOk()).toBe(true);
+
+      const deletedSpace = await SpaceResource.fetchById(
+        adminAuth,
+        regularSpace.sId,
+        { includeDeleted: true }
+      );
+      if (!deletedSpace) {
+        throw new Error("Deleted space should exist");
+      }
+
+      const hardDeleteResult = await hardDeleteSpace(adminAuth, deletedSpace);
+
+      expect(hardDeleteResult.isOk()).toBe(true);
+      await expect(
+        ConversationSelectedSpaceModel.count({
+          where: {
+            workspaceId: workspace.id,
+            spaceId: regularSpace.id,
+          },
+        })
+      ).resolves.toBe(0);
     });
 
     describe("authorization checks", () => {
@@ -1688,6 +1738,7 @@ describe("searchProjectsByNamePaginated", () => {
 const KNOWN_SPACE_RELATED_MODELS = [
   "agent_project_configuration",
   "app",
+  "conversation_selected_spaces",
   "content_fragment",
   "conversation",
   "data_source",

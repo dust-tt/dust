@@ -517,7 +517,8 @@ export const PRODUCTBOARD_SERVER = {
   serverInfo: {
     name: "productboard",
     version: "1.0.0",
-    description: "Manage productboard entities and notes.",
+    description:
+      "Manage Productboard product management data: features, initiatives, roadmaps, OKRs, customer feedback notes, companies, and product hierarchy entities.",
     authorization: {
       provider: "productboard",
       supported_use_cases: ["platform_actions", "personal_actions"],

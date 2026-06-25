@@ -329,14 +329,6 @@ const InputBarContainer = ({
   onNodeSelectRef.current = onNodeSelect;
   const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
   includeAttachKnowledgeRef.current = actions.includes("attachment");
-  const contextSpaceId = conversation?.spaceId ?? space?.sId ?? null;
-  const includeSelectContextFileRef = useRef(
-    actions.includes("attachment") &&
-      (Boolean(conversation?.sId) || Boolean(contextSpaceId))
-  );
-  includeSelectContextFileRef.current =
-    actions.includes("attachment") &&
-    (Boolean(conversation?.sId) || Boolean(contextSpaceId));
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -660,7 +652,6 @@ const InputBarContainer = ({
       selectedMCPServerViewIdsRef,
       slashCommandsRef,
       includeAttachKnowledgeRef,
-      includeSelectContextFileRef,
       attachedNodesRef,
       onNodeSelectRef,
       spaceIdRef,
@@ -1499,7 +1490,7 @@ const InputBarContainer = ({
                 </React.Fragment>
               ))}
             </div>
-            <div className="relative flex w-full items-center justify-between">
+            <div className="relative flex min-h-8 w-full items-center justify-between">
               {!isRecording && editor && (
                 <Toolbar
                   variant="overlay"

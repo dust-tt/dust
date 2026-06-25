@@ -1,10 +1,7 @@
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
-  GetDataSourceViewsResponseBody,
 } from "@app/lib/api/data_source_view";
-import type { PostTagSearchBody } from "@app/lib/api/data_source_view_tags";
-import type { GetDataSourceConfigurationResponseBody } from "@app/lib/api/data_sources";
 import type {
   CursorPaginationParams,
   SortingParams,
@@ -16,6 +13,9 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { GetDataSourceViewsResponseBody } from "@app/types/api/data_source_view";
+import type { PostTagSearchBody } from "@app/types/api/data_source_view_tags";
+import type { GetDataSourceConfigurationResponseBody } from "@app/types/api/data_sources";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";

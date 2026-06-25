@@ -171,6 +171,7 @@ export async function processDataSources({
           modelId: model.modelId,
           providerId: model.providerId,
           temperature: model.temperature,
+          reasoningEffort: null,
           useCache: false,
         },
         {

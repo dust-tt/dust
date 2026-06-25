@@ -3,14 +3,14 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type {
-  GetWorkspaceEgressPolicyResponseBody,
-  PutWorkspaceEgressPolicyResponseBody,
-} from "@app/lib/api/sandbox/egress_policy";
 import {
   readWorkspacePolicy,
   writeWorkspacePolicy,
 } from "@app/lib/api/sandbox/egress_policy";
+import type {
+  GetWorkspaceEgressPolicyResponseBody,
+  PutWorkspaceEgressPolicyResponseBody,
+} from "@app/types/api/sandbox/egress_policy";
 import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

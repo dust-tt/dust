@@ -15,10 +15,6 @@ import {
   usePodConversationsSummary,
 } from "@app/hooks/conversations";
 import { useTaskDiffAnimations } from "@app/hooks/useTaskDiffAnimations";
-import type {
-  BulkActionsBody,
-  GetPodTasksResponseBody,
-} from "@app/lib/api/projects/tasks";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
@@ -35,6 +31,10 @@ import {
 } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type {
+  BulkActionsBody,
+  GetPodTasksResponseBody,
+} from "@app/types/api/projects/tasks";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import {
   POD_TASK_UNASSIGNED_GROUP_KEY,

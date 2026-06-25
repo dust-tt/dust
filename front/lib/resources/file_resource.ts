@@ -457,6 +457,10 @@ export class FileResource extends BaseResource<FileModel> {
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
+    await AuthorizedFileAccessModel.destroy({
+      where: { workspaceId },
+    });
+
     // Delete external viewer sessions before shareable files (FK constraint).
     await ExternalViewerSessionModel.destroy({
       where: { workspaceId },
@@ -464,6 +468,11 @@ export class FileResource extends BaseResource<FileModel> {
 
     // Delete sharing grants before shareable files (FK constraint).
     await SharingGrantModel.destroy({
+      where: { workspaceId },
+    });
+
+    // Delete authorized file accesses before shareable files (FK constraint).
+    await this.authorizedFileAccessModel.destroy({
       where: { workspaceId },
     });
 

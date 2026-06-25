@@ -1,10 +1,10 @@
-import type {
-  CreateTagResponseBody,
-  GetTagsResponseBody,
-} from "@app/lib/api/tags";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
+import type {
+  CreateTagResponseBody,
+  GetTagsResponseBody,
+} from "@app/types/api/tags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

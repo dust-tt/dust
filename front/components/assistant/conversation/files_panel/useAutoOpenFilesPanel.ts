@@ -1,5 +1,6 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isInteractiveContentType } from "@app/types/files";
 import React from "react";
 
@@ -17,6 +18,7 @@ export function useAutoOpenFilesPanel({
   agentMessage,
 }: UseAutoOpenFilesPanelProps) {
   const { openPanel, currentPanel } = useConversationSidePanelContext();
+  const isMobile = useIsMobile();
 
   // Stores the sId of the last message that triggered auto-open, so the comparison itself encodes
   // "already opened for this message" without a separate reset effect.
@@ -32,19 +34,23 @@ export function useAutoOpenFilesPanel({
 
   React.useEffect(() => {
     if (
-      regularGeneratedFiles.length > 0 &&
-      isLastMessage &&
-      autoOpenedForRef.current !== agentMessage.sId &&
-      currentPanel !== "files"
+      isMobile ||
+      regularGeneratedFiles.length === 0 ||
+      !isLastMessage ||
+      autoOpenedForRef.current === agentMessage.sId ||
+      currentPanel === "files"
     ) {
-      autoOpenedForRef.current = agentMessage.sId;
-      openPanel({ type: "files" });
+      return;
     }
+
+    autoOpenedForRef.current = agentMessage.sId;
+    openPanel({ type: "files" });
   }, [
     regularGeneratedFiles,
     isLastMessage,
     agentMessage.sId,
     openPanel,
     currentPanel,
+    isMobile,
   ]);
 }

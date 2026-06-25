@@ -678,14 +678,16 @@
  *           description: Whether the authenticated actor can edit the skill
  *         isExtendable:
  *           type: boolean
- *           description: Whether this skill can be extended by another skill
+ *           deprecated: true
+ *           description: Deprecated compatibility field. Always false.
  *         isDefault:
  *           type: boolean
  *           description: Whether this skill is enabled by default
  *         extendedSkillId:
  *           type: string
  *           nullable: true
- *           description: Identifier of the extended skill, when applicable
+ *           deprecated: true
+ *           description: Deprecated compatibility field. Always null.
  *         instructions:
  *           type: string
  *           nullable: true

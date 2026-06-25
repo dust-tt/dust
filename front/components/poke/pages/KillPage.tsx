@@ -72,7 +72,7 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     title: "Metronome Billing",
     description:
       "Disable Metronome billing globally and fall back to legacy Stripe subscriptions.",
-    note: "Workspaces with the `metronome_billing` feature flag bypass this kill switch.",
+    note: "Workspaces with the `legacy_billing` feature flag are always on legacy billing regardless of this switch.",
     icon: CreditCard01,
   },
 };

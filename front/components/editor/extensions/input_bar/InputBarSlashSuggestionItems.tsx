@@ -1,10 +1,7 @@
 import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
-import {
-  createAttachKnowledgeSlashCommand,
-  createSelectContextFileSlashCommand,
-} from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
+import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import type {
   InputBarSlashCommand,
   InputBarSlashCommandId,
@@ -12,7 +9,6 @@ import type {
 import { INPUT_BAR_SLASH_COMMAND_ORDER } from "./InputBarSlashSuggestionTypes";
 
 const ATTACH_KNOWLEDGE_SLASH_COMMAND = createAttachKnowledgeSlashCommand();
-const SELECT_CONTEXT_FILE_SLASH_COMMAND = createSelectContextFileSlashCommand();
 
 function getInputBarRunCommandSlashCommandItem(
   command: InputBarSlashCommand
@@ -44,39 +40,30 @@ function getInputBarSlashCommandById({
   commandId,
   commands,
   includeAttachKnowledge,
-  includeSelectContextFile,
 }: {
   commandId: InputBarSlashCommandId;
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
-  includeSelectContextFile: boolean;
 }): SlashCommand | null {
   const runCommand = commands.find((command) => command.id === commandId);
   if (runCommand) {
     return getInputBarRunCommandSlashCommandItem(runCommand);
   }
 
-  switch (commandId) {
-    case "attach-knowledge":
-      return includeAttachKnowledge ? ATTACH_KNOWLEDGE_SLASH_COMMAND : null;
-    case "reference-file":
-      return includeSelectContextFile
-        ? SELECT_CONTEXT_FILE_SLASH_COMMAND
-        : null;
-    default:
-      return null;
+  if (commandId === "attach-knowledge") {
+    return includeAttachKnowledge ? ATTACH_KNOWLEDGE_SLASH_COMMAND : null;
   }
+
+  return null;
 }
 
 export function buildInputBarSlashCommandItems({
   commands,
   includeAttachKnowledge,
-  includeSelectContextFile,
   query,
 }: {
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
-  includeSelectContextFile: boolean;
   query: string;
 }): SlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
@@ -86,7 +73,6 @@ export function buildInputBarSlashCommandItems({
       commandId,
       commands,
       includeAttachKnowledge,
-      includeSelectContextFile,
     });
 
     if (!item || !matchesInputBarSlashCommandItem(item, normalizedQuery)) {

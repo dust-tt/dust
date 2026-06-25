@@ -25,14 +25,65 @@ _dust_hive_services=(sdk sparkle front core oauth connectors front-workers front
 _dust_hive_warm_state_services=(front front-api core oauth connectors front-workers front-spa-poke front-spa-app viz)
 # Avoid invoking the Bun CLI from completion; derive state from PID files plus one Docker scan.
 
-_dust_hive_current_env() {
-  # 1. Detect from cwd (inside a .hives/<name> worktree)
+_dust_hive_json_string() {
+  local file="${1:?usage: _dust_hive_json_string <file> <key>}"
+  local key="${2:?usage: _dust_hive_json_string <file> <key>}"
+
+  command sed -nE "s/^[[:space:]]*\"$key\"[[:space:]]*:[[:space:]]*\"([^\"]*)\".*/\\1/p" "$file" 2>/dev/null |
+    head -1
+}
+
+_dust_hive_path_is_at_or_inside() {
+  local parent="${1%/}"
+  local candidate="${2%/}"
+
+  [[ -n "$parent" ]] || return 1
+  [[ "$candidate" == "$parent" || "$candidate" == "$parent"/* ]]
+}
+
+_dust_hive_current_env_from_metadata() {
   local cwd="$PWD"
-  if [[ "$cwd" == */.hives/* ]]; then
-    local after="${cwd##*/.hives/}"
-    echo "${after%%/*}"
+  local env_dir env_name metadata repo_root worktree_path
+  local best_env="" best_len=0 path_len
+
+  [[ -d "$HOME/.dust-hive/envs" ]] || return
+
+  while IFS= read -r env_dir; do
+    env_name="${env_dir##*/}"
+    metadata="$env_dir/metadata.json"
+    [[ -f "$metadata" ]] || continue
+
+    worktree_path="$(_dust_hive_json_string "$metadata" "worktreePath")"
+    if [[ -z "$worktree_path" ]]; then
+      repo_root="$(_dust_hive_json_string "$metadata" "repoRoot")"
+      [[ -n "$repo_root" ]] || continue
+      worktree_path="$repo_root/.hives/$env_name"
+      if [[ ! -d "$worktree_path" && -d "$HOME/dust-hive/$env_name" ]]; then
+        worktree_path="$HOME/dust-hive/$env_name"
+      fi
+    fi
+
+    if _dust_hive_path_is_at_or_inside "$worktree_path" "$cwd"; then
+      path_len=${#worktree_path}
+      if (( path_len > best_len )); then
+        best_env="$env_name"
+        best_len=$path_len
+      fi
+    fi
+  done < <(command find "$HOME/.dust-hive/envs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+
+  [[ -n "$best_env" ]] && echo "$best_env"
+}
+
+_dust_hive_current_env() {
+  # 1. Detect from cwd using registered environment metadata
+  local current
+  current="$(_dust_hive_current_env_from_metadata)"
+  if [[ -n "$current" ]]; then
+    echo "$current"
     return
   fi
+
   # 2. Fall back to last-active env from activity.json
   local activity=~/.dust-hive/activity.json
   if [[ -f "$activity" ]]; then
@@ -249,7 +300,7 @@ _dust_hive_complete() {
 
   # Top-level command completion
   if [[ -z "$cmd" ]]; then
-    local commands="spawn open reload restart warm cool start stop up down destroy list status logs url cd setup doctor cache refresh forward sync temporal seed-config feed flag help"
+    local commands="spawn adopt open reload restart warm cool start stop up down destroy unregister list status logs url cd setup doctor cache refresh forward sync temporal seed-config feed flag help"
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
     return
   fi
@@ -263,6 +314,15 @@ _dust_hive_complete() {
           ;;
         *)
           # No env name completion for spawn (creates new ones)
+          ;;
+      esac
+      ;;
+    adopt)
+      case "$cur" in
+        -*)
+          COMPREPLY=($(compgen -W "-n --name -p --path -b --branch-name --base-branch -W --wait" -- "$cur"))
+          ;;
+        *)
           ;;
       esac
       ;;
@@ -348,6 +408,16 @@ _dust_hive_complete() {
       case "$cur" in
         -*)
           COMPREPLY=($(compgen -W "-f --force -k --keep-branch" -- "$cur"))
+          ;;
+        *)
+          COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+          ;;
+      esac
+      ;;
+    unregister)
+      case "$cur" in
+        -*)
+          COMPREPLY=($(compgen -W "-f --force" -- "$cur"))
           ;;
         *)
           COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))

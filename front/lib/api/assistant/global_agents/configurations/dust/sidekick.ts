@@ -9,7 +9,7 @@ import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/ut
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  isProviderWhitelisted,
+  selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type {
@@ -20,6 +20,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { SHARED_PROMPT_SECTIONS } from "./agent_suggestions_shared";
 import { getCompanyDataAction } from "./shared";
 
@@ -298,11 +299,13 @@ export function _getSidekickGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     globalAgentContext,
+    featureFlags,
   }: {
     sidekickContext: SidekickContext | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     globalAgentContext?: GlobalAgentContext;
+    featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType {
   const companyDataAction = getCompanyDataAction(
@@ -337,9 +340,9 @@ export function _getSidekickGlobalAgent(
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? isProviderWhitelisted(auth, "anthropic")
-        ? CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG
-        : getSmallWhitelistedModel(auth)
+      ? (selectEnabledModel(auth, [CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG], {
+          featureFlags,
+        }) ?? getSmallWhitelistedModel(auth))
       : getLargeWhitelistedModel(auth);
   const model = modelConfiguration
     ? {

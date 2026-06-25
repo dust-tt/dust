@@ -9,12 +9,12 @@
  * Keys are extensionless, content type lives in GCS object metadata.
  */
 
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -75,10 +75,10 @@ export async function getWorkspaceBrandingPublicUrls(
   logoUrl: string | null;
   ogImageUrl: string | null;
 }> {
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
+  const featureFlags = await getFeatureFlagsForWorkspace(
+    renderLightWorkspaceType({ workspace })
   );
-  if (!subscription?.getPlan().isBrandedFramesAllowed) {
+  if (!featureFlags.includes("whitelabel_frames")) {
     return { faviconUrl: null, logoUrl: null, ogImageUrl: null };
   }
 

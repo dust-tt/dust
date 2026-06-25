@@ -1,5 +1,5 @@
-import type { PokeListSuggestions } from "@app/lib/api/poke/agent_configurations";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { PokeListSuggestions } from "@app/types/api/poke/agent_configurations";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

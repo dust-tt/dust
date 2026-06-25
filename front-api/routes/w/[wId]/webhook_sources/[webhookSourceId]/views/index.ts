@@ -1,6 +1,6 @@
-import type { GetWebhookSourceViewsForSourceResponseBody as GetWebhookSourceViewsResponseBody } from "@app/lib/api/webhook_source";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import type { GetWebhookSourceViewsForSourceResponseBody as GetWebhookSourceViewsResponseBody } from "@app/types/api/webhook_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

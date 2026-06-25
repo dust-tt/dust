@@ -8,14 +8,12 @@ import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conver
 import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type {
-  DustFileSystemError,
-  FileSystemFileEntry,
-} from "@app/lib/api/file_system/types";
+import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import { conversationScopedPath } from "@app/lib/api/file_system/types";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
   CompactionMessageType,

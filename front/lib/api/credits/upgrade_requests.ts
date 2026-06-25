@@ -89,18 +89,6 @@ async function notifyAdminsOfUpgradeRequest(
   }
 }
 
-export type GetUpgradeRequestsResponseBody = {
-  requests: MembershipUpgradeRequestType[];
-};
-
-export type PostUpgradeRequestResponseBody = {
-  request: MembershipUpgradeRequestType;
-};
-
-export type PatchUpgradeRequestResponseBody = {
-  request: MembershipUpgradeRequestType;
-};
-
 // Member-initiated: create (or return the already-pending) upgrade request for
 // the current user. Gated on the workspace being credit-priced and the member
 // actually being near/at their limit.

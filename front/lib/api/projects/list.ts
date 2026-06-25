@@ -3,17 +3,8 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type { SearchProjectsResponseBody } from "@app/types/api/projects/list";
 import type { PodType, SpaceType } from "@app/types/space";
-
-export type SpacesLookupResponseBody = {
-  spaces: PodType[];
-};
-
-export type SearchProjectsResponseBody = {
-  spaces: Array<PodType & { isMember: boolean }>;
-  hasMore: boolean;
-  lastValue: string | null;
-};
 
 export type ListPodsAccess = "member" | "open";
 

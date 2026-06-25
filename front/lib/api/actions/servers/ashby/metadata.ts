@@ -242,7 +242,8 @@ export const ASHBY_SERVER = {
   serverInfo: {
     name: "ashby",
     version: "1.0.0",
-    description: "Access and manage Ashby ATS data.",
+    description:
+      "Access and manage Ashby ATS (applicant tracking system) data for recruiting: candidates, job postings, interview feedback, referrals, and hiring.",
     authorization: null,
     icon: "AshbyLogo",
     documentationUrl: "https://docs.dust.tt/docs/ashby-mcp",

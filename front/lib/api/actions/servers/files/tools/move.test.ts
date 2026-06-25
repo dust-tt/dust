@@ -75,7 +75,12 @@ describe("moveHandler", () => {
     }
     expect(result.value[0]).toEqual({
       type: "text",
-      text: `Moved \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`. The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
+      text:
+        `Moved \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`. ` +
+        `To show a previewable file citation in your response, output this markdown directive exactly on its own line:\n` +
+        `:preview_file{path="pod-${spaceId}/report.pdf" title="report.pdf" contentType="text/plain"}\n` +
+        "The rendered citation opens the file preview, where the user can download the file. " +
+        "Do not invent a URL for this file.",
     });
   });
 

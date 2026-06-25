@@ -298,6 +298,7 @@ export class RunResource extends BaseResource<RunModel> {
     assert(typeof workspace.id === "number");
     await RunUsageModel.destroy({
       where: {
+        workspaceId: workspace.id,
         runId: {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.

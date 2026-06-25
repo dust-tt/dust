@@ -21,12 +21,16 @@ import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
+import {
+  ConversationSandboxModel,
+  SandboxModel,
+} from "@app/lib/resources/storage/models/sandbox";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -113,15 +117,32 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     { transaction }: { transaction?: Transaction } = {}
   ) {
     const now = new Date();
-    const sandbox = await this.model.create(
-      {
-        ...blob,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        lastActivityAt: now,
-        statusChangedAt: now,
-      },
-      { transaction }
-    );
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const createSandbox = async (t: Transaction) => {
+      const sandbox = await this.model.create(
+        {
+          ...blob,
+          workspaceId,
+          lastActivityAt: now,
+          statusChangedAt: now,
+        },
+        { transaction: t }
+      );
+
+      await ConversationSandboxModel.create(
+        {
+          workspaceId,
+          conversationId: blob.conversationId,
+          sandboxId: sandbox.id,
+        },
+        { transaction: t }
+      );
+
+      return sandbox;
+    };
+
+    const sandbox = await withTransaction(createSandbox, transaction);
 
     recordLifecycleOperation("create", {
       workspaceId: auth.getNonNullableWorkspace().sId,
@@ -250,13 +271,26 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<number, Error>> {
-    const deletedCount = await SandboxModel.destroy({
-      where: {
-        id: this.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      transaction,
-    });
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const deleteSandbox = async (t: Transaction) => {
+      await ConversationSandboxModel.destroy({
+        where: {
+          sandboxId: this.id,
+          workspaceId,
+        },
+        transaction: t,
+      });
+
+      return SandboxModel.destroy({
+        where: {
+          id: this.id,
+          workspaceId,
+        },
+        transaction: t,
+      });
+    };
+
+    const deletedCount = await withTransaction(deleteSandbox, transaction);
 
     return new Ok(deletedCount);
   }
@@ -293,11 +327,22 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
       }
 
-      await SandboxModel.destroy({
-        where: {
-          id: sandbox.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
+      await withTransaction(async (transaction) => {
+        await ConversationSandboxModel.destroy({
+          where: {
+            conversationId: conversation.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          transaction,
+        });
+
+        await SandboxModel.destroy({
+          where: {
+            id: sandbox.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          transaction,
+        });
       });
 
       return new Ok(undefined);

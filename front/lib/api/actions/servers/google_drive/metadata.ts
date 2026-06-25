@@ -26,7 +26,7 @@ const capabilitiesSchema = z
 
 export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
   list_drives: {
-    description: "List all shared drives accessible by the user.",
+    description: "List all Google Drive shared drives accessible by the user.",
     schema: {
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
@@ -38,7 +38,7 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   search_files: {
     description:
-      "Search for files in Google Drive. Can search in personal drive, all shared drives, or a specific drive.",
+      "Search and find files in Google Drive by name or content. Locate Google Docs documents, Google Sheets spreadsheets, Google Slides presentations, and folders in your personal drive, all shared drives, or a specific drive.",
     schema: {
       q: z
         .string()
@@ -111,7 +111,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   },
   get_file_content: {
     description:
-      "Get the content of a Google Drive file as text with offset-based pagination. " +
+      "Read, open, and get the content of a Google Drive file as text with offset-based pagination. " +
       "Google Docs and Slides are exported as plain text. Google Sheets are exported as XLSX. " +
       "Any other file (XLSX, PDF, Office, images, ...) is downloaded in its original format. " +
       "Binary files are attached to the conversation so other tools can use them, alongside extracted text when available.",
@@ -345,7 +345,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   copy_file: {
     description:
-      "Copy an existing Google Drive file (Doc, Sheet, or Presentation). " +
+      "Copy, clone, or duplicate an existing Google Drive file (Doc, Sheet, or Presentation). " +
       "Creates a duplicate of the file with a new name in the same folder or a different location. " +
       "Prefer this over creating a new document when you want to preserve the formatting or structure of an existing template.",
     schema: {
@@ -558,7 +558,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   revoke_file_sharing: {
     description:
-      "Remove access to a Google Drive file for a specific user or domain by deleting the matching permission. Use list_file_permissions to find the permissionId first.",
+      "Unshare a Google Drive file and stop sharing it: remove or revoke access for a specific user or domain by deleting the matching permission. Use list_file_permissions to find the permissionId first.",
     schema: {
       fileId: z
         .string()

@@ -1,6 +1,7 @@
 import { contextOriginFilter } from "@app/lib/api/assistant/observability/context_origin";
 import type { Authenticator } from "@app/lib/auth";
 import { FREE_ORIGINS } from "@app/lib/metronome/events";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 
@@ -107,11 +108,16 @@ export function buildAgentAnalyticsBaseQuery({
   };
 }
 
-// Workspace query scoped to the window, with free origins excluded to mirror the
-// non-free billed scope. Shared by the credit fetchers (timeseries, breakdown,
-// per-user and per-agent tables) so the scope stays identical across them.
-// `extraFilters` / `extraMustNot` carry per-caller constraints (e.g. requiring
-// an agent_id, or excluding the programmatic "unknown" user).
+// Workspace query scoped to the window, with free origins excluded and only the
+// billed message statuses kept, to mirror the non-free billed scope. Metronome
+// only emits usage events and credits for AGENT_MESSAGE_STATUSES_TO_TRACK (see
+// usage_queue activities and credit_cost), so failed messages carry a non-zero
+// `cost.full_awu` in the index but are never billed; without the status filter
+// the credit totals over-count failed runs and diverge from Metronome. Shared by
+// the credit fetchers (timeseries, breakdown, per-user and per-agent tables) so
+// the scope stays identical across them. `extraFilters` / `extraMustNot` carry
+// per-caller constraints (e.g. requiring an agent_id, or excluding the
+// programmatic "unknown" user).
 export function buildCreditsScopeQuery(
   auth: Authenticator,
   {
@@ -142,7 +148,11 @@ export function buildCreditsScopeQuery(
   });
   return {
     bool: {
-      filter: [baseQuery, ...extraFilters],
+      filter: [
+        baseQuery,
+        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+        ...extraFilters,
+      ],
       must_not: [
         { terms: { context_origin: [...FREE_ORIGINS] } },
         ...extraMustNot,

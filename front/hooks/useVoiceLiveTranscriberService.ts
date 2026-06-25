@@ -9,8 +9,8 @@ import {
   type VoiceTranscriberService,
   type VoiceTranscriberStatus,
 } from "@app/hooks/utils/voice";
-import type { GetTranscribeTokenResponseBody } from "@app/lib/api/transcribe";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetTranscribeTokenResponseBody } from "@app/types/api/transcribe";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AudioFormat, CommitStrategy, useScribe } from "@elevenlabs/react";

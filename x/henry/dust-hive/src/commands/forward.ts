@@ -1,8 +1,8 @@
-import { getEnvironment } from "../lib/environment";
+import { detectEnvironmentFromCwd, getEnvironment } from "../lib/environment";
 import { getForwarderStatus, startForwarder, stopForwarder } from "../lib/forward";
 import { FORWARDER_MAPPINGS } from "../lib/forwarderConfig";
 import { logger } from "../lib/logger";
-import { detectEnvFromCwd, FORWARDER_LOG_PATH } from "../lib/paths";
+import { FORWARDER_LOG_PATH } from "../lib/paths";
 import { isServiceRunning } from "../lib/process";
 import { restoreTerminal, selectEnvironment } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
@@ -109,7 +109,7 @@ export async function forwardCommand(name?: string): Promise<Result<void>> {
   }
 
   // No name: default to current env (detected from cwd)
-  const currentEnv = detectEnvFromCwd();
+  const currentEnv = await detectEnvironmentFromCwd();
   if (currentEnv) {
     return forwardToEnv(currentEnv);
   }

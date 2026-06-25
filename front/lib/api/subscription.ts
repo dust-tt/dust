@@ -23,42 +23,19 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { CheckoutUrlResult, SubscriptionType } from "@app/types/plan";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { z } from "zod";
-
-export const PatchSubscriptionRequestBody = z.object({
-  action: z.enum(["cancel_free_trial", "pay_now", "upgrade_to_business"]),
-});
-
-type CheckoutStatus =
-  | { status: "success" }
-  | { status: "error"; message: string }
-  | { status: "pending" };
-
-export type GetCheckoutStatusResponseBody = CheckoutStatus;
-
-export type PostSubscriptionResponseBody = CheckoutUrlResult;
-
-export type GetSubscriptionsResponseBody = {
-  subscriptions: SubscriptionType[];
-};
-
-export type GetSubscriptionTrialInfoResponseBody = {
-  trialDaysRemaining: number | null;
-};
 
 // Metronome billing is enabled by default for all workspaces. The
 // `global_disable_metronome_billing` kill switch turns it off globally; the
-// `metronome_billing` feature flag re-enables it for individual workspaces.
+// `legacy_billing` feature flag forces it off for individual workspaces.
 export async function isMetronomeBillingEnabled(
   auth: Authenticator
 ): Promise<boolean> {
-  const [hasFlag, killed] = await Promise.all([
-    hasFeatureFlag(auth, "metronome_billing"),
+  const [hasLegacyFlag, killed] = await Promise.all([
+    hasFeatureFlag(auth, "legacy_billing"),
     KillSwitchResource.isKillSwitchEnabled("global_disable_metronome_billing"),
   ]);
-  return hasFlag || !killed;
+  return !hasLegacyFlag && !killed;
 }
 
 /**

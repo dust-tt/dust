@@ -2,7 +2,7 @@ import {
   getAgentConfiguration,
   listsAgentConfigurationVersions,
 } from "@app/lib/api/assistant/configuration/agent";
-import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types/api/internal/agent_configuration";
+import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types/api/agent_configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

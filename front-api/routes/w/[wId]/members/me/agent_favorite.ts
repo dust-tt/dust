@@ -1,9 +1,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { PostAgentUserFavoriteResponseBody } from "@app/lib/api/assistant/user_relation";
-import {
-  PostAgentUserFavoriteRequestBodySchema,
-  setAgentUserFavorite,
-} from "@app/lib/api/assistant/user_relation";
+import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
+import type { PostAgentUserFavoriteResponseBody } from "@app/types/api/assistant/user_relation";
+import { PostAgentUserFavoriteRequestBodySchema } from "@app/types/api/assistant/user_relation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

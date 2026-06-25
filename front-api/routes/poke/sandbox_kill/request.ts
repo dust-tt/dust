@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
-import type { SandboxKillRequestResponseBody } from "@app/lib/api/poke/types";
 import { launchSandboxKillRequesterWorkflow } from "@app/temporal/sandbox_reaper/kill_requester/client";
+import type { SandboxKillRequestResponseBody } from "@app/types/api/poke/types";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

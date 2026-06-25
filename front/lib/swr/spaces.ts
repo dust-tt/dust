@@ -1,25 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
-  GetDataSourceViewResponseBody,
-  GetSpaceDataSourceViewsResponseBody,
-} from "@app/lib/api/data_source_view";
-import type { PostSpaceDataSourceResponseBody } from "@app/lib/api/data_sources";
-import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
-import type { SpacesLookupResponseBody } from "@app/lib/api/projects/lookup";
-import type {
-  DataSourceContentNode,
-  PostWorkspaceSearchResponseBody,
-} from "@app/lib/api/search";
-import type {
-  GetSpaceResponseBody,
-  GetSpacesResponseBody,
-  PatchSpaceResponseBody,
-  PostSpaceRequestBodyType,
-  PostSpacesResponseBody,
-} from "@app/lib/api/spaces";
 import type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
@@ -31,7 +14,24 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  GetDataSourceViewResponseBody,
+  GetSpaceDataSourceViewsResponseBody,
+} from "@app/types/api/data_source_view";
+import type { PostSpaceDataSourceResponseBody } from "@app/types/api/data_sources";
+import type { SpacesLookupResponseBody } from "@app/types/api/projects/list";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
+import type {
+  DataSourceContentNode,
+  PostWorkspaceSearchResponseBody,
+} from "@app/types/api/search";
+import type {
+  GetSpaceResponseBody,
+  GetSpacesResponseBody,
+  PatchSpaceResponseBody,
+  PostSpaceRequestBodyType,
+  PostSpacesResponseBody,
+} from "@app/types/api/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";

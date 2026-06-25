@@ -17,6 +17,7 @@ import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { z } from "zod";
 
 const BrandingPromoteBodySchema = z.object({
@@ -75,20 +76,12 @@ app.get(
 app.patch(
   "/",
   ensureIsAdmin(),
+  withFeatureFlag("whitelabel_frames", {
+    message: "Whitelabel frames are not enabled for this workspace.",
+  }),
   validate("json", BrandingPromoteBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const plan = auth.subscription()?.plan;
-    if (!plan?.isBrandedFramesAllowed) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "plan_limit_error",
-          message: "Branded frames are not available on your current plan.",
-        },
-      });
-    }
-
     const { asset, fileId } = ctx.req.valid("json");
 
     if (fileId === null) {

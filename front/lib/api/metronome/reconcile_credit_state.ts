@@ -1,4 +1,3 @@
-import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
 import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { WARNING_BALANCE_RATIO } from "@app/lib/metronome/alerts/programmatic_cap";
@@ -12,6 +11,7 @@ import {
   fetchLiveUserCreditInputs,
 } from "@app/lib/metronome/live_user_credit_inputs";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
+import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
 import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   expectedProgrammaticCreditStateFromUsage,
@@ -28,6 +28,7 @@ import {
   expectedPoolCreditStateFromBalance,
   setWorkspacePoolCreditStateReconciled,
 } from "@app/lib/metronome/workspace_credit_state_machine";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -263,8 +264,8 @@ export async function reconcileProgrammatic({
   }
 
   const spendResult = await fetchProgrammaticAwuSpend({
+    workspaceId: workspace.sId,
     metronomeCustomerId,
-    metronomeContractId,
   });
   if (spendResult.isErr()) {
     return new Err(
@@ -423,11 +424,16 @@ export async function reconcileWorkspaceUserCreditStates({
   workspace,
   metronomeCustomerId,
   metronomeContractId,
+  planCode,
 }: {
   workspace: LightWorkspaceType;
   metronomeCustomerId: string;
   metronomeContractId: string;
+  planCode: string;
 }): Promise<void> {
+  if (!isCreditPricedPlanPrefix(planCode)) {
+    return;
+  }
   const workspaceId = workspace.sId;
 
   // These return our `Result` type: handle their errors with early returns
@@ -496,8 +502,8 @@ export async function reconcileWorkspaceUserCreditStates({
     .map((m) => m.user?.sId)
     .filter((sId): sId is string => sId !== undefined);
   const usageResult = await fetchPerUserAwuUsage({
+    workspaceId,
     metronomeCustomerId,
-    metronomeContractId,
     userIds: memberUserIds,
   });
   if (usageResult.isErr()) {

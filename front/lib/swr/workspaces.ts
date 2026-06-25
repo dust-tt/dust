@@ -6,17 +6,10 @@ import type {
 } from "@app/lib/api/analytics/awu_usage";
 import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import type {
-  GetMetronomeUsageResponse,
-  MetronomeUsageGroupByType,
-} from "@app/lib/api/analytics/metronome_usage";
-import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import type {
-  GetWorkspaceSkillUsageResponse,
-  GetWorkspaceTopUsersResponse,
-} from "@app/lib/api/analytics/workspace_analytics";
+import type { GetWorkspaceSkillUsageResponse } from "@app/lib/api/analytics/workspace_analytics";
 import type { GetWorkspaceActiveUsersResponse } from "@app/lib/api/assistant/observability/active_users_metrics";
 import type { GetAgentCreditsResponse } from "@app/lib/api/assistant/observability/agent_credits";
 import type { GetWorkspaceContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
@@ -28,24 +21,9 @@ import type {
 } from "@app/lib/api/assistant/observability/tool_usage";
 import type { GetUserCreditsResponse } from "@app/lib/api/assistant/observability/user_credits";
 import type {
-  GetNoWorkspaceAuthContextResponseType,
-  GetWorkspaceAuthContextResponseType,
-} from "@app/lib/api/auth_context";
-import type { GetBillingInfoResponseBody } from "@app/lib/api/billing/info";
-import type { GetBillingInvoicesResponseBody } from "@app/lib/api/billing/invoices";
-import type {
   GetBusinessActivationResponseBody,
   PostBusinessActivationResponseBody,
 } from "@app/lib/api/checkout/business_activation";
-import type { GetPreparePaymentResponseBody } from "@app/lib/api/checkout/prepare_payment";
-import type { GetMetronomeContractResponseBody } from "@app/lib/api/credits/metronome_contract";
-import type { GetPendingInvitationsLookupResponseBody } from "@app/lib/api/invitation";
-import type {
-  GetCheckoutStatusResponseBody,
-  GetSubscriptionsResponseBody,
-  GetSubscriptionTrialInfoResponseBody,
-  PostSubscriptionResponseBody,
-} from "@app/lib/api/subscription";
 import type {
   GetSeatAvailabilityResponseBody,
   GetWelcomeResponseBody,
@@ -54,10 +32,7 @@ import type {
   GetWorkspaceSeatsCountResponseBody,
   GetWorkspaceVerifiedDomainsResponseBody,
 } from "@app/lib/api/workspace";
-import type {
-  GetWorkspaceAnalyticsOverviewResponse,
-  GetWorkspaceTopAgentsResponse,
-} from "@app/lib/api/workspace/analytics";
+import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/lib/api/workspace/analytics";
 import type { GetWorkspaceAnalyticsResponse } from "@app/lib/api/workspace_analytics";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -73,6 +48,21 @@ import type {
 } from "@app/lib/resources/subscription_resource";
 import type { GetJoinResponseBody } from "@app/lib/signup";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type {
+  GetNoWorkspaceAuthContextResponseType,
+  GetWorkspaceAuthContextResponseType,
+} from "@app/types/api/auth_context";
+import type { GetBillingInfoResponseBody } from "@app/types/api/billing/info";
+import type { GetBillingInvoicesResponseBody } from "@app/types/api/billing/invoices";
+import type { GetPreparePaymentResponseBody } from "@app/types/api/checkout/prepare_payment";
+import type { GetMetronomeContractResponseBody } from "@app/types/api/credits/metronome_contract";
+import type { GetPendingInvitationsLookupResponseBody } from "@app/types/api/invitation";
+import type {
+  GetCheckoutStatusResponseBody,
+  GetSubscriptionsResponseBody,
+  GetSubscriptionTrialInfoResponseBody,
+  PostSubscriptionResponseBody,
+} from "@app/types/api/subscription";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
@@ -435,34 +425,6 @@ export function useWorkspaceSkillUsage({
   };
 }
 
-export function useWorkspaceTopUsers({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  limit = 10,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  limit?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceTopUsersResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/top-users?days=${days}&limit=${limit}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    topUsers: data?.users ?? emptyArray(),
-    isTopUsersLoading: !error && !data && !disabled,
-    isTopUsersError: error,
-    isTopUsersValidating: isValidating,
-  };
-}
-
 export function useWorkspaceUserCredits({
   workspaceId,
   days = DEFAULT_PERIOD_DAYS,
@@ -522,34 +484,6 @@ export function useWorkspaceAgentCredits({
     isAgentCreditsLoading: !error && !data && !disabled,
     isAgentCreditsError: error,
     isAgentCreditsValidating: isValidating,
-  };
-}
-
-export function useWorkspaceTopAgents({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  limit = 10,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  limit?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceTopAgentsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/top-agents?days=${days}&limit=${limit}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    topAgents: data?.agents ?? emptyArray(),
-    isTopAgentsLoading: !error && !data && !disabled,
-    isTopAgentsError: error,
-    isTopAgentsValidating: isValidating,
   };
 }
 
@@ -662,56 +596,6 @@ export function useWorkspaceProgrammaticCost({
     isProgrammaticCostLoading: !error && !data && !disabled,
     isProgrammaticCostError: error,
     isProgrammaticCostValidating: isValidating,
-  };
-}
-
-export function useMetronomeUsage({
-  workspaceId,
-  groupBy,
-  groupByCount,
-  selectedPeriod,
-  billingCycleStartDay,
-  windowSize,
-  disabled,
-}: {
-  workspaceId: string;
-  groupBy?: MetronomeUsageGroupByType;
-  groupByCount?: number;
-  selectedPeriod?: string;
-  billingCycleStartDay: number;
-  windowSize?: "HOUR" | "DAY";
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetMetronomeUsageResponse> = fetcher;
-
-  const queryParams = new URLSearchParams();
-  queryParams.set("billingCycleStartDay", billingCycleStartDay.toString());
-  if (selectedPeriod) {
-    queryParams.set("selectedPeriod", selectedPeriod);
-  }
-  if (groupBy) {
-    queryParams.set("groupBy", groupBy);
-  }
-  if (groupByCount !== undefined) {
-    queryParams.set("groupByCount", groupByCount.toString());
-  }
-  if (windowSize) {
-    queryParams.set("windowSize", windowSize);
-  }
-  const queryString = queryParams.toString();
-  const key = `/api/w/${workspaceId}/analytics/metronome-usage?${queryString}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    metronomeUsageData: data,
-    isMetronomeUsageLoading: !error && !data && !disabled,
-    isMetronomeUsageError: error,
-    isMetronomeUsageValidating: isValidating,
   };
 }
 

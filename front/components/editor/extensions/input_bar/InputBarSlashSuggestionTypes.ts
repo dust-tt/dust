@@ -5,7 +5,6 @@ import type React from "react";
 export type InputBarSlashCommandId =
   | "attach-knowledge"
   | "compact"
-  | "reference-file"
   | "upload-file";
 
 /** Run commands backed by `INPUT_BAR_SLASH_COMMANDS` (icon, label, handler via `onSelectRef`). */
@@ -17,7 +16,6 @@ export type InputBarRunCommandId = Extract<
 /** Reorder this list to change display order in the `/` menu. */
 export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
   "compact",
-  "reference-file",
   "upload-file",
   "attach-knowledge",
 ];

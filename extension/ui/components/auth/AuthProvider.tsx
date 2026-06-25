@@ -87,7 +87,6 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
     },
     trialPeriodDays: 0,
     isByok: false,
-    isBrandedFramesAllowed: false,
     isAuditLogsAllowed: false,
   },
   requestCancelAt: null,

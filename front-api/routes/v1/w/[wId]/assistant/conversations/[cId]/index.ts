@@ -1,11 +1,11 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
-import type { PatchConversationResponseBody } from "@app/lib/api/assistant/conversation/types";
 import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   type GetConversationResponseType,
   PatchConversationRequestSchema,
+  type PatchConversationResponseSchema,
 } from "@dust-tt/client";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -22,6 +22,10 @@ import files from "./files";
 import mentions from "./mentions";
 import messages from "./messages";
 import tools from "./tools";
+
+type PatchConversationResponseBody = z.infer<
+  typeof PatchConversationResponseSchema
+>;
 
 const ParamsSchema = z.object({
   cId: z.string(),

@@ -11,12 +11,13 @@ import {
   renameWorkspace,
   updateWorkspaceMetadata,
 } from "@app/lib/api/workspace";
-import { hasFeatureFlag } from "@app/lib/auth";
+import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -599,13 +600,13 @@ app.post(
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
     } else if ("sandboxAllowAgentEgressRequests" in body) {
-      if (!(await hasFeatureFlag(auth, "sandbox_workspace_admin"))) {
+      const featureFlags = await getFeatureFlags(auth);
+      if (!isComputerFeatureEnabled(featureFlags)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message:
-              "Sandbox workspace admin configuration is not enabled for this workspace.",
+            message: "Sandbox tools are not enabled for this workspace.",
           },
         });
       }

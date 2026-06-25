@@ -7,7 +7,6 @@ import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subs
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getPriceAsString,
@@ -28,6 +27,7 @@ import {
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import type {
   BillingPeriod,
   SubscriptionPerSeatPricing,
@@ -400,38 +400,38 @@ export function SubscriptionPage() {
       })
     : null;
 
-  // const migrationDate = (() => {
-  //   if (!isWorkspaceOnProPlan || !isMetronomeCheckout) {
-  //     return null;
-  //   }
-  //   if (!perSeatPricing) {
-  //     return null;
-  //   }
-  //   const periodEndMs = perSeatPricing.currentPeriodEndMs;
-  //   let d: Date;
-  //   if (perSeatPricing.billingPeriod === "yearly") {
-  //     d = new Date(2026, 6, 23); // July 23, 2026
-  //   } else {
-  //     if (periodEndMs === null) {
-  //       return null;
-  //     }
-  //     d = new Date(periodEndMs);
-  //     const day = d.getDate();
-  //     d.setDate(1);
-  //     d.setMonth(d.getMonth() + 1);
-  //     const daysInMonth = new Date(
-  //       d.getFullYear(),
-  //       d.getMonth() + 1,
-  //       0
-  //     ).getDate();
-  //     d.setDate(Math.min(day, daysInMonth));
-  //   }
-  //   return d.toLocaleDateString("en-US", {
-  //     year: "numeric",
-  //     month: "long",
-  //     day: "numeric",
-  //   });
-  // })();
+  const migrationDate = (() => {
+    if (!isWorkspaceOnProPlan || !isMetronomeCheckout) {
+      return null;
+    }
+    if (!perSeatPricing) {
+      return null;
+    }
+    const periodEndMs = perSeatPricing.currentPeriodEndMs;
+    let d: Date;
+    if (perSeatPricing.billingPeriod === "yearly") {
+      d = new Date(2026, 6, 23); // July 23, 2026
+    } else {
+      if (periodEndMs === null) {
+        return null;
+      }
+      d = new Date(periodEndMs);
+      const day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + 1);
+      const daysInMonth = new Date(
+        d.getFullYear(),
+        d.getMonth() + 1,
+        0
+      ).getDate();
+      d.setDate(Math.min(day, daysInMonth));
+    }
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  })();
 
   if (isLoading) {
     return (
@@ -500,7 +500,7 @@ export function SubscriptionPage() {
               )}
             </ContentMessage>
           )}
-          {/* {migrationDate && (
+          {migrationDate && (
             <ContentMessage
               title="Your plan will be migrated to the new credit-based pricing."
               variant="blue"
@@ -511,7 +511,7 @@ export function SubscriptionPage() {
               cancel your subscription at any time before that date from the
               Stripe billing portal below.
             </ContentMessage>
-          )} */}
+          )}
           {useMetronomePanel ? (
             <SubscriptionProvider owner={owner} subscription={subscription}>
               <MetronomeSubscriptionPanel />

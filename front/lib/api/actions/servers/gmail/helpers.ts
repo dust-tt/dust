@@ -1,4 +1,6 @@
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { escape } from "html-escaper";
+import sanitizeHtml from "sanitize-html";
 
 export interface GmailHeader {
   name: string;
@@ -73,23 +75,30 @@ export function isGmailMessage(data: unknown): data is GmailMessage {
   return typeof obj.id === "string";
 }
 
+export interface DecodedMessageBody {
+  body: string;
+  mimeType: "text/plain" | "text/html";
+}
+
 /**
  * Decode the message body from base64 (recursive for multi-part messages)
  */
 export function decodeMessageBody(
   payload: GmailMessagePayload | undefined
-): string {
+): DecodedMessageBody | null {
   if (!payload) {
-    return "";
+    return null;
   }
 
-  if (payload.mimeType === "text/plain" && payload.body?.data) {
+  if (
+    (payload.mimeType === "text/plain" || payload.mimeType === "text/html") &&
+    payload.body?.data
+  ) {
     const base64 = payload.body.data.replace(/-/g, "+").replace(/_/g, "/");
-    return Buffer.from(base64, "base64").toString("utf-8");
-  }
-  if (payload.mimeType == "text/html" && payload.body?.data) {
-    const base64 = payload.body.data.replace(/-/g, "+").replace(/_/g, "/");
-    return Buffer.from(base64, "base64").toString("utf-8");
+    return {
+      body: Buffer.from(base64, "base64").toString("utf-8"),
+      mimeType: payload.mimeType,
+    };
   }
 
   if (payload.parts) {
@@ -101,7 +110,7 @@ export function decodeMessageBody(
     }
   }
 
-  return "";
+  return null;
 }
 
 /**
@@ -197,6 +206,7 @@ export function findAttachmentIdByPartId(
  */
 export function createQuoteSection(
   originalBody: string,
+  originalMimeType: "text/plain" | "text/html",
   originalDate: string | undefined,
   originalFrom: string | undefined
 ): string {
@@ -210,7 +220,21 @@ export function createQuoteSection(
       : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         `${escape(originalFrom || "Original sender")} wrote:`;
 
-  const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escape(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
+  let quotedContent: string;
+  switch (originalMimeType) {
+    case "text/html":
+      quotedContent = sanitizeHtml(originalBody, {
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+      });
+      break;
+    case "text/plain":
+      quotedContent = escape(originalBody).replace(/\n/g, "<br>");
+      break;
+    default:
+      assertNever(originalMimeType);
+  }
+
+  const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${quotedContent}</blockquote>`;
 
   return `<br><br><div class="gmail_quote">${separator}<br>${quotedOriginal}</div>`;
 }
@@ -222,11 +246,13 @@ export function buildReplyBody(
   userBody: string,
   contentType: "text/plain" | "text/html",
   originalBody: string,
+  originalMimeType: "text/plain" | "text/html",
   originalDate: string | undefined,
   originalFrom: string | undefined
 ): string {
   const quoteSection = createQuoteSection(
     originalBody,
+    originalMimeType,
     originalDate,
     originalFrom
   );

@@ -39,6 +39,7 @@ import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mc
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -180,6 +181,18 @@ export async function storeAgentAnalytics(
 
   const isFreeUsage = contextOrigin !== null && isFreeOrigin(contextOrigin);
 
+  // Seat type at index time, to stamp `is_free_seat`. Mirrors Metronome's
+  // free-seat user-id split: free-seat usage is dropped from a user's consumed
+  // credits once they upgrade to a paid seat. Defaults to non-free when the
+  // message has no associated user (system/doNotAssociateUser messages).
+  const seatType = userModel
+    ? await MembershipResource.getActiveSeatTypeForUserModelId({
+        workspace: auth.getNonNullableWorkspace(),
+        userModelId: userModel.id,
+      })
+    : null;
+  const isFreeSeat = seatType === "free";
+
   const runUsages = await fetchRunUsagesForMessage(auth, agentAgentMessageRow);
 
   // Collect token usage from run data.
@@ -237,6 +250,7 @@ export async function storeAgentAnalytics(
     message_id: agentMessageRow.sId,
     skills_used: skillsUsed,
     status: agentAgentMessageRow.status,
+    is_free_seat: isFreeSeat,
     timestamp: new Date(agentMessageRow.createdAt).toISOString(),
     tokens,
     tools_used: toolsUsed,

@@ -1,18 +1,6 @@
-import type {
-  WorkspaceSandboxEnvVarKind,
-  WorkspaceSandboxEnvVarType,
-} from "@app/types/sandbox/env_var";
+import type { WorkspaceSandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
-export type GetWorkspaceSandboxEnvVarsResponseBody = {
-  envVars: WorkspaceSandboxEnvVarType[];
-};
-
-export type PostWorkspaceSandboxEnvVarsResponseBody = {
-  envVar: WorkspaceSandboxEnvVarType;
-  created: boolean;
-};
 
 export const SANDBOX_ENV_VAR_PREFIX = "DST_";
 export const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";

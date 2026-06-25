@@ -1002,7 +1002,6 @@ function getDynamicToolDisplayLabels({
     case "gong":
     case "hubspot":
     case "include_data":
-    case "slideshow":
     case "luma":
     case "missing_action_catcher":
     case "monday":

@@ -27,7 +27,6 @@ import {
   config as multiRegionsConfig,
   config as regionConfig,
 } from "@app/lib/api/regions/config";
-import { isEnterpriseOrDust } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getBatchEndpoints } from "@app/lib/llms/batch";
@@ -50,7 +49,10 @@ import {
   GLOBAL,
   type Region,
 } from "@app/lib/model_constructors/types/regions";
-import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedPlanPrefix,
+  isEnterpriseOrDust,
+} from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";

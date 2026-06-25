@@ -158,8 +158,8 @@ export async function fetchLiveUserCreditInputs({
 
     if (metronomeContractId) {
       const usageResult = await fetchPerUserAwuUsage({
+        workspaceId,
         metronomeCustomerId,
-        metronomeContractId,
         userIds: [userId],
       });
       if (usageResult.isErr()) {

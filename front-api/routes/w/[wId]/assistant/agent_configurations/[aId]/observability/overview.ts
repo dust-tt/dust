@@ -1,12 +1,12 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { GetAgentOverviewResponseBody } from "@app/lib/api/assistant/observability/overview";
 import {
   fetchAgentCostStats,
   fetchAgentOverview,
   getAgentCostStats,
 } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

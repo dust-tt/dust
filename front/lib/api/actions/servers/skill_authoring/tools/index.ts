@@ -287,7 +287,6 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
         instructionsHtml: convertMarkdownToBlockHtml(instructions),
         editedBy: user.value.id,
         requestedSpaceIds: [],
-        extendedSkillId: null,
         icon: resolvedIcon,
         source: "agent",
         sourceMetadata: null,

@@ -16,6 +16,11 @@ import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_t
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import type {
+  GetUserSpendLimitResponse,
+  SetUserSpendLimitResponse,
+  UserSpendLimit,
+} from "@app/types/api/users/spend_limit";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -23,20 +28,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const MIN_USER_SPEND_LIMIT_AWU_CREDITS = 1;
 export const MAX_USER_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
-
-export type UserSpendLimit =
-  | { kind: "unlimited" }
-  | { kind: "limited"; awuCredits: number };
-
-export type GetUserSpendLimitResponse = UserSpendLimit;
-
-export type GetUserSpendLimitResponseBody = GetUserSpendLimitResponse;
-
-export type PutUserSpendLimitResponseBody = SetUserSpendLimitResponse;
-
-export type SetUserSpendLimitResponse = {
-  limit: UserSpendLimit;
-};
 
 export type UserSpendLimitErrorType =
   | "user_not_found"

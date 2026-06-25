@@ -1,6 +1,6 @@
-import type { GetReinforcementDailySpendResponseBody } from "@app/lib/api/skills";
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
+import type { GetReinforcementDailySpendResponseBody } from "@app/types/api/skills";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";

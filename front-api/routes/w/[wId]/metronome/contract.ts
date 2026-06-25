@@ -1,10 +1,10 @@
-import type { GetMetronomeContractResponseBody } from "@app/lib/api/credits/metronome_contract";
 import {
   applyContractLifecycleAction,
   getMetronomeContractSummary,
-  PatchMetronomeContractRequestBody,
 } from "@app/lib/api/credits/metronome_contract";
 import type { ContractLifecycleError } from "@app/lib/metronome/contract_lifecycle";
+import type { GetMetronomeContractResponseBody } from "@app/types/api/credits/metronome_contract";
+import { PatchMetronomeContractRequestBody } from "@app/types/api/credits/metronome_contract";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

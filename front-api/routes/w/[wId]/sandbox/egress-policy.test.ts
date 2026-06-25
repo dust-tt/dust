@@ -43,7 +43,6 @@ async function setupTest({
 
   if (withFeatureFlags) {
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
-    await FeatureFlagFactory.basic(auth, "sandbox_workspace_admin");
   }
 
   return { workspace, auth, ...rest };

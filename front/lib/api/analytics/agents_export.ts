@@ -3,6 +3,7 @@ import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -13,7 +14,9 @@ type TopAgentExportBucket = {
   doc_count: number;
   unique_users?: estypes.AggregationsCardinalityAggregate;
   unique_conversations?: estypes.AggregationsCardinalityAggregate;
-  credits?: estypes.AggregationsSumAggregate;
+  credits?: estypes.AggregationsFilterAggregate & {
+    total?: estypes.AggregationsSumAggregate;
+  };
 };
 
 type TopAgentsExportAggs = {
@@ -82,7 +85,13 @@ export async function fetchAgentExportRows(
             unique_conversations: {
               cardinality: { field: "conversation_id" },
             },
-            credits: { sum: { field: "cost.full_awu" } },
+            // Credits mirror the billed scope (failed messages carry a cost in
+            // the index but are never billed), while the count metrics above
+            // stay inclusive of all activity.
+            credits: {
+              filter: { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+              aggs: { total: { sum: { field: "cost.full_awu" } } },
+            },
           },
         },
       },
@@ -105,7 +114,7 @@ export async function fetchAgentExportRows(
         messages: b.doc_count,
         distinctUsersReached: Math.round(b.unique_users?.value ?? 0),
         distinctConversations: Math.round(b.unique_conversations?.value ?? 0),
-        credits: Math.round(b.credits?.value ?? 0),
+        credits: Math.round(b.credits?.total?.value ?? 0),
       },
     ])
   );

@@ -1,25 +1,41 @@
 import { matchesSlashCommandCapabilityQuery } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { InlineSlashSearch } from "@app/components/editor/extensions/shared/slash_suggestion/InlineSlashSearch";
 import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
-import {
-  type FileAttachmentType,
-  isFileAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
-import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { usePodFiles } from "@app/lib/swr/pods";
 import type { ProjectFileSearchResult } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
+import type { FileAttachmentType } from "@app/types/api/assistant/conversation/attachments";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DropdownMenuItem, Icon, Spinner } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 export type ContextFileSlashSearchSelection = {
+  contentType: string;
   fileId: string;
   label: string;
-  path: string | null;
+  path: string;
 };
+
+export function isContextFileSlashSearchSelection(
+  value: unknown
+): value is ContextFileSlashSearchSelection {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  return (
+    "contentType" in value &&
+    typeof value.contentType === "string" &&
+    "fileId" in value &&
+    typeof value.fileId === "string" &&
+    "label" in value &&
+    typeof value.label === "string" &&
+    "path" in value &&
+    typeof value.path === "string"
+  );
+}
 
 export type ContextFileSlashSearchItem =
   | {
@@ -29,7 +45,7 @@ export type ContextFileSlashSearchItem =
       id: string;
       kind: "conversation";
       label: string;
-      path: string | null;
+      path: string;
     }
   | {
       description: string;
@@ -49,38 +65,26 @@ function sortContextFileItemsByLabel(
   );
 }
 
-function toSelection(
-  item: ContextFileSlashSearchItem
-): ContextFileSlashSearchSelection {
-  return {
-    fileId: item.fileId,
-    label: item.label,
-    path: item.path,
-  };
-}
-
-export interface ContextFileSlashSearchProps {
-  conversationId: string | null;
-  onCancel: () => void;
-  onFileSelect: (selection: ContextFileSlashSearchSelection) => void;
-  owner: LightWorkspaceType;
-  spaceId?: string | null;
-}
-
-export function ContextFileSlashSearch({
+export function useContextFileSlashSearchItems({
   conversationId,
-  onCancel,
-  onFileSelect,
+  includeFiles,
+  normalizedQuery,
   owner,
   spaceId,
-}: ContextFileSlashSearchProps) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
+}: {
+  conversationId: string | null;
+  includeFiles: boolean;
+  normalizedQuery: string;
+  owner: LightWorkspaceType;
+  spaceId?: string | null;
+}) {
+  const shouldSearchFiles =
+    includeFiles && normalizedQuery.length >= MIN_SEARCH_QUERY_SIZE;
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global", "regular", "project"],
-    disabled: false,
+    disabled: !shouldSearchFiles,
   });
 
   const spacesMap = useMemo(
@@ -96,19 +100,21 @@ export function ContextFileSlashSearch({
   const { files: podFiles, isPodFilesLoading } = usePodFiles({
     owner,
     podId: projectId ?? "",
-    disabled: !projectId,
+    disabled: !shouldSearchFiles || !projectId,
   });
 
   const { attachments, isConversationAttachmentsLoading } =
     useConversationAttachments({
       conversationId,
       owner,
-      options: { disabled: !conversationId },
+      options: { disabled: !shouldSearchFiles || !conversationId },
     });
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-
   const fileItems = useMemo<ContextFileSlashSearchItem[]>(() => {
+    if (!shouldSearchFiles) {
+      return [];
+    }
+
     const matchesQuery = (label: string, description: string) =>
       matchesSlashCommandCapabilityQuery({
         description,
@@ -120,6 +126,10 @@ export function ContextFileSlashSearch({
       .filter(isFileAttachmentType)
       .filter((attachment) => !attachment.hidden)
       .filter((attachment) => !attachment.isInProjectContext)
+      .filter(
+        (attachment): attachment is typeof attachment & { path: string } =>
+          attachment.path !== null
+      )
       .filter((attachment) =>
         matchesQuery(attachment.title, "Conversation file")
       )
@@ -172,86 +182,16 @@ export function ContextFileSlashSearch({
       ...sortContextFileItemsByLabel(conversationFiles),
       ...sortContextFileItemsByLabel(podContextFiles),
     ];
-  }, [attachments, normalizedQuery, podFiles, projectName]);
+  }, [attachments, podFiles, projectName, shouldSearchFiles, normalizedQuery]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fileItems.length and normalizedQuery are intentional triggers
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [fileItems.length, normalizedQuery]);
+  const isFileItemsLoading =
+    shouldSearchFiles &&
+    (isSpacesLoading ||
+      (Boolean(conversationId) && isConversationAttachmentsLoading) ||
+      (Boolean(projectId) && isPodFilesLoading));
 
-  const handleItemSelect = useCallback(
-    (index: number) => {
-      const item = fileItems[index];
-      if (!item) {
-        return;
-      }
-
-      onFileSelect(toSelection(item));
-      setSelectedIndex(0);
-      setSearchQuery("");
-    },
-    [fileItems, onFileSelect]
-  );
-
-  const isLoading =
-    isSpacesLoading ||
-    (Boolean(conversationId) && isConversationAttachmentsLoading) ||
-    (Boolean(projectId) && isPodFilesLoading);
-
-  const dropdownContent =
-    isLoading && fileItems.length === 0 ? (
-      <div className="flex h-14 items-center justify-center">
-        <Spinner size="sm" />
-        <span className="ml-2 text-sm text-gray-500 dark:text-gray-500-night">
-          Loading files...
-        </span>
-      </div>
-    ) : fileItems.length === 0 ? (
-      <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500 dark:text-gray-500-night">
-        No files found
-      </div>
-    ) : (
-      fileItems.map((item, index) => (
-        <DropdownMenuItem
-          key={item.id}
-          itemId={item.id}
-          icon={
-            <Icon
-              visual={getFileTypeIcon(item.file.contentType, item.label)}
-              size="md"
-            />
-          }
-          label={item.label}
-          description={item.description}
-          truncateText
-          onClick={() => {
-            handleItemSelect(index);
-          }}
-          onMouseEnter={() => setSelectedIndex(index)}
-          className={
-            index === selectedIndex ? "bg-gray-100 dark:bg-gray-800" : ""
-          }
-        />
-      ))
-    );
-
-  return (
-    <InlineSlashSearch
-      deferDropdownUntilFocus
-      dropdownContent={dropdownContent}
-      highlightedItemId={fileItems[selectedIndex]?.id}
-      isDropdownOpen={fileItems.length > 0 || isLoading}
-      itemCount={fileItems.length}
-      onCancel={onCancel}
-      onSearchQueryChange={(text) => {
-        setSearchQuery(text);
-        setSelectedIndex(0);
-      }}
-      onSelectIndex={handleItemSelect}
-      onSelectedIndexChange={setSelectedIndex}
-      placeholder="Search conversation and pod files..."
-      searchQuery={searchQuery}
-      selectedIndex={selectedIndex}
-    />
-  );
+  return {
+    fileItems,
+    isFileItemsLoading,
+  };
 }

@@ -293,6 +293,11 @@ export function createSlashSuggestionExtension<
               },
 
               onKeyDown: ({ event }) => {
+                const handled = component?.ref?.onKeyDown?.({ event }) ?? false;
+                if (handled) {
+                  return true;
+                }
+
                 if (event.key === "Escape") {
                   if (preventEscapeDefault) {
                     event.preventDefault();
@@ -301,7 +306,7 @@ export function createSlashSuggestionExtension<
                   return true;
                 }
 
-                return component?.ref?.onKeyDown?.({ event }) ?? false;
+                return false;
               },
 
               onExit() {

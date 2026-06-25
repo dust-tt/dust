@@ -1,6 +1,6 @@
-import type { PokeGetSkillDetails } from "@app/lib/api/poke/skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { PokeGetSkillDetails } from "@app/types/api/poke/skills";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

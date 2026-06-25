@@ -1,6 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/lib/api/data_sources/managed_config";
-import type { GetDataSourcePermissionsResponseBody } from "@app/lib/api/data_sources/managed_permissions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -8,6 +6,8 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/types/api/data_sources/managed_config";
+import type { GetDataSourcePermissionsResponseBody } from "@app/types/api/data_sources/managed_permissions";
 import type {
   ConnectorPermission,
   ContentNode,

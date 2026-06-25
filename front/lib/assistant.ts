@@ -1,4 +1,5 @@
 import {
+  isCreditPricedPlanPrefix,
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
   isUpgraded,
@@ -12,10 +13,12 @@ import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-export function isEnterpriseOrDust(plan: PlanType | null): boolean {
+export function isPlanForAdvancedModels(plan: PlanType | null): boolean {
   return (
     plan !== null &&
-    (isEnterprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
+    (isEnterprisePlanPrefix(plan.code) ||
+      isCreditPricedPlanPrefix(plan.code) ||
+      isDustCompanyPlan(plan.code))
   );
 }
 
@@ -50,9 +53,9 @@ export function isModelAvailable(
     return true;
   }
 
-  const { enterprise, featureFlag } = m.availableIfOneOf;
+  const { plansWithAdvancedModels, featureFlag } = m.availableIfOneOf;
 
-  if (enterprise === true && isEnterpriseOrDust(plan)) {
+  if (plansWithAdvancedModels === true && isPlanForAdvancedModels(plan)) {
     return true;
   }
 
