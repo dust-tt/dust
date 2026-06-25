@@ -12,6 +12,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -174,7 +175,10 @@ interface ConversationNotePart {
 
 async function findLatestActiveProductboardAgents(
   workspace: LightWorkspaceType
-): Promise<AgentConfigurationModel[]> {
+): Promise<{
+  productboardAgents: AgentConfigurationModel[];
+  productboardMCPServerConfigurationModelIds: ModelId[];
+}> {
   const productboardMCPServerViews = await MCPServerViewModel.findAll({
     where: {
       workspaceId: workspace.id,
@@ -189,21 +193,30 @@ async function findLatestActiveProductboardAgents(
     .map((view) => view.id);
 
   if (productboardMCPServerViewModelIds.length === 0) {
-    return [];
+    return {
+      productboardAgents: [],
+      productboardMCPServerConfigurationModelIds: [],
+    };
   }
 
-  const mcpConfigurations = await AgentMCPServerConfigurationModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      mcpServerViewId: { [Op.in]: productboardMCPServerViewModelIds },
-    },
-  });
+  const productboardMCPServerConfigurations =
+    await AgentMCPServerConfigurationModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        mcpServerViewId: { [Op.in]: productboardMCPServerViewModelIds },
+      },
+    });
   const productboardAgentConfigurationModelIds = new Set(
-    mcpConfigurations.map((config) => config.agentConfigurationId)
+    productboardMCPServerConfigurations.map(
+      (config) => config.agentConfigurationId
+    )
   );
 
   if (productboardAgentConfigurationModelIds.size === 0) {
-    return [];
+    return {
+      productboardAgents: [],
+      productboardMCPServerConfigurationModelIds: [],
+    };
   }
 
   const productboardAgentConfigurations = await AgentConfigurationModel.findAll(
@@ -215,10 +228,23 @@ async function findLatestActiveProductboardAgents(
       },
     }
   );
-
-  return productboardAgentConfigurations.sort((a, b) =>
-    a.name.localeCompare(b.name)
+  const productboardActiveAgentConfigurationModelIds = new Set(
+    productboardAgentConfigurations.map((agent) => agent.id)
   );
+
+  return {
+    productboardAgents: productboardAgentConfigurations.sort((a, b) =>
+      a.name.localeCompare(b.name)
+    ),
+    productboardMCPServerConfigurationModelIds:
+      productboardMCPServerConfigurations
+        .filter((config) =>
+          productboardActiveAgentConfigurationModelIds.has(
+            config.agentConfigurationId
+          )
+        )
+        .map((config) => config.id),
+  };
 }
 
 async function fetchActiveProductboardSkill(
@@ -421,7 +447,7 @@ async function backfillWorkspace(
     logger: Logger;
   }
 ): Promise<void> {
-  const productboardAgents =
+  const { productboardAgents, productboardMCPServerConfigurationModelIds } =
     await findLatestActiveProductboardAgents(workspace);
   if (productboardAgents.length === 0) {
     return;
@@ -442,6 +468,8 @@ async function backfillWorkspace(
         agentName: agent.name,
         version: agent.version,
       })),
+      productboardMCPServerConfigurationCount:
+        productboardMCPServerConfigurationModelIds.length,
       skillExists: existingSkill !== null,
       workspaceId: workspace.sId,
     },
@@ -467,18 +495,31 @@ async function backfillWorkspace(
     });
   }
 
-  await AgentSkillModel.bulkCreate(
-    productboardAgentModelIds.map((agentConfigurationModelId) => ({
-      agentConfigurationId: agentConfigurationModelId,
-      customSkillId: skill.id,
-      globalSkillId: null,
-      workspaceId: workspace.id,
-    }))
-  );
+  await withTransaction(async (transaction) => {
+    await AgentSkillModel.bulkCreate(
+      productboardAgentModelIds.map((agentConfigurationModelId) => ({
+        agentConfigurationId: agentConfigurationModelId,
+        customSkillId: skill.id,
+        globalSkillId: null,
+        workspaceId: workspace.id,
+      })),
+      { transaction }
+    );
+
+    await AgentMCPServerConfigurationModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+        id: { [Op.in]: productboardMCPServerConfigurationModelIds },
+      },
+      transaction,
+    });
+  });
 
   logger.info(
     {
       agentIdsToLink: productboardAgentModelIds.length,
+      productboardMCPServerConfigurationsRemoved:
+        productboardMCPServerConfigurationModelIds.length,
       skillId: skill.sId,
       workspaceId: workspace.sId,
     },
