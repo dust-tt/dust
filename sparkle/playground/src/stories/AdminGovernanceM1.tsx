@@ -184,7 +184,7 @@ type AdminPage =
   | "usage";
 
 type SpacesPage =
-  | "list"
+  | "space"
   | "connections"
   | "connection_detail"
   | "tools"
@@ -459,7 +459,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "billing",
     "usage",
   ],
-  manager: ["people", "analytics", "usage"],
+  manager: ["people", "analytics", "usage", "billing"],
 };
 
 const STATUS_LABELS: Record<MemberRow["status"], string> = {
@@ -2003,6 +2003,20 @@ function UsagePage({
 
 // --- Placeholder Page ---------------------------------------------------------
 
+function LockedSpacePage({ title }: { title: string }) {
+  return (
+    <Page>
+      <Page.Header title={title} icon={Lock01} />
+      <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-3 s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-p-12">
+        <Lock01 className="s-h-8 s-w-8 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+        <Page.P variant="secondary" size="sm">
+          This section requires Admin access.
+        </Page.P>
+      </div>
+    </Page>
+  );
+}
+
 function PlaceholderPage({
   title,
   description,
@@ -2925,11 +2939,15 @@ function SpacesSidebarNav({
   onConnectionsClick,
   onToolsClick,
   onTriggersClick,
+  onSpaceClick,
+  selectedSpace,
   role,
 }: {
   onConnectionsClick: () => void;
   onToolsClick: () => void;
   onTriggersClick: () => void;
+  onSpaceClick: (name: string) => void;
+  selectedSpace: string | null;
   role: Role;
 }) {
   return (
@@ -2937,21 +2955,35 @@ function SpacesSidebarNav({
       <ScrollBar orientation="vertical" size="minimal" />
       <NavigationList className="s-px-2 s-py-2">
         <NavigationListCollapsibleSection label="Administration" defaultOpen>
-          <NavigationListItem
-            icon={CloudArrowLeftRight}
-            label="Connections"
-            onClick={onConnectionsClick}
-          />
-          <NavigationListItem
-            icon={ShapesPlus}
-            label="Tools"
-            onClick={onToolsClick}
-          />
-          <NavigationListItem
-            icon={Lightning01}
-            label="Triggers"
-            onClick={onTriggersClick}
-          />
+          {(
+            [
+              {
+                icon: CloudArrowLeftRight,
+                label: "Connections",
+                onClick: onConnectionsClick,
+              },
+              { icon: ShapesPlus, label: "Tools", onClick: onToolsClick },
+              {
+                icon: Lightning01,
+                label: "Triggers",
+                onClick: onTriggersClick,
+              },
+            ] as const
+          ).map((item) => {
+            const locked = role === "manager";
+            return (
+              <div
+                key={item.label}
+                className={locked ? "s-opacity-40" : undefined}
+              >
+                <NavigationListItem
+                  icon={locked ? Lock01 : item.icon}
+                  label={item.label}
+                  onClick={item.onClick}
+                />
+              </div>
+            );
+          })}
         </NavigationListCollapsibleSection>
 
         <NavigationListCollapsibleSection label="Open Spaces" defaultOpen>
@@ -2960,7 +2992,8 @@ function SpacesSidebarNav({
               key={s}
               icon={Globe01}
               label={s}
-              onClick={() => {}}
+              selected={selectedSpace === s}
+              onClick={() => onSpaceClick(s)}
             />
           ))}
         </NavigationListCollapsibleSection>
@@ -2971,7 +3004,8 @@ function SpacesSidebarNav({
               key={s}
               icon={Lock01}
               label={s}
-              onClick={() => {}}
+              selected={selectedSpace === s}
+              onClick={() => onSpaceClick(s)}
             />
           ))}
           {role === "admin" &&
@@ -4569,11 +4603,15 @@ export default function AdminGovernanceM1() {
     "admin"
   );
   const [activePage, setActivePage] = useState<AdminPage>("people");
-  const [lockedItem, setLockedItem] = useState<{ label: string } | null>(null);
+  const [lockedItem, setLockedItem] = useState<{
+    label: string;
+    description?: string;
+  } | null>(null);
   const [members, setMembers] = useState<MemberRow[]>(INITIAL_MEMBERS);
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
   // Spaces / Connections state
-  const [spacesPage, setSpacesPage] = useState<SpacesPage>("connections");
+  const [spacesPage, setSpacesPage] = useState<SpacesPage>("space");
+  const [selectedSpace, setSelectedSpace] = useState<string>("Company Data");
   const [connections, setConnections] = useState<ConnectionRow[]>([
     ...INITIAL_CONNECTIONS,
   ]);
@@ -4594,7 +4632,7 @@ export default function AdminGovernanceM1() {
         value={activeTab}
         onValueChange={(v) => {
           setActiveTab(v as typeof activeTab);
-          if (v === "spaces") setSpacesPage("connections");
+          if (v === "spaces") setSpacesPage("space");
         }}
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
@@ -4624,9 +4662,38 @@ export default function AdminGovernanceM1() {
         >
           <SpacesSidebarNav
             role={role}
-            onConnectionsClick={() => setSpacesPage("connections")}
-            onToolsClick={() => setSpacesPage("tools")}
-            onTriggersClick={() => setSpacesPage("triggers")}
+            onConnectionsClick={() =>
+              role === "manager"
+                ? setLockedItem({
+                    label: "Connections",
+                    description:
+                      "Business Admins cannot manage connectors. Contact your Super Admin to get access.",
+                  })
+                : setSpacesPage("connections")
+            }
+            onToolsClick={() =>
+              role === "manager"
+                ? setLockedItem({
+                    label: "Tools",
+                    description:
+                      "Business Admins cannot manage tools. Contact your Super Admin to get access.",
+                  })
+                : setSpacesPage("tools")
+            }
+            onTriggersClick={() =>
+              role === "manager"
+                ? setLockedItem({
+                    label: "Triggers",
+                    description:
+                      "Business Admins cannot manage triggers. Contact your Super Admin to get access.",
+                  })
+                : setSpacesPage("triggers")
+            }
+            selectedSpace={spacesPage === "space" ? selectedSpace : null}
+            onSpaceClick={(name) => {
+              setSelectedSpace(name);
+              setSpacesPage("space");
+            }}
           />
         </NavTabPillContent>
 
@@ -4726,17 +4793,32 @@ export default function AdminGovernanceM1() {
       {/* Spaces content */}
       {activeTab === "spaces" && (
         <div key={spacesPage} className="ag-page-in">
-          {spacesPage === "connections" ? (
-            <ConnectionsPage
-              connections={connections}
-              role={role}
-              managers={members}
-              onManage={(conn) => setManagingConn(conn)}
-              onOpenDetail={(conn) => {
-                setActiveConnection(conn);
-                setSpacesPage("connection_detail");
-              }}
+          {spacesPage === "space" ? (
+            <PlaceholderPage
+              title={selectedSpace}
+              description={`Content of the ${selectedSpace} space.`}
+              icon={
+                RESTRICTED_SPACES_MEMBER.includes(selectedSpace) ||
+                RESTRICTED_SPACES_NO_ACCESS.includes(selectedSpace)
+                  ? Lock01
+                  : Globe01
+              }
             />
+          ) : spacesPage === "connections" ? (
+            role === "manager" ? (
+              <LockedSpacePage title="Connections" />
+            ) : (
+              <ConnectionsPage
+                connections={connections}
+                role={role}
+                managers={members}
+                onManage={(conn) => setManagingConn(conn)}
+                onOpenDetail={(conn) => {
+                  setActiveConnection(conn);
+                  setSpacesPage("connection_detail");
+                }}
+              />
+            )
           ) : spacesPage === "connection_detail" && activeConnection ? (
             <ConnectionDetailPage
               connection={activeConnection}
@@ -4745,9 +4827,17 @@ export default function AdminGovernanceM1() {
               onManage={(conn) => setManagingConn(conn)}
             />
           ) : spacesPage === "tools" ? (
-            <ToolsPage role={role} />
+            role === "manager" ? (
+              <LockedSpacePage title="Tools" />
+            ) : (
+              <ToolsPage role={role} />
+            )
           ) : spacesPage === "triggers" ? (
-            <TriggersPage role={role} />
+            role === "manager" ? (
+              <LockedSpacePage title="Triggers" />
+            ) : (
+              <TriggersPage role={role} />
+            )
           ) : (
             <Page>
               <Page.Header
@@ -4862,8 +4952,8 @@ export default function AdminGovernanceM1() {
                   role.
                 </Page.P>
                 <Page.P variant="secondary" size="sm">
-                  Business Admins cannot access Infrastructure settings. Contact
-                  your Admin to get access.
+                  {lockedItem?.description ??
+                    "Business Admins cannot access this section. Contact your Admin to get access."}
                 </Page.P>
               </div>
             </div>

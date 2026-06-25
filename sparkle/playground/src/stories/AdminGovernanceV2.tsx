@@ -19,6 +19,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSearchbar,
   DropdownMenuTrigger,
   DotsHorizontal,
   Fingerprint04,
@@ -489,6 +490,22 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     scope: "disabled",
     groups: [],
   },
+  {
+    id: "billing_access",
+    label: "Billing access",
+    description:
+      "Manage billing settings, view invoices, and update payment methods.",
+    scope: "groups",
+    groups: ["Managers"],
+  },
+  {
+    id: "security_access",
+    label: "Security access",
+    description:
+      "Manage security by controlling user access, verifying identities, and handling provisioning.",
+    scope: "groups",
+    groups: ["Managers"],
+  },
 ];
 
 // ─── Spaces sidebar data ──────────────────────────────────────────────────────
@@ -661,7 +678,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "billing",
     "usage",
   ],
-  admin: ["people", "capabilities", "analytics", "usage"],
+  admin: ["people", "capabilities", "analytics", "usage", "billing"],
   security_admin: ["people", "identity"],
   billing_admin: ["billing", "usage"],
 };
@@ -1881,6 +1898,13 @@ function GovernanceRow({
   onChange: (s: GovernanceSetting) => void;
   groups: GroupRow[];
 }) {
+  const [groupSearch, setGroupSearch] = useState("");
+  const filteredGroups = groups.filter(
+    (g) =>
+      !setting.groups.includes(g.name) &&
+      g.name.toLowerCase().includes(groupSearch.toLowerCase())
+  );
+
   return (
     <div className="ag-governance-row s-w-full s-flex s-flex-col s-gap-3 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
       <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
@@ -1918,23 +1942,30 @@ function GovernanceRow({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {groups
-                  .filter((g) => !setting.groups.includes(g.name))
-                  .map((g) => (
-                    <DropdownMenuItem
-                      key={g.id}
-                      label={g.name}
-                      onClick={() =>
-                        onChange({
-                          ...setting,
-                          groups: [...setting.groups, g.name],
-                        })
-                      }
-                    />
-                  ))}
-                {groups.filter((g) => !setting.groups.includes(g.name))
-                  .length === 0 && (
-                  <DropdownMenuItem label="All groups added" disabled />
+                <DropdownMenuSearchbar
+                  name="group-search"
+                  placeholder="Search groups"
+                  value={groupSearch}
+                  onChange={setGroupSearch}
+                  autoFocus
+                />
+                {filteredGroups.map((g) => (
+                  <DropdownMenuItem
+                    key={g.id}
+                    label={g.name}
+                    onClick={() =>
+                      onChange({
+                        ...setting,
+                        groups: [...setting.groups, g.name],
+                      })
+                    }
+                  />
+                ))}
+                {filteredGroups.length === 0 && (
+                  <DropdownMenuItem
+                    label={groupSearch ? "No groups found" : "All groups added"}
+                    disabled
+                  />
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1976,6 +2007,13 @@ function ModelGovernanceRow({
   groups: GroupRow[];
   onChange: (access: ModelDef["access"], modelGroups: string[]) => void;
 }) {
+  const [groupSearch, setGroupSearch] = useState("");
+  const filteredGroups = groups.filter(
+    (g) =>
+      !model.groups.includes(g.name) &&
+      g.name.toLowerCase().includes(groupSearch.toLowerCase())
+  );
+
   return (
     <div className="s-flex s-w-full s-flex-col s-gap-3 s-px-5 s-py-4">
       <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
@@ -2020,19 +2058,28 @@ function ModelGovernanceRow({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {groups
-                  .filter((g) => !model.groups.includes(g.name))
-                  .map((g) => (
-                    <DropdownMenuItem
-                      key={g.id}
-                      label={g.name}
-                      onClick={() =>
-                        onChange("groups", [...model.groups, g.name])
-                      }
-                    />
-                  ))}
-                {groups.filter((g) => !model.groups.includes(g.name)).length ===
-                  0 && <DropdownMenuItem label="All groups added" disabled />}
+                <DropdownMenuSearchbar
+                  name="group-search"
+                  placeholder="Search groups"
+                  value={groupSearch}
+                  onChange={setGroupSearch}
+                  autoFocus
+                />
+                {filteredGroups.map((g) => (
+                  <DropdownMenuItem
+                    key={g.id}
+                    label={g.name}
+                    onClick={() =>
+                      onChange("groups", [...model.groups, g.name])
+                    }
+                  />
+                ))}
+                {filteredGroups.length === 0 && (
+                  <DropdownMenuItem
+                    label={groupSearch ? "No groups found" : "All groups added"}
+                    disabled
+                  />
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -2080,10 +2127,6 @@ function GovernancePage({
   const canEdit = role === "super_admin" || role === "admin";
   const update = (updated: GovernanceSetting) =>
     setSettings(settings.map((s) => (s.id === updated.id ? updated : s)));
-  const [assignTarget, setAssignTarget] = useState<
-    "billing_admin" | "security_manager" | null
-  >(null);
-
   return (
     <Page>
       <Page.Header
@@ -2135,56 +2178,19 @@ function GovernancePage({
       <Page.Separator />
       <Page.Vertical gap="sm">
         <Page.SectionHeader title="Billing & Security" />
-        {[
-          {
-            id: "billing_admin",
-            title: "Billing admin",
-            desc: "Manage your billing settings, view invoices, and update payment methods.",
-            members: ["Jane Doe", "Jack Doerty"],
-          },
-          {
-            id: "security_manager",
-            title: "Security manager",
-            desc: "Manage security by controlling user access, verifying identities, and handling provisioning across the workspace.",
-            members: ["Jane Doe", "Jack Doerty"],
-          },
-        ].map((item) => (
-          <div
-            key={item.id}
-            className="s-flex s-w-full s-flex-col s-gap-3 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4"
-          >
-            <Page.Vertical gap="xs">
-              <Page.H variant="h5">{item.title}</Page.H>
-              <Page.P variant="secondary" size="sm">
-                {item.desc}
-              </Page.P>
-            </Page.Vertical>
-            <div className="s-flex s-items-start s-gap-3 s-flex-wrap">
-              {item.members.map((name) => (
-                <Chip
-                  key={name}
-                  label={name}
-                  size="xs"
-                  color="primary"
-                  onRemove={canEdit ? () => {} : undefined}
-                />
-              ))}
-              {canEdit && (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={Plus}
-                  label="Assign member"
-                  onClick={() =>
-                    setAssignTarget(
-                      item.id as "billing_admin" | "security_manager"
-                    )
-                  }
-                />
-              )}
-            </div>
-          </div>
-        ))}
+        {settings
+          .filter(
+            (s) => s.id === "billing_access" || s.id === "security_access"
+          )
+          .map((s) => (
+            <GovernanceRow
+              key={s.id}
+              setting={s}
+              canEdit={canEdit}
+              onChange={update}
+              groups={groups}
+            />
+          ))}
       </Page.Vertical>
 
       <Page.Separator />
@@ -2228,26 +2234,6 @@ function GovernancePage({
           </div>
         </div>
       ))}
-
-      {/* Assign member sheets */}
-      <MemberPickerSheet
-        title="Billing Admin"
-        open={assignTarget === "billing_admin"}
-        onClose={() => setAssignTarget(null)}
-        primaryLabel="Create group"
-        onPrimary={() => setAssignTarget(null)}
-        preSelected={[]}
-        searchPlaceholder="e.g. John Doe"
-      />
-      <MemberPickerSheet
-        title="Security manager"
-        open={assignTarget === "security_manager"}
-        onClose={() => setAssignTarget(null)}
-        primaryLabel="Create group"
-        onPrimary={() => setAssignTarget(null)}
-        preSelected={[]}
-        searchPlaceholder="e.g. John Doe"
-      />
     </Page>
   );
 }
@@ -2813,6 +2799,20 @@ function PlaceholderPage({
       <Page.Header title={title} description={description} icon={icon} />
       <div className="s-flex s-items-center s-justify-center s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-p-12">
         <Page.P variant="secondary">Content coming soon</Page.P>
+      </div>
+    </Page>
+  );
+}
+
+function LockedSpacePage({ title }: { title: string }) {
+  return (
+    <Page>
+      <Page.Header title={title} icon={Lock01} />
+      <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-3 s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-p-12">
+        <Lock01 className="s-h-8 s-w-8 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+        <Page.P variant="secondary" size="sm">
+          This section requires Super Admin access.
+        </Page.P>
       </div>
     </Page>
   );
@@ -3449,11 +3449,15 @@ function SpacesSidebarNav({
   onConnectionsClick,
   onToolsClick,
   onTriggersClick,
+  onSpaceClick,
+  selectedSpace,
   role,
 }: {
   onConnectionsClick: () => void;
   onToolsClick: () => void;
   onTriggersClick: () => void;
+  onSpaceClick: (name: string) => void;
+  selectedSpace: string | null;
   role: Role;
 }) {
   return (
@@ -3461,21 +3465,35 @@ function SpacesSidebarNav({
       <ScrollBar orientation="vertical" size="minimal" />
       <NavigationList className="s-px-2 s-py-2">
         <NavigationListCollapsibleSection label="Administration" defaultOpen>
-          <NavigationListItem
-            icon={CloudArrowLeftRight}
-            label="Connections"
-            onClick={onConnectionsClick}
-          />
-          <NavigationListItem
-            icon={ShapesPlus}
-            label="Tools"
-            onClick={onToolsClick}
-          />
-          <NavigationListItem
-            icon={Lightning01}
-            label="Triggers"
-            onClick={onTriggersClick}
-          />
+          {(
+            [
+              {
+                icon: CloudArrowLeftRight,
+                label: "Connections",
+                onClick: onConnectionsClick,
+              },
+              { icon: ShapesPlus, label: "Tools", onClick: onToolsClick },
+              {
+                icon: Lightning01,
+                label: "Triggers",
+                onClick: onTriggersClick,
+              },
+            ] as const
+          ).map((item) => {
+            const locked = role === "admin";
+            return (
+              <div
+                key={item.label}
+                className={locked ? "s-opacity-40" : undefined}
+              >
+                <NavigationListItem
+                  icon={locked ? Lock01 : item.icon}
+                  label={item.label}
+                  onClick={item.onClick}
+                />
+              </div>
+            );
+          })}
         </NavigationListCollapsibleSection>
 
         <NavigationListCollapsibleSection label="Open Spaces" defaultOpen>
@@ -3484,7 +3502,8 @@ function SpacesSidebarNav({
               key={s}
               icon={Globe01}
               label={s}
-              onClick={() => {}}
+              selected={selectedSpace === s}
+              onClick={() => onSpaceClick(s)}
             />
           ))}
         </NavigationListCollapsibleSection>
@@ -3495,10 +3514,11 @@ function SpacesSidebarNav({
               key={s}
               icon={Lock01}
               label={s}
-              onClick={() => {}}
+              selected={selectedSpace === s}
+              onClick={() => onSpaceClick(s)}
             />
           ))}
-          {(role === "super_admin" || role === "admin") &&
+          {role === "super_admin" &&
             RESTRICTED_SPACES_NO_ACCESS.map((s) => (
               <div key={s} className="s-opacity-50">
                 <NavigationListItem
@@ -3687,32 +3707,19 @@ function ManageConnectionSheet({
 
 // ─── Connections Page ─────────────────────────────────────────────────────────
 
-// Connections the business admin currently has access to (simulates delegation)
-const ADMIN_ACCESSIBLE = new Set(["Notion", "Slack", "Google Drive"]);
-
 function ConnectionsPage({
   connections,
   onManage,
   onOpenDetail,
-  role,
 }: {
   connections: ConnectionRow[];
   onManage: (conn: ConnectionRow) => void;
   onOpenDetail: (conn: ConnectionRow) => void;
-  role: Role;
 }) {
   const [search, setSearch] = useState("");
-  const [requestTarget, setRequestTarget] = useState<ConnectionRow | null>(
-    null
-  );
-  const [requestMessage, setRequestMessage] = useState("");
-  const [requestedIds, setRequestedIds] = useState<string[]>([]);
   const [configureTarget, setConfigureTarget] = useState<ConnectionRow | null>(
     null
   );
-
-  const isAccessible = (conn: ConnectionRow) =>
-    role === "super_admin" || ADMIN_ACCESSIBLE.has(conn.name);
 
   const columns = useMemo<ColumnDef<ConnectionRow>[]>(
     () => [
@@ -3723,12 +3730,9 @@ function ConnectionsPage({
         cell: (info) => {
           const row = info.row.original;
           const Logo = row.logo;
-          const accessible = isAccessible(row);
           return (
             <DataTable.CellContent>
-              <div
-                className={`s-flex s-items-center s-gap-3${!accessible ? " s-opacity-40" : ""}`}
-              >
+              <div className="s-flex s-items-center s-gap-3">
                 <div className="s-h-6 s-w-6 s-shrink-0">
                   <Logo className="s-h-6 s-w-6" />
                 </div>
@@ -3745,13 +3749,9 @@ function ConnectionsPage({
         header: "Used By",
         meta: { className: "s-w-28" },
         cell: (info) => {
-          const row = info.row.original;
-          const accessible = isAccessible(row);
           return (
             <DataTable.CellContent>
-              <div
-                className={`s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night${!accessible ? " s-opacity-40" : ""}`}
-              >
+              <div className="s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
                 <Users01 className="s-h-3.5 s-w-3.5" />
                 <span>{info.getValue() as number}</span>
               </div>
@@ -3764,13 +3764,9 @@ function ConnectionsPage({
         header: "Managed By",
         meta: { className: "s-w-28" },
         cell: (info) => {
-          const row = info.row.original;
-          const accessible = isAccessible(row);
           return (
             <DataTable.CellContent>
-              <div className={!accessible ? "s-opacity-40" : ""}>
-                <Avatar name={info.getValue() as string} size="xs" isRounded />
-              </div>
+              <Avatar name={info.getValue() as string} size="xs" isRounded />
             </DataTable.CellContent>
           );
         },
@@ -3780,13 +3776,9 @@ function ConnectionsPage({
         header: "Last Sync",
         meta: { className: "s-w-32" },
         cell: (info) => {
-          const row = info.row.original;
-          const accessible = isAccessible(row);
           return (
             <DataTable.CellContent>
-              <span
-                className={`s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap${!accessible ? " s-opacity-40" : ""}`}
-              >
+              <span className="s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap">
                 {info.getValue() as string}
               </span>
             </DataTable.CellContent>
@@ -3799,48 +3791,27 @@ function ConnectionsPage({
         meta: { className: "s-w-36" },
         cell: (info: { row: { original: ConnectionRow } }) => {
           const row = info.row.original;
-          const accessible = isAccessible(row);
-          const requested = requestedIds.includes(row.name);
-          if (role === "super_admin" || (role === "admin" && accessible)) {
-            return (
-              <DataTable.CellContent>
-                {row.configured ? (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    icon={Settings01}
-                    label="Manage"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onManage(row);
-                    }}
-                  />
-                ) : role === "super_admin" ? (
-                  <Button
-                    variant="primary"
-                    size="xs"
-                    label="Configure"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfigureTarget(row);
-                    }}
-                  />
-                ) : null}
-              </DataTable.CellContent>
-            );
-          }
           return (
             <DataTable.CellContent>
-              {requested ? (
-                <Chip label="Requested" size="xs" color="warning" />
-              ) : (
+              {row.configured ? (
                 <Button
                   variant="outline"
                   size="xs"
-                  label="Request access"
+                  icon={Settings01}
+                  label="Manage"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setRequestTarget(row);
+                    onManage(row);
+                  }}
+                />
+              ) : (
+                <Button
+                  variant="primary"
+                  size="xs"
+                  label="Configure"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfigureTarget(row);
                   }}
                 />
               )}
@@ -3849,7 +3820,7 @@ function ConnectionsPage({
         },
       },
     ],
-    [role, onManage, requestedIds]
+    [onManage]
   );
 
   const rows = connections
@@ -3859,7 +3830,7 @@ function ConnectionsPage({
     .sort((a, b) => (a.configured === b.configured ? 0 : a.configured ? -1 : 1))
     .map((c) => ({
       ...c,
-      onClick: isAccessible(c) ? () => onOpenDetail(c) : undefined,
+      onClick: () => onOpenDetail(c),
     }));
 
   return (
@@ -3883,75 +3854,6 @@ function ConnectionsPage({
         </div>
         <DataTable data={rows} columns={columns} className="s-w-full" />
       </Page>
-
-      {/* Request Access Sheet */}
-      <Sheet
-        open={!!requestTarget}
-        onOpenChange={(open) => {
-          if (!open) {
-            setRequestTarget(null);
-            setRequestMessage("");
-          }
-        }}
-      >
-        <SheetContent size="lg">
-          <SheetHeader>
-            <SheetTitle>Request access to {requestTarget?.name}</SheetTitle>
-          </SheetHeader>
-          <div className="s-flex s-flex-col s-gap-5 s-p-5">
-            {requestTarget && (
-              <div className="s-flex s-items-center s-gap-3 s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-p-4">
-                <div className="s-h-8 s-w-8 s-shrink-0">
-                  <requestTarget.logo className="s-h-8 s-w-8" />
-                </div>
-                <div className="s-flex s-flex-col">
-                  <span className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
-                    {requestTarget.name}
-                  </span>
-                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    {requestTarget.usedBy} users · Last sync{" "}
-                    {requestTarget.lastSync}
-                  </span>
-                </div>
-              </div>
-            )}
-            <div className="s-flex s-flex-col s-gap-2">
-              <Label>Why do you need access?</Label>
-              <TextArea
-                placeholder="Explain why your team needs access to this data source..."
-                value={requestMessage}
-                onChange={(e) => setRequestMessage(e.target.value)}
-                minRows={4}
-              />
-              <Page.P variant="secondary" size="sm">
-                Your request will be sent to the Super Admin for approval.
-              </Page.P>
-            </div>
-          </div>
-          <SheetFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setRequestTarget(null);
-                setRequestMessage("");
-              },
-            }}
-            rightButtonProps={{
-              label: "Send request",
-              variant: "primary",
-              disabled: !requestMessage.trim(),
-              onClick: () => {
-                if (requestTarget) {
-                  setRequestedIds((prev) => [...prev, requestTarget.name]);
-                }
-                setRequestTarget(null);
-                setRequestMessage("");
-              },
-            }}
-          />
-        </SheetContent>
-      </Sheet>
 
       {/* Configure Connection Sheet */}
       <Sheet
@@ -4775,8 +4677,9 @@ export default function AdminGovernanceV2() {
     "admin"
   );
   const [spacesPage, setSpacesPage] = useState<
-    "connections" | "tools" | "triggers"
-  >("connections");
+    "space" | "connections" | "tools" | "triggers"
+  >("space");
+  const [selectedSpace, setSelectedSpace] = useState<string>("Company Data");
   const [selectedConnectionId, setSelectedConnectionId] = useState<
     string | null
   >(null);
@@ -4805,7 +4708,7 @@ export default function AdminGovernanceV2() {
         value={activeTab}
         onValueChange={(v) => {
           setActiveTab(v as typeof activeTab);
-          if (v === "spaces") setSpacesPage("connections");
+          if (v === "spaces") setSpacesPage("space");
         }}
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
@@ -4836,11 +4739,37 @@ export default function AdminGovernanceV2() {
           <SpacesSidebarNav
             role={role}
             onConnectionsClick={() => {
-              setSpacesPage("connections");
-              setSelectedConnectionId(null);
+              if (role === "admin") {
+                setLockedItem({
+                  label: "Connections",
+                  requiredRoles: ["Super Admin"],
+                });
+              } else {
+                setSpacesPage("connections");
+                setSelectedConnectionId(null);
+              }
             }}
-            onToolsClick={() => setSpacesPage("tools")}
-            onTriggersClick={() => setSpacesPage("triggers")}
+            onToolsClick={() =>
+              role === "admin"
+                ? setLockedItem({
+                    label: "Tools",
+                    requiredRoles: ["Super Admin"],
+                  })
+                : setSpacesPage("tools")
+            }
+            onTriggersClick={() =>
+              role === "admin"
+                ? setLockedItem({
+                    label: "Triggers",
+                    requiredRoles: ["Super Admin"],
+                  })
+                : setSpacesPage("triggers")
+            }
+            selectedSpace={spacesPage === "space" ? selectedSpace : null}
+            onSpaceClick={(name) => {
+              setSelectedSpace(name);
+              setSpacesPage("space");
+            }}
           />
         </NavTabPillContent>
 
@@ -4955,7 +4884,18 @@ export default function AdminGovernanceV2() {
         className="ag-page-in"
       >
         {activeTab === "spaces" ? (
-          selectedConnectionId ? (
+          spacesPage === "space" ? (
+            <PlaceholderPage
+              title={selectedSpace}
+              description={`Content of the ${selectedSpace} space.`}
+              icon={
+                RESTRICTED_SPACES_MEMBER.includes(selectedSpace) ||
+                RESTRICTED_SPACES_NO_ACCESS.includes(selectedSpace)
+                  ? Lock01
+                  : Globe01
+              }
+            />
+          ) : selectedConnectionId ? (
             <ConnectionDetailPage
               connectionId={selectedConnectionId}
               role={role}
@@ -4963,14 +4903,23 @@ export default function AdminGovernanceV2() {
               onBack={() => setSelectedConnectionId(null)}
             />
           ) : spacesPage === "connections" ? (
-            <ConnectionsPage
-              connections={connections}
-              role={role}
-              onManage={(conn) => setManagingConn(conn)}
-              onOpenDetail={(conn) => setSelectedConnectionId(conn.name)}
-            />
+            role === "admin" ? (
+              <LockedSpacePage title="Connections" />
+            ) : (
+              <ConnectionsPage
+                connections={connections}
+                onManage={(conn) => setManagingConn(conn)}
+                onOpenDetail={(conn) => setSelectedConnectionId(conn.name)}
+              />
+            )
           ) : spacesPage === "tools" ? (
-            <ToolsPage role={role} />
+            role === "admin" ? (
+              <LockedSpacePage title="Tools" />
+            ) : (
+              <ToolsPage role={role} />
+            )
+          ) : role === "admin" ? (
+            <LockedSpacePage title="Triggers" />
           ) : (
             <TriggersPage role={role} />
           )
