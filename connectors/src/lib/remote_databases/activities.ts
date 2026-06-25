@@ -21,6 +21,17 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, INTERNAL_MIME_TYPES } from "@connectors/types";
 
+type RemoteDatabaseHierarchyModel =
+  | RemoteDatabaseModel
+  | RemoteSchemaModel
+  | RemoteTableModel;
+
+type CleanupUnusedRemoteDatabaseHierarchyModel = {
+  destroy: () => Promise<unknown>;
+  permission: RemoteDatabaseHierarchyModel["permission"];
+  update: (fields: { lastUpsertedAt: null }) => Promise<unknown>;
+};
+
 const isDatabaseReadGranted = ({
   readGrantedInternalIds,
   internalId,
@@ -343,6 +354,22 @@ const createTableAndHierarchy = async ({
   return { newDatabase, newSchema, newTable, usedInternalIds };
 };
 
+async function cleanupUnusedRemoteDatabaseHierarchyModel({
+  model,
+  preserveSelectedPermissions,
+}: {
+  model: CleanupUnusedRemoteDatabaseHierarchyModel;
+  preserveSelectedPermissions: boolean;
+}) {
+  if (model.permission === "selected" && preserveSelectedPermissions) {
+    await model.update({
+      lastUpsertedAt: null,
+    });
+  } else {
+    await model.destroy();
+  }
+}
+
 export async function sync({
   remoteDBTree,
   connector,
@@ -585,14 +612,10 @@ export async function sync({
       dataSourceConfig,
       folderId: unusedDb.internalId,
     });
-
-    if (unusedDb.permission === "selected" && preserveSelectedPermissions) {
-      await unusedDb.update({
-        lastUpsertedAt: null,
-      });
-    } else {
-      await unusedDb.destroy();
-    }
+    await cleanupUnusedRemoteDatabaseHierarchyModel({
+      model: unusedDb,
+      preserveSelectedPermissions,
+    });
 
     if (unusedDb.permission === "selected" && !preserveSelectedPermissions) {
       localLogger.error(
@@ -611,14 +634,10 @@ export async function sync({
       dataSourceConfig,
       folderId: unusedSchema.internalId,
     });
-
-    if (unusedSchema.permission === "selected" && preserveSelectedPermissions) {
-      await unusedSchema.update({
-        lastUpsertedAt: null,
-      });
-    } else {
-      await unusedSchema.destroy();
-    }
+    await cleanupUnusedRemoteDatabaseHierarchyModel({
+      model: unusedSchema,
+      preserveSelectedPermissions,
+    });
 
     if (
       unusedSchema.permission === "selected" &&
@@ -640,14 +659,10 @@ export async function sync({
       dataSourceConfig,
       tableId: unusedTable.internalId,
     });
-
-    if (unusedTable.permission === "selected" && preserveSelectedPermissions) {
-      await unusedTable.update({
-        lastUpsertedAt: null,
-      });
-    } else {
-      await unusedTable.destroy();
-    }
+    await cleanupUnusedRemoteDatabaseHierarchyModel({
+      model: unusedTable,
+      preserveSelectedPermissions,
+    });
 
     if (unusedTable.permission === "selected" && !preserveSelectedPermissions) {
       localLogger.error(
