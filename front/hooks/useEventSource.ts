@@ -146,7 +146,9 @@ export function useEventSource(
         if (event.data === "done") {
           source.close();
 
-          // Reconnect to the stream right away.
+          // Reconnect to the stream right away. The server sends "done" after
+          // each paginated history batch and on idle timeout so clients resume
+          // with lastEventId without waiting on the error backoff.
           setReconnectCounter((c) => c + 1);
           return;
         }

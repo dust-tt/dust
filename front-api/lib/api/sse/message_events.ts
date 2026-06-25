@@ -71,5 +71,6 @@ export async function streamMessageEventsForRoute(
     iterator: (signal) =>
       getMessagesEvents(auth, { messageId, lastEventId, signal }),
     transform: (event) => opts.transformEvent(auth, event),
+    writeDoneSentinel: true,
   });
 }
