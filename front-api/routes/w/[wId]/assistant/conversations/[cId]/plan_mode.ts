@@ -1,6 +1,12 @@
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { getActivePlanContent } from "@app/lib/api/assistant/plan_mode";
-import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
+import {
+  closeActivePlan,
+  getActivePlanContent,
+} from "@app/lib/api/assistant/plan_mode";
+import type {
+  DeleteConversationPlanModeResponseBody,
+  GetConversationPlanModeResponseBody,
+} from "@app/types/api/assistant/plan_mode";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -45,6 +51,38 @@ app.get(
     }
 
     return ctx.json({ content: contentRes.value });
+  }
+);
+
+/** @ignoreswagger */
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<DeleteConversationPlanModeResponseBody> => {
+    const auth = ctx.get("auth");
+    const { cId } = ctx.req.valid("param");
+
+    const conversationRes = await getLightConversation(auth, cId);
+    if (conversationRes.isErr()) {
+      return apiErrorForConversation(ctx, conversationRes.error);
+    }
+
+    const closeRes = await closeActivePlan(auth, conversationRes.value);
+    if (closeRes.isErr()) {
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to close the plan.",
+          },
+        },
+        closeRes.error
+      );
+    }
+
+    return ctx.json({ success: true });
   }
 );
 

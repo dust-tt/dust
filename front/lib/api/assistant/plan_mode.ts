@@ -1,4 +1,5 @@
 import { PLAN_FILE_NAME } from "@app/lib/api/actions/servers/plan_mode/metadata";
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import { writeToConversationFolder } from "@app/lib/api/files/action_output_fs";
@@ -98,4 +99,46 @@ export async function closePlan(
   }
 
   return new Ok(undefined);
+}
+
+export async function publishPlanUpdated(
+  conversationId: string,
+  { isClosed }: { isClosed: boolean }
+): Promise<void> {
+  await publishConversationEvent(
+    {
+      type: "plan_updated",
+      created: Date.now(),
+      conversationId,
+      isClosed,
+    },
+    { conversationId }
+  );
+}
+
+// Close the active plan end to end: under the conversation lock, archive plan.md and publish the
+// plan_updated event. Shared by the close_plan tool and the HTTP close endpoint. `closed` is false
+// when there was no active plan to begin with (stale card, another tab, or the agent closed it
+// first), so callers can treat that as an idempotent no-op rather than a failure.
+export async function closeActivePlan(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<{ closed: boolean }, Error>> {
+  return withPlanModeLock(conversation.sId, async () => {
+    const existing = await getActivePlanContent(auth, conversation);
+    if (existing.isErr()) {
+      return new Err(existing.error);
+    }
+    if (existing.value === null) {
+      return new Ok({ closed: false });
+    }
+
+    const moved = await closePlan(auth, conversation);
+    if (moved.isErr()) {
+      return new Err(moved.error);
+    }
+
+    await publishPlanUpdated(conversation.sId, { isClosed: true });
+    return new Ok({ closed: true });
+  });
 }

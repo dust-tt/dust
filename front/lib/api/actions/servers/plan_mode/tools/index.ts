@@ -9,31 +9,16 @@ import {
   PLAN_MODE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import {
-  closePlan,
+  closeActivePlan,
   getActivePlanContent,
+  publishPlanUpdated,
   withPlanModeLock,
   writePlanContent,
 } from "@app/lib/api/assistant/plan_mode";
-import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-async function publishPlanUpdated(
-  conversationId: string,
-  { isClosed }: { isClosed: boolean }
-): Promise<void> {
-  await publishConversationEvent(
-    {
-      type: "plan_updated",
-      created: Date.now(),
-      conversationId,
-      isClosed,
-    },
-    { conversationId }
-  );
-}
 
 const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
   create_plan: async ({ content }, { auth, agentLoopContext }) => {
@@ -151,46 +136,36 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     }
     const { conversation } = agentLoopContext.runContext;
 
-    return withPlanModeLock(conversation.sId, async () => {
-      const existing = await getActivePlanContent(auth, conversation);
-      if (existing.isErr()) {
-        return new Err(new MCPError(existing.error.message));
-      }
-      if (existing.value === null) {
-        return new Err(
-          new MCPError(
-            `No active ${PLAN_FILE_NAME} for this conversation. Nothing to close.`
-          )
-        );
-      }
+    const closed = await closeActivePlan(auth, conversation);
+    if (closed.isErr()) {
+      return new Err(new MCPError(closed.error.message));
+    }
+    if (!closed.value.closed) {
+      return new Err(
+        new MCPError(
+          `No active ${PLAN_FILE_NAME} for this conversation. Nothing to close.`
+        )
+      );
+    }
 
-      // Closing only moves plan.md into the archive folder; the content is preserved.
-      const closed = await closePlan(auth, conversation);
-      if (closed.isErr()) {
-        return new Err(new MCPError(closed.error.message));
-      }
-
-      await publishPlanUpdated(conversation.sId, { isClosed: true });
-
-      if (reason) {
-        logger.info(
-          {
-            conversationId: conversation.sId,
-            reason,
-          },
-          "Plan closed by agent"
-        );
-      }
-
-      return new Ok([
+    if (reason) {
+      logger.info(
         {
-          type: "text",
-          text:
-            `Plan closed. The ${PLAN_FILE_NAME} is now archived and will no longer be referenced. If the ` +
-            `user later asks for a new plan, call \`${CREATE_PLAN_TOOL_NAME}\` to start a fresh one.`,
+          conversationId: conversation.sId,
+          reason,
         },
-      ]);
-    });
+        "Plan closed by agent"
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text",
+        text:
+          `Plan closed. The ${PLAN_FILE_NAME} is now archived and will no longer be referenced. If the ` +
+          `user later asks for a new plan, call \`${CREATE_PLAN_TOOL_NAME}\` to start a fresh one.`,
+      },
+    ]);
   },
 };
 

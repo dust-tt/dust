@@ -1,8 +1,16 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { extractPlanTitle } from "@app/components/assistant/conversation/plan_mode/utils";
-import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
+import {
+  useClosePlan,
+  usePlanFile,
+} from "@app/hooks/conversations/usePlanFile";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { ChevronRight, cn, File04, Icon } from "@dust-tt/sparkle";
+import {
+  ContentMessageAction,
+  ContentMessageInline,
+  ListSelect,
+  Trash04,
+} from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
 interface PlanCardProps {
@@ -40,6 +48,10 @@ export const PlanCard = React.memo(function PlanCard({
     workspaceId,
   });
   const { openPanel } = useConversationSidePanelContext();
+  const { closePlan, isClosing } = useClosePlan({
+    workspaceId,
+    conversationId,
+  });
 
   const title = useMemo(() => extractPlanTitle(content), [content]);
   const progress = useMemo(() => countProgress(content), [content]);
@@ -50,24 +62,34 @@ export const PlanCard = React.memo(function PlanCard({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => openPanel({ type: "plan" })}
-      className={cn(
-        "mb-2 flex w-full items-center gap-2 rounded-2xl border px-4 py-3 text-left",
-        "border-border-dark/50 bg-muted-background",
-        "dark:border-border-dark-night/30 dark:bg-muted-background-night",
-        "hover:bg-primary-50 dark:hover:bg-primary-50-night"
-      )}
+    <ContentMessageInline
+      icon={ListSelect}
+      variant="outline"
+      className="mb-3 flex w-full bg-background dark:bg-background-night"
     >
-      <Icon visual={File04} size="sm" />
-      <span className="heading-sm grow truncate">Plan: {title}</span>
-      {progress.total > 0 && (
-        <span className="copy-xs shrink-0 text-muted-foreground dark:text-muted-foreground-night">
-          {progress.done}/{progress.total} done
+      <button
+        type="button"
+        onClick={() => openPanel({ type: "plan" })}
+        className="flex w-full min-w-0 items-center gap-2 text-left"
+      >
+        <span className="min-w-0 truncate text-foreground dark:text-foreground-night">
+          {title}
         </span>
-      )}
-      <Icon visual={ChevronRight} size="sm" />
-    </button>
+        {progress.total > 0 && (
+          <span className="shrink-0">
+            {progress.done}/{progress.total} done
+          </span>
+        )}
+      </button>
+      <ContentMessageAction
+        icon={Trash04}
+        variant="ghost"
+        size="xs"
+        tooltip="Close plan"
+        isLoading={isClosing}
+        className="text-muted-foreground dark:text-muted-foreground-night"
+        onClick={() => void closePlan()}
+      />
+    </ContentMessageInline>
   );
 });
