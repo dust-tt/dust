@@ -12,17 +12,10 @@ import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-// New button design (Figma "Product - WIP" > Controls & input > Button).
-// Replaces Button incrementally: sizes follow the new S/M/L control scale
-// (24/32/40px) where every old size maps one step down (md->lg, sm->md,
-// xs/mini/xmini->sm).
-//
-// Dark mode (designer spec):
-//  - primary and outline SWAP — under .s-dark each renders the other's light
-//    design (literal light values, spelled out per variant for the JIT scanner).
-//  - highlight and warning are unchanged in dark (no dark: overrides).
-//  - the ghost variants are unchanged too; only their text and colored hover
-//    tints flip, via the semantic `-night` token pairs (foreground-night, etc.).
+// Replaces the legacy button (now DeprecatedButton). Sizes use a 24/32/40px
+// scale. In dark mode, primary and outline swap (each renders the other's light
+// design); other variants are unchanged apart from ghost text/hover tints,
+// which flip via -night tokens.
 
 export const BUTTON_VARIANTS = [
   "primary",
@@ -40,32 +33,22 @@ export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 export const BUTTON_SIZES = ["sm", "md", "lg"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
-// Shadow recipe from the design: a 0.5px outline shadow tinted per variant, a
-// soft drop shadow, and a faint white inset highlight. The hex stops match
-// tokens in lib/colors.ts (blue-400, gray-700, border-dark) — arbitrary
-// shadows cannot reference theme colors.
+// Per-variant shadow: tinted 0.5px outline + soft drop + faint inset highlight.
+// The outline hex is literal because arbitrary shadows can't use theme tokens.
 const SOLID_SHADOW = (outline: string) =>
   `s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_${outline},0_1px_1.5px_0_rgba(0,0,0,0.10)]`;
 const OUTLINE_SHADOW =
   "s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#DFE0E2,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
 
-// Hover/active overlay layered on the gradient for the raised variants (the
-// design brightens or dims the same fill instead of swapping colors). Applied
-// per-variant, NOT in the base, so the ghost variants leave the ::after pseudo
-// free for consumers that compose their own (e.g. the Tabs active underline).
+// Hover/active overlay for the raised variants. Per-variant (not in the base)
+// so ghost variants leave the ::after pseudo free for consumers (e.g. Tabs).
 const OVERLAY = cn(
   "after:s-pointer-events-none after:s-absolute after:s-inset-0 after:s-rounded-[inherit]",
   "after:s-transition-colors disabled:after:s-hidden"
 );
 
-// In dark mode the primary and outline buttons swap appearances (designer
-// spec): primary takes the light-outline design under `.s-dark`, and outline
-// takes the light-primary design. The dark classes are written out literally
-// (below, per variant) because Tailwind's JIT only emits CSS for class names it
-// sees verbatim in source — a computed `dark:` prefix would never be generated.
-//
-// Dark shadow literals for that swap (the `dark:` form of OUTLINE_SHADOW /
-// SOLID_SHADOW("#44403b"), spelled out so the scanner picks them up).
+// `dark:` shadow literals for the primary/outline swap, spelled out (not a
+// computed prefix) so Tailwind's JIT emits them.
 const DARK_OUTLINE_SHADOW =
   "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#DFE0E2,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
 const DARK_SOLID_SHADOW =
@@ -74,23 +57,16 @@ const DARK_SOLID_SHADOW =
 const buttonVariants = cva(
   cn(
     "s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
-    // Press feedback (scale 0.97 on :active) is added by the `press` variant.
-    // It is disabled for dropdown/popover/select triggers: the button is then
-    // the floating menu's anchor and Floating UI tracks its rendered rect, so
-    // scaling it makes the menu jump as it opens. `transform` stays in the
-    // transition list so the press eases in/out when the variant enables it.
+    // `transform` stays in the transition list for the `press` scale.
     "s-transition-[color,background-color,border-color,transform] s-duration-150 s-ease-out",
     "motion-reduce:s-transition-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
-    // Disabled is a per-variant recipe (lighter fill / muted text / no shadow),
-    // applied in each variant below — not a blanket opacity.
+    // Disabled styling is per-variant (below), not a blanket opacity.
     "disabled:s-cursor-not-allowed"
   ),
   {
     variants: {
       variant: {
-        // Light: solid neutral. Dark: the light-outline design (primary/outline
-        // swap) — written out literally for the JIT scanner.
         primary: cn(
           OVERLAY,
           "s-bg-gradient-to-b s-from-stone-700 s-to-stone-800",
@@ -104,7 +80,6 @@ const buttonVariants = cva(
           "dark:hover:after:s-bg-gray-950/[0.02] dark:active:after:s-bg-gray-950/[0.04]",
           "dark:disabled:s-from-white dark:disabled:s-to-stone-50 dark:disabled:s-shadow-none dark:disabled:s-text-faint"
         ),
-        // Brand solids are unchanged in dark mode (no dark: overrides).
         highlight: cn(
           OVERLAY,
           "s-bg-gradient-to-b s-from-blue-400 s-to-blue-500",
@@ -115,15 +90,12 @@ const buttonVariants = cva(
         ),
         warning: cn(
           OVERLAY,
-          // The design's "critical" reds come from the preset's red palette
-          // (red-400/500), not the rose ramp the legacy warning variant uses.
           "s-bg-gradient-to-b s-from-red-400 s-to-red-500",
           "s-text-white",
           SOLID_SHADOW("#E76449"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
           "disabled:s-from-red-200 disabled:s-to-red-300 disabled:s-shadow-none"
         ),
-        // Light: bordered light. Dark: the light-primary design (swap).
         outline: cn(
           OVERLAY,
           "s-border s-border-border-dark",
@@ -137,10 +109,6 @@ const buttonVariants = cva(
           "dark:hover:after:s-bg-white/10 dark:active:after:s-bg-black/10",
           "dark:disabled:s-from-stone-300 dark:disabled:s-to-stone-400 dark:disabled:s-text-white dark:disabled:s-shadow-none"
         ),
-        // Ghost variants are unchanged in dark mode: the text token adapts
-        // (foreground/muted-foreground -> -night) and the hover is a subtle
-        // transparency overlay that flips (matching the design's
-        // transparency-hover token).
         ghost: cn(
           "s-text-foreground dark:s-text-foreground-night",
           "hover:s-bg-gray-950/[0.02] active:s-bg-gray-950/[0.04]",
@@ -175,9 +143,8 @@ const buttonVariants = cva(
         md: "s-h-8 s-gap-1.5 s-px-3 s-text-sm s-font-medium s-tracking-[-0.28px]",
         lg: "s-h-10 s-gap-1.5 s-px-4 s-text-base s-font-medium s-tracking-[-0.32px]",
       },
-      // Kept separate from size: twMerge is not configured for the s- prefix,
-      // so emitting both a size radius and s-rounded-full would leave CSS
-      // order to decide which wins.
+      // Separate from size: twMerge isn't configured for the s- prefix, so a
+      // size radius + rounded-full would both emit and let CSS order decide.
       rounded: {
         sm: "s-rounded-[9px]",
         md: "s-rounded-xl",
@@ -188,7 +155,6 @@ const buttonVariants = cva(
         true: "",
         false: "",
       },
-      // Press feedback. Turned off for menu triggers (see base comment).
       press: {
         true: "active:s-scale-[0.97] motion-reduce:active:s-scale-100",
         false: "",
@@ -217,8 +183,6 @@ const RAISED_VARIANTS: ButtonVariantType[] = [
   "outline",
 ];
 const TEXT_SHADOW = "[text-shadow:0_1px_1.5px_rgba(0,0,0,0.08)]";
-// Canonical icon shadow (Figma node 11109:58782). Older frames carried a
-// heavier 4-layer drop-shadow that the designer has since corrected to this.
 const ICON_SHADOW = "s-drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)]";
 
 const ICON_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
@@ -298,11 +262,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const iconSize = ICON_SIZE_MAP[size];
     const showCounter = isCounter && counterValue != null;
     const isIconOnly = !label && !showCounter && !isSelect && !!icon;
-    // A dropdown/popover/select trigger anchors a floating menu; pressing it
-    // would scale the anchor and make the menu jump as it opens. Radix merges
-    // `aria-haspopup` onto the trigger (via asChild), and `isSelect` is our own
-    // chevron affordance — either means "no press scale". Tooltips do NOT set
-    // aria-haspopup, so tooltip buttons keep the press.
+    // Menu triggers (dropdown/popover/select) skip the press scale, else the
+    // opening menu jumps with the anchor. Radix sets aria-haspopup on the
+    // trigger; isSelect is our chevron affordance. Tooltips don't, so they keep it.
     const isMenuTrigger = isSelect || props["aria-haspopup"] != null;
     const hasTextShadow =
       variant != null && RAISED_VARIANTS.includes(variant as ButtonVariantType);
@@ -356,9 +318,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       return {};
     }, [isLoading, props.disabled]);
 
-    // A disabled or loading button must never navigate: render a real
-    // <button> (so the disabled attribute applies) and skip the LinkWrapper
-    // below, rather than wrapping a dead button in a live <a href>.
+    // Disabled/loading buttons must not navigate: render a real <button> and
+    // skip the LinkWrapper below.
     const isInteractive = !props.disabled && !isLoading;
     const shouldUseSlot = !!href && isInteractive;
     const Comp = shouldUseSlot ? Slot : "button";
@@ -372,8 +333,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             size,
             rounded: isRounded ? "full" : size,
             isIconOnly,
-            // No press scale on menu triggers: scaling the trigger makes the
-            // opening dropdown/popover jump (Floating UI tracks the anchor box).
             press: !isMenuTrigger,
           }),
           isPulsing && "s-animate-ring-pulse",

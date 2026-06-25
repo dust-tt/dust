@@ -16,12 +16,10 @@ export interface InputWithSaveProps
   value?: string | null;
   unit?: string;
   onSave: (value: string) => Promise<void> | void;
-  // Applied to the draft value on each keystroke (e.g. to strip non-digit
-  // characters for numeric inputs). The cleaned result is what gets passed to
-  // onSave.
+  // Cleans each keystroke before it's passed to onSave (e.g. strip non-digits).
   normalizeValue?: (value: string) => string;
-  // Applied to the normalized draft value for display during editing (e.g. to
-  // insert thousand-separator commas). Does not affect what onSave receives.
+  // Formats the draft for display only (e.g. thousands separators); onSave still
+  // receives the normalized value.
   formatValue?: (value: string) => string;
   className?: string;
 }
@@ -95,11 +93,9 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
       onKeyDown?.(e);
     };
 
-    // Composes the shared <Input> for all field styling (border, height, focus,
-    // disabled), then overlays the unit + Save button on the right — the same
-    // pattern SearchInput uses for its clear button, so this never drifts from
-    // the Input design. The input reserves right padding so its value never
-    // slides under the overlay.
+    // Composes <Input> for the field and overlays the unit + Save button on the
+    // right (like SearchInput), so it can't drift from the Input design. The
+    // input reserves right padding so its value stays clear of the overlay.
     const hasOverlay = Boolean(unit) || showSaveButton;
 
     return (

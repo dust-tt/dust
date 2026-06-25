@@ -116,7 +116,7 @@ type Story = StoryObj<typeof meta>;
 const labelClass =
   "s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night";
 
-// One variant row: the five states designers care about, left to right.
+// One variant row across its states.
 function VariantRow({
   variant,
   size,

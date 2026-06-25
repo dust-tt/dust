@@ -4,12 +4,9 @@ import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { forwardRef } from "react";
 
-// New input design (Figma "Product - WIP" > Controls & input > Input).
-// Mirrors the legacy Input API so swapping is an import change; adds the new
-// xs/sm/md size scale (24/32/40px — the legacy 36px input maps to "sm") and
-// prefix/suffix slots. The field is a styled wrapper with a transparent inner
-// input so slots and icons share one code path. Night-mode styles are
-// provisional: the redesign only covers light mode so far.
+// Replaces the legacy input (now DeprecatedInput), keeping the same API.
+// xs/sm/md = 24/32/40px. The field is a wrapper around a transparent inner
+// <input> so slots and icons share one code path.
 
 const MESSAGE_STATUS = ["info", "default", "error"] as const;
 
@@ -106,8 +103,7 @@ const labelVariants = cva(
   }
 );
 
-// Square boxes flanking the field (e.g. a unit, currency or action) — same
-// height as the field, muted background.
+// Full-height muted box flanking the field for a unit/currency (prefix/suffix).
 const slotBoxVariants = cva(
   cn(
     "s-flex s-h-full s-shrink-0 s-items-center s-justify-center",
