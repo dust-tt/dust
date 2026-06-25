@@ -292,6 +292,42 @@ function generateRemoteContentMetadata(content: CallToolResult["content"]): {
 }
 
 /**
+ * Runs `callTool` with a throwaway per-call signal so `compositeSignal` retains
+ * nothing once the call settles.
+ *
+ * The MCP SDK (v1.x) adds an `abort` listener to the signal we pass and never
+ * removes it. Since `compositeSignal` is pod-lifetime (composed with the shutdown
+ * signal in `temporal/agent_loop/activities/run_tool.ts`), that listener would pin
+ * every tool result until the pod dies — an OOM over thousands of calls.
+ *
+ * We bridge aborts onto a fresh controller and detach the bridge in `finally`, so
+ * the SDK's dangling listener hangs off a collectable per-call signal instead.
+ */
+export async function runToolCallWithDetachedSignal<T>(
+  compositeSignal: AbortSignal | undefined,
+  callTool: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const perToolCallController = new AbortController();
+
+  if (!compositeSignal) {
+    return callTool(perToolCallController.signal);
+  }
+
+  if (compositeSignal.aborted) {
+    perToolCallController.abort(compositeSignal.reason);
+    return callTool(perToolCallController.signal);
+  }
+
+  const onAbort = () => perToolCallController.abort(compositeSignal.reason);
+  compositeSignal.addEventListener("abort", onAbort, { once: true });
+  try {
+    return await callTool(perToolCallController.signal);
+  } finally {
+    compositeSignal.removeEventListener("abort", onAbort);
+  }
+}
+
+/**
  * Try to call an MCP tool.
  *
  * May fail when connecting to remote/client-side servers.
@@ -457,21 +493,27 @@ export async function* tryCallMCPTool(
       "mcp.tool.call",
       { resource: toolConfiguration.originalName },
       async () =>
-        client.callTool(
-          {
-            name: toolConfiguration.originalName,
-            arguments: inputs,
-            _meta: {
-              ...toolConfiguration.meta,
-              progressToken,
+        // Hand the SDK a throwaway per-call signal instead of `abortSignal`.
+        // The SDK attaches an `abort` listener it never removes; `abortSignal`
+        // is composed with the pod-lifetime shutdown signal, so that listener
+        // would pin the tool result until the pod dies.
+        runToolCallWithDetachedSignal(abortSignal, (signal) =>
+          client.callTool(
+            {
+              name: toolConfiguration.originalName,
+              arguments: inputs,
+              _meta: {
+                ...toolConfiguration.meta,
+                progressToken,
+              },
             },
-          },
-          CallToolResultSchema,
-          {
-            timeout:
-              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-            signal: abortSignal,
-          }
+            CallToolResultSchema,
+            {
+              timeout:
+                toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+              signal,
+            }
+          )
         )
     );
 
