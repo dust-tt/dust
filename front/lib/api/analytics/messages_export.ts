@@ -20,6 +20,8 @@ interface AgentMessageDocument extends ElasticsearchBaseDocument {
   user_id: string;
   context_origin: string;
   status: string;
+  tools_used?: { server_name: string }[];
+  skills_used?: { skill_name: string }[];
 }
 
 export interface MessageExportRow {
@@ -32,6 +34,8 @@ export interface MessageExportRow {
   userId: string;
   userEmail: string;
   source: string;
+  toolsUsed: string;
+  skillsUsed: string;
 }
 
 export const MESSAGE_EXPORT_HEADERS: (keyof MessageExportRow)[] = [
@@ -44,7 +48,15 @@ export const MESSAGE_EXPORT_HEADERS: (keyof MessageExportRow)[] = [
   "userId",
   "userEmail",
   "source",
+  "toolsUsed",
+  "skillsUsed",
 ];
+
+function joinDistinctSorted(values: (string | undefined | null)[]): string {
+  return [...new Set(values.filter((v): v is string => Boolean(v)))]
+    .sort((a, b) => a.localeCompare(b))
+    .join(",");
+}
 
 async function fetchAllMessageDocuments(
   query: estypes.QueryDslQueryContainer
@@ -135,6 +147,12 @@ export async function fetchMessageExportRows({
       userId: doc.user_id,
       userEmail: userEmails.get(doc.user_id) ?? "",
       source: doc.context_origin ?? "",
+      toolsUsed: joinDistinctSorted(
+        (doc.tools_used ?? []).map((t) => t.server_name)
+      ),
+      skillsUsed: joinDistinctSorted(
+        (doc.skills_used ?? []).map((s) => s.skill_name)
+      ),
     };
   });
 
