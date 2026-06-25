@@ -77,9 +77,62 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       done: "List folders",
     },
   },
+  list_attachments: {
+    description:
+      "List attachments on an Outlook message, returning metadata only (id, name, contentType, size, isInline). Use this first to see what attachments exist, then call get_attachment for each one you want to retrieve. Inline attachments (embedded images, signatures) are excluded by default.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      includeInline: z
+        .boolean()
+        .optional()
+        .describe(
+          "Include inline attachments such as embedded images and signatures. Defaults to false."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing attachments",
+      done: "List attachments",
+    },
+  },
+  get_attachment: {
+    description:
+      "Retrieve a single attachment from an Outlook message by its attachment ID. Works for any file size — for large attachments (>4MB) where the list call returns no inline content, this tool fetches via a dedicated download endpoint. Call list_attachments first to get attachment IDs.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      attachmentId: z
+        .string()
+        .describe("The ID of the attachment (from list_attachments)"),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Downloading attachment",
+      done: "Download attachment",
+    },
+  },
   get_attachments: {
     description:
-      "Get all attachments from an Outlook message. Lists attachments and downloads their content, making them available in the conversation.",
+      "Get all attachments from an Outlook message at once. For better control over large attachments, prefer list_attachments followed by individual get_attachment calls instead.",
     schema: {
       messageId: z
         .string()
