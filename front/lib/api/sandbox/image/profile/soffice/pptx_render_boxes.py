@@ -8,12 +8,15 @@ _classify_overlap, EMU) and PIL; the CLI calls _annotate_boxes from --render.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pptx.shapes.base import BaseShape
 from pptx.slide import Slide
 
-from pptx_geometry import EMU_PER_INCH, _classify_overlap, shape_kind
+from pptx_geometry import EMU_PER_INCH, _render_collision, shape_kind
+
+# (left, top, width, height) in EMU.
+BoxEmu = Tuple[int, int, int, int]
 
 
 # Text-row detection by horizontal EDGE density. A box that spans a gradient or
@@ -141,17 +144,28 @@ def _pair_run_to_text(
 
 
 def _annotate_boxes(
-    image_path: Path, slide: Slide, slide_w_emu: int, slide_h_emu: int
+    image_path: Path,
+    slide: Slide,
+    slide_w_emu: int,
+    slide_h_emu: int,
+    effective_boxes: Optional[Dict[int, BoxEmu]] = None,
 ):
-    """Overlay each top-level shape's exact bounding box on the slide image and
+    """Overlay each top-level shape's bounding box on the slide image and
     compute pixel metrics. Box positions are read from the file (exact even
     though text is LibreOffice-rendered); the rest is measured on the rendered
     pixels (colors/positions are faithful). Draws box outlines, an `#id` label
     just OUTSIDE each box (detail goes to stdout, not onto the image), a tint on
-    text boxes, and a red wash over peer-overlap regions. Returns
-    (out_path, findings) where findings has keys: "overlaps" [(a, b, pen_in)] and
-    "markers" [(id, off_in)] (decorative markers in a run with no rendered text
-    row near them). None if the image is unreadable."""
+    text boxes, and a red wash over peer-overlap regions.
+
+    `effective_boxes` maps a shape_id to a box (EMU) grown to wrap copy that
+    overflows its declared box; when present the overlay draws and tests that
+    box, so an overflowing text box visibly wraps its text and a spill onto a
+    neighbour is caught (a containment that appears only after a box grows is
+    spillover, not a designed fg/bg overlay, so it is surfaced not suppressed).
+
+    Returns (out_path, findings) where findings has keys: "overlaps"
+    [(a, b, pen_in)] and "markers" [(id, off_in)] (decorative markers in a run
+    with no rendered text row near them). None if the image is unreadable."""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
@@ -173,14 +187,25 @@ def _annotate_boxes(
 
     findings = {"overlaps": [], "markers": []}
     ppi = width_px / (slide_w_emu / EMU_PER_INCH)
+    effective_boxes = effective_boxes or {}
+
+    def declared(sh) -> BoxEmu:
+        return (sh.left, sh.top, sh.width, sh.height)
+
+    def box_of(sh) -> BoxEmu:
+        return effective_boxes.get(sh.shape_id) or declared(sh)
+
+    def to_px_box(b: BoxEmu):
+        l, t, w, h = b
+        return (
+            l / slide_w_emu * width_px,
+            t / slide_h_emu * height_px,
+            (l + w) / slide_w_emu * width_px,
+            (t + h) / slide_h_emu * height_px,
+        )
 
     def to_px(sh):
-        return (
-            sh.left / slide_w_emu * width_px,
-            sh.top / slide_h_emu * height_px,
-            (sh.left + sh.width) / slide_w_emu * width_px,
-            (sh.top + sh.height) / slide_h_emu * height_px,
-        )
+        return to_px_box(box_of(sh))
 
     def has_text(sh):
         return sh.has_text_frame and any(
@@ -192,17 +217,18 @@ def _annotate_boxes(
         if None not in (s.left, s.top, s.width, s.height)
     ]
 
-    # Shade peer-overlap intersection regions (the "collision zones").
+    # Shade collision zones on the effective (text-extent) boxes: a peer overlap
+    # as before, plus a containment that exists ONLY after a box grew to wrap
+    # overflowing text — that text spilled onto a neighbour (a containment that
+    # also holds at declared sizes is an intentional fg/bg overlay, suppressed).
     for i, a in enumerate(shapes):
         for b in shapes[i + 1:]:
-            kind, pen, _ = _classify_overlap(
-                (a.left, a.top, a.width, a.height),
-                (b.left, b.top, b.width, b.height),
-            )
-            if kind != "peer":
+            ea, eb = box_of(a), box_of(b)
+            flag, pen = _render_collision(declared(a), declared(b), ea, eb)
+            if not flag:
                 continue
-            ax0, ay0, ax1, ay1 = to_px(a)
-            bx0, by0, bx1, by1 = to_px(b)
+            ax0, ay0, ax1, ay1 = to_px_box(ea)
+            bx0, by0, bx1, by1 = to_px_box(eb)
             ix0, iy0 = max(ax0, bx0), max(ay0, by0)
             ix1, iy1 = min(ax1, bx1), min(ay1, by1)
             if ix1 > ix0 and iy1 > iy0:

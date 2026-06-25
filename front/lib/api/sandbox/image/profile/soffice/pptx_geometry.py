@@ -29,6 +29,16 @@ TEXTBOX_MARGIN_W_IN = 0.2  # PowerPoint default internal left+right inset
 TEXTBOX_MARGIN_H_IN = 0.1  # PowerPoint default internal top+bottom inset
 OVERSET_TOLERANCE = 1.8  # flag only when text exceeds capacity by this factor
 FILL_FLOATING = 0.30  # text using less than this fraction of a real box "floats"
+# Rendered-extent estimate (grows a box to wrap copy that overflows it), biased
+# larger so the grown box overshoots the text rather than under-covering it and
+# missing an overlap. Substitute fonts (the brand face is absent at render time)
+# run wider AND taller than the fit estimate's 0.5em / 1.2, so the extent uses
+# its own, larger constants for BOTH how many lines the copy wraps to and how
+# tall each line is. Height availability still uses LINE_HEIGHT_FACTOR above, so
+# only a genuine multi-line overflow grows the box.
+EXTENT_CHAR_WIDTH_EM = 0.6  # wider glyph advance for the extent wrap estimate
+EXTENT_LINE_HEIGHT_FACTOR = 1.4  # generous line height for the extent height
+EXTENT_PAD_IN = 0.1  # extra height added to the extent estimate
 
 ASPECT_TOLERANCE = 1.18  # flag image stretch/squish beyond ~15%
 MIN_IMAGE_DPI = 70  # flag pictures displayed below this effective resolution
@@ -104,6 +114,71 @@ def _grows_to_fit(shape: BaseShape) -> bool:
     )
 
 
+def _text_extent_box(
+    shape: BaseShape, size_pt: float
+) -> Optional[Tuple[int, int, int, int]]:
+    """The box grown to wrap this shape's rendered copy when the text needs more
+    lines than the declared box holds (a multi-paragraph or wrapped block in a
+    too-short box, like a two-line title in a one-line box). Returns
+    (left, top, width, height) in EMU, extended along the vertical anchor, or
+    None when the text fits — so callers fall back to the declared box.
+
+    The growth DECISION uses the normal line height (a snug single-line box is a
+    nominal-height label, never grown); the growth MAGNITUDE is biased larger
+    (EXTENT_*), so the box overshoots the text rather than under-covering it and
+    missing an overflow-into-neighbour overlap."""
+    if not shape.has_text_frame:
+        return None
+    if None in (shape.left, shape.top, shape.width, shape.height):
+        return None
+    if size_pt <= 0:
+        return None
+    w_in = shape.width / EMU_PER_INCH
+    h_in = shape.height / EMU_PER_INCH
+    char_w = size_pt * EXTENT_CHAR_WIDTH_EM / 72.0
+    if char_w <= 0:
+        return None
+    cpl = int(max(0.0, w_in - TEXTBOX_MARGIN_W_IN) / char_w)
+    if cpl < 1:
+        return None
+    paragraphs = list(shape.text_frame.paragraphs)
+    last = -1
+    for i, p in enumerate(paragraphs):
+        if (p.text or "").strip():
+            last = i
+    if last < 0:
+        return None
+    # Lines the copy needs: each paragraph wraps to ceil(chars/cpl) lines; an
+    # empty interior spacer still occupies one row; trailing empties ignored.
+    lines_needed = 0
+    for p in paragraphs[: last + 1]:
+        n = len(p.text or "")
+        lines_needed += max(1, -(-n // cpl))  # ceil division
+    line_h = size_pt * LINE_HEIGHT_FACTOR / 72.0
+    if line_h <= 0:
+        return None
+    lines_avail = int(max(0.0, h_in - TEXTBOX_MARGIN_H_IN) / line_h)
+    # Only genuine multi-line overflow grows the box: a single line fits or is a
+    # nominal-height label (overflows by design), never grown.
+    if lines_needed < 2 or lines_needed <= lines_avail:
+        return None
+    gen_line_h = size_pt * EXTENT_LINE_HEIGHT_FACTOR / 72.0
+    ext_h_in = lines_needed * gen_line_h + TEXTBOX_MARGIN_H_IN + EXTENT_PAD_IN
+    if ext_h_in <= h_in:
+        return None
+    new_h = int(round(ext_h_in * EMU_PER_INCH))
+    va = getattr(shape.text_frame, "vertical_anchor", None)
+    va_name = (getattr(va, "name", None) or "TOP").upper()
+    left, top, height = shape.left, shape.top, shape.height
+    if va_name == "MIDDLE":
+        new_top = int(round(top + height / 2 - new_h / 2))
+    elif va_name == "BOTTOM":
+        new_top = top + height - new_h
+    else:  # TOP or inherited/unknown -> grow downward
+        new_top = top
+    return (left, new_top, shape.width, new_h)
+
+
 def _classify_overlap(a: Tuple[int, int, int, int],
                       b: Tuple[int, int, int, int]):
     """Classify the overlap of two (left, top, width, height) boxes.
@@ -133,6 +208,32 @@ def _classify_overlap(a: Tuple[int, int, int, int],
     if min(ix, iy) >= PEER_PENETRATION_EMU:
         return ("peer", min(ix, iy), "horizontally" if ix < iy else "vertically")
     return (None, 0, "")
+
+
+def _render_collision(
+    decl_a: Tuple[int, int, int, int],
+    decl_b: Tuple[int, int, int, int],
+    eff_a: Tuple[int, int, int, int],
+    eff_b: Tuple[int, int, int, int],
+) -> Tuple[bool, int]:
+    """Whether the boxed render should flag two shapes as colliding, judged on
+    their effective (text-extent) boxes, plus the shallow-axis penetration (EMU).
+
+    A peer overlap counts, as before. So does a containment that exists ONLY
+    after a box grew to wrap overflowing text — that text spilled onto a
+    neighbour. But a containment that already holds at the DECLARED sizes is an
+    intentional foreground/background overlay (a label on a card) and does not.
+    Returns (flag, penetration_emu)."""
+    kind, pen, _ = _classify_overlap(eff_a, eff_b)
+    if kind == "peer":
+        return (True, pen)
+    if kind == "contained":
+        if _classify_overlap(decl_a, decl_b)[0] == "contained":
+            return (False, 0)  # designed fg/bg overlay, not a collision
+        ix = min(eff_a[0] + eff_a[2], eff_b[0] + eff_b[2]) - max(eff_a[0], eff_b[0])
+        iy = min(eff_a[1] + eff_a[3], eff_b[1] + eff_b[3]) - max(eff_a[1], eff_b[1])
+        return (True, min(ix, iy))  # spillover depth on the shallow axis
+    return (False, 0)
 
 
 def shape_kind(shape: BaseShape) -> str:

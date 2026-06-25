@@ -1,0 +1,174 @@
+"""Tier-1 pure-logic tests for pptx_geometry: overlap classification, the
+text-fit estimate, and EMU conversion. No fixtures — tuples and a tiny fake
+shape. Run directly (`python test_geometry.py`) or under pytest.
+
+Lives in soffice_tests/ (sibling of soffice/), which getLocalDirContent never
+copies into the sandbox image; it adds soffice/ to sys.path to import the module.
+"""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "soffice"))
+
+import pptx_geometry as G  # noqa: E402
+
+EMU = G.EMU_PER_INCH
+
+
+class FakeShape:
+    """_fit_estimate only reads .width / .height (EMU)."""
+
+    def __init__(self, w_in: float, h_in: float):
+        self.width = int(w_in * EMU)
+        self.height = int(h_in * EMU)
+
+
+def box(left, top, w, h):
+    return (int(left * EMU), int(top * EMU), int(w * EMU), int(h * EMU))
+
+
+class FakePara:
+    def __init__(self, text):
+        self.text = text
+
+
+class FakeAnchor:
+    def __init__(self, name):
+        self.name = name
+
+
+class FakeTextFrame:
+    def __init__(self, paras, anchor_name=None):
+        self.paragraphs = [FakePara(t) for t in paras]
+        self.vertical_anchor = FakeAnchor(anchor_name) if anchor_name else None
+
+
+class FakeTextShape:
+    """_text_extent_box reads box geometry + text_frame paragraphs + anchor."""
+
+    def __init__(self, left, top, w_in, h_in, paras, anchor_name=None):
+        self.left = int(left * EMU)
+        self.top = int(top * EMU)
+        self.width = int(w_in * EMU)
+        self.height = int(h_in * EMU)
+        self.has_text_frame = True
+        self.text_frame = FakeTextFrame(paras, anchor_name)
+
+
+def test_emu_to_inches():
+    assert G.emu_to_inches(EMU) == 1.0
+    assert G.emu_to_inches(EMU // 2) == 0.5
+    assert G.emu_to_inches(None) is None
+
+
+def test_overlap_none_when_disjoint():
+    assert G._classify_overlap(box(0, 0, 1, 1), box(2, 2, 1, 1))[0] is None
+
+
+def test_overlap_stacked_when_coincident():
+    # both boxes >= STACKED_CONT (0.90) covered -> they coincide
+    kind, pen, axis = G._classify_overlap(box(0, 0, 2, 2), box(0, 0, 2, 2))
+    assert kind == "stacked" and pen == 0 and axis == ""
+
+
+def test_overlap_contained_is_fg_bg():
+    # small box fully inside a big one: one box >= CONTAINMENT_TAU (0.85) inside
+    assert G._classify_overlap(box(0, 0, 10, 10), box(1, 1, 1, 1))[0] == "contained"
+
+
+def test_overlap_peer_partial():
+    # two equal boxes ~40% overlapped: neither mostly covers the other
+    kind, pen, axis = G._classify_overlap(box(0, 0, 2, 2), box(1.2, 0, 2, 2))
+    assert kind == "peer"
+    assert axis == "horizontally"  # shallower axis is x
+    assert pen > 0
+
+
+def test_overlap_below_peer_threshold_is_none():
+    # shallow-axis overlap < PEER_PENETRATION_EMU (0.1in) -> negligible
+    assert G._classify_overlap(box(0, 0, 2, 2), box(1.95, 0, 2, 2))[0] is None
+
+
+def test_fit_estimate_multiline_capacity():
+    est = G._fit_estimate(FakeShape(5, 3), 12.0)
+    assert est is not None
+    assert est.chars_per_line > 0
+    assert est.capacity is not None and est.capacity > est.chars_per_line
+
+
+def test_fit_estimate_short_box_has_no_capacity():
+    # a box under ~2 lines tall is a nominal-height label (overflows by design)
+    est = G._fit_estimate(FakeShape(5, 0.3), 12.0)
+    assert est is not None and est.capacity is None
+
+
+def test_fit_estimate_too_narrow_returns_none():
+    assert G._fit_estimate(FakeShape(0.1, 1), 40.0) is None
+
+
+def test_extent_grows_multiline_overflow_down():
+    # two non-empty paragraphs in a ~one-line-tall box, top-anchored: the box
+    # grows DOWNWARD (top fixed) to wrap both lines, biased larger.
+    shape = FakeTextShape(1.0, 1.5, 8.0, 0.7, ["First line", "Second line"])
+    ext = G._text_extent_box(shape, 40.0)
+    assert ext is not None
+    left, top, w, h = ext
+    assert top == shape.top  # top anchor: grows down only
+    assert w == shape.width
+    assert h > shape.height  # genuinely larger
+
+
+def test_extent_none_when_single_line_snug():
+    # a snug one-line box (one paragraph) is a nominal-height label, never grown.
+    shape = FakeTextShape(1.0, 1.5, 8.0, 0.5, ["Just one line"])
+    assert G._text_extent_box(shape, 40.0) is None
+
+
+def test_extent_none_when_text_fits():
+    # two short paragraphs in a tall box that holds them: no growth.
+    shape = FakeTextShape(1.0, 1.5, 8.0, 4.0, ["First line", "Second line"])
+    assert G._text_extent_box(shape, 40.0) is None
+
+
+def test_render_collision_peer_flags():
+    # a plain peer overlap (no extension) flags, as before.
+    flag, pen = G._render_collision(
+        box(0, 0, 2, 2), box(1.2, 0, 2, 2),
+        box(0, 0, 2, 2), box(1.2, 0, 2, 2),
+    )
+    assert flag and pen > 0
+
+
+def test_render_collision_designed_fg_bg_suppressed():
+    # a small box inside a big one at BOTH declared and effective sizes is an
+    # intentional overlay -> not a collision.
+    big, small = box(0, 0, 10, 10), box(1, 1, 1, 1)
+    flag, _ = G._render_collision(big, small, big, small)
+    assert not flag
+
+
+def test_render_collision_overflow_spill_surfaced():
+    # declared boxes don't touch (clean gap); a grows downward to wrap overflow
+    # and now covers most of short-wide b -> spillover, surfaced not suppressed.
+    decl_a, decl_b = box(1, 1, 8, 1), box(0.5, 2.2, 9, 0.4)
+    eff_a = box(1, 1, 8, 2)  # grew down past b
+    flag, pen = G._render_collision(decl_a, decl_b, eff_a, decl_b)
+    assert flag and pen > 0
+    # middle-anchored overflow grows both ways, preserving the box centre.
+    shape = FakeTextShape(1.0, 1.5, 8.0, 0.7, ["First", "Second"], "MIDDLE")
+    ext = G._text_extent_box(shape, 40.0)
+    assert ext is not None
+    _, top, _, h = ext
+    old_center = shape.top + shape.height / 2
+    new_center = top + h / 2
+    assert top < shape.top  # extends upward too
+    assert abs(new_center - old_center) <= EMU * 0.02  # centre preserved
+
+
+if __name__ == "__main__":
+    tests = [v for k, v in sorted(globals().items())
+             if k.startswith("test_") and callable(v)]
+    for fn in tests:
+        fn()
+        print(f"ok   {fn.__name__}")
+    print(f"\n{len(tests)} geometry tests passed")
