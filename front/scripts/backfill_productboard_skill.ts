@@ -1,6 +1,7 @@
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
@@ -174,22 +175,34 @@ interface ConversationNotePart {
 async function findLatestActiveProductboardAgents(
   workspace: LightWorkspaceType
 ): Promise<AgentConfigurationModel[]> {
+  const productboardMCPServerViews = await MCPServerViewModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      serverType: "internal",
+      internalMCPServerId: { [Op.ne]: null },
+    },
+    attributes: ["id", "internalMCPServerId"],
+  });
+  const productboardMCPServerViewIds = productboardMCPServerViews
+    .filter((view) =>
+      matchesInternalMCPServerName(view.internalMCPServerId, "productboard")
+    )
+    .map((view) => view.id);
+
+  if (productboardMCPServerViewIds.length === 0) {
+    return [];
+  }
+
   const mcpConfigurations = await AgentMCPServerConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
-      internalMCPServerId: { [Op.ne]: null },
+      mcpServerViewId: { [Op.in]: productboardMCPServerViewIds },
     },
-    attributes: ["agentConfigurationId", "internalMCPServerId"],
+    attributes: ["agentConfigurationId"],
   });
-
-  const productboardAgentConfigurationIds = new Set<ModelId>();
-  for (const config of mcpConfigurations) {
-    if (
-      matchesInternalMCPServerName(config.internalMCPServerId, "productboard")
-    ) {
-      productboardAgentConfigurationIds.add(config.agentConfigurationId);
-    }
-  }
+  const productboardAgentConfigurationIds = new Set(
+    mcpConfigurations.map((config) => config.agentConfigurationId)
+  );
 
   if (productboardAgentConfigurationIds.size === 0) {
     return [];
