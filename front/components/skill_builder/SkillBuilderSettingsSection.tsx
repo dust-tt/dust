@@ -25,7 +25,7 @@ export function SkillBuilderSettingsSection({
   skill,
   hasSelfImprovingSkills,
 }: SkillBuilderSettingsSectionProps) {
-  const githubRepoUrl = getGitHubRepoUrl(skill);
+  const githubSkillFolderUrl = getGitHubSkillFolderUrl(skill);
 
   return (
     <div className="space-y-5">
@@ -33,11 +33,11 @@ export function SkillBuilderSettingsSection({
         <h2 className="heading-lg text-foreground dark:text-foreground-night">
           Skill settings
         </h2>
-        {githubRepoUrl && (
+        {githubSkillFolderUrl && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
             <span>This skill was originally imported from</span>
             <LinkWrapper
-              href={githubRepoUrl}
+              href={githubSkillFolderUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 underline hover:text-foreground dark:hover:text-foreground-night"
@@ -93,8 +93,12 @@ export function SkillBuilderSettingsSection({
   );
 }
 
-function getGitHubRepoUrl(skill?: SkillType): string | null {
-  if (skill?.source !== "github" || !skill.sourceMetadata?.repoUrl) {
+function getGitHubSkillFolderUrl(skill?: SkillType): string | null {
+  if (
+    skill?.source !== "github" ||
+    !skill.sourceMetadata?.repoUrl ||
+    !skill.sourceMetadata.filePath
+  ) {
     return null;
   }
 
@@ -104,5 +108,12 @@ function getGitHubRepoUrl(skill?: SkillType): string | null {
   }
 
   const { owner, repo } = parsedRepoUrl.value;
-  return `https://github.com/${owner}/${repo}`;
+  const folderPath = skill.sourceMetadata.filePath
+    .split("/")
+    .filter(Boolean)
+    .slice(0, -1)
+    .map(encodeURIComponent)
+    .join("/");
+
+  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree/main${folderPath ? `/${folderPath}` : ""}`;
 }
