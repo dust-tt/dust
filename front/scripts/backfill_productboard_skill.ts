@@ -18,6 +18,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Op } from "sequelize";
 
+const WORKSPACE_CONCURRENCY = 16;
+
 const PRODUCTBOARD_SKILL_NAME = "Productboard API Guidance";
 const PRODUCTBOARD_SKILL_ICON = "ProductboardLogo";
 const PRODUCTBOARD_SKILL_USER_DESCRIPTION =
@@ -449,13 +451,13 @@ async function backfillWorkspace(
   const productboardAgentIds = productboardAgents.map((agent) => agent.id);
   const existingAgentSkillLinks = existingSkill
     ? await AgentSkillModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          customSkillId: existingSkill.id,
-          agentConfigurationId: { [Op.in]: productboardAgentIds },
-        },
-        attributes: ["agentConfigurationId"],
-      })
+      where: {
+        workspaceId: workspace.id,
+        customSkillId: existingSkill.id,
+        agentConfigurationId: { [Op.in]: productboardAgentIds },
+      },
+      attributes: ["agentConfigurationId"],
+    })
     : [];
   const alreadyLinkedAgentIds = new Set(
     existingAgentSkillLinks.map((link) => link.agentConfigurationId)
@@ -517,11 +519,6 @@ async function backfillWorkspace(
 
 makeScript(
   {
-    concurrency: {
-      default: 4,
-      describe: "Number of workspaces to process concurrently.",
-      type: "number" as const,
-    },
     fromWorkspaceId: {
       describe:
         "Resume from this workspace model id when scanning all workspaces.",
@@ -553,7 +550,7 @@ makeScript(
           logger,
         }),
       {
-        concurrency,
+        concurrency: WORKSPACE_CONCURRENCY,
         fromWorkspaceId,
         wId: workspaceId,
       }
