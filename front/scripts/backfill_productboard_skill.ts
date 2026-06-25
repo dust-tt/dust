@@ -282,32 +282,32 @@ async function createProductboardSkill(
 async function addAgentEditorsToSkill(
   auth: Authenticator,
   {
-    agentConfigurationIds,
+    agentConfigurationModelIds,
     logger,
     skill,
   }: {
-    agentConfigurationIds: ModelId[];
+    agentConfigurationModelIds: ModelId[];
     logger: Logger;
     skill: SkillResource;
   }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (agentConfigurationIds.length === 0) {
+  if (agentConfigurationModelIds.length === 0) {
     return;
   }
 
   const agentEditorLinks = await GroupAgentModel.findAll({
     where: {
       workspaceId: owner.id,
-      agentConfigurationId: { [Op.in]: agentConfigurationIds },
+      agentConfigurationId: { [Op.in]: agentConfigurationModelIds },
     },
   });
-  const agentEditorGroupIds = [
+  const agentEditorGroupModelIds = [
     ...new Set(agentEditorLinks.map((link) => link.groupId)),
   ];
 
-  if (agentEditorGroupIds.length === 0) {
+  if (agentEditorGroupModelIds.length === 0) {
     logger.warn(
       { skillId: skill.sId, workspaceId: owner.sId },
       "No agent editor groups found for Productboard agents"
@@ -330,7 +330,7 @@ async function addAgentEditorsToSkill(
 
   const groups = await GroupResource.fetchByModelIds(auth, [
     skillEditorLink.groupId,
-    ...agentEditorGroupIds,
+    ...agentEditorGroupModelIds,
   ]);
   const groupById = new Map(groups.map((group) => [group.id, group]));
 
@@ -340,7 +340,7 @@ async function addAgentEditorsToSkill(
       `Could not fetch editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
     );
   }
-  const agentEditorGroups = agentEditorGroupIds
+  const agentEditorGroups = agentEditorGroupModelIds
     .map((groupId) => groupById.get(groupId) ?? null)
     .filter((group): group is GroupResource => group !== null);
 
@@ -430,11 +430,11 @@ async function backfillWorkspace(
 
   const existingSkill = await fetchActiveProductboardSkill(auth);
 
-  const productboardAgentIds = productboardAgents.map((agent) => agent.id);
+  const productboardAgentModelIds = productboardAgents.map((agent) => agent.id);
 
   logger.info(
     {
-      agentIdsToLink: productboardAgentIds.length,
+      agentIdsToLink: productboardAgentModelIds.length,
       productboardAgentCount: productboardAgents.length,
       productboardAgents: productboardAgents.map((agent) => ({
         agentId: agent.sId,
@@ -460,14 +460,14 @@ async function backfillWorkspace(
     // We add some editors to the skill to make sure we're not creating a skill with 0 editor.
     // We take the agent editors as they are the most prone to know about Productboard at their company.
     await addAgentEditorsToSkill(auth, {
-      agentConfigurationIds: productboardAgentIds,
+      agentConfigurationIds: productboardAgentModelIds,
       logger,
       skill,
     });
   }
 
   await AgentSkillModel.bulkCreate(
-    productboardAgentIds.map((agentConfigurationId) => ({
+    productboardAgentModelIds.map((agentConfigurationId) => ({
       agentConfigurationId,
       customSkillId: skill.id,
       globalSkillId: null,
@@ -477,7 +477,7 @@ async function backfillWorkspace(
 
   logger.info(
     {
-      agentIdsToLink: productboardAgentIds.length,
+      agentIdsToLink: productboardAgentModelIds.length,
       skillId: skill.sId,
       workspaceId: workspace.sId,
     },
