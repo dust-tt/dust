@@ -1,7 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -11,8 +11,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-const ZOOM_LEVELS = [0.5, 0.66, 0.75, 1.0, 1.25, 1.5, 2.0];
-const DEFAULT_ZOOM_IDX = 3;
+const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+const DEFAULT_ZOOM_IDX = 2;
 const BASE_PAGE_WIDTH = 680;
 
 type State = {
@@ -33,16 +33,14 @@ type Action =
   | { type: "zoom_in" }
   | { type: "zoom_out" };
 
-function makeInitialState(zoomIdx: number): State {
-  return {
-    currentPage: 1,
-    hasError: false,
-    isFetching: true,
-    numPages: null,
-    objectUrl: null,
-    zoomIdx,
-  };
-}
+const initialState: State = {
+  currentPage: 1,
+  hasError: false,
+  isFetching: true,
+  numPages: null,
+  objectUrl: null,
+  zoomIdx: DEFAULT_ZOOM_IDX,
+};
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -78,22 +76,16 @@ function reducer(state: State, action: Action): State {
 
 interface PDFViewerProps {
   url: string;
-  // Initial zoom level index into ZOOM_LEVELS. Defaults to DEFAULT_ZOOM_IDX
-  // (100%). Callers with a narrower container (e.g. the side panel previewing
-  // wide slides) can pass a smaller index so pages don't render oversized.
-  initialZoomIdx?: number;
+  // When true, pages render at the container width (no manual zoom controls).
+  // Useful in narrow containers like the side panel, where slides should fill
+  // the available space rather than render at a fixed zoom level.
+  isFullWidth?: boolean;
 }
 
-export function PDFViewer({
-  url,
-  initialZoomIdx = DEFAULT_ZOOM_IDX,
-}: PDFViewerProps) {
+export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [state, dispatch] = useReducer(
-    reducer,
-    initialZoomIdx,
-    makeInitialState
-  );
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const [state, dispatch] = useReducer(reducer, initialState);
   const { isFetching, hasError, objectUrl, numPages, currentPage, zoomIdx } =
     state;
 
@@ -165,8 +157,47 @@ export function PDFViewer({
     return () => observer.disconnect();
   }, [numPages]);
 
+  useEffect(() => {
+    // The scroll container only mounts once the fetch resolves, so re-run when
+    // those flags flip to pick up the now-available ref.
+    if (!isFullWidth || isFetching || hasError) {
+      return;
+    }
+    const container = scrollRef.current;
+    if (!container) {
+      return;
+    }
+
+    setContainerWidth(container.clientWidth);
+
+    // Re-rasterizing the PDF canvas on every resize tick flickers, so debounce
+    // and only commit the new width once the resize settles.
+    let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries.at(0);
+      if (!entry) {
+        return;
+      }
+      const { width } = entry.contentRect;
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+      }
+      debounceTimeout = setTimeout(() => setContainerWidth(width), 20);
+    });
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+      }
+    };
+  }, [isFullWidth, isFetching, hasError]);
+
   const zoom = ZOOM_LEVELS[zoomIdx] ?? 1.0;
-  const pageWidth = Math.round(BASE_PAGE_WIDTH * zoom);
+  const pageWidth = isFullWidth
+    ? (containerWidth ?? BASE_PAGE_WIDTH)
+    : Math.round(BASE_PAGE_WIDTH * zoom);
 
   const isLoading = isFetching || (!hasError && numPages === null);
 
@@ -191,27 +222,29 @@ export function PDFViewer({
               <span className="text-xs text-muted-foreground">
                 Page {currentPage} of {numPages}
               </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  label="-"
-                  disabled={zoomIdx <= 0}
-                  onClick={() => dispatch({ type: "zoom_out" })}
-                  tooltip="Zoom out"
-                />
-                <span className="w-10 text-center text-xs text-muted-foreground">
-                  {Math.round(zoom * 100)}%
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  label="+"
-                  disabled={zoomIdx >= ZOOM_LEVELS.length - 1}
-                  onClick={() => dispatch({ type: "zoom_in" })}
-                  tooltip="Zoom in"
-                />
-              </div>
+              {!isFullWidth && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    label="-"
+                    disabled={zoomIdx <= 0}
+                    onClick={() => dispatch({ type: "zoom_out" })}
+                    tooltip="Zoom out"
+                  />
+                  <span className="w-10 text-center text-xs text-muted-foreground">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    label="+"
+                    disabled={zoomIdx >= ZOOM_LEVELS.length - 1}
+                    onClick={() => dispatch({ type: "zoom_in" })}
+                    tooltip="Zoom in"
+                  />
+                </div>
+              )}
             </div>
           )}
           <div

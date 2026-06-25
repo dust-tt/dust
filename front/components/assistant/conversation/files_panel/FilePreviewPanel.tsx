@@ -95,9 +95,9 @@ function FilePreviewContent({
       // PDF conversion (?preview=pdf), available only through the path-based
       // file route.
       const url = `${baseUrl}?preview=pdf` + (version ? `&v=${version}` : "");
-      // Slides are wide/landscape; render them smaller by default since the
-      // side panel is narrower than the full-screen preview dialog.
-      return <PDFViewer key={url} url={url} initialZoomIdx={1} />;
+      // Slides are wide/landscape; render them at the panel width so they fill
+      // the narrower side panel instead of overflowing or rendering oversized.
+      return <PDFViewer key={url} url={url} isFullWidth />;
     }
 
     case "frame":
