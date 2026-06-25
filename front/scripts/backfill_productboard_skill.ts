@@ -503,23 +503,17 @@ async function backfillWorkspace(
 
 makeScript(
   {
-    fromWorkspaceId: {
-      describe:
-        "Resume from this workspace model id when scanning all workspaces.",
-      type: "number" as const,
-    },
     workspaceId: {
       alias: "w",
       describe: "Workspace to process. Omit to scan all workspaces.",
       type: "string" as const,
     },
   },
-  async ({ execute, fromWorkspaceId, workspaceId }, logger) => {
+  async ({ execute, workspaceId }, logger) => {
     logger.info(
       {
         concurrency: WORKSPACE_CONCURRENCY,
         execute,
-        fromWorkspaceId,
         workspaceId: workspaceId ?? "all",
       },
       execute
@@ -535,7 +529,6 @@ makeScript(
         }),
       {
         concurrency: WORKSPACE_CONCURRENCY,
-        fromWorkspaceId,
         wId: workspaceId,
       }
     );
