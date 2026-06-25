@@ -82,11 +82,11 @@ const buttonVariants = cva(
         ),
         highlight: cn(
           OVERLAY,
-          "s-bg-gradient-to-b s-from-highlight-400 s-to-highlight-500",
+          "s-bg-gradient-to-b s-from-blue-400 s-to-blue-500",
           "s-text-white",
           SOLID_SHADOW("#4BABFF"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
-          "disabled:s-from-highlight-200 disabled:s-to-highlight-300 disabled:s-shadow-none"
+          "disabled:s-from-blue-200 disabled:s-to-blue-300 disabled:s-shadow-none"
         ),
         warning: cn(
           OVERLAY,
