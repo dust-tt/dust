@@ -151,7 +151,10 @@ export async function fetchUserCreditBreakdown(
         name: agent?.name ?? "Unknown agent",
         pictureUrl: agent?.pictureUrl ?? null,
         modelDisplayName: getAgentModelDisplayName(agent?.model),
-        description: agent?.description ?? "",
+        description:
+          agent && !agent.canRead
+            ? "Private agent: description unavailable"
+            : (agent?.description ?? ""),
       };
     });
 
