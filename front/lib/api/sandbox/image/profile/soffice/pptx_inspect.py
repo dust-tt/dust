@@ -20,7 +20,6 @@ import ooxml
 import render
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
-from pptx.enum.text import MSO_AUTO_SIZE
 from pptx.oxml.ns import qn
 from pptx.presentation import Presentation as PresentationType
 from pptx.shapes.base import BaseShape
@@ -34,6 +33,25 @@ from utils import (
     safe_output,
 )
 
+from pptx_geometry import (
+    ASPECT_TOLERANCE,
+    CENTER_OFFSET_EMU,
+    EDGE_EPSILON_EMU,
+    EMU_PER_INCH,
+    FILL_FLOATING,
+    FULL_SPAN,
+    MIN_IMAGE_DPI,
+    OVERSET_TOLERANCE,
+    SAFE_MARGIN_EMU,
+    _classify_overlap,
+    _fit_estimate,
+    _frame_text_len,
+    _grows_to_fit,
+    emu_to_inches,
+    format_box,
+    shape_kind,
+)
+
 from pptx_typography import (
     _read_clr_map,
     _read_layout_chain,
@@ -45,23 +63,10 @@ from pptx_typography import (
     text_frame_lines,
 )
 
-DEFAULT_MAX_SHAPES = 200
-EMU_PER_INCH = 914_400
-EDGE_EPSILON_EMU = 45_720  # 0.05" tolerance before flagging edge overflow.
+from pptx_render_boxes import _annotate_boxes
 
-# Text-fit estimation. What decides whether text fits is the box geometry at
-# the chosen font size, not the word count — so we estimate how many characters
-# a box holds and surface it, to stop the agent sizing text blindly. It is a
-# rough ESTIMATE (real wrapping depends on glyph metrics / line spacing we don't
-# reproduce), so the overset warning only fires on GROSS overflow of a genuine
-# multi-line container, never on a box short enough to be a nominal-height label
-# (text overflows those by design) or one set to grow to fit its text.
-CHAR_WIDTH_EM = 0.5  # avg proportional Latin glyph advance, in em
-LINE_HEIGHT_FACTOR = 1.2  # typical single line height, in em
-TEXTBOX_MARGIN_W_IN = 0.2  # PowerPoint default internal left+right inset
-TEXTBOX_MARGIN_H_IN = 0.1  # PowerPoint default internal top+bottom inset
-OVERSET_TOLERANCE = 1.8  # flag only when text exceeds capacity by this factor
-FILL_FLOATING = 0.30  # text using less than this fraction of a real box "floats"
+
+DEFAULT_MAX_SHAPES = 200
 
 
 # Drawing-namespace handles for detecting embedded images anywhere in a shape
@@ -137,48 +142,6 @@ HELP_TEXT = (
     "Paragraphs are addressed by index p[i]; empty spacer paragraphs are shown\n"
     "(trailing ones collapsed to a count); long text is ellipsized."
 )
-
-
-def emu_to_inches(emu: Optional[int]) -> Optional[float]:
-    if emu is None:
-        return None
-    return emu / EMU_PER_INCH
-
-
-def format_box(shape: BaseShape) -> str:
-    left = emu_to_inches(shape.left)
-    top = emu_to_inches(shape.top)
-    width = emu_to_inches(shape.width)
-    height = emu_to_inches(shape.height)
-    if None in (left, top, width, height):
-        return "(?,?)"
-    return f"({left:.1f},{top:.1f}) {width:.1f}x{height:.1f}\""
-
-
-def shape_kind(shape: BaseShape) -> str:
-    if shape.has_chart:
-        return "chart"
-    if shape.has_table:
-        return "table"
-    st = shape.shape_type
-    if st == MSO_SHAPE_TYPE.PICTURE:
-        return "pic"
-    if st == MSO_SHAPE_TYPE.GROUP:
-        return "group"
-    if st == MSO_SHAPE_TYPE.TEXT_BOX:
-        return "text"
-    if st == MSO_SHAPE_TYPE.PLACEHOLDER:
-        return "ph"
-    if st == MSO_SHAPE_TYPE.AUTO_SHAPE:
-        return "auto"
-    if st == MSO_SHAPE_TYPE.LINE:
-        return "line"
-    if st == MSO_SHAPE_TYPE.FREEFORM:
-        return "free"
-    if st == MSO_SHAPE_TYPE.MEDIA:
-        return "media"
-    name = getattr(st, "name", None)
-    return name.lower() if name else "shape"
 
 
 def picture_summary(shape: BaseShape) -> str:
@@ -359,11 +322,6 @@ def _find_covering_shape(
     return None
 
 
-class FitEstimate(NamedTuple):
-    chars_per_line: int
-    capacity: Optional[int]  # total chars; None when height isn't a real constraint
-
-
 def _effective_font_size_pt(shape: BaseShape, layout_chain) -> Optional[float]:
     """The size text in this shape renders at: an explicit run size if set,
     else the placeholder's resolved layout default."""
@@ -385,38 +343,6 @@ def _effective_font_size_pt(shape: BaseShape, layout_chain) -> Optional[float]:
         if size_pt:
             return float(size_pt)
     return None
-
-
-def _frame_text_len(shape: BaseShape) -> int:
-    if not shape.has_text_frame:
-        return 0
-    return sum(len(p.text or "") for p in shape.text_frame.paragraphs)
-
-
-def _fit_estimate(shape: BaseShape, size_pt: float) -> Optional[FitEstimate]:
-    if shape.width is None or shape.height is None or size_pt <= 0:
-        return None
-    w_in = shape.width / EMU_PER_INCH
-    h_in = shape.height / EMU_PER_INCH
-    char_w = size_pt * CHAR_WIDTH_EM / 72.0
-    line_h = size_pt * LINE_HEIGHT_FACTOR / 72.0
-    if char_w <= 0 or line_h <= 0:
-        return None
-    cpl = int(max(0.0, w_in - TEXTBOX_MARGIN_W_IN) / char_w)
-    lines = int(max(0.0, h_in - TEXTBOX_MARGIN_H_IN) / line_h)
-    if cpl < 1:
-        return None
-    # Height constrains only genuine multi-line containers; a box shorter than
-    # ~2 lines is a nominal-height label whose text overflows by design.
-    capacity = cpl * lines if lines >= 2 else None
-    return FitEstimate(cpl, capacity)
-
-
-def _grows_to_fit(shape: BaseShape) -> bool:
-    return (
-        shape.has_text_frame
-        and shape.text_frame.auto_size == MSO_AUTO_SIZE.SHAPE_TO_FIT_TEXT
-    )
 
 
 def _fit_tokens(shape: BaseShape, layout_chain) -> List[str]:
@@ -525,27 +451,6 @@ def describe_shape(
     return [head] + [indent + line for line in sub_lines]
 
 
-ASPECT_TOLERANCE = 1.18  # flag image stretch/squish beyond ~15%
-MIN_IMAGE_DPI = 70  # flag pictures displayed below this effective resolution
-# Overlap classification. Overlap is often intentional (a label on a photo, a
-# caption on a pill), so raw intersection is not a defect. We separate three
-# cases by per-box containment (intersection / each box's area):
-#   - both boxes >= STACKED_CONT covered  -> the boxes coincide (STACKED): a
-#     real bug (e.g. a title and body dropped at the same spot) -> [!] blocker.
-#   - one box >= CONTAINMENT_TAU inside the other -> foreground on background
-#     (caption on a photo, text on a pill): intentional -> suppressed.
-#   - otherwise, shallower-axis overlap >= PEER_PENETRATION_EMU -> a partial
-#     peer overlap: could be a designed overlay or an accidental collision, so
-#     it is surfaced as a quantitative [i] ADVISORY (judge it in the render),
-#     never a hard blocker — that would fail the template's own overlays.
-STACKED_CONT = 0.90  # both boxes >= this covered => effectively the same box
-CONTAINMENT_TAU = 0.85  # one box >= this fraction inside the other => fg/bg, ok
-PEER_PENETRATION_EMU = EMU_PER_INCH // 10  # 0.1" shallow-axis overlap to note it
-CENTER_OFFSET_EMU = int(EMU_PER_INCH * 0.2)  # inner box off-center beyond this => advisory
-SAFE_MARGIN_EMU = int(EMU_PER_INCH * 0.2)  # text crowding within this of an edge => advisory
-FULL_SPAN = 0.9  # a shape covering >= this fraction of a slide axis is a banner/background
-
-
 def _image_markers(shape: BaseShape) -> List[str]:
     """Aspect-ratio distortion and low-resolution warnings for a picture (or a
     populated picture placeholder). Distortion compares the display box ratio to
@@ -590,37 +495,6 @@ def _image_markers(shape: BaseShape) -> List[str]:
     return markers
 
 
-def _classify_overlap(a: Tuple[int, int, int, int],
-                      b: Tuple[int, int, int, int]):
-    """Classify the overlap of two (left, top, width, height) boxes.
-    Returns (kind, penetration_emu, axis):
-      - ("stacked", 0, "")     both boxes >= STACKED_CONT covered (coincide)
-      - ("contained", 0, "")   one box >= CONTAINMENT_TAU inside the other (fg/bg)
-      - ("peer", pen, axis)    partial overlap >= PEER_PENETRATION_EMU on the
-                               shallow axis (a designed overlay or a collision)
-      - (None, 0, "")          no/negligible overlap
-    Shared by the --slide text lint and the --render overlap shading so both
-    agree on what counts as a collision."""
-    al, at, aw, ah = a
-    bl, bt, bw, bh = b
-    if min(aw, ah, bw, bh) <= 0:
-        return (None, 0, "")
-    ix = min(al + aw, bl + bw) - max(al, bl)
-    iy = min(at + ah, bt + bh) - max(at, bt)
-    if ix <= 0 or iy <= 0:
-        return (None, 0, "")
-    inter = ix * iy
-    cont_a = inter / (aw * ah)
-    cont_b = inter / (bw * bh)
-    if min(cont_a, cont_b) >= STACKED_CONT:
-        return ("stacked", 0, "")
-    if max(cont_a, cont_b) >= CONTAINMENT_TAU:
-        return ("contained", 0, "")
-    if min(ix, iy) >= PEER_PENETRATION_EMU:
-        return ("peer", min(ix, iy), "horizontally" if ix < iy else "vertically")
-    return (None, 0, "")
-
-
 def _overlap_markers(
     shape: BaseShape, all_boxes: Optional[List[CoverRect]]
 ) -> List[str]:
@@ -656,60 +530,6 @@ def _overlap_markers(
                     f"[i] off-centre from shape #{oid} by "
                     f"{max(dx, dy) / EMU_PER_INCH:.2f}in {off}"
                 )
-    return out
-
-
-# Text-row detection by horizontal EDGE density. A box that spans a gradient or
-# blob background has a constant colour-vs-median "ink" baseline that collapses
-# to one fake row, but glyph strokes still produce many sharp horizontal
-# transitions while smooth backgrounds produce ~none — so edge count separates
-# text from background regardless of contrast polarity or gradient. Returns each
-# detected line's vertical centre (px): the input for marker alignment.
-#
-# Per-row colour and contrast were tried here and dropped: legible white-on-brand
-# text over the template's gradient measures only ~1.4-3.0 (no threshold
-# separates intended low-contrast from broken), and the per-strip ink colour is
-# too noisy to judge colour uniformity. The deterministic `--compare` slot audit
-# catches the colour-mismatch defect at its source instead.
-TEXTROW_EDGE_DELTA = 60  # adjacent-sample manhattan diff that marks a glyph edge
-TEXTROW_X_STEP = 2  # sample every Nth column (speed; detection is robust to it)
-
-
-def _text_row_centers(
-    rgb_image, box_px: Tuple[float, float, float, float]
-) -> List[float]:
-    x0, y0, x1, y1 = (int(box_px[0]), int(box_px[1]),
-                      int(box_px[2]), int(box_px[3]))
-    x0, y0 = max(0, x0), max(0, y0)
-    x1, y1 = min(rgb_image.width, x1), min(rgb_image.height, y1)
-    if x1 - x0 < 6 or y1 - y0 < 6:
-        return []
-    px = rgb_image.load()
-    xs = list(range(x0, x1, TEXTROW_X_STEP))
-    edge_min = max(8, len(xs) // 15)  # text rows show many edges; background ~0-3
-
-    def edge_count(y):
-        line = [px[x, y] for x in xs]
-        return sum(
-            1 for a, b in zip(line, line[1:])
-            if abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2])
-            > TEXTROW_EDGE_DELTA
-        )
-
-    out: List[float] = []
-    group: List[int] = []
-
-    def flush():
-        if len(group) >= 2:  # a text line spans more than one pixel row
-            out.append((min(group) + max(group)) / 2.0)
-
-    for y in range(y0, y1):
-        if edge_count(y) >= edge_min:
-            group.append(y)
-        else:
-            flush()
-            group = []
-    flush()
     return out
 
 
@@ -1760,186 +1580,6 @@ def print_media(path: str) -> str:
 
 # Distinct, high-contrast outline colors for the --boxes overlay (legible on
 # both light and dark slide backgrounds).
-_BOX_PALETTE = [
-    (255, 64, 64), (64, 160, 255), (0, 200, 120), (255, 170, 0),
-    (200, 80, 255), (0, 200, 200), (255, 90, 170), (150, 210, 0),
-]
-
-# Decorative row-markers (checkmarks, bullets, numbers, icons) are placed at
-# FIXED positions to sit beside specific text rows. When filled copy wraps, the
-# rendered rows drift off those positions and a marker strands in empty space —
-# a defect box-geometry can't see (the marker didn't move; the text reflowed).
-# Detect a marker as a small shape that forms a regular vertical run of >=3
-# beside a text box, then check each one has a rendered text row near it.
-MARKER_MAX_DIM_EMU = int(EMU_PER_INCH * 0.6)  # a row-marker is small both ways
-MARKER_X_TOL_EMU = int(EMU_PER_INCH * 0.15)  # same-column left tolerance
-MARKER_MIN_RUN = 3  # a run is at least this many aligned markers
-MARKER_PAIR_GAP_EMU = EMU_PER_INCH  # max horizontal gap to pair a run to a text box
-MARKER_ALIGN_TOL_IN = 0.15  # a marker within this of a text row counts as aligned
-
-
-def _marker_runs(shapes: List[BaseShape]) -> List[List[BaseShape]]:
-    """Group small decorative shapes into vertical runs (>=3 sharing a left
-    edge). Each run is returned sorted top-to-bottom."""
-    cands = sorted(
-        [
-            s for s in shapes
-            if shape_kind(s) in ("pic", "auto")
-            and s.width and s.height
-            and s.width <= MARKER_MAX_DIM_EMU and s.height <= MARKER_MAX_DIM_EMU
-        ],
-        key=lambda s: s.left,
-    )
-    runs: List[List[BaseShape]] = []
-    used = [False] * len(cands)
-    for i, s in enumerate(cands):
-        if used[i]:
-            continue
-        col = [s]
-        used[i] = True
-        for j in range(i + 1, len(cands)):
-            if not used[j] and abs(cands[j].left - s.left) <= MARKER_X_TOL_EMU:
-                col.append(cands[j])
-                used[j] = True
-        if len(col) >= MARKER_MIN_RUN:
-            runs.append(sorted(col, key=lambda s: s.top))
-    return runs
-
-
-def _pair_run_to_text(
-    run: List[BaseShape], text_shapes: List[BaseShape]
-) -> Optional[BaseShape]:
-    """The text box a marker run belongs to: the nearest text shape (within
-    MARKER_PAIR_GAP_EMU horizontally) whose vertical span overlaps the run."""
-    run_left = min(s.left for s in run)
-    run_right = max(s.left + s.width for s in run)
-    run_top = min(s.top for s in run)
-    run_bot = max(s.top + s.height for s in run)
-    best, best_gap = None, None
-    for t in text_shapes:
-        if min(run_bot, t.top + t.height) - max(run_top, t.top) <= 0:
-            continue  # no vertical overlap
-        if t.left >= run_right:
-            gap = t.left - run_right
-        elif t.left + t.width <= run_left:
-            gap = run_left - (t.left + t.width)
-        else:
-            gap = 0
-        if gap <= MARKER_PAIR_GAP_EMU and (best_gap is None or gap < best_gap):
-            best, best_gap = t, gap
-    return best
-
-
-def _annotate_boxes(
-    image_path: Path, slide: Slide, slide_w_emu: int, slide_h_emu: int
-):
-    """Overlay each top-level shape's exact bounding box on the slide image and
-    compute pixel metrics. Box positions are read from the file (exact even
-    though text is LibreOffice-rendered); the rest is measured on the rendered
-    pixels (colors/positions are faithful). Draws box outlines, an `#id` label
-    just OUTSIDE each box (detail goes to stdout, not onto the image), a tint on
-    text boxes, and a red wash over peer-overlap regions. Returns
-    (out_path, findings) where findings has keys: "overlaps" [(a, b, pen_in)] and
-    "markers" [(id, off_in)] (decorative markers in a run with no rendered text
-    row near them). None if the image is unreadable."""
-    try:
-        from PIL import Image, ImageDraw, ImageFont
-    except ImportError:
-        return None
-    if not slide_w_emu or not slide_h_emu:
-        return None
-    try:
-        base = Image.open(image_path).convert("RGBA")
-    except (OSError, ValueError):
-        return None
-    width_px, height_px = base.size
-    sample = base.convert("RGB")  # clean pixels for metrics (before overlay)
-    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    try:
-        font = ImageFont.load_default()
-    except Exception:  # noqa: BLE001 - label font is optional
-        font = None
-
-    findings = {"overlaps": [], "markers": []}
-    ppi = width_px / (slide_w_emu / EMU_PER_INCH)
-
-    def to_px(sh):
-        return (
-            sh.left / slide_w_emu * width_px,
-            sh.top / slide_h_emu * height_px,
-            (sh.left + sh.width) / slide_w_emu * width_px,
-            (sh.top + sh.height) / slide_h_emu * height_px,
-        )
-
-    def has_text(sh):
-        return sh.has_text_frame and any(
-            (p.text or "").strip() for p in sh.text_frame.paragraphs
-        )
-
-    shapes = [
-        s for s in slide.shapes
-        if None not in (s.left, s.top, s.width, s.height)
-    ]
-
-    # Shade peer-overlap intersection regions (the "collision zones").
-    for i, a in enumerate(shapes):
-        for b in shapes[i + 1:]:
-            kind, pen, _ = _classify_overlap(
-                (a.left, a.top, a.width, a.height),
-                (b.left, b.top, b.width, b.height),
-            )
-            if kind != "peer":
-                continue
-            ax0, ay0, ax1, ay1 = to_px(a)
-            bx0, by0, bx1, by1 = to_px(b)
-            ix0, iy0 = max(ax0, bx0), max(ay0, by0)
-            ix1, iy1 = min(ax1, bx1), min(ay1, by1)
-            if ix1 > ix0 and iy1 > iy0:
-                draw.rectangle([ix0, iy0, ix1, iy1], fill=(255, 0, 0, 130))
-                findings["overlaps"].append(
-                    (a.shape_id, b.shape_id, pen / EMU_PER_INCH)
-                )
-
-    # Decorative-marker alignment: each marker in a run should have a rendered
-    # text row near it in the text box it pairs with. Detect each text box's row
-    # positions once, then check the runs against the box each pairs with.
-    text_shapes = [s for s in shapes if has_text(s)]
-    rows_by_id = {
-        s.shape_id: _text_row_centers(sample, to_px(s)) for s in text_shapes
-    }
-    for run in _marker_runs(shapes):
-        paired = _pair_run_to_text(run, text_shapes)
-        if paired is None:
-            continue  # standalone decoration, not row-markers
-        rows = rows_by_id.get(paired.shape_id) or []
-        if not rows:
-            continue
-        for m in run:
-            my = (m.top + m.height / 2) / slide_h_emu * height_px
-            nearest = min(abs(yc - my) for yc in rows)
-            if nearest / ppi > MARKER_ALIGN_TOL_IN:
-                findings["markers"].append((m.shape_id, nearest / ppi))
-
-    for i, shape in enumerate(shapes):
-        x0, y0, x1, y1 = to_px(shape)
-        color = _BOX_PALETTE[i % len(_BOX_PALETTE)]
-        if has_text(shape):
-            draw.rectangle([x0, y0, x1, y1], fill=color + (40,))
-        draw.rectangle([x0, y0, x1, y1], outline=color + (255,), width=3)
-        # Label OUTSIDE the box (above-left), so it never occludes content; the
-        # per-shape detail lives in the stdout digest, keyed by this #id.
-        ly = y0 - 13 if y0 >= 13 else y0 + 1
-        draw.text((x0, ly), f"#{shape.shape_id}", fill=color + (255,), font=font)
-
-    out_path = image_path.with_name(image_path.stem + "-boxes.png")
-    try:
-        Image.alpha_composite(base, overlay).convert("RGB").save(out_path)
-    except (OSError, ValueError):
-        return None
-    return out_path, findings
-
-
 def print_render(
     file_path: str,
     prs: PresentationType,
