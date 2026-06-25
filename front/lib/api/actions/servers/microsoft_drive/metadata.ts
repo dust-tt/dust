@@ -11,7 +11,7 @@ const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   search_in_files: {
     description:
-      "Search in files in Microsoft OneDrive and SharePoint using Microsoft Copilot retrieval API.",
+      "Search the content inside Microsoft OneDrive and SharePoint files using semantic retrieval. Answers questions from what documents contain by finding relevant passages and information within Word, Excel, PowerPoint, and other files, including external items indexed in Microsoft Graph.",
     schema: {
       query: z
         .string()
@@ -35,12 +35,12 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   search_drive_items: {
     description:
-      "Search OneDrive and SharePoint content using Microsoft Graph Search API to find relevant files and documents. This tool returns the results in relevance order.",
+      "Find and locate a file or document by its name or title in Microsoft OneDrive and SharePoint, returned in relevance order. Use when you know the file name and want to look it up, such as a specific Word, Excel, or PowerPoint document.",
     schema: {
       query: z
         .string()
         .describe(
-          "Search query to find relevant files and content in OneDrive and SharePoint."
+          "Search query matching the name or title of files in OneDrive and SharePoint."
         ),
     },
     stake: "never_ask",
@@ -51,7 +51,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   list_drive_items: {
     description:
-      "List items (folders and/or files) in a OneDrive/SharePoint drive, SharePoint site, or under a specific parent folder. Use parentFolderId to drill into a specific folder; otherwise lists items at the root of the drive/site. Filter the result with itemType. Supports pagination via skipToken.",
+      "Browse and list items (folders and/or files) in a Microsoft OneDrive or SharePoint drive, SharePoint site, or under a specific parent folder. Use parentFolderId to drill into a specific folder; otherwise lists items at the root of the drive/site. Filter the result with itemType. Supports pagination via skipToken.",
     schema: {
       driveId: z
         .string()
@@ -100,7 +100,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   update_word_document: {
     description:
-      "Update an existing Word document on OneDrive/SharePoint by providing a new document.xml content. Uses driveId if provided, otherwise falls back to siteId.",
+      "Edit and update an existing Microsoft Word document on OneDrive or SharePoint by providing new document.xml content. Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
       itemId: z.string().describe("The ID of the Word document to update."),
       driveId: z
@@ -129,7 +129,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   get_file_content: {
     description:
-      "Retrieve the content of files from SharePoint/OneDrive (Powerpoint, Word, Excel, etc.). Uses driveId if provided, otherwise falls back to siteId.",
+      "Read, open, and retrieve the content of a file from Microsoft OneDrive or SharePoint (PowerPoint, Word, Excel, PDF, etc.). Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
       itemId: z
         .string()
@@ -173,7 +173,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   upload_file: {
     description:
-      "Upload a file from Dust conversation to SharePoint or OneDrive. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId. Automatically creates folders if they don't exist.",
+      "Upload a file from the Dust conversation to Microsoft OneDrive or SharePoint. Supports files up to 250MB using the simple upload API. Uses driveId if provided, otherwise falls back to siteId. Automatically creates folders if they don't exist.",
     schema: {
       fileId: z
         .string()
@@ -213,7 +213,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   rename_drive_item: {
     description:
-      "Rename a file or folder in OneDrive or SharePoint. Uses driveId if provided, otherwise falls back to siteId.",
+      "Rename a file or folder in Microsoft OneDrive or SharePoint. Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
       itemId: z.string().describe("The ID of the file or folder to rename."),
       driveId: z
@@ -238,7 +238,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   copy_file: {
     description:
-      "Copy a file or folder to a new location in OneDrive or SharePoint.",
+      "Copy, clone, or duplicate a file or folder to a new location in Microsoft OneDrive or SharePoint.",
     schema: {
       itemId: z.string().describe("ID of the file or folder to copy"),
       driveId: z
