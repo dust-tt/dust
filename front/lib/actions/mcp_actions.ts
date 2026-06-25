@@ -298,10 +298,11 @@ function generateRemoteContentMetadata(content: CallToolResult["content"]): {
  * The MCP SDK (v1.x) adds an `abort` listener to the signal we pass and never
  * removes it. Since `compositeSignal` is pod-lifetime (composed with the shutdown
  * signal in `temporal/agent_loop/activities/run_tool.ts`), that listener would pin
- * every tool result until the pod dies — an OOM over thousands of calls.
+ * every tool result until the pod dies.
  *
  * We bridge aborts onto a fresh controller and detach the bridge in `finally`, so
  * the SDK's dangling listener hangs off a collectable per-call signal instead.
+ * We can remove this once we upgrade to v2 when it's stable.
  */
 export async function runToolCallWithDetachedSignal<T>(
   compositeSignal: AbortSignal | undefined,
