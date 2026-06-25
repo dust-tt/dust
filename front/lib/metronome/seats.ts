@@ -312,6 +312,71 @@ export function resolveRemappedSeatType(
   return "none";
 }
 
+const PROMOTABLE_SEAT_TYPES: ReadonlySet<MembershipSeatType> = new Set([
+  "pro",
+  "pro_yearly",
+  "workspace",
+  "workspace_yearly",
+]);
+
+export function promoteNoneSeatTypesForContract({
+  contract,
+  productSeatTypes,
+  seatTypes,
+  seatLimits,
+}: {
+  contract: CachedContract;
+  productSeatTypes: Map<string, MembershipSeatType>;
+  seatTypes: MembershipSeatType[];
+  seatLimits?: Map<MembershipSeatType, SeatLimit>;
+}): MembershipSeatType[] {
+  const committedPaidSeatTypes = [
+    ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
+  ]
+    .filter(
+      (seatType) =>
+        PROMOTABLE_SEAT_TYPES.has(seatType) &&
+        (seatLimits?.get(seatType)?.minSeats ?? 0) > 0
+    )
+    .sort(
+      (a, b) => SEAT_TYPE_ORDER[a] - SEAT_TYPE_ORDER[b] || a.localeCompare(b)
+    );
+
+  const assignedBySeatType = new Map<MembershipSeatType, number>();
+  for (const seatType of seatTypes) {
+    if (seatType !== "none") {
+      assignedBySeatType.set(
+        seatType,
+        (assignedBySeatType.get(seatType) ?? 0) + 1
+      );
+    }
+  }
+  const remainingBySeatType = new Map<MembershipSeatType, number>();
+  for (const seatType of committedPaidSeatTypes) {
+    const minSeats = seatLimits?.get(seatType)?.minSeats ?? 0;
+    remainingBySeatType.set(
+      seatType,
+      Math.max(0, minSeats - (assignedBySeatType.get(seatType) ?? 0))
+    );
+  }
+
+  const result = [...seatTypes];
+  for (let i = 0; i < result.length; i++) {
+    if (result[i] !== "none") {
+      continue;
+    }
+    const target = committedPaidSeatTypes.find(
+      (seatType) => (remainingBySeatType.get(seatType) ?? 0) > 0
+    );
+    if (!target) {
+      return [...seatTypes];
+    }
+    remainingBySeatType.set(target, (remainingBySeatType.get(target) ?? 0) - 1);
+    result[i] = target;
+  }
+  return result;
+}
+
 /**
  * Remap existing memberships' seat types to the seat types billed by
  * `contract`, so that after a contract switch no membership ends up on a seat
@@ -326,6 +391,11 @@ export function resolveRemappedSeatType(
  *    keeps the old seat type (the current contract keeps billing correctly)
  *    and a future row flips at `startingAt`, which the seat sync picks up as a
  *    future segment on the new contract.
+ *
+ * Members landing on `none` are then promoted into any committed paid seat the
+ * new contract still has spare capacity for (see
+ * `promoteNoneSeatTypesForContract`): a committed seat is billed whether or not
+ * it is assigned, so filling it with an otherwise seat-less member adds no cost.
  *
  * No-op for memberships already on a covered seat type. A membership with no
  * resolvable `UserResource` is logged and skipped; a DB error while applying a
@@ -420,7 +490,7 @@ export async function remapMembershipSeatTypesForContract({
   const applyImmediately =
     swapAt === "current-hour" || startingAt.getTime() <= Date.now();
 
-  for (const membership of memberships) {
+  const remapTargets = memberships.flatMap((membership) => {
     const user = userByModelId.get(membership.userId);
     if (!user) {
       logger.warn(
@@ -431,15 +501,34 @@ export async function remapMembershipSeatTypesForContract({
         },
         "[Metronome][remap] No UserResource for membership — skipping"
       );
-      continue;
+      return [];
     }
+    return [
+      {
+        membership,
+        user,
+        baseTarget: resolveRemappedSeatType(
+          membership.seatType,
+          resolvedContract,
+          productSeatTypes,
+          { seatLimits }
+        ),
+      },
+    ];
+  });
 
-    const target = resolveRemappedSeatType(
-      membership.seatType,
-      resolvedContract,
-      productSeatTypes,
-      { seatLimits }
-    );
+  const promotedTargets = promoteNoneSeatTypesForContract({
+    contract: resolvedContract,
+    productSeatTypes,
+    seatTypes: remapTargets.map((t) => t.baseTarget),
+    seatLimits,
+  });
+
+  for (const [
+    index,
+    { membership, user, baseTarget },
+  ] of remapTargets.entries()) {
+    const target = promotedTargets[index];
     if (target === membership.seatType) {
       logger.info(
         {
@@ -460,6 +549,7 @@ export async function remapMembershipSeatTypesForContract({
         userId: user.sId,
         previousSeatType: membership.seatType,
         newSeatType: target,
+        promotedFromNone: baseTarget === "none" && target !== "none",
         mode: applyImmediately ? "immediate" : "scheduled",
         scheduledAt: applyImmediately ? null : startingAt.toISOString(),
       },
