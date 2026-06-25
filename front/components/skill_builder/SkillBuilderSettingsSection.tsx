@@ -94,11 +94,7 @@ export function SkillBuilderSettingsSection({
 }
 
 function getGitHubSkillFolderUrl(skill?: SkillType): string | null {
-  if (
-    skill?.source !== "github" ||
-    !skill.sourceMetadata?.repoUrl ||
-    !skill.sourceMetadata.filePath
-  ) {
+  if (skill?.source !== "github" || !skill.sourceMetadata?.repoUrl) {
     return null;
   }
 
@@ -108,6 +104,12 @@ function getGitHubSkillFolderUrl(skill?: SkillType): string | null {
   }
 
   const { owner, repo } = parsedRepoUrl.value;
+  const repoUrl = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+
+  if (!skill.sourceMetadata.filePath) {
+    return repoUrl;
+  }
+
   const folderPath = skill.sourceMetadata.filePath
     .split("/")
     .filter(Boolean)
@@ -115,5 +117,5 @@ function getGitHubSkillFolderUrl(skill?: SkillType): string | null {
     .map(encodeURIComponent)
     .join("/");
 
-  return `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tree/main${folderPath ? `/${folderPath}` : ""}`;
+  return `${repoUrl}/tree/main${folderPath ? `/${folderPath}` : ""}`;
 }
