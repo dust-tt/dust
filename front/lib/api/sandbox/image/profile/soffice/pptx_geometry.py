@@ -35,10 +35,12 @@ FILL_FLOATING = 0.30  # text using less than this fraction of a real box "floats
 # run wider AND taller than the fit estimate's 0.5em / 1.2, so the extent uses
 # its own, larger constants for BOTH how many lines the copy wraps to and how
 # tall each line is. Height availability still uses LINE_HEIGHT_FACTOR above, so
-# only a genuine multi-line overflow grows the box.
+# only an egregious multi-line overflow grows the box, and the growth is capped.
 EXTENT_CHAR_WIDTH_EM = 0.6  # wider glyph advance for the extent wrap estimate
 EXTENT_LINE_HEIGHT_FACTOR = 1.4  # generous line height for the extent height
 EXTENT_PAD_IN = 0.1  # extra height added to the extent estimate
+EXTENT_OVERFLOW_SLACK = 2  # grow only when copy needs >= this many extra lines
+EXTENT_MAX_GROWTH = 2.5  # cap: grown height <= this multiple of the declared
 
 ASPECT_TOLERANCE = 1.18  # flag image stretch/squish beyond ~15%
 MIN_IMAGE_DPI = 70  # flag pictures displayed below this effective resolution
@@ -117,16 +119,19 @@ def _grows_to_fit(shape: BaseShape) -> bool:
 def _text_extent_box(
     shape: BaseShape, size_pt: float
 ) -> Optional[Tuple[int, int, int, int]]:
-    """The box grown to wrap this shape's rendered copy when the text needs more
-    lines than the declared box holds (a multi-paragraph or wrapped block in a
-    too-short box, like a two-line title in a one-line box). Returns
-    (left, top, width, height) in EMU, extended along the vertical anchor, or
-    None when the text fits — so callers fall back to the declared box.
+    """The box grown to wrap this shape's rendered copy when the text needs far
+    more lines than the declared box holds (a multi-paragraph or wrapped block
+    in a too-short box, like a three-line title in a one-line box). Returns
+    (left, top, width, height) in EMU — kept at the declared top and grown
+    DOWNWARD (a BOTTOM-anchored box, whose text spills up, grown upward) — or
+    None when the text fits or only barely overflows, so callers fall back to
+    the declared box.
 
-    The growth DECISION uses the normal line height (a snug single-line box is a
-    nominal-height label, never grown); the growth MAGNITUDE is biased larger
-    (EXTENT_*), so the box overshoots the text rather than under-covering it and
-    missing an overflow-into-neighbour overlap."""
+    Growth is deliberately conservative: it triggers only on an EGREGIOUS
+    overflow (>= EXTENT_OVERFLOW_SLACK extra lines), is biased larger so the box
+    overshoots rather than under-covers the text (EXTENT_*), and is capped at
+    EXTENT_MAX_GROWTH x the declared height so a mis-estimated wrap can't balloon
+    it across the slide. A MIDDLE-anchored box is never grown symmetrically."""
     if not shape.has_text_frame:
         return None
     if None in (shape.left, shape.top, shape.width, shape.height):
@@ -158,23 +163,31 @@ def _text_extent_box(
     if line_h <= 0:
         return None
     lines_avail = int(max(0.0, h_in - TEXTBOX_MARGIN_H_IN) / line_h)
-    # Only genuine multi-line overflow grows the box: a single line fits or is a
-    # nominal-height label (overflows by design), never grown.
-    if lines_needed < 2 or lines_needed <= lines_avail:
+    # Only an EGREGIOUS multi-line overflow grows the box: the copy must need at
+    # least EXTENT_OVERFLOW_SLACK more lines than the box holds (a one-line
+    # overage is usually a wrap-estimate artifact, not real overflow) and span at
+    # least two lines. A single line fits, or is a nominal-height label that
+    # overflows by design — never grown.
+    if lines_needed < 2 or lines_needed < lines_avail + EXTENT_OVERFLOW_SLACK:
         return None
     gen_line_h = size_pt * EXTENT_LINE_HEIGHT_FACTOR / 72.0
     ext_h_in = lines_needed * gen_line_h + TEXTBOX_MARGIN_H_IN + EXTENT_PAD_IN
-    if ext_h_in <= h_in:
-        return None
     new_h = int(round(ext_h_in * EMU_PER_INCH))
+    # Cap the growth so a mis-estimated wrap can't balloon the box across the
+    # slide (it still overshoots the text, just not unboundedly).
+    new_h = min(new_h, int(round(shape.height * EXTENT_MAX_GROWTH)))
+    if new_h <= shape.height:
+        return None
+    # Keep the declared top and grow DOWNWARD for TOP/MIDDLE/inherited anchors: a
+    # MIDDLE box is never grown symmetrically, which used to drift it up off its
+    # own position. Only a BOTTOM-anchored box, whose text spills upward, grows
+    # up — clamped to the slide top.
     va = getattr(shape.text_frame, "vertical_anchor", None)
     va_name = (getattr(va, "name", None) or "TOP").upper()
     left, top, height = shape.left, shape.top, shape.height
-    if va_name == "MIDDLE":
-        new_top = int(round(top + height / 2 - new_h / 2))
-    elif va_name == "BOTTOM":
-        new_top = top + height - new_h
-    else:  # TOP or inherited/unknown -> grow downward
+    if va_name == "BOTTOM":
+        new_top = max(0, top + height - new_h)
+    else:
         new_top = top
     return (left, new_top, shape.width, new_h)
 
