@@ -621,7 +621,7 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
         {hasFeature("sound_notification") && (
           <SoundNotificationPreferences
             control={sound.control}
-            disabled={sound.isLoading || isSubmitting}
+            disabled={sound.isLoading}
           />
         )}
       </SectionContent>
