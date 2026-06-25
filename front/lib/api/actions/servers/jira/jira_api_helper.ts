@@ -43,6 +43,7 @@ import {
   SEARCH_USERS_MAX_RESULTS,
 } from "@app/lib/api/actions/servers/jira/types";
 import logger from "@app/logger/logger";
+import { normalizeAtlassianCloudUrl } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
@@ -356,9 +357,12 @@ export async function getJiraBaseUrlAndResourceInfo(
     return null;
   }
 
-  const resource = !cloudUrl
+  const normalizedCloudUrl = cloudUrl
+    ? normalizeAtlassianCloudUrl(cloudUrl)
+    : null;
+  const resource = !normalizedCloudUrl
     ? resources[0]
-    : (resources.find((r) => r.url === cloudUrl) ?? null);
+    : (resources.find((r) => r.url === normalizedCloudUrl) ?? null);
 
   if (!resource) {
     return null;
