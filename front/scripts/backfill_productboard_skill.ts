@@ -21,7 +21,7 @@ import { Op } from "sequelize";
 
 const WORKSPACE_CONCURRENCY = 16;
 
-const PRODUCTBOARD_SKILL_NAME = "Working with Productboard";
+const PRODUCTBOARD_SKILL_NAME = "Work with Productboard";
 const PRODUCTBOARD_SKILL_ICON = "ProductboardLogo";
 const PRODUCTBOARD_SKILL_USER_DESCRIPTION =
   "Helps agents create, update, and query Productboard content using the right workspace setup.";
