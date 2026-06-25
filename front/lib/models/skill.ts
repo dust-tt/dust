@@ -286,6 +286,10 @@ SkillMCPServerConfigurationModel.init(
         fields: ["workspaceId", "skillConfigurationId"],
         name: "idx_skill_mcp_server_config_workspace_skill_config",
       },
+      {
+        fields: ["mcpServerViewId"],
+        concurrently: true,
+      },
     ],
   }
 );
