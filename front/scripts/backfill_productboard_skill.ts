@@ -431,26 +431,10 @@ async function backfillWorkspace(
   const existingSkill = await fetchActiveProductboardSkill(auth);
 
   const productboardAgentIds = productboardAgents.map((agent) => agent.id);
-  const existingAgentSkillLinks = existingSkill
-    ? await AgentSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        customSkillId: existingSkill.id,
-        agentConfigurationId: { [Op.in]: productboardAgentIds },
-      },
-    })
-    : [];
-  const alreadyLinkedAgentIds = new Set(
-    existingAgentSkillLinks.map((link) => link.agentConfigurationId)
-  );
-  const agentIdsToLink = productboardAgentIds.filter(
-    (agentId) => !alreadyLinkedAgentIds.has(agentId)
-  );
 
   logger.info(
     {
-      agentIdsToLink: agentIdsToLink.length,
-      alreadyLinkedAgentCount: alreadyLinkedAgentIds.size,
+      agentIdsToLink: productboardAgentIds.length,
       productboardAgentCount: productboardAgents.length,
       productboardAgents: productboardAgents.map((agent) => ({
         agentId: agent.sId,
@@ -480,9 +464,9 @@ async function backfillWorkspace(
     logger,
     skill,
   });
-  if (agentIdsToLink.length > 0) {
+  if (productboardAgentIds.length > 0) {
     await AgentSkillModel.bulkCreate(
-      agentIdsToLink.map((agentConfigurationId) => ({
+      productboardAgentIds.map((agentConfigurationId) => ({
         agentConfigurationId,
         customSkillId: skill.id,
         globalSkillId: null,
@@ -493,7 +477,7 @@ async function backfillWorkspace(
 
   logger.info(
     {
-      agentIdsToLink: agentIdsToLink.length,
+      agentIdsToLink: productboardAgentIds.length,
       skillId: skill.sId,
       workspaceId: workspace.sId,
     },
