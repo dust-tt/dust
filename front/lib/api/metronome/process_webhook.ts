@@ -1421,7 +1421,7 @@ export async function processMetronomeWebhook({
 
       // Reconcile per-user credit states against the new contract's live
       // per-seat balances. Seats were synced to this contract at provision
-      // time (`syncContractQuantities` → `syncSeatCount`), but that path does
+      // time (`syncSeatCount`), but that path does
       // not touch per-user credit states; now that the contract is active the
       // balances are live, so this lands each user in the right seat↔pool
       // state. Without it, a switch that changes seat allocations (e.g. moving

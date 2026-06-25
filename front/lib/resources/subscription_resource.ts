@@ -9,9 +9,9 @@ import {
   provisionMetronomeContract,
   provisionShadowEnterpriseMetronomeContract,
   resolveCurrencyForExistingMetronomeCustomer,
-  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
+import { syncSeatCount } from "@app/lib/metronome/seats";
 import { LEGACY_BUSINESS_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -947,13 +947,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         metronome.metronomeContractId
       );
 
-      const syncResult = await syncContractQuantities(
-        metronome.metronomeCustomerId,
-        metronome.metronomeContractId,
-        renderLightWorkspaceType({ workspace: workspaceResource }),
-        metronome.startingAt,
-        plan.code
-      );
+      const syncResult = await syncSeatCount({
+        metronomeCustomerId: metronome.metronomeCustomerId,
+        contractId: metronome.metronomeContractId,
+        workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
+        startingAt: metronome.startingAt,
+        planCode: plan.code,
+      });
 
       if (syncResult.isErr()) {
         logger.error(

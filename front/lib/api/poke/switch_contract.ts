@@ -25,9 +25,11 @@ import {
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
-  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
-import { remapMembershipSeatTypesForContract } from "@app/lib/metronome/seats";
+import {
+  remapMembershipSeatTypesForContract,
+  syncSeatCount,
+} from "@app/lib/metronome/seats";
 import {
   isPaygEligibleTier,
   type MetronomePackageTier,
@@ -979,13 +981,13 @@ async function stepSeatSync({
   alignedStart,
   body,
 }: PostProvisionCtx): Promise<string | null> {
-  const result = await syncContractQuantities(
+  const result = await syncSeatCount({
     metronomeCustomerId,
-    metronomeContractId,
-    ownerLight,
-    alignedStart.toISOString(),
-    body.planCode
-  );
+    contractId: metronomeContractId,
+    workspace: ownerLight,
+    startingAt: alignedStart.toISOString(),
+    planCode: body.planCode,
+  });
   if (result.isErr()) {
     return `seat_sync: ${result.error.message}`;
   }
