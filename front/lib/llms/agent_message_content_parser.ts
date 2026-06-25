@@ -1,11 +1,12 @@
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import assert from "@app/lib/utils/assert";
+import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
   CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
 } from "@app/types/assistant/chain_of_thought_meta_prompt";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
+import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { DEEPSEEK_CHAT_MODEL_ID } from "@app/types/assistant/models/deepseek";
 import { TOGETHERAI_DEEPSEEK_V3_MODEL_ID } from "@app/types/assistant/models/togetherai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -288,8 +289,20 @@ export function getDelimitersConfiguration({
 }: {
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
-  const model = getSupportedModelConfig(agentConfiguration.model);
-  assert(model, "Model configuration not found in getDelimitersConfiguration");
+  // Agent configurations can reference a model that has since been deprecated and
+  // removed from SUPPORTED_MODEL_CONFIGS. Don't crash; fall back to Sonnet 4.6.
+  let model = getSupportedModelConfig(agentConfiguration.model);
+  if (!model) {
+    logger.warn(
+      {
+        modelId: agentConfiguration.model.modelId,
+        providerId: agentConfiguration.model.providerId,
+        agentConfigurationId: agentConfiguration.sId,
+      },
+      "Model configuration not found in getDelimitersConfiguration; falling back to Sonnet 4.6"
+    );
+    model = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  }
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
@@ -315,11 +328,20 @@ export function getCoTDelimitersConfiguration({
 }: {
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
-  const model = getSupportedModelConfig(agentConfiguration.model);
-  assert(
-    model,
-    "Model configuration not found in getCoTDelimitersConfiguration"
-  );
+  // Historical messages can reference a model that has since been deprecated and
+  // removed from SUPPORTED_MODEL_CONFIGS. Don't crash the render; fall back to Sonnet 4.6.
+  let model = getSupportedModelConfig(agentConfiguration.model);
+  if (!model) {
+    logger.warn(
+      {
+        modelId: agentConfiguration.model.modelId,
+        providerId: agentConfiguration.model.providerId,
+        agentConfigurationId: agentConfiguration.sId,
+      },
+      "Model configuration not found in getCoTDelimitersConfiguration; falling back to Sonnet 4.6"
+    );
+    model = CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  }
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
