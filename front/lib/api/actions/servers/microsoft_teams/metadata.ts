@@ -9,7 +9,7 @@ export const MICROSOFT_TEAMS_SERVER_NAME = "microsoft_teams" as const;
 export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   search_messages_content: {
     description:
-      "Search for messages contentin Microsoft Teams chats and channels. Returns the results in relevance order.",
+      "Search for message content in Microsoft Teams chats and channels. Returns the results in relevance order.",
     schema: {
       query: z
         .string()
@@ -33,7 +33,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   list_users: {
     description:
-      "List all users in the organization. Returns user details including display name, email, and user ID.",
+      "List all users in the Microsoft Teams organization. Returns user details including display name, email, and user ID.",
     schema: {
       nameFilter: z
         .string()
@@ -53,7 +53,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   list_channels: {
     description:
-      "List all channels in a specific team. Returns channel details including name, description, and channel ID. Can be filtered by channel name.",
+      "List all channels in a specific Microsoft Teams team. Returns channel details including name, description, and channel ID. Can be filtered by channel name.",
     schema: {
       teamId: z
         .string()
@@ -73,7 +73,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   list_chats: {
     description:
-      "List all chats (one-on-one or group chats) for the authenticated user. Returns chat details including chat ID, topic, and participants. Can be filtered by chat type and chat topic.",
+      "List all Microsoft Teams chats (one-on-one or group chats) for the authenticated user. Returns chat details including chat ID, topic, and participants. Can be filtered by chat type and chat topic.",
     schema: {
       limit: z
         .number()
@@ -148,7 +148,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   post_message: {
     description:
-      "Post a message to a Teams channel, chat, or as a reply in a thread. Can send messages to channels, direct chats, or as threaded replies. For direct messages, you can provide userIds instead of chatId to automatically create a chat if it doesn't exist (one-on-one for 1 user, group chat for multiple users). By default (it no chat, channel or users are provided), the message will be sent to the current user's self-chat.",
+      "Post a message to a Teams channel, chat, or as a reply in a thread. Can send messages to channels, direct chats, or as threaded replies. For direct messages, you can provide userIds instead of chatId to automatically create a chat if it doesn't exist (one-on-one for 1 user, group chat for multiple users). By default (if no chat, channel or users are provided), the message will be sent to the current user's self-chat.",
     schema: {
       messageContent: z
         .string()
@@ -222,7 +222,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   list_meetings: {
     description:
-      "List online meetings from the authenticated user's calendar within a date range. Returns meeting details including subject, organizer, attendees, times, and meeting ID. The meeting ID can be used with get_transcript_content to retrieve meeting transcripts. Supports filtering by subject and participant. Supports pagination to retrieve all results.",
+      "List Microsoft Teams online meetings from the authenticated user's calendar within a date range. Returns meeting details including subject, organizer, attendees, times, and meeting ID. The meeting ID can be used with get_transcript_content to retrieve meeting transcripts. Supports filtering by subject and participant. Supports pagination to retrieve all results.",
     schema: {
       fromDate: z
         .string()

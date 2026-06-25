@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
   post_message: {
     description:
-      "Post a message to a Slack channel. The slack bot must be added to the channel before it can post messages. Direct messages are not supported. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
+      "Post a message to a Slack channel as the workspace bot/app (not as the user). The bot must already be a member of the channel before it can post. Posts to channels only — cannot message a person individually. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
       to: z
         .string()
@@ -99,7 +99,7 @@ The search_all parameter should only be set to true if the user explicitly reque
     },
   },
   list_public_channels: {
-    description: "List all public channels in the workspace",
+    description: "List all public Slack channels in the workspace",
     schema: {
       nameFilter: z
         .string()
@@ -144,7 +144,7 @@ The search_all parameter should only be set to true if the user explicitly reque
   },
   read_thread_messages: {
     description:
-      "Read all messages in a specific thread with pagination support",
+      "Read all messages in a specific Slack thread (in channels the workspace bot belongs to) with pagination support",
     schema: {
       channel: z.string().describe("Channel name or ID"),
       threadTs: z
@@ -176,7 +176,7 @@ The search_all parameter should only be set to true if the user explicitly reque
     },
   },
   add_reaction: {
-    description: "Add a reaction emoji to a message",
+    description: "Add a reaction emoji to a Slack message",
     schema: {
       channel: z.string().describe("The channel where the message is located"),
       timestamp: z
@@ -195,7 +195,7 @@ The search_all parameter should only be set to true if the user explicitly reque
     },
   },
   remove_reaction: {
-    description: "Remove a reaction emoji from a message",
+    description: "Remove a reaction emoji from a Slack message",
     schema: {
       channel: z.string().describe("The channel where the message is located"),
       timestamp: z
