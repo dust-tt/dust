@@ -661,7 +661,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "billing",
     "usage",
   ],
-  admin: ["people", "governance", "analytics", "usage"],
+  admin: ["people", "capabilities", "analytics", "usage"],
   security_admin: ["people", "identity"],
   billing_admin: ["billing", "usage"],
 };
