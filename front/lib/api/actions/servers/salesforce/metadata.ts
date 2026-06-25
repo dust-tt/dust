@@ -1,4 +1,3 @@
-import { SALESFORCE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -126,7 +125,6 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
 });
 
 export const SALESFORCE_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "salesforce",
     version: "1.0.0",
@@ -137,7 +135,7 @@ export const SALESFORCE_SERVER = {
     },
     icon: "SalesforceLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesforce",
-    instructions: SALESFORCE_SERVER_INSTRUCTIONS,
+    instructions: null,
   },
   tools: Object.values(SALESFORCE_TOOLS_METADATA).map((t) => ({
     name: t.name,
