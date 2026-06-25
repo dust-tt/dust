@@ -63,7 +63,7 @@ export function AgentTemplateModal({
                       variant="primary"
                       data-gtm-label="useTemplateButton"
                       data-gtm-location="templateModal"
-                      size="md"
+                      size="sm"
                     />
                   </LinkWrapper>
                 </div>

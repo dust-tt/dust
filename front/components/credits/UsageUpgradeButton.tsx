@@ -60,7 +60,7 @@ export function UsageUpgradeButton({
         return (
           <Button
             variant="primary"
-            size="sm"
+            size="xs"
             label="Go to workspace usage"
             href={usageHref}
             onClick={onAdminNavigate}
@@ -84,7 +84,7 @@ export function UsageUpgradeButton({
       return (
         <Button
           variant="primary"
-          size="md"
+          size="xs"
           label={alreadyRequested ? "Requested" : "Request for upgrade"}
           disabled={alreadyRequested}
           onClick={() => setIsDialogOpen(true)}

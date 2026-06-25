@@ -100,7 +100,7 @@ const AddDataDropDownButton = ({
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
-          size="md"
+          size="sm"
           label="Add data"
           icon={Plus}
           variant="primary"
@@ -164,7 +164,7 @@ const EditFolderButton = ({
         dataSourceViewId={folder.sId}
       />
       <Button
-        size="md"
+        size="sm"
         label="Edit folder"
         icon={Settings01}
         variant="primary"

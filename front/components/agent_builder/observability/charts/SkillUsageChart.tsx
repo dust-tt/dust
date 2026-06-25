@@ -217,7 +217,7 @@ export function SkillUsageChart({
       <DropdownMenuTrigger asChild>
         <Button
           label={getSkillSelectorLabel(selectedSkills)}
-          size="sm"
+          size="xs"
           variant="outline"
           isSelect
           disabled={sourceData.isLoading}

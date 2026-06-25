@@ -410,7 +410,7 @@ export const NotificationPreferences = forwardRef<
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                size="md"
+                size="sm"
                 isSelect
                 label={NOTIFICATION_CONDITION_LABELS[notifyCondition]}
               />
@@ -448,7 +448,7 @@ export const NotificationPreferences = forwardRef<
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    size="md"
+                    size="sm"
                     isSelect
                     label={getSelectedChannelLabel(
                       conversationPreferences,
@@ -499,7 +499,7 @@ export const NotificationPreferences = forwardRef<
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        size="md"
+                        size="sm"
                         isSelect
                         label={
                           NOTIFICATION_PREFERENCES_DELAY_LABELS[

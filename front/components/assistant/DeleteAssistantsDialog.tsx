@@ -44,7 +44,7 @@ export function DeleteAssistantsDialog({
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          size="sm"
+          size="xs"
           variant="warning"
           icon={Trash01}
           label="Archive selection"

@@ -511,7 +511,7 @@ export function CheckoutPage() {
                         label={isApplyingCoupon ? "Applying…" : "Apply"}
                         disabled={isApplyingCoupon || !couponCodeValue.trim()}
                         onClick={handleApplyCoupon}
-                        size="md"
+                        size="sm"
                         variant="outline"
                       />
                     </div>
@@ -688,13 +688,13 @@ function CheckoutSuccessPage({
           <Button
             label="View receipt"
             variant="outline"
-            size="lg"
+            size="md"
             onClick={() => window.open(receiptUrl, "_blank")}
           />
         )}
         <Button
           label="Start building"
-          size="lg"
+          size="md"
           onClick={() => void router.replace(`/w/${owner.sId}`)}
         />
       </div>
@@ -807,7 +807,7 @@ function RightPane({
               <Button
                 label="Confirm payment"
                 onClick={onConfirmPayment}
-                size="lg"
+                size="md"
                 className="w-full"
               />
             </>

@@ -19,7 +19,7 @@ export function SkillEditorsSheet() {
     <>
       <Button
         variant="outline"
-        size="md"
+        size="sm"
         icon={Users01}
         label="Editors"
         onClick={() => setIsOpen(true)}

@@ -166,7 +166,7 @@ function PermissionProfileSelector({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                size="md"
+                size="sm"
                 label={
                   displayedProfile
                     ? displayedProfile.name.length > PROFILE_NAME_MAX_LENGTH
@@ -213,7 +213,7 @@ function PermissionProfileSelector({
           </DropdownMenu>
           <Button
             variant="primary"
-            size="md"
+            size="sm"
             onClick={handleSave}
             disabled={disabled || loading || !hasUnsavedChanges}
             label={loading ? "Saving..." : "Save"}
@@ -395,7 +395,7 @@ export function GongOptionComponent({
               />
               <Button
                 variant="primary"
-                size="md"
+                size="sm"
                 onClick={async () => {
                   await handleConfigUpdate(
                     GONG_EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY,
@@ -443,7 +443,7 @@ export function GongOptionComponent({
               />
               <Button
                 variant="primary"
-                size="md"
+                size="sm"
                 onClick={() =>
                   handleConfigUpdate(
                     GONG_RETENTION_PERIOD_CONFIG_KEY,

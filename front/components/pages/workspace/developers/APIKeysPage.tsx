@@ -152,7 +152,7 @@ export function APIKeys({ owner }: APIKeysProps) {
         <div className="w-full" />
         <Button
           label="Read the API reference"
-          size="md"
+          size="sm"
           variant="outline"
           icon={BookOpen01}
           onClick={() => {

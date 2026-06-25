@@ -177,7 +177,7 @@ export function ConversationFilesPanel({
               </span>
               <Button
                 variant="ghost"
-                size="md"
+                size="sm"
                 onClick={closePanel}
                 icon={XClose}
               />
@@ -207,7 +207,7 @@ export function ConversationFilesPanel({
                 {sandboxStatus && <SandboxStatusChip status={sandboxStatus} />}
                 <Button
                   variant="ghost"
-                  size="md"
+                  size="sm"
                   onClick={closePanel}
                   icon={XClose}
                 />

@@ -142,7 +142,7 @@ export function FramePage() {
                   <Button
                     label="View"
                     variant="ghost"
-                    size="sm"
+                    size="xs"
                     icon={LinkExternal01}
                     href={`/poke/${owner.sId}/conversation/${file.useCaseMetadata.conversationId}`}
                   />
@@ -161,7 +161,7 @@ export function FramePage() {
                 <Button
                   label={isCopiedMetadata ? "Copied!" : "Copy"}
                   variant="ghost"
-                  size="sm"
+                  size="xs"
                   icon={isCopiedMetadata ? ClipboardCheck : Clipboard}
                   onClick={() =>
                     copyMetadata(JSON.stringify(file.useCaseMetadata, null, 2))
@@ -213,7 +213,7 @@ export function FramePage() {
                       <Button
                         label={isCopiedShareUrl ? "Copied!" : "Copy"}
                         variant="ghost"
-                        size="sm"
+                        size="xs"
                         icon={isCopiedShareUrl ? ClipboardCheck : Clipboard}
                         onClick={() => copyShareUrl(shareInfo.shareUrl)}
                       />
@@ -333,7 +333,7 @@ export function FramePage() {
               <Button
                 label={isCopiedContent ? "Copied!" : "Copy Content"}
                 variant="ghost"
-                size="sm"
+                size="xs"
                 icon={isCopiedContent ? ClipboardCheck : Clipboard}
                 onClick={() => copyContent(content)}
               />

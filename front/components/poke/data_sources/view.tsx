@@ -91,7 +91,7 @@ export function ViewDataSourceTable({
               <Button
                 aria-label="View raw objects"
                 variant="outline"
-                size="md"
+                size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
                 icon={Brackets}
                 label="Show raw objects"
@@ -416,7 +416,7 @@ function CheckConnectorStuck({
         icon={isLoading ? Spinner : SearchMd}
         disabled={isLoading}
         onClick={!isLoading ? checkStuck : undefined}
-        size="sm"
+        size="xs"
       />
     );
   }
@@ -445,7 +445,7 @@ function CheckConnectorStuck({
             variant="ghost"
             label="Show details"
             onClick={() => setShowDetailsModal(true)}
-            size="sm"
+            size="xs"
           />
         )}
       </div>
@@ -511,7 +511,7 @@ function StuckActivitiesDialog({
                       icon={LinkExternal01}
                       variant="outline"
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows/${workflow.workflowId}`}
-                      size="sm"
+                      size="xs"
                       className="p-2"
                       label="Workflow"
                       target="_blank"
@@ -543,7 +543,7 @@ function StuckActivitiesDialog({
                           "fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&" +
                           "stream_sort=time%2Cdesc&viz=stream"
                         }
-                        size="sm"
+                        size="xs"
                         className="p-2"
                         label="Logs"
                         target="_blank"

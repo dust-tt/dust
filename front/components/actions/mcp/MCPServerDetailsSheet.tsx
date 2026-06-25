@@ -161,7 +161,7 @@ export function MCPServerDetailsSheet({
                         icon={Trash01}
                         variant="warning"
                         label={isDeleting ? "Removing..." : "Remove"}
-                        size="sm"
+                        size="xs"
                         disabled={isDeleting}
                         onClick={async () => {
                           if (!mcpServerView) {

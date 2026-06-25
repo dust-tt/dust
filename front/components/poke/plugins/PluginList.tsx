@@ -92,7 +92,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
             <Button
               label={showRuns ? "Show Available" : "Show History"}
               variant={showRuns ? "primary" : "outline"}
-              size="md"
+              size="sm"
               onClick={() => setShowRuns(!showRuns)}
             />
           </div>

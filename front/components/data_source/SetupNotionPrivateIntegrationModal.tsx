@@ -217,7 +217,7 @@ export function SetupNotionPrivateIntegrationModal({
                             isCopiedWebhookUrl ? "Copied!" : "Copy to clipboard"
                           }
                           variant="ghost"
-                          size="md"
+                          size="sm"
                         />
                       </div>
                     </div>
@@ -255,7 +255,7 @@ export function SetupNotionPrivateIntegrationModal({
                               isCopiedToken ? "Copied!" : "Copy to clipboard"
                             }
                             variant="ghost"
-                            size="md"
+                            size="sm"
                           />
                         </div>
                       </div>

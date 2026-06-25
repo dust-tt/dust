@@ -119,7 +119,7 @@ export function JsonSchemaSection({
         label="Re-generate from Instructions"
         variant="primary"
         icon={Stars02}
-        size="md"
+        size="sm"
         disabled={isGeneratingSchema}
         onClick={generateSchemaFromInstructions}
         className="mb-4"

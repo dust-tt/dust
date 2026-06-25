@@ -104,7 +104,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
         >
           <Button
             label="Accept"
-            size="md"
+            size="sm"
             variant="outline"
             isLoading={isApproving}
             disabled={isApproving}

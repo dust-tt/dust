@@ -203,7 +203,7 @@ export function PersonalConnectionRequiredDialog({
                         ) : (
                           <Button
                             icon={CloudArrowLeftRight}
-                            size="sm"
+                            size="xs"
                             variant="outline"
                             label="Connect"
                             disabled={

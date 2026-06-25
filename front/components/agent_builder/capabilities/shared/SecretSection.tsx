@@ -145,7 +145,7 @@ export function SecretSection({
               </div>
               <Button
                 variant="outline"
-                size="md"
+                size="sm"
                 icon={PencilIcon}
                 onClick={handleEditClick}
                 label="Change"

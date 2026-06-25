@@ -181,7 +181,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
-                  size="md"
+                  size="sm"
                   label="-"
                   disabled={zoomIdx <= 0}
                   onClick={() => dispatch({ type: "zoom_out" })}
@@ -192,7 +192,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
                 </span>
                 <Button
                   variant="ghost"
-                  size="md"
+                  size="sm"
                   label="+"
                   disabled={zoomIdx >= ZOOM_LEVELS.length - 1}
                   onClick={() => dispatch({ type: "zoom_in" })}

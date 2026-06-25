@@ -100,7 +100,7 @@ export function ProcessingConfiguration({
           <Page.Layout direction="horizontal">
             <AgentPicker
               owner={owner}
-              size="md"
+              size="sm"
               onItemClick={(assistant) => handleSelectAssistant(assistant)}
               agents={agents}
               showFooterButtons={false}

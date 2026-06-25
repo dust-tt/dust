@@ -253,7 +253,7 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
           </div>
           <Button
             variant="outline"
-            size="sm"
+            size="xs"
             label="Billing"
             icon={ExternalLinkIcon}
             href={`/w/${owner.sId}/billing`}
@@ -373,7 +373,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           <Avatar size="lg" visual={currentImageUrl} isRounded />
           <Button
             variant="outline"
-            size="md"
+            size="sm"
             icon={Edit04}
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -757,7 +757,7 @@ export function UserSettingsPopover({
             <DialogClose asChild>
               <Button
                 variant="ghost"
-                size="sm"
+                size="xs"
                 icon={XClose}
                 className="flex-shrink-0 px-2"
               />
@@ -788,7 +788,7 @@ export function UserSettingsPopover({
           <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-muted-background sm:flex dark:border-border-night dark:bg-muted-background-night">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
-                <Button variant="ghost" size="sm" icon={XClose} />
+                <Button variant="ghost" size="xs" icon={XClose} />
               </DialogClose>
             </div>
             <NavigationList className="flex-1 px-2 pb-3">

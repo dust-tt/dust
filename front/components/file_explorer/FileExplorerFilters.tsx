@@ -49,7 +49,7 @@ export function FileExplorerFilters({
         return (
           <Button
             key={value}
-            size="sm"
+            size="xs"
             variant={active === value ? "primary" : "outline"}
             label={label}
             isCounter={count !== undefined}

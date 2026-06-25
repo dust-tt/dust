@@ -164,7 +164,7 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
       {isGdriveCheck && item && Array.isArray(item.notDeleted) && (
         <Button
           variant="ghost"
-          size="sm"
+          size="xs"
           icon={Clipboard}
           onClick={() => handleCopyDocumentIds(item)}
           tooltip="Copy document IDs"
@@ -229,7 +229,7 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
         {hiddenCount > 0 && (
           <Button
             variant="ghost"
-            size="sm"
+            size="xs"
             label={showAll ? "Show less" : `Show ${hiddenCount} more...`}
             onClick={() => setShowAll(!showAll)}
           />
@@ -260,7 +260,7 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
       {hiddenCount > 0 && (
         <Button
           variant="ghost"
-          size="sm"
+          size="xs"
           label={showAll ? "Show less" : `Show ${hiddenCount} more...`}
           onClick={() => setShowAll(!showAll)}
         />
@@ -410,7 +410,7 @@ function ProductionCheckCard({
       </div>
       <Button
         variant="outline"
-        size="sm"
+        size="xs"
         icon={isRunning ? Spinner : Play}
         onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
@@ -518,7 +518,7 @@ export function ProductionChecksPage() {
           </div>
           <Button
             variant="outline"
-            size="md"
+            size="sm"
             onClick={() => mutateProductionChecks()}
             label="Refresh"
           />

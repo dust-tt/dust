@@ -48,7 +48,7 @@ export function OpenProjectsPolicy({ owner }: { owner: WorkspaceType }) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="md"
+              size="sm"
               isSelect
               label={selectedPolicy?.label}
               icon={selectedPolicy?.icon}

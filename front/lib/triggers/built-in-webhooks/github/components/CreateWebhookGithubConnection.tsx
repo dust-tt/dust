@@ -180,7 +180,7 @@ export function CreateWebhookGithubConnection({
                         label="Add repository"
                         variant="outline"
                         icon={Plus}
-                        size="md"
+                        size="sm"
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-80" align="start">
@@ -248,7 +248,7 @@ export function CreateWebhookGithubConnection({
                         label="Add organization"
                         variant="outline"
                         icon={Plus}
-                        size="md"
+                        size="sm"
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-80" align="start">

@@ -279,7 +279,7 @@ export function WorkspaceSkillUsageChart({
       <DropdownMenuTrigger asChild>
         <Button
           label={getSkillSelectorLabel(selectedSkills)}
-          size="sm"
+          size="xs"
           variant="outline"
           isSelect
           disabled={isSkillsLoading}

@@ -56,7 +56,7 @@ export const WakeUpBanner = ({
         <ContentMessageAction
           icon={Trash04}
           variant="ghost"
-          size="sm"
+          size="xs"
           tooltip="Cancel wake-up"
           className="text-muted-foreground dark:text-muted-foreground-night"
           onClick={() => {

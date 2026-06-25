@@ -300,7 +300,7 @@ export function ConversationContainerVirtuoso({
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="xs"
                         icon={XClose}
                         tooltip="Dismiss"
                         onClick={() => onDismissSuggestion?.(suggestion.id)}

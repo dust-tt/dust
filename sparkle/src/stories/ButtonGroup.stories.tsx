@@ -154,13 +154,13 @@ const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
     <h3 className="s-text-primary dark:s-text-primary-50">{variant}</h3>
     <div className="s-flex s-items-center s-gap-4">
       <ButtonGroup>
+        <DefaultButtons variant={variant} size="xs" />
+      </ButtonGroup>
+      <ButtonGroup>
         <DefaultButtons variant={variant} size="sm" />
       </ButtonGroup>
       <ButtonGroup>
         <DefaultButtons variant={variant} size="md" />
-      </ButtonGroup>
-      <ButtonGroup>
-        <DefaultButtons variant={variant} size="lg" />
       </ButtonGroup>
     </div>
   </>

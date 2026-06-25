@@ -108,7 +108,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
                 TIME_FRAME_UNIT_TO_LABEL[timeFrameField.value?.unit ?? "day"]
               }
               variant="outline"
-              size="md"
+              size="sm"
               disabled={!isChecked}
             />
           </DropdownMenuTrigger>

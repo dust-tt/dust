@@ -200,7 +200,7 @@ export function AssistantSkillsToolsSection({
               <Button
                 label={`Show all ${allTools.length} tools`}
                 variant="outline"
-                size="sm"
+                size="xs"
                 onClick={() => setVisibleToolsCount(allTools.length)}
               />
             </div>

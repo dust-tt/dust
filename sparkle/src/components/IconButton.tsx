@@ -46,14 +46,14 @@ type LegacyIconButtonSize =
   | "icon-sm";
 
 const SIZE_MAP: Record<LegacyIconButtonSize, ButtonSizeType> = {
-  xmini: "sm",
-  mini: "sm",
-  "icon-xs": "sm",
-  xs: "sm",
-  icon: "sm",
-  sm: "md",
-  "icon-sm": "md",
-  md: "lg",
+  xmini: "xs",
+  mini: "xs",
+  "icon-xs": "xs",
+  xs: "xs",
+  icon: "xs",
+  sm: "sm",
+  "icon-sm": "sm",
+  md: "md",
 };
 
 export interface IconButtonProps

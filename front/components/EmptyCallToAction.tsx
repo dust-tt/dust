@@ -20,7 +20,7 @@ export function EmptyCallToAction({
   const button = (
     <Button
       disabled={disabled}
-      size="md"
+      size="sm"
       label={label}
       variant="primary"
       icon={icon}

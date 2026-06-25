@@ -263,7 +263,7 @@ export function MCPServerAuthConnection({
         <div className="w-full">
           <Button
             variant="outline"
-            size="md"
+            size="sm"
             label={
               disabledScopeCount > 0
                 ? `Customize scopes (${optionalScopeCount - disabledScopeCount}/${optionalScopeCount} optional enabled)`

@@ -273,7 +273,7 @@ function SelfImprovingSpendChart({
                 DISPLAY_MODE_OPTIONS.find((o) => o.value === displayMode)
                   ?.label ?? "Cumulative"
               }
-              size="sm"
+              size="xs"
               variant="outline"
               isSelect
             />

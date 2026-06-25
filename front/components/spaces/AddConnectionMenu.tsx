@@ -541,7 +541,7 @@ export const AddConnectionMenu = ({
               label="Add Connections"
               variant="primary"
               icon={CloudArrowLeftRight}
-              size="md"
+              size="sm"
               onClick={withTracking(
                 TRACKING_AREAS.DATA_SOURCES,
                 "add_connection_menu"

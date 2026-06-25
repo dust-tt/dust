@@ -49,7 +49,7 @@ export const TableTagSelector = ({
         {agentTags.length === 0 ? (
           <Button
             variant="ghost"
-            size="sm"
+            size="xs"
             label="Add tags"
             isSelect
             className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
@@ -58,7 +58,7 @@ export const TableTagSelector = ({
           <Button
             variant="ghost"
             icon={ChevronDown}
-            size="sm"
+            size="xs"
             className="invisible text-muted-foreground group-hover:visible dark:text-muted-foreground-night"
           />
         )}

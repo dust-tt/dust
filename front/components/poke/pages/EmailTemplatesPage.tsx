@@ -129,7 +129,7 @@ function ArrayFormField({
         </h3>
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           label="Add Item"
           onClick={() => {
             if (itemsSchema?.type === "object" && itemsSchema.properties) {
@@ -169,7 +169,7 @@ function ArrayFormField({
               <span className="text-xs font-medium">Item {index + 1}</span>
               <Button
                 variant="outline"
-                size="sm"
+                size="xs"
                 label="Remove"
                 onClick={() => remove(index)}
               />
@@ -496,13 +496,13 @@ export function EmailTemplatesPage() {
             <div className="flex gap-2">
               <Button
                 variant={previewMode === "desktop" ? "primary" : "outline"}
-                size="sm"
+                size="xs"
                 label="Desktop"
                 onClick={() => setPreviewMode("desktop")}
               />
               <Button
                 variant={previewMode === "mobile" ? "primary" : "outline"}
-                size="sm"
+                size="xs"
                 label="Mobile"
                 onClick={() => setPreviewMode("mobile")}
               />

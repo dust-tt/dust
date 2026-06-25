@@ -32,7 +32,7 @@ export const AddTriggerMenu = ({
           label="Add Source"
           variant="primary"
           icon={Plus}
-          size="md"
+          size="sm"
           onClick={withTracking(TRACKING_AREAS.TRIGGERS, "add_trigger_menu")}
         />
       </DropdownMenuTrigger>

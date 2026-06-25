@@ -61,7 +61,7 @@ export default function SpaceManagedActionsViewsModel({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <Button label="Add Tools" variant="primary" icon={Plus} size="md" />
+        <Button label="Add Tools" variant="primary" icon={Plus} size="sm" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent

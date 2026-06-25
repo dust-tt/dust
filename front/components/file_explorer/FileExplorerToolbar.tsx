@@ -36,7 +36,7 @@ function ViewToggle({ value, onValueChange }: ViewToggleProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="md"
+          size="sm"
           icon={value === "grid" ? List : CheckDone01}
           isSelect
         />
@@ -62,7 +62,7 @@ function SortDropdown({ value, onValueChange }: SortDropdownProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="md"
+          size="sm"
           icon={current.icon}
           label={isMobile ? undefined : current.label}
           tooltip={isMobile ? current.label : undefined}

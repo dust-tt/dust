@@ -111,7 +111,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    size="md"
+                    size="sm"
                     icon={IconComponent}
                     onClick={() => setIsPopoverOpen(true)}
                     isSelect

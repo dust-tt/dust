@@ -332,7 +332,7 @@ export function BuyAwuCreditsDialog({
                         key={amount}
                         label={`${currencySymbol}${amount}`}
                         variant="outline"
-                        size="md"
+                        size="sm"
                         onClick={() => setAmountWithClamp(amount)}
                       />
                     ))}
@@ -411,7 +411,7 @@ export function BuyAwuCreditsDialog({
                       <Button
                         label="Change"
                         variant="ghost"
-                        size="md"
+                        size="sm"
                         href={`/w/${workspaceId}/subscription/manage`}
                       />
                     </div>

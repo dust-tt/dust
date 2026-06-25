@@ -610,7 +610,7 @@ function WebhookSourceSheetContent({
                       <Button
                         icon={Trash01}
                         variant="warning"
-                        size="sm"
+                        size="xs"
                         disabled={isDeleting}
                         onClick={handleDeleteWebhookSource}
                       />

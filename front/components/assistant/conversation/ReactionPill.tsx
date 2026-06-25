@@ -37,7 +37,7 @@ export function ReactionPill({
       trigger={
         <Button
           label={`${emoji} ${count}`}
-          size="sm"
+          size="xs"
           variant="outline"
           onClick={onClick}
           className={cn(

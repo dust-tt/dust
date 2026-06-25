@@ -30,7 +30,7 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["sm", "md", "lg"] as const;
+export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 // Per-variant shadow: tinted 0.5px outline + soft drop + faint inset highlight.
@@ -82,11 +82,11 @@ const buttonVariants = cva(
         ),
         highlight: cn(
           OVERLAY,
-          "s-bg-gradient-to-b s-from-blue-400 s-to-blue-500",
+          "s-bg-gradient-to-b s-from-highlight-400 s-to-highlight-500",
           "s-text-white",
           SOLID_SHADOW("#4BABFF"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
-          "disabled:s-from-blue-200 disabled:s-to-blue-300 disabled:s-shadow-none"
+          "disabled:s-from-highlight-200 disabled:s-to-highlight-300 disabled:s-shadow-none"
         ),
         warning: cn(
           OVERLAY,
@@ -139,16 +139,16 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        sm: "s-h-6 s-gap-1.5 s-px-2 s-text-sm s-font-medium s-tracking-[-0.28px]",
-        md: "s-h-8 s-gap-1.5 s-px-3 s-text-sm s-font-medium s-tracking-[-0.28px]",
-        lg: "s-h-10 s-gap-1.5 s-px-4 s-text-base s-font-medium s-tracking-[-0.32px]",
+        xs: "s-h-6 s-gap-1.5 s-px-2 s-text-sm s-font-medium s-tracking-[-0.28px]",
+        sm: "s-h-8 s-gap-1.5 s-px-3 s-text-sm s-font-medium s-tracking-[-0.28px]",
+        md: "s-h-10 s-gap-1.5 s-px-4 s-text-base s-font-medium s-tracking-[-0.32px]",
       },
       // Separate from size: twMerge isn't configured for the s- prefix, so a
       // size radius + rounded-full would both emit and let CSS order decide.
       rounded: {
-        sm: "s-rounded-[9px]",
-        md: "s-rounded-xl",
-        lg: "s-rounded-[15px]",
+        xs: "s-rounded-[9px]",
+        sm: "s-rounded-xl",
+        md: "s-rounded-[15px]",
         full: "s-rounded-full",
       },
       isIconOnly: {
@@ -161,13 +161,13 @@ const buttonVariants = cva(
       },
     },
     compoundVariants: [
-      { size: "sm", isIconOnly: true, className: "s-w-6 s-px-0" },
-      { size: "md", isIconOnly: true, className: "s-w-8 s-px-0" },
-      { size: "lg", isIconOnly: true, className: "s-w-10 s-px-0" },
+      { size: "xs", isIconOnly: true, className: "s-w-6 s-px-0" },
+      { size: "sm", isIconOnly: true, className: "s-w-8 s-px-0" },
+      { size: "md", isIconOnly: true, className: "s-w-10 s-px-0" },
     ],
     defaultVariants: {
       variant: "primary",
-      size: "md",
+      size: "sm",
       rounded: "md",
       isIconOnly: false,
       press: true,
@@ -186,15 +186,15 @@ const TEXT_SHADOW = "[text-shadow:0_1px_1.5px_rgba(0,0,0,0.08)]";
 const ICON_SHADOW = "s-drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)]";
 
 const ICON_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
+  xs: "xs",
   sm: "xs",
-  md: "xs",
-  lg: "sm",
+  md: "sm",
 };
 
 const COUNTER_SIZE_MAP: Record<ButtonSizeType, "xs" | "sm"> = {
+  xs: "xs",
   sm: "xs",
-  md: "xs",
-  lg: "sm",
+  md: "sm",
 };
 
 const chevronVariantMap: Record<ButtonVariantType, string> = {
@@ -240,7 +240,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       iconRight,
       className,
       variant = "primary",
-      size = "md",
+      size = "sm",
       isSelect = false,
       isLoading = false,
       isRounded = false,

@@ -88,7 +88,7 @@ function PodPinnedBannerControls({
         <Button
           icon={EyeOff}
           variant="ghost"
-          size="sm"
+          size="xs"
           tooltip="Hide"
           onClick={onHide}
         />
@@ -96,7 +96,7 @@ function PodPinnedBannerControls({
           <Button
             icon={Pin02}
             variant="ghost"
-            size="sm"
+            size="xs"
             tooltip="Unpin"
             onClick={onUnpin}
           />
@@ -104,7 +104,7 @@ function PodPinnedBannerControls({
         <Button
           icon={isFullscreen ? Minimize01 : Maximize01}
           variant="ghost"
-          size="sm"
+          size="xs"
           tooltip={isFullscreen ? "Exit full screen" : "Open in full screen"}
           onClick={onToggleFullscreen}
         />
@@ -141,12 +141,12 @@ function PodPinnedBannerCollapsedAffordance({
       >
         ·
       </span>
-      <Button label="Show" variant="ghost" size="sm" onClick={onShow} />
+      <Button label="Show" variant="ghost" size="xs" onClick={onShow} />
       <div className="ml-auto flex items-center gap-0.5">
         <Button
           icon={Maximize01}
           variant="ghost"
-          size="sm"
+          size="xs"
           tooltip="Open in full screen"
           onClick={onOpenFullscreen}
         />

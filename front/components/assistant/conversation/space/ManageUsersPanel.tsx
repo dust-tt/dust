@@ -186,7 +186,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
           return (
             <DataTable.CellContent>
               <Button
-                size="sm"
+                size="xs"
                 variant={isEditor ? "highlight" : "outline"}
                 label={isEditor ? "Editor" : "Set as editor"}
                 icon={isEditor ? Check : undefined}

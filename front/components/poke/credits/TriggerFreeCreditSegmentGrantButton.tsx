@@ -52,7 +52,7 @@ export function TriggerFreeCreditSegmentGrantButton({
   return (
     <Button
       variant="outline"
-      size="sm"
+      size="xs"
       label="Grant"
       isLoading={isRunning}
       onClick={handleClick}

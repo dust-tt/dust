@@ -261,9 +261,9 @@ export const Sizes: Story = {
 export const IconButtons: Story = {
   render: () => (
     <div className="s-flex s-items-center s-gap-4">
+      <Button size="xs" variant="outline" icon={Plus} tooltip="Add" />
       <Button size="sm" variant="outline" icon={Plus} tooltip="Add" />
       <Button size="md" variant="outline" icon={Plus} tooltip="Add" />
-      <Button size="lg" variant="outline" icon={Plus} tooltip="Add" />
       <Button
         size="md"
         variant="highlight"

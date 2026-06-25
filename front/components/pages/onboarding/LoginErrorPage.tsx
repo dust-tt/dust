@@ -81,7 +81,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
 
           <Button
             variant="outline"
-            size="md"
+            size="sm"
             label="Sign in"
             icon={LogIn01}
             onClick={() => {
@@ -164,7 +164,7 @@ export function LoginErrorPage() {
               {errorMessage}
             </div>
             <LinkWrapper href="/">
-              <Button variant="primary" label="Back to homepage" size="md" />
+              <Button variant="primary" label="Back to homepage" size="sm" />
             </LinkWrapper>
           </div>
         </div>

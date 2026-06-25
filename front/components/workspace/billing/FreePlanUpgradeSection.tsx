@@ -25,7 +25,7 @@ export function FreePlanUpgradeSection({ owner }: FreePlanUpgradeSectionProps) {
         </div>
         <Button
           label="Upgrade a member"
-          size="md"
+          size="sm"
           variant="highlight"
           href={`/w/${owner.sId}/usage`}
         />

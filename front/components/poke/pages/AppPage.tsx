@@ -145,7 +145,7 @@ function AppSpecification({
                   isSelect
                   label={`${hash && hash.length > 0 ? hash : "Current"}`}
                   variant="outline"
-                  size="md"
+                  size="sm"
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -172,7 +172,7 @@ function AppSpecification({
           <Button
             aria-label="Restore version"
             variant="outline"
-            size="md"
+            size="sm"
             onClick={() => {
               void submit();
             }}

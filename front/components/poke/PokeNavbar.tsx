@@ -177,7 +177,7 @@ function PokeSearchCommandUI({
     <>
       <Button
         variant="outline"
-        size="md"
+        size="sm"
         label="Search (⌘K)"
         onClick={() => onOpenChange(true)}
       />

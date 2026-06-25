@@ -238,7 +238,7 @@ export function WebhookEditionFilters({
       {webhookSourceView && (
         <Button
           label="Compute stats"
-          size="md"
+          size="sm"
           variant="outline"
           onClick={handleComputeEstimation}
           disabled={isEstimationValidating || !isEditor}

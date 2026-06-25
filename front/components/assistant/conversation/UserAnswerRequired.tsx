@@ -360,14 +360,14 @@ export function UserAnswerRequired({
         <Button
           label="Skip"
           variant="outline"
-          size="md"
+          size="sm"
           onClick={handleSkip}
           isLoading={isSkipSubmitting}
         />
         <Button
           icon={ArrowUp}
           variant="highlight"
-          size="md"
+          size="sm"
           isLoading={isAnswerSubmitting}
           disabled={answerDraft.answerToSubmit === null}
           onClick={handleSubmit}

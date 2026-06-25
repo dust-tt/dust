@@ -195,7 +195,7 @@ export function SkillBuilderFilesSection({
           {filesDiffer && (
             <Button
               variant="outline"
-              size="md"
+              size="sm"
               icon={ReverseLeft}
               onClick={restoreFiles}
               label="Restore files"
@@ -265,7 +265,7 @@ export function SkillBuilderFilesSection({
                           type="button"
                           variant="ghost"
                           icon={XClose}
-                          size="sm"
+                          size="xs"
                           onClick={() => remove(originalIndex)}
                         />
                       ) : undefined

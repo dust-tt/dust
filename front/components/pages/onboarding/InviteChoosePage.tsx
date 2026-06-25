@@ -82,7 +82,7 @@ export function InviteChoosePage() {
                     <Button
                       label="Join"
                       variant="primary"
-                      size="md"
+                      size="sm"
                       onClick={() =>
                         handleInvitationSelection(
                           invitation.token,

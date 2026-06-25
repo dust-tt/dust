@@ -85,14 +85,14 @@ export function AssistantsDataTable({
       <Button
         aria-label="Restore an agent"
         variant="outline"
-        size="md"
+        size="sm"
         onClick={() => setShowRestoreAssistantModal(true)}
         label="🔥 Restore an agent"
       />
       <Button
         aria-label="Import an agent"
         variant="outline"
-        size="md"
+        size="sm"
         onClick={() => importAssistant(owner, router, setImporting)}
         label={importing ? "📥 Importing..." : "📥 Import agent"}
         isLoading={importing}

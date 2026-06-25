@@ -500,7 +500,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
             <ContentMessageAction
               label="Review"
               variant="outline"
-              size="sm"
+              size="xs"
               onClick={() => {
                 const blockedAction = blockedActions[blockedActionIndex];
                 const blockedActionTargetMessageId = blockedAction.messageId;

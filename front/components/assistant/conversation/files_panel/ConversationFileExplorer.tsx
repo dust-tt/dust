@@ -78,7 +78,7 @@ export function ConversationFileExplorer({
           </span>
           <Button
             variant="ghost"
-            size="md"
+            size="sm"
             icon={XClose}
             onClick={closePanel}
           />

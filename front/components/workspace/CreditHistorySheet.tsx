@@ -62,7 +62,7 @@ export function CreditHistorySheet({
       <Button
         label="Past credits"
         variant="outline"
-        size="sm"
+        size="xs"
         onClick={() => setIsOpen(true)}
       />
       <Sheet open={isOpen} onOpenChange={setIsOpen}>

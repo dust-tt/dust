@@ -161,7 +161,7 @@ export function NotionRequestsPage() {
               <Button
                 variant={method === "GET" ? "primary" : "outline"}
                 label="GET"
-                size="md"
+                size="sm"
                 onClick={() => {
                   setMethod("GET");
                   setBody("");
@@ -170,7 +170,7 @@ export function NotionRequestsPage() {
               <Button
                 variant={method === "POST" ? "primary" : "outline"}
                 label="POST"
-                size="md"
+                size="sm"
                 onClick={() => setMethod("POST")}
               />
             </div>

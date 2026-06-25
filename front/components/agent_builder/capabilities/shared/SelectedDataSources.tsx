@@ -254,7 +254,7 @@ export function SelectedDataSources() {
           <Button
             label="Select data sources"
             variant="outline"
-            size="sm"
+            size="xs"
             onClick={() =>
               setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION)
             }

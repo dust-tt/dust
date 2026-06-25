@@ -86,7 +86,7 @@ export function PodHeaderActions({
               <Button
                 icon={DotsHorizontal}
                 variant="ghost"
-                size="md"
+                size="sm"
                 tooltip="Pod options"
               />
             </DropdownMenuTrigger>

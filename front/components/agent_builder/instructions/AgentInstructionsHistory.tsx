@@ -115,7 +115,7 @@ export function AgentInstructionsHistory({
         <Button
           variant="ghost-secondary"
           icon={ClockRewind}
-          size="sm"
+          size="xs"
           tooltip="Compare with previous versions"
           isSelect
         />

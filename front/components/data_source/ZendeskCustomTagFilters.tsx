@@ -232,7 +232,7 @@ export function ZendeskCustomFieldFilters({
                 disabled={loading}
               />
               <Button
-                size="md"
+                size="sm"
                 onClick={handleSave}
                 disabled={loading || !inputValue.trim()}
                 label="Add Field"

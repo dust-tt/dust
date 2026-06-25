@@ -43,7 +43,7 @@ function PluginRunItem({ run, onClick }: PluginRunItemProps) {
       </div>
       <Button
         variant="outline"
-        size="sm"
+        size="xs"
         onClick={onClick}
         label="View Details"
       />

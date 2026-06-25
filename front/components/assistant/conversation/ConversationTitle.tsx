@@ -170,7 +170,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         />
         <div className="flex items-center gap-2">
           <Button
-            size="md"
+            size="sm"
             label={isMobile ? undefined : "Files"}
             icon={Folder}
             variant="ghost"
@@ -182,7 +182,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             owner={owner}
             trigger={({ isPendingAction }) => (
               <Button
-                size="md"
+                size="sm"
                 variant="ghost"
                 icon={DotsHorizontal}
                 aria-label="Conversation menu"

@@ -50,7 +50,7 @@ export default function DatasetPicker({
         <Button
           href={createDatasetUrl}
           label={isDatasetsLoading ? "Loading..." : "Create dataset"}
-          size="sm"
+          size="xs"
         />
       ) : (
         <DropdownMenu>
@@ -60,7 +60,7 @@ export default function DatasetPicker({
               variant="outline"
               disabled={readOnly}
               label={dataset ? dataset : "Select dataset"}
-              size="sm"
+              size="xs"
             />
           </DropdownMenuTrigger>
 

@@ -328,7 +328,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
             <div className="flex flex-col gap-4">
               <Button
                 label="Read our guide"
-                size="md"
+                size="sm"
                 href={connectorUIConfiguration.guideLink ?? ""}
                 variant="outline"
                 target="_blank"

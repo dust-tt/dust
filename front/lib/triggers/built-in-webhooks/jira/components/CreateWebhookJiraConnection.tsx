@@ -134,7 +134,7 @@ export function CreateWebhookJiraConnection({
                         label="Add project"
                         variant="outline"
                         icon={Plus}
-                        size="md"
+                        size="sm"
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-80" align="start">

@@ -33,14 +33,14 @@ export function ModjoConnection({
         <Page.Layout direction="horizontal">
           <Button
             label="Modjo connected"
-            size="md"
+            size="sm"
             icon={CloudArrowLeftRight}
             disabled={true}
           />
           <Button
             label="Disconnect"
             icon={XClose}
-            size="md"
+            size="sm"
             variant="outline"
             onClick={() => setIsDeleteProviderDialogOpened(true)}
           />
@@ -74,7 +74,7 @@ export function ModjoConnection({
           <div>
             <Button
               label="Connect Modjo"
-              size="md"
+              size="sm"
               icon={CloudArrowLeftRight}
               onClick={() =>
                 onConnect({

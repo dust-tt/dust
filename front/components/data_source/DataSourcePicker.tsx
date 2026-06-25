@@ -160,7 +160,7 @@ export default function DataSourcePicker({
                   variant="outline"
                   label="Select DataSource"
                   isSelect
-                  size="sm"
+                  size="xs"
                 />
               ) : (
                 <LinkWrapper

@@ -96,7 +96,7 @@ export function PendingInvitationsTable({
         cell: ({ row }) => (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              size="sm"
+              size="xs"
               variant={row.original.isExpired ? "outline" : "primary"}
               label={row.original.isExpired ? "Expired" : "Join"}
               disabled={row.original.isExpired}

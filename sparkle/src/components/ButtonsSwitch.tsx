@@ -3,20 +3,12 @@ import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-// The switch keeps its own xs/sm/md scale (drives the track padding/rounding
-// below); each maps onto the new button's S/M/L scale for the inner buttons.
-type ButtonSize = "xs" | "sm" | "md";
-
-const BUTTON_SIZE_MAP: Record<ButtonSize, ButtonSizeType> = {
-  xs: "sm",
-  sm: "md",
-  md: "lg",
-};
-
+// Sizes match the Button scale (xs/sm/md) and also drive the track
+// padding/rounding below.
 type ButtonsSwitchContextType = {
   value?: string;
   onValueChange?: (value: string) => void;
-  size: ButtonSize;
+  size: ButtonSizeType;
   disabled?: boolean;
 };
 
@@ -60,7 +52,7 @@ const listStyles = cva(
 export interface ButtonsSwitchListProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof listStyles> {
-  size?: ButtonSize;
+  size?: ButtonSizeType;
   disabled?: boolean;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
@@ -153,7 +145,7 @@ export const ButtonsSwitch = React.forwardRef<
       ref={ref}
       role="tab"
       aria-selected={isActive}
-      size={BUTTON_SIZE_MAP[size]}
+      size={size}
       variant={isActive ? "outline" : "ghost"}
       label={label}
       icon={icon}

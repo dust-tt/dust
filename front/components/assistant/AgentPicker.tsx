@@ -44,7 +44,7 @@ export function AgentPicker({
   showDropdownArrow = true,
   showFooterButtons = true,
   side,
-  size = "lg",
+  size = "md",
   isLoading = false,
   disabled = false,
   onOpenChange,
@@ -124,7 +124,7 @@ export function AgentPicker({
                   <Button
                     icon={DotsHorizontal}
                     variant="outline"
-                    size="sm"
+                    size="xs"
                     className="opacity-0 group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();

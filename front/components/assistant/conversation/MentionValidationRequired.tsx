@@ -106,14 +106,14 @@ export function MentionValidationRequired({
           <div className="flex flex-wrap justify-end gap-2">
             <Button
               variant="outline"
-              size="md"
+              size="sm"
               label="Decline"
               disabled={isSubmitting}
               onClick={handleReject}
             />
             <Button
               variant="highlight"
-              size="md"
+              size="sm"
               label={isProjectMembership ? "Add to Pod" : "Invite"}
               disabled={isSubmitting}
               isLoading={isSubmitting}

@@ -214,7 +214,7 @@ export function GoogleDriveFileAuthorizationRequired({
             <div className="mt-3 flex flex-col justify-end gap-3 sm:flex-row">
               <Button
                 variant="outline"
-                size="sm"
+                size="xs"
                 label="Skip"
                 icon={XClose}
                 disabled={isResolving || isOpeningPicker}
@@ -224,7 +224,7 @@ export function GoogleDriveFileAuthorizationRequired({
                 <Button
                   label="Open in Web App"
                   variant="highlight"
-                  size="sm"
+                  size="xs"
                   icon={LinkExternal01}
                   onClick={handleOpenInWebApp}
                 />
@@ -232,7 +232,7 @@ export function GoogleDriveFileAuthorizationRequired({
                 <Button
                   label={isButtonLoading ? "Loading..." : "Open File Picker"}
                   variant="highlight"
-                  size="sm"
+                  size="xs"
                   icon={File04}
                   disabled={
                     isButtonLoading ||

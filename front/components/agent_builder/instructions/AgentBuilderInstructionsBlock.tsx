@@ -70,7 +70,7 @@ export function AgentBuilderInstructionsBlock({
             <Button
               icon={XClose}
               variant="outline"
-              size="md"
+              size="sm"
               onClick={() => {
                 setIsInstructionDiffMode(false);
                 setCompareVersion(null);
@@ -79,7 +79,7 @@ export function AgentBuilderInstructionsBlock({
             />
             <Button
               variant="warning"
-              size="md"
+              size="sm"
               icon={RefreshCw02}
               onClick={restoreVersion}
               label="Restore this version"

@@ -120,7 +120,7 @@ export function RunsPage() {
           <div className="flex">
             <Button
               variant="outline"
-              size="sm"
+              size="xs"
               disabled={offset < limit}
               onClick={() => {
                 if (offset >= limit) {
@@ -135,7 +135,7 @@ export function RunsPage() {
           <div className="ml-2 flex">
             <Button
               variant="outline"
-              size="sm"
+              size="xs"
               disabled={offset + limit >= total}
               onClick={() => {
                 if (offset + limit < total) {

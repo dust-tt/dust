@@ -400,7 +400,7 @@ function MCPRunAgentActionDetailsDisplay({
                         label="View full conversation"
                         variant="outline"
                         onClick={() => window.open(conversationUrl, "_blank")}
-                        size="sm"
+                        size="xs"
                       />
                     )}
                   </div>

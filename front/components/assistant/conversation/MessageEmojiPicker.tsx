@@ -34,7 +34,7 @@ export function MessageEmojiPicker({
           key="emoji-picker-button"
           tooltip="Add reaction"
           variant="outline"
-          size="sm"
+          size="xs"
           icon={FaceSmile}
           isSelect
           className={cn(

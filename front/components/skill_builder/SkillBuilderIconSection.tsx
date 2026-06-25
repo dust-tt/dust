@@ -45,7 +45,7 @@ export function SkillBuilderIconSection() {
           />
           <Button
             variant="outline"
-            size="md"
+            size="sm"
             icon={Edit04}
             type="button"
             onClick={() => setIsPopoverOpen(true)}

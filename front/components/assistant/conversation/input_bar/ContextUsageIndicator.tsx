@@ -131,7 +131,7 @@ export function ContextUsageIndicator({
               CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
               <Button
                 variant="outline"
-                size="sm"
+                size="xs"
                 label={isCompacting ? "Compacting" : "Compact now"}
                 onClick={() => {
                   if (contextUsage?.model) {

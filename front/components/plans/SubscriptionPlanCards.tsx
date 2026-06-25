@@ -99,7 +99,7 @@ export function SubscriptionPlanCards({
         <div className="mt-6">
           <Button
             variant="highlight"
-            size="lg"
+            size="md"
             label={
               isBusiness
                 ? "Subscribe to Enterprise (Seat-based)"
@@ -145,7 +145,7 @@ export function SubscriptionPlanCards({
         <div className="mt-6">
           <Button
             variant="outline"
-            size="lg"
+            size="md"
             label="Contact sales"
             href={`${config.getStaticWebsiteUrl()}/home/contact`}
             target="_blank"

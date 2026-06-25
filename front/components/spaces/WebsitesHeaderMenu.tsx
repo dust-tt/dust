@@ -33,7 +33,7 @@ export const WebsitesHeaderMenu = ({
         canWriteInSpace={canWriteInSpace}
       />
       <Button
-        size="md"
+        size="sm"
         label="Edit Website"
         icon={Settings01}
         variant="primary"

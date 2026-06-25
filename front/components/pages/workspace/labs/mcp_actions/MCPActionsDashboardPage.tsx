@@ -125,7 +125,7 @@ export function MCPActionsDashboardPage() {
                               {agent.scope === "global" ? "Default" : "Custom"}
                             </Chip>
                             <Button
-                              size="md"
+                              size="sm"
                               variant="outline"
                               icon={LinkExternal01}
                               onClick={() => handleAgentSelect(agent.sId)}

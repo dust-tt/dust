@@ -280,7 +280,7 @@ export function SuggestionBubbleMenu({
       <HoveringBar size="xs">
         <Button
           icon={XClose}
-          size="sm"
+          size="xs"
           variant="ghost"
           tooltip="Reject suggestion"
           label="Reject"
@@ -289,7 +289,7 @@ export function SuggestionBubbleMenu({
         <HoveringBar.Separator />
         <Button
           icon={Check}
-          size="sm"
+          size="xs"
           variant="highlight"
           tooltip="Accept suggestion"
           label="Accept"

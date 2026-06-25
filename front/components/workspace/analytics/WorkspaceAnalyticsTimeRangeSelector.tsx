@@ -20,7 +20,7 @@ export function WorkspaceAnalyticsTimeRangeSelector({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label={`${period} days`} size="sm" variant="outline" isSelect />
+        <Button label={`${period} days`} size="xs" variant="outline" isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {OBSERVABILITY_TIME_RANGE.map((p) => (

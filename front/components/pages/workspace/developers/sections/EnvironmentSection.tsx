@@ -544,7 +544,7 @@ export function EnvironmentSection() {
                   <div className="flex shrink-0 items-center gap-2">
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="xs"
                       icon={envVar.kind === "config" ? Lock01 : Globe01}
                       tooltip={
                         envVar.kind === "config"
@@ -556,7 +556,7 @@ export function EnvironmentSection() {
                     />
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="xs"
                       icon={Edit04}
                       tooltip={`Replace value of ${envVar.name}`}
                       disabled={isAnyMutationPending}
@@ -564,7 +564,7 @@ export function EnvironmentSection() {
                     />
                     <Button
                       variant="warning"
-                      size="sm"
+                      size="xs"
                       icon={Trash01}
                       tooltip={`Delete ${envVar.name}`}
                       disabled={isAnyMutationPending}

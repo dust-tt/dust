@@ -217,7 +217,7 @@ export function ZendeskConfigView({
                 fieldClassName="w-24"
               />
               <Button
-                size="md"
+                size="sm"
                 onClick={handleRetentionPeriodSave}
                 disabled={
                   readOnly ||

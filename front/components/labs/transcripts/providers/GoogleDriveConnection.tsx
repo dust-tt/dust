@@ -18,14 +18,14 @@ export function GoogleDriveConnection({
         <Page.Layout direction="horizontal">
           <Button
             label="Google connected"
-            size="md"
+            size="sm"
             icon={CloudArrowLeftRight}
             disabled={true}
           />
           <Button
             label="Disconnect"
             icon={XClose}
-            size="md"
+            size="sm"
             variant="outline"
             onClick={() => setIsDeleteProviderDialogOpened(true)}
           />
@@ -39,7 +39,7 @@ export function GoogleDriveConnection({
           <div>
             <Button
               label="Connect Google"
-              size="md"
+              size="sm"
               icon={CloudArrowLeftRight}
               onClick={onConnect}
             />

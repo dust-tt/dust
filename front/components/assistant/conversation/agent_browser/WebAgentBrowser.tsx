@@ -116,7 +116,7 @@ export function WebAgentBrowser({
                   label="Manage agents"
                   data-gtm-label="assistantManagementButton"
                   data-gtm-location="homepage"
-                  size="md"
+                  size="sm"
                   onClick={withTracking(
                     TRACKING_AREAS.BUILDER,
                     "manage_agents"
@@ -148,7 +148,7 @@ export function WebAgentBrowser({
                     isSelect
                     variant="outline"
                     label={sortTypeLabel}
-                    size="md"
+                    size="sm"
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>

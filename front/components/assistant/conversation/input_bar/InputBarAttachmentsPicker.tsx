@@ -95,7 +95,7 @@ interface InputBarAttachmentsPickerProps {
   buttonLabel?: string;
   buttonVariant?: ButtonVariantType;
   disabled?: boolean;
-  buttonSize?: "sm" | "md" | "lg";
+  buttonSize?: "xs" | "sm" | "md";
   // Will be used to upload files found via tools and not the connected datasources.
   toolFileUpload: {
     useCase: "conversation" | "project_context";
@@ -266,7 +266,7 @@ export const InputBarAttachmentsPicker = ({
   attachedNodes,
   isLoading = false,
   disabled = false,
-  buttonSize = "sm",
+  buttonSize = "xs",
   buttonLabel = undefined,
   buttonVariant = "ghost-secondary",
   toolFileUpload,

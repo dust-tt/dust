@@ -187,7 +187,7 @@ export function ToolSetupCard({
               {matchingMCPServer.documentationUrl && (
                 <Button
                   variant="outline"
-                  size="md"
+                  size="sm"
                   label="About"
                   href={matchingMCPServer.documentationUrl}
                   target="_blank"
@@ -196,7 +196,7 @@ export function ToolSetupCard({
             </div>
             <Button
               variant="highlight"
-              size="md"
+              size="sm"
               label={getButtonLabel()}
               onClick={getButtonClickHandler()}
               disabled={

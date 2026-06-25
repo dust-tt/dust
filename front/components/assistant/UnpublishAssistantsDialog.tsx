@@ -52,7 +52,7 @@ export function UnpublishAssistantsDialog({
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          size="sm"
+          size="xs"
           variant="outline"
           icon={EyeOff}
           label="Unpublish"

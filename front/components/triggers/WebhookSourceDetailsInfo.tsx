@@ -134,7 +134,7 @@ export function WebhookSourceDetailsInfo({
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    size="md"
+                    size="sm"
                     icon={IconComponent}
                     onClick={() => setIsPopoverOpen(true)}
                     isSelect

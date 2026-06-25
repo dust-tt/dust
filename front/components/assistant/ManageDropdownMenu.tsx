@@ -31,7 +31,7 @@ export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
           variant="primary"
           label="Manage"
           icon={ContactsRobot}
-          size="md"
+          size="sm"
           isSelect
           isLoading={isLoading}
           disabled={isLoading}

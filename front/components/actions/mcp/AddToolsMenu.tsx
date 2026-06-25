@@ -59,7 +59,7 @@ export const AddToolsMenu = ({
           label="Add Tools"
           variant={buttonVariant}
           icon={Plus}
-          size="md"
+          size="sm"
           onClick={withTracking(TRACKING_AREAS.TOOLS, "add_tools_menu")}
         />
       </DropdownMenuTrigger>
@@ -85,7 +85,7 @@ export const AddToolsMenu = ({
                   "add_mcp_server",
                   () => createRemoteMCPServer()
                 )}
-                size="md"
+                size="sm"
               />
             }
           />

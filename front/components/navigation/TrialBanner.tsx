@@ -138,7 +138,7 @@ export function SubscriptionEndBanner({
           label={isTrial ? "Subscribe to Dust" : "Resume subscription"}
           className="hover:opacity-90 hover:bg-transparent"
           variant="ghost-secondary"
-          size="md"
+          size="sm"
         />
       )}
     </div>

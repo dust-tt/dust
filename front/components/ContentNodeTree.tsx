@@ -310,7 +310,7 @@ function ContentNodeTreeChildren({
                   <Button
                     href={n.sourceUrl}
                     icon={LinkExternal01}
-                    size="sm"
+                    size="xs"
                     variant="outline"
                   />
                 )}
@@ -371,7 +371,7 @@ function ContentNodeTreeChildren({
             <Button
               icon={CheckDone01}
               label={selectAllClicked ? "Unselect All" : "Select All"}
-              size="md"
+              size="sm"
               className="m-1"
               variant="ghost"
               disabled={filteredNodes.length === 0}

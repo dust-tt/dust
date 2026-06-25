@@ -65,7 +65,7 @@ export const AgentEditBar = ({
     <>
       <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2 dark:bg-muted-background-night">
         <Button
-          size="sm"
+          size="xs"
           variant="outline"
           disabled={isLoading}
           label="Close edition"
@@ -77,7 +77,7 @@ export const AgentEditBar = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              size="sm"
+              size="xs"
               variant="outline"
               isSelect
               icon={Tag01}

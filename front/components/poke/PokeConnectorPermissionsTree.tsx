@@ -91,7 +91,7 @@ export function PokePermissionTree({
                         rel="noopener noreferrer"
                         label={"Source"}
                         icon={LinkExternal01}
-                        size="sm"
+                        size="xs"
                         variant="outline"
                       />{" "}
                     </>
@@ -102,7 +102,7 @@ export function PokePermissionTree({
                     rel="noopener noreferrer"
                     label={"Datadog logs"}
                     icon={DatadogLogo}
-                    size="sm"
+                    size="xs"
                     variant="outline"
                   />
                 </div>

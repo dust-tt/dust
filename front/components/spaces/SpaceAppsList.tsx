@@ -136,7 +136,7 @@ export const SpaceAppsList = ({
           label="New App"
           variant="primary"
           icon={Plus}
-          size="md"
+          size="sm"
           onClick={() => {
             setIsCreateAppModalOpened(true);
           }}

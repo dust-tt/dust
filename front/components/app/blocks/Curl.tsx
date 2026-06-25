@@ -131,7 +131,7 @@ export default function Curl({
                   variant="outline"
                   disabled={readOnly}
                   label={block.spec.method}
-                  size="sm"
+                  size="xs"
                 />
               </DropdownMenuTrigger>
 
@@ -153,7 +153,7 @@ export default function Curl({
               <div className="flex flex-1 gap-2">
                 <Button
                   variant="outline"
-                  size="md"
+                  size="sm"
                   disabled={readOnly}
                   onClick={() => {
                     if (!readOnly) {

@@ -142,7 +142,7 @@ export default function Input({
                     onClick={() => setIsDatasetModalOpen(true)}
                     icon={readOnly ? Eye : Edit04}
                     label={readOnly ? "View" : "Edit"}
-                    size="sm"
+                    size="xs"
                   />
                 ) : null}
               </div>

@@ -86,7 +86,7 @@ export function PodFrameSheet({
               </div>
             )}
             <SheetClose asChild>
-              <Button icon={XClose} variant="ghost" size="md" />
+              <Button icon={XClose} variant="ghost" size="sm" />
             </SheetClose>
           </div>
         </SheetHeader>

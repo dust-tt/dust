@@ -723,7 +723,7 @@ function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
           </p>
           <Button
             variant="highlight"
-            size="lg"
+            size="md"
             label="Start building"
             onClick={onStartBuilding}
           />

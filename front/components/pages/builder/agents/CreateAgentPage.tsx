@@ -115,7 +115,7 @@ export function CreateAgentPage() {
                     selectedTags.includes(tagName) ? "primary" : "outline"
                   }
                   key={tagName}
-                  size="sm"
+                  size="xs"
                   onClick={() => handleTagClick(tagName)}
                 />
               ))}

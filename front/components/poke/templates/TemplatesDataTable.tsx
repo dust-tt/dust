@@ -118,7 +118,7 @@ export function TemplatesDataTable() {
         {(dustRegionSyncEnabled || isDevelopment()) && (
           <Button
             variant="outline"
-            size="md"
+            size="sm"
             disabled={isPulling}
             onClick={async () => {
               await doPull();
@@ -131,7 +131,7 @@ export function TemplatesDataTable() {
           <Button
             aria-label="Create template"
             variant="outline"
-            size="md"
+            size="sm"
             label="Create template"
             href="/poke/templates/new"
           />

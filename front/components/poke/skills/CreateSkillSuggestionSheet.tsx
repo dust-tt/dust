@@ -157,7 +157,7 @@ export function CreateSkillSuggestionSheet({
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    size="md"
+                    size="sm"
                     icon={IconComponent}
                     onClick={() => setIsIconPickerOpen(true)}
                   />
@@ -223,7 +223,7 @@ export function CreateSkillSuggestionSheet({
                       variant="outline"
                       label="Add"
                       isSelect
-                      size="sm"
+                      size="xs"
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent

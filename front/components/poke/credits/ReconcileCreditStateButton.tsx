@@ -75,7 +75,7 @@ export function ReconcileCreditStateButton({
   return (
     <Button
       variant="outline"
-      size="sm"
+      size="xs"
       label={label}
       isLoading={isRunning}
       onClick={handleClick}

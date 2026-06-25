@@ -197,7 +197,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                 <div className="relative shrink-0">
                   <Button
                     icon={MessageChatSquare}
-                    size="sm"
+                    size="xs"
                     variant="outline"
                     onClick={() => {
                       if (!task.conversationId) {

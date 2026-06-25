@@ -305,7 +305,7 @@ export function PodTaskStartWorkingDropdown({
               <Button
                 label="Start working"
                 variant="outline"
-                size="md"
+                size="sm"
                 className={isFirstOnboardingTask ? "z-10" : ""}
                 isLoading={isStarting}
                 isPulsing={isFirstOnboardingTask}
@@ -318,7 +318,7 @@ export function PodTaskStartWorkingDropdown({
                 trigger={
                   <Button
                     variant="outline"
-                    size="md"
+                    size="sm"
                     icon={ChevronDown}
                     disabled={isStarting || !selectedStartAgent}
                     aria-label={redirectMenuLabels.ariaLabel}

@@ -83,7 +83,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
         <Button
           aria-label="Task actions"
           icon={DotsHorizontal}
-          size="sm"
+          size="xs"
           variant="ghost"
           className={cn(
             TASK_DESKTOP_HOVER_REVEAL_CLASS,

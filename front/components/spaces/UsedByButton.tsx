@@ -137,7 +137,7 @@ export function UsedByButton({
         }
         variant="ghost-secondary"
         isSelect={false}
-        size="sm"
+        size="xs"
         className={cn(
           "border-0 hover:bg-muted-background hover:text-foreground",
           "dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
@@ -220,7 +220,7 @@ export function UsedByButton({
           }
           variant="ghost-secondary"
           isSelect={false}
-          size="sm"
+          size="xs"
           className={cn(
             "border-0 hover:bg-muted-background hover:text-foreground",
             "dark:hover:bg-muted-background-night dark:hover:text-foreground-night"

@@ -109,13 +109,13 @@ function UserMessageEditor({
       <div className="flex justify-end gap-2">
         <Button
           variant="ghost-secondary"
-          size="sm"
+          size="xs"
           onClick={() => setShouldShowEditor(false)}
           label="Cancel"
         />
         <Button
           variant="highlight"
-          size="sm"
+          size="xs"
           onClick={onSave}
           label="Save"
           isLoading={isSaving}
@@ -683,7 +683,7 @@ function ActionMenu({
               <DropdownMenuTrigger asChild>
                 <Button
                   icon={DotsHorizontal}
-                  size="sm"
+                  size="xs"
                   variant="outline"
                   aria-label="Message actions"
                 />

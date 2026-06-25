@@ -186,7 +186,7 @@ export function FeedbackSelector({
     <div className="flex items-center">
       <Button
         variant={feedback ? "primary" : "outline"}
-        size="sm"
+        size="xs"
         disabled={isSubmittingThumb}
         onClick={handleButtonClick}
         icon={MagicWand02}
@@ -226,14 +226,14 @@ export function FeedbackSelector({
                     <Button
                       label="Yes, helpful"
                       icon={ThumbsUp}
-                      size="md"
+                      size="sm"
                       variant={thumbDirection === "up" ? "primary" : "outline"}
                       onClick={() => handleThumbSelect("up")}
                     />
                     <Button
                       label="Needs work"
                       icon={ThumbsDown}
-                      size="md"
+                      size="sm"
                       variant={
                         thumbDirection === "down" ? "primary" : "outline"
                       }
@@ -274,7 +274,7 @@ export function FeedbackSelector({
                                   <Button
                                     key={answer}
                                     label={answer}
-                                    size="sm"
+                                    size="xs"
                                     variant={
                                       selectedAnswerField.field.value === answer
                                         ? "primary"

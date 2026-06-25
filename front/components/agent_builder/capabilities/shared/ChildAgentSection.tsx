@@ -195,7 +195,7 @@ export function ChildAgentSection() {
             <div className="ml-4 self-start">
               <Button
                 variant="outline"
-                size="md"
+                size="sm"
                 icon={PencilIcon}
                 label="Edit agent"
                 onClick={handleEditClick}

@@ -39,14 +39,14 @@ export function InstructionsMenuBar({
     <div className="flex flex-1 flex-wrap items-center gap-2 px-3 py-2">
       <Button
         icon={Heading01}
-        size="sm"
+        size="xs"
         variant="ghost-secondary"
         tooltip="Heading"
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       />
       <Button
         icon={Bold01}
-        size="sm"
+        size="xs"
         variant="ghost-secondary"
         tooltip="Bold"
         tooltipShortcut="Cmd+B"
@@ -54,7 +54,7 @@ export function InstructionsMenuBar({
       />
       <Button
         icon={Italic01}
-        size="sm"
+        size="xs"
         variant="ghost-secondary"
         tooltip="Italic"
         tooltipShortcut="Cmd+I"
@@ -63,14 +63,14 @@ export function InstructionsMenuBar({
       <Separator orientation="vertical" />
       <Button
         icon={CheckDone01}
-        size="sm"
+        size="xs"
         variant="ghost-secondary"
         tooltip="Bulleted list"
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
       <Button
         icon={List}
-        size="sm"
+        size="xs"
         variant="ghost-secondary"
         tooltip="Ordered list"
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
@@ -78,7 +78,7 @@ export function InstructionsMenuBar({
       <Separator orientation="vertical" />
       <Button
         icon={CodeSquare01}
-        size="sm"
+        size="xs"
         variant="ghost-secondary"
         tooltip="Code Block"
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
@@ -86,7 +86,7 @@ export function InstructionsMenuBar({
       <Separator orientation="vertical" />
       <Button
         icon={TagBlock}
-        size="sm"
+        size="xs"
         variant="ghost-secondary"
         tooltip="XML tag"
         onClick={() => editor.chain().focus().insertInstructionBlock().run()}
@@ -97,7 +97,7 @@ export function InstructionsMenuBar({
       {showSuggestionActions && (
         <div className="ml-auto flex gap-2">
           <Button
-            size="sm"
+            size="xs"
             variant="outline"
             icon={XClose}
             label="Reject all"
@@ -105,7 +105,7 @@ export function InstructionsMenuBar({
             onClick={onRejectAll}
           />
           <Button
-            size="sm"
+            size="xs"
             icon={Check}
             variant="highlight-ghost"
             label="Accept all"

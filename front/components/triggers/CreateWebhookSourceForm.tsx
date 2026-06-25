@@ -159,7 +159,7 @@ export function CreateWebhookSourceFormContent({
                           label="Select all"
                           icon={ListSelect}
                           variant="primary"
-                          size="sm"
+                          size="xs"
                           onClick={handleSelectAll}
                           disabled={allSelected}
                         />
@@ -167,7 +167,7 @@ export function CreateWebhookSourceFormContent({
                           label="Unselect all"
                           icon={XClose}
                           variant="primary"
-                          size="sm"
+                          size="xs"
                           onClick={handleUnselectAll}
                           disabled={selectedEvents.length === 0}
                         />

@@ -318,7 +318,7 @@ export function KillPage() {
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
-                      size="md"
+                      size="sm"
                       label="Kill older versions"
                       disabled={submittingSandboxKill !== null}
                       isLoading={isOlderSubmitting}
@@ -332,7 +332,7 @@ export function KillPage() {
                     />
                     <Button
                       variant="warning"
-                      size="md"
+                      size="sm"
                       label="Kill all versions"
                       disabled={submittingSandboxKill !== null}
                       isLoading={isAllSubmitting}

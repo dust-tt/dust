@@ -21,7 +21,7 @@ export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
       <Button
         aria-label="Create skill suggestion"
         variant="outline"
-        size="md"
+        size="sm"
         onClick={() => setShowCreateSuggestionSheet(true)}
         label="💡 Create skill suggestion"
       />

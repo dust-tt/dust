@@ -95,7 +95,7 @@ export function PaymentMethodRow({
             : `IBAN •••• ${paymentMethod.last4}`}
         </span>
       </div>
-      <Button label="Change" variant="ghost" size="md" onClick={onRestart} />
+      <Button label="Change" variant="ghost" size="sm" onClick={onRestart} />
     </div>
   );
 }

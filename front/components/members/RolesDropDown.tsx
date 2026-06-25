@@ -73,7 +73,7 @@ export function RoleDropDown({
           >
             {displayRole(selectedRole)}
           </Chip>
-          <Button icon={ChevronDown} size="md" variant="ghost" />
+          <Button icon={ChevronDown} size="sm" variant="ghost" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

@@ -177,7 +177,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
             <DropdownMenuTrigger asChild>
               <Button
                 icon={DotsHorizontal}
-                size="sm"
+                size="xs"
                 variant="ghost-secondary"
                 onClick={(e) => e.stopPropagation()}
               />

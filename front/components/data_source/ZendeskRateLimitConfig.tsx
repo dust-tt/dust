@@ -136,7 +136,7 @@ export function ZendeskRateLimitConfig({
               transactions per second
             </span>
             <Button
-              size="md"
+              size="sm"
               onClick={handleSave}
               disabled={
                 readOnly ||

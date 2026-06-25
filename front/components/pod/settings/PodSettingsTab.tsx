@@ -485,7 +485,7 @@ export function PodSettingsTab({
                     podMetadata?.defaultAgentId && (
                       <Button
                         variant="ghost"
-                        size="md"
+                        size="sm"
                         icon={XCircle}
                         tooltip="Reset to workspace default"
                         onClick={() => void saveDefaultAgent(null)}

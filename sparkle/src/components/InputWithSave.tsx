@@ -102,7 +102,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
       <div className={cn("s-relative s-w-full", className)}>
         <Input
           ref={inputRef}
-          size="md"
+          size="sm"
           value={
             showSaveButton
               ? formatValue
@@ -136,7 +136,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
               <Button
                 label="Save"
                 variant="highlight"
-                size="sm"
+                size="xs"
                 isLoading={isSaving}
                 className="s-pointer-events-auto"
                 // Prevent the input from blurring (which would revert the edit)

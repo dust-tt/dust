@@ -123,7 +123,7 @@ function CapabilitiesPickerItemsList({
             <Button
               icon={DotsHorizontal}
               variant="outline"
-              size="sm"
+              size="xs"
               className="opacity-0 group-data-[highlighted]:opacity-100 group-focus-within:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();

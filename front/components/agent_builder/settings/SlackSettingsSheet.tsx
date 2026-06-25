@@ -176,7 +176,7 @@ function SlackChannelsList({
                     <Button
                       href={channel.sourceUrl}
                       icon={LinkExternal01}
-                      size="sm"
+                      size="xs"
                       variant="outline"
                       onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     />
