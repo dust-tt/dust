@@ -9,7 +9,7 @@ export const MICROSOFT_TEAMS_SERVER_NAME = "microsoft_teams" as const;
 export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   search_messages_content: {
     description:
-      "Search for message content in Microsoft Teams chats and channels. Returns the results in relevance order.",
+      "Full-text keyword search across Microsoft Teams messages. Returns matching messages ranked by relevance. Use this to find a message by its words, not to browse or enumerate a conversation.",
     schema: {
       query: z
         .string()
@@ -33,7 +33,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   list_users: {
     description:
-      "List all users in the Microsoft Teams organization. Returns user details including display name, email, and user ID.",
+      "List people in the Microsoft Teams organization directory. Returns each user's display name, email, and user ID. Use this to look up who is in the organization.",
     schema: {
       nameFilter: z
         .string()
@@ -57,9 +57,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     schema: {
       teamId: z
         .string()
-        .describe(
-          "The ID of the team to list channels from. Use list_teams to get team IDs."
-        ),
+        .describe("The ID of the team whose channels you want to list."),
       nameFilter: z
         .string()
         .optional()
@@ -107,7 +105,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The ID of the chat to list messages from (1:1, group, or meeting chat). Use list_chats to get chat IDs. Required if teamId and channelId are not provided."
+          "The ID of the chat to read (1:1, group, or meeting chat). Required if teamId and channelId are not given."
         ),
       teamId: z
         .string()
@@ -125,19 +123,17 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "When provided, fetches replies to this top-level message instead of listing channel messages. Use the ID of a top-level message obtained from a previous call to list_messages (without messageId)."
+          "Optional. The ID of a top-level message; when set, returns that message's thread replies instead of the channel's messages."
         ),
       fromDate: z
         .string()
         .optional()
-        .describe(
-          "ISO 8601 date string (e.g., '2024-01-01T00:00:00Z'). Only retrieve messages modified after this date."
-        ),
+        .describe("Only return messages after this ISO 8601 date."),
       toDate: z
         .string()
         .optional()
         .describe(
-          "ISO 8601 date string (e.g., '2024-12-31T23:59:59Z'). Only retrieve messages modified before this date. Defaults to current time."
+          "Only return messages before this ISO 8601 date (defaults to now)."
         ),
     },
     stake: "never_ask",
@@ -222,18 +218,14 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   list_meetings: {
     description:
-      "List Microsoft Teams online meetings from the authenticated user's calendar within a date range. Returns meeting details including subject, organizer, attendees, times, and meeting ID. The meeting ID can be used with get_transcript_content to retrieve meeting transcripts. Supports filtering by subject and participant. Supports pagination to retrieve all results.",
+      "List the authenticated user's Microsoft Teams meetings (online meetings on their calendar) within a date range. Returns each meeting's subject, organizer, attendees, times, and join URL. Filter by subject or participant.",
     schema: {
       fromDate: z
         .string()
-        .describe(
-          "ISO 8601 date string for the start of the date range (e.g., '2024-01-01T00:00:00Z')."
-        ),
+        .describe("Start of the date range to list meetings in (ISO 8601)."),
       toDate: z
         .string()
-        .describe(
-          "ISO 8601 date string for the end of the date range (e.g., '2024-12-31T23:59:59Z')."
-        ),
+        .describe("End of the date range to list meetings in (ISO 8601)."),
       subjectFilter: z
         .string()
         .optional()
@@ -255,7 +247,7 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   get_transcript_content: {
     description:
-      "Get the transcript content of a Microsoft Teams online meeting. Requires the join URL of the meeting (obtained from list_meetings). Returns the transcript text if available.",
+      "Get the transcript (the spoken text) of a recorded Microsoft Teams meeting, identified by its join URL. Returns the transcript text if one is available.",
     schema: {
       joinUrl: z
         .string()

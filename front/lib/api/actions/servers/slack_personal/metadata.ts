@@ -256,7 +256,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
   },
   list_messages: {
     description:
-      "List Slack messages for a given channel, private channel, or DM. Returns message headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content for messages that have replies.",
+      "List the recent messages in a Slack channel, private channel, or direct message (DM). Returns message headers with their timestamps (ts).",
     schema: {
       channel: z
         .string()
@@ -281,7 +281,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
   },
   read_thread_messages: {
     description:
-      "Read all messages in a specific Slack thread from public channels, private channels, or DMs. Use list_messages first to find thread timestamps (ts field).",
+      "Read all messages in a Slack thread from a public channel, private channel, or direct message (DM). Use list_messages first to find the thread's timestamp (ts).",
     schema: {
       channel: z
         .string()
