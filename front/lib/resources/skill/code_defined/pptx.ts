@@ -27,20 +27,22 @@ this document is detail in service of one of its steps. One pass of the loop:
 2. **Inspect** the copy with \`pptx_inspect\` — §2.
 3. **Pick a mode** — revise in place, author on the template, or author from
    scratch — and **decompose the job into a list of one edit per slide** — §3.
-4. **Then go slide by slide, one slide at a time** — §4 — running this turn on
-   each:
+4. **Edit, then QA — in two passes, not interleaved per slide.** First make
+   **every** edit across **every** slide in one pass (§4.1) — ideally one script
+   that opens the deck once and saves once. **Then** QA the deck **one slide at a
+   time** (§4.2), running this turn on each:
 
-   > **edit the slide → \`pptx_inspect --qa N\` → read it back against its text →
-   > fix what's wrong → re-run \`--qa N\` → and only once *that* slide reads back
+   > **\`pptx_inspect --qa N\` → read slide N back against its text → fix what's
+   > wrong on it → re-run \`--qa N\` → and only once *that* slide reads back
    > clean do you move to the next slide.**
 
-   This per-slide turn is the **single most important thing in the skill, and it
-   is itself a loop** — you keep editing and re-running \`--qa N\` on the *same*
-   slide until it reads clean, and you close each slide before you open the next.
-   A slide is done only when its own \`--qa N\`, run *after its last edit*, reads
-   back clean. Editing every slide and saving QA for the end — or glancing at a
-   box-free render and calling it good — is the most common way a broken deck
-   ships. **Never skip a slide's \`--qa\`.**
+   This per-slide QA pass is the **single most important thing in the skill, and
+   it is itself a loop** — for any slide that doesn't read clean you edit it and
+   re-run \`--qa N\` on that *same* slide until it does, and you close each slide
+   before you open the next. A slide is done only when its own \`--qa N\`, run
+   *after its last edit*, reads back clean. QA'ing only some slides — or glancing
+   at a box-free render and calling it good — is the most common way a broken
+   deck ships. **Never skip a slide's \`--qa\`.**
 
 5. **Audit the whole deck** with \`--compare\`, clear every \`[!]\`, then deliver
    — §5.
@@ -114,7 +116,7 @@ a text-fit estimate (\`holds~Nch@Spt\`). It marks problems at two levels:
   alone can't settle — and centering is design intent (Design guidance).
 
 These per-slide markers are the structural half of QA; you lean on them in the
-per-slide turn (§4), alongside the \`--qa\` readback.
+per-slide QA pass (§4.2), alongside the \`--qa\` readback.
 
 ## 3. Pick a mode, then decompose into per-slide edits
 
@@ -258,15 +260,20 @@ fits a box. Pull each placeholder's \`box\` and resolved \`font_pt\` from
 size, **cut the text** — do not shrink below the template's sizes, and do not
 exceed the density ceiling (Design guidance).
 
-## 4. Edit and QA each slide — the per-slide turn
+## 4. Edit every slide, then QA every slide
 
-This is the heart of the loop. Take **one slide at a time**: edit it (§4.1), then
-immediately QA it (§4.2), fix, and re-QA until it reads back clean — *then* move
-to the next slide. Do not batch edits across slides and QA at the end.
+This is the heart of the loop, in two passes. **First** edit every slide you are
+changing in one pass (§4.1) — ideally a single script that opens the deck once
+and saves once. **Then** QA the deck one slide at a time (§4.2): \`--qa N\`, read
+it back, fix that slide, re-QA it, and only move on once it reads clean. Batch
+the **edits**; never batch the **QA** — every slide gets its own \`--qa\`, and a
+fix found in QA means re-running \`--qa\` on that slide.
 
-### 4.1 Edit the slide
+### 4.1 Edit the slides — one pass
 
-Whether you are editing a slide where it sits or one you just cloned, the
+Make all your edits in this pass, working from the decompose list — ideally a
+single script that opens the deck once, edits every slide on the list, and saves
+once. Whether you are editing a slide where it sits or one you just cloned, the
 mechanics are identical: change the content of the shapes that are already there.
 Do not add new shapes on top of styled ones.
 
@@ -420,12 +427,13 @@ prompts, notes / off-slide text ("replace with this quarter's figures";
 \`--text\` includes notes). Read them, act on them, then remove them so none
 survive in the delivered deck.
 
-### 4.2 QA the slide — \`pptx_inspect --qa N\` (never skip)
+### 4.2 QA each slide — \`pptx_inspect --qa N\` (never skip)
 
-The moment you finish editing slide N, QA it — this is the second half of every
-turn, not a final sweep and **not optional**. \`--qa N\` bundles the two halves
-of QA so you can't look at one without the other — the slide's \`#id\`-tagged text
-and its boxed diagnostic render:
+Once every slide is edited (§4.1), QA the deck **one slide at a time**, starting
+at slide 1 — this is not a final glance, it is the gate, and it is **not
+optional**. \`--qa N\` bundles the two halves of QA so you can't look at one
+without the other — the slide's \`#id\`-tagged text and its boxed diagnostic
+render:
 
 \`\`\`bash
 pptx_inspect output.pptx --qa 6              # slide 6's #id-tagged text + boxed render
@@ -517,7 +525,7 @@ should be confirmed in PowerPoint before the deck reaches a customer.
 
 Once **every** slide has passed its own \`--qa\` (§4.2), run the deck-level audit
 — it catches regressions that only show across the whole file, which the
-per-slide turn cannot see.
+per-slide QA pass cannot see.
 
 **A. Deck-level audit** — run \`--compare\`:
 
