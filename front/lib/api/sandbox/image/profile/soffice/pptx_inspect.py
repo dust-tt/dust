@@ -79,8 +79,8 @@ DEFAULT_MAX_SHAPES = 200
 
 
 USAGE = (
-    "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] "
-    "[--render [--no-boxes]] [--compare FILE] [--max-shapes N] [--offset N]"
+    "pptx_inspect <file> [--qa N] [--slide N] [--layouts] [--text] [--media] "
+    "[--render] [--compare FILE] [--max-shapes N] [--offset N]"
 )
 
 HELP_TEXT = (
@@ -92,6 +92,11 @@ HELP_TEXT = (
     "  file              Path to .pptx deck (required)\n"
     "\n"
     "Options:\n"
+    "  --qa N            Per-slide QA — run after EVERY edit to slide N. Prints the\n"
+    "                    slide's text (#id-tagged, to read back) AND the boxed\n"
+    "                    diagnostic render (slide-NNN-boxes.png; boxes labeled '#id',\n"
+    "                    red wash on peer-overlaps, a Pixel-metrics line for marker\n"
+    "                    runs with no text row beside them). The boxes live here.\n"
     "  --slide N         Show one slide's shapes (1-indexed): kind, position,\n"
     "                    size, text, formatting, placeholder type, and a text-fit\n"
     "                    estimate per text shape (holds~Nch@Spt / ~Nch/line@Spt),\n"
@@ -102,16 +107,9 @@ HELP_TEXT = (
     "                    theme inheritance).\n"
     "  --text            Extract readable text per slide (preserves slide/shape boundaries).\n"
     "  --media           List embedded media (images, audio, video) with file sizes.\n"
-    "  --render          Rasterize slides via LibreOffice + pdftoppm AND overlay each\n"
-    "                    shape's exact bounding box (labeled '#id' just outside it,\n"
-    "                    text shapes tinted) so overflow, overlap, distorted images,\n"
-    "                    and stranded decorative markers are visible. A red wash\n"
-    "                    marks peer-overlap regions; a Pixel-metrics line notes\n"
-    "                    marker runs (checkmarks/icons) with no text row beside them.\n"
-    "                    Writes slide-NNN-boxes.png (one path per slide). Combine\n"
-    "                    with --slide N to re-render one slide after a fix. The\n"
-    "                    boxed render is the core visual-QA signal — always use it.\n"
-    "  --no-boxes        With --render: emit the clean JPEG only (no overlay).\n"
+    "  --render          Rasterize slide(s) to a plain JPEG (no overlay) for a quick\n"
+    "                    visual look; combine with --slide N for one slide. For QA\n"
+    "                    use --qa instead — it adds the diagnostic boxes + readback.\n"
     "  --compare FILE    Compare <file> (your edited output) against FILE (the\n"
     "                    source/template): slide count, embedded media, embedded\n"
     "                    fonts, imagery/layout/density, and per-shape content-slot\n"
@@ -695,7 +693,7 @@ def print_layouts(prs: PresentationType, file_path: str) -> str:
 # Text that looks like un-filled template scaffolding: bracketed/angled
 # prompts, lorem/placeholder fillers. Repeated-across-slides copy (e.g.
 # "Subject title", "Summary") is detected separately in print_text.
-def print_text(prs: PresentationType) -> str:
+def print_text(prs: PresentationType, slide_idx: Optional[int] = None) -> str:
     # Pass 1: find distinctive copy repeated across the deck — template
     # scaffolding the author forgot to replace ("Subject title", "Summary",
     # "Title of the slide"). Count total occurrences (catches repeats within a
@@ -715,6 +713,8 @@ def print_text(prs: PresentationType) -> str:
     blocks: List[str] = []
     total_chars = 0
     for idx, slide in enumerate(prs.slides, start=1):
+        if slide_idx is not None and idx != slide_idx:
+            continue
         slide_lines: List[str] = []
         for shape in slide.shapes:
             slide_lines.extend(_collect_text(shape))
@@ -738,9 +738,10 @@ def print_text(prs: PresentationType) -> str:
         return "[No text in deck]"
     if blocks and blocks[-1] == "":
         blocks.pop()
-    head = f"[Text: {total_chars} chars across {len(prs.slides)} slides | " \
-           "each line is tagged with its shape #id — match against --render box " \
-           "labels for readback]"
+    scope = (f"slide {slide_idx}" if slide_idx is not None
+             else f"{len(prs.slides)} slides")
+    head = f"[Text: {total_chars} chars | {scope} | each line is tagged with " \
+           "its shape #id — match against the --qa box labels for readback]"
     if repeated:
         shown = ", ".join(
             f'"{ellipsize(t, 30)}" x{repeat_counts[t]}' for t in repeated[:6]
@@ -1004,76 +1005,109 @@ def print_media(path: str) -> str:
 
 # Distinct, high-contrast outline colors for the --boxes overlay (legible on
 # both light and dark slide backgrounds).
-def print_render(
-    file_path: str,
-    prs: PresentationType,
-    slide_idx: Optional[int],
-    boxes: bool = True,
+def _boxed_render(
+    file_path: str, prs: PresentationType, slide_idx: Optional[int]
 ) -> str:
+    """Render slide(s) with the bounding-box overlay + pixel-metrics digest —
+    the diagnostic half of QA. Reached via --qa, not exposed on its own."""
     total_slides = len(prs.slides)
-    if slide_idx is not None and (slide_idx < 1 or slide_idx > total_slides):
-        raise ValueError(
-            f"slide index out of range: {slide_idx} "
-            f"(deck has {total_slides} slides)"
-        )
-
     out_dir, rendered = render.render_via_soffice(
         file_path,
         out_root=Path("/tmp/pptx_render"),
         item_name="slide",
         item_idx=slide_idx,
     )
+    digest: List[str] = []
+    annotated: List[Path] = []
+    for p in rendered:
+        m = re.search(r"-(\d+)\.", p.name)
+        idx = int(m.group(1)) if m else None
+        res = None
+        if idx is not None and 1 <= idx <= total_slides:
+            res = _annotate_boxes(
+                p, prs.slides[idx - 1],
+                prs.slide_width or 0, prs.slide_height or 0,
+            )
+        if res:
+            ap, findings = res
+            annotated.append(ap)
+            markers = [
+                f"#{sid} nearest text row {off:.2f}in"
+                for sid, off in findings.get("markers", [])
+            ]
+            ov = [
+                f"#{a}~#{b} {pen:.2f}in"
+                for a, b, pen in findings["overlaps"]
+            ]
+            parts = []
+            if markers:
+                parts.append("unaligned markers: " + ", ".join(markers))
+            if ov:
+                parts.append("overlaps: " + ", ".join(ov))
+            if parts:
+                digest.append(f"  slide {idx}: " + "; ".join(parts))
+        else:
+            annotated.append(p)
+    plural = "" if len(annotated) == 1 else "s"
+    lines = [
+        f"[Rendered: {len(annotated)} slide{plural} | jpeg + bbox overlay | "
+        f"{out_dir}]",
+        "[Boxes: each rectangle is a shape's bounding box, labeled '#id' just "
+        "outside it. A red wash marks peer-overlap regions; an unaligned-markers "
+        "note means a decorative run (checkmarks/icons) has no text row beside "
+        "it. Read each slide image directly.]",
+    ]
+    if digest:
+        lines.append("[Pixel metrics:]")
+        lines.extend(digest)
+    for p in annotated:
+        lines.append(str(p))
+    return "\n".join(lines)
 
-    digest: List[str] = []  # per-slide quantitative findings (idx, text)
-    if boxes:
-        annotated: List[Path] = []
-        for p in rendered:
-            m = re.search(r"-(\d+)\.", p.name)
-            idx = int(m.group(1)) if m else None
-            res = None
-            if idx is not None and 1 <= idx <= total_slides:
-                res = _annotate_boxes(
-                    p, prs.slides[idx - 1],
-                    prs.slide_width or 0, prs.slide_height or 0,
-                )
-            if res:
-                ap, findings = res
-                annotated.append(ap)
-                markers = [
-                    f"#{sid} nearest text row {off:.2f}in"
-                    for sid, off in findings.get("markers", [])
-                ]
-                ov = [
-                    f"#{a}~#{b} {pen:.2f}in"
-                    for a, b, pen in findings["overlaps"]
-                ]
-                parts = []
-                if markers:
-                    parts.append("unaligned markers: " + ", ".join(markers))
-                if ov:
-                    parts.append("overlaps: " + ", ".join(ov))
-                if parts:
-                    digest.append(f"  slide {idx}: " + "; ".join(parts))
-            else:
-                annotated.append(p)
-        rendered = annotated
 
-    plural = "" if len(rendered) == 1 else "s"
-    kind = "jpeg + bbox overlay" if boxes else "jpeg @ 100 dpi"
-    lines = [f"[Rendered: {len(rendered)} slide{plural} | {kind} | {out_dir}]"]
-    if boxes:
-        lines.append(
-            "[Boxes: each rectangle is a shape's bounding box, labeled '#id' "
-            "just outside it. A red wash marks peer-overlap regions; an "
-            "unaligned-markers note means a decorative run (checkmarks/icons) "
-            "has no text row beside it. Read each slide image directly.]"
+def print_render(
+    file_path: str, prs: PresentationType, slide_idx: Optional[int]
+) -> str:
+    """Plain rasterized slide(s) — no overlay — for a quick visual look. The
+    boxed diagnostic render is part of --qa, not here."""
+    total_slides = len(prs.slides)
+    if slide_idx is not None and (slide_idx < 1 or slide_idx > total_slides):
+        raise ValueError(
+            f"slide index out of range: {slide_idx} "
+            f"(deck has {total_slides} slides)"
         )
-        if digest:
-            lines.append("[Pixel metrics:]")
-            lines.extend(digest)
+    out_dir, rendered = render.render_via_soffice(
+        file_path,
+        out_root=Path("/tmp/pptx_render"),
+        item_name="slide",
+        item_idx=slide_idx,
+    )
+    plural = "" if len(rendered) == 1 else "s"
+    lines = [
+        f"[Rendered: {len(rendered)} slide{plural} | jpeg @ 100 dpi | {out_dir}]"
+    ]
     for p in rendered:
         lines.append(str(p))
     return "\n".join(lines)
+
+
+def print_qa(file_path: str, prs: PresentationType, slide_idx: int) -> str:
+    """Per-slide QA gate — run after EVERY edit to a slide. Bundles the slide's
+    authoritative text (#id-tagged, to read back) with the boxed diagnostic
+    render so they are checked together."""
+    total_slides = len(prs.slides)
+    if slide_idx < 1 or slide_idx > total_slides:
+        raise ValueError(
+            f"slide index out of range: {slide_idx} "
+            f"(deck has {total_slides} slides)"
+        )
+    return (
+        f"[QA slide {slide_idx} — read each #id's text below back against the "
+        "boxed render]\n\n"
+        + print_text(prs, slide_idx)
+        + "\n\n"
+        + _boxed_render(file_path, prs, slide_idx)
+    )
 
 
 def main() -> int:
@@ -1088,10 +1122,7 @@ def main() -> int:
     parser.add_argument("--text", action="store_true")
     parser.add_argument("--media", action="store_true")
     parser.add_argument("--render", action="store_true")
-    # Boxes are ON by default for --render (the overlay is the core QA signal);
-    # --boxes is kept for back-compat, --no-boxes opts out to a clean render.
-    parser.add_argument("--boxes", action="store_true")
-    parser.add_argument("--no-boxes", action="store_true", dest="no_boxes")
+    parser.add_argument("--qa", type=int)
     parser.add_argument("--compare")
     parser.add_argument("--max-shapes", type=int, default=DEFAULT_MAX_SHAPES)
     parser.add_argument("--offset", type=int, default=0)
@@ -1132,10 +1163,10 @@ def main() -> int:
         body = print_compare(args.file, args.compare)
     else:
         prs = Presentation(args.file)
-        if args.render:
-            body = print_render(
-                args.file, prs, args.slide, boxes=not args.no_boxes
-            )
+        if args.qa is not None:
+            body = print_qa(args.file, prs, args.qa)
+        elif args.render:
+            body = print_render(args.file, prs, args.slide)
         elif args.layouts:
             body = print_layouts(prs, args.file)
         elif args.text:
