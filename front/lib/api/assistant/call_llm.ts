@@ -4,7 +4,10 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
-import type { ModelIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
@@ -14,6 +17,7 @@ export interface LLMConfig {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
   temperature?: number;
+  reasoningEffort?: ReasoningEffort | null;
   useCache?: boolean;
   useStream?: boolean;
 }
@@ -59,6 +63,7 @@ export async function runMultiActionsAgent(
     credentials,
     modelId: config.modelId,
     temperature: config.temperature,
+    reasoningEffort: config.reasoningEffort,
     context: options.context,
   });
 
