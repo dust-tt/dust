@@ -13,10 +13,29 @@ from typing import Dict, List, Optional, Tuple
 from pptx.shapes.base import BaseShape
 from pptx.slide import Slide
 
-from pptx_geometry import EMU_PER_INCH, _render_collision, shape_kind
+from pptx_geometry import EMU_PER_INCH, FULL_SPAN, _render_collision, shape_kind
 
 # (left, top, width, height) in EMU.
 BoxEmu = Tuple[int, int, int, int]
+
+
+def _is_full_span(box: BoxEmu, slide_w_emu: int, slide_h_emu: int) -> bool:
+    """A shape covering >= FULL_SPAN of either slide axis is a banner or
+    background: its overlap with foreground content is intentional layering, not
+    a collision, so it is excluded from the overlap wash."""
+    _, _, w, h = box
+    return w >= FULL_SPAN * slide_w_emu or h >= FULL_SPAN * slide_h_emu
+
+
+def _rects_overlap(a, b) -> bool:
+    return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
+
+
+def _contrast_text(color):
+    """Black or white text, whichever reads on a chip of `color`."""
+    r, g, b = color[:3]
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    return (0, 0, 0, 255) if lum > 140 else (255, 255, 255, 255)
 
 
 # Text-row detection by horizontal EDGE density. A box that spans a gradient or
@@ -180,10 +199,19 @@ def _annotate_boxes(
     sample = base.convert("RGB")  # clean pixels for metrics (before overlay)
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    try:
-        font = ImageFont.load_default()
-    except Exception:  # noqa: BLE001 - label font is optional
-        font = None
+    # A legible label font: prefer a TrueType bold, then a sized default; the
+    # sandbox may ship neither, so fall back to the bitmap default last.
+    font = None
+    for _loader in (
+        lambda: ImageFont.truetype("DejaVuSans-Bold.ttf", 14),
+        lambda: ImageFont.load_default(size=13),  # Pillow >= 10.1
+        ImageFont.load_default,
+    ):
+        try:
+            font = _loader()
+            break
+        except Exception:  # noqa: BLE001 - try the next fallback
+            continue
 
     findings = {"overlaps": [], "markers": []}
     ppi = width_px / (slide_w_emu / EMU_PER_INCH)
@@ -223,6 +251,11 @@ def _annotate_boxes(
     # also holds at declared sizes is an intentional fg/bg overlay, suppressed).
     for i, a in enumerate(shapes):
         for b in shapes[i + 1:]:
+            # Banners/backgrounds (full-bleed bands, backdrops) intentionally sit
+            # under content; their overlap is layering, not a collision.
+            if (_is_full_span(declared(a), slide_w_emu, slide_h_emu)
+                    or _is_full_span(declared(b), slide_w_emu, slide_h_emu)):
+                continue
             ea, eb = box_of(a), box_of(b)
             flag, pen = _render_collision(declared(a), declared(b), ea, eb)
             if not flag:
@@ -263,10 +296,38 @@ def _annotate_boxes(
         if has_text(shape):
             draw.rectangle([x0, y0, x1, y1], fill=color + (40,))
         draw.rectangle([x0, y0, x1, y1], outline=color + (255,), width=3)
-        # Label OUTSIDE the box (above-left), so it never occludes content; the
-        # per-shape detail lives in the stdout digest, keyed by this #id.
-        ly = y0 - 13 if y0 >= 13 else y0 + 1
-        draw.text((x0, ly), f"#{shape.shape_id}", fill=color + (255,), font=font)
+
+    # Labels last, each on a small filled chip so the #id stays legible over any
+    # content or outline. Place it just above its box (just inside the top when
+    # there is no room above), then nudge it down past any already-placed label
+    # so stacked boxes don't smear their labels together.
+    placed: List[Tuple[float, float, float, float]] = []
+    for i, shape in enumerate(shapes):
+        x0, y0, _, _ = to_px(shape)
+        color = _BOX_PALETTE[i % len(_BOX_PALETTE)]
+        text = f"#{shape.shape_id}"
+        try:
+            bl, bt, br, bb = draw.textbbox((0, 0), text, font=font)
+            tw, th, off_l, off_t = br - bl, bb - bt, bl, bt
+        except Exception:  # noqa: BLE001 - measuring is best-effort
+            tw, th, off_l, off_t = 7 * len(text), 11, 0, 0
+        pad = 2
+        cw, ch = tw + 2 * pad, th + 2 * pad
+        lx = max(0.0, x0)
+        ly = y0 - ch - 1 if y0 - ch - 1 >= 0 else y0 + 1
+        rect = (lx, ly, lx + cw, ly + ch)
+        # O(n^2) over labels; n = shapes per slide (< ~40), so this is cheap.
+        for _ in range(8):
+            if not any(_rects_overlap(rect, p) for p in placed):
+                break
+            ly = rect[3] + 1
+            rect = (lx, ly, lx + cw, ly + ch)
+        placed.append(rect)
+        draw.rectangle(list(rect), fill=color + (235,))
+        draw.text(
+            (lx + pad - off_l, ly + pad - off_t),
+            text, fill=_contrast_text(color), font=font,
+        )
 
     out_path = image_path.with_name(image_path.stem + "-boxes.png")
     try:
