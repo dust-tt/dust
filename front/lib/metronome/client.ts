@@ -3477,19 +3477,30 @@ export async function listMetronomeSeatBalances({
   }
 
   try {
-    const response = await getMetronomeClient().post<{ data?: unknown[] }>(
-      "/v1/contracts/seatBalances/list",
-      {
-        body: {
-          customer_id: metronomeCustomerId,
-          contract_id: metronomeContractId,
-          include_credits_and_commits: true,
-          covering_date: coveringDate.toISOString(),
-        },
-      }
-    );
-    const balances = (response.data ?? []).filter(isMetronomeSeatBalance);
-    return new Ok(balances);
+    type SeatBalancesPage = {
+      data?: unknown[];
+      pagination?: { next_page?: string | null };
+    };
+    const allBalances: MetronomeSeatBalance[] = [];
+    let nextPage: string | null | undefined = undefined;
+    do {
+      const page: SeatBalancesPage =
+        await getMetronomeClient().post<SeatBalancesPage>(
+          "/v1/contracts/seatBalances/list",
+          {
+            body: {
+              customer_id: metronomeCustomerId,
+              contract_id: metronomeContractId,
+              include_credits_and_commits: true,
+              covering_date: coveringDate.toISOString(),
+              ...(nextPage ? { next_page: nextPage } : {}),
+            },
+          }
+        );
+      allBalances.push(...(page.data ?? []).filter(isMetronomeSeatBalance));
+      nextPage = page.pagination?.next_page;
+    } while (nextPage);
+    return new Ok(allBalances);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
