@@ -7,7 +7,6 @@ import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
-  provisionShadowEnterpriseMetronomeContract,
   resolveCurrencyForExistingMetronomeCustomer,
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -903,7 +902,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static async pokeUpgradeWorkspaceToEnterprise(
     auth: Authenticator,
     enterpriseDetails: EnterpriseUpgradeFormType,
-    stripeSubscription: Stripe.Subscription | null,
     metronome?: {
       metronomeCustomerId: string;
       metronomeContractId: string;
@@ -964,37 +962,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           "Failed to sync initial seat/MAU quantities on Metronome contract"
         );
       }
-    } else if (stripeSubscription) {
-      const metronomeResult = await provisionShadowEnterpriseMetronomeContract({
-        workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
-        stripeSubscription,
-        planCode: plan.code,
-      });
-
-      if (metronomeResult.isErr()) {
-        logger.error(
-          {
-            workspaceId: owner.sId,
-            error: metronomeResult.error.message,
-          },
-          "Failed to provision Metronome contract for enterprise upgrade"
-        );
-        return;
-      }
-
-      const { metronomeCustomerId, metronomeContractId } =
-        metronomeResult.value;
-
-      if (!workspaceResource.metronomeCustomerId) {
-        await WorkspaceResource.updateMetronomeCustomerId(
-          workspaceResource.id,
-          metronomeCustomerId
-        );
-      }
-      await SubscriptionResource.updateMetronomeContractId(
-        newSubscription.id,
-        metronomeContractId
-      );
     }
   }
 

@@ -573,48 +573,5 @@ function ContractSection({
     );
   }
 
-  // Enterprise
-  if (contract.mauTiers && invoice.mauTierUnitPricesCents) {
-    return (
-      <>
-        <Page.P>
-          {invoice.mau !== null
-            ? `${invoice.mau} active ${invoice.mau === 1 ? "user" : "users"} this period`
-            : "MAU billing"}
-          {" (tiered):"}
-        </Page.P>
-        <div className="pl-4">
-          {contract.mauTiers.map((tier, idx) => {
-            const price = invoice.mauTierUnitPricesCents?.[idx] ?? null;
-            const label =
-              tier.end !== null
-                ? `${tier.start}–${tier.end - 1} users`
-                : `${tier.start}+ users`;
-            const priceLabel =
-              price !== null
-                ? getPriceAsString({ currency, priceInCents: price })
-                : "—";
-            return (
-              <Page.P key={`${tier.start}-${tier.end ?? "inf"}`}>
-                {label}: {priceLabel} per user.
-              </Page.P>
-            );
-          })}
-        </div>
-      </>
-    );
-  }
-
-  // Simple MAU
-  const mauPrice = invoice.mauUnitPriceCents;
-  return (
-    <Page.P>
-      {invoice.mau !== null
-        ? `${invoice.mau} active ${invoice.mau === 1 ? "user" : "users"} this period`
-        : "MAU billing"}
-      {mauPrice !== null
-        ? ` — ${getPriceAsString({ currency, priceInCents: mauPrice })} per active user.`
-        : "."}
-    </Page.P>
-  );
+  return null;
 }

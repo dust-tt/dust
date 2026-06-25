@@ -10,12 +10,6 @@ export const PatchMetronomeContractRequestBody = z.object({
 
 export type MetronomeContractSummary = {
   planFamily: "pro" | "enterprise";
-  /**
-   * MAU tier boundaries parsed from the MAU_TIERS contract custom field.
-   * `null` for simple MAU (no tiering) or non-enterprise.
-   * Each tier has `start` (inclusive, 1-indexed) and `end` (exclusive, null = unlimited).
-   */
-  mauTiers: Array<{ start: number; end: number | null }> | null;
   /** ms epoch — set when the contract is scheduled to end (cancellation or fixed term). */
   contractEndingAtMs: number | null;
   /** True if the contract has at least one seat-billed subscription */
