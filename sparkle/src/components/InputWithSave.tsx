@@ -102,7 +102,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
       <div className={cn("s-relative s-w-full", className)}>
         <Input
           ref={inputRef}
-          size="sm"
+          size="md"
           value={
             showSaveButton
               ? formatValue

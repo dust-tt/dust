@@ -32,7 +32,7 @@ const meta = {
     size: {
       options: INPUT_SIZES,
       control: { type: "select" },
-      description: "The size of the input (xs / sm / md)",
+      description: "The size of the input (sm / md / lg)",
     },
     placeholder: {
       control: "text",
@@ -76,7 +76,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
   args: {
-    size: "sm",
+    size: "md",
     placeholder: "Enter text...",
     value: "",
     label: "Input Label",
