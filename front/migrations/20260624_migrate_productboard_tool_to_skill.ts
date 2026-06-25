@@ -46,10 +46,14 @@ function emptyStats(): WorkspaceStats {
   };
 }
 
-function addStats(total: WorkspaceStats, delta: WorkspaceStats): void {
-  for (const key of Object.keys(total) as (keyof WorkspaceStats)[]) {
-    total[key] += delta[key];
-  }
+function addStats(a: WorkspaceStats, b: WorkspaceStats): WorkspaceStats {
+  return {
+    agentsFound: a.agentsFound + b.agentsFound,
+    skillsAdded: a.skillsAdded + b.skillsAdded,
+    skillsAlreadyPresent: a.skillsAlreadyPresent + b.skillsAlreadyPresent,
+    configsDeleted: a.configsDeleted + b.configsDeleted,
+    errors: a.errors + b.errors,
+  };
 }
 
 async function migrateWorkspace(
@@ -175,12 +179,12 @@ makeScript(
     },
   },
   async ({ wId, execute }, logger) => {
-    const totals = emptyStats();
+    let totals = emptyStats();
 
     await runOnAllWorkspaces(
       async (workspace) => {
         const stats = await migrateWorkspace(workspace, { execute }, logger);
-        addStats(totals, stats);
+        totals = addStats(totals, stats);
         if (stats.agentsFound > 0) {
           logger.info(
             { workspaceId: workspace.sId, ...stats },
