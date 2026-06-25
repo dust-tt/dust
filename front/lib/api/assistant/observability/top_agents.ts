@@ -1,4 +1,7 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import {
+  resolveAnalyticsAgentLabels,
+  UNKNOWN_AGENT_LABEL,
+} from "@app/lib/api/assistant/observability/agent_labels";
 import {
   fetchAgentCostStats,
   getAgentCostStats,
@@ -91,10 +94,7 @@ export async function fetchTopAgents(
   }
 
   const [agents, costStatsResult] = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: bucketAgentIds,
-      variant: "extra_light",
-    }),
+    resolveAnalyticsAgentLabels(auth, bucketAgentIds),
     fetchAgentCostStats(auth, {
       agentIds: bucketAgentIds,
       days,
@@ -108,15 +108,13 @@ export async function fetchTopAgents(
   }
   const costStatsMap = costStatsResult.value;
 
-  const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
-
   const rows = buckets.map((bucket) => {
     const agentId = String(bucket.key);
-    const agent = agentsById.get(agentId);
+    const label = agents.get(agentId) ?? UNKNOWN_AGENT_LABEL;
     return {
       agentId,
-      name: agent?.name ?? "Unknown agent",
-      pictureUrl: agent?.pictureUrl ?? null,
+      name: label.name,
+      pictureUrl: label.pictureUrl,
       messageCount: bucket.doc_count ?? 0,
       userCount: Math.round(bucket.unique_users?.value ?? 0),
       totalCostCredits: getAgentCostStats(costStatsMap, agentId)

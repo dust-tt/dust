@@ -1,5 +1,5 @@
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { buildCreditsScopeQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -139,11 +139,10 @@ async function resolveGroupNames(
   }
   switch (groupBy) {
     case "agent": {
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: ids,
-        variant: "extra_light",
-      });
-      return new Map(agents.map((agent) => [agent.sId, agent.name]));
+      const labels = await resolveAnalyticsAgentLabels(auth, ids);
+      return new Map(
+        Array.from(labels, ([agentId, label]) => [agentId, label.name])
+      );
     }
     case "user": {
       const users = await UserResource.fetchByIds(ids);
