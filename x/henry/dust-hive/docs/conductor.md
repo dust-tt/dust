@@ -178,70 +178,24 @@ Services:
 Docker: Stopped
 ```
 
-## 5. Make direnv work in Conductor terminals
+## 5. Make Conductor terminals load the env
 
-DustHive creates these files for each adopted env:
+Conductor terminals can enter the worktree after zsh startup. When that happens,
+the normal `eval "$(direnv hook zsh)"` line has already run and the DustHive env
+does not load.
 
-```text
-<worktree>/.envrc
-~/.dust-hive/envs/<env-name>/env.sh
-```
-
-Open a Conductor terminal in the workspace and run this exact check:
+Add this Conductor-specific direnv fallback once from a normal terminal where
+`DUST_REPO` is set:
 
 ```bash
-workspace="$(git rev-parse --show-toplevel)"
-env_name="$(basename "$workspace")"
-
-test -f "$workspace/.envrc" || {
-  echo "Missing $workspace/.envrc. DustHive did not adopt this worktree."
-  exit 1
-}
-
-test -f "$HOME/.dust-hive/envs/$env_name/env.sh" || {
-  echo "Missing $HOME/.dust-hive/envs/$env_name/env.sh. DustHive did not adopt this worktree."
-  exit 1
-}
-
-cd "$workspace"
-direnv allow
-eval "$(direnv export zsh)"
-echo "$PORT"
-echo "$FRONT_DATABASE_URI"
-```
-
-If `PORT` and `FRONT_DATABASE_URI` print values, the env is loaded.
-
-If either file is missing, the Conductor setup script did not run or failed.
-For a new setup, archive that Conductor workspace and create a new one after
-adding the scripts in step 3.
-
-For an existing workspace you want to keep, adopt it once:
-
-```bash
-workspace="$(git rev-parse --show-toplevel)"
-env_name="$(basename "$workspace")"
-dust-hive adopt --path "$workspace" --name "$env_name" --base-branch main --wait
-```
-
-Then run the check above again.
-
-If both files exist but new Conductor terminals still open without env vars,
-add a Conductor-specific direnv hook. This is needed because some Conductor
-terminal sessions enter the workspace after zsh startup, so the normal
-`eval "$(direnv hook zsh)"` line can run too early.
-
-Run this once from a normal terminal where `DUST_REPO` is set. It appends the
-Conductor direnv hook to `~/.zshrc` with your actual Dust checkout path:
-
-```bash
-cat >> ~/.zshrc <<EOF
+if ! grep -q 'DUST_HIVE_CONDUCTOR_WORKSPACES' ~/.zshrc; then
+  cat >> ~/.zshrc <<EOF
 
 # DustHive + Conductor direnv fallback.
 export DUST_HIVE_CONDUCTOR_WORKSPACES="$DUST_REPO/.hives/external/conductor/workspaces/dust"
 EOF
 
-cat >> ~/.zshrc <<'EOF'
+  cat >> ~/.zshrc <<'EOF'
 
 _dust_hive_conductor_direnv() {
   emulate -L zsh
@@ -256,6 +210,7 @@ _dust_hive_conductor_direnv() {
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd _dust_hive_conductor_direnv
 EOF
+fi
 ```
 
 Restart the Conductor terminal:
@@ -264,10 +219,29 @@ Restart the Conductor terminal:
 exec zsh -l
 ```
 
-Do not add `source ~/.dust-hive/envs/<env-name>/env.sh` directly to `~/.zshrc`.
-That loads one env globally and does not unload it when you leave the
-workspace. The hook above asks direnv to load and unload the right env based on
-the current directory.
+Then allow direnv once from inside the Conductor workspace:
+
+```bash
+direnv allow
+```
+
+For a new Conductor workspace, the setup script in step 3 creates both
+`<worktree>/.envrc` and `~/.dust-hive/envs/<env-name>/env.sh`.
+
+For an existing Conductor workspace created before the setup script was added,
+run this once from inside that workspace:
+
+```bash
+workspace="$(git rev-parse --show-toplevel)"
+env_name="$(basename "$workspace")"
+dust-hive adopt --path "$workspace" --name "$env_name" --base-branch main --wait
+dust-hive start "$env_name"
+direnv allow
+```
+
+Do not add `source ~/.dust-hive/envs/<env-name>/env.sh` to `~/.zshrc`. That
+loads one env globally. The hook above lets direnv load and unload the right env
+based on the current directory.
 
 ## 6. Optional `cn` CLI for nicer names
 
@@ -488,17 +462,17 @@ workspace or unregister the stale env:
 dust-hive unregister <env-name>
 ```
 
-### `echo "$PORT"` is empty
+### Conductor terminal env is still missing
 
-Check the generated DustHive env:
+Make sure the zsh fallback from step 5 is in `~/.zshrc`, restart the Conductor
+terminal, then run:
 
 ```bash
-source "$HOME/.dust-hive/envs/<env-name>/env.sh"
-echo "$PORT"
+direnv allow
 ```
 
-If that works, DustHive is fine and only terminal loading is broken. Fix direnv
-or add the zsh hook in step 5.
+If this workspace existed before you added the Conductor setup script, adopt it
+once with the command in step 5.
 
 ### The workspace is warm after creation
 
