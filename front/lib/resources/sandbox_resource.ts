@@ -224,14 +224,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       }
     }
 
-    const row = await this.model.findOne({
-      where: {
-        conversationId: conversation.id,
-        workspaceId: conversation.workspaceId,
-      },
-    });
-
-    return row ? new this(this.model, row.get()) : null;
+    return null;
   }
 
   static async fetchByConversation(
@@ -257,17 +250,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       }
     }
 
-    const sandboxes = await this.baseFetch(auth, {
-      where: {
-        conversationId: conversation.id,
-      },
-    });
-
-    if (sandboxes.length === 0) {
-      return null;
-    }
-
-    return sandboxes[0];
+    return null;
   }
 
   /**

@@ -64,13 +64,7 @@ async function fetchConversationMap(
       sandboxes
     );
   const conversationModelIds = [
-    ...new Set(
-      sandboxes.map(
-        (sandbox) =>
-          conversationModelIdsBySandboxModelId.get(sandbox.id) ??
-          sandbox.conversationId
-      )
-    ),
+    ...new Set(conversationModelIdsBySandboxModelId.values()),
   ];
   const conversations =
     await ConversationResource.dangerouslyFetchByModelIds(conversationModelIds);
@@ -80,9 +74,13 @@ async function fetchConversationMap(
     conversationModelIdsBySandboxModelId,
     conversationsBySandboxModelId: new Map(
       sandboxes.flatMap((sandbox) => {
-        const conversationModelId =
-          conversationModelIdsBySandboxModelId.get(sandbox.id) ??
-          sandbox.conversationId;
+        const conversationModelId = conversationModelIdsBySandboxModelId.get(
+          sandbox.id
+        );
+        if (!conversationModelId) {
+          return [];
+        }
+
         const conversation = conversationsById.get(conversationModelId);
 
         return conversation ? [[sandbox.id, conversation] as const] : [];
@@ -119,7 +117,6 @@ async function processSandboxes(
       if (!auth || !conversation) {
         logger.warn(
           {
-            legacyConversationModelId: sandbox.conversationId,
             ownershipConversationModelId:
               conversationMaps.conversationModelIdsBySandboxModelId.get(
                 sandbox.id
@@ -136,7 +133,7 @@ async function processSandboxes(
       if (result.isErr()) {
         logger.error(
           {
-            conversationModelId: sandbox.conversationId,
+            conversationModelId: conversation.id,
             error: result.error.message,
           },
           errorMessage
