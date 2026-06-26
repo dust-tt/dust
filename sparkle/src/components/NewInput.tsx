@@ -39,8 +39,8 @@ const fieldVariants = cva(
     variants: {
       size: {
         xs: "s-h-6 s-rounded-lg s-text-xs",
-        sm: "s-h-8 s-rounded-xl s-text-sm",
-        md: "s-h-10 s-rounded-[15px] s-text-sm",
+        sm: "s-h-8 s-rounded-xl s-text-sm s-tracking-[-0.28px]",
+        md: "s-h-10 s-rounded-[15px] s-text-sm s-tracking-[-0.28px]",
       },
       state: {
         default: cn(
@@ -68,7 +68,7 @@ const innerInputVariants = cva(
   cn(
     "s-h-full s-w-full s-min-w-0 s-flex-1 s-border-0 s-bg-transparent s-outline-none",
     // <input> does not inherit typography from its wrapper by default.
-    "s-font-sans s-text-inherit",
+    "s-font-sans s-font-medium s-text-inherit",
     "s-text-foreground dark:s-text-foreground-night",
     "placeholder:s-text-faint dark:placeholder:s-text-faint-night",
     "disabled:s-cursor-not-allowed disabled:s-text-faint dark:disabled:s-text-faint-night"
@@ -127,6 +127,13 @@ const ICON_CLASSES: Record<NewInputSizeType, string> = {
   xs: "s-h-3 s-w-3",
   sm: "s-h-3.5 s-w-3.5",
   md: "s-h-4 s-w-4",
+};
+
+// Inline icons sit at the same inset as the inner input's horizontal padding.
+const ICON_MARGIN: Record<NewInputSizeType, { left: string; right: string }> = {
+  xs: { left: "s-ml-2", right: "s-mr-2" },
+  sm: { left: "s-ml-3", right: "s-mr-3" },
+  md: { left: "s-ml-3", right: "s-mr-3" },
 };
 
 export interface NewInputProps
@@ -189,7 +196,8 @@ export const NewInput = forwardRef<HTMLInputElement, NewInputProps>(
             <Icon
               visual={icon}
               className={cn(
-                "s-ml-2 s-shrink-0 s-text-faint dark:s-text-faint-night",
+                "s-shrink-0 s-text-faint dark:s-text-faint-night",
+                ICON_MARGIN[size].left,
                 ICON_CLASSES[size]
               )}
             />
@@ -206,7 +214,8 @@ export const NewInput = forwardRef<HTMLInputElement, NewInputProps>(
             <Icon
               visual={iconRight}
               className={cn(
-                "s-mr-2 s-shrink-0 s-text-faint dark:s-text-faint-night",
+                "s-shrink-0 s-text-faint dark:s-text-faint-night",
+                ICON_MARGIN[size].right,
                 ICON_CLASSES[size]
               )}
             />
@@ -216,7 +225,7 @@ export const NewInput = forwardRef<HTMLInputElement, NewInputProps>(
         {message && (
           <div
             className={cn(
-              "s-flex s-items-center s-gap-1 s-text-xs",
+              "s-flex s-items-start s-gap-0.5 s-text-xs",
               messageVariant({ status: messageStatus })
             )}
           >
