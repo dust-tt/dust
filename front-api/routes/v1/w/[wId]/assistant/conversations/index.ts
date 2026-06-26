@@ -147,6 +147,7 @@ app.post(
         {
           message: "conversations/index",
           body: ctx.req.valid("json"),
+          rawBody: await ctx.req.text(),
         },
         "conversations/index"
       );
