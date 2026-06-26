@@ -221,6 +221,24 @@ export class KeyResource extends BaseResource<KeyModel> {
     return new this(KeyResource.model, key.get());
   }
 
+  // All active keys with a given name. Names are not unique, and Metronome
+  // aggregates spend per name, so the per-key credit cap is effectively
+  // per-name: the cap webhook transitions every active key sharing the name.
+  static async listActiveByWorkspaceAndName(
+    workspace: LightWorkspaceType,
+    name: string
+  ) {
+    const keys = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        name,
+        status: "active",
+      },
+    });
+
+    return keys.map((key) => new this(KeyResource.model, key.get()));
+  }
+
   static async listNonSystemKeysByWorkspace(workspace: LightWorkspaceType) {
     const keys = await this.model.findAll({
       where: {
