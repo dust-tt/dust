@@ -189,9 +189,9 @@ AgentMessageSkillModel.init(
         concurrently: true,
       },
       {
-        fields: ["workspaceId", "customSkillId"],
+        fields: ["customSkillId"],
         where: { customSkillId: { [Op.ne]: null } },
-        name: "idx_agent_message_skills_workspace_custom_skill",
+        name: "idx_agent_message_skills_custom_skill",
         concurrently: true,
       },
     ],
