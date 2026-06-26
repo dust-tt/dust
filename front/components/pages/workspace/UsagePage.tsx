@@ -96,6 +96,7 @@ function memberFromUpgradeRequest(
     name: request.requester.name,
     email: request.requester.email,
     image: request.requester.image,
+    groups: [],
     seatType: request.requester.seatType,
     memberUsageLimit: null,
     seatBalanceAwu: null,
@@ -154,6 +155,7 @@ export function UsagePage() {
   // invite, seat changes, spend limits, settings) is disabled.
   const isReadOnly = !isCreditPriced && hasFeature("usage_page_read_only");
   const canViewUsage = isCreditPriced || isReadOnly;
+  const pricingGroupsEnabled = hasFeature("pricing_groups");
   const [searchTerm, setSearchTerm] = useState("");
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
@@ -609,6 +611,7 @@ export function UsagePage() {
       totalRowCount={totalMembersUsage}
       sorting={sorting}
       setSorting={handleSetSorting}
+      showGroupsColumn={pricingGroupsEnabled}
     />
   );
 
