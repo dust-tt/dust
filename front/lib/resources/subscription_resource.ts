@@ -2,7 +2,7 @@ import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
+import type { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
@@ -205,22 +205,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           t
         );
 
-      if (activeSubscription?.planId === plan.id) {
-        return new Err(
-          new DustError(
-            "subscription_already_exists",
-            `Active subscription already exists for plan ${plan.code}.`
-          )
-        );
-      }
-
-      if (activeSubscription?.isBilled) {
-        return new Err(
-          new DustError(
-            "subscription_already_exists",
-            "Active paid subscription already exists."
-          )
-        );
+      // Make sure subscription switch has not been called yet
+      // Can happen if metronome contract.start webhook is triggered first.
+      if (activeSubscription?.metronomeContractId === metronomeContractId) {
+        return new Ok(undefined);
       }
 
       await activeSubscription?.markAsEnded("ended", t);
