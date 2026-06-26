@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
   post_message: {
     description:
-      "Post a message to a Slack channel as the workspace bot/app (not as the user). The bot must already be a member of the channel before it can post. Posts to channels only — cannot message a person individually. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
+      "Post a message to a Slack channel as the workspace bot/app (not as the user). Posts to channels only. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
       to: z
         .string()
@@ -17,7 +17,7 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. To mention a user, use <@USER_ID>. To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
+          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). Do NOT use Slack-specific markup like <url|text> for links. The system converts Markdown to Slack format automatically. To mention a user, use <@USER_ID>. To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
         ),
       threadTs: z
         .string()
@@ -63,7 +63,7 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The new message content, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. To mention a user, use <@USER_ID>. To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
+          "The new message content, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). Do NOT use Slack-specific markup like <url|text> for links. The system converts Markdown to Slack format automatically. To mention a user, use <@USER_ID>. To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
         ),
     },
     stake: "low",

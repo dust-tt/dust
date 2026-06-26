@@ -100,7 +100,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
+          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links. The system converts Markdown to Slack format automatically. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle). " +
             "To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
@@ -149,7 +149,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
+          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links. The system converts Markdown to Slack format automatically. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle). " +
             "To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
@@ -364,7 +364,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
       "**Editing an existing canvas** (provide canvas_id + operation):\n" +
       "  - insert_at_end / insert_at_start: add content at the end or beginning (requires content).\n" +
       "  - insert_after / insert_before: insert content relative to a section (requires content + section_id from read_canvas).\n" +
-      "  - replace: replace entire canvas or a specific section (requires content; section_id optional).\n" +
+      "  - replace: replace entire canvas or a specific section (requires content, section_id optional).\n" +
       "  - delete: remove a specific section (requires section_id).\n" +
       "  - rename: rename the canvas (requires title).\n\n" +
       "Content must be Markdown. Use read_canvas to get section IDs before doing relative edits.",
