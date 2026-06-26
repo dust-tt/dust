@@ -106,6 +106,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
+import { PodEndpointModel } from "@app/lib/resources/storage/models/pod_endpoint";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import { ProjectDefaultSkillModel } from "@app/lib/resources/storage/models/project_default_skills";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
@@ -169,6 +170,7 @@ export function loadAllModels() {
     CloneModel,
     KeyModel,
     FileModel,
+    PodEndpointModel,
     ShareableFileModel,
     AuthorizedFileAccessModel,
     SharingGrantModel,
