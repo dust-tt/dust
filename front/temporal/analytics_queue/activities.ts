@@ -19,11 +19,8 @@ import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
-  getToolCategory,
   intelligenceAwuFromRunUsages,
-  isFreeOrigin,
-  isFreeToolServer,
-  TOOL_CATEGORY_AWU_WEIGHTS,
+  toolAwuFromServerName,
 } from "@app/lib/metronome/events";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
@@ -179,8 +176,6 @@ export async function storeAgentAnalytics(
     agentAgentMessageRow.id,
   ]);
 
-  const isFreeUsage = contextOrigin !== null && isFreeOrigin(contextOrigin);
-
   // Seat type at index time, to stamp `is_free_seat`. Mirrors Metronome's
   // free-seat user-id split: free-seat usage is dropped from a user's consumed
   // credits once they upgrade to a paid seat. Defaults to non-free when the
@@ -205,11 +200,13 @@ export async function storeAgentAnalytics(
   );
 
   // Collect tool usage data (with per-tool credit cost).
-  const toolsUsed = await collectToolUsageFromMessage(auth, actions, {
-    isFreeUsage,
-  });
+  const toolsUsed = await collectToolUsageFromMessage(
+    auth,
+    actions,
+    contextOrigin
+  );
 
-  const llmAwu = isFreeUsage ? 0 : intelligenceAwuFromRunUsages(runUsages);
+  const llmAwu = intelligenceAwuFromRunUsages(runUsages, contextOrigin);
   const toolAwu = toolsUsed.reduce((sum, tool) => sum + tool.cost_awu, 0);
   const cost = {
     full_awu: llmAwu + toolAwu,
@@ -331,7 +328,7 @@ function aggregateTokenUsage(
 async function collectToolUsageFromMessage(
   auth: Authenticator,
   actionResources: AgentMCPActionResource[],
-  { isFreeUsage }: { isFreeUsage: boolean }
+  contextOrigin: UserMessageOrigin | null
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
   const uniqueConfigIds = Array.from(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
@@ -374,12 +371,9 @@ async function collectToolUsageFromMessage(
       mcpServerId ??
       "unknown";
 
-    const cost_awu =
-      !isFreeUsage &&
-      isToolExecutionStatusFinal(actionResource.status) &&
-      !isFreeToolServer(internalMCPServerName)
-        ? TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(internalMCPServerName)]
-        : 0;
+    const cost_awu = isToolExecutionStatusFinal(actionResource.status)
+      ? toolAwuFromServerName(internalMCPServerName, contextOrigin)
+      : 0;
 
     return {
       step_index: actionResource.stepContent.step,

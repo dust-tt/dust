@@ -152,9 +152,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   clari_copilot: "advanced",
 };
 
-export function getToolCategory(
-  internalMCPServerName: string | null
-): ToolCategory {
+function getToolCategory(internalMCPServerName: string | null): ToolCategory {
   if (
     !internalMCPServerName ||
     !isInternalMCPServerName(internalMCPServerName)
@@ -184,7 +182,11 @@ const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
   "agent_memory",
 ]);
 
-export function isFreeOrigin(origin: UserMessageOrigin): boolean {
+function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
+  if (origin == null) {
+    return false;
+  }
+
   return FREE_ORIGINS.has(origin);
 }
 
@@ -200,7 +202,7 @@ export function getUsageType(
 
 // A tool invocation is always free (priced at 0 in the rate card) when its
 // internal MCP server is platform plumbing — see FREE_TOOL_SERVERS.
-export function isFreeToolServer(
+function isFreeToolServer(
   internalMCPServerName: InternalMCPServerNameType | null
 ): boolean {
   return (
@@ -259,8 +261,13 @@ export function awuFromMicroUsd(microUsd: number): number {
 // `intelligenceAwuFromRunUsagesGroupedByRunKey` (which ceils per execution),
 // not this directly over the union of all runs.
 export function intelligenceAwuFromRunUsages(
-  runUsages: RunUsageType[]
+  runUsages: RunUsageType[],
+  contextOrigin: UserMessageOrigin | null
 ): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+
   const costByModel = new Map<string, number>();
   for (const usage of runUsages) {
     // Need this grouping to rightfully apply the Math.ceil in awuFromMicroUsd
@@ -287,8 +294,13 @@ const LEGACY_RUN_KEY = "__legacy__";
 // instead would undercount (`ceil(a) + ceil(b) >= ceil(a + b)`), so we group by
 // runKey first, ceil each group via `intelligenceAwuFromRunUsages`, then sum.
 export function intelligenceAwuFromRunUsagesGroupedByRunKey(
-  runUsages: (RunUsageType & { runKey: string | null })[]
+  runUsages: (RunUsageType & { runKey: string | null })[],
+  contextOrigin: UserMessageOrigin | null
 ): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+
   const byRunKey = new Map<string, RunUsageType[]>();
   for (const usage of runUsages) {
     const key = usage.runKey ?? LEGACY_RUN_KEY;
@@ -299,7 +311,7 @@ export function intelligenceAwuFromRunUsagesGroupedByRunKey(
 
   let total = 0;
   for (const group of byRunKey.values()) {
-    total += intelligenceAwuFromRunUsages(group);
+    total += intelligenceAwuFromRunUsages(group, contextOrigin);
   }
   return total;
 }
@@ -311,17 +323,28 @@ export function intelligenceAwuFromRunUsagesGroupedByRunKey(
 // should pass only final-status actions (matching the usage_queue extraction)
 // so this equals the billed amount.
 export function toolAwuFromActions(
-  actions: { internalMCPServerName: InternalMCPServerNameType | null }[]
+  actions: { internalMCPServerName: InternalMCPServerNameType | null }[],
+  contextOrigin: UserMessageOrigin | null
 ): number {
   return actions.reduce((total, action) => {
-    if (isFreeToolServer(action.internalMCPServerName)) {
-      return total;
-    }
     return (
-      total +
-      TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(action.internalMCPServerName)]
+      total + toolAwuFromServerName(action.internalMCPServerName, contextOrigin)
     );
   }, 0);
+}
+
+export function toolAwuFromServerName(
+  internalMCPServerName: InternalMCPServerNameType | null,
+  contextOrigin: UserMessageOrigin | null
+): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+
+  if (isFreeToolServer(internalMCPServerName)) {
+    return 0;
+  }
+  return TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(internalMCPServerName)];
 }
 
 // ---------------------------------------------------------------------------
