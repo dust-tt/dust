@@ -3028,14 +3028,17 @@ export async function listMetronomeCustomerCredits({
   coveringDate?: string;
 }): Promise<Result<Credit[], Error>> {
   try {
-    const page = await getMetronomeClient().v1.customers.credits.list({
+    const credits: Credit[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.credits.list({
       customer_id: metronomeCustomerId,
       ...(creditId ? { credit_id: creditId } : {}),
       ...(coveringDate ? { covering_date: coveringDate } : {}),
       include_contract_credits: includeContractCredits,
       include_balance: includeBalance,
-    });
-    return new Ok(page.data);
+    })) {
+      credits.push(entry);
+    }
+    return new Ok(credits);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
@@ -3064,14 +3067,17 @@ export async function listMetronomeCustomerCommits({
   coveringDate?: string;
 }): Promise<Result<Commit[], Error>> {
   try {
-    const page = await getMetronomeClient().v1.customers.commits.list({
+    const commits: Commit[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.commits.list({
       customer_id: metronomeCustomerId,
       ...(commitId ? { commit_id: commitId } : {}),
       ...(coveringDate ? { covering_date: coveringDate } : {}),
       include_contract_commits: includeContractCommits,
       include_balance: includeBalance,
-    });
-    return new Ok(page.data);
+    })) {
+      commits.push(entry);
+    }
+    return new Ok(commits);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
