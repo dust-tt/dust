@@ -1082,15 +1082,11 @@ def _boxed_render(
         else:
             annotated.append(p)
     plural = "" if len(annotated) == 1 else "s"
+    # How to read the overlay (boxes, tints, grown extents, red wash, marker
+    # notes) lives in the pptx skill's QA section, not re-emitted on every run.
     lines = [
         f"[Rendered: {len(annotated)} slide{plural} | jpeg + bbox overlay | "
         f"{out_dir}]",
-        "[Boxes: each rectangle is a shape's bounding box, labeled '#id' just "
-        "outside it; a text box whose copy overflows is grown to wrap the "
-        "rendered text (biased larger). A red wash marks overlap regions "
-        "(incl. text spilling onto a neighbour); an unaligned-markers note "
-        "means a decorative run (checkmarks/icons) has no text row beside it. "
-        "Read each slide image directly.]",
     ]
     if digest:
         lines.append("[Pixel metrics:]")
