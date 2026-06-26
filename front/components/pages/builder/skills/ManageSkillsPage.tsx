@@ -29,11 +29,16 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   useSkillsWithRelations,
+  useUpdateSkillFavorite,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
@@ -68,7 +73,9 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
-  const [selectedSkill, setSelectedSkill] =
+  const { hasFeature } = useFeatureFlags();
+  const hasSkillFavorites = hasFeature("skill_favorites");
+  const [optimisticSelectedSkill, setOptimisticSelectedSkill] =
     useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -102,6 +109,7 @@ export function ManageSkillsPage() {
   };
 
   const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
+  const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
 
   const isSearchActive = !isEmptyString(skillSearch);
 
@@ -197,19 +205,9 @@ export function ManageSkillsPage() {
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
-  // Open skill from hash param when skills are loaded.
-  useEffect(() => {
-    if (skillIdParam && !isActiveLoading && activeSkills.length > 0) {
-      const skillFromParam = activeSkills.find((s) => s.sId === skillIdParam);
-      if (skillFromParam && selectedSkill?.sId !== skillIdParam) {
-        setSelectedSkill(skillFromParam);
-      }
-    }
-  }, [skillIdParam, activeSkills, isActiveLoading, selectedSkill?.sId]);
-
   const handleSkillSelect = useCallback(
     (skill: SkillWithoutInstructionsAndToolsWithRelationsType | null) => {
-      setSelectedSkill(skill);
+      setOptimisticSelectedSkill(skill);
       setSkillIdParam(skill?.sId);
     },
     [setSkillIdParam]
@@ -256,6 +254,33 @@ export function ManageSkillsPage() {
     "skill"
   );
 
+  const handleFavoriteChange = useCallback(
+    async (
+      skill: SkillWithoutInstructionsAndToolsWithRelationsType,
+      isFavorite: boolean
+    ) => {
+      const didUpdate = await updateSkillFavorite(skill, isFavorite);
+      if (didUpdate) {
+        setOptimisticSelectedSkill((currentSkill) =>
+          currentSkill?.sId === skill.sId
+            ? { ...currentSkill, isFavorite }
+            : currentSkill
+        );
+      }
+    },
+    [updateSkillFavorite]
+  );
+
+  const handleFavoriteChangeClick = useCallback(
+    (
+      skill: SkillWithoutInstructionsAndToolsWithRelationsType,
+      isFavorite: boolean
+    ) => {
+      void handleFavoriteChange(skill, isFavorite);
+    },
+    [handleFavoriteChange]
+  );
+
   const knownSkillsById = useMemo(
     () =>
       new Map(
@@ -266,12 +291,25 @@ export function ManageSkillsPage() {
     [activeSkills, archivedSkills, suggestedSkills]
   );
 
+  const selectedSkill = useMemo(() => {
+    if (!skillIdParam) {
+      return null;
+    }
+
+    if (optimisticSelectedSkill?.sId === skillIdParam) {
+      return optimisticSelectedSkill;
+    }
+
+    return knownSkillsById.get(skillIdParam) ?? null;
+  }, [skillIdParam, knownSkillsById, optimisticSelectedSkill]);
+
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {
       const skill = knownSkillsById.get(skillId);
       if (skill) {
         handleSkillSelect(skill);
       } else {
+        setOptimisticSelectedSkill(null);
         setSkillIdParam(skillId);
       }
     },
@@ -320,6 +358,7 @@ export function ManageSkillsPage() {
       <SkillDetailsSheet
         skill={selectedSkill}
         onClose={() => handleSkillSelect(null)}
+        onFavoriteChange={hasSkillFavorites ? handleFavoriteChange : undefined}
         user={user}
         owner={owner}
       />
@@ -476,9 +515,11 @@ export function ManageSkillsPage() {
                 <SkillsTable
                   owner={owner}
                   skills={skillsByTab[activeTab]}
+                  showFavoriteControls={hasSkillFavorites}
                   onSkillClick={handleSkillSelect}
                   onAgentClick={setAgentId}
                   onUsedBySkillClick={handleUsedBySkillSelect}
+                  onFavoriteChange={handleFavoriteChangeClick}
                   canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
                   {...(isBatchEditionAvailable && isBatchEditing
                     ? { rowSelection, setRowSelection }

@@ -17,6 +17,7 @@ export const INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION = "insert-knowledge-node";
 export const MAX_RENDERED_CAPABILITY_ITEMS = 50;
 
 export interface CapabilitySearchIndexItem {
+  isFavorite?: boolean;
   normalizedDescription?: string;
   sortGroup?: number;
   sortName: string;
@@ -53,8 +54,15 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
       return groupComparison;
     }
 
+    const aIsFavorite = a.item.isFavorite ?? false;
+    const bIsFavorite = b.item.isFavorite ?? false;
+    const favoriteComparison =
+      aIsFavorite === bIsFavorite ? 0 : aIsFavorite ? -1 : 1;
+
     if (normalizedQuery.length === 0) {
-      return a.item.sortName.localeCompare(b.item.sortName);
+      return (
+        favoriteComparison || a.item.sortName.localeCompare(b.item.sortName)
+      );
     }
 
     if (a.titleMatches !== b.titleMatches) {
@@ -62,14 +70,17 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
     }
 
     if (a.titleMatches) {
-      return compareForAutocompleteSort(
-        normalizedQuery,
-        a.item.sortName,
-        b.item.sortName
+      return (
+        favoriteComparison ||
+        compareForAutocompleteSort(
+          normalizedQuery,
+          a.item.sortName,
+          b.item.sortName
+        )
       );
     }
 
-    return a.item.sortName.localeCompare(b.item.sortName);
+    return favoriteComparison || a.item.sortName.localeCompare(b.item.sortName);
   });
 
   return sortedMatches.slice(0, limit).map(({ item }) => item);
@@ -79,6 +90,7 @@ export type SlashCommandSkillSuggestion = Pick<
   SkillWithoutInstructionsAndToolsType,
   | "editedBy"
   | "icon"
+  | "isFavorite"
   | "name"
   | "requestedSpaceIds"
   | "sId"

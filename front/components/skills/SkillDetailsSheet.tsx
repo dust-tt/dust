@@ -37,6 +37,10 @@ import { useState } from "react";
 type SkillDetailsProps = {
   skill: SkillWithoutInstructionsAndToolsWithRelationsType | null;
   onClose: () => void;
+  onFavoriteChange?: (
+    skill: SkillWithoutInstructionsAndToolsWithRelationsType,
+    isFavorite: boolean
+  ) => void;
   owner: WorkspaceType;
   user: UserType;
   replaceOnEdit?: boolean;
@@ -45,6 +49,7 @@ type SkillDetailsProps = {
 export function SkillDetailsSheet({
   skill,
   onClose,
+  onFavoriteChange,
   user,
   owner,
   replaceOnEdit,
@@ -71,6 +76,7 @@ export function SkillDetailsSheet({
                 owner={owner}
                 onClose={onClose}
                 replaceOnEdit={replaceOnEdit}
+                onFavoriteChange={onFavoriteChange}
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
@@ -151,6 +157,10 @@ type DescriptionSectionProps = {
   owner: WorkspaceType;
   onClose: () => void;
   replaceOnEdit?: boolean;
+  onFavoriteChange?: (
+    skill: SkillWithoutInstructionsAndToolsWithRelationsType,
+    isFavorite: boolean
+  ) => void;
 };
 
 const DescriptionSection = ({
@@ -158,6 +168,7 @@ const DescriptionSection = ({
   owner,
   onClose,
   replaceOnEdit,
+  onFavoriteChange,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const { editedByUser } = skill.relations;
@@ -196,6 +207,7 @@ const DescriptionSection = ({
           skill={skill}
           onClose={onClose}
           replaceOnEdit={replaceOnEdit}
+          onFavoriteChange={onFavoriteChange}
         />
       )}
 

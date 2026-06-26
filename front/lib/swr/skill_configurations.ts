@@ -341,6 +341,70 @@ export function useArchiveSkill({
   return doArchive;
 }
 
+export function useUpdateSkillFavorite({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+
+  const { mutateSkills: mutateActiveSkills } = useSkills({
+    owner,
+    status: "active",
+    disabled: true,
+  });
+  const { mutateSkillsWithRelations: mutateActiveSkillsWithRelations } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+      disabled: true,
+    });
+  const { mutateSkillsWithRelations: mutateArchivedSkillsWithRelations } =
+    useSkillsWithRelations({
+      owner,
+      status: "archived",
+      disabled: true,
+    });
+
+  const updateSkillFavorite = useCallback(
+    async (
+      skill: Pick<SkillWithoutInstructionsAndToolsType, "name" | "sId">,
+      isFavorite: boolean
+    ) => {
+      try {
+        await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}/favorite`, {
+          method: isFavorite ? "POST" : "DELETE",
+        });
+
+        void mutateActiveSkills();
+        void mutateActiveSkillsWithRelations();
+        void mutateArchivedSkillsWithRelations();
+        return true;
+      } catch (err) {
+        sendNotification({
+          type: "error",
+          title: `Failed to ${isFavorite ? "favorite" : "unfavorite"} ${skill.name}`,
+          description: isAPIErrorResponse(err)
+            ? err.error.message
+            : "An unexpected error occurred.",
+        });
+        return false;
+      }
+    },
+    [
+      fetcher,
+      mutateActiveSkills,
+      mutateActiveSkillsWithRelations,
+      mutateArchivedSkillsWithRelations,
+      owner.sId,
+      sendNotification,
+    ]
+  );
+
+  return { updateSkillFavorite };
+}
+
 type SkillReinforcementUpdate = {
   reinforcement?: SkillReinforcementMode;
   selfImprovementLock?: boolean;
