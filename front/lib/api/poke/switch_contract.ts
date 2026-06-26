@@ -891,12 +891,18 @@ async function stepContractEdits({
 
 // Persist the future-state subscription in `created_backend_only`; the
 // `contract.start` webhook flips it to `active` (and ends the current one).
+// Skip entirely when alignedStart is in the past: Metronome fires contract.start
+// immediately for backdated contracts, so the contract.start handler handles the
+// swap — there is no window for a pending row to be useful.
 async function stepPendingSubscription({
   workspaceModelId,
   metronomeContractId,
   alignedStart,
   body,
 }: PostProvisionCtx): Promise<string | null> {
+  if (alignedStart.getTime() <= Date.now()) {
+    return null;
+  }
   try {
     await SubscriptionResource.createPendingMetronomeContract({
       workspaceModelId,

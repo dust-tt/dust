@@ -455,7 +455,11 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    const response = await postSwitchContract(workspace.sId, proBody());
+    // Future startingAt: pending row is created and waits for contract.start.
+    const response = await postSwitchContract(
+      workspace.sId,
+      proBody({ startingAt: futureIso(2) })
+    );
 
     expect(response.status).toBe(200);
 
@@ -477,8 +481,11 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    // First schedule → pending P1.
-    const firstResponse = await postSwitchContract(workspace.sId, proBody());
+    // Future startingAt: pending row is created and waits for contract.start.
+    const firstResponse = await postSwitchContract(
+      workspace.sId,
+      proBody({ startingAt: futureIso(2) })
+    );
     expect(firstResponse.status).toBe(200);
 
     const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
@@ -497,7 +504,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     );
     const secondResponse = await postSwitchContract(
       workspace.sId,
-      businessBody()
+      businessBody({ startingAt: futureIso(2) })
     );
     expect(secondResponse.status).toBe(200);
 
