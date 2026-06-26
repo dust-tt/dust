@@ -28,7 +28,7 @@ export function FilePreviewPanel({
   // bust it with the file's lastModifiedMs. SWR revalidates this list on mount
   // and window focus, so the preview refreshes after the file is touched (and
   // the reload button forces an immediate revalidation).
-  // TODO: use E2B events when files are updated when they are live
+  // TODO: use E2B events of "files are updated", when they are merged
   const { sandboxFiles } = useConversationSandboxFiles({
     conversationId: conversation.sId,
     owner,
