@@ -1,6 +1,9 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
-import type { FileExplorerPathEntry } from "@app/components/file_explorer/types";
+import type {
+  FileEntry,
+  FileExplorerPathEntry,
+} from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -11,11 +14,22 @@ import {
   type ConversationWithoutContentType,
   isPodConversation,
 } from "@app/types/assistant/conversation";
+import { isPresentationContentType } from "@app/types/files";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, XClose } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
 const POD_CONVERSATION_SCOPE_ROOTS = ["conversation", "pod"] as const;
+
+type FilePanelTarget = "presentation";
+
+function getFilePanelTarget(entry: FileEntry): FilePanelTarget | null {
+  if (isPresentationContentType(entry.contentType)) {
+    return "presentation";
+  }
+  return null;
+}
 
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
@@ -69,9 +83,20 @@ export function ConversationFileExplorer({
     [openPanel]
   );
 
-  const onOpenPresentation = useCallback(
-    (entry: { path: string }) =>
-      openPanel({ type: "file_preview", filePath: entry.path }),
+  const onOpenInPanel = useCallback(
+    (entry: FileEntry): boolean => {
+      const target = getFilePanelTarget(entry);
+      switch (target) {
+        case "presentation":
+          openPanel({ type: "file_preview", filePath: entry.path });
+          return true;
+        case null:
+          return false;
+        default:
+          assertNeverAndIgnore(target);
+          return false;
+      }
+    },
     [openPanel]
   );
 
@@ -104,7 +129,7 @@ export function ConversationFileExplorer({
           getFileUrl={getFileUrl}
           onFileDownload={onFileDownload}
           onOpenInteractive={onOpenInteractive}
-          onOpenPresentation={onOpenPresentation}
+          onOpenInPanel={onOpenInPanel}
           owner={owner}
           virtualScopeRoots={isPod ? POD_CONVERSATION_SCOPE_ROOTS : undefined}
         />

@@ -26,10 +26,7 @@ import {
   getScopedRelativePath,
   isFileExplorerMovableFile,
 } from "@app/components/file_explorer/utils";
-import {
-  isInteractiveContentType,
-  isPresentationContentType,
-} from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
@@ -55,7 +52,7 @@ interface FileExplorerProps {
     parentRelativePath: string
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
-  onOpenPresentation?: (entry: FileEntry) => void;
+  onOpenInPanel?: (entry: FileEntry) => boolean;
   onRename?: (entry: FileEntry | FolderEntry) => void;
   owner?: LightWorkspaceType;
   getExtraFileMenuItems?: (
@@ -81,7 +78,7 @@ export function FileExplorer({
   onFileDownload,
   onMoveFile,
   onOpenInteractive,
-  onOpenPresentation,
+  onOpenInPanel,
   onRename,
   owner,
   getExtraFileMenuItems,
@@ -251,8 +248,7 @@ export function FileExplorer({
       onOpenInteractive({ ...entry, fileId: entry.fileId });
       return;
     }
-    if (onOpenPresentation && isPresentationContentType(entry.contentType)) {
-      onOpenPresentation(entry);
+    if (onOpenInPanel?.(entry)) {
       return;
     }
     setPreviewFile(entry);
