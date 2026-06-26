@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -12,7 +12,8 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok, type Result } from "@app/types/shared/result";
+import { Err, type Result } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
@@ -65,21 +66,23 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionResource> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-
     assert(pod.isProject(), "Sandbox functions can only belong to Pod spaces.");
     assert(
-      pod.workspaceId === workspaceModelId,
+      pod.workspaceId === auth.getNonNullableWorkspace().id,
       "The Pod must belong to the authenticated workspace."
     );
     assert(
-      file.workspaceId === workspaceModelId,
+      file.workspaceId === auth.getNonNullableWorkspace().id,
       "The file must belong to the authenticated workspace."
+    );
+    assert(
+      file.useCase === "sandbox_function",
+      "The file must use the sandbox_function use case."
     );
 
     const sandboxFunction = await this.model.create(
       {
-        workspaceId: workspaceModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
         podId: pod.id,
         fileId: file.id,
         inputSchema,
@@ -142,32 +145,38 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   static async deleteAllForPod(
     auth: Authenticator,
-    pod: SpaceResource,
-    transaction?: Transaction
+    pod: SpaceResource
   ): Promise<number> {
     assert(pod.isProject(), "Sandbox functions can only belong to Pod spaces.");
 
-    return this.model.destroy({
-      where: {
-        podId: pod.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      transaction,
-    });
+    const sandboxFunctions = await this.listByPod(auth, pod);
+    for (const sandboxFunction of sandboxFunctions) {
+      const result = await sandboxFunction.delete(auth);
+      if (result.isErr()) {
+        throw result.error;
+      }
+    }
+
+    return sandboxFunctions.length;
   }
 
-  async delete(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction }
-  ): Promise<Result<undefined, Error>> {
-    await this.model.destroy({
-      where: {
-        id: this.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      transaction,
-    });
+  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    try {
+      const file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
+      if (!file) {
+        return new Err(new Error("Sandbox function file not found."));
+      }
 
-    return new Ok(undefined);
+      await this.model.destroy({
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      });
+
+      return file.delete(auth);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 }

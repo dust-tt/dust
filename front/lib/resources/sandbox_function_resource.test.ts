@@ -1,3 +1,4 @@
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -29,12 +30,11 @@ describe("SandboxFunctionResource", () => {
     });
     const pod = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
-      contentType: "text/plain",
+      contentType: "text/typescript",
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: pod.sId },
+      useCase: "sandbox_function",
     });
 
     const sandboxFunction = await SandboxFunctionResource.makeNew(
@@ -69,12 +69,11 @@ describe("SandboxFunctionResource", () => {
     });
     const regularSpace = await SpaceFactory.regular(workspace);
     const file = await FileFactory.create(authenticator, null, {
-      contentType: "text/plain",
+      contentType: "text/typescript",
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: regularSpace.sId },
+      useCase: "sandbox_function",
     });
 
     await expect(
@@ -93,12 +92,11 @@ describe("SandboxFunctionResource", () => {
     });
     const pod = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
-      contentType: "text/plain",
+      contentType: "text/typescript",
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: pod.sId },
+      useCase: "sandbox_function",
     });
 
     await expect(
@@ -128,12 +126,11 @@ describe("SandboxFunctionResource", () => {
     });
     const pod = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
-      contentType: "text/plain",
+      contentType: "text/typescript",
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: pod.sId },
+      useCase: "sandbox_function",
     });
     const sandboxFunction = await SandboxFunctionResource.makeNew(
       authenticator,
@@ -149,6 +146,9 @@ describe("SandboxFunctionResource", () => {
 
     await expect(
       SandboxFunctionResource.fetchById(authenticator, sandboxFunction.sId)
+    ).resolves.toBeNull();
+    await expect(
+      FileResource.fetchById(authenticator, file.sId)
     ).resolves.toBeNull();
   });
 });
