@@ -1,3 +1,4 @@
+import type { ModelTier } from "@app/lib/api/models_picker/tiers";
 import {
   listWorkOSOrganizationsWithDomain,
   removeWorkOSOrganizationDomain,
@@ -74,6 +75,7 @@ type CachedWorkspaceData = {
   workOSOrganizationId: string | null;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  defaultModelsTier: ModelTier | null;
   metadata: Record<string, string | number | boolean | object> | null;
   sharingPolicy: WorkspaceSharingPolicy;
   conversationsRetentionDays: number | null;
@@ -211,6 +213,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       workOSOrganizationId: workspace.workOSOrganizationId,
       whiteListedProviders: whiteListedProviders,
       defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
+      defaultModelsTier: workspace.defaultModelsTier,
       metadata: workspace.metadata,
       sharingPolicy: workspace.sharingPolicy,
       conversationsRetentionDays: workspace.conversationsRetentionDays,
@@ -254,6 +257,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       workOSOrganizationId: data.workOSOrganizationId,
       whiteListedProviders: data.whiteListedProviders,
       defaultEmbeddingProvider: data.defaultEmbeddingProvider,
+      defaultModelsTier: data.defaultModelsTier,
       metadata: data.metadata,
       sharingPolicy: data.sharingPolicy,
       conversationsRetentionDays: data.conversationsRetentionDays,
@@ -542,6 +546,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         | "regionalModelsOnly"
         | "whiteListedProviders"
         | "defaultEmbeddingProvider"
+        | "defaultModelsTier"
         | "workOSOrganizationId"
         | "metadata"
         | "sharingPolicy"

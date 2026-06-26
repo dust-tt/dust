@@ -93,6 +93,7 @@ import {
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModelTierModel } from "@app/lib/resources/storage/models/group_model_tier";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -137,6 +138,7 @@ import {
   UserModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
+import { UserModelTierModel } from "@app/lib/resources/storage/models/user_model_tier";
 import { UserProjectPreferencesModel } from "@app/lib/resources/storage/models/user_project_preferences";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -269,6 +271,8 @@ export function loadAllModels() {
     TakeawaySourcesModel,
     TakeawaysVersionModel,
     UserProjectPreferencesModel,
+    UserModelTierModel,
+    GroupModelTierModel,
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
     WorkspaceSeatLimitModel,

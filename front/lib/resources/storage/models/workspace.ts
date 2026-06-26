@@ -1,3 +1,4 @@
+import { MODEL_TIERS, type ModelTier } from "@app/lib/api/models_picker/tiers";
 import type { SubscriptionModel } from "@app/lib/models/plan";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
@@ -34,6 +35,7 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare subscriptions: NonAttribute<SubscriptionModel[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
   declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  declare defaultModelsTier: ModelTier | null;
   declare metadata: Record<string, string | number | boolean | object> | null;
   declare sharingPolicy: CreationOptional<WorkspaceSharingPolicy>;
   declare conversationsRetentionDays: number | null;
@@ -108,6 +110,14 @@ WorkspaceModel.init(
       allowNull: true,
       validate: {
         isIn: [modelProviders],
+      },
+    },
+    defaultModelsTier: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+      allowNull: true,
+      validate: {
+        isIn: [MODEL_TIERS],
       },
     },
     metadata: {
