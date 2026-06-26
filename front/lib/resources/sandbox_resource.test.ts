@@ -235,6 +235,39 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
     );
     expect(reloaded?.status).toBe("deleted");
   });
+
+  it("does not fall back to the legacy conversationId column when ownership is missing", async () => {
+    const sandbox = await SandboxFactory.create(
+      authenticator,
+      conversationResource.toJSON(),
+      {
+        status: "sleeping",
+      }
+    );
+
+    await ConversationSandboxModel.destroy({
+      where: {
+        sandboxId: sandbox.id,
+        workspaceId: authenticator.getNonNullableWorkspace().id,
+      },
+    });
+
+    const result = await SandboxResource.dangerouslyDestroyIfSleeping(
+      authenticator,
+      conversationResource
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+
+    const row = await SandboxModel.findOne({
+      where: {
+        id: sandbox.id,
+        workspaceId: authenticator.getNonNullableWorkspace().id,
+      },
+    });
+    expect(row?.status).toBe("sleeping");
+  });
 });
 
 describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
@@ -552,7 +585,7 @@ describe("SandboxResource.fetchByConversation", () => {
     });
   }
 
-  it("reads from conversation_sandboxes before the legacy conversationId column", async () => {
+  it("reads from conversation_sandboxes even when the legacy conversationId column disagrees", async () => {
     const conversation = await makeConversation();
     const otherConversation = await makeConversation();
     const sandbox = await SandboxFactory.create(authenticator, conversation);
@@ -570,7 +603,7 @@ describe("SandboxResource.fetchByConversation", () => {
     expect(fetched?.id).toBe(sandbox.id);
   });
 
-  it("falls back to the legacy conversationId column when no ownership row exists", async () => {
+  it("returns null when no ownership row exists", async () => {
     const conversation = await makeConversation();
     const sandbox = await SandboxFactory.create(authenticator, conversation);
 
@@ -586,7 +619,7 @@ describe("SandboxResource.fetchByConversation", () => {
       conversation
     );
 
-    expect(fetched?.id).toBe(sandbox.id);
+    expect(fetched).toBeNull();
   });
 
   it("loads conversation ownership mappings by sandboxes", async () => {

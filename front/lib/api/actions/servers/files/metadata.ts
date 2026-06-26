@@ -365,7 +365,6 @@ export const FILES_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(FILES_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -1,12 +1,10 @@
-import {
-  getAgentConfigurations,
-  searchAgentConfigurationsByName,
-} from "@app/lib/api/assistant/configuration/agent";
+import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
-  getAgentModelDisplayName,
-  getUserDisplayName,
-} from "@app/lib/api/assistant/observability/credit_labels";
+  resolveAnalyticsAgentLabels,
+  UNKNOWN_AGENT_LABEL,
+} from "@app/lib/api/assistant/observability/agent_labels";
+import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import {
   buildCreditsScopeQuery,
   daysToInstantRange,
@@ -171,22 +169,21 @@ export async function fetchAgentCreditBreakdown(
     )
   );
 
-  const [agents, users, skills] = await Promise.all([
-    getAgentConfigurations(auth, { agentIds, variant: "light" }),
+  const [agentLabels, users, skills] = await Promise.all([
+    resolveAnalyticsAgentLabels(auth, agentIds),
     userIds.length > 0 ? UserResource.fetchByIds(userIds) : Promise.resolve([]),
     skillIds.length > 0
       ? SkillResource.fetchByIds(auth, skillIds)
       : Promise.resolve([]),
   ]);
 
-  const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
   const usersById = new Map(users.map((user) => [user.sId, user]));
   // fetchByIds only returns skills the admin can read; others get no description.
   const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
 
   const rows: AgentCreditRow[] = buckets.map((bucket) => {
     const agentId = String(bucket.key);
-    const agent = agentsById.get(agentId);
+    const label = agentLabels.get(agentId) ?? UNKNOWN_AGENT_LABEL;
 
     const topUsers: AgentCreditUser[] = bucketsToArray<SubBucket>(
       bucket.top_users?.buckets
@@ -216,15 +213,10 @@ export async function fetchAgentCreditBreakdown(
 
     return {
       agentId,
-      name: agent?.name ?? "Unknown agent",
-      pictureUrl: agent?.pictureUrl ?? null,
-      modelDisplayName: getAgentModelDisplayName(agent?.model),
-      // Only surface the description for agents this admin can read; private
-      // agents owned by others appear in usage but their description must not.
-      description:
-        agent && !agent.canRead
-          ? "Private agent: description unavailable"
-          : (agent?.description ?? ""),
+      name: label.name,
+      pictureUrl: label.pictureUrl,
+      modelDisplayName: label.modelDisplayName,
+      description: label.description,
       credits: Math.round(bucket.credits?.value ?? 0),
       topUsers,
       topSkills,

@@ -305,7 +305,6 @@ export const GOOGLE_SHEETS_SERVER = {
     },
     icon: "GoogleSpreadsheetLogo",
     documentationUrl: "https://docs.dust.tt/docs/google-sheets",
-    instructions: null,
   },
   tools: Object.values(GOOGLE_SHEETS_TOOLS_METADATA).map((t) => ({
     name: t.name,

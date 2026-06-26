@@ -693,7 +693,7 @@ describe("buildEnterpriseOverrides", () => {
 });
 
 describe("provisionMetronomeContract", () => {
-  it("syncs seats and MAU when the contract has both subscriptions", async () => {
+  it("syncs seats when provisioning a contract", async () => {
     const result = await provisionMetronomeContract({
       metronomeCustomerId: "m-customer",
       workspace: WORKSPACE,
@@ -704,12 +704,6 @@ describe("provisionMetronomeContract", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockGetMetronomeContractById).toHaveBeenCalledWith({
-      metronomeCustomerId: "m-customer",
-      metronomeContractId: "m-contract",
-    });
-    expect(mockHasContractSeatSubscription).toHaveBeenCalledWith(CONTRACT);
-    expect(mockHasMauSubscriptionInContract).toHaveBeenCalledWith(CONTRACT);
     expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
     expect(mockSyncSeatCount).toHaveBeenCalledWith({
       metronomeCustomerId: "m-customer",
@@ -717,50 +711,7 @@ describe("provisionMetronomeContract", () => {
       workspace: WORKSPACE,
       planCode: "PRO_PLAN_SEAT_29",
       startingAt: START_DATE,
-      contract: CONTRACT,
     });
-    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
-    expect(mockSyncMauCount).toHaveBeenCalledWith({
-      metronomeCustomerId: "m-customer",
-      contractId: "m-contract",
-      workspace: WORKSPACE,
-      startingAt: START_DATE,
-      contract: CONTRACT,
-    });
-  });
-
-  it("skips seat sync when the contract has no seat subscription", async () => {
-    mockHasContractSeatSubscription.mockResolvedValue(false);
-
-    const result = await provisionMetronomeContract({
-      metronomeCustomerId: "m-customer",
-      workspace: WORKSPACE,
-      packageAlias: "legacy-enterprise",
-      uniquenessKey: "uniq_123",
-      startingAt: new Date(START_DATE),
-      planCode: "PRO_PLAN_SEAT_29",
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(mockSyncSeatCount).not.toHaveBeenCalled();
-    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
-  });
-
-  it("skips MAU sync when the contract has no MAU subscription", async () => {
-    mockHasMauSubscriptionInContract.mockReturnValue(false);
-
-    const result = await provisionMetronomeContract({
-      metronomeCustomerId: "m-customer",
-      workspace: WORKSPACE,
-      packageAlias: "legacy-pro-monthly",
-      uniquenessKey: "uniq_123",
-      startingAt: new Date(START_DATE),
-      planCode: "PRO_PLAN_SEAT_29",
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
-    expect(mockSyncMauCount).not.toHaveBeenCalled();
   });
 });
 

@@ -110,6 +110,8 @@ vi.mock("@app/lib/api/analytics/messages_export", async () => ({
     "userId",
     "userEmail",
     "source",
+    "toolsUsed",
+    "skillsUsed",
   ],
   fetchMessageExportRows: vi.fn(
     async () =>
@@ -124,6 +126,8 @@ vi.mock("@app/lib/api/analytics/messages_export", async () => ({
           userId: "user-1",
           userEmail: "alice@example.com",
           source: "web",
+          toolsUsed: "Slack__post_message,Slack__search_messages",
+          skillsUsed: "research",
         },
       ])
   ),
@@ -371,10 +375,11 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(response.status).toBe(200);
     const csv = await response.text();
     expect(csv).toContain(
-      "messageId,createdAt,assistantId,assistantName,assistantSettings,conversationId,userId,userEmail,source"
+      "messageId,createdAt,assistantId,assistantName,assistantSettings,conversationId,userId,userEmail,source,toolsUsed,skillsUsed"
     );
     expect(csv).toContain("msg-1");
     expect(csv).toContain("alice@example.com");
+    expect(csv).toContain('"Slack__post_message,Slack__search_messages"');
   });
 
   it("returns CSV for feedback table", async () => {
@@ -525,6 +530,8 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
       userId: "user-1",
       userEmail: "alice@example.com",
       source: "web",
+      toolsUsed: "Slack__post_message,Slack__search_messages",
+      skillsUsed: "research",
     });
   });
 

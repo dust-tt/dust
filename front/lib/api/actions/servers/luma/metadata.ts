@@ -316,7 +316,6 @@ export const LUMA_SERVER = {
     authorization: null,
     icon: "LumaLogo",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(LUMA_TOOLS_METADATA).map((t) => ({
     name: t.name,

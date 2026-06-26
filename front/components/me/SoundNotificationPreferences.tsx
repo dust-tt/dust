@@ -10,6 +10,7 @@ import {
 import {
   Button,
   Check,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -65,32 +66,37 @@ export function useSoundNotificationPreferencesForm() {
     });
   }, [enabledMetadata, soundMetadata, form]);
 
-  const save = form.handleSubmit(async (data) => {
-    try {
-      const { dirtyFields } = form.formState;
-      if (dirtyFields.enabled) {
-        await setUserMetadataFromClient({
-          key: SOUND_NOTIFICATION_METADATA_KEYS.enabled,
-          value: String(data.enabled),
+  const save = async (): Promise<boolean> => {
+    let succeeded = false;
+    await form.handleSubmit(async (data) => {
+      try {
+        const { dirtyFields } = form.formState;
+        if (dirtyFields.enabled) {
+          await setUserMetadataFromClient({
+            key: SOUND_NOTIFICATION_METADATA_KEYS.enabled,
+            value: String(data.enabled),
+          });
+          await mutateEnabled();
+        }
+        if (dirtyFields.sound) {
+          await setUserMetadataFromClient({
+            key: SOUND_NOTIFICATION_METADATA_KEYS.sound,
+            value: data.sound,
+          });
+          await mutateSound();
+        }
+        form.reset(data);
+        succeeded = true;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Error updating sound notification preferences",
+          description: error instanceof Error ? error.message : String(error),
         });
-        await mutateEnabled();
       }
-      if (dirtyFields.sound) {
-        await setUserMetadataFromClient({
-          key: SOUND_NOTIFICATION_METADATA_KEYS.sound,
-          value: data.sound,
-        });
-        await mutateSound();
-      }
-      form.reset(data);
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Error updating sound notification preferences",
-        description: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
+    })();
+    return succeeded;
+  };
 
   return {
     control: form.control,
@@ -122,11 +128,11 @@ export function SoundNotificationPreferences({
   return (
     <div className="rounded-xl border border-border dark:border-border-night">
       <div className="flex items-center p-4">
-        <div className="flex flex-1 flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        <div className="flex flex-1 flex-col">
+          <span className="heading-sm text-foreground dark:text-foreground-night">
             Manual actions sound notification
           </span>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
             Play a sound when a manual action is required
           </span>
         </div>
@@ -150,11 +156,25 @@ export function SoundNotificationPreferences({
       <div className="border-t border-border dark:border-border-night" />
 
       <div className="flex items-center p-4">
-        <div className="flex flex-1 flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+        <div className="flex flex-1 flex-col">
+          <span
+            className={cn(
+              "heading-sm",
+              enabledField.value
+                ? "text-foreground dark:text-foreground-night"
+                : "text-faint dark:text-faint-night"
+            )}
+          >
             Customize sound notification
           </span>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <span
+            className={cn(
+              "copy-sm",
+              enabledField.value
+                ? "text-muted-foreground dark:text-muted-foreground-night"
+                : "text-faint dark:text-faint-night"
+            )}
+          >
             Choose the sound you prefer
           </span>
         </div>
@@ -166,7 +186,7 @@ export function SoundNotificationPreferences({
                 size="xs"
                 label={soundField.value}
                 isSelect
-                disabled={disabled}
+                disabled={disabled || !enabledField.value}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent mountPortal={false}>
@@ -194,7 +214,7 @@ export function SoundNotificationPreferences({
             label="Play"
             className="text-highlight-500 dark:text-highlight-500-night"
             onClick={handlePlay}
-            disabled={disabled}
+            disabled={disabled || !enabledField.value}
           />
         </div>
       </div>

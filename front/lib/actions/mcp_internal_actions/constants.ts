@@ -64,7 +64,10 @@ import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadat
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
-import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
+import {
+  SANDBOX_MCP_REQUEST_TIMEOUT_MS,
+  SANDBOX_SERVER,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
@@ -93,6 +96,7 @@ import type {
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
 import {
@@ -1038,7 +1042,9 @@ export const INTERNAL_MCP_SERVERS = {
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
-    timeoutMs: 120000, // 2 minutes for command execution
+    // Derived from the max command timeout plus a buffer so the in-container
+    // timeout returns captured output before this MCP deadline aborts the call.
+    timeoutMs: SANDBOX_MCP_REQUEST_TIMEOUT_MS,
   },
   user_mentions: {
     id: 1026,
@@ -1079,6 +1085,17 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
+    runtimeToolStakeLevelCallback: ({
+      toolName,
+      plan,
+      configuredStakeLevel,
+    }) => {
+      if (toolName !== "schedule_wakeup") {
+        return configuredStakeLevel;
+      }
+
+      return plan && isCreditPricedPlanPrefix(plan.code) ? "low" : "high";
+    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1156,12 +1173,23 @@ type IsRestrictedCallback = (params: {
   isDeepDiveDisabled: boolean;
 }) => boolean;
 
+type RuntimeToolStakeLevelCallbackParams = {
+  toolName: string;
+  plan: PlanType | null;
+  configuredStakeLevel: MCPToolStakeLevelType;
+};
+
+type RuntimeToolStakeLevelCallback = (
+  params: RuntimeToolStakeLevelCallbackParams
+) => MCPToolStakeLevelType;
+
 type InternalMCPServerEntryCommon = {
   id: number;
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
+  runtimeToolStakeLevelCallback?: RuntimeToolStakeLevelCallback;
   // Defines which arguments require per-agent approval for "medium" stake tools.
   // When a tool has "medium" stake, the user must approve the specific combination
   // of (agent, tool, argument values) before the tool can execute.
@@ -1394,6 +1422,18 @@ export function getInternalMCPServerToolStakes(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata.tools_stakes;
+}
+
+export function resolveInternalMCPServerToolStakeLevel(
+  name: InternalMCPServerNameType,
+  params: RuntimeToolStakeLevelCallbackParams
+): MCPToolStakeLevelType {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+
+  return (
+    server.runtimeToolStakeLevelCallback?.(params) ??
+    params.configuredStakeLevel
+  );
 }
 
 export function getInternalMCPServerToolDisplayLabels<

@@ -1,8 +1,8 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
-  getAgentModelDisplayName,
-  getUserDisplayName,
-} from "@app/lib/api/assistant/observability/credit_labels";
+  resolveAnalyticsAgentLabels,
+  UNKNOWN_AGENT_LABEL,
+} from "@app/lib/api/assistant/observability/agent_labels";
+import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import {
   buildCreditsScopeQuery,
   daysToInstantRange,
@@ -127,15 +127,12 @@ export async function fetchUserCreditBreakdown(
     )
   );
 
-  const [users, agents] = await Promise.all([
+  const [users, agentLabels] = await Promise.all([
     UserResource.fetchByIds(userIds),
-    agentIds.length > 0
-      ? getAgentConfigurations(auth, { agentIds, variant: "light" })
-      : Promise.resolve([]),
+    resolveAnalyticsAgentLabels(auth, agentIds),
   ]);
 
   const usersById = new Map(users.map((user) => [user.sId, user]));
-  const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
 
   const rows: UserCreditRow[] = buckets.map((bucket) => {
     const userId = String(bucket.key);
@@ -145,16 +142,13 @@ export async function fetchUserCreditBreakdown(
       bucket.top_agents?.buckets
     ).map((agentBucket) => {
       const agentId = String(agentBucket.key);
-      const agent = agentsById.get(agentId);
+      const label = agentLabels.get(agentId) ?? UNKNOWN_AGENT_LABEL;
       return {
         agentId,
-        name: agent?.name ?? "Unknown agent",
-        pictureUrl: agent?.pictureUrl ?? null,
-        modelDisplayName: getAgentModelDisplayName(agent?.model),
-        description:
-          agent && !agent.canRead
-            ? "Private agent: description unavailable"
-            : (agent?.description ?? ""),
+        name: label.name,
+        pictureUrl: label.pictureUrl,
+        modelDisplayName: label.modelDisplayName,
+        description: label.description,
       };
     });
 

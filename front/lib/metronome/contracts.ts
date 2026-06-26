@@ -22,16 +22,13 @@ import {
 } from "@app/lib/metronome/constants";
 import {
   computeTierQuantity,
-  hasMauSubscriptionInContract,
   parseMauTiers,
-  syncMauCount,
 } from "@app/lib/metronome/mau_sync";
 import {
   type CachedContract,
   resolveActiveMetronomeIds,
 } from "@app/lib/metronome/plan_type";
 import {
-  hasContractSeatSubscription,
   remapMembershipSeatTypesForContract,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
@@ -54,7 +51,6 @@ import {
   type SupportedEnterpriseReportUsage,
 } from "@app/lib/plans/usage/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
@@ -345,21 +341,13 @@ export async function provisionMetronomeContract({
       return new Err(remapResult.error);
     }
 
-    const syncQuantitiesStartMs = Date.now();
-    const syncResult = await syncContractQuantities(
+    const syncResult = await syncSeatCount({
       metronomeCustomerId,
-      metronomeContractId,
+      contractId: metronomeContractId,
       workspace,
-      alignedStart.toISOString(),
-      planCode
-    );
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        durationMs: Date.now() - syncQuantitiesStartMs,
-      },
-      "[Metronome] syncContractQuantities"
-    );
+      planCode,
+      startingAt: alignedStart.toISOString(),
+    });
     if (syncResult.isErr()) {
       return new Err(syncResult.error);
     }
@@ -464,66 +452,6 @@ export interface EnterprisePricingCents {
   tiers: StripeTierCents[];
   /** Monthly floor amount in cents (flat_amount on first tier, or unit_amount for FIXED). */
   floorCents: number;
-}
-
-export async function syncContractQuantities(
-  metronomeCustomerId: string,
-  metronomeContractId: string,
-  workspace: LightWorkspaceType,
-  startingAt: string,
-  planCode: string
-): Promise<Result<void, Error>> {
-  const contractResult = await getMetronomeContractById({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
-  if (contractResult.isErr()) {
-    return new Err(contractResult.error);
-  }
-
-  const contract = contractResult.value;
-
-  const shouldSyncSeats = await hasContractSeatSubscription(contract);
-  const shouldSyncMau = hasMauSubscriptionInContract(contract);
-
-  const syncFns: Array<() => Promise<Result<unknown, Error>>> = [
-    ...(shouldSyncSeats
-      ? [
-          () =>
-            syncSeatCount({
-              metronomeCustomerId,
-              contractId: metronomeContractId,
-              workspace,
-              planCode,
-              startingAt,
-              contract,
-            }),
-        ]
-      : []),
-    ...(shouldSyncMau
-      ? [
-          () =>
-            syncMauCount({
-              metronomeCustomerId,
-              contractId: metronomeContractId,
-              workspace,
-              startingAt,
-              contract,
-            }),
-        ]
-      : []),
-  ];
-  const results = await concurrentExecutor(syncFns, (fn) => fn(), {
-    concurrency: 2,
-  });
-
-  for (const result of results) {
-    if (result.isErr()) {
-      return new Err(result.error);
-    }
-  }
-
-  return new Ok(undefined);
 }
 
 /** Extract the MAU threshold number from a billing mode (MAU_1→1, MAU_5→5, MAU_10→10). */

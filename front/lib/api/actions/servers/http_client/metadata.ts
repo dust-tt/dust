@@ -75,7 +75,6 @@ export const HTTP_CLIENT_SERVER = {
     authorization: null,
     icon: "ActionGlobeAltIcon" as const,
     documentationUrl: null,
-    instructions: null,
     developerSecretSelection: "optional" as const,
     developerSecretSelectionDescription:
       "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",

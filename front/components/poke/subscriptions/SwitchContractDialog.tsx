@@ -3,7 +3,6 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
-import { CreditUsageConfigurationSchema } from "@app/lib/api/poke/plugins/workspaces/manage_credit_usage_configuration";
 import type { SwitchContractBodySchema } from "@app/lib/api/poke/switch_contract";
 import { clientFetch } from "@app/lib/egress/client";
 import { amountCents } from "@app/lib/metronome/amounts";
@@ -24,6 +23,7 @@ import {
 import assert from "@app/lib/utils/assert";
 import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { CreditUsageConfigurationSchema } from "@app/types/poke/credit_usage_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,

@@ -139,12 +139,14 @@ export type ContractCreditType =
 // the balance left at the transition from their expiration ledger entry, and
 // re-grants it on the successor contract (see `carryOverContractBalancesOnRenewal`).
 //
-// The field VALUE is either `CARRY_ON_RENEWAL_FOREVER_VALUE` (the entry never
-// expires and carries indefinitely) or an ISO timestamp (a finite expiry).
-// Metronome clamps a commit's live access window to the contract end when a
-// RENEWAL ends the source, so by the time the webhook runs the original expiry
-// is gone — we stamp it here so it survives. The carried grant re-stamps the
-// same value, preserving the policy across any number of renewals.
+// The field VALUE is an ISO timestamp (the entry's absolute expiry, one year
+// after its start — see `oneYearAfter`). Legacy entries may instead carry
+// `CARRY_ON_RENEWAL_FOREVER_VALUE` (never expires); the carry-over reader treats
+// any non-date value as forever. Metronome clamps a commit's live access window
+// to the contract end when a RENEWAL ends the source, so by the time the webhook
+// runs the original expiry is gone — we stamp it here so it survives. The
+// carried grant re-stamps the same value, preserving the expiry across any
+// number of renewals.
 //
 // This replaces Metronome's `rollover_fraction`: a rolled-over commit becomes a
 // "rollover" commit, and Metronome consumes rollover commits before all prepaid
@@ -158,6 +160,12 @@ export const CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY = "DUST_CARRY_ON_RENEWAL";
 export const CARRY_ON_RENEWAL_FOREVER_VALUE = "forever";
 
 export const FOREVER_ENDING_BEFORE = new Date("2999-01-01T00:00:00.000Z");
+
+export function oneYearAfter(start: Date): Date {
+  const end = new Date(start);
+  end.setUTCFullYear(end.getUTCFullYear() + 1);
+  return end;
+}
 
 // Custom field stamped on a per-user (free) seat credit, carrying the seat's
 // user sId. Metronome alerts can filter on custom fields but not on a credit's

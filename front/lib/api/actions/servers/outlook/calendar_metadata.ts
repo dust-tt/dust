@@ -362,7 +362,6 @@ export const OUTLOOK_CALENDAR_SERVER = {
     },
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
-    instructions: null,
   },
   tools: Object.values(OUTLOOK_CALENDAR_TOOLS_METADATA).map((t) => ({
     name: t.name,

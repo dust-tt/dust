@@ -145,9 +145,9 @@ describe("createMetronomeCredit", () => {
 
   it("on ConflictError, looks up the existing credit and returns its id", async () => {
     mockCreate.mockRejectedValueOnce(new MockConflictError("conflict"));
-    mockList.mockResolvedValue({
-      data: [{ id: "existing-id", uniqueness_key: BASE_PARAMS.idempotencyKey }],
-    });
+    mockList.mockReturnValue([
+      { id: "existing-id", uniqueness_key: BASE_PARAMS.idempotencyKey },
+    ]);
 
     const result = await createMetronomeCredit(BASE_PARAMS);
 
@@ -156,7 +156,7 @@ describe("createMetronomeCredit", () => {
 
   it("on ConflictError with no matching credit in list, returns Ok(null)", async () => {
     mockCreate.mockRejectedValueOnce(new MockConflictError("conflict"));
-    mockList.mockResolvedValue({ data: [] });
+    mockList.mockReturnValue([]);
 
     const result = await createMetronomeCredit(BASE_PARAMS);
 

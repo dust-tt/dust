@@ -1,6 +1,7 @@
 export * from "./add_user_to_workos_organization";
 export * from "./apply_coupon";
 export * from "./apply_group_roles";
+export * from "./batch_update_seats";
 export * from "./buy_programmatic_usage_credits";
 export * from "./check_message_usage";
 export * from "./check_seat_count";

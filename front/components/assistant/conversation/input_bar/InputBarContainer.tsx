@@ -1315,7 +1315,7 @@ const InputBarContainer = ({
     "inline-block w-full",
     "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "px-3 sm:pl-4 pt-3 sm:pt-3.5"
+    "px-3 md:pl-4 pt-3 md:pt-3.5"
   );
 
   const isRecording = activeVoiceService.status === "recording";
@@ -1378,7 +1378,7 @@ const InputBarContainer = ({
           className={cn(
             INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
             INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
-            "relative min-w-0 w-full gap-1 px-1 sm:pt-0"
+            "relative min-w-0 w-full gap-1 px-1 md:pt-0"
           )}
         >
           {!isVoiceActive && (
@@ -1388,7 +1388,7 @@ const InputBarContainer = ({
                 INPUT_BAR_COMPACT_PREVIEW_CLASSES,
                 compactPreviewText
                   ? "text-foreground dark:text-foreground-night"
-                  : "text-faint dark:text-faint-night"
+                  : "text-muted-foreground dark:text-muted-foreground-night"
               )}
             >
               {compactPreviewText || compactDisplayPlaceholder}
@@ -1410,7 +1410,7 @@ const InputBarContainer = ({
                   elapsedSeconds={activeVoiceService.elapsedSeconds}
                   onRecordStart={activeVoiceService.startRecording}
                   onRecordStop={activeVoiceService.stopRecording}
-                  size="xs"
+                  size="sm"
                   compact
                   showStopLabel={false}
                   disabled={disableInput}
@@ -1422,7 +1422,7 @@ const InputBarContainer = ({
       <div
         id="InputBarContainer"
         className={cn(
-          "relative flex flex-1 cursor-text flex-row transition-opacity duration-200 sm:pt-0",
+          "relative flex flex-1 cursor-text flex-row transition-opacity duration-200 md:pt-0",
           isCompact &&
             "pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
         )}
@@ -1444,7 +1444,7 @@ const InputBarContainer = ({
                 contentEditableClasses,
                 "scrollbar-hide",
                 "overflow-y-auto",
-                "max-h-[40vh] min-h-14 sm:min-h-16"
+                "max-h-[40vh] min-h-14 md:min-h-16"
               )}
             />
           </div>
@@ -1459,7 +1459,7 @@ const InputBarContainer = ({
             )}
           </BubbleMenu>
           <div
-            className={cn("flex w-full flex-col", "py-1.5 sm:pb-2")}
+            className={cn("flex w-full flex-col", "py-1.5 md:pb-2")}
             style={{
               transition: `padding ${COLLAPSE_TRANSITION}`,
             }}

@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
@@ -38,10 +39,7 @@ export class SandboxFactory {
       );
     }
 
-    const result = await SandboxResource.fetchByConversation(
-      auth,
-      conversation
-    );
+    const result = await ConversationResource.fetchSandbox(auth, conversation);
     if (!result) {
       throw new Error("Sandbox not found after creation");
     }

@@ -133,7 +133,6 @@ export const SKILL_AUTHORING_SERVER = {
     authorization: null,
     icon: "ActionListCheckIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(SKILL_AUTHORING_TOOLS_METADATA).map((t) => ({
     name: t.name,

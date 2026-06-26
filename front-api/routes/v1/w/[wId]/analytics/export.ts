@@ -28,7 +28,7 @@
  *           - "skills": Skill metadata catalog.
  *           - "skill_usage": Skill executions and unique users over time.
  *           - "tool_usage": Tool executions and unique users over time.
- *           - "messages": Detailed message-level logs.
+ *           - "messages": Detailed message-level logs, including comma-separated lists of tools (as "server__tool") and skills used per message.
  *           - "feedback": Detailed message-level feedback (thumbs, content, conversation URL).
  *         schema:
  *           type: string

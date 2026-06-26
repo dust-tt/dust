@@ -103,7 +103,6 @@ export const AGENT_MEMORY_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(AGENT_MEMORY_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -34,7 +34,7 @@ export const WakeUpBanner = ({
     <ContentMessageInline
       icon={Clock}
       variant="outline"
-      className="mb-5 flex max-h-dvh w-full bg-background dark:bg-background-night"
+      className="mb-3 flex max-h-dvh w-full bg-background dark:bg-background-night"
     >
       {/* ContentMessageInline variant="outline" renders all content children
           in text-muted-foreground by default; override the reason to the

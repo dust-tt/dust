@@ -80,7 +80,6 @@ export const JIT_TESTING_SERVER = {
     icon: "ActionEmotionLaughIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(JIT_TESTING_TOOLS_METADATA).map((t) => ({
     name: t.name,

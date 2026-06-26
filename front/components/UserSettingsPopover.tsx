@@ -12,6 +12,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
@@ -101,11 +102,11 @@ function SectionContent({
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-8">
         <header className="flex flex-col gap-1">
-          <h2 className="min-h-9 text-2xl font-semibold leading-9 text-foreground dark:text-foreground-night">
+          <h2 className="heading-2xl text-foreground dark:text-foreground-night">
             {title}
           </h2>
           {description && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
               {description}
             </p>
           )}
@@ -569,6 +570,7 @@ function CustomizationSection() {
 function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const { user } = useUser();
   const { hasFeature } = useFeatureFlags();
+  const sendNotification = useSendNotification();
   const notificationPreferencesRef =
     useRef<NotificationPreferencesRefProps>(null);
   const sound = useSoundNotificationPreferencesForm();
@@ -579,11 +581,17 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
-      await Promise.all([
+      const [soundSaved, notifResult] = await Promise.all([
         sound.save(),
         notificationPreferencesRef.current?.savePreferences(),
       ]);
       setNotifDirty(notificationPreferencesRef.current?.isDirty() ?? false);
+      if (soundSaved && notifResult !== false) {
+        sendNotification({
+          type: "success",
+          title: "Notification preferences saved",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -613,7 +621,7 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
         {hasFeature("sound_notification") && (
           <SoundNotificationPreferences
             control={sound.control}
-            disabled={sound.isLoading || isSubmitting}
+            disabled={sound.isLoading}
           />
         )}
       </SectionContent>

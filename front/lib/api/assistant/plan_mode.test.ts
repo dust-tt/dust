@@ -1,5 +1,6 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import {
+  closeActivePlan,
   closePlan,
   getActivePlanContent,
   writePlanContent,
@@ -12,6 +13,14 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// withPlanModeLock acquires a Redis lock, which never resolves against the test Redis. Bypass it so
+// the lock-wrapped helpers (closeActivePlan) run their body directly, keeping the module's other
+// exports intact.
+vi.mock("@app/lib/lock", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/lock")>()),
+  executeWithLock: (_key: string, fn: () => Promise<unknown>) => fn(),
+}));
 
 // The GCS mock records `file.save(...)` (writes) and gates reads on `exists`, but it does not
 // implement bucket listing/copy or stream reads. So we assert on what was written, on the
@@ -121,5 +130,18 @@ describe("plan_mode", () => {
       src: `conversation-${conversation.sId}/plan.md`,
       dest: `conversation-${conversation.sId}/archived_plans/plan-4.md`,
     });
+  });
+
+  it("closeActivePlan reports closed=false (idempotent) when there is no active plan", async () => {
+    const { auth, conversation } = await setup();
+    vi.spyOn(DustFileSystem.prototype, "readBuffer").mockResolvedValue(
+      new Ok(null)
+    );
+
+    const res = await closeActivePlan(auth, conversation);
+    expect(res.isOk()).toBe(true);
+    if (res.isOk()) {
+      expect(res.value.closed).toBe(false);
+    }
   });
 });

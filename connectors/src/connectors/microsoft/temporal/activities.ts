@@ -622,6 +622,32 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
   }
 }
 
+// A 404 returned while listing the children of a drive/folder is ambiguous: the
+// node may have been genuinely deleted upstream, or Microsoft Graph may have
+// returned a transient itemNotFound on the /children enumeration (a documented,
+// intermittent behavior). This confirms which case we are in by doing a
+// lightweight direct GET on the node itself: returns true if it still exists,
+// false if it is genuinely gone. Any other error is rethrown.
+async function microsoftNodeStillExists(
+  logger: LoggerInterface,
+  client: Client,
+  internalId: string
+): Promise<boolean> {
+  try {
+    await getItem(
+      logger,
+      client,
+      typeAndPathFromInternalId(internalId).itemAPIPath + "?$select=id"
+    );
+    return true;
+  } catch (error) {
+    if (isItemNotFoundError(error)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
 /**
  * Given a drive or folder, sync files under it and returns a list of folders to sync
  */
@@ -849,19 +875,51 @@ export async function syncFiles({
         nextLink: undefined,
       };
     }
-    // A 404 while listing children means the synced drive/folder was deleted
-    // upstream ("404 FILE NOT FOUND"), or the hosting SharePoint site is gone
-    // ("Target '<tenant>.sharepoint.com' is not found."). The resource can no
-    // longer be synced, so skip it instead of throwing, which would otherwise
-    // wedge the workflow in an infinite retry loop.
+    // The hosting SharePoint site is gone ("Target '<tenant>.sharepoint.com' is
+    // not found."): the resource can no longer be synced, so skip it instead of
+    // throwing, which would otherwise wedge the workflow in an infinite retry
+    // loop.
     // The childrenListed gate keeps this catch at the parent-listing boundary:
     // a child file disappearing later during syncOneFile is local to that file
     // and should not short-circuit the whole page.
-    if (
-      !childrenListed &&
-      ((e instanceof GraphError && e.statusCode === 404) ||
-        isSiteNotFoundError(e))
-    ) {
+    if (!childrenListed && isSiteNotFoundError(e)) {
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+          error: e.message,
+        },
+        "SharePoint site not found, skipping syncFiles"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+
+    // A bare 404 while listing children is ambiguous: the drive/folder may have
+    // been deleted upstream, or Microsoft Graph may have returned a transient
+    // itemNotFound on the /children enumeration. Skipping unconditionally marks
+    // the node as seen and silently drops its whole subtree, with no recovery on
+    // re-sync. So we confirm the parent is genuinely gone before skipping: if it
+    // still exists, the 404 was transient and we rethrow to let Temporal retry
+    // rather than lose the subtree.
+    if (!childrenListed && e instanceof GraphError && e.statusCode === 404) {
+      if (await microsoftNodeStillExists(logger, client, parent.internalId)) {
+        logger.warn(
+          {
+            connectorId,
+            dataSourceId: dataSourceConfig.dataSourceId,
+            parent,
+            error: e.message,
+          },
+          "Transient 404 while listing children but parent still exists, retrying syncFiles"
+        );
+        throw e;
+      }
+
       logger.warn(
         {
           connectorId,

@@ -217,7 +217,7 @@ export async function exportTable({
     case "tool_usage":
       return exportToolUsage({ startDate, endDate, timezone, owner });
     case "messages":
-      return exportMessages({ startDate, endDate, timezone, owner });
+      return exportMessages({ auth, startDate, endDate, timezone, owner });
     case "feedback":
       return exportFeedback({ startDate, endDate, timezone, owner });
     default:
@@ -617,17 +617,20 @@ async function exportToolUsage({
 }
 
 async function exportMessages({
+  auth,
   startDate,
   endDate,
   timezone,
   owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
   const result = await fetchMessageExportRows({
+    auth,
     owner,
     startDate,
     endDate,

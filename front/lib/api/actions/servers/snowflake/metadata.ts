@@ -130,7 +130,6 @@ export const SNOWFLAKE_SERVER = {
     },
     icon: "SnowflakeLogo",
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
-    instructions: null,
   },
   tools: Object.values(SNOWFLAKE_TOOLS_METADATA).map((t) => ({
     name: t.name,

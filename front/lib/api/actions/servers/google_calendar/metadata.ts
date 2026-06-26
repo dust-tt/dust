@@ -308,7 +308,6 @@ export const GOOGLE_CALENDAR_SERVER = {
     },
     icon: "GcalLogo",
     documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-    instructions: null,
   },
   tools: Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => ({
     name: t.name,

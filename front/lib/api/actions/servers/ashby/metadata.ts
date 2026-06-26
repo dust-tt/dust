@@ -247,7 +247,6 @@ export const ASHBY_SERVER = {
     authorization: null,
     icon: "AshbyLogo",
     documentationUrl: "https://docs.dust.tt/docs/ashby-mcp",
-    instructions: null,
   },
   tools: Object.values(ASHBY_TOOLS_METADATA).map((t) => ({
     name: t.name,

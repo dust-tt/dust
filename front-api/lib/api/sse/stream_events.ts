@@ -24,9 +24,10 @@ type StreamEventsParams<TIn> = {
   // Returning `null` skips the event without writing anything. May be
   // sync or async — the helper always awaits.
   transform?: (event: TIn) => unknown | null | Promise<unknown | null>;
-  // Only MCP requests opts in. Conversation/message events rely on EOF
-  // alone — the SDK already filters "done" before JSON-parsing, so no
-  // consumer treats it as a terminator.
+  // When true, writes `data: done` after the iterator completes. Clients treat
+  // this as an immediate reconnect signal (history pagination, idle timeout).
+  // MCP requests also opt in; conversation/message routes use it for the same
+  // pagination handoff after Redis history replay.
   writeDoneSentinel?: boolean;
 };
 

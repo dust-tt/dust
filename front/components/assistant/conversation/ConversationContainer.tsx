@@ -273,7 +273,7 @@ export function ConversationContainerVirtuoso({
             className={classNames(
               "sticky bottom-0 z-20 flex max-h-dvh w-full",
               "pb-2",
-              "sm:w-full sm:max-w-conversation sm:pb-4"
+              "md:w-full md:max-w-conversation md:pb-4"
             )}
           >
             <InputBar

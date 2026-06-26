@@ -14,20 +14,21 @@ import {
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
-  CARRY_ON_RENEWAL_FOREVER_VALUE,
   CURRENCY_TO_CREDIT_TYPE_ID,
-  FOREVER_ENDING_BEFORE,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
   getProductSeatSubscriptionCommitId,
   HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
+  oneYearAfter,
 } from "@app/lib/metronome/constants";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
-  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
-import { remapMembershipSeatTypesForContract } from "@app/lib/metronome/seats";
+import {
+  remapMembershipSeatTypesForContract,
+  syncSeatCount,
+} from "@app/lib/metronome/seats";
 import {
   isPaygEligibleTier,
   type MetronomePackageTier,
@@ -723,6 +724,9 @@ async function stepContractEdits({
       alignedStart,
       paymentSchedule: body.initialCredits.paymentSchedule,
     });
+    const initialCreditsEndingBefore = floorToHourISO(
+      oneYearAfter(alignedStart)
+    );
     addCommits.push({
       product_id: getProductPrepaidCommitId(),
       type: "PREPAID",
@@ -730,7 +734,7 @@ async function stepContractEdits({
       priority: AWU_PRIORITY_PURCHASED_COMMIT,
       applicable_product_tags: ["usage"],
       custom_fields: {
-        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: CARRY_ON_RENEWAL_FOREVER_VALUE,
+        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: initialCreditsEndingBefore,
       },
       access_schedule: {
         credit_type_id: getCreditTypeAwuId(),
@@ -738,7 +742,7 @@ async function stepContractEdits({
           {
             amount: body.initialCredits.amountCredits,
             starting_at: floorToHourISO(alignedStart),
-            ending_before: floorToHourISO(FOREVER_ENDING_BEFORE),
+            ending_before: initialCreditsEndingBefore,
           },
         ],
       },
@@ -979,13 +983,13 @@ async function stepSeatSync({
   alignedStart,
   body,
 }: PostProvisionCtx): Promise<string | null> {
-  const result = await syncContractQuantities(
+  const result = await syncSeatCount({
     metronomeCustomerId,
-    metronomeContractId,
-    ownerLight,
-    alignedStart.toISOString(),
-    body.planCode
-  );
+    contractId: metronomeContractId,
+    workspace: ownerLight,
+    startingAt: alignedStart.toISOString(),
+    planCode: body.planCode,
+  });
   if (result.isErr()) {
     return `seat_sync: ${result.error.message}`;
   }
