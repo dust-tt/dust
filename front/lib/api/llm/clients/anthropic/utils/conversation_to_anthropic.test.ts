@@ -1,9 +1,13 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import {
+  includesToolSearchTool,
+  TOOL_SEARCH_TOOL,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { describe, expect, it } from "vitest";
 
 import { toTool, toToolsParam } from "./conversation_to_anthropic";
 
-const TOOL_SEARCH_TYPE = "tool_search_tool_bm25_20251119";
+const TOOL_SEARCH_TYPE = TOOL_SEARCH_TOOL.type;
 
 const hotSpec: AgentActionSpecification = {
   name: "hot",
@@ -80,6 +84,29 @@ describe("toToolsParam", () => {
     // ...but the force-called tool was un-deferred.
     const forced = tools.find((t) => t.name === "cold");
     expect(forced && "defer_loading" in forced && forced.defer_loading).toBe(
+      false
+    );
+  });
+});
+
+// The system-prompt hint is gated on whether the search tool actually ends up in
+// the request, derived from the converted tools array. These tests pin that the
+// predicate agrees with toToolsParam, including the force-call edge case.
+describe("includesToolSearchTool", () => {
+  it("is false when nothing is deferred", () => {
+    expect(includesToolSearchTool(toToolsParam([hotSpec], undefined))).toBe(
+      false
+    );
+  });
+
+  it("is true when a deferred tool prepends the search tool", () => {
+    expect(
+      includesToolSearchTool(toToolsParam([hotSpec, coldSpec], undefined))
+    ).toBe(true);
+  });
+
+  it("is false when the only deferred tool is force-called", () => {
+    expect(includesToolSearchTool(toToolsParam([coldSpec], "cold"))).toBe(
       false
     );
   });

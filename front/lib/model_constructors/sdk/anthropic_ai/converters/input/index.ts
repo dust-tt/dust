@@ -7,6 +7,10 @@ import type {
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
+  includesToolSearchTool,
+  TOOL_SEARCH_INSTRUCTION,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
+import {
   assistantReasoningMessageToThinkingBlocks,
   assistantTextMessageToTextBlock,
   assistantToolCallRequestToToolUseBlock,
@@ -82,13 +86,21 @@ export function WithAnthropicAIInputConverter<
           : {}),
       };
 
+      // Build the tools first so the prompt reflects what is actually sent: the
+      // tool search instruction is appended only when the search tool is in the
+      // request, as a trailing block outside the cached system prefix.
+      const anthropicTools = toolSpecsToAnthropicAITools(tools, { forceTool });
+      const system = this.systemMessagesToSystemParam(conversation.system);
+
       return {
         model: this.modelIdToApiModelId(this.constructor.modelId),
         max_tokens: this.constructor.maxOutputTokens,
         messages: await this.conversationToMessages(conversation),
-        system: this.systemMessagesToSystemParam(conversation.system),
+        system: includesToolSearchTool(anthropicTools)
+          ? [...system, { type: "text", text: TOOL_SEARCH_INSTRUCTION }]
+          : system,
         thinking: thinkingConfig.thinking,
-        tools: toolSpecsToAnthropicAITools(tools, { forceTool }),
+        tools: anthropicTools,
         tool_choice: forceToolNameToToolChoice(tools, forceTool),
         temperature,
         ...(Object.keys(outputConfig).length > 0
