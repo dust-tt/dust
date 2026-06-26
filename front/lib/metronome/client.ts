@@ -2731,7 +2731,12 @@ export async function findPerUserCustomerCreditSegment({
   coveringDate?: Date;
 }): Promise<
   Result<
-    { creditId: string; segmentId: string; startingBalanceAwu: number } | null,
+    {
+      creditId: string;
+      segmentId: string;
+      segmentAmountAwu: number;
+      startingBalanceAwu: number;
+    } | null,
     Error
   >
 > {
@@ -2768,6 +2773,7 @@ export async function findPerUserCustomerCreditSegment({
         return new Ok({
           creditId: entry.id,
           segmentId: segment.id,
+          segmentAmountAwu: segment.amount,
           startingBalanceAwu: scheduleItems.reduce(
             (sum, item) => sum + item.amount,
             0
@@ -2787,45 +2793,43 @@ export async function findPerUserCustomerCreditSegment({
 }
 
 /**
- * Post a manual ledger entry against a customer-level credit (no contract), such
- * as a free-seat per-user credit. A positive amount tops the balance up, a
- * negative one draws it down. This is the customer-level counterpart of
- * `adjustSeatCreditBalances` (which targets seat-managed contract credit pools):
- * `contract_id` is left blank so Metronome updates the customer-level balance,
- * and the `reason` is recorded on the credit's ledger. `timestamp` defaults to
- * the start of the segment.
+ * Edit the granted amount of a customer credit's access-schedule segment via the
+ * v2 "edit a credit" endpoint. Unlike a manual ledger entry (which only moves the
+ * running balance and leaves the credit's granted total untouched), this rewrites
+ * the segment amount so the credit's *total* changes and the balance recomputes
+ * against it. `editCredit` takes no `contract_id`, so it works on contract-less
+ * customer credits such as free-seat per-user credits. `amount` is the new
+ * absolute segment amount.
  */
-export async function adjustCustomerCreditBalance({
+export async function editCustomerCreditSegmentAmount({
   metronomeCustomerId,
   creditId,
   segmentId,
   amount,
-  reason,
 }: {
   metronomeCustomerId: string;
   creditId: string;
   segmentId: string;
   amount: number;
-  reason: string;
 }): Promise<Result<void, Error>> {
   try {
-    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
-      id: creditId,
+    await getMetronomeClient().v2.contracts.editCredit({
+      credit_id: creditId,
       customer_id: metronomeCustomerId,
-      segment_id: segmentId,
-      amount,
-      reason,
+      access_schedule: {
+        update_schedule_items: [{ id: segmentId, amount }],
+      },
     });
     logger.info(
       { metronomeCustomerId, creditId, segmentId, amount },
-      "[Metronome] Customer credit manual ledger entry applied"
+      "[Metronome] Customer credit segment amount edited"
     );
     return new Ok(undefined);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
       { error, metronomeCustomerId, creditId, segmentId, amount },
-      "[Metronome] Failed to apply customer credit manual ledger entry"
+      "[Metronome] Failed to edit customer credit segment amount"
     );
     return new Err(error);
   }

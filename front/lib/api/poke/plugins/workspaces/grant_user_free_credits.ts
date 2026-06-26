@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { upsertPerUserCreditBalanceAlerts } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import {
-  adjustCustomerCreditBalance,
+  editCustomerCreditSegmentAmount,
   findPerUserCustomerCreditSegment,
 } from "@app/lib/metronome/client";
 import {
@@ -38,8 +38,8 @@ export const grantUserFreeCreditsPlugin = createPlugin({
     name: "Grant Free Credits to Member",
     description:
       "Grant additional free AWU credits to a specific workspace member on a " +
-      "free seat. Tops up the member's existing per-user free-seat credit via a " +
-      "Metronome ledger entry (no invoice, no second credit) and refreshes their " +
+      "free seat. Raises the granted amount of the member's existing per-user " +
+      "free-seat credit (no invoice, no second credit) and refreshes their " +
       "balance alerts.",
     resourceTypes: ["workspaces"],
     args: {
@@ -120,8 +120,9 @@ export const grantUserFreeCreditsPlugin = createPlugin({
 
     // The free-seat per-user credit is keyed by the free-prefixed Metronome user
     // id (usage for free-seat members is emitted under "free-<sId>"). A member
-    // holds exactly one such credit; we top it up with a manual ledger entry
-    // rather than creating a second credit.
+    // holds exactly one such credit; we raise its granted amount by editing the
+    // access-schedule segment (not a ledger entry), so the credit's *total* — and
+    // every display derived from it — reflects the new allowance.
     const metronomeUserId = toFreeMetronomeUserId(userId);
 
     const segmentResult = await findPerUserCustomerCreditSegment({
@@ -140,30 +141,30 @@ export const grantUserFreeCreditsPlugin = createPlugin({
         )
       );
     }
-    const { creditId, segmentId, startingBalanceAwu } = segmentResult.value;
+    const { creditId, segmentId, segmentAmountAwu, startingBalanceAwu } =
+      segmentResult.value;
 
-    const adjustResult = await adjustCustomerCreditBalance({
+    const newAllowanceAwu = startingBalanceAwu + amountCredits;
+
+    const editResult = await editCustomerCreditSegmentAmount({
       metronomeCustomerId,
       creditId,
       segmentId,
-      amount: amountCredits,
-      reason: `Free credits granted by Dust representative (poke): +${amountCredits} AWU`,
+      amount: segmentAmountAwu + amountCredits,
     });
-    if (adjustResult.isErr()) {
+    if (editResult.isErr()) {
       logger.error(
         {
           workspaceId: workspace.sId,
           userId,
           creditId,
           amountCredits,
-          error: adjustResult.error.message,
+          error: editResult.error.message,
         },
         "[Poke Plugin] Failed to grant free credits to member"
       );
-      return new Err(adjustResult.error);
+      return new Err(editResult.error);
     }
-
-    const newAllowanceAwu = startingBalanceAwu + amountCredits;
 
     // Best-effort: refresh the per-user balance alerts so the low-balance
     // threshold tracks the new total allowance. A failure here does not undo the

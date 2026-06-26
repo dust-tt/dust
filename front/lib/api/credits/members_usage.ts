@@ -426,32 +426,40 @@ async function fetchSeatDataForMembersTable({
   }
 }
 
-// Live per-seat AWU balance remaining, keyed by userId. Degrades to an empty
-// map on any read failure so the members table still renders (the column just
-// shows "-"). Mirrors how the seat-balance alerts read the same source.
+// Live per-seat AWU balance remaining (`balanceByUserId`), plus, for free seats,
+// the granted total of the per-user free-seat credit (`freeStartingByUserId`).
+// Free-seat allowances are not a fixed constant — a Dust rep can raise a single
+// member's grant (see the `grant-user-free-credits` poke plugin) — so the table
+// reads each free member's real allowance from their credit rather than the
+// seat-type default. Degrades to empty maps on any read failure so the table
+// still renders (the column just shows "-").
 async function fetchSeatBalancesForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
 }: {
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
-}): Promise<Map<string, number>> {
+}): Promise<{
+  balanceByUserId: Map<string, number>;
+  freeStartingByUserId: Map<string, number>;
+}> {
   if (!metronomeCustomerId || !metronomeContractId) {
-    return new Map();
+    return { balanceByUserId: new Map(), freeStartingByUserId: new Map() };
   }
   const result = await listMetronomeSeatBalances({
     metronomeCustomerId,
     metronomeContractId,
   });
+  const balanceByUserId = new Map<string, number>();
+  const freeStartingByUserId = new Map<string, number>();
   if (result.isErr()) {
     logger.warn(
       { err: result.error, metronomeCustomerId },
       "[MembersUsage] Failed to fetch seat balances, degrading to empty map"
     );
-    return new Map();
+    return { balanceByUserId, freeStartingByUserId };
   }
   const awuCreditTypeId = getCreditTypeAwuId();
-  const balanceByUserId = new Map<string, number>();
   for (const seat of result.value) {
     const awu = seat.balances.find((b) => b.credit_type_id === awuCreditTypeId);
     if (awu) {
@@ -463,17 +471,22 @@ async function fetchSeatBalancesForMembersTable({
   // they're absent from `listMetronomeSeatBalances`. Fill their remaining
   // balance in from the per-user credits — but only when the user has no seat
   // balance: a user who switched free → pro/max still has a leftover free
-  // credit, and it must not overwrite their (real) pro/max seat balance.
-  // Degrades silently on read failure.
+  // credit, and it must not overwrite their (real) pro/max seat balance. Also
+  // surface each free-seat credit's granted total so the table can show the
+  // member's real allowance. Degrades silently on read failure.
   const perUserCreditBalances = await listCustomerPerUserCreditBalances({
     metronomeCustomerId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (perUserCreditBalances.isOk()) {
-    for (const [userId, { balanceAwu }] of perUserCreditBalances.value) {
+    for (const [
+      userId,
+      { balanceAwu, startingBalanceAwu },
+    ] of perUserCreditBalances.value) {
       if (!balanceByUserId.has(userId)) {
         balanceByUserId.set(userId, balanceAwu);
       }
+      freeStartingByUserId.set(userId, startingBalanceAwu);
     }
   } else {
     logger.warn(
@@ -482,7 +495,7 @@ async function fetchSeatBalancesForMembersTable({
     );
   }
 
-  return balanceByUserId;
+  return { balanceByUserId, freeStartingByUserId };
 }
 
 async function fetchPerUserCapAlertIdsUncached({
@@ -1107,7 +1120,7 @@ export async function getMembersUsage({
   const [
     perUserTotalConsumedCredits,
     seatDataByUserId,
-    seatBalanceByUserId,
+    { balanceByUserId: seatBalanceByUserId, freeStartingByUserId },
     perUserSpendLimits,
     freeCreditAlertIdsByUserId,
   ] = await Promise.all([
@@ -1125,7 +1138,10 @@ export async function getMembersUsage({
           metronomeCustomerId: metronomeCustomerId ?? null,
           metronomeContractId,
         })
-      : Promise.resolve(new Map<string, number>()),
+      : Promise.resolve({
+          balanceByUserId: new Map<string, number>(),
+          freeStartingByUserId: new Map<string, number>(),
+        }),
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
@@ -1190,12 +1206,23 @@ export async function getMembersUsage({
     const awuAllocation = seatData?.awuAllocation ?? 0;
     const scheduled = scheduledByUserId.get(membership.userId);
 
+    // For free seats, the real allowance is the granted total of the member's
+    // per-user free-seat credit (a Dust rep can raise it via the
+    // `grant-user-free-credits` poke plugin), not the fixed seat-type constant.
+    // Only available when seat balances were fetched (poke); elsewhere fall back
+    // to the seat-type allocation.
+    const freeStartingBalanceAwu =
+      membership.seatType === "free"
+        ? (freeStartingByUserId.get(userId) ?? null)
+        : null;
+    const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
+
     // Credits drain seat-allowance-first, then the workspace pool, so the
     // allowance covers up to the user's seat allocation and the remainder
     // overflows to the pool.
     const consumedFromAllowanceAwuCredits = Math.min(
       totalConsumedCredits,
-      awuAllocation
+      effectiveAllocationAwu
     );
     const consumedFromPoolAwuCredits =
       totalConsumedCredits - consumedFromAllowanceAwuCredits;
@@ -1221,10 +1248,11 @@ export async function getMembersUsage({
         : null;
     // Free seats have no pool, so their total spend cap is just the seat
     // allowance (allowance + 0 pool) — the cap includes the allowance like every
-    // other seat, it just has no pool headroom on top.
+    // other seat, it just has no pool headroom on top. Use the member's real
+    // free-credit total (which a rep may have raised) rather than the constant.
     const effectiveDefaultAwuCredits =
       membership.seatType === "free"
-        ? FREE_SEAT_LIFETIME_AWU_CREDITS
+        ? effectiveAllocationAwu
         : defaultAwuCredits;
 
     const spendLimitSource = resolveEffectiveSpendLimitSource({
@@ -1261,9 +1289,10 @@ export async function getMembersUsage({
         email: u.email ?? null,
         image: u.imageUrl ?? null,
         seatType: membership.seatType ?? null,
-        memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
+        memberUsageLimit:
+          effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
         seatBalanceAwu:
-          awuAllocation > 0
+          effectiveAllocationAwu > 0
             ? (seatBalanceByUserId.get(userId) ??
               (membership.seatType === "free" ? 0 : null))
             : null,
