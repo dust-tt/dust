@@ -41,7 +41,10 @@ import type {
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isSandboxFunctionContentType,
+} from "@app/types/files";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
@@ -530,7 +533,8 @@ app.post(
       message: newMessage ?? undefined,
       contentFragment:
         !newContentFragment ||
-        isInteractiveContentType(newContentFragment.contentType)
+        isInteractiveContentType(newContentFragment.contentType) ||
+        isSandboxFunctionContentType(newContentFragment.contentType)
           ? undefined
           : {
               ...newContentFragment,
