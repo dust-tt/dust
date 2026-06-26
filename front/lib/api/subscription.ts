@@ -8,7 +8,6 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
-import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { BUSINESS_USD_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { PlanModel } from "@app/lib/models/plan";
 import {
@@ -17,7 +16,6 @@ import {
 } from "@app/lib/plans/billing_currency";
 import { CREDIT_PRICED_FREE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -118,23 +116,6 @@ export async function activateCreditPricedFreePlan(
       `Failed to provision Metronome contract: ${contractResult.error.message}`
     );
   }
-  const { metronomeContractId } = contractResult.value;
-
-  const subscriptionResult =
-    await SubscriptionResource.createSubscriptionFromCheckout({
-      workspaceModelId: owner.id,
-      plan,
-      metronomeContractId,
-      now,
-    });
-  if (subscriptionResult.isErr()) {
-    throw new Error(
-      `Failed to create subscription: ${subscriptionResult.error.message}`
-    );
-  }
-
-  await invalidateContractCache(owner.sId);
-  await restoreWorkspaceAfterSubscription(auth);
 }
 
 export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {

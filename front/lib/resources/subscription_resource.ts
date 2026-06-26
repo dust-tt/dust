@@ -2,7 +2,6 @@ import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
@@ -185,61 +184,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       subscription.get(),
       plan
     );
-  }
-
-  static async createSubscriptionFromCheckout({
-    workspaceModelId,
-    plan,
-    metronomeContractId,
-    now,
-  }: {
-    workspaceModelId: ModelId;
-    plan: PlanModel;
-    metronomeContractId: string;
-    now: Date;
-  }): Promise<Result<void, DustError>> {
-    return withTransaction(async (t) => {
-      const activeSubscription =
-        await SubscriptionResource.fetchActiveByWorkspaceModelId(
-          workspaceModelId,
-          t
-        );
-
-      if (activeSubscription?.planId === plan.id) {
-        return new Err(
-          new DustError(
-            "subscription_already_exists",
-            `Active subscription already exists for plan ${plan.code}.`
-          )
-        );
-      }
-
-      if (activeSubscription?.isBilled) {
-        return new Err(
-          new DustError(
-            "subscription_already_exists",
-            "Active paid subscription already exists."
-          )
-        );
-      }
-
-      await activeSubscription?.markAsEnded("ended", t);
-      await SubscriptionResource.makeNew(
-        {
-          sId: generateRandomModelSId(),
-          workspaceId: workspaceModelId,
-          planId: plan.id,
-          status: "active",
-          trialing: false,
-          startDate: now,
-          metronomeContractId,
-        },
-        renderPlanFromModel({ plan }),
-        t
-      );
-
-      return new Ok(undefined);
-    });
   }
 
   private static readonly subscriptionCacheKeyResolver = (
