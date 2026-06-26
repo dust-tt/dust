@@ -195,11 +195,20 @@ def test_extent_capped_to_max_growth():
     assert ext[3] <= round(shape.height * G.EXTENT_MAX_GROWTH) + 1  # +1: rounding
 
 
-def test_extent_none_on_minor_overflow():
-    # one line over capacity is within EXTENT_OVERFLOW_SLACK (a wrap-estimate
-    # artifact, not real overflow) -> not grown.
-    shape = FakeTextShape(1.0, 1.5, 4.0, 1.4, ["alpha", "bravo", "charlie"])
-    assert G._text_extent_box(shape, 24.0) is None
+def test_extent_grows_one_line_title_overflow():
+    # regression: a single-paragraph title that wraps from one line to two in a
+    # one-line box (a long center title over a subtitle just below) is a real
+    # overflow and must grow down — EXTENT_OVERFLOW_SLACK must not suppress a
+    # one-line overage. Mirrors the deck case "Work doesn't just get done. It
+    # gets rewired." in an 8.0x0.8in, 40pt box.
+    shape = FakeTextShape(
+        1.1, 2.2, 8.0, 0.8, ["Work doesn't just get done. It gets rewired."]
+    )
+    ext = G._text_extent_box(shape, 40.0)
+    assert ext is not None
+    _, top, _, h = ext
+    assert top == shape.top  # top anchor: grows down only
+    assert h > shape.height  # genuinely larger, so the overlap with #142 surfaces
 
 
 if __name__ == "__main__":

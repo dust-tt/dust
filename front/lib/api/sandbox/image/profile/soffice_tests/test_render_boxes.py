@@ -100,6 +100,27 @@ def test_rects_overlap():
     assert not R._rects_overlap((0, 0, 10, 10), (11, 0, 20, 10))
 
 
+def test_suppress_as_layering_only_for_declared_overlap():
+    # boxes are (left, top, width, height) EMU; 10 x 5.62in slide (the dust deck)
+    W, H = int(10 * EMU), int(5.62 * EMU)
+    # full-width subtitle (w/W=0.93 -> full-span) and a title just above it whose
+    # declared box does NOT reach it (bottom 3.03 < subtitle top 3.10).
+    subtitle = (int(0.34 * EMU), int(3.10 * EMU), int(9.32 * EMU), int(0.40 * EMU))
+    title = (int(1.06 * EMU), int(2.20 * EMU), int(7.97 * EMU), int(0.83 * EMU))
+    # a grown title spilling onto the full-width subtitle is a real overflow, not
+    # layering -> NOT suppressed here (the collision test surfaces the spill).
+    assert not R._suppress_as_layering(title, subtitle, W, H)
+    # content sitting ON a full-width band overlaps it at declared geometry: that
+    # IS intentional layering -> suppressed.
+    band = (0, int(3.0 * EMU), int(9.5 * EMU), int(0.5 * EMU))  # w/W=0.95 full-span
+    photo = (int(EMU), int(2.9 * EMU), int(3 * EMU), int(2 * EMU))  # overlaps the band
+    assert R._suppress_as_layering(photo, band, W, H)
+    # neither box full-span -> never layering-suppressed (collision test decides).
+    normal_a = (int(EMU), int(EMU), int(3 * EMU), int(2 * EMU))
+    normal_b = (int(2 * EMU), int(2 * EMU), int(3 * EMU), int(2 * EMU))
+    assert not R._suppress_as_layering(normal_a, normal_b, W, H)
+
+
 def test_contrast_text_picks_legible_color():
     assert R._contrast_text((255, 64, 64)) == (255, 255, 255, 255)  # dark -> white
     assert R._contrast_text((150, 210, 0)) == (0, 0, 0, 255)  # light -> black

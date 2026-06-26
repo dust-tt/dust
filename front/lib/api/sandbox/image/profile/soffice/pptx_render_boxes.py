@@ -31,6 +31,30 @@ def _rects_overlap(a, b) -> bool:
     return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
 
 
+def _suppress_as_layering(
+    a: BoxEmu, b: BoxEmu, slide_w_emu: int, slide_h_emu: int
+) -> bool:
+    """Whether a full-span shape makes this pair's overlap intentional layering
+    (content sitting on a banner/backdrop) rather than a collision.
+
+    Boxes are (left, top, width, height) in EMU. A full-span shape suppresses
+    the pair ONLY when the two boxes already overlap at their declared geometry.
+    A box that grew past its declared bounds and newly spilled onto a full-span
+    shape (e.g. an overflowing title onto a full-width subtitle) is a real
+    overflow, not layering, so it is not suppressed here — the caller's
+    collision test surfaces it."""
+    if not (
+        _is_full_span(a, slide_w_emu, slide_h_emu)
+        or _is_full_span(b, slide_w_emu, slide_h_emu)
+    ):
+        return False
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return not (
+        ax + aw <= bx or bx + bw <= ax or ay + ah <= by or by + bh <= ay
+    )
+
+
 def _contrast_text(color):
     """Black or white text, whichever reads on a chip of `color`."""
     r, g, b = color[:3]
@@ -252,9 +276,13 @@ def _annotate_boxes(
     for i, a in enumerate(shapes):
         for b in shapes[i + 1:]:
             # Banners/backgrounds (full-bleed bands, backdrops) intentionally sit
-            # under content; their overlap is layering, not a collision.
-            if (_is_full_span(declared(a), slide_w_emu, slide_h_emu)
-                    or _is_full_span(declared(b), slide_w_emu, slide_h_emu)):
+            # under content that overlaps them at declared geometry — layering,
+            # not a collision. But an overflowing box that spilled onto a
+            # full-span shape (a title grown onto a full-width subtitle) is a
+            # real overflow, so suppress only the declared-overlap layering case.
+            if _suppress_as_layering(
+                declared(a), declared(b), slide_w_emu, slide_h_emu
+            ):
                 continue
             ea, eb = box_of(a), box_of(b)
             flag, pen = _render_collision(declared(a), declared(b), ea, eb)
