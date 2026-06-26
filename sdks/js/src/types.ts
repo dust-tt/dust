@@ -746,6 +746,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
+  | "skill_favorites"
   | "pod_default_agent"
   | "pod_default_skills"
   | "poke_mcp"
