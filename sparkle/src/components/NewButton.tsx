@@ -291,8 +291,7 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
     // opening menu jumps with the anchor. Radix sets aria-haspopup on the
     // trigger; isSelect is our chevron affordance. Tooltips don't, so they keep it.
     const isMenuTrigger = isSelect || props["aria-haspopup"] != null;
-    const hasTextShadow =
-      variant != null && RAISED_VARIANTS.includes(variant);
+    const hasTextShadow = variant != null && RAISED_VARIANTS.includes(variant);
     const iconShadow = hasTextShadow ? ICON_SHADOW : "";
 
     const renderIcon = (visual: NewButtonIconType, extraClass = "") => {
