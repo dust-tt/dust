@@ -7,7 +7,7 @@ import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
-function validateEndpointJsonSchema(value: unknown): void {
+function validateSandboxFunctionJsonSchema(value: unknown): void {
   if (typeof value !== "object" && typeof value !== "string") {
     throw new Error("JSON schema is not an object or a string");
   }
@@ -18,7 +18,7 @@ function validateEndpointJsonSchema(value: unknown): void {
   }
 }
 
-export class PodEndpointModel extends WorkspaceAwareModel<PodEndpointModel> {
+export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -31,7 +31,7 @@ export class PodEndpointModel extends WorkspaceAwareModel<PodEndpointModel> {
   declare file: NonAttribute<FileModel>;
 }
 
-PodEndpointModel.init(
+SandboxFunctionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -55,19 +55,19 @@ PodEndpointModel.init(
       type: DataTypes.JSONB,
       allowNull: false,
       validate: {
-        isValidJSONSchema: validateEndpointJsonSchema,
+        isValidJSONSchema: validateSandboxFunctionJsonSchema,
       },
     },
     outputSchema: {
       type: DataTypes.JSONB,
       allowNull: false,
       validate: {
-        isValidJSONSchema: validateEndpointJsonSchema,
+        isValidJSONSchema: validateSandboxFunctionJsonSchema,
       },
     },
   },
   {
-    modelName: "pod_endpoint",
+    modelName: "sandbox_function",
     sequelize: frontSequelize,
     indexes: [
       {
@@ -87,24 +87,24 @@ PodEndpointModel.init(
   }
 );
 
-PodEndpointModel.belongsTo(SpaceModel, {
+SandboxFunctionModel.belongsTo(SpaceModel, {
   foreignKey: { name: "podId", allowNull: false },
   onDelete: "RESTRICT",
   as: "pod",
 });
 
-SpaceModel.hasMany(PodEndpointModel, {
+SpaceModel.hasMany(SandboxFunctionModel, {
   foreignKey: { name: "podId", allowNull: false },
-  as: "podEndpoints",
+  as: "sandboxFunctions",
 });
 
-PodEndpointModel.belongsTo(FileModel, {
+SandboxFunctionModel.belongsTo(FileModel, {
   foreignKey: { name: "fileId", allowNull: false },
   onDelete: "RESTRICT",
   as: "file",
 });
 
-FileModel.hasMany(PodEndpointModel, {
+FileModel.hasMany(SandboxFunctionModel, {
   foreignKey: { name: "fileId", allowNull: false },
-  as: "podEndpoints",
+  as: "sandboxFunctions",
 });
