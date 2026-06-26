@@ -48,6 +48,9 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "create a new google spreadsheet",
     expected: "google_drive.create_spreadsheet",
+    // google_sheets exposes a duplicate create_spreadsheet; without naming the
+    // server the two are not lexically separable and trade the top slot.
+    maxRank: 2,
   },
   {
     query: "make a new google slides deck",
@@ -614,6 +617,71 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "download a png screenshot of my dashboard",
     expected: "interactive_content.export_interactive_content_file",
+  },
+
+  // --- google_sheets ---
+  {
+    query: "find my budget spreadsheet in google sheets",
+    expected: "google_sheets.list_spreadsheets",
+    // google_drive exposes its own keyword-dense spreadsheet tools
+    // (create_spreadsheet, update_spreadsheet) that match "spreadsheet"
+    // cross-server; not separable until those servers are consolidated.
+    maxRank: 3,
+  },
+  {
+    query: "list all my google sheets spreadsheets",
+    expected: "google_sheets.list_spreadsheets",
+    // "list" collides with google_drive's short list_drives /
+    // list_file_permissions docs; the cross-server overlap caps this at 3.
+    maxRank: 3,
+  },
+  {
+    query: "get the properties of a google sheets spreadsheet",
+    expected: "google_sheets.get_spreadsheet",
+  },
+  {
+    query: "read the values from a range in a google sheet",
+    expected: "google_sheets.get_worksheet",
+  },
+  {
+    query: "write values into cells in a google sheet",
+    expected: "google_sheets.update_cells",
+  },
+  {
+    query: "append a new row of data to a google sheet",
+    expected: "google_sheets.append_data",
+  },
+  {
+    query: "clear the values from a range in a google sheet",
+    expected: "google_sheets.clear_range",
+  },
+  {
+    query: "create a brand new google sheets spreadsheet",
+    expected: "google_sheets.create_spreadsheet",
+  },
+  {
+    query: "add a new tab to a google sheets spreadsheet",
+    expected: "google_sheets.add_worksheet",
+  },
+  {
+    query: "delete a tab from a google sheets spreadsheet",
+    expected: "google_sheets.delete_worksheet",
+  },
+  {
+    query: "make a range of cells bold in a google sheet",
+    expected: "google_sheets.format_cells",
+  },
+  {
+    query: "copy a tab from one google spreadsheet to another",
+    expected: "google_sheets.copy_sheet",
+  },
+  {
+    query: "rename a tab in a google sheet",
+    expected: "google_sheets.rename_worksheet",
+  },
+  {
+    query: "reorder a tab to a different position in a google sheet",
+    expected: "google_sheets.move_worksheet",
   },
 
   // --- cross-server (no platform named) ---

@@ -15,6 +15,7 @@ import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metad
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
+import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
@@ -31,6 +32,7 @@ import { QUERIES } from "@app/scripts/mcp_bm25/queries";
 
 const SERVERS: ServerEntry[] = [
   { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
+  { name: "google_sheets", tools: GOOGLE_SHEETS_SERVER.tools },
   { name: "microsoft_drive", tools: MICROSOFT_DRIVE_SERVER.tools },
   { name: "jira", tools: JIRA_SERVER.tools },
   { name: "zendesk", tools: ZENDESK_SERVER.tools },
