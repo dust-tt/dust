@@ -4,7 +4,9 @@ import {
   isKeyRole,
   KEY_ROLES,
   type KeyRole,
+  monthlyCapCreditsSchema,
   monthlyCapDollarsSchema,
+  parseCreditsString,
   prettifyGroupName,
 } from "@app/components/workspace/api-keys/utils";
 import type { GroupType } from "@app/types/groups";
@@ -40,6 +42,7 @@ import { z } from "zod";
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
   monthlyCapDollars: monthlyCapDollarsSchema,
+  monthlyCapCredits: monthlyCapCreditsSchema,
   selectedGroupIds: z.array(z.number()),
   role: z.enum(KEY_ROLES),
 });
@@ -54,6 +57,7 @@ interface NewAPIKeyDialogProps {
     name: string;
     groups: GroupType[];
     monthlyCapMicroUsd: number | null;
+    monthlyCapAwuCredits: number | null;
     role: KeyRole;
   }) => Promise<void>;
   showLegacyUsdMonthlyCap: boolean;
@@ -75,6 +79,7 @@ export const NewAPIKeyDialog = ({
     defaultValues: {
       name: "",
       monthlyCapDollars: "",
+      monthlyCapCredits: "",
       selectedGroupIds: [],
       role: "builder",
     },
@@ -137,6 +142,7 @@ export const NewAPIKeyDialog = ({
       name: data.name,
       groups: selectedGroups,
       monthlyCapMicroUsd: dollarsToMicroUsd(dollars),
+      monthlyCapAwuCredits: parseCreditsString(data.monthlyCapCredits),
       role: data.role,
     });
     handleClose();
@@ -287,10 +293,27 @@ export const NewAPIKeyDialog = ({
                 </RadioGroup>
               </div>
 
-              {showLegacyUsdMonthlyCap && (
+              {showLegacyUsdMonthlyCap ? (
                 <BaseFormFieldSection
                   title="Monthly cap (USD)"
                   fieldName="monthlyCapDollars"
+                >
+                  {({ registerRef, registerProps, onChange, errorMessage }) => (
+                    <Input
+                      ref={registerRef}
+                      {...registerProps}
+                      onChange={onChange}
+                      placeholder="Leave empty for unlimited"
+                      isError={!!errorMessage}
+                      message={errorMessage}
+                      messageStatus="error"
+                    />
+                  )}
+                </BaseFormFieldSection>
+              ) : (
+                <BaseFormFieldSection
+                  title="Monthly credit cap"
+                  fieldName="monthlyCapCredits"
                 >
                   {({ registerRef, registerProps, onChange, errorMessage }) => (
                     <Input
