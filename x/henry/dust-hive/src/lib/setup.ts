@@ -9,11 +9,13 @@
 // NOTE: cargo target is symlinked to share Rust compilation cache.
 
 import { mkdirSync, readdirSync, readlinkSync, symlinkSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { lstat, mkdir, rm, unlink } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
-import { directoryExists } from "./fs";
+import { setupDirenv } from "./direnv";
+import { type EnvironmentMetadata, getEnvironmentWorktreeDir } from "./environment";
+import { directoryExists, fileExists } from "./fs";
 import { logger } from "./logger";
 
 // User config directories to copy from main repo to worktree
@@ -153,6 +155,8 @@ async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<voi
       logger.success(`Copied ${dir}/`);
     }
   }
+
+  await setupCodexConfigAlias(destDir);
 }
 
 // Run npm install in a directory
@@ -185,7 +189,7 @@ const DEFAULT_CONFIG: DependencyConfig = {
 };
 
 // Workspace directories that have their own node_modules (version overrides)
-const WORKSPACE_NODE_MODULES = [
+export const WORKSPACE_NODE_MODULES = [
   { name: "sdks/js", dir: "sdks/js" },
   { name: "front", dir: "front" },
   { name: "front-api", dir: "front-api" },
@@ -196,6 +200,57 @@ const WORKSPACE_NODE_MODULES = [
   { name: "extension", dir: "extension" },
   { name: "viz", dir: "viz" },
 ];
+
+const COMPATIBILITY_NODE_MODULE_LINKS = [
+  {
+    name: "node_modules/@modelcontextprotocol",
+    src: "node_modules/@modelcontextprotocol",
+    dest: "node_modules/@modelcontextprotocol",
+  },
+  {
+    name: "sdks/node_modules/@modelcontextprotocol",
+    src: "node_modules/@modelcontextprotocol",
+    dest: "sdks/node_modules/@modelcontextprotocol",
+  },
+];
+
+async function removePath(path: string): Promise<boolean> {
+  try {
+    const info = await lstat(path);
+    if (info.isSymbolicLink()) {
+      await unlink(path);
+    } else {
+      await rm(path, { recursive: true });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await lstat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function setupCodexConfigAlias(worktreePath: string): Promise<void> {
+  const claudePath = join(worktreePath, ".claude");
+  if (!(await directoryExists(claudePath))) {
+    return;
+  }
+
+  const codexPath = join(worktreePath, ".codex");
+  if (await pathExists(codexPath)) {
+    return;
+  }
+
+  symlinkSync(".claude", codexPath);
+  logger.success("Linked .codex -> .claude");
+}
 
 // Link workspace-level node_modules using shallow copies.
 // Returns names of workspaces that failed.
@@ -220,6 +275,23 @@ async function linkWorkspaceNodeModules(worktreePath: string, repoRoot: string):
   }
 
   return failed;
+}
+
+async function setupCompatibilityNodeModules(
+  worktreePath: string,
+  repoRoot: string
+): Promise<void> {
+  for (const { src, dest } of COMPATIBILITY_NODE_MODULE_LINKS) {
+    const sourcePath = join(repoRoot, src);
+    if (!(await directoryExists(sourcePath))) {
+      continue;
+    }
+
+    const destPath = join(worktreePath, dest);
+    await mkdir(dirname(destPath), { recursive: true });
+    await removePath(destPath);
+    symlinkSync(sourcePath, destPath);
+  }
 }
 
 // Install all dependencies for a worktree
@@ -266,6 +338,10 @@ export async function installAllDependencies(
   const workspaceFailed = await linkWorkspaceNodeModules(worktreePath, repoRoot);
   failed.push(...workspaceFailed);
 
+  // Some package-level tsconfig paths reference parent node_modules directories.
+  // Create focused compatibility links so those paths work from arbitrary external worktree depths.
+  await setupCompatibilityNodeModules(worktreePath, repoRoot);
+
   if (failed.length > 0) {
     throw new Error(`Failed to install dependencies for: ${failed.join(", ")}`);
   }
@@ -273,4 +349,102 @@ export async function installAllDependencies(
   // Copy user config files (AGENTS.local.md, AGENTS.override.md, .claude/) if they exist
   logger.step("Copying user config files...");
   await copyUserConfigFiles(repoRoot, worktreePath);
+}
+
+export async function getMissingEnvironmentSetup(metadata: EnvironmentMetadata): Promise<string[]> {
+  const worktreePath = getEnvironmentWorktreeDir(metadata);
+  const missing: string[] = [];
+
+  if (!(await fileExists(`${worktreePath}/.envrc`))) {
+    missing.push(".envrc");
+  }
+
+  if (
+    (await directoryExists(`${metadata.repoRoot}/.claude`)) &&
+    !(await directoryExists(`${worktreePath}/.claude`))
+  ) {
+    missing.push(".claude");
+  }
+
+  if (
+    (await directoryExists(`${worktreePath}/.claude`)) &&
+    !(await directoryExists(`${worktreePath}/.codex`))
+  ) {
+    missing.push(".codex");
+  }
+
+  if (!(await directoryExists(`${worktreePath}/node_modules/@dust-tt`))) {
+    missing.push("node_modules/@dust-tt");
+  }
+
+  for (const { name, dir } of WORKSPACE_NODE_MODULES) {
+    const srcNodeModules = `${metadata.repoRoot}/${dir}/node_modules`;
+    const targetNodeModules = `${worktreePath}/${dir}/node_modules`;
+    if ((await directoryExists(srcNodeModules)) && !(await directoryExists(targetNodeModules))) {
+      missing.push(`${name}/node_modules`);
+    }
+  }
+
+  for (const { name, src, dest } of COMPATIBILITY_NODE_MODULE_LINKS) {
+    if (
+      (await directoryExists(join(metadata.repoRoot, src))) &&
+      !(await directoryExists(join(worktreePath, dest)))
+    ) {
+      missing.push(name);
+    }
+  }
+
+  return missing;
+}
+
+export async function refreshAllDependencies(
+  worktreePath: string,
+  repoRoot: string
+): Promise<void> {
+  await removePath(`${worktreePath}/node_modules`);
+
+  for (const { dir } of WORKSPACE_NODE_MODULES) {
+    await removePath(`${worktreePath}/${dir}/node_modules`);
+  }
+
+  for (const { dest } of COMPATIBILITY_NODE_MODULE_LINKS) {
+    await removePath(join(worktreePath, dest));
+  }
+
+  await installAllDependencies(worktreePath, repoRoot);
+}
+
+export interface EnvironmentSetupRepair {
+  repairedArtifacts: string[];
+  dependenciesRepaired: boolean;
+}
+
+export async function repairEnvironmentSetup(
+  metadata: EnvironmentMetadata
+): Promise<EnvironmentSetupRepair> {
+  const worktreePath = getEnvironmentWorktreeDir(metadata);
+  const missingArtifacts = await getMissingEnvironmentSetup(metadata);
+  if (missingArtifacts.length === 0) {
+    return { repairedArtifacts: [], dependenciesRepaired: false };
+  }
+
+  if (missingArtifacts.includes(".envrc")) {
+    await setupDirenv(metadata.name, worktreePath, { preserveExisting: true });
+  }
+
+  if (missingArtifacts.includes(".claude") || missingArtifacts.includes(".codex")) {
+    await copyUserConfigFiles(metadata.repoRoot, worktreePath);
+  }
+
+  const dependenciesMissing = missingArtifacts.some((artifact) =>
+    artifact.includes("node_modules")
+  );
+  if (dependenciesMissing) {
+    await refreshAllDependencies(worktreePath, metadata.repoRoot);
+  }
+
+  return {
+    repairedArtifacts: missingArtifacts,
+    dependenciesRepaired: dependenciesMissing,
+  };
 }

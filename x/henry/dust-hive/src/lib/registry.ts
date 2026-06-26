@@ -5,7 +5,7 @@ import { type Environment, getEnvironmentWorktreeDir } from "./environment";
 import { logger } from "./logger";
 import { getEnvFilePath, getLogPath } from "./paths";
 import type { PortAllocation } from "./ports";
-import { isServiceRunning, readFileTail, spawnShellDaemon } from "./process";
+import { isServiceRunningForCwd, spawnShellDaemon } from "./process";
 import { ALL_SERVICES, type ServiceName } from "./services";
 import { buildShell } from "./shell";
 
@@ -204,15 +204,22 @@ function buildServiceCommand(env: Environment, service: ServiceName): string {
 }
 
 // Get the working directory for a service
-function getServiceCwd(env: Environment, service: ServiceName): string {
+export function getServiceCwd(env: Environment, service: ServiceName): string {
   const config = SERVICE_REGISTRY[service];
   const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   return `${worktreePath}/${config.cwd}`;
 }
 
+export async function isServiceRunningForEnvironment(
+  env: Environment,
+  service: ServiceName
+): Promise<boolean> {
+  return isServiceRunningForCwd(env.name, service, getServiceCwd(env, service));
+}
+
 // Start a single service (assumes dependencies are already running)
 export async function startService(env: Environment, service: ServiceName): Promise<void> {
-  if (await isServiceRunning(env.name, service)) {
+  if (await isServiceRunningForEnvironment(env, service)) {
     logger.info(`${service} already running`);
     return;
   }
@@ -286,6 +293,11 @@ async function waitForFileReady(
   const start = Date.now();
   const checkInterval = 500;
   let lastLogSize = 0;
+  const existingLog = Bun.file(logFile);
+  if (await existingLog.exists()) {
+    const info = await stat(logFile);
+    lastLogSize = info.size;
+  }
 
   while (Date.now() - start < timeoutMs) {
     // Check if build output exists
@@ -300,8 +312,9 @@ async function waitForFileReady(
     if (await log.exists()) {
       const info = await stat(logFile);
       if (info.size !== lastLogSize) {
+        const readFrom = info.size > lastLogSize ? lastLogSize : 0;
         lastLogSize = info.size;
-        const logContent = await readFileTail(logFile, 4000);
+        const logContent = await Bun.file(logFile).slice(readFrom).text();
         if (logContent.includes("npm error") || logContent.includes("Error:")) {
           const errorLines = logContent
             .split("\n")
@@ -314,7 +327,7 @@ async function waitForFileReady(
     }
 
     // Check if process is still running
-    if (!(await isServiceRunning(env.name, service))) {
+    if (!(await isServiceRunningForEnvironment(env, service))) {
       const logContent = (await log.exists()) ? await log.text() : "No log available";
       throw new Error(`${service} process exited unexpectedly. Log:\n${logContent.slice(-500)}`);
     }

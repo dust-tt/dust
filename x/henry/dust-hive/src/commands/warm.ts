@@ -7,10 +7,16 @@ import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
 import { logger } from "../lib/logger";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
-import { isServiceRunning, readPid } from "../lib/process";
-import { startService, waitForServiceReady } from "../lib/registry";
+import { readPidForCwd, stopService } from "../lib/process";
+import {
+  getServiceCwd,
+  isServiceRunningForEnvironment,
+  startService,
+  waitForServiceReady,
+} from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
-import type { ServiceName } from "../lib/services";
+import { COLD_STATE_SERVICES, type ServiceName } from "../lib/services";
+import { repairEnvironmentSetup } from "../lib/setup";
 import { isDockerRunning } from "../lib/state";
 
 interface WarmOptions {
@@ -77,31 +83,36 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   // Set cache source to use binaries from main repo
   await setCacheSource(env.metadata.repoRoot);
 
-  // Check if build watchers are running (should be in cold state)
-  const [sparkleRunning, sdkRunning] = await Promise.all([
-    isServiceRunning(env.name, "sparkle"),
-    isServiceRunning(env.name, "sdk"),
-  ]);
-  if (!(sparkleRunning && sdkRunning)) {
-    const missing = [];
-    if (!sparkleRunning) missing.push("sparkle");
-    if (!sdkRunning) missing.push("SDK");
-    return Err(
-      new CommandError(
-        `${missing.join(" and ")} watch is not running. Run 'dust-hive start' first.`
-      )
-    );
+  const repair = await repairEnvironmentSetup(env.metadata);
+  if (repair.repairedArtifacts.length > 0) {
+    logger.warn(`Repaired worktree setup: ${repair.repairedArtifacts.join(", ")}`);
+  }
+
+  if (repair.dependenciesRepaired) {
+    await Promise.all(COLD_STATE_SERVICES.map((service) => stopService(env.name, service)));
+  }
+
+  const missingColdServices: (typeof COLD_STATE_SERVICES)[number][] = [];
+  for (const service of COLD_STATE_SERVICES) {
+    if (!(await isServiceRunningForEnvironment(env, service))) {
+      missingColdServices.push(service);
+    }
+  }
+
+  if (missingColdServices.length > 0) {
+    logger.info(`Starting cold services: ${missingColdServices.join(", ")}`);
+    await Promise.all(missingColdServices.map((service) => startService(env, service)));
   }
 
   // Wait for SDK to be ready (first build complete) before starting front
   // Front's TypeScript compiler needs SDK types from dist/
-  await waitForServiceReady(env, "sdk");
+  await Promise.all(COLD_STATE_SERVICES.map((service) => waitForServiceReady(env, service)));
 
   // Check if already warm
   const dockerRunning = await isDockerRunning(env.name);
 
   if (dockerRunning) {
-    const proxyRunning = await isServiceRunning(env.name, "proxy");
+    const proxyRunning = await isServiceRunningForEnvironment(env, "proxy");
     if (proxyRunning) {
       logger.info(`Environment '${env.name}' is already warm`);
       return Ok(undefined);
@@ -120,7 +131,9 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
     "connectors",
     "oauth",
   ];
-  const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
+  const servicePids = await Promise.all(
+    portServices.map((service) => readPidForCwd(env.name, service, getServiceCwd(env, service)))
+  );
   const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
     allowedPids,

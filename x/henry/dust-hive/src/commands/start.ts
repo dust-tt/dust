@@ -1,16 +1,29 @@
 import { withEnvironments } from "../lib/commands";
 import { logger } from "../lib/logger";
-import { isServiceRunning } from "../lib/process";
-import { startService, waitForServiceReady } from "../lib/registry";
+import { stopService } from "../lib/process";
+import { isServiceRunningForEnvironment, startService, waitForServiceReady } from "../lib/registry";
 import { Ok } from "../lib/result";
 import { COLD_STATE_SERVICES } from "../lib/services";
+import { repairEnvironmentSetup } from "../lib/setup";
 import { getStateInfo } from "../lib/state";
 
 export const startCommand = withEnvironments("start", async (env) => {
+  const repair = await repairEnvironmentSetup(env.metadata);
+  if (repair.repairedArtifacts.length > 0) {
+    logger.warn(`Repaired worktree setup: ${repair.repairedArtifacts.join(", ")}`);
+  }
+
+  if (repair.dependenciesRepaired) {
+    await Promise.all(COLD_STATE_SERVICES.map((service) => stopService(env.name, service)));
+  }
+
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state !== "stopped") {
     if (stateInfo.state === "cold") {
-      logger.info("Environment is already cold (SDK running). Use 'warm' to start services.");
+      await Promise.all(COLD_STATE_SERVICES.map((s) => waitForServiceReady(env, s)));
+      logger.info(
+        "Environment is already cold (SDK and Sparkle running). Use 'warm' to start services."
+      );
       return Ok(undefined);
     }
     logger.info("Environment is already warm.");
@@ -23,7 +36,7 @@ export const startCommand = withEnvironments("start", async (env) => {
   // Start build watchers (sparkle and SDK) using registry
   const servicesToStart: (typeof COLD_STATE_SERVICES)[number][] = [];
   for (const service of COLD_STATE_SERVICES) {
-    const running = await isServiceRunning(env.name, service);
+    const running = await isServiceRunningForEnvironment(env, service);
     if (!running) {
       servicesToStart.push(service);
     } else {

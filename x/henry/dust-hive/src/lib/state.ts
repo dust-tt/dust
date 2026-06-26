@@ -1,8 +1,9 @@
 import { getDockerProjectName } from "./docker";
 import type { Environment } from "./environment";
-import { getRunningServices, isServiceRunning } from "./process";
-import { WARM_SERVICES } from "./registry";
+import { isServiceRunningForEnvironment, WARM_SERVICES } from "./registry";
 import type { ServiceName } from "./services";
+import { ALL_SERVICES } from "./services";
+import { getMissingEnvironmentSetup } from "./setup";
 
 export type EnvironmentState = "stopped" | "cold" | "warm";
 
@@ -99,12 +100,12 @@ export function detectWarnings(
 // Get detailed state info for an environment
 export async function getStateInfo(env: Environment): Promise<StateInfo> {
   const [sparkleRunning, sdkRunning] = await Promise.all([
-    isServiceRunning(env.name, "sparkle"),
-    isServiceRunning(env.name, "sdk"),
+    isServiceRunningForEnvironment(env, "sparkle"),
+    isServiceRunningForEnvironment(env, "sdk"),
   ]);
   const buildWatchersRunning = sparkleRunning && sdkRunning;
   const dockerRunning = await isDockerRunning(env.name);
-  const runningServices = await getRunningServices(env.name);
+  const runningServices = await getRunningServicesForEnvironment(env);
   const runningAppServices = runningServices.filter((s) => s !== "sparkle" && s !== "sdk");
   const appServicesRunning = runningAppServices.length > 0;
 
@@ -115,6 +116,10 @@ export async function getStateInfo(env: Environment): Promise<StateInfo> {
     appServicesRunning,
     runningAppServices
   );
+  const missingSetup = await getMissingEnvironmentSetup(env.metadata);
+  if (missingSetup.length > 0) {
+    warnings.push(`Worktree setup incomplete: ${missingSetup.join(", ")}`);
+  }
 
   return {
     state,
@@ -129,4 +134,16 @@ export async function getStateInfo(env: Environment): Promise<StateInfo> {
 export function formatState(stateInfo: StateInfo): string {
   const warningIndicator = stateInfo.warnings.length > 0 ? " \u26a0\ufe0f" : "";
   return `${stateInfo.state}${warningIndicator}`;
+}
+
+async function getRunningServicesForEnvironment(env: Environment): Promise<ServiceName[]> {
+  const running: ServiceName[] = [];
+
+  for (const service of ALL_SERVICES) {
+    if (await isServiceRunningForEnvironment(env, service)) {
+      running.push(service);
+    }
+  }
+
+  return running;
 }

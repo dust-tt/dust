@@ -3,6 +3,73 @@ import { isErrnoException } from "./errors";
 import { getLogPath, getPidPath } from "./paths";
 import { ALL_SERVICES, type ServiceName } from "./services";
 
+interface CwdIdentity {
+  dev: number;
+  ino: number;
+}
+
+export function parseLsofCwdIdentity(output: string): CwdIdentity | null {
+  let dev: number | null = null;
+  let ino: number | null = null;
+
+  for (const line of output.split("\n")) {
+    if (line.startsWith("D0x")) {
+      dev = Number.parseInt(line.slice(3), 16);
+    } else if (line.startsWith("D")) {
+      dev = Number.parseInt(line.slice(1), 10);
+    } else if (line.startsWith("i")) {
+      ino = Number.parseInt(line.slice(1), 10);
+    }
+  }
+
+  if (dev === null || ino === null || Number.isNaN(dev) || Number.isNaN(ino)) {
+    return null;
+  }
+
+  return { dev, ino };
+}
+
+async function getProcessCwdIdentity(pid: number): Promise<CwdIdentity | null> {
+  const proc = Bun.spawn(["lsof", "-a", "-p", String(pid), "-d", "cwd", "-FDi"], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    return null;
+  }
+
+  return parseLsofCwdIdentity(output);
+}
+
+async function getPathIdentity(path: string): Promise<CwdIdentity | null> {
+  const proc = Bun.spawn(["stat", "-f", "%d %i", path], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    return null;
+  }
+
+  const [devRaw, inoRaw] = output.trim().split(" ");
+  if (!(devRaw && inoRaw)) {
+    return null;
+  }
+
+  const dev = Number.parseInt(devRaw, 10);
+  const ino = Number.parseInt(inoRaw, 10);
+  if (Number.isNaN(dev) || Number.isNaN(ino)) {
+    return null;
+  }
+
+  return { dev, ino };
+}
+
 // Check if a process is running by PID
 export function isProcessRunning(pid: number): boolean {
   try {
@@ -41,6 +108,40 @@ export async function readPid(envName: string, service: ServiceName): Promise<nu
   }
 
   return pid;
+}
+
+export async function readPidForCwd(
+  envName: string,
+  service: ServiceName,
+  cwd: string
+): Promise<number | null> {
+  const pid = await readPid(envName, service);
+  if (pid === null) {
+    return null;
+  }
+
+  const [processCwd, expectedCwd] = await Promise.all([
+    getProcessCwdIdentity(pid),
+    getPathIdentity(cwd),
+  ]);
+
+  if (expectedCwd === null) {
+    await killProcess(pid).catch(() => undefined);
+    await cleanupPidFile(envName, service);
+    return null;
+  }
+
+  if (processCwd === null) {
+    return pid;
+  }
+
+  if (processCwd.dev === expectedCwd.dev && processCwd.ino === expectedCwd.ino) {
+    return pid;
+  }
+
+  await killProcess(pid).catch(() => undefined);
+  await cleanupPidFile(envName, service);
+  return null;
 }
 
 // Write PID to file
@@ -113,6 +214,15 @@ export async function stopService(envName: string, service: ServiceName): Promis
 // Check if a service is running
 export async function isServiceRunning(envName: string, service: ServiceName): Promise<boolean> {
   const pid = await readPid(envName, service);
+  return pid !== null;
+}
+
+export async function isServiceRunningForCwd(
+  envName: string,
+  service: ServiceName,
+  cwd: string
+): Promise<boolean> {
+  const pid = await readPidForCwd(envName, service, cwd);
   return pid !== null;
 }
 
