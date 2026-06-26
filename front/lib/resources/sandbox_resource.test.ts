@@ -714,7 +714,7 @@ describe("SandboxResource.ensureActive", () => {
           imageId: { imageName: "test-image", tag: "0.0.1" },
           envVars: {
             DST_API_TOKEN: "image-token",
-            POD_ID: "image-pod-id",
+            SPACE_ID: "image-space-id",
             WORKSPACE_ID: "image-workspace-id",
           },
           network: { egress: "restricted" },
@@ -831,7 +831,7 @@ describe("SandboxResource.ensureActive", () => {
       "DD_HOST"
     );
     expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
-      "POD_ID"
+      "SPACE_ID"
     );
     expect(mockProviderExec).not.toHaveBeenCalled();
   });
