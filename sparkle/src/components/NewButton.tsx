@@ -49,7 +49,7 @@ const OVERLAY = cn(
 // `dark:` shadow literals for the primary/outline swap, spelled out (not a
 // computed prefix) so Tailwind's JIT emits them.
 const DARK_OUTLINE_SHADOW =
-  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#eeeeec,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
+  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#DFE0E2,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
 const DARK_SOLID_SHADOW =
   "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#364153,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
 
@@ -100,7 +100,7 @@ const newButtonVariants = cva(
           "s-border s-border-border-dark",
           "s-bg-gradient-to-b s-from-white s-to-stone-50",
           "s-text-muted-foreground",
-          SOLID_SHADOW("#eeeeec"),
+          SOLID_SHADOW("#DFE0E2"),
           "hover:after:s-bg-gray-950/[0.02] active:after:s-bg-gray-950/[0.04]",
           "disabled:s-shadow-none disabled:s-text-faint",
           "dark:s-border-0 dark:s-from-stone-700 dark:s-to-stone-800 dark:s-text-white",
