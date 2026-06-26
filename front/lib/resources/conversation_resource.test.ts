@@ -6844,6 +6844,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "message",
   "project_todo_conversation",
   "sandbox",
+  "sandbox_owner",
   // skill_suggestion.notificationConversationId is ON DELETE SET NULL, so no
   // explicit cleanup is needed in destroyConversation — the DB clears it.
   "skill_suggestion",

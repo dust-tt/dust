@@ -55,6 +55,7 @@ import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   ConversationSandboxModel,
   SandboxModel,
+  SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -64,6 +65,7 @@ import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { encrypt } from "@app/types/shared/utils/encryption";
+import type { WhereOptions } from "sequelize";
 
 describe("SandboxResource.updateStatus", () => {
   let authenticator: Authenticator;
@@ -245,12 +247,12 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
       }
     );
 
-    await ConversationSandboxModel.destroy({
-      where: {
-        sandboxId: sandbox.id,
-        workspaceId: authenticator.getNonNullableWorkspace().id,
-      },
-    });
+    const where: WhereOptions = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
+    await SandboxOwnerModel.destroy({ where });
+    await ConversationSandboxModel.destroy({ where });
 
     const result = await SandboxResource.dangerouslyDestroyIfSleeping(
       authenticator,
@@ -603,15 +605,49 @@ describe("SandboxResource.fetchByConversation", () => {
     expect(fetched?.id).toBe(sandbox.id);
   });
 
-  it("returns null when no ownership row exists", async () => {
+  it("writes both ownership tables", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+    const where = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
+
+    await expect(ConversationSandboxModel.count({ where })).resolves.toBe(1);
+    await expect(SandboxOwnerModel.count({ where })).resolves.toBe(1);
+  });
+
+  it("falls back to conversation_sandboxes during the migration window", async () => {
     const conversation = await makeConversation();
     const sandbox = await SandboxFactory.create(authenticator, conversation);
 
-    await ConversationSandboxModel.destroy({
+    await SandboxOwnerModel.destroy({
       where: {
         sandboxId: sandbox.id,
         workspaceId: authenticator.getNonNullableWorkspace().id,
       },
+    });
+
+    const fetched = await SandboxResource.fetchByConversation(
+      authenticator,
+      conversation
+    );
+
+    expect(fetched?.id).toBe(sandbox.id);
+  });
+
+  it("returns null when no ownership row exists", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+    const where = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
+
+    await SandboxOwnerModel.destroy({ where });
+
+    await ConversationSandboxModel.destroy({
+      where,
     });
 
     const fetched = await SandboxResource.fetchByConversation(
