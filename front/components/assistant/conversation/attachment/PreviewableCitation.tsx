@@ -64,9 +64,7 @@ export function PreviewableCitation({
       (description ? (
         <div className="flex flex-col gap-0.5">
           <div>{title}</div>
-          <div className="text-sm text-muted-foreground">
-            {description}
-          </div>
+          <div className="text-sm text-muted-foreground">{description}</div>
         </div>
       ) : (
         title

@@ -201,11 +201,7 @@ export function PodSettingsTab({
         />
       )}
       {interactive && (
-        <Icon
-          visual={ChevronDown}
-          size="xs"
-          className="-mr-1 text-faint"
-        />
+        <Icon visual={ChevronDown} size="xs" className="-mr-1 text-faint" />
       )}
     </div>
   );

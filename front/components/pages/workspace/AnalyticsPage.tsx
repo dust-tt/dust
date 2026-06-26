@@ -60,9 +60,7 @@ const WorkspaceSkillUsageChart = safeLazy(
 );
 
 function ChartFallback() {
-  return (
-    <div className="h-64 animate-pulse rounded-lg bg-muted-background" />
-  );
+  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
 }
 
 export function AnalyticsPage() {

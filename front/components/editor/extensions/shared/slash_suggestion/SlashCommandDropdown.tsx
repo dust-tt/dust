@@ -48,9 +48,7 @@ function SlashCommandDropdownLoadingState({ message }: { message: string }) {
   return (
     <div className="flex h-14 items-center justify-center">
       <Spinner size="sm" />
-      <span className="ml-2 text-sm text-gray-500">
-        {message}
-      </span>
+      <span className="ml-2 text-sm text-gray-500">{message}</span>
     </div>
   );
 }

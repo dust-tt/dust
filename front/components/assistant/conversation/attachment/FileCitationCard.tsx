@@ -67,9 +67,7 @@ function getFileCitationCardTooltipLabel({
   return (
     <div className="flex flex-col gap-0.5">
       <div>{tooltipLabel}</div>
-      <div className="text-sm text-muted-foreground">
-        {description}
-      </div>
+      <div className="text-sm text-muted-foreground">{description}</div>
     </div>
   );
 }

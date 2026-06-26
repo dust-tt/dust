@@ -94,11 +94,7 @@ function seatBadge(
   info: SeatTypeInfo
 ): ReactNode {
   if (seatType === "free") {
-    return (
-      <span className="text-xs text-foreground">
-        Free if eligible
-      </span>
-    );
+    return <span className="text-xs text-foreground">Free if eligible</span>;
   }
   const price = formatPriceCents(
     info.priceCents,

@@ -72,9 +72,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
       <span
         className={cn(
           "copy-sm grow truncate",
-          isBlocked && !willAutoUpgrade
-            ? "text-warning-500"
-            : "text-foreground"
+          isBlocked && !willAutoUpgrade ? "text-warning-500" : "text-foreground"
         )}
       >
         {message}

@@ -72,9 +72,7 @@ export const PlanCard = React.memo(function PlanCard({
         onClick={() => openPanel({ type: "plan" })}
         className="flex w-full min-w-0 items-center gap-2 text-left"
       >
-        <span className="min-w-0 truncate text-foreground">
-          {title}
-        </span>
+        <span className="min-w-0 truncate text-foreground">{title}</span>
         {progress.total > 0 && (
           <span className="shrink-0">
             {progress.done}/{progress.total} done

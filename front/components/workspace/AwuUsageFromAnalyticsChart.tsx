@@ -300,10 +300,7 @@ export function BaseAwuUsageFromAnalyticsChart({
         data={chartData}
         margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
       >
-        <CartesianGrid
-          vertical={false}
-          className="stroke-border"
-        />
+        <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="timestamp"
           type="category"

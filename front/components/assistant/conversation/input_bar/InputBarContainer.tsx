@@ -1386,9 +1386,7 @@ const InputBarContainer = ({
               aria-hidden
               className={cn(
                 INPUT_BAR_COMPACT_PREVIEW_CLASSES,
-                compactPreviewText
-                  ? "text-foreground"
-                  : "text-muted-foreground"
+                compactPreviewText ? "text-foreground" : "text-muted-foreground"
               )}
             >
               {compactPreviewText || compactDisplayPlaceholder}

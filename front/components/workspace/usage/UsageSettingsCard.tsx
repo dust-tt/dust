@@ -83,9 +83,7 @@ export function UsageSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-base text-foreground">
-        Spending policies
-      </span>
+      <span className="heading-base text-foreground">Spending policies</span>
       <SettingsList>
         <LockedSection locked={!hasPool}>
           <SettingsList.Row

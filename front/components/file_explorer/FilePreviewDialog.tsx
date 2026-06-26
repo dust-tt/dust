@@ -543,12 +543,7 @@ export function FilePreviewDialog({
                   className="shrink-0 text-foreground"
                 />
               )}
-              <span
-                className={cn(
-                  "line-clamp-1 leading-5",
-                  "text-foreground"
-                )}
-              >
+              <span className={cn("line-clamp-1 leading-5", "text-foreground")}>
                 {entry?.fileName ?? "Preview Data"}
               </span>
             </div>

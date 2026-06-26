@@ -65,8 +65,7 @@ export function buildMarkdownEditorExtensions({
       blockquote: false,
       horizontalRule: {
         HTMLAttributes: {
-          class:
-            "my-4 border-0 border-t border-border",
+          class: "my-4 border-0 border-t border-border",
         },
       },
       strike: false,

@@ -160,9 +160,7 @@ export function SoundNotificationPreferences({
           <span
             className={cn(
               "heading-sm",
-              enabledField.value
-                ? "text-foreground"
-                : "text-faint"
+              enabledField.value ? "text-foreground" : "text-faint"
             )}
           >
             Customize sound notification
@@ -170,9 +168,7 @@ export function SoundNotificationPreferences({
           <span
             className={cn(
               "copy-sm",
-              enabledField.value
-                ? "text-muted-foreground"
-                : "text-faint"
+              enabledField.value ? "text-muted-foreground" : "text-faint"
             )}
           >
             Choose the sound you prefer

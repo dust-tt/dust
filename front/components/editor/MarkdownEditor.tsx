@@ -218,9 +218,7 @@ function CharacterCountDisplay({
     <span
       className={cn(
         "text-end text-xs",
-        isOverLimit
-          ? "text-warning"
-          : "text-muted-foreground"
+        isOverLimit ? "text-warning" : "text-muted-foreground"
       )}
     >
       {count} / {maxCount} characters
