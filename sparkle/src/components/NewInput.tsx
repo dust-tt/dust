@@ -1,5 +1,5 @@
 import { Icon } from "@sparkle/components/Icon";
-import { InfoCircle } from "@sparkle/icons/v2-stroke";
+import { AlertCircle } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { forwardRef } from "react";
@@ -45,7 +45,13 @@ const fieldVariants = cva(
       state: {
         default: cn(
           "s-border-border dark:s-border-border-night",
-          "focus-within:s-border-border-dark dark:focus-within:s-border-border-dark-night"
+          "focus-within:s-border-border-dark dark:focus-within:s-border-border-dark-night",
+          // Filled (has a value): darker border, plus a muted fill while the
+          // field is not focused — matches Figma's "filled" state.
+          "has-[input:not(:placeholder-shown)]:s-border-border-dark",
+          "dark:has-[input:not(:placeholder-shown)]:s-border-border-dark-night",
+          "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:s-bg-muted",
+          "dark:[&:has(input:not(:placeholder-shown)):not(:focus-within)]:s-bg-muted-night"
         ),
         error: cn(
           "s-border-warning-300 dark:s-border-warning-300-night",
@@ -230,7 +236,7 @@ export const NewInput = forwardRef<HTMLInputElement, NewInputProps>(
             )}
           >
             {(messageStatus === "info" || messageStatus === "error") && (
-              <Icon visual={InfoCircle} size="xs" />
+              <Icon visual={AlertCircle} size="xs" />
             )}
             {message}
           </div>
