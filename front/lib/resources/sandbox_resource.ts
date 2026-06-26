@@ -42,11 +42,16 @@ import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-interface EnsureSandboxResult {
+export interface EnsureSandboxResult {
   freshlyCreated: boolean;
   sandbox: SandboxResource;
   wokeFromSleep: boolean;
 }
+
+export type ConversationSandboxOwner = Pick<
+  ConversationWithoutContentType,
+  "id" | "sId"
+>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
@@ -229,7 +234,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
   static async fetchByConversation(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
+    conversation: ConversationSandboxOwner
   ): Promise<SandboxResource | null> {
     const link = await this.conversationSandboxModel.findOne({
       where: {
@@ -440,7 +445,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   // cannot shadow a system var like CONVERSATION_ID.
   private static async buildSandboxEnvVars(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    conversation: ConversationSandboxOwner,
     imageEnvVars: Record<string, string> | undefined
   ): Promise<Result<Record<string, string>, Error>> {
     const workspaceEnvResult =
@@ -479,7 +484,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async ensureActive(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
+    conversation: ConversationSandboxOwner
   ): Promise<Result<EnsureSandboxResult, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
@@ -726,7 +731,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async pauseForApproval(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
+    conversation: ConversationSandboxOwner
   ): Promise<Result<void, Error>> {
     return this.withLifecycleLock(conversation.sId, async (provider) => {
       const sandbox = await SandboxResource.fetchByConversation(

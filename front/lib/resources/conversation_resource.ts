@@ -23,6 +23,11 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
+import {
+  type ConversationSandboxOwner,
+  type EnsureSandboxResult,
+  SandboxResource,
+} from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -347,6 +352,79 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return conversations.map((c) => this.fromModel(c, null));
+  }
+
+  static async fetchSandbox(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner
+  ): Promise<SandboxResource | null> {
+    return SandboxResource.fetchByConversation(auth, conversation);
+  }
+
+  async fetchSandbox(auth: Authenticator): Promise<SandboxResource | null> {
+    return ConversationResource.fetchSandbox(auth, this);
+  }
+
+  static async ensureSandboxActive(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner
+  ): Promise<Result<EnsureSandboxResult, Error>> {
+    return SandboxResource.ensureActive(auth, conversation);
+  }
+
+  async ensureSandboxActive(
+    auth: Authenticator
+  ): Promise<Result<EnsureSandboxResult, Error>> {
+    return ConversationResource.ensureSandboxActive(auth, this);
+  }
+
+  static async pauseSandboxForApproval(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.pauseForApproval(auth, conversation);
+  }
+
+  async pauseSandboxForApproval(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return ConversationResource.pauseSandboxForApproval(auth, this);
+  }
+
+  async deleteSandbox(auth: Authenticator): Promise<Result<void, Error>> {
+    return SandboxResource.deleteByConversation(auth, this);
+  }
+
+  async dangerouslySleepSandboxIfRunning(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.dangerouslySleepIfRunning(auth, this);
+  }
+
+  async dangerouslySleepSandboxIfPendingApproval(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.dangerouslySleepIfPendingApproval(auth, this);
+  }
+
+  async dangerouslyDestroySandboxIfSleeping(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.dangerouslyDestroyIfSleeping(auth, this);
+  }
+
+  async dangerouslyDestroySandboxIfKillRequested(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.dangerouslyDestroyIfKillRequested(auth, this);
+  }
+
+  static async dangerouslyFetchConversationModelIdsBySandboxes(
+    sandboxes: Pick<SandboxResource, "id" | "workspaceId">[]
+  ): Promise<Map<ModelId, ModelId>> {
+    return SandboxResource.dangerouslyFetchConversationModelIdsBySandboxes(
+      sandboxes
+    );
   }
 
   get forkingData(): ConversationForkingDataType | undefined {

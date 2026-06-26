@@ -60,7 +60,7 @@ async function fetchConversationMap(
   sandboxes: SandboxResource[]
 ): Promise<ConversationMaps> {
   const conversationModelIdsBySandboxModelId =
-    await SandboxResource.dangerouslyFetchConversationModelIdsBySandboxes(
+    await ConversationResource.dangerouslyFetchConversationModelIdsBySandboxes(
       sandboxes
     );
   const conversationModelIds = [
@@ -92,8 +92,8 @@ async function fetchConversationMap(
 /**
  * Shared driver for every reaper phase: resolve the workspace auth and the
  * ConversationResource for each sandbox, then run `action` concurrently. The
- * lifecycle methods take the serialized conversation, so we pass
- * `conversation.toJSON()`.
+ * lifecycle methods run from the conversation resource so callers do not need
+ * to know the conversation-owned sandbox lookup details.
  */
 async function processSandboxes(
   sandboxes: SandboxResource[],
@@ -166,7 +166,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     await processSandboxes(
       killRequestedSandboxes,
       (auth, conversation) =>
-        SandboxResource.dangerouslyDestroyIfKillRequested(auth, conversation),
+        conversation.dangerouslyDestroySandboxIfKillRequested(auth),
       "Reaper: failed to destroy kill-requested sandbox — continuing."
     );
   }
@@ -187,7 +187,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     await processSandboxes(
       runningSandboxes,
       (auth, conversation) =>
-        SandboxResource.dangerouslySleepIfRunning(auth, conversation),
+        conversation.dangerouslySleepSandboxIfRunning(auth),
       "Reaper: failed to sleep sandbox — continuing."
     );
   }
@@ -208,7 +208,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     await processSandboxes(
       pendingSandboxes,
       (auth, conversation) =>
-        SandboxResource.dangerouslySleepIfPendingApproval(auth, conversation),
+        conversation.dangerouslySleepSandboxIfPendingApproval(auth),
       "Reaper: failed to transition pending_approval sandbox — continuing."
     );
   }
@@ -229,7 +229,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     await processSandboxes(
       sleepingSandboxes,
       (auth, conversation) =>
-        SandboxResource.dangerouslyDestroyIfSleeping(auth, conversation),
+        conversation.dangerouslyDestroySandboxIfSleeping(auth),
       "Reaper: failed to destroy sandbox — continuing."
     );
   }
