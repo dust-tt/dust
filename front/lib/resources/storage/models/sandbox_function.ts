@@ -81,6 +81,7 @@ SandboxFunctionModel.init(
       },
       {
         fields: ["fileId"],
+        unique: true,
         concurrently: true,
       },
     ],

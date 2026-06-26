@@ -59,7 +59,7 @@ Statement 6
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
-CREATE INDEX CONCURRENTLY sandbox_functions_file_id ON public.sandbox_functions USING btree ("fileId");
+CREATE UNIQUE INDEX CONCURRENTLY sandbox_functions_file_id ON public.sandbox_functions USING btree ("fileId");
 
 /*
 Statement 7
