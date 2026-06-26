@@ -3462,15 +3462,18 @@ export async function adjustSeatCreditBalances({
  * Uses a raw fetch because the Metronome SDK does not yet expose this endpoint.
  * Returns one entry per seat_id (user sId), with balance (remaining) and
  * starting_balance (full allocation for the period).
+ * Pass `seatIds` to restrict the query to specific seats (no pagination needed).
  */
 export async function listMetronomeSeatBalances({
   metronomeCustomerId,
   metronomeContractId,
   coveringDate = new Date(),
+  seatId,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
   coveringDate?: Date;
+  seatId?: string;
 }): Promise<Result<MetronomeSeatBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -3497,6 +3500,7 @@ export async function listMetronomeSeatBalances({
               include_credits_and_commits: true,
               covering_date: coveringDate.toISOString(),
               limit: 100,
+              ...(seatId ? { seat_ids: [seatId] } : {}),
               ...(nextPage ? { cursor: nextPage } : {}),
             },
           }
