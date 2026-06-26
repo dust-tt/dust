@@ -4,9 +4,8 @@
 // its description, and every description / property key / enum value found in
 // its input schema (this mirrors what a tool-search index would index).
 
-import type { JSONSchema7, JSONSchema7Definition } from "json-schema";
-
 import type { Document } from "@app/scripts/mcp_bm25/bm25";
+import type { JSONSchema7, JSONSchema7Definition } from "json-schema";
 
 export interface ServerEntry {
   name: string;

@@ -11,8 +11,15 @@
 //
 // Usage: npx tsx scripts/mcp_bm25/run.ts   (from the front/ directory)
 
+import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
+import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
+import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
+import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
+import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
+import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
+import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import { buildIndex, rank } from "@app/scripts/mcp_bm25/bm25";
 import type { ServerEntry } from "@app/scripts/mcp_bm25/corpus";
 import { buildDocs } from "@app/scripts/mcp_bm25/corpus";
@@ -21,6 +28,13 @@ import { QUERIES } from "@app/scripts/mcp_bm25/queries";
 const SERVERS: ServerEntry[] = [
   { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
   { name: "microsoft_drive", tools: MICROSOFT_DRIVE_SERVER.tools },
+  { name: "jira", tools: JIRA_SERVER.tools },
+  { name: "zendesk", tools: ZENDESK_SERVER.tools },
+  { name: "front", tools: FRONT_SERVER.tools },
+  { name: "freshservice", tools: FRESHSERVICE_SERVER.tools },
+  { name: "slack", tools: SLACK_PERSONAL_SERVER.tools },
+  { name: "slack_bot", tools: SLACK_BOT_SERVER.tools },
+  { name: "microsoft_teams", tools: MICROSOFT_TEAMS_SERVER.tools },
 ];
 
 function out(line: string): void {
