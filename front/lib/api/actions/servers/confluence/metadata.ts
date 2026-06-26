@@ -9,7 +9,7 @@ export const CONFLUENCE_TOOL_NAME = "confluence" as const;
 export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
   get_current_user: {
     description:
-      "Get information about the currently authenticated Confluence user including account ID, display name, and email.",
+      "Get the currently authenticated Confluence user: who you are, your own account ID, display name, and email.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -29,7 +29,7 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
   },
   get_pages: {
     description:
-      "Search for Confluence pages using CQL (Confluence Query Language). Only returns page objects. " +
+      "Search Confluence to find and locate pages across spaces by keyword, title, label, or space, using CQL (Confluence Query Language). Use this to find a page when you only know its title or topic and not its ID. Only returns page objects. " +
       "Text matching operators: '~' contains, '!~' not contains, '=' exact match. " +
       "Common fields: title, text, space (use space key, not name), creator, label. " +
       "Examples: 'type=page AND space=DEV', 'type=page AND title~\"meeting\"', 'type=page AND label=important'",
@@ -56,7 +56,7 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
   },
   get_page: {
     description:
-      "Get a single Confluence page by its ID. Returns the page metadata and optionally the page body content.",
+      "Retrieve and read a single Confluence page by its ID, returning its metadata and body content. Use this when you already know the page ID.",
     schema: {
       pageId: z.string().describe("The ID of the page to retrieve"),
       includeBody: z
@@ -75,7 +75,7 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
   },
   create_page: {
     description:
-      "Create a new Confluence page in a specified space with optional content and parent page.",
+      "Create a new Confluence page in a space, optionally nested under a parent page.",
     schema: {
       spaceId: z
         .string()
