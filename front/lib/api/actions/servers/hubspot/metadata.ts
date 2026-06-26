@@ -145,7 +145,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_contact: {
-    description: "Retrieves a Hubspot contact by its ID.",
+    description:
+      "Open a single HubSpot contact record by its ID and read its properties.",
     schema: {
       contactId: z.string().describe("The ID of the contact to retrieve."),
     },
@@ -157,7 +158,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_company: {
     description:
-      "Retrieves a Hubspot company by its ID. Returns default properties plus any additional properties specified.",
+      "Open a single HubSpot company record by its ID and read its properties. " +
+      "Returns default properties plus any additional properties specified.",
     schema: {
       companyId: z.string().describe("The ID of the company to retrieve."),
       extraProperties: z
@@ -175,7 +177,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_deal: {
     description:
-      "Retrieves a Hubspot deal by its ID. Returns default properties plus any additional properties specified.",
+      "Open a single HubSpot deal record by its ID and read its properties. " +
+      "Returns default properties plus any additional properties specified.",
     schema: {
       dealId: z.string().describe("The ID of the deal to retrieve."),
       extraProperties: z
@@ -232,9 +235,11 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   search_crm_objects: {
     description:
-      "Comprehensive search tool for ALL HubSpot object types including contacts, companies, deals, " +
-      "and ALL engagement types (tasks, notes, meetings, calls, emails). Supports advanced filtering by properties, " +
-      "date ranges, owners, and free-text queries. Enhanced to support owner filtering across all engagement types. " +
+      "Find HubSpot contacts, companies, deals, and activity records when " +
+      "you do not know the object ID. " +
+      "Use this to find contacts at a company, search deals by close date, " +
+      "or locate tasks, notes, meetings, calls, and emails. " +
+      "Supports advanced filtering by properties, date ranges, owners, and free-text queries. " +
       "IMPORTANT: For enumeration properties (like industry), always use get_object_properties first to discover the exact values. " +
       "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
     schema: {
@@ -329,7 +334,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_current_user_id: {
     description:
-      "Gets the current authenticated user's HubSpot owner ID and profile information. " +
+      "Identify who you are in HubSpot: get the current authenticated user's " +
+      "HubSpot owner ID and profile information. " +
       "Essential first step for getting your own activity data. Returns user_id (needed for get_user_activity), " +
       "user details, and hub_id. Use this before calling get_user_activity with your own data.",
     schema: {},
@@ -508,7 +514,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_email_campaign: {
     description:
-      "Retrieves detailed information about a specific email campaign, including name, subject, type, " +
+      "Open and read a detailed HubSpot email campaign report by campaign ID, " +
+      "including name, subject, type, " +
       "and deliverability counters (sent, delivered, open, click, bounce, unsubscribe, etc.).",
     schema: {
       campaignId: z

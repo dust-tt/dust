@@ -466,6 +466,68 @@ export const QUERIES: LabeledQuery[] = [
     expected: "confluence.get_current_user",
   },
 
+  // --- hubspot ---
+  {
+    query: "find a hubspot contact by email address",
+    expected: "hubspot.get_object_by_email",
+  },
+  {
+    query: "read hubspot contact 123",
+    expected: "hubspot.get_contact",
+  },
+  {
+    query: "open a hubspot company record",
+    expected: "hubspot.get_company",
+  },
+  {
+    query: "read a hubspot deal by id",
+    expected: "hubspot.get_deal",
+  },
+  {
+    query: "search hubspot deals by close date",
+    expected: "hubspot.search_crm_objects",
+  },
+  {
+    query: "find contacts at acme in hubspot",
+    expected: "hubspot.search_crm_objects",
+  },
+  {
+    query: "export hubspot contacts to csv",
+    expected: "hubspot.export_crm_objects_csv",
+  },
+  {
+    query: "who am i in hubspot",
+    expected: "hubspot.get_current_user_id",
+  },
+  {
+    query: "show my hubspot activity last week",
+    expected: "hubspot.get_user_activity",
+  },
+  {
+    query: "find a hubspot owner by name",
+    expected: "hubspot.search_owners",
+  },
+  {
+    query: "create a hubspot note on a contact",
+    expected: "hubspot.create_note",
+  },
+  {
+    query: "list contacts associated with a hubspot company",
+    expected: "hubspot.list_associations",
+  },
+  {
+    query: "get my hubspot portal id",
+    expected: "hubspot.get_hubspot_portal_id",
+  },
+  {
+    query: "list hubspot marketing emails",
+    expected: "hubspot.list_marketing_emails",
+  },
+  {
+    query: "read hubspot email campaign report",
+    expected: "hubspot.get_email_campaign",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
