@@ -205,6 +205,8 @@ export {
 } from "./NewButton";
 export type { NewInputProps, NewInputSizeType } from "./NewInput";
 export { NEW_INPUT_SIZES, NewInput } from "./NewInput";
+export type { NewInputWithSaveProps } from "./NewInputWithSave";
+export { NewInputWithSave } from "./NewInputWithSave";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
