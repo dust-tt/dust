@@ -29,6 +29,7 @@ from utils import (
     flatten_text,
     format_size,
     pad,
+    parse_slide_patterns,
     safe_output,
 )
 
@@ -79,8 +80,8 @@ DEFAULT_MAX_SHAPES = 200
 
 
 USAGE = (
-    "pptx_inspect <file> [--qa N] [--slide N] [--layouts] [--text] [--media] "
-    "[--render] [--compare FILE] [--max-shapes N] [--offset N]"
+    "pptx_inspect <file> [--qa N[,N,...]] [--slide N] [--layouts] [--text] "
+    "[--media] [--render] [--compare FILE] [--max-shapes N] [--offset N]"
 )
 
 HELP_TEXT = (
@@ -92,11 +93,14 @@ HELP_TEXT = (
     "  file              Path to .pptx deck (required)\n"
     "\n"
     "Options:\n"
-    "  --qa N            Per-slide QA — run after EVERY edit to slide N. Prints the\n"
-    "                    slide's text (#id-tagged, to read back) AND the boxed\n"
-    "                    diagnostic render (slide-NNN-boxes.png; boxes labeled '#id',\n"
-    "                    red wash on peer-overlaps, a Pixel-metrics line for marker\n"
-    "                    runs with no text row beside them). The boxes live here.\n"
+    "  --qa N[,N,...]    QA gate — run after a round of edits. Takes one slide or a\n"
+    "                    pattern (e.g. 2,5,7-9); QA-ing several at once shares a\n"
+    "                    single render pass (the PDF is cached), so edit a batch of\n"
+    "                    slides then QA them together rather than one call each.\n"
+    "                    Prints each slide's text (#id-tagged, to read back) AND the\n"
+    "                    boxed diagnostic render (slide-NNN-boxes.png; boxes labeled\n"
+    "                    '#id', red wash on peer-overlaps, a Pixel-metrics line for\n"
+    "                    marker runs with no text row beside them). The boxes live here.\n"
     "  --slide N         Show one slide's shapes (1-indexed): kind, position,\n"
     "                    size, text, formatting, placeholder type, and a text-fit\n"
     "                    estimate per text shape (holds~Nch@Spt / ~Nch/line@Spt),\n"
@@ -1091,23 +1095,29 @@ def print_render(
     return "\n".join(lines)
 
 
-def print_qa(file_path: str, prs: PresentationType, slide_idx: int) -> str:
-    """Per-slide QA gate — run after EVERY edit to a slide. Bundles the slide's
-    authoritative text (#id-tagged, to read back) with the boxed diagnostic
-    render so they are checked together."""
+def print_qa(file_path: str, prs: PresentationType, slide_nos: List[int]) -> str:
+    """QA gate — run after a round of edits. Accepts one slide or several (a
+    pattern like `2,5,7-9`); for each, bundles the slide's authoritative text
+    (#id-tagged, to read back) with the boxed diagnostic render so they are
+    checked together. QA-ing several slides at once shares a single soffice
+    conversion (the PDF is cached after the first render), so batching the
+    changed slides is much faster than one call per slide."""
     total_slides = len(prs.slides)
-    if slide_idx < 1 or slide_idx > total_slides:
-        raise ValueError(
-            f"slide index out of range: {slide_idx} "
-            f"(deck has {total_slides} slides)"
-        )
-    return (
+    for slide_idx in slide_nos:
+        if slide_idx < 1 or slide_idx > total_slides:
+            raise ValueError(
+                f"slide index out of range: {slide_idx} "
+                f"(deck has {total_slides} slides)"
+            )
+    blocks = [
         f"[QA slide {slide_idx} — read each #id's text below back against the "
         "boxed render]\n\n"
         + print_text(prs, slide_idx)
         + "\n\n"
         + _boxed_render(file_path, prs, slide_idx)
-    )
+        for slide_idx in slide_nos
+    ]
+    return "\n\n".join(blocks)
 
 
 def main() -> int:
@@ -1122,7 +1132,7 @@ def main() -> int:
     parser.add_argument("--text", action="store_true")
     parser.add_argument("--media", action="store_true")
     parser.add_argument("--render", action="store_true")
-    parser.add_argument("--qa", type=int)
+    parser.add_argument("--qa", metavar="N[,N,...]")
     parser.add_argument("--compare")
     parser.add_argument("--max-shapes", type=int, default=DEFAULT_MAX_SHAPES)
     parser.add_argument("--offset", type=int, default=0)
@@ -1164,7 +1174,7 @@ def main() -> int:
     else:
         prs = Presentation(args.file)
         if args.qa is not None:
-            body = print_qa(args.file, prs, args.qa)
+            body = print_qa(args.file, prs, parse_slide_patterns(args.qa))
         elif args.render:
             body = print_render(args.file, prs, args.slide)
         elif args.layouts:
