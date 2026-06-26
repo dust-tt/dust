@@ -129,6 +129,13 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
         ),
+      show_sent_by_footer: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          "Whether to append a 'Sent via [AgentName] on Dust' attribution footer to the message. Defaults to true. Set to false only when explicitly instructed to omit the attribution."
+        ),
     },
     stake: "medium",
     displayLabels: {
@@ -176,6 +183,13 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
+        ),
+      show_sent_by_footer: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          "Whether to append a 'Sent via [AgentName] on Dust' attribution footer to the scheduled message. Defaults to true. Set to false only when explicitly instructed to omit the attribution."
         ),
     },
     stake: "medium",
