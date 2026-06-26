@@ -684,6 +684,32 @@ export const QUERIES: LabeledQuery[] = [
     expected: "google_sheets.move_worksheet",
   },
 
+  // --- snowflake ---
+  {
+    query: "what snowflake databases can i access",
+    expected: "snowflake.list_databases",
+  },
+  {
+    query: "show schemas in the analytics snowflake database",
+    expected: "snowflake.list_schemas",
+  },
+  {
+    query: "find available tables and views in snowflake analytics public",
+    expected: "snowflake.list_tables",
+  },
+  {
+    query: "what columns and data types are in a snowflake orders table",
+    expected: "snowflake.describe_table",
+  },
+  {
+    query: "show measures and dimensions in a snowflake semantic view",
+    expected: "snowflake.describe_semantic_view",
+  },
+  {
+    query: "calculate monthly revenue from snowflake data",
+    expected: "snowflake.query",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",

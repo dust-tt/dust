@@ -24,6 +24,7 @@ import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_t
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
+import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import { buildIndex, rank } from "@app/scripts/mcp_bm25/bm25";
 import type { ServerEntry } from "@app/scripts/mcp_bm25/corpus";
@@ -45,6 +46,7 @@ const SERVERS: ServerEntry[] = [
   { name: "hubspot", tools: HUBSPOT_SERVER.tools },
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
   { name: "interactive_content", tools: INTERACTIVE_CONTENT_SERVER.tools },
+  { name: "snowflake", tools: SNOWFLAKE_SERVER.tools },
 ];
 
 function out(line: string): void {
