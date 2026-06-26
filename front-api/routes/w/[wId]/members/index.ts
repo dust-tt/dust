@@ -9,6 +9,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 
 import member from "./[uId]";
+import bulkSpendLimit from "./bulk-spend-limit";
 import freeSeats from "./free-seats";
 import lookup from "./lookup";
 import me from "./me";
@@ -81,6 +82,7 @@ app.get(
   }
 );
 
+app.route("/bulk-spend-limit", bulkSpendLimit);
 app.route("/free-seats", freeSeats);
 app.route("/lookup", lookup);
 app.route("/me", me);
