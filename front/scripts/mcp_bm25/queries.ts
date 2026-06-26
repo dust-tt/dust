@@ -746,6 +746,24 @@ export const QUERIES: LabeledQuery[] = [
     expected: "run_agent.run_CodeReviewer",
   },
 
+  // --- data_warehouses ---
+  {
+    query: "browse the schemas in our revenue warehouse",
+    expected: "data_warehouses.list",
+  },
+  {
+    query: "find customer tables in the data warehouse",
+    expected: "data_warehouses.find",
+  },
+  {
+    query: "describe the schema and columns for this warehouse table",
+    expected: "data_warehouses.describe_tables",
+  },
+  {
+    query: "calculate monthly revenue by querying warehouse tables",
+    expected: "data_warehouses.query",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
