@@ -172,9 +172,8 @@ export function getToolCategory(
 
 // Origins whose entire conversation is free (platform-assistive, not
 // user-requested output).
-export const FREE_ORIGINS: ReadonlySet<string> = new Set<string>([
-  "agent_sidekick",
-]);
+export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
+  new Set<UserMessageOrigin>(["agent_sidekick"]);
 
 // Internal MCP servers whose tool invocations are always free regardless of
 // the message-level usage type (platform plumbing, not user output).
@@ -185,13 +184,13 @@ const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
   "agent_memory",
 ]);
 
-export function isFreeOrigin(origin: string): boolean {
+export function isFreeOrigin(origin: UserMessageOrigin): boolean {
   return FREE_ORIGINS.has(origin);
 }
 
 export function getUsageType(
   isProgrammaticUsage: boolean,
-  origin: string
+  origin: UserMessageOrigin
 ): UsageType {
   if (isFreeOrigin(origin)) {
     return USAGE_TYPE_FREE;
@@ -202,7 +201,7 @@ export function getUsageType(
 // A tool invocation is always free (priced at 0 in the rate card) when its
 // internal MCP server is platform plumbing — see FREE_TOOL_SERVERS.
 export function isFreeToolServer(
-  internalMCPServerName: string | null
+  internalMCPServerName: InternalMCPServerNameType | null
 ): boolean {
   return (
     internalMCPServerName !== null &&
@@ -212,7 +211,7 @@ export function isFreeToolServer(
 
 function getToolUsageType(
   baseUsageType: UsageType,
-  internalMCPServerName: string | null
+  internalMCPServerName: InternalMCPServerNameType | null
 ): UsageType {
   if (isFreeToolServer(internalMCPServerName)) {
     return USAGE_TYPE_FREE;
@@ -312,7 +311,7 @@ export function intelligenceAwuFromRunUsagesGroupedByRunKey(
 // should pass only final-status actions (matching the usage_queue extraction)
 // so this equals the billed amount.
 export function toolAwuFromActions(
-  actions: { internalMCPServerName: string | null }[]
+  actions: { internalMCPServerName: InternalMCPServerNameType | null }[]
 ): number {
   return actions.reduce((total, action) => {
     if (isFreeToolServer(action.internalMCPServerName)) {

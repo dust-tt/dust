@@ -1,3 +1,4 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
@@ -20,7 +21,7 @@ import logger from "@app/logger/logger";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 
 interface CreditActionMinimalInput {
-  internalMCPServerName: string | null;
+  internalMCPServerName: InternalMCPServerNameType | null;
   status: ToolExecutionStatus;
 }
 
