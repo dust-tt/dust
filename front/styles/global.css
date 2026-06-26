@@ -91,13 +91,6 @@ body.document-scroll-mode #root {
   @apply bg-panel-background;
 }
 
-html.dark:has(body.document-scroll-mode),
-html.dark:has(body.document-scroll-mode) #__next,
-.dark body.document-scroll-mode,
-.dark body.document-scroll-mode #root {
-  @apply bg-panel-background-night;
-}
-
 body.document-scroll-mode {
   display: flex;
   flex-direction: column;
