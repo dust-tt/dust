@@ -14,6 +14,18 @@ export const MODEL_TIERS = [
 ] as const;
 export type ModelTier = (typeof MODEL_TIERS)[number];
 
+export const DEFAULT_MODEL_TIER: ModelTier = "frontier";
+
+export function isModelTier(value: string): value is ModelTier {
+  return (MODEL_TIERS as readonly string[]).includes(value);
+}
+
+export function resolveWorkspaceDefaultModelTier(
+  defaultModelsTier: ModelTier | null
+): ModelTier {
+  return defaultModelsTier ?? DEFAULT_MODEL_TIER;
+}
+
 /**
  * Blended cost thresholds in USD per million tokens (average of input + output).
  * Derived from the pricing initiative model picker spec:

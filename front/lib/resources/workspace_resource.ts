@@ -551,9 +551,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         | "metadata"
         | "sharingPolicy"
       >
-    >
+    >,
+    transaction?: Transaction
   ) {
-    return this.update(updateableAttributes);
+    return this.update(updateableAttributes, transaction);
   }
 
   async updateDomainAutoJoinEnabled({
