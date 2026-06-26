@@ -3496,6 +3496,7 @@ export async function listMetronomeSeatBalances({
               contract_id: metronomeContractId,
               include_credits_and_commits: true,
               covering_date: coveringDate.toISOString(),
+              limit: 100,
               ...(nextPage ? { cursor: nextPage } : {}),
             },
           }
