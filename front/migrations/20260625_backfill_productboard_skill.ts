@@ -1,7 +1,4 @@
-import {
-  type InternalMCPServerNameType,
-  matchesInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -12,12 +9,9 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { serializeSkillTag } from "@app/lib/skills/format";
-import { parseToolTag, TOOL_TAG_REGEX } from "@app/lib/tools/format";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -178,153 +172,81 @@ interface ConversationNotePart {
 - Patch clear: \`{patch: [{op: "clear", path: "owner"}]}\`
 `;
 
-const SALESFORCE_SKILL_NAME = "Work with Salesforce";
-const SALESFORCE_SKILL_ICON = "SalesforceLogo";
-const SALESFORCE_SKILL_USER_DESCRIPTION =
-  "Helps agents use Salesforce tools with the right discovery flow.";
-const SALESFORCE_SKILL_AGENT_DESCRIPTION =
-  "Use this skill whenever you need to inspect, query, create, update, or read attachments from Salesforce.";
-
-const SALESFORCE_SKILL_INSTRUCTIONS = `Use Salesforce tools when the user asks about Salesforce records, objects, fields, relationships, attachments, or record changes.
-
-# General Workflow for Salesforce Data
-1. **List Objects (Optional):** If you don't know the exact name of an object, use \`list_objects\` to find it.
-2. **Describe Object:** Use \`describe_object\` with the specific object name, such as \`Account\`, \`Lead\`, or \`MyCustomObject__c\`, to inspect its metadata before querying or writing.
-3. **Execute Read Query:** Use \`execute_read_query\` to retrieve or discover data with SOQL. It is read-only and must never be used to write data. Construct SOQL from \`describe_object\` output so field and relationship names are exact.
-
-# Best Practices
-- Start with metadata when the object, field names, relationships, record types, or required fields are not already known. This helps prevent misspelled or non-existent field, object, and relationship names.
-- For a quick field list directly in a query, use \`FIELDS(ALL)\`, \`FIELDS(CUSTOM)\`, or \`FIELDS(STANDARD)\` in the \`SELECT\` statement. \`FIELDS()\` requires a \`LIMIT\` clause, with a maximum of 200.
-- If Salesforce returns "No such column" or "Didn't understand relationship", use \`describe_object\` on the relevant object or objects to verify exact API names and relationship names before retrying.
-- If errors persist after using \`describe_object\`, the field, object, or relationship might genuinely not exist, or the connected user may lack permissions.
-- Before writing data, confirm the target object, record IDs, and required field values.`;
-
-type GuidanceSkillBackfillConfig = {
-  agentFacingDescription: string;
-  attachMCPServerViewsToSkill: boolean;
-  icon: string;
-  instructions: string;
-  internalMCPServerName: InternalMCPServerNameType;
-  label: string;
-  replaceToolReferencesInSkills: boolean;
-  skillName: string;
-  userFacingDescription: string;
-};
-
-const GUIDANCE_SKILL_BACKFILL_CONFIGS: GuidanceSkillBackfillConfig[] = [
-  {
-    agentFacingDescription: PRODUCTBOARD_SKILL_AGENT_DESCRIPTION,
-    attachMCPServerViewsToSkill: false,
-    icon: PRODUCTBOARD_SKILL_ICON,
-    instructions: PRODUCTBOARD_SKILL_INSTRUCTIONS,
-    internalMCPServerName: "productboard",
-    label: "Productboard",
-    replaceToolReferencesInSkills: true,
-    skillName: PRODUCTBOARD_SKILL_NAME,
-    userFacingDescription: PRODUCTBOARD_SKILL_USER_DESCRIPTION,
-  },
-  {
-    agentFacingDescription: SALESFORCE_SKILL_AGENT_DESCRIPTION,
-    attachMCPServerViewsToSkill: true,
-    icon: SALESFORCE_SKILL_ICON,
-    instructions: SALESFORCE_SKILL_INSTRUCTIONS,
-    internalMCPServerName: "salesforce",
-    label: "Salesforce",
-    replaceToolReferencesInSkills: true,
-    skillName: SALESFORCE_SKILL_NAME,
-    userFacingDescription: SALESFORCE_SKILL_USER_DESCRIPTION,
-  },
-];
-
-interface ActiveMCPServerUsage {
-  activeAgentMCPServerViewModelIds: ModelId[];
-  agents: AgentConfigurationModel[];
-  mcpServerConfigurationModelIds: ModelId[];
-  mcpServerViewModelIds: ModelId[];
-}
-
-async function findLatestActiveMCPServerUsage(
-  config: GuidanceSkillBackfillConfig,
+async function findLatestActiveProductboardAgents(
   workspace: LightWorkspaceType
-): Promise<ActiveMCPServerUsage> {
-  const mcpServerViews = await MCPServerViewModel.findAll({
+): Promise<{
+  productboardAgents: AgentConfigurationModel[];
+  productboardMCPServerConfigurationModelIds: ModelId[];
+}> {
+  const productboardMCPServerViews = await MCPServerViewModel.findAll({
     where: {
       workspaceId: workspace.id,
       serverType: "internal",
       internalMCPServerId: { [Op.ne]: null },
     },
   });
-  const mcpServerViewModelIds = mcpServerViews
+  const productboardMCPServerViewModelIds = productboardMCPServerViews
     .filter((view) =>
-      matchesInternalMCPServerName(
-        view.internalMCPServerId,
-        config.internalMCPServerName
-      )
+      matchesInternalMCPServerName(view.internalMCPServerId, "productboard")
     )
     .map((view) => view.id);
 
-  if (mcpServerViewModelIds.length === 0) {
+  if (productboardMCPServerViewModelIds.length === 0) {
     return {
-      activeAgentMCPServerViewModelIds: [],
-      agents: [],
-      mcpServerConfigurationModelIds: [],
-      mcpServerViewModelIds: [],
+      productboardAgents: [],
+      productboardMCPServerConfigurationModelIds: [],
     };
   }
 
-  const mcpServerConfigurations =
+  const productboardMCPServerConfigurations =
     await AgentMCPServerConfigurationModel.findAll({
       where: {
         workspaceId: workspace.id,
-        mcpServerViewId: { [Op.in]: mcpServerViewModelIds },
+        mcpServerViewId: { [Op.in]: productboardMCPServerViewModelIds },
       },
     });
-  const agentConfigurationModelIds = new Set(
-    mcpServerConfigurations.map((mcpConfig) => mcpConfig.agentConfigurationId)
+  const productboardAgentConfigurationModelIds = new Set(
+    productboardMCPServerConfigurations.map(
+      (config) => config.agentConfigurationId
+    )
   );
 
-  if (agentConfigurationModelIds.size === 0) {
+  if (productboardAgentConfigurationModelIds.size === 0) {
     return {
-      activeAgentMCPServerViewModelIds: [],
-      agents: [],
-      mcpServerConfigurationModelIds: [],
-      mcpServerViewModelIds,
+      productboardAgents: [],
+      productboardMCPServerConfigurationModelIds: [],
     };
   }
 
-  const agentConfigurations = await AgentConfigurationModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      id: [...agentConfigurationModelIds],
-      status: "active",
-    },
-  });
-  const activeAgentConfigurationModelIds = new Set(
-    agentConfigurations.map((agent) => agent.id)
+  const productboardAgentConfigurations = await AgentConfigurationModel.findAll(
+    {
+      where: {
+        workspaceId: workspace.id,
+        id: [...productboardAgentConfigurationModelIds],
+        status: "active",
+      },
+    }
   );
-  const activeMCPServerConfigurations = mcpServerConfigurations.filter(
-    (mcpConfig) =>
-      activeAgentConfigurationModelIds.has(mcpConfig.agentConfigurationId)
+  const productboardActiveAgentConfigurationModelIds = new Set(
+    productboardAgentConfigurations.map((agent) => agent.id)
   );
 
   return {
-    activeAgentMCPServerViewModelIds: [
-      ...new Set(
-        activeMCPServerConfigurations.map(
-          (mcpConfig) => mcpConfig.mcpServerViewId
-        )
-      ),
-    ],
-    agents: agentConfigurations.sort((a, b) => a.name.localeCompare(b.name)),
-    mcpServerConfigurationModelIds: activeMCPServerConfigurations.map(
-      (mcpConfig) => mcpConfig.id
+    productboardAgents: productboardAgentConfigurations.sort((a, b) =>
+      a.name.localeCompare(b.name)
     ),
-    mcpServerViewModelIds,
+    productboardMCPServerConfigurationModelIds:
+      productboardMCPServerConfigurations
+        .filter((config) =>
+          productboardActiveAgentConfigurationModelIds.has(
+            config.agentConfigurationId
+          )
+        )
+        .map((config) => config.id),
   };
 }
 
-async function fetchActiveSkill(
-  config: GuidanceSkillBackfillConfig,
+async function fetchActiveProductboardSkill(
   auth: Authenticator
 ): Promise<SkillResource | null> {
   const owner = auth.getNonNullableWorkspace();
@@ -332,7 +254,7 @@ async function fetchActiveSkill(
   const skillModel = await SkillConfigurationModel.findOne({
     where: {
       workspaceId: owner.id,
-      name: config.skillName,
+      name: PRODUCTBOARD_SKILL_NAME,
       status: "active",
     },
   });
@@ -344,136 +266,76 @@ async function fetchActiveSkill(
   const skill = await SkillResource.fetchByModelIdWithAuth(auth, skillModel.id);
   if (!skill) {
     throw new Error(
-      `Failed to fetch existing skill "${config.skillName}" in workspace ${owner.sId}.`
+      `Failed to fetch existing skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
     );
   }
 
   return skill;
 }
 
-async function fetchMCPServerViews({
-  auth,
-  config,
-  mcpServerViewModelIds,
-  workspace,
-}: {
-  auth: Authenticator;
-  config: GuidanceSkillBackfillConfig;
-  mcpServerViewModelIds: ModelId[];
-  workspace: LightWorkspaceType;
-}): Promise<MCPServerViewResource[]> {
-  if (mcpServerViewModelIds.length === 0) {
-    return [];
-  }
-
-  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
-    auth,
-    mcpServerViewModelIds
-  );
-
-  if (mcpServerViews.length !== mcpServerViewModelIds.length) {
-    throw new Error(
-      `Could not fetch all ${config.label} MCP server views in workspace ${workspace.sId}.`
-    );
-  }
-
-  return mcpServerViews;
-}
-
-async function createGuidanceSkill(
-  config: GuidanceSkillBackfillConfig,
-  auth: Authenticator,
-  mcpServerViews: MCPServerViewResource[]
+async function createProductboardSkill(
+  auth: Authenticator
 ): Promise<SkillResource> {
-  const attachedMCPServerViews = config.attachMCPServerViewsToSkill
-    ? mcpServerViews
-    : [];
-  const requestedSpaceIds = config.attachMCPServerViewsToSkill
-    ? await SkillResource.computeRequestedSpaceIds(auth, {
-        attachedKnowledge: [],
-        mcpServerViews: attachedMCPServerViews,
-      })
-    : [];
-
   return SkillResource.makeNew(
     auth,
     {
-      agentFacingDescription: config.agentFacingDescription,
+      agentFacingDescription: PRODUCTBOARD_SKILL_AGENT_DESCRIPTION,
       editedBy: null,
-      icon: config.icon,
-      instructions: config.instructions,
-      instructionsHtml: convertMarkdownToBlockHtml(config.instructions),
+      icon: PRODUCTBOARD_SKILL_ICON,
+      instructions: PRODUCTBOARD_SKILL_INSTRUCTIONS,
+      instructionsHtml: convertMarkdownToBlockHtml(
+        PRODUCTBOARD_SKILL_INSTRUCTIONS
+      ),
       isDefault: false,
-      name: config.skillName,
+      name: PRODUCTBOARD_SKILL_NAME,
       reinforcement: "on",
-      requestedSpaceIds,
+      // The MCP server views are all on the global space in practice.
+      requestedSpaceIds: [],
       source: null,
       sourceMetadata: null,
       status: "active",
-      userFacingDescription: config.userFacingDescription,
+      userFacingDescription: PRODUCTBOARD_SKILL_USER_DESCRIPTION,
     },
     {
       addCurrentUserAsEditor: false,
       attachedKnowledge: [],
-      mcpServerViews: attachedMCPServerViews,
+      mcpServerViews: [],
     }
   );
 }
 
-async function addEditorsToSkill(
+async function addAgentEditorsToSkill(
   auth: Authenticator,
   {
     agentConfigurationModelIds,
-    config,
     logger,
-    referencedSkillModelIds,
     skill,
   }: {
     agentConfigurationModelIds: ModelId[];
-    config: GuidanceSkillBackfillConfig;
     logger: Logger;
-    referencedSkillModelIds: ModelId[];
     skill: SkillResource;
   }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (
-    agentConfigurationModelIds.length === 0 &&
-    referencedSkillModelIds.length === 0
-  ) {
+  if (agentConfigurationModelIds.length === 0) {
     return;
   }
 
-  const [agentEditorLinks, skillEditorLinks] = await Promise.all([
-    agentConfigurationModelIds.length > 0
-      ? GroupAgentModel.findAll({
-          where: {
-            workspaceId: owner.id,
-            agentConfigurationId: { [Op.in]: agentConfigurationModelIds },
-          },
-        })
-      : [],
-    referencedSkillModelIds.length > 0
-      ? GroupSkillModel.findAll({
-          where: {
-            workspaceId: owner.id,
-            skillConfigurationId: { [Op.in]: referencedSkillModelIds },
-          },
-        })
-      : [],
-  ]);
-  const editorGroupModelIds = [
-    ...new Set([
-      ...agentEditorLinks.map((link) => link.groupId),
-      ...skillEditorLinks.map((link) => link.groupId),
-    ]),
+  const agentEditorLinks = await GroupAgentModel.findAll({
+    where: {
+      workspaceId: owner.id,
+      agentConfigurationId: { [Op.in]: agentConfigurationModelIds },
+    },
+  });
+  const agentEditorGroupModelIds = [
+    ...new Set(agentEditorLinks.map((link) => link.groupId)),
   ];
 
-  if (editorGroupModelIds.length === 0) {
+  if (agentEditorGroupModelIds.length === 0) {
     logger.warn(
       { skillId: skill.sId, workspaceId: owner.sId },
-      `No editor groups found for ${config.label} agents or skills`
+      "No agent editor groups found for Productboard agents"
     );
     return;
   }
@@ -487,29 +349,28 @@ async function addEditorsToSkill(
 
   if (!skillEditorLink) {
     throw new Error(
-      `Could not find editor group for skill "${config.skillName}" in workspace ${owner.sId}.`
+      `Could not find editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
     );
   }
 
   const groups = await GroupResource.fetchByModelIds(auth, [
     skillEditorLink.groupId,
-    ...editorGroupModelIds,
+    ...agentEditorGroupModelIds,
   ]);
   const groupByModelId = new Map(groups.map((group) => [group.id, group]));
 
   const skillEditorGroup = groupByModelId.get(skillEditorLink.groupId);
   if (!skillEditorGroup) {
     throw new Error(
-      `Could not fetch editor group for skill "${config.skillName}" in workspace ${owner.sId}.`
+      `Could not fetch editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
     );
   }
-  const editorGroups = editorGroupModelIds
-    .filter((groupModelId) => groupModelId !== skillEditorLink.groupId)
+  const agentEditorGroups = agentEditorGroupModelIds
     .map((groupModelId) => groupByModelId.get(groupModelId) ?? null)
     .filter((group): group is GroupResource => group !== null);
 
   const activeAgentEditorMemberships =
-    await GroupResource.getActiveMembershipsForGroups(auth, editorGroups);
+    await GroupResource.getActiveMembershipsForGroups(auth, agentEditorGroups);
   const agentEditorUserModelIds = [
     ...new Set(Object.values(activeAgentEditorMemberships).flat()),
   ];
@@ -517,7 +378,7 @@ async function addEditorsToSkill(
   if (agentEditorUserModelIds.length === 0) {
     logger.warn(
       { skillId: skill.sId, workspaceId: owner.sId },
-      `No editor members found for ${config.label} agents or skills`
+      "No agent editor members found for Productboard agents"
     );
     return;
   }
@@ -551,7 +412,7 @@ async function addEditorsToSkill(
         skillId: skill.sId,
         workspaceId: owner.sId,
       },
-      `${config.label} skill editors already up to date`
+      "Productboard skill editors already up to date"
     );
     return;
   }
@@ -571,154 +432,11 @@ async function addEditorsToSkill(
       skillId: skill.sId,
       workspaceId: owner.sId,
     },
-    `Added ${config.label} skill editors`
+    "Added Productboard skill editors"
   );
 }
 
-async function getAgentModelIdsMissingSkill({
-  agentConfigurationModelIds,
-  skill,
-  workspace,
-}: {
-  agentConfigurationModelIds: ModelId[];
-  skill: SkillResource;
-  workspace: LightWorkspaceType;
-}): Promise<ModelId[]> {
-  if (agentConfigurationModelIds.length === 0) {
-    return [];
-  }
-
-  const existingLinks = await AgentSkillModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      customSkillId: skill.id,
-      agentConfigurationId: { [Op.in]: agentConfigurationModelIds },
-    },
-  });
-  const agentModelIdsWithSkill = new Set(
-    existingLinks.map((link) => link.agentConfigurationId)
-  );
-
-  return agentConfigurationModelIds.filter(
-    (agentModelId) => !agentModelIdsWithSkill.has(agentModelId)
-  );
-}
-
-function getMissingMCPServerViewModelIds({
-  mcpServerViewModelIds,
-  skill,
-}: {
-  mcpServerViewModelIds: ModelId[];
-  skill: SkillResource;
-}): ModelId[] {
-  const skillMCPServerViewModelIds = new Set(
-    skill.mcpServerViews.map((view) => view.id)
-  );
-
-  return mcpServerViewModelIds.filter(
-    (mcpServerViewModelId) =>
-      !skillMCPServerViewModelIds.has(mcpServerViewModelId)
-  );
-}
-
-function uniqModelIds(modelIds: ModelId[]): ModelId[] {
-  return [...new Set(modelIds)];
-}
-
-function replaceToolReferencesWithSkillReference({
-  content,
-  mcpServerViewSIds,
-  skill,
-}: {
-  content: string;
-  mcpServerViewSIds: Set<string>;
-  skill: SkillResource;
-}): string {
-  const skillTag = serializeSkillTag({
-    icon: skill.icon,
-    id: skill.sId,
-    name: skill.name,
-  });
-
-  return content.replace(TOOL_TAG_REGEX, (tag) => {
-    const tool = parseToolTag(tag);
-    if (!tool || !mcpServerViewSIds.has(tool.id)) {
-      return tag;
-    }
-
-    return skillTag;
-  });
-}
-
-async function replaceToolReferencesWithSkillInReferencedSkills(
-  auth: Authenticator,
-  {
-    config,
-    logger,
-    mcpServerViews,
-    referencedSkills,
-    skill,
-  }: {
-    config: GuidanceSkillBackfillConfig;
-    logger: Logger;
-    mcpServerViews: MCPServerViewResource[];
-    referencedSkills: SkillResource[];
-    skill: SkillResource;
-  }
-): Promise<number> {
-  if (!config.replaceToolReferencesInSkills || mcpServerViews.length === 0) {
-    return 0;
-  }
-
-  const mcpServerViewSIds = new Set(mcpServerViews.map((view) => view.sId));
-  let updatedSkillCount = 0;
-
-  for (const referencedSkill of referencedSkills) {
-    if (referencedSkill.id === skill.id) {
-      continue;
-    }
-
-    const instructions = replaceToolReferencesWithSkillReference({
-      content: referencedSkill.instructions,
-      mcpServerViewSIds,
-      skill,
-    });
-    if (instructions === referencedSkill.instructions) {
-      continue;
-    }
-
-    const attachedKnowledge = await referencedSkill.getAttachedKnowledge(auth);
-
-    await referencedSkill.updateSkill(auth, {
-      agentFacingDescription: referencedSkill.agentFacingDescription,
-      attachedKnowledge,
-      icon: referencedSkill.icon,
-      instructions,
-      instructionsHtml: convertMarkdownToBlockHtml(instructions),
-      mcpServerViews: referencedSkill.mcpServerViews,
-      name: referencedSkill.name,
-      requestedSpaceIds: referencedSkill.requestedSpaceIds,
-      userFacingDescription: referencedSkill.userFacingDescription,
-    });
-
-    updatedSkillCount += 1;
-  }
-
-  logger.info(
-    {
-      referencedSkillCount: referencedSkills.length,
-      skillId: skill.sId,
-      updatedSkillCount,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    },
-    `Replaced ${config.label} tool references with skill references`
-  );
-
-  return updatedSkillCount;
-}
-
-async function backfillWorkspaceForConfig(
-  config: GuidanceSkillBackfillConfig,
+async function backfillWorkspace(
   workspace: LightWorkspaceType,
   {
     execute,
@@ -728,155 +446,79 @@ async function backfillWorkspaceForConfig(
     logger: Logger;
   }
 ): Promise<void> {
-  const {
-    activeAgentMCPServerViewModelIds,
-    agents,
-    mcpServerConfigurationModelIds,
-    mcpServerViewModelIds,
-  } = await findLatestActiveMCPServerUsage(config, workspace);
-  if (mcpServerViewModelIds.length === 0) {
+  const { productboardAgents, productboardMCPServerConfigurationModelIds } =
+    await findLatestActiveProductboardAgents(workspace);
+  if (productboardAgents.length === 0) {
     return;
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const existingSkill = await fetchActiveSkill(config, auth);
-  const referencedSkills = config.replaceToolReferencesInSkills
-    ? await SkillResource.listByMCPServerViewIds(auth, mcpServerViewModelIds)
-    : [];
-  const referencedSkillsToUpdate = referencedSkills.filter(
-    (referencedSkill) => referencedSkill.id !== existingSkill?.id
-  );
-  const mcpServerViewModelIdSet = new Set(mcpServerViewModelIds);
-  const referencedSkillMCPServerViewModelIds = referencedSkillsToUpdate.flatMap(
-    (referencedSkill) =>
-      referencedSkill.mcpServerViews
-        .filter((view) => mcpServerViewModelIdSet.has(view.id))
-        .map((view) => view.id)
-  );
-  const mcpServerViewModelIdsToFetch = uniqModelIds([
-    ...(config.attachMCPServerViewsToSkill
-      ? activeAgentMCPServerViewModelIds
-      : []),
-    ...referencedSkillMCPServerViewModelIds,
-  ]);
+  const existingSkill = await fetchActiveProductboardSkill(auth);
 
-  if (agents.length === 0 && referencedSkillsToUpdate.length === 0) {
-    return;
-  }
-
-  const agentModelIds = agents.map((agent) => agent.id);
+  const productboardAgentModelIds = productboardAgents.map((agent) => agent.id);
 
   logger.info(
     {
-      agentIdsToLink: agentModelIds.length,
-      agents: agents.map((agent) => ({
+      agentIdsToLink: productboardAgentModelIds.length,
+      productboardAgentCount: productboardAgents.length,
+      productboardAgents: productboardAgents.map((agent) => ({
         agentId: agent.sId,
         agentName: agent.name,
         version: agent.version,
       })),
-      label: config.label,
-      mcpServerConfigurationsToRemove: mcpServerConfigurationModelIds.length,
-      mcpServerViewsToFetch: mcpServerViewModelIdsToFetch.length,
-      referencedSkillCount: referencedSkillsToUpdate.length,
-      referencedSkills: referencedSkillsToUpdate.map((skill) => ({
-        skillId: skill.sId,
-        skillName: skill.name,
-      })),
+      productboardMCPServerConfigurationCount:
+        productboardMCPServerConfigurationModelIds.length,
       skillExists: existingSkill !== null,
       workspaceId: workspace.sId,
     },
     execute
-      ? `Backfilling ${config.label} skill for workspace`
-      : `Would backfill ${config.label} skill for workspace`
+      ? "Backfilling Productboard skill for workspace"
+      : "Would backfill Productboard skill for workspace"
   );
 
   if (!execute) {
     return;
   }
 
-  const mcpServerViews = await fetchMCPServerViews({
-    auth,
-    config,
-    mcpServerViewModelIds: mcpServerViewModelIdsToFetch,
-    workspace,
-  });
-
   let skill = existingSkill;
   if (!skill) {
-    skill = await createGuidanceSkill(config, auth, mcpServerViews);
+    skill = await createProductboardSkill(auth);
 
-    // Existing agent and skill editors are the best default editors for the generated skill.
-    await addEditorsToSkill(auth, {
-      agentConfigurationModelIds: agentModelIds,
-      config,
+    // We add some editors to the skill to make sure we're not creating a skill with 0 editor.
+    // We take the agent editors as they are the most prone to know about Productboard at their company.
+    await addAgentEditorsToSkill(auth, {
+      agentConfigurationModelIds: productboardAgentModelIds,
       logger,
-      referencedSkillModelIds: referencedSkillsToUpdate.map(
-        (referencedSkill) => referencedSkill.id
-      ),
       skill,
     });
-  } else if (config.attachMCPServerViewsToSkill) {
-    const missingMCPServerViewModelIds = getMissingMCPServerViewModelIds({
-      mcpServerViewModelIds: mcpServerViewModelIdsToFetch,
-      skill,
-    });
-
-    if (missingMCPServerViewModelIds.length > 0) {
-      throw new Error(
-        `Existing skill "${config.skillName}" in workspace ${workspace.sId} is missing ${config.label} MCP server views: ${missingMCPServerViewModelIds.join(
-          ", "
-        )}.`
-      );
-    }
   }
 
-  const updatedReferencedSkillCount =
-    await replaceToolReferencesWithSkillInReferencedSkills(auth, {
-      config,
-      logger,
-      mcpServerViews,
-      referencedSkills: referencedSkillsToUpdate,
-      skill,
-    });
+  await AgentSkillModel.bulkCreate(
+    productboardAgentModelIds.map((agentConfigurationModelId) => ({
+      agentConfigurationId: agentConfigurationModelId,
+      customSkillId: skill.id,
+      globalSkillId: null,
+      workspaceId: workspace.id,
+    }))
+  );
 
-  const agentModelIdsToLink = await getAgentModelIdsMissingSkill({
-    agentConfigurationModelIds: agentModelIds,
-    skill,
-    workspace,
+  await AgentMCPServerConfigurationModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+      id: { [Op.in]: productboardMCPServerConfigurationModelIds },
+    },
   });
-
-  if (agentModelIdsToLink.length > 0) {
-    await AgentSkillModel.bulkCreate(
-      agentModelIdsToLink.map((agentConfigurationModelId) => ({
-        agentConfigurationId: agentConfigurationModelId,
-        customSkillId: skill.id,
-        globalSkillId: null,
-        workspaceId: workspace.id,
-      }))
-    );
-  }
-
-  const removedMCPServerConfigurationCount =
-    mcpServerConfigurationModelIds.length > 0
-      ? await AgentMCPServerConfigurationModel.destroy({
-          where: {
-            workspaceId: workspace.id,
-            id: { [Op.in]: mcpServerConfigurationModelIds },
-          },
-        })
-      : 0;
 
   logger.info(
     {
-      agentIdsLinked: agentModelIdsToLink.length,
-      label: config.label,
-      mcpServerConfigurationsRemoved: removedMCPServerConfigurationCount,
-      referencedSkillsUpdated: updatedReferencedSkillCount,
+      agentIdsToLink: productboardAgentModelIds.length,
+      productboardMCPServerConfigurationsRemoved:
+        productboardMCPServerConfigurationModelIds.length,
       skillId: skill.sId,
       workspaceId: workspace.sId,
     },
-    `Backfilled ${config.label} skill for workspace`
+    "Backfilled Productboard skill for workspace"
   );
 }
 
@@ -896,19 +538,16 @@ makeScript(
         workspaceId: workspaceId ?? "all",
       },
       execute
-        ? "Starting Productboard and Salesforce skill backfill"
-        : "Starting Productboard and Salesforce skill backfill dry-run"
+        ? "Starting Productboard skill backfill"
+        : "Starting Productboard skill backfill dry-run"
     );
 
     await runOnAllWorkspaces(
-      async (workspace) => {
-        for (const config of GUIDANCE_SKILL_BACKFILL_CONFIGS) {
-          await backfillWorkspaceForConfig(config, workspace, {
-            execute,
-            logger,
-          });
-        }
-      },
+      async (workspace) =>
+        backfillWorkspace(workspace, {
+          execute,
+          logger,
+        }),
       {
         concurrency: WORKSPACE_CONCURRENCY,
         wId: workspaceId,
@@ -920,7 +559,7 @@ makeScript(
         execute,
         workspaceId: workspaceId ?? "all",
       },
-      "Finished Productboard and Salesforce skill backfill"
+      "Finished Productboard skill backfill"
     );
   }
 );
