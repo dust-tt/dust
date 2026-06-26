@@ -186,9 +186,8 @@ export function AgentBuilderRightPanel({
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
 
-  const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    isSidekickDisabled ? "preview" : "sidekick"
-  );
+  const [selectedTab, setSelectedTab] =
+    useState<AgentBuilderRightPanelTabType>("sidekick");
   const activeTab =
     isSidekickDisabled && selectedTab === "sidekick" ? "preview" : selectedTab;
 
