@@ -315,6 +315,9 @@ export async function runToolCallWithDetachedSignal<T>(
   }
 
   if (compositeSignal.aborted) {
+    // Even if it's already aborted we still make a tool call
+    // so it runs its normal abort path (which rejects the call) rather
+    // than us inventing a separate error.
     perToolCallController.abort(compositeSignal.reason);
     return callTool(perToolCallController.signal);
   }
