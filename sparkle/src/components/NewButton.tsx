@@ -38,7 +38,7 @@ export type NewButtonSizeType = (typeof NEW_BUTTON_SIZES)[number];
 const SOLID_SHADOW = (outline: string) =>
   `s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_${outline},0_1px_1.5px_0_rgba(0,0,0,0.10)]`;
 const OUTLINE_SHADOW =
-  "s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#DFE0E2,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
+  "s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#eeeeec,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
 
 // Hover/active overlay for the raised variants. Per-variant (not in the base)
 // so ghost variants leave the ::after pseudo free for consumers (e.g. Tabs).
@@ -50,9 +50,9 @@ const OVERLAY = cn(
 // `dark:` shadow literals for the primary/outline swap, spelled out (not a
 // computed prefix) so Tailwind's JIT emits them.
 const DARK_OUTLINE_SHADOW =
-  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#DFE0E2,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
+  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#eeeeec,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
 const DARK_SOLID_SHADOW =
-  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#44403b,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
+  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#364153,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
 
 const newButtonVariants = cva(
   cn(
@@ -71,7 +71,7 @@ const newButtonVariants = cva(
           OVERLAY,
           "s-bg-gradient-to-b s-from-stone-700 s-to-stone-800",
           "s-text-white",
-          SOLID_SHADOW("#44403b"),
+          SOLID_SHADOW("#364153"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
           "disabled:s-from-stone-300 disabled:s-to-stone-400 disabled:s-shadow-none",
           "dark:s-border dark:s-border-border-dark",
@@ -134,7 +134,7 @@ const newButtonVariants = cva(
           "s-text-red-500",
           "hover:s-bg-red-50 active:s-bg-red-100",
           "dark:hover:s-bg-warning-50-night dark:active:s-bg-warning-100-night",
-          "disabled:s-text-red-300",
+          "disabled:s-text-warning-muted",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
       },
