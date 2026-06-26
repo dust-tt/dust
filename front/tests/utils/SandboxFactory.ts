@@ -2,7 +2,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
+import {
+  SandboxModel,
+  SandboxOwnerModel,
+} from "@app/lib/resources/storage/models/sandbox";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 export class SandboxFactory {
@@ -18,11 +21,16 @@ export class SandboxFactory {
     }
   ): Promise<SandboxResource> {
     const sandbox = await SandboxResource.makeNew(auth, {
-      conversationId: conversation.id,
       providerId: `test-provider-${Date.now()}`,
       status: opts?.status ?? "running",
       baseImage: opts?.baseImage ?? "dust-base",
       version: opts?.version ?? "0.0.0-test",
+    });
+
+    await SandboxOwnerModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: conversation.id,
+      sandboxId: sandbox.id,
     });
 
     if (opts?.statusChangedAt !== undefined) {

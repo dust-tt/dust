@@ -53,6 +53,31 @@ export type ConversationSandboxOwner = Pick<
   "id" | "sId"
 >;
 
+export type SandboxCreateBlob = {
+  providerId: string;
+  status: SandboxStatus;
+  baseImage: string;
+  version: string;
+};
+
+export type SandboxLifecycleOwner = {
+  lockKey: string;
+  fetchSandbox: () => Promise<SandboxResource | null>;
+};
+
+export type SandboxCreateOwner = SandboxLifecycleOwner & {
+  createSandbox: (blob: SandboxCreateBlob) => Promise<SandboxResource>;
+  envVars: Record<string, string>;
+  logLabel: string;
+};
+
+// Owner identity env vars are reserved for owner adapters. SandboxResource
+// only enforces the env contract and does not interpret owner types.
+const SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES = new Set([
+  "CONVERSATION_ID",
+  "POD_ID",
+]);
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -114,35 +139,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: {
-      conversationId: number;
-      providerId: string;
-      status: SandboxStatus;
-      baseImage: string;
-      version: string;
-    },
+    blob: SandboxCreateBlob,
     { transaction }: { transaction?: Transaction } = {}
   ) {
     const now = new Date();
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const { conversationId, ...sandboxBlob } = blob;
 
     const createSandbox = async (t: Transaction) => {
       const sandbox = await this.model.create(
         {
-          ...sandboxBlob,
+          ...blob,
           workspaceId,
           lastActivityAt: now,
           statusChangedAt: now,
-        },
-        { transaction: t }
-      );
-
-      await SandboxOwnerModel.create(
-        {
-          workspaceId,
-          conversationId,
-          sandboxId: sandbox.id,
         },
         { transaction: t }
       );
@@ -437,7 +446,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   // ---------------------------------------------------------------------------
 
   private static async withLifecycleLock<T>(
-    conversationId: string,
+    ownerLockKey: string,
     fn: (provider: SandboxProvider) => Promise<Result<T, Error>>
   ): Promise<Result<T, Error>> {
     const provider = getSandboxProvider();
@@ -446,7 +455,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     return executeWithLock(
-      `sandbox:lifecycle:${conversationId}`,
+      `sandbox:lifecycle:${ownerLockKey}`,
       () => fn(provider),
       undefined,
       { traceAcquireResource: "sandbox:lifecycle" }
@@ -454,12 +463,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   // Compose the env vars passed to provider.create. Precedence (lowest →
-  // highest): workspace env vars → image runEnv → system vars. The image and
-  // system layers always win, so even if a row slips past suffix validation it
-  // cannot shadow a system var like CONVERSATION_ID.
+  // highest): workspace env vars → image runEnv → owner vars → system vars.
+  // Owner and system layers always win, so even if a row slips past suffix
+  // validation it cannot shadow owner/system vars like CONVERSATION_ID or
+  // WORKSPACE_ID.
   private static async buildSandboxEnvVars(
     auth: Authenticator,
-    conversation: ConversationSandboxOwner,
+    ownerEnvVars: Record<string, string>,
     imageEnvVars: Record<string, string> | undefined
   ): Promise<Result<Record<string, string>, Error>> {
     const workspaceEnvResult =
@@ -481,37 +491,45 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // processes started directly from the sandbox runtime. The key set is
     // canonical in trust_env.ts so dsbx's `env -u` strip list can't drift.
 
-    return new Ok({
+    const envVars = {
       ...workspaceEnvResult.value,
       ...httpsSecretEnvResult.value,
       ...imageEnvVars,
       ...SANDBOX_TRUST_ENV_VARS,
-      CONVERSATION_ID: conversation.sId,
+    };
+    const scopedEnvVars = Object.fromEntries(
+      Object.entries(envVars).filter(
+        ([name]) =>
+          !SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES.has(name) ||
+          name in ownerEnvVars
+      )
+    );
+
+    return new Ok({
+      ...scopedEnvVars,
+      ...ownerEnvVars,
       WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
     });
   }
 
   /**
-   * Ensure a running sandbox exists for the given conversation.
+   * Ensure a running sandbox exists for the given owner.
    *
    * The provider is resolved internally — callers never touch it.
    */
   static async ensureActive(
     auth: Authenticator,
-    conversation: ConversationSandboxOwner
+    owner: SandboxCreateOwner
   ): Promise<Result<EnsureSandboxResult, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
       "Cannot ensure sandbox without a workspace"
     );
 
-    return this.withLifecycleLock(conversation.sId, async (provider) => {
+    return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
-      const existing = await SandboxResource.fetchByConversation(
-        auth,
-        conversation
-      );
+      const existing = await owner.fetchSandbox();
 
       if (!existing) {
         const imageResult = getSandboxImage(auth);
@@ -522,7 +540,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         const createConfig = imageResult.value.toCreateConfig();
         const envVarsResult = await this.buildSandboxEnvVars(
           auth,
-          conversation,
+          owner.envVars,
           createConfig.envVars
         );
         if (envVarsResult.isErr()) {
@@ -540,8 +558,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           return createResult;
         }
 
-        const sandbox = await SandboxResource.makeNew(auth, {
-          conversationId: conversation.id,
+        const sandbox = await owner.createSandbox({
           providerId: createResult.value.providerId,
           status: "running",
           baseImage: createConfig.imageId.imageName,
@@ -549,8 +566,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         });
 
         logger.info(
-          { sandbox: sandbox.toLogJSON() },
-          "Created new sandbox for conversation"
+          { owner: owner.logLabel, sandbox: sandbox.toLogJSON() },
+          "Created new sandbox for owner"
         );
 
         return new Ok({ sandbox, freshlyCreated: true, wokeFromSleep: false });
@@ -647,7 +664,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           const createConfig = imageResult.value.toCreateConfig();
           const envVarsResult = await this.buildSandboxEnvVars(
             auth,
-            conversation,
+            owner.envVars,
             createConfig.envVars
           );
           if (envVarsResult.isErr()) {

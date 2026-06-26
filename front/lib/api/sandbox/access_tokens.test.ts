@@ -43,7 +43,6 @@ async function setupTest() {
   });
 
   const sandbox = await SandboxResource.makeNew(auth, {
-    conversationId: conversation.id,
     providerId: "test-provider-id",
     status: "running",
     baseImage: "dust-base",

@@ -678,6 +678,7 @@ describe("SandboxResource.ensureActive", () => {
           imageId: { imageName: "test-image", tag: "0.0.1" },
           envVars: {
             DST_API_TOKEN: "image-token",
+            POD_ID: "image-pod-id",
             WORKSPACE_ID: "image-workspace-id",
           },
           network: { egress: "restricted" },
@@ -758,7 +759,7 @@ describe("SandboxResource.ensureActive", () => {
       },
     ]);
 
-    const result = await SandboxResource.ensureActive(
+    const result = await ConversationResource.ensureSandboxActive(
       authenticator,
       conversation
     );
@@ -793,11 +794,14 @@ describe("SandboxResource.ensureActive", () => {
     expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
       "DD_HOST"
     );
+    expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
+      "POD_ID"
+    );
     expect(mockProviderExec).not.toHaveBeenCalled();
   });
 
   it("records baseImage and version from the registered image on fresh create", async () => {
-    const result = await SandboxResource.ensureActive(
+    const result = await ConversationResource.ensureSandboxActive(
       authenticator,
       conversation
     );
@@ -827,7 +831,7 @@ describe("SandboxResource.ensureActive", () => {
       version: "0.0.0-old",
     });
 
-    const result = await SandboxResource.ensureActive(
+    const result = await ConversationResource.ensureSandboxActive(
       authenticator,
       conversation
     );
@@ -852,7 +856,7 @@ describe("SandboxResource.ensureActive", () => {
       killRequestedAt: new Date(),
     });
 
-    const result = await SandboxResource.ensureActive(
+    const result = await ConversationResource.ensureSandboxActive(
       authenticator,
       conversation
     );
