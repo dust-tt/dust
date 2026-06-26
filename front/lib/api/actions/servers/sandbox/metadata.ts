@@ -13,6 +13,15 @@ export const SANDBOX_TOOL_NAME = "sandbox" as const;
 export const SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS = 60000;
 export const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 120000;
 
+// Extra time we add on top of a command's in-container timeout to set the
+// timeout we give the sandbox provider. The in-container `timeout`
+// wrapper stops the command and returns whatever output it has; this extra
+// time lets that finish and reach us before the provider gives up. A few
+// seconds is plenty (it only covers stopping the command and sending its
+// output back). It must stay small enough that the provider timeout
+// (max command timeout + this) stays under SANDBOX_MCP_REQUEST_TIMEOUT_MS.
+export const SANDBOX_EXEC_TIMEOUT_BUFFER_MS = 10000;
+
 // Outer MCP request deadline for the sandbox server. It must be strictly
 // greater than the max in-container command timeout so the graceful
 // in-container timeout (which returns partial output) always fires before the

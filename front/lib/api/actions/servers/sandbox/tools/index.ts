@@ -11,6 +11,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isSandboxResumeState } from "@app/lib/actions/types";
 import {
   SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
+  SANDBOX_EXEC_TIMEOUT_BUFFER_MS,
   SANDBOX_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/sandbox/metadata";
 import {
@@ -365,9 +366,13 @@ export async function runSandboxBashTool(
   const startMs = performance.now();
 
   const providerId = agentConfiguration.model.providerId;
-  const timeoutSec = Math.ceil(
-    (timeoutMs ?? SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS) / 1000
-  );
+  const commandTimeoutMs = timeoutMs ?? SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS;
+  const timeoutSec = Math.ceil(commandTimeoutMs / 1000);
+  // Give the provider a slightly longer timeout than the in-container one, so
+  // the in-container `timeout` wrapper always stops the command first and we
+  // get its partial output, instead of the provider cutting the call short
+  // with no output.
+  const execTimeoutMs = commandTimeoutMs + SANDBOX_EXEC_TIMEOUT_BUFFER_MS;
   const commandToRun = isResumeMode
     ? buildWaitAndCollectCommand(execId)
     : wrapCommandWithCapture(command, execId, providerId, { timeoutSec });
@@ -383,6 +388,7 @@ export async function runSandboxBashTool(
       DUST_SANDBOX_TOKEN: sandboxToken,
       DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
     },
+    timeoutMs: execTimeoutMs,
     user: "agent-proxied",
   });
 
