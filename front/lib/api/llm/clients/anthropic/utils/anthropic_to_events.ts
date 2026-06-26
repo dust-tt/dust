@@ -3,6 +3,8 @@ import { AnthropicError, APIError } from "@anthropic-ai/sdk";
 import type {
   BetaMessage,
   BetaRawMessageStreamEvent,
+  BetaToolSearchToolResultError,
+  BetaToolSearchToolSearchResultBlock,
 } from "@anthropic-ai/sdk/resources/beta.mjs";
 import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches.mjs";
 import type {
@@ -27,6 +29,7 @@ import type {
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import {
   assertNever,
@@ -251,12 +254,26 @@ function* handleContentBlockStart(
       // "Redacted thinking" provides no actionable information, as everything is encrypted
       return;
     case "server_tool_use":
+      // Server-side tool use (the only one we enable is Anthropic's tool search
+      // tool). The search query streams in as input_json_delta chunks, so we
+      // track a tool_search state to accumulate them and log the query at stop.
+      stateContainer.state = {
+        currentBlockIndex: event.index,
+        accumulator: "",
+        accumulatorType: "tool_search",
+        toolName: event.content_block.name,
+      };
+      return;
+    case "tool_search_tool_result":
+      // The discovered tool references arrive inline in this block (no deltas),
+      // so log them here. State stays null; the matching stop is a no-op.
+      logToolSearchResult(event.content_block.content, metadata);
+      return;
     case "web_search_tool_result":
     case "web_fetch_tool_result":
     case "code_execution_tool_result":
     case "bash_code_execution_tool_result":
     case "text_editor_code_execution_tool_result":
-    case "tool_search_tool_result":
     case "mcp_tool_use":
     case "mcp_tool_result":
     case "container_upload":
@@ -383,8 +400,83 @@ function* handleContentBlockStop(
       });
       break;
     }
+    case "tool_search":
+      logToolSearchQuery({
+        metadata,
+        rawInput: stateContainer.state.accumulator,
+        toolName: stateContainer.state.toolName,
+      });
+      break;
   }
   stateContainer.state = null;
+}
+
+// Logs the natural-language query the model issued against a server-side tool
+// search tool (e.g. tool_search_tool_bm25), plus a StatsD counter so we can
+// monitor search volume per model. The query arrives as accumulated
+// input_json_delta JSON: `{"query":"..."}`.
+function logToolSearchQuery({
+  metadata,
+  rawInput,
+  toolName,
+}: {
+  metadata: LLMClientMetadata;
+  rawInput: string;
+  toolName: string;
+}): void {
+  let query: string | undefined;
+  const parsed = safeParseJSON(rawInput);
+  if (
+    parsed.isOk() &&
+    parsed.value !== null &&
+    isRecord(parsed.value) &&
+    typeof parsed.value.query === "string"
+  ) {
+    query = parsed.value.query;
+  }
+
+  logger.info(
+    {
+      toolName,
+      query,
+      // Keep the raw payload only when parsing failed, to debug malformed input.
+      rawInput: query === undefined ? rawInput : undefined,
+      ...metadata,
+    },
+    "Anthropic tool search query"
+  );
+
+  getStatsDClient().increment("llm_tool_search.requests", 1, [
+    `client_id:${metadata.clientId}`,
+    `inference_provider:${metadata.inferenceProvider}`,
+    `model_id:${metadata.modelId}`,
+    `tool_name:${toolName}`,
+  ]);
+}
+
+// Logs the tools surfaced by a server-side tool search, or the error code when
+// the search failed (e.g. too_many_requests, unavailable).
+function logToolSearchResult(
+  content: BetaToolSearchToolResultError | BetaToolSearchToolSearchResultBlock,
+  metadata: LLMClientMetadata
+): void {
+  if (content.type === "tool_search_tool_result_error") {
+    logger.warn(
+      {
+        errorCode: content.error_code,
+        errorMessage: content.error_message,
+        ...metadata,
+      },
+      "Anthropic tool search returned an error"
+    );
+    return;
+  }
+
+  const toolReferences = content.tool_references.map((ref) => ref.tool_name);
+  logger.info(
+    { toolReferences, resultCount: toolReferences.length, ...metadata },
+    "Anthropic tool search results"
+  );
 }
 
 function* handleMessageDelta(
