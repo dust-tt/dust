@@ -1791,6 +1791,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         effectiveSpaceIds,
       });
     }
+    const favoriteSkills = (await hasFeatureFlag(auth, "skill_favorites"))
+      ? await this.listFavoritesForCurrentUser(auth, {
+          agentLoopData,
+        })
+      : [];
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
       a.name.localeCompare(b.name);
@@ -1864,12 +1869,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Equipped skills are the enable-able candidates shown to the model. They
     // come from the agent configuration, context auto-equipping, Pod defaults,
-    // and discoverable skills. System prompt skills are never enable-able.
+    // favorite skills, and discoverable skills. System prompt skills are never enable-able.
     const equippedSkillsById = new Map<string, SkillResource>();
     for (const skill of [
       ...autoEquippedSkills,
       ...discoverableSkills,
       ...podDefaultSkills,
+      ...favoriteSkills,
       ...allAgentSkills,
     ]) {
       if (

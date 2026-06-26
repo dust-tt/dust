@@ -205,6 +205,59 @@ describe("getJITServers", () => {
 
         expect(skillManagementServer).toBeDefined();
       });
+
+      it("does not equip favorite skills when the feature flag is disabled", async () => {
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Disabled Favorite Skill",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
+        expect(equippedSkills.map((s) => s.sId)).not.toContain(skill.sId);
+
+        const jitServers = await getJITServers(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+          attachments: [],
+        });
+
+        expect(
+          jitServers.some((server) => server.name === "skill_management")
+        ).toBe(false);
+      });
+
+      it("equips favorite skills and includes skill_management without configured skills", async () => {
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+        await FeatureFlagFactory.basic(auth, "skill_favorites");
+
+        const skill = await SkillFactory.create(auth, {
+          name: "Favorite Skill",
+        });
+        const favoriteResult = await skill.setFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+
+        const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
+        expect(equippedSkills.map((s) => s.sId)).toContain(skill.sId);
+
+        const jitServers = await getJITServers(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+          attachments: [],
+        });
+
+        expect(
+          jitServers.some((server) => server.name === "skill_management")
+        ).toBe(true);
+      });
     });
 
     it("keeps configured custom skills equipped after enabling them, but not system skills", async () => {
