@@ -497,7 +497,13 @@ export function MembersUsageTable({
                 },
               ]
             : []),
-          ...(showSpendLimit
+          // Only paid, message-sending seats have a spend limit to edit. Free
+          // seats have no pool (their cap is just the fixed free allowance), and
+          // "none"/seatless members can't send anything — so the option hides.
+          ...(showSpendLimit &&
+          m.seatType &&
+          m.seatType !== "free" &&
+          m.seatType !== "none"
             ? [
                 {
                   kind: "item" as const,
