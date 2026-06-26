@@ -2,17 +2,24 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { isFakeWorkOSOrganizationId } from "@app/scripts/workspace_helpers";
 
 makeScript(
   {
     workspaceId: {
       alias: "w",
       type: "string",
-      description: "Workspace sID",
+      describe: "Workspace sID",
       demandOption: true,
     },
+    addFakeWorkOSOrganizationId: {
+      type: "boolean",
+      describe:
+        "Also clear the fake workOSOrganizationId if it was set by the seed script",
+      default: false,
+    },
   },
-  async ({ execute, workspaceId }, logger) => {
+  async ({ execute, workspaceId, addFakeWorkOSOrganizationId }, logger) => {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       logger.error({ workspaceId }, "Workspace not found");
@@ -64,6 +71,44 @@ makeScript(
           { groupId: group.sId, name: group.name, kind: group.kind },
           "Dry run -- not deleting group "
         );
+      }
+    }
+
+    if (addFakeWorkOSOrganizationId) {
+      if (
+        isFakeWorkOSOrganizationId(
+          workspace.workOSOrganizationId,
+          workspace.sId
+        )
+      ) {
+        logger.info(
+          { workOSOrganizationId: workspace.workOSOrganizationId },
+          execute
+            ? "Clearing fake WorkOS organization ID"
+            : "Would clear fake WorkOS organization ID"
+        );
+
+        if (execute) {
+          const updateRes = await WorkspaceResource.updateWorkOSOrganizationId(
+            workspace.id,
+            null
+          );
+          if (updateRes.isErr()) {
+            logger.error(
+              { error: updateRes.error },
+              "Failed to clear fake WorkOS organization ID"
+            );
+          } else {
+            logger.info({}, "Cleared fake WorkOS organization ID");
+          }
+        }
+      } else if (workspace.workOSOrganizationId) {
+        logger.warn(
+          { workOSOrganizationId: workspace.workOSOrganizationId },
+          "Workspace WorkOS organization ID is not a fake one, not clearing"
+        );
+      } else {
+        logger.info({}, "No WorkOS organization ID to clear");
       }
     }
   }

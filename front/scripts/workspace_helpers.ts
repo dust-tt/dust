@@ -3,6 +3,19 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { LightWorkspaceType } from "@app/types/user";
 
+const FAKE_WORKOS_ORG_ID_PREFIX = "org_fake_local_dev_";
+
+export function getFakeWorkOSOrganizationId(workspaceSId: string): string {
+  return `${FAKE_WORKOS_ORG_ID_PREFIX}${workspaceSId}`;
+}
+
+export function isFakeWorkOSOrganizationId(
+  workOSOrganizationId: string | null,
+  workspaceSId: string
+): boolean {
+  return workOSOrganizationId === getFakeWorkOSOrganizationId(workspaceSId);
+}
+
 /**
  * Run a worker function on workspaces.
  *
