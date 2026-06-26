@@ -106,6 +106,8 @@ export type FetchConversationOptions = {
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
 
+const SANDBOX_OWNER_LOOKUP_CONCURRENCY = 4;
+
 interface UserParticipation {
   actionRequired: boolean;
   updated: number;
@@ -549,9 +551,52 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async dangerouslyFetchConversationModelIdsBySandboxes(
     sandboxes: Pick<SandboxResource, "id" | "workspaceId">[]
   ): Promise<Map<ModelId, ModelId>> {
-    return SandboxResource.dangerouslyFetchConversationModelIdsBySandboxes(
-      sandboxes
-    );
+    if (sandboxes.length === 0) {
+      return new Map();
+    }
+
+    const sandboxModelIdsByWorkspaceModelId = new Map<ModelId, ModelId[]>();
+    for (const sandbox of sandboxes) {
+      const sandboxModelIds =
+        sandboxModelIdsByWorkspaceModelId.get(sandbox.workspaceId) ?? [];
+      sandboxModelIds.push(sandbox.id);
+      sandboxModelIdsByWorkspaceModelId.set(
+        sandbox.workspaceId,
+        sandboxModelIds
+      );
+    }
+
+    const rows = (
+      await concurrentExecutor(
+        [...sandboxModelIdsByWorkspaceModelId.entries()],
+        async ([workspaceModelId, sandboxModelIds]) =>
+          SandboxOwnerModel.findAll({
+            where: {
+              workspaceId: workspaceModelId,
+              conversationId: {
+                [Op.ne]: null,
+              },
+              sandboxId: {
+                [Op.in]: sandboxModelIds,
+              },
+            },
+            attributes: ["sandboxId", "conversationId"],
+          }),
+        { concurrency: SANDBOX_OWNER_LOOKUP_CONCURRENCY }
+      )
+    ).flat();
+
+    const conversationModelIdsBySandboxModelId = new Map<ModelId, ModelId>();
+    for (const row of rows) {
+      if (row.conversationId !== null) {
+        conversationModelIdsBySandboxModelId.set(
+          row.sandboxId,
+          row.conversationId
+        );
+      }
+    }
+
+    return conversationModelIdsBySandboxModelId;
   }
 
   get forkingData(): ConversationForkingDataType | undefined {

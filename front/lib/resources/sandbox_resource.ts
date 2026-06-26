@@ -31,7 +31,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -46,11 +45,6 @@ export interface EnsureSandboxResult {
   sandbox: SandboxResource;
   wokeFromSleep: boolean;
 }
-
-export type ConversationSandboxOwner = Pick<
-  ConversationWithoutContentType,
-  "id" | "sId"
->;
 
 export type SandboxCreateBlob = {
   providerId: string;
@@ -91,8 +85,6 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
-  private static sandboxOwnerModel: ModelStaticWorkspaceAware<SandboxOwnerModel> =
-    SandboxOwnerModel;
 
   private static deleteEgressPolicyAfterDestroy(
     sandbox: SandboxResource
@@ -245,82 +237,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     });
 
     return rows.map((r) => new this(this.model, r.get()));
-  }
-
-  static async fetchByConversation(
-    auth: Authenticator,
-    conversation: ConversationSandboxOwner
-  ): Promise<SandboxResource | null> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const owner = await this.sandboxOwnerModel.findOne({
-      where: {
-        conversationId: conversation.id,
-        workspaceId,
-      },
-    });
-
-    if (owner) {
-      const sandboxes = await this.baseFetch(auth, {
-        where: {
-          id: owner.sandboxId,
-        },
-      });
-
-      if (sandboxes[0]) {
-        return sandboxes[0];
-      }
-    }
-
-    return null;
-  }
-
-  static async dangerouslyFetchConversationModelIdsBySandboxes(
-    sandboxes: Pick<SandboxResource, "id" | "workspaceId">[]
-  ): Promise<Map<ModelId, ModelId>> {
-    if (sandboxes.length === 0) {
-      return new Map();
-    }
-
-    const sandboxModelIdsByWorkspaceModelId = new Map<ModelId, ModelId[]>();
-    for (const sandbox of sandboxes) {
-      const sandboxModelIds =
-        sandboxModelIdsByWorkspaceModelId.get(sandbox.workspaceId) ?? [];
-      sandboxModelIds.push(sandbox.id);
-      sandboxModelIdsByWorkspaceModelId.set(
-        sandbox.workspaceId,
-        sandboxModelIds
-      );
-    }
-
-    const conversationModelIdsBySandboxModelId = new Map<ModelId, ModelId>();
-    for (const [
-      workspaceModelId,
-      sandboxModelIds,
-    ] of sandboxModelIdsByWorkspaceModelId.entries()) {
-      const ownerRows = await this.sandboxOwnerModel.findAll({
-        where: {
-          workspaceId: workspaceModelId,
-          conversationId: {
-            [Op.ne]: null,
-          },
-          sandboxId: {
-            [Op.in]: sandboxModelIds,
-          },
-        },
-        attributes: ["sandboxId", "conversationId"],
-      });
-
-      for (const row of ownerRows) {
-        if (row.conversationId !== null) {
-          conversationModelIdsBySandboxModelId.set(
-            row.sandboxId,
-            row.conversationId
-          );
-        }
-      }
-    }
-
-    return conversationModelIdsBySandboxModelId;
   }
 
   async updateStatus(

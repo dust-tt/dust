@@ -140,7 +140,7 @@ describe("SandboxResource.updateStatus", () => {
 
     expect(mockDistribution).not.toHaveBeenCalled();
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationResource.fetchSandbox(
       authenticator,
       conversation
     );
@@ -161,7 +161,7 @@ describe("SandboxResource.updateStatus", () => {
     await sandbox.updateStatus("sleeping", { ctx });
     const afterTransition = Date.now();
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationResource.fetchSandbox(
       authenticator,
       conversation
     );
@@ -230,7 +230,7 @@ describe("ConversationResource.dangerouslyDestroySandboxIfSleeping", () => {
     });
     expect(mockDeleteSandboxPolicy).toHaveBeenCalledWith(sandbox.providerId);
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationResource.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
@@ -354,7 +354,7 @@ describe("ConversationResource.dangerouslyDestroySandboxIfKillRequested", () => 
       workspaceId: authenticator.getNonNullableWorkspace().sId,
     });
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationResource.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
@@ -374,7 +374,7 @@ describe("ConversationResource.dangerouslyDestroySandboxIfKillRequested", () => 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationResource.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
@@ -498,7 +498,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(2);
-    const stillUnmarked = await SandboxResource.fetchByConversation(
+    const stillUnmarked = await ConversationResource.fetchSandbox(
       authenticator,
       other
     );
@@ -535,7 +535,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(2);
-    const matched = await SandboxResource.fetchByConversation(
+    const matched = await ConversationResource.fetchSandbox(
       authenticator,
       cMatch
     );
@@ -565,7 +565,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(1);
-    const alreadyMarked = await SandboxResource.fetchByConversation(
+    const alreadyMarked = await ConversationResource.fetchSandbox(
       authenticator,
       cAlreadyMarked
     );
@@ -589,7 +589,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
   });
 });
 
-describe("SandboxResource.fetchByConversation", () => {
+describe("ConversationResource.fetchSandbox", () => {
   let authenticator: Authenticator;
   let agentConfigId: string;
 
@@ -614,7 +614,7 @@ describe("SandboxResource.fetchByConversation", () => {
     const conversation = await makeConversation();
     const sandbox = await SandboxFactory.create(authenticator, conversation);
 
-    const fetched = await SandboxResource.fetchByConversation(
+    const fetched = await ConversationResource.fetchSandbox(
       authenticator,
       conversation
     );
@@ -643,7 +643,7 @@ describe("SandboxResource.fetchByConversation", () => {
 
     await SandboxOwnerModel.destroy({ where });
 
-    const fetched = await SandboxResource.fetchByConversation(
+    const fetched = await ConversationResource.fetchSandbox(
       authenticator,
       conversation
     );
@@ -656,9 +656,9 @@ describe("SandboxResource.fetchByConversation", () => {
     const sandbox = await SandboxFactory.create(authenticator, conversation);
 
     const conversationModelIdsBySandboxModelId =
-      await SandboxResource.dangerouslyFetchConversationModelIdsBySandboxes([
-        sandbox,
-      ]);
+      await ConversationResource.dangerouslyFetchConversationModelIdsBySandboxes(
+        [sandbox]
+      );
 
     expect(conversationModelIdsBySandboxModelId.get(sandbox.id)).toBe(
       conversation.id
@@ -670,12 +670,14 @@ describe("SandboxResource.fetchByConversation", () => {
     const sandbox = await SandboxFactory.create(authenticator, conversation);
 
     const conversationModelIdsBySandboxModelId =
-      await SandboxResource.dangerouslyFetchConversationModelIdsBySandboxes([
-        {
-          id: sandbox.id,
-          workspaceId: sandbox.workspaceId + 1,
-        },
-      ]);
+      await ConversationResource.dangerouslyFetchConversationModelIdsBySandboxes(
+        [
+          {
+            id: sandbox.id,
+            workspaceId: sandbox.workspaceId + 1,
+          },
+        ]
+      );
 
     expect(
       conversationModelIdsBySandboxModelId.get(sandbox.id)
@@ -833,7 +835,7 @@ describe("SandboxResource.ensureActive", () => {
 
     expect(result.isOk()).toBe(true);
 
-    const persisted = await SandboxResource.fetchByConversation(
+    const persisted = await ConversationResource.fetchSandbox(
       authenticator,
       conversation
     );
@@ -863,7 +865,7 @@ describe("SandboxResource.ensureActive", () => {
 
     expect(result.isOk()).toBe(true);
 
-    const persisted = await SandboxResource.fetchByConversation(
+    const persisted = await ConversationResource.fetchSandbox(
       authenticator,
       conversation
     );
@@ -892,7 +894,7 @@ describe("SandboxResource.ensureActive", () => {
     });
     expect(mockProviderCreate).toHaveBeenCalled();
 
-    const persisted = await SandboxResource.fetchByConversation(
+    const persisted = await ConversationResource.fetchSandbox(
       authenticator,
       conversation
     );
