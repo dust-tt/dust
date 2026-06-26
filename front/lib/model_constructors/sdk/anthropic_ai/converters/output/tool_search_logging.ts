@@ -46,11 +46,11 @@ export function logToolSearchQuery({
 
   logger.info(
     {
+      ...logFields,
       toolName,
       query,
       // Keep the raw payload only when parsing failed, to debug malformed input.
       rawInput: query === undefined ? rawInput : undefined,
-      ...logFields,
     },
     "Anthropic tool search query"
   );
