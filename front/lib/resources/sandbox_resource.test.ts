@@ -175,7 +175,7 @@ describe("SandboxResource.updateStatus", () => {
   });
 });
 
-describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
+describe("ConversationResource.dangerouslyDestroySandboxIfSleeping", () => {
   let authenticator: Authenticator;
   let conversationResource: ConversationResource;
 
@@ -219,10 +219,10 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
       }
     );
 
-    const result = await SandboxResource.dangerouslyDestroyIfSleeping(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await conversationResource.dangerouslyDestroySandboxIfSleeping(
+        authenticator
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
@@ -252,10 +252,10 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
     };
     await SandboxOwnerModel.destroy({ where });
 
-    const result = await SandboxResource.dangerouslyDestroyIfSleeping(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await conversationResource.dangerouslyDestroySandboxIfSleeping(
+        authenticator
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
@@ -268,9 +268,34 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
     });
     expect(row?.status).toBe("sleeping");
   });
+
+  it("deleteSandbox deletes the owner link and sandbox row", async () => {
+    const sandbox = await SandboxFactory.create(
+      authenticator,
+      conversationResource.toJSON()
+    );
+    const workspaceModelId = authenticator.getNonNullableWorkspace().id;
+
+    const result = await conversationResource.deleteSandbox(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    const [linkCount, sandboxCount] = await Promise.all([
+      SandboxOwnerModel.count({
+        where: {
+          conversationId: conversationResource.id,
+          sandboxId: sandbox.id,
+          workspaceId: workspaceModelId,
+        },
+      }),
+      SandboxModel.count({
+        where: { id: sandbox.id, workspaceId: workspaceModelId },
+      }),
+    ]);
+    expect([linkCount, sandboxCount]).toEqual([0, 0]);
+  });
 });
 
-describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
+describe("ConversationResource.dangerouslyDestroySandboxIfKillRequested", () => {
   let authenticator: Authenticator;
   let conversationResource: ConversationResource;
 
@@ -319,10 +344,10 @@ describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
       }
     );
 
-    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await conversationResource.dangerouslyDestroySandboxIfKillRequested(
+        authenticator
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
@@ -341,10 +366,10 @@ describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
       status: "running",
     });
 
-    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await conversationResource.dangerouslyDestroySandboxIfKillRequested(
+        authenticator
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
@@ -362,10 +387,10 @@ describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
       killRequestedAt: new Date(),
     });
 
-    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await conversationResource.dangerouslyDestroySandboxIfKillRequested(
+        authenticator
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
