@@ -1,7 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -18,9 +20,31 @@ import {
 
 const REAPER_CONCURRENCY = 16;
 
-type ConversationMaps = {
-  conversationModelIdsBySandboxModelId: Map<ModelId, ModelId>;
-  conversationsBySandboxModelId: Map<ModelId, ConversationResource>;
+type ReaperSandboxLifecycleOwner = {
+  kind: "conversation" | "pod";
+  modelId: ModelId;
+  dangerouslyDestroySandboxIfKillRequested(
+    auth: Authenticator
+  ): Promise<Result<void, Error>>;
+  dangerouslyDestroySandboxIfSleeping(
+    auth: Authenticator
+  ): Promise<Result<void, Error>>;
+  dangerouslySleepSandboxIfPendingApproval(
+    auth: Authenticator
+  ): Promise<Result<void, Error>>;
+  dangerouslySleepSandboxIfRunning(
+    auth: Authenticator
+  ): Promise<Result<void, Error>>;
+};
+
+type SandboxOwnerRef = {
+  kind: ReaperSandboxLifecycleOwner["kind"];
+  modelId: ModelId;
+};
+
+type SandboxOwnerMaps = {
+  ownerRefsBySandboxModelId: Map<ModelId, SandboxOwnerRef>;
+  ownersBySandboxModelId: Map<ModelId, ReaperSandboxLifecycleOwner>;
 };
 
 /**
@@ -53,88 +77,153 @@ async function fetchAuthMap(
 }
 
 /**
- * Fetch the ConversationResource for each sandbox, keyed by conversation
- * sandbox ModelId. The reaper spans every workspace, so we issue a single
- * cross-workspace query instead of one scoped query per workspace.
+ * Fetch the owner adapter for each sandbox. The reaper spans every workspace,
+ * so it resolves owner ids through join tables first, then issues one
+ * cross-workspace query per owner kind.
  */
-async function fetchConversationMap(
+async function fetchSandboxOwnerMaps(
   sandboxes: SandboxResource[]
-): Promise<ConversationMaps> {
+): Promise<SandboxOwnerMaps> {
   const conversationModelIdsBySandboxModelId =
     await ConversationSandboxAdapter.dangerouslyFetchConversationModelIdsBySandboxes(
       sandboxes
     );
+  const podModelIdsBySandboxModelId =
+    await PodSandboxAdapter.dangerouslyFetchPodModelIdsBySandboxes(sandboxes);
+
   const conversationModelIds = [
     ...new Set(conversationModelIdsBySandboxModelId.values()),
   ];
+  const podModelIds = [...new Set(podModelIdsBySandboxModelId.values())];
+
   const conversations =
     await ConversationResource.dangerouslyFetchByModelIds(conversationModelIds);
+  const pods = await SpaceResource.dangerouslyFetchByModelIds(podModelIds);
+
   const conversationsById = new Map(conversations.map((c) => [c.id, c]));
+  const podsById = new Map(
+    pods.filter((p) => p.isProject()).map((p) => [p.id, p])
+  );
 
-  return {
-    conversationModelIdsBySandboxModelId,
-    conversationsBySandboxModelId: new Map(
-      sandboxes.flatMap((sandbox) => {
-        const conversationModelId = conversationModelIdsBySandboxModelId.get(
-          sandbox.id
-        );
-        if (!conversationModelId) {
-          return [];
-        }
+  const ownerRefsBySandboxModelId = new Map<ModelId, SandboxOwnerRef>();
+  const ownersBySandboxModelId = new Map<
+    ModelId,
+    ReaperSandboxLifecycleOwner
+  >();
 
-        const conversation = conversationsById.get(conversationModelId);
+  for (const sandbox of sandboxes) {
+    const conversationModelId = conversationModelIdsBySandboxModelId.get(
+      sandbox.id
+    );
+    if (conversationModelId) {
+      ownerRefsBySandboxModelId.set(sandbox.id, {
+        kind: "conversation",
+        modelId: conversationModelId,
+      });
 
-        return conversation ? [[sandbox.id, conversation] as const] : [];
-      })
-    ),
-  };
+      const conversation = conversationsById.get(conversationModelId);
+      if (conversation) {
+        ownersBySandboxModelId.set(sandbox.id, {
+          kind: "conversation",
+          modelId: conversation.id,
+          dangerouslyDestroySandboxIfKillRequested: (auth) =>
+            ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+              auth,
+              conversation
+            ),
+          dangerouslyDestroySandboxIfSleeping: (auth) =>
+            ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+              auth,
+              conversation
+            ),
+          dangerouslySleepSandboxIfPendingApproval: (auth) =>
+            ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
+              auth,
+              conversation
+            ),
+          dangerouslySleepSandboxIfRunning: (auth) =>
+            ConversationSandboxAdapter.dangerouslySleepSandboxIfRunning(
+              auth,
+              conversation
+            ),
+        });
+      }
+      continue;
+    }
+
+    const podModelId = podModelIdsBySandboxModelId.get(sandbox.id);
+    if (!podModelId) {
+      continue;
+    }
+
+    ownerRefsBySandboxModelId.set(sandbox.id, {
+      kind: "pod",
+      modelId: podModelId,
+    });
+
+    const pod = podsById.get(podModelId);
+    if (pod) {
+      ownersBySandboxModelId.set(sandbox.id, {
+        kind: "pod",
+        modelId: pod.id,
+        dangerouslyDestroySandboxIfKillRequested: (auth) =>
+          PodSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(auth, pod),
+        dangerouslyDestroySandboxIfSleeping: (auth) =>
+          PodSandboxAdapter.dangerouslyDestroySandboxIfSleeping(auth, pod),
+        dangerouslySleepSandboxIfPendingApproval: (auth) =>
+          PodSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(auth, pod),
+        dangerouslySleepSandboxIfRunning: (auth) =>
+          PodSandboxAdapter.dangerouslySleepSandboxIfRunning(auth, pod),
+      });
+    }
+  }
+
+  return { ownerRefsBySandboxModelId, ownersBySandboxModelId };
 }
 
 /**
  * Shared driver for every reaper phase: resolve the workspace auth and the
- * ConversationResource for each sandbox, then run `action` concurrently. The
- * lifecycle methods run from the conversation resource so callers do not need
- * to know the conversation-owned sandbox lookup details.
+ * owner adapter for each sandbox, then run `action` concurrently. The
+ * lifecycle methods run from the owner adapter so callers do not need to know
+ * the sandbox lookup details.
  */
 async function processSandboxes(
   sandboxes: SandboxResource[],
   action: (
     auth: Authenticator,
-    conversation: ConversationResource
+    owner: ReaperSandboxLifecycleOwner
   ) => Promise<Result<void, Error>>,
   errorMessage: string
 ): Promise<void> {
   const authMap = await fetchAuthMap(sandboxes);
-  const conversationMaps = await fetchConversationMap(sandboxes);
+  const ownerMaps = await fetchSandboxOwnerMaps(sandboxes);
 
   await concurrentExecutor(
     sandboxes,
     async (sandbox) => {
       const auth = authMap.get(sandbox.workspaceId);
-      const conversation = conversationMaps.conversationsBySandboxModelId.get(
-        sandbox.id
-      );
+      const owner = ownerMaps.ownersBySandboxModelId.get(sandbox.id);
 
-      if (!auth || !conversation) {
+      if (!auth || !owner) {
+        const ownerRef = ownerMaps.ownerRefsBySandboxModelId.get(sandbox.id);
         logger.warn(
           {
-            ownershipConversationModelId:
-              conversationMaps.conversationModelIdsBySandboxModelId.get(
-                sandbox.id
-              ) ?? null,
+            ownerKind: ownerRef?.kind ?? null,
+            ownerModelId: ownerRef?.modelId ?? null,
             sandboxModelId: sandbox.id,
             workspaceModelId: sandbox.workspaceId,
           },
-          "Reaper: workspace or conversation not found, skipping."
+          "Reaper: workspace or sandbox owner not found, skipping."
         );
         return;
       }
 
-      const result = await action(auth, conversation);
+      const result = await action(auth, owner);
       if (result.isErr()) {
         logger.error(
           {
-            conversationModelId: conversation.id,
+            ownerKind: owner.kind,
+            ownerModelId: owner.modelId,
             error: result.error.message,
           },
           errorMessage
@@ -166,11 +255,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
 
     await processSandboxes(
       killRequestedSandboxes,
-      (auth, conversation) =>
-        ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
-          auth,
-          conversation
-        ),
+      (auth, owner) => owner.dangerouslyDestroySandboxIfKillRequested(auth),
       "Reaper: failed to destroy kill-requested sandbox — continuing."
     );
   }
@@ -190,11 +275,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
 
     await processSandboxes(
       runningSandboxes,
-      (auth, conversation) =>
-        ConversationSandboxAdapter.dangerouslySleepSandboxIfRunning(
-          auth,
-          conversation
-        ),
+      (auth, owner) => owner.dangerouslySleepSandboxIfRunning(auth),
       "Reaper: failed to sleep sandbox — continuing."
     );
   }
@@ -214,11 +295,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
 
     await processSandboxes(
       pendingSandboxes,
-      (auth, conversation) =>
-        ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
-          auth,
-          conversation
-        ),
+      (auth, owner) => owner.dangerouslySleepSandboxIfPendingApproval(auth),
       "Reaper: failed to transition pending_approval sandbox — continuing."
     );
   }
@@ -238,11 +315,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
 
     await processSandboxes(
       sleepingSandboxes,
-      (auth, conversation) =>
-        ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
-          auth,
-          conversation
-        ),
+      (auth, owner) => owner.dangerouslyDestroySandboxIfSleeping(auth),
       "Reaper: failed to destroy sandbox — continuing."
     );
   }
