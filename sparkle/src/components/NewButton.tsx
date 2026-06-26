@@ -33,12 +33,11 @@ export type NewButtonVariantType = (typeof NEW_BUTTON_VARIANTS)[number];
 export const NEW_BUTTON_SIZES = ["xs", "sm", "md"] as const;
 export type NewButtonSizeType = (typeof NEW_BUTTON_SIZES)[number];
 
-// Per-variant shadow: tinted 0.5px outline + soft drop + faint inset highlight.
-// The outline hex is literal because arbitrary shadows can't use theme tokens.
+// The shadow shared by every raised button: a tinted 0.5px outline, a drop,
+// and a faint inset highlight. The outline hex is literal because arbitrary
+// shadows can't reference theme tokens.
 const SOLID_SHADOW = (outline: string) =>
   `s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_${outline},0_1px_1.5px_0_rgba(0,0,0,0.10)]`;
-const OUTLINE_SHADOW =
-  "s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#eeeeec,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
 
 // Hover/active overlay for the raised variants. Per-variant (not in the base)
 // so ghost variants leave the ::after pseudo free for consumers (e.g. Tabs).
@@ -50,7 +49,7 @@ const OVERLAY = cn(
 // `dark:` shadow literals for the primary/outline swap, spelled out (not a
 // computed prefix) so Tailwind's JIT emits them.
 const DARK_OUTLINE_SHADOW =
-  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#eeeeec,0_0.5px_1px_0_rgba(0,0,0,0.06)]";
+  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#eeeeec,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
 const DARK_SOLID_SHADOW =
   "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#364153,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
 
@@ -101,7 +100,7 @@ const newButtonVariants = cva(
           "s-border s-border-border-dark",
           "s-bg-gradient-to-b s-from-white s-to-stone-50",
           "s-text-muted-foreground",
-          OUTLINE_SHADOW,
+          SOLID_SHADOW("#eeeeec"),
           "hover:after:s-bg-gray-950/[0.02] active:after:s-bg-gray-950/[0.04]",
           "disabled:s-shadow-none disabled:s-text-faint",
           "dark:s-border-0 dark:s-from-stone-700 dark:s-to-stone-800 dark:s-text-white",
@@ -111,14 +110,14 @@ const newButtonVariants = cva(
         ),
         ghost: cn(
           "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-bg-gray-950/[0.02] active:s-bg-gray-950/[0.04]",
+          "hover:s-bg-black/[0.02] active:s-bg-black/[0.04]",
           "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.08]",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
         "ghost-secondary": cn(
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
-          "hover:s-bg-gray-950/[0.02] active:s-bg-gray-950/[0.04]",
+          "hover:s-bg-black/[0.02] active:s-bg-black/[0.04]",
           "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.08]",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
