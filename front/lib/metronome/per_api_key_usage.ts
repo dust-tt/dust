@@ -13,7 +13,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const API_KEY_NAME_GROUP_KEY = "api_key_name";
+export const API_KEY_NAME_GROUP_KEY = "api_key_name";
 
 function flattenUsageResults<T>(
   results: Array<Result<T[], Error>>
