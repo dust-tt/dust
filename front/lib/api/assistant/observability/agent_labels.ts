@@ -56,7 +56,7 @@ export async function resolveAnalyticsAgentLabels(
             modelDisplayName: getAgentModelDisplayName(agent.model),
             description: agent.canRead
               ? agent.description
-              : PRIVATE_AGENT_DESCRIPTION
+              : PRIVATE_AGENT_DESCRIPTION,
           },
         ];
       }

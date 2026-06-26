@@ -338,9 +338,13 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         auth,
         agentModels
       );
-      workspaceAgents = await enrichAgentConfigurations(auth, allowedAgentModels, {
-        variant,
-      });
+      workspaceAgents = await enrichAgentConfigurations(
+        auth,
+        allowedAgentModels,
+        {
+          variant,
+        }
+      );
     }
 
     const agents = [...globalAgents, ...workspaceAgents];
