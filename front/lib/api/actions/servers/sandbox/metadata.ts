@@ -58,6 +58,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       running: "Executing command",
       done: "Execute command in the Computer",
     },
+    enableAlerting: true,
   },
   describe_toolset: {
     description:
