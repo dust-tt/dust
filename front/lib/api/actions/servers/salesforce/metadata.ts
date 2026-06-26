@@ -11,8 +11,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       "The usual flow is list_objects to find an object name, then describe_object to learn its exact fields and relationships, then this tool. " +
       "Custom objects and fields end in `__c` and custom relationships end in `__r`. " +
       "Use dot notation for child-to-parent (e.g. SELECT Account.Name FROM Contact) and a subquery for parent-to-child (e.g. SELECT Name, (SELECT LastName FROM Contacts) FROM Account). " +
-      "To list fields inline instead of calling describe_object, use FIELDS(ALL), FIELDS(CUSTOM), or FIELDS(STANDARD), which require a LIMIT of at most 200. " +
-      'A "No such column" or "Didn\'t understand relationship" error usually means the name is wrong, so confirm it with describe_object.',
+      "To list fields inline instead of calling describe_object, use FIELDS(ALL) for all fields, FIELDS(CUSTOM) for custom fields, or FIELDS(STANDARD) for standard fields (e.g. SELECT FIELDS(ALL) FROM Account LIMIT 1); FIELDS() requires a LIMIT of at most 200. " +
+      'A "No such column" or "Didn\'t understand relationship" error usually means the name is wrong, so confirm it with describe_object. If errors persist after that, the field, object, or relationship may not exist or the connected user may lack permissions.',
     schema: {
       query: z.string().describe("The SOQL read query to execute"),
     },
@@ -40,7 +40,7 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
   },
   describe_object: {
     description:
-      "Get detailed metadata for a Salesforce object from its API name (e.g. Account, Lead, MyCustomObject__c): all fields with their names and types, child relationship names for subqueries, and record types. " +
+      "Get detailed metadata for a Salesforce object from its API name (e.g. Account, Lead, MyCustomObject__c): fields with names, labels, types, and other properties; child relationship names for subqueries; record types; and other object-level properties. " +
       "This is the reliable way to confirm field and relationship names before an execute_read_query.",
     schema: {
       objectName: z.string().describe("The name of the object to describe"),
