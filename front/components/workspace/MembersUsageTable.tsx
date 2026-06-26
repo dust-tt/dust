@@ -138,7 +138,9 @@ export function AwuUsageBar({
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
   const isFreeWithBalance =
-    seatType === "free" && seatBalanceAwu != null && memberUsageLimit !== null;
+    seatType === "free" &&
+    typeof seatBalanceAwu === "number" &&
+    typeof memberUsageLimit === "number";
   const lifetimeConsumed = isFreeWithBalance
     ? Math.max(0, memberUsageLimit - seatBalanceAwu!)
     : null;
