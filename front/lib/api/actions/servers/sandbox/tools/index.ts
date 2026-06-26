@@ -9,7 +9,10 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isSandboxResumeState } from "@app/lib/actions/types";
-import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
+import {
+  SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
+  SANDBOX_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -362,7 +365,9 @@ export async function runSandboxBashTool(
   const startMs = performance.now();
 
   const providerId = agentConfiguration.model.providerId;
-  const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
+  const timeoutSec = Math.ceil(
+    (timeoutMs ?? SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS) / 1000
+  );
   const commandToRun = isResumeMode
     ? buildWaitAndCollectCommand(execId)
     : wrapCommandWithCapture(command, execId, providerId, { timeoutSec });
