@@ -429,20 +429,32 @@ function replaceToolReferencesWithSkillReference({
   salesforceMCPServerViewSIds: Set<string>;
   skill: SkillResource;
 }): string {
+  let replacedToolReference = false;
   const skillTag = serializeSkillTag({
     icon: skill.icon,
     id: skill.sId,
     name: skill.name,
   });
 
-  return content.replace(TOOL_TAG_REGEX, (tag) => {
+  const updatedContent = content.replace(TOOL_TAG_REGEX, (tag) => {
     const tool = parseToolTag(tag);
     if (!tool || !salesforceMCPServerViewSIds.has(tool.id)) {
       return tag;
     }
 
+    replacedToolReference = true;
     return skillTag;
   });
+
+  if (updatedContent.includes(`id="${skill.sId}"`)) {
+    return updatedContent;
+  }
+
+  if (!replacedToolReference) {
+    return `${updatedContent.trimEnd()}\n\nUse ${skillTag} for Salesforce work.`;
+  }
+
+  return updatedContent;
 }
 
 async function replaceSalesforceToolWithSkillInReferencedSkills(
@@ -459,6 +471,9 @@ async function replaceSalesforceToolWithSkillInReferencedSkills(
     salesforceSkill: SkillResource;
   }
 ): Promise<number> {
+  const salesforceMCPServerViewModelIds = new Set(
+    mcpServerViews.map((view) => view.id)
+  );
   const salesforceMCPServerViewSIds = new Set(
     mcpServerViews.map((view) => view.sId)
   );
@@ -470,16 +485,37 @@ async function replaceSalesforceToolWithSkillInReferencedSkills(
       continue;
     }
 
+    const filteredMCPServerViews = referencedSkill.mcpServerViews.filter(
+      (view) => !salesforceMCPServerViewModelIds.has(view.id)
+    );
+    const attachedKnowledge = await referencedSkill.getAttachedKnowledge(auth);
+    const previousComputedRequestedSpaceIds =
+      await SkillResource.computeRequestedSpaceIds(auth, {
+        attachedKnowledge,
+        mcpServerViews: referencedSkill.mcpServerViews,
+      });
+    const previousComputedRequestedSpaceIdSet = new Set(
+      previousComputedRequestedSpaceIds
+    );
+    const additionalRequestedSpaceIds =
+      referencedSkill.requestedSpaceIds.filter(
+        (spaceId) => !previousComputedRequestedSpaceIdSet.has(spaceId)
+      );
+    const computedRequestedSpaceIds =
+      await SkillResource.computeRequestedSpaceIds(auth, {
+        attachedKnowledge,
+        mcpServerViews: filteredMCPServerViews,
+      });
+    const requestedSpaceIds = uniqModelIds([
+      ...computedRequestedSpaceIds,
+      ...additionalRequestedSpaceIds,
+      ...salesforceSkill.requestedSpaceIds,
+    ]);
     const instructions = replaceToolReferencesWithSkillReference({
       content: referencedSkill.instructions,
       salesforceMCPServerViewSIds,
       skill: salesforceSkill,
     });
-    if (instructions === referencedSkill.instructions) {
-      continue;
-    }
-
-    const attachedKnowledge = await referencedSkill.getAttachedKnowledge(auth);
 
     await referencedSkill.updateSkill(auth, {
       agentFacingDescription: referencedSkill.agentFacingDescription,
@@ -487,9 +523,9 @@ async function replaceSalesforceToolWithSkillInReferencedSkills(
       icon: referencedSkill.icon,
       instructions,
       instructionsHtml: convertMarkdownToBlockHtml(instructions),
-      mcpServerViews: referencedSkill.mcpServerViews,
+      mcpServerViews: filteredMCPServerViews,
       name: referencedSkill.name,
-      requestedSpaceIds: referencedSkill.requestedSpaceIds,
+      requestedSpaceIds,
       userFacingDescription: referencedSkill.userFacingDescription,
     });
 
