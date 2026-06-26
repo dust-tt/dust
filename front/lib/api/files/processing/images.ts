@@ -1,16 +1,13 @@
-import config from "@app/lib/api/config";
+import { ImageConverter } from "@app/lib/api/files/processing/image_converter";
 import type { Authenticator } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress/server";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { extensionsForContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import ConvertAPI from "convertapi";
 import imageSize from "image-size";
 import sharp from "sharp";
-import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = 1538;
@@ -30,15 +27,6 @@ function getMaxSizePixels(file: FileResource): number {
   }
 
   return CONVERSATION_IMG_MAX_SIZE_PIXELS;
-}
-
-async function createReadableFromUrl(url: string): Promise<Readable> {
-  const response = await untrustedFetch(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`Failed to fetch from URL: ${response.statusText}`);
-  }
-
-  return Readable.fromWeb(response.body);
 }
 
 async function rasterizeSvg(
@@ -73,16 +61,11 @@ async function rasterizeSvg(
   }
 }
 
-/**
- * Resize a raster image and write it to the "processed" version. Skips ConvertAPI when the image
- * is already within the size limit.
- */
 async function resizeRasterImage(
   auth: Authenticator,
   file: FileResource,
   maxSizePixels: number
 ): Promise<Result<undefined, Error>> {
-  // Check dimensions before calling ConvertAPI.
   try {
     const readStreamForProbe = file.getReadStream({
       auth,
@@ -123,73 +106,52 @@ async function resizeRasterImage(
           dimensions: { width: dimensions.width, height: dimensions.height },
           maxSizePixels,
         },
-        "Image already within size limits, skipping ConvertAPI"
+        "Image already within size limits, skipping resize"
       );
 
       await pipeline(readStream, writeStream);
       return new Ok(undefined);
     }
   } catch (err) {
-    // If dimension check fails, fall back to ConvertAPI for safety.
+    // If dimension check fails, proceed to resize for safety.
     logger.warn(
       {
         fileModelId: file.id,
         workspaceId: auth.workspace()?.sId,
         err: normalizeError(err),
       },
-      "Failed to check image dimensions, falling back to ConvertAPI"
+      "Failed to check image dimensions, proceeding to resize"
     );
   }
 
-  // ConvertAPI flow.
-  const originalFormat = extensionsForContentType(file.contentType)[0].replace(
-    ".",
-    ""
+  const format = extensionsForContentType(file.contentType)[0].replace(".", "");
+  const resizeOptions = { format, maxSizePixels };
+
+  const converter = new ImageConverter();
+  const resizeResult = await converter.resizeImage(
+    await file.getSignedUrlForInlineView(auth),
+    resizeOptions
   );
-  const convertapi = new ConvertAPI(config.getConvertAPIKey());
-  const maxSizeStr = maxSizePixels.toString();
 
-  let result;
-  try {
-    const uploadResult = await convertapi.upload(
-      file.getReadStream({ auth, version: "original" }),
-      `${file.fileName}.${originalFormat}`
-    );
-
-    result = await convertapi.convert(
-      originalFormat,
-      {
-        File: uploadResult,
-        ScaleProportions: true,
-        ImageResolution: "72",
-        ScaleImage: "true",
-        ScaleIfLarger: "true",
-        ImageHeight: maxSizeStr,
-        ImageWidth: maxSizeStr,
-      },
-      originalFormat,
-      30
-    );
-  } catch (e) {
-    return new Err(
-      new Error(`Failed resizing image: ${normalizeError(e).message}`)
-    );
-  }
-
-  try {
-    const stream = await createReadableFromUrl(result.file.url);
-    const writeStream = file.getWriteStream({ auth, version: "processed" });
-    await pipeline(stream, writeStream);
-    return new Ok(undefined);
-  } catch (err) {
+  if (resizeResult.isErr()) {
     logger.error(
       {
         fileModelId: file.id,
         workspaceId: auth.workspace()?.sId,
-        error: err,
+        err: resizeResult.error,
       },
       "Failed to resize image."
     );
+    return new Err(
+      new Error(`Failed resizing image. ${resizeResult.error.message}`)
+    );
+  }
+
+  try {
+    const writeStream = file.getWriteStream({ auth, version: "processed" });
+    await pipeline(resizeResult.value, writeStream);
+    return new Ok(undefined);
+  } catch (err) {
     return new Err(
       new Error(`Failed resizing image. ${normalizeError(err).message}`)
     );

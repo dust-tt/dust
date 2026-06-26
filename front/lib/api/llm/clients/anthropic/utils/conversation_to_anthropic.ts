@@ -270,5 +270,40 @@ export function toTool(tool: AgentActionSpecification): Tool {
     // See https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
     eager_input_streaming: true,
     input_schema: { ...tool.inputSchema, type: "object" },
+    // Deferred (cold) tools are kept out of the cached prefix and loaded on
+    // demand via the tool search tool. Only set when true so non-deferred tools
+    // serialize identically to before (stable prefix bytes).
+    ...(tool.deferLoading ? { defer_loading: true } : {}),
   };
+}
+
+// Tool search lets the model discover deferred (cold) tools on demand without
+// loading their schemas into the cached prefix. bm25 uses natural-language
+// queries, which match well across diverse MCP tool names and descriptions.
+const TOOL_SEARCH_TOOL = {
+  type: "tool_search_tool_bm25_20251119",
+  name: "tool_search_tool_bm25",
+} as const;
+
+// Builds the Anthropic `tools` array from the agent's tool specifications.
+// Cold specs carry `deferLoading`, which toTool maps to `defer_loading`. When
+// any tool is deferred, the tool search tool is prepended so the model can
+// discover those tools on demand; otherwise the array is identical to before.
+// A force-called tool is never deferred, since the model cannot be forced to
+// call a tool it would first have to discover via search.
+export function toToolsParam(
+  specifications: AgentActionSpecification[],
+  forceToolCall: string | undefined
+) {
+  const tools = specifications.map((spec) => {
+    const tool = toTool(spec);
+    if (tool.defer_loading && spec.name === forceToolCall) {
+      return { ...tool, defer_loading: false };
+    }
+    return tool;
+  });
+
+  return tools.some((t) => t.defer_loading)
+    ? [TOOL_SEARCH_TOOL, ...tools]
+    : tools;
 }

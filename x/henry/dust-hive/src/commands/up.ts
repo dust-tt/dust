@@ -1,5 +1,5 @@
 import { logger } from "../lib/logger";
-import { TEMPORAL_PORT, findRepoRoot } from "../lib/paths";
+import { findRepoRoot, TEMPORAL_PORT } from "../lib/paths";
 import { checkMainRepoPreconditions } from "../lib/repo-preconditions";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { isTemporalServerRunning, startTemporalServer } from "../lib/temporal-server";

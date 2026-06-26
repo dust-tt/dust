@@ -12,7 +12,7 @@ import type {
   MultiplexerAdapter,
   MultiplexerType,
 } from "./types";
-import { SESSION_PREFIX, getTabName } from "./types";
+import { getTabName, SESSION_PREFIX } from "./types";
 
 /**
  * Base directory for tmux layout scripts

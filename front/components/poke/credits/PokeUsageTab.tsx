@@ -1,6 +1,6 @@
 import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
-import { PokeAwuUsageChart } from "@app/components/poke/credits/PokeAwuUsageChart";
+import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import type {
@@ -27,6 +27,7 @@ interface PokeUsageTabProps {
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
+  programmaticWarningReached: boolean;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
@@ -63,6 +64,7 @@ interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
+  programmaticWarningReached: boolean;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
 }
@@ -71,6 +73,7 @@ function PokeCreditStatesCard({
   owner,
   poolCreditState,
   programmaticCreditState,
+  programmaticWarningReached,
   poolAlert,
   programmaticAlerts,
 }: PokeCreditStatesCardProps) {
@@ -102,6 +105,9 @@ function PokeCreditStatesCard({
             color={creditStateChipColor(programmaticCreditState)}
             label={programmaticCreditState}
           />
+          {programmaticWarningReached && (
+            <Chip size="xs" color="warning" label="near limit" />
+          )}
           <AlertChip alert={programmaticAlerts.cap} label="cap alert" />
           <AlertChip alert={programmaticAlerts.warning} label="warning (80%)" />
           <AlertChip alert={programmaticAlerts.low} label="low (-100)" />
@@ -286,24 +292,18 @@ export function PokeUsageTab({
   stripeSubscription,
   poolCreditState,
   programmaticCreditState,
+  programmaticWarningReached,
   creditUsageConfig,
   poolAlert,
   programmaticAlerts,
   usageCapAlert,
   defaultAlerts,
 }: PokeUsageTabProps) {
-  // Billing cycle start day from Stripe subscription, fallback to Dust
-  // subscription (mirrors CreditsDataTable).
-  const getBillingCycleStartDay = (): number | null => {
-    if (stripeSubscription?.current_period_start) {
-      return new Date(stripeSubscription.current_period_start * 1000).getDate();
-    }
-    if (subscription.startDate) {
-      return new Date(subscription.startDate).getDate();
-    }
-    return null;
-  };
-  const billingCycleStartDay = getBillingCycleStartDay();
+  const billingCycleStartDay = stripeSubscription?.current_period_start
+    ? new Date(stripeSubscription.current_period_start * 1000).getDate()
+    : subscription.startDate
+      ? new Date(subscription.startDate).getDate()
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -311,6 +311,7 @@ export function PokeUsageTab({
         owner={owner}
         poolCreditState={poolCreditState}
         programmaticCreditState={programmaticCreditState}
+        programmaticWarningReached={programmaticWarningReached}
         poolAlert={poolAlert}
         programmaticAlerts={programmaticAlerts}
       />
@@ -322,7 +323,7 @@ export function PokeUsageTab({
       <PokeCreditPoolCard owner={owner} />
       <PokeMembersUsageTable owner={owner} />
       {billingCycleStartDay && (
-        <PokeAwuUsageChart
+        <PokeAwuUsageFromAnalyticsChart
           owner={owner}
           billingCycleStartDay={billingCycleStartDay}
         />

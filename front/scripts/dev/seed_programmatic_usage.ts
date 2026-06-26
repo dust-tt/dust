@@ -1,5 +1,6 @@
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { awuFromMicroUsd } from "@app/lib/metronome/events";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
@@ -99,12 +100,19 @@ async function seedProgrammaticUsage(
     const document: AgentMessageAnalyticsData = {
       agent_id: `seed-agent-${i % AGENT_COUNT}`,
       agent_version: "1",
+      ancestor_message_ids: [],
       conversation_id: `seed-conv-${i}`,
+      cost: {
+        full_awu: awuFromMicroUsd(costMicroUsd),
+        llm_awu: awuFromMicroUsd(costMicroUsd),
+        tool_awu: 0,
+      },
       context_origin: "api",
       latency_ms: randomInt(LATENCY_MS_RANGE.min, LATENCY_MS_RANGE.max),
       message_id: messageId,
       skills_used: [],
       status: "succeeded",
+      is_free_seat: false,
       timestamp: timestamp.toISOString(),
       tokens: {
         prompt: randomInt(TOKEN_PROMPT_RANGE.min, TOKEN_PROMPT_RANGE.max),

@@ -1,8 +1,8 @@
 import apiConfig from "@app/lib/api/config";
-import type { PostTagSearchResponseBody } from "@app/lib/api/data_source_view_tags";
-import { PostTagSearchBodySchema } from "@app/lib/api/data_source_view_tags";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import type { PostTagSearchResponseBody } from "@app/types/api/data_source_view_tags";
+import { PostTagSearchBodySchema } from "@app/types/api/data_source_view_tags";
 import { CoreAPI } from "@app/types/core/core_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

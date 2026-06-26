@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  live_speech_to_text: {
+    description:
+      "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
+    stage: "dust_only",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
@@ -6,6 +11,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   anthropic_vertex_fallback: {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
+    stage: "dust_only",
+  },
+  anthropic_cache_diagnostics: {
+    description:
+      "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
+    stage: "dust_only",
+  },
+  anthropic_tool_search: {
+    description:
+      "Defer non-default (cold) MCP tools via Anthropic's tool search tool so mid-run tool additions append inline instead of mutating the cached prefix",
     stage: "dust_only",
   },
   use_vertex_for_supported_models: {
@@ -68,6 +83,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   disable_run_logs: {
     description: "Disable logging of agent runs",
     stage: "dust_only",
+  },
+  disable_computer_feature: {
+    description:
+      "Disable all Computer (sandbox) features for this workspace, overriding sandbox opt-in flags",
+    stage: "on_demand",
   },
   disallow_agent_creation_to_users: {
     description:
@@ -168,10 +188,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
     stage: "on_demand",
   },
-  slideshow: {
-    description: "Slideshow MCP tool",
-    stage: "dust_only",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -201,18 +217,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   sandbox_tools: {
     description:
-      "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
-    stage: "dust_only",
-  },
-  sandbox_dsbx_tools: {
-    description:
-      "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
-    stage: "dust_only",
-  },
-  sandbox_workspace_admin: {
-    description:
-      "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
-    stage: "dust_only",
+      "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
+    stage: "on_demand",
   },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
@@ -246,9 +252,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the Poke MCP server for cross-workspace data access.",
     stage: "dust_only",
   },
-  metronome_billing: {
+  legacy_billing: {
     description:
-      "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
+      "Force this workspace to use legacy Stripe billing, bypassing Metronome credit-priced plans regardless of the global kill switch.",
     stage: "dust_only",
   },
   plan_mode: {
@@ -290,13 +296,14 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable ES-backed conversation listing in the sidebar (read path)",
     stage: "dust_only",
   },
+  restricted_spaces_in_input_bar: {
+    description:
+      "Allow users to explicitly select restricted Spaces from the conversation input bar.",
+    stage: "dust_only",
+  },
   new_file_explorer: {
     description:
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
-    stage: "dust_only",
-  },
-  user_settings_v2: {
-    description: "Enable the new user settings v2 experience",
     stage: "dust_only",
   },
   force_us_api_url: {
@@ -320,6 +327,30 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to admin governance features, including assigning the business_admin role from the UI",
     stage: "dust_only",
   },
+  use_new_llm_router: {
+    description: "Use the new LLM router for model selection and routing",
+    stage: "dust_only",
+  },
+  pod_default_agent: {
+    description:
+      "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
+    stage: "dust_only",
+  },
+  workspace_default_agent: {
+    description:
+      "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
+    stage: "on_demand",
+  },
+  sound_notification: {
+    description:
+      "Play a sound notification when an agent requires manual input (approval/decline).",
+    stage: "dust_only",
+  },
+  whitelabel_frames: {
+    description:
+      "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
@@ -340,6 +371,18 @@ export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
+
+export const DISABLE_COMPUTER_FEATURE =
+  "disable_computer_feature" as const satisfies WhitelistableFeature;
+
+export function isComputerFeatureEnabled(
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return (
+    featureFlags.includes("sandbox_tools") &&
+    !featureFlags.includes(DISABLE_COMPUTER_FEATURE)
+  );
+}
 
 export function isWhitelistableFeature(
   feature: unknown

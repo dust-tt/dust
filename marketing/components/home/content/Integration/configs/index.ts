@@ -550,6 +550,103 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     relatedIntegrations: ["salesforce", "slack"],
   },
 
+  attio: {
+    tagline: "Automate your Attio CRM workflows with AI agents",
+    // Hand-authored chat storyline (overrides the generic engine). Uses real
+    // Attio MCP tool names; the fake deal numbers are flavor — clearly an
+    // example output (see the disclaimer rendered under the mockup).
+    chatStoryline: {
+      userPrompt: "Give me a recap of our sales performance last week.",
+      toolCalls: [
+        "search-records",
+        "semantic-search-notes",
+        "semantic-search-call-recordings",
+        "search-meetings",
+      ],
+      completedInSeconds: 14,
+      responseIntro:
+        "Pulled your Attio workspace for last week's sales activity. Here's what stood out:",
+      responseSections: [
+        {
+          heading: "New deals closed (3)",
+          bullets: [
+            {
+              title: "Acme Corp — $45k",
+              body: "Closed Tuesday. Owner: Sarah Chen. Sales cycle: 2 calls + 4 emails.",
+            },
+            {
+              title: "Globex — $120k",
+              body: "Multi-quarter expansion landed Friday. Tagged 'enterprise' in the deal record.",
+            },
+            {
+              title: "Initech — $30k",
+              body: "Quick close, inbound origin. No post-close notes attached yet.",
+            },
+          ],
+        },
+        {
+          heading: "Stalled accounts (2)",
+          bullets: [
+            {
+              title: "Hooli",
+              body: "No activity in 14 days. Last touch was a discovery call on May 22.",
+            },
+            {
+              title: "Pied Piper",
+              body: "Engagement dropped after the demo. Status: pending, owner: Mark.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to draft follow-up tasks for Hooli and Pied Piper?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "Pre-call account snapshot",
+        description:
+          "Before a call, get a 360° view of any account in one prompt — records, recent notes, meetings, calls, and emails, summarized.",
+        toolMatches: [
+          "search-records",
+          "semantic-search-notes",
+          "search-meetings",
+          "semantic-search-emails",
+        ],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "green",
+        title: "Turn meeting notes into action",
+        description:
+          "Drop your raw notes into Dust and it writes them into Attio, creates follow-up tasks, and updates the deal's fields.",
+        toolMatches: ["create-note", "create-task", "upsert-record"],
+      },
+      {
+        icon: "ActionPieChartIcon",
+        color: "golden",
+        title: "Weekly pipeline recap",
+        description:
+          "Ask Dust what closed, what's stalled, and what shifted this week — get the recap your team actually reads.",
+        toolMatches: ["search-records", "list-attribute-definitions"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Attio?",
+        answer:
+          "Dust agents can read records, notes, meetings, calls, and emails; create records, notes, and tasks; and upsert records. They can pre-brief calls, write up post-call notes, and generate pipeline recaps.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Attio uses OAuth. You'll be prompted to sign in with your Attio account and approve the requested scopes directly from the Dust chat.",
+      },
+    ],
+    relatedIntegrations: ["salesforce", "hubspot", "gong"],
+  },
+
   // ===== EMAIL =====
   gmail: {
     tagline:

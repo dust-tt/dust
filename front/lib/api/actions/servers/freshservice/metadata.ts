@@ -1,4 +1,3 @@
-import { FRESHSERVICE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { FreshserviceTicketSchema } from "@app/lib/api/actions/servers/freshservice/types";
@@ -186,6 +185,20 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Adding reply to Freshservice ticket",
       done: "Add reply to Freshservice ticket",
+    },
+  },
+
+  // Service request items
+  list_ticket_requested_items: {
+    description:
+      "Lists the service request items nested under a Service Request ticket. Returns each item's metadata along with its custom fields. Use this after get_ticket when the ticket is a Service Request and you need values from custom fields on the nested items.",
+    schema: {
+      ticket_id: z.number().describe("The ID of the ticket"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Freshservice ticket requested items",
+      done: "List Freshservice ticket requested items",
     },
   },
 
@@ -679,18 +692,18 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
 });
 
 export const FRESHSERVICE_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "freshservice",
     version: "1.0.0",
-    description: "Connect to tickets, schedules and service catalog.",
+    description:
+      "Manage Freshservice IT service desk tickets, service requests, knowledge base articles, and service catalog items. An ITSM (IT Service Management) helpdesk platform.",
     authorization: {
       provider: "freshservice" as const,
       supported_use_cases: ["platform_actions", "personal_actions"] as const,
     },
     icon: "FreshserviceLogo",
     documentationUrl: "https://docs.dust.tt/docs/freshservice",
-    instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
+    instructions: null,
   },
   tools: Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => ({
     name: t.name,

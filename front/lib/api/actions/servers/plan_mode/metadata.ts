@@ -4,32 +4,43 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-// Initial content seeded into plan.md on create_plan.
-export const PLAN_MODE_SKELETON = `# Untitled plan
+export const PLAN_MODE_SKELETON = `# <plan title>
 
 ## Context
-_Fill in: why we're doing this, what the user asked for._
+_Why we're doing this, what the user asked for._
 
 ## Tasks
-- [ ] _Fill in the first task_
+- [ ] _First task_
 `;
 
 export const PLAN_MODE_SERVER_NAME = "plan_mode" as const;
 
 export const CREATE_PLAN_TOOL_NAME = "create_plan" as const;
 export const EDIT_PLAN_TOOL_NAME = "edit_plan" as const;
-export const REQUEST_PLAN_APPROVAL_TOOL_NAME = "request_plan_approval" as const;
 export const CLOSE_PLAN_TOOL_NAME = "close_plan" as const;
+
+export const PLAN_FILE_NAME = "plan.md" as const;
 
 export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
   create_plan: {
     description:
-      "Create a `plan.md` file attached to this conversation, seeded with a Context + Tasks " +
-      "skeleton. Exactly one active plan is allowed per conversation; call `close_plan` to " +
-      "retire the current one first if the user wants a fresh plan. After creating, populate " +
-      "the skeleton via `edit_plan`.\n\n" +
+      `Create the conversation's \`${PLAN_FILE_NAME}\` with the markdown you pass as \`content\`. Write the ` +
+      "full plan directly; do not create an empty plan and then edit it. Exactly one active " +
+      `plan is allowed per conversation; call \`${CLOSE_PLAN_TOOL_NAME}\` to retire the current one first if ` +
+      `the user wants a fresh plan. Use \`${EDIT_PLAN_TOOL_NAME}\` for subsequent updates.\n\n` +
+      "Recommended structure:\n\n" +
+      "```markdown\n" +
+      PLAN_MODE_SKELETON +
+      "```\n\n" +
       "See skill instructions for when to call this and the end-to-end workflow.",
-    schema: {},
+    schema: {
+      content: z
+        .string()
+        .describe(
+          "The full markdown content of the plan. Use a `# title`, a `## Context` section, and " +
+            "a `## Tasks` checklist (`- [ ]` items)."
+        ),
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Creating plan",
@@ -38,22 +49,17 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
   },
   edit_plan: {
     description:
-      "Edit the active `plan.md` by replacing `old_string` with `new_string`. The full updated " +
-      "contents of plan.md are returned so you can see your change.\n\n" +
+      `Edit the active \`${PLAN_FILE_NAME}\` by replacing \`old_string\` with \`new_string\`. The full updated ` +
+      `contents of ${PLAN_FILE_NAME} are returned so you can see your change.\n\n` +
       "`old_string` must match exactly once in the current file. If it matches zero or multiple " +
       "times, the edit fails and you must retry with a more specific string. Use an empty " +
       "`new_string` to delete `old_string`.\n\n" +
-      "A freshly-created plan.md (via `create_plan`) contains this exact skeleton you need to " +
-      "populate with your first edits:\n\n" +
-      "```markdown\n" +
-      PLAN_MODE_SKELETON +
-      "```\n\n" +
       "See skill instructions for when to edit and how to use task markers.",
     schema: {
       old_string: z
         .string()
         .describe(
-          "The exact string in plan.md to replace. Must match exactly once."
+          `The exact string in ${PLAN_FILE_NAME} to replace. Must match exactly once.`
         ),
       new_string: z
         .string()
@@ -67,39 +73,11 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
       done: "Plan updated",
     },
   },
-  request_plan_approval: {
-    description:
-      "Surface the current plan.md to the user and pause execution pending their decision. " +
-      "The user sees an approval card and either approves or rejects. On approve, the tool " +
-      "returns success and execution resumes. On reject, the tool returns with `denied` status " +
-      "and the handler does not run.\n\n" +
-      "Only call when plan.md is ready. Do not call with an incomplete plan.\n\n" +
-      "See skill instructions for when to request approval and how to handle rejection.",
-    schema: {
-      summary: z
-        .string()
-        .optional()
-        .describe(
-          "Optional one-sentence TL;DR shown to the user as the body of the approval card. " +
-            "Provide it when the plan is long enough that a one-liner helps the user decide at " +
-            "a glance; omit for short plans."
-        ),
-    },
-    // `high` routes the tool through the existing MCP tool-approval machinery: the workflow exits
-    // cleanly with the action in `blocked_validation_required`, the UI renders an approval card,
-    // and on approve the tool handler runs (stamping approval onto plan.md). On reject the
-    // handler does not run; the agent sees the action as denied and can iterate.
-    stake: "high",
-    displayLabels: {
-      running: "Requesting plan approval",
-      done: "Plan approved",
-    },
-  },
   close_plan: {
     description:
-      "Retire the current plan. After close_plan, the plan is hidden from the UI and this " +
-      "skill will not reference it again. You can call `create_plan` to start a fresh plan " +
-      "later. Close is terminal; use `edit_plan` to iterate on the plan instead of closing it.\n\n" +
+      `Retire the current plan. After ${CLOSE_PLAN_TOOL_NAME}, the plan is hidden from the UI and this ` +
+      `skill will not reference it again. You can call \`${CREATE_PLAN_TOOL_NAME}\` to start a fresh plan ` +
+      `later. Close is terminal; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate on the plan instead of closing it.\n\n` +
       "See skill instructions for when to call this.",
     schema: {
       reason: z
@@ -123,8 +101,9 @@ export const PLAN_MODE_SERVER = {
     name: PLAN_MODE_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Create and maintain a living `plan.md` that gives the user visibility on non-trivial " +
-      "work. Optionally surface the plan for explicit user approval before proceeding.",
+      `Create and maintain a living \`${PLAN_FILE_NAME}\` that gives the user visibility on non-trivial ` +
+      "work. When you need explicit sign-off before proceeding, ask the user with the standard " +
+      "question flow.",
     icon: "ActionDocumentTextIcon" as const,
     authorization: null,
     documentationUrl: null,

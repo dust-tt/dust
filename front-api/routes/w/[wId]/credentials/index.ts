@@ -4,9 +4,9 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import apiConfig from "@app/lib/api/config";
-import type { PostCredentialsResponseBody } from "@app/lib/api/oauth";
-import { PostCredentialsBodySchema } from "@app/lib/api/oauth";
 import logger from "@app/logger/logger";
+import type { PostCredentialsResponseBody } from "@app/types/api/oauth";
+import { PostCredentialsBodySchema } from "@app/types/api/oauth";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";

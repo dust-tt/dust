@@ -225,7 +225,7 @@ const ScrollContainer = ({
   const value = React.useMemo(() => viewport, [viewport]);
 
   if (noScroll) {
-    return <div className={className}>{children}</div>;
+    return <div className={cn(className, "s-flex s-flex-col")}>{children}</div>;
   }
 
   return (
@@ -245,14 +245,14 @@ const SheetContainer = ({
     <ScrollContainer
       noScroll={noScroll}
       className={cn(
-        "s-h-full s-w-full s-flex-grow",
+        "s-min-h-0 s-w-full s-flex-1 s-overflow-hidden",
         "s-border-t s-border-border/60 s-transition-all s-duration-300 dark:s-border-border-night/60"
       )}
     >
       <div
         className={cn(
-          "s-relative s-flex s-h-full s-flex-col s-gap-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night",
-          !isListSelector && "s-px-5 s-pt-3",
+          "s-relative s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-hidden s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night",
+          !isListSelector && "s-gap-5 s-px-5 s-pt-3",
           className
         )}
       >
@@ -363,7 +363,10 @@ const SheetDescription = React.forwardRef<
 ));
 SheetDescription.displayName = SheetPrimitive.Description.displayName;
 
-export { useSheetViewport } from "@sparkle/components/SheetViewportContext";
+export {
+  SheetViewportProvider,
+  useSheetViewport,
+} from "@sparkle/components/SheetViewportContext";
 export {
   Sheet,
   SheetClose,

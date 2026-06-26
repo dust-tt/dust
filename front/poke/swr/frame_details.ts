@@ -1,5 +1,5 @@
-import type { GetPokeFileResponseBody } from "@app/lib/api/poke/files";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetPokeFileResponseBody } from "@app/types/api/poke/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

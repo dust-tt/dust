@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   INTERNAL_MCP_SERVERS,
+  isHotMCPServerName,
   LEGACY_INTERNAL_MCP_SERVER_IDS,
 } from "./constants";
 import {
@@ -79,5 +80,36 @@ describe("AVAILABLE_INTERNAL_MCP_SERVER_NAMES", () => {
     const unique = [...new Set(names)];
 
     expect(names).toStrictEqual(unique);
+  });
+});
+
+describe("isHotMCPServerName", () => {
+  // Derive expectations from the availability source of truth so the test stays
+  // valid as servers are added or their availability changes.
+  it("treats every auto / auto_hidden_builder internal server as hot", () => {
+    const autoNames = Object.entries(INTERNAL_MCP_SERVERS)
+      .filter(([, server]) => server.availability !== "manual")
+      .map(([name]) => name);
+
+    expect(autoNames.length).toBeGreaterThan(0);
+    for (const name of autoNames) {
+      expect(isHotMCPServerName(name)).toBe(true);
+    }
+  });
+
+  it("treats every manual internal server as cold", () => {
+    const manualNames = Object.entries(INTERNAL_MCP_SERVERS)
+      .filter(([, server]) => server.availability === "manual")
+      .map(([name]) => name);
+
+    expect(manualNames.length).toBeGreaterThan(0);
+    for (const name of manualNames) {
+      expect(isHotMCPServerName(name)).toBe(false);
+    }
+  });
+
+  it("treats unknown or non-internal server names as cold", () => {
+    expect(isHotMCPServerName("not_a_real_server")).toBe(false);
+    expect(isHotMCPServerName("")).toBe(false);
   });
 });

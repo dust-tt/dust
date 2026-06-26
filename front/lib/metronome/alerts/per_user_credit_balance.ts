@@ -10,10 +10,10 @@ import {
 } from "@app/lib/metronome/client";
 import {
   getCreditTypeAwuId,
+  NEAR_LIMIT_FRACTION,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
-import { SEAT_LOW_BALANCE_FRACTION } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -219,7 +219,7 @@ export async function upsertPerUserCreditBalanceAlerts({
   const lowBalanceResult = await upsertMetronomeAlert({
     alert_type: "low_remaining_contract_credit_balance_reached",
     name: perUserCreditAlertName("low balance", workspaceId, userId),
-    threshold: Math.floor(SEAT_LOW_BALANCE_FRACTION * allowanceAwu),
+    threshold: Math.floor((1 - NEAR_LIMIT_FRACTION) * allowanceAwu),
     credit_type_id: creditTypeId,
     customer_id: metronomeCustomerId,
     uniqueness_key: lowBalanceAlertUniquenessKey(workspaceId, userId),

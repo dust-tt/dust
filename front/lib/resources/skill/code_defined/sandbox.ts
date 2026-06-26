@@ -14,6 +14,7 @@ import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
 
 function buildSandboxInstructionProse({
@@ -126,7 +127,7 @@ function formatWorkspaceAllowlist(domains: string[]): string {
 
 async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
   const flags = await getFeatureFlags(auth);
-  const hasWorkspaceAdmin = flags.includes("sandbox_workspace_admin");
+  const hasWorkspaceAdmin = isComputerFeatureEnabled(flags);
   const allowAgentRequests =
     hasWorkspaceAdmin &&
     auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
@@ -356,6 +357,10 @@ export const sandboxSkill = {
   agentFacingDescription:
     "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
     "process data, install packages, manipulate files, or perform any task requiring shell access. " +
+    "You must enable this skill proactively as soon as the user uploads files or you need to work with files, " +
+    "including PDFs, spreadsheets, archives, or generated artifacts. Use it to extract text from files, " +
+    "parse lengthy tool outputs, run code and shell commands, process data, manipulate files, or perform " +
+    "any computer-related task. " +
     "Always call this environment 'the Computer' in any text you send to the user.",
   fetchInstructions: async (
     auth: Authenticator,
@@ -365,7 +370,7 @@ export const sandboxSkill = {
   ) => {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
     const flags = await getFeatureFlags(auth);
-    const hasDsbxTools = flags.includes("sandbox_dsbx_tools");
+    const hasDsbxTools = isComputerFeatureEnabled(flags);
     const isProject = agentLoopData?.conversation
       ? isPodConversation(agentLoopData.conversation)
       : false;
@@ -378,12 +383,12 @@ export const sandboxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "CommandLineIcon",
-  // Auto-enabled for every agent when the `sandbox_tools` flag is on (the flag gate lives in
-  // isRestricted), so agents do not need to opt in.
-  isAutoEnabledForAgentLoop: () => true,
+  // Auto-equipped for every agent when the `sandbox_tools` flag is on (the flag gate lives in
+  // isRestricted), but not enabled until the agent decides to use it.
+  isAutoEquippedForAgentLoop: (): boolean => true,
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
-    return !flags.includes("sandbox_tools");
+    return !isComputerFeatureEnabled(flags);
   },
 } as const satisfies SystemSkillDefinition;

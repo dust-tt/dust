@@ -120,12 +120,19 @@ export async function seedAnalytics(
     const document: AgentMessageAnalyticsData = {
       agent_id: agentMessage.agentConfigurationId,
       agent_version: agentMessage.agentConfigurationVersion.toString(),
+      ancestor_message_ids: [],
       conversation_id: conversationId,
+      cost: {
+        full_awu: 0,
+        llm_awu: 0,
+        tool_awu: 0,
+      },
       context_origin: "web",
       latency_ms: agentMessage.modelInteractionDurationMs ?? 0,
       message_id: message.sId,
       skills_used: [],
       status: agentMessage.status,
+      is_free_seat: false,
       timestamp: new Date(message.createdAt).toISOString(),
       tokens: {
         prompt: 0,

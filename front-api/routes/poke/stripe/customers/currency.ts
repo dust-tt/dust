@@ -1,9 +1,9 @@
+import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
+import { getStripeCustomer } from "@app/lib/plans/stripe";
 import {
   PostPokeStripeCustomerCurrencyBodySchema,
   type PostPokeStripeCustomerCurrencyResponseBody,
-} from "@app/lib/api/poke/stripe_customers";
-import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
-import { getStripeCustomer } from "@app/lib/plans/stripe";
+} from "@app/types/api/poke/stripe_customers";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

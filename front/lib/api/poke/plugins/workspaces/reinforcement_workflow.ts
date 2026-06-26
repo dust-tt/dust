@@ -24,6 +24,7 @@ export const reinforcementWorkflowPlugin = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();

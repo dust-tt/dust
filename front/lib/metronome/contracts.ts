@@ -27,6 +27,10 @@ import {
   syncMauCount,
 } from "@app/lib/metronome/mau_sync";
 import {
+  type CachedContract,
+  resolveActiveMetronomeIds,
+} from "@app/lib/metronome/plan_type";
+import {
   hasContractSeatSubscription,
   remapMembershipSeatTypesForContract,
   syncSeatCount,
@@ -51,12 +55,14 @@ import {
 } from "@app/lib/plans/usage/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
 import { metronomeAmount } from "./amounts";
@@ -328,7 +334,6 @@ export async function provisionMetronomeContract({
     // (which would leave them unbilled). For future-dated switches this schedules
     // the change at the contract start; the sync below then reconciles the new
     // contract against the (current or scheduled) membership seat types.
-    const remapStartMs = Date.now();
     const remapResult = await remapMembershipSeatTypesForContract({
       metronomeCustomerId,
       contractId: metronomeContractId,
@@ -336,10 +341,6 @@ export async function provisionMetronomeContract({
       swapAt,
       startingAt: alignedStart,
     });
-    logger.error(
-      { workspaceId: workspace.sId, durationMs: Date.now() - remapStartMs },
-      "[Metronome] remapMembershipSeatTypesForContract"
-    );
     if (remapResult.isErr()) {
       return new Err(remapResult.error);
     }
@@ -349,7 +350,8 @@ export async function provisionMetronomeContract({
       metronomeCustomerId,
       metronomeContractId,
       workspace,
-      alignedStart.toISOString()
+      alignedStart.toISOString(),
+      planCode
     );
     logger.error(
       {
@@ -369,6 +371,66 @@ export async function provisionMetronomeContract({
   // here because lib/metronome is a transport layer and importing the
   // credit_state_dispatcher would create a cycle through auth →
   // subscription_resource → contracts.
+
+  return new Ok({ metronomeContractId });
+}
+
+/**
+ * Create a Metronome contract for a payment-gated subscription activation without
+ * touching any existing active contract.
+ *
+ * Unlike `provisionMetronomeContract`, this helper does NOT sunset overlapping
+ * contracts. The free-plan contract must remain active until payment succeeds;
+ * if payment fails, the activation contract is ended and the workspace stays on
+ * the free contract. Only the payment success handler should end the previous
+ * contract.
+ *
+ * No seat sync is performed — the checkout contract is a candidate until payment
+ * succeeds, at which point `handleSubscriptionActivationSuccess` does the swap
+ * and triggers seat sync.
+ */
+export async function provisionPaymentGatedActivationContract({
+  metronomeCustomerId,
+  workspace,
+  packageAlias,
+  uniquenessKey,
+  startingAt,
+  planCode,
+  additionalCustomFields,
+}: {
+  metronomeCustomerId: string;
+  workspace: LightWorkspaceType;
+  packageAlias: string;
+  uniquenessKey?: string;
+  startingAt: Date;
+  planCode: string;
+  additionalCustomFields?: Record<string, string>;
+}): Promise<Result<{ metronomeContractId: string }, Error>> {
+  const alignedStart = new Date(floorToHourISO(startingAt));
+
+  logger.info(
+    {
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+      packageAlias,
+      startingAt: alignedStart.toISOString(),
+    },
+    "[Metronome] Provisioning payment-gated activation contract"
+  );
+
+  const contractResult = await createMetronomeContract({
+    metronomeCustomerId,
+    packageAlias,
+    uniquenessKey,
+    startingAt: alignedStart,
+    enableStripeBilling: true,
+    planCode,
+    additionalCustomFields,
+  });
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
+  }
+  const { contractId: metronomeContractId } = contractResult.value;
 
   return new Ok({ metronomeContractId });
 }
@@ -408,7 +470,8 @@ export async function syncContractQuantities(
   metronomeCustomerId: string,
   metronomeContractId: string,
   workspace: LightWorkspaceType,
-  startingAt: string
+  startingAt: string,
+  planCode: string
 ): Promise<Result<void, Error>> {
   const contractResult = await getMetronomeContractById({
     metronomeCustomerId,
@@ -431,6 +494,7 @@ export async function syncContractQuantities(
               metronomeCustomerId,
               contractId: metronomeContractId,
               workspace,
+              planCode,
               startingAt,
               contract,
             }),
@@ -1221,41 +1285,10 @@ export async function provisionShadowEnterpriseMetronomeContract({
   return new Ok({ metronomeCustomerId, metronomeContractId });
 }
 
-/**
- * Retrieve the current billing period from the Metronome contract.
- *
- * Returns:
- * - Ok(BillingCycle) when the period is found on the contract.
- * - Ok(null) when Metronome is not set up for this workspace (missing IDs).
- * - Err when the Metronome API call fails or no subscription has a billing period.
- */
-export async function getMetronomeCurrentBillingPeriod({
-  metronomeContractId,
-  metronomeCustomerId,
-}: {
-  metronomeContractId: string | null;
-  metronomeCustomerId: string | null;
-}): Promise<Result<BillingCycle | null, Error>> {
-  if (!metronomeContractId || !metronomeCustomerId) {
-    if (metronomeContractId !== null || metronomeCustomerId !== null) {
-      logger.warn(
-        { metronomeContractId, metronomeCustomerId },
-        "[Metronome] Partial Metronome configuration: one of metronomeContractId or metronomeCustomerId is missing"
-      );
-    }
-    return new Ok(null);
-  }
-
-  const contractResult = await getMetronomeContractById({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
-
-  if (contractResult.isErr()) {
-    return new Err(contractResult.error);
-  }
-
-  const currentPeriod = contractResult.value.subscriptions
+function billingPeriodFromContract(
+  contract: CachedContract
+): Result<BillingCycle, Error> {
+  const currentPeriod = contract.subscriptions
     ?.map((s) => s.billing_periods?.current)
     .find((bp) => bp !== undefined);
 
@@ -1269,4 +1302,83 @@ export async function getMetronomeCurrentBillingPeriod({
     cycleStart: new Date(currentPeriod.starting_at),
     cycleEnd: new Date(currentPeriod.ending_before),
   });
+}
+
+/**
+ * Retrieve the current billing period directly from Metronome (no caching).
+ *
+ * Returns:
+ * - Ok(BillingCycle) when the period is found on the contract.
+ * - Ok(null) when Metronome is not set up for this workspace (missing IDs).
+ * - Err when the Metronome API call fails or no subscription has a billing period.
+ */
+async function fetchMetronomeCurrentBillingPeriod({
+  metronomeContractId,
+  metronomeCustomerId,
+}: {
+  metronomeContractId: string;
+  metronomeCustomerId: string;
+}): Promise<Result<BillingCycle | null, Error>> {
+  const contractResult = await getMetronomeContractById({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
+  }
+
+  return billingPeriodFromContract(contractResult.value);
+}
+
+// Billing periods roll over independently of any contract lifecycle event
+// (contract.start/end/edit), so unlike the no-TTL active-contract cache, this
+// needs its own short TTL — otherwise a workspace whose contract hasn't been
+// edited in a while would keep reading a stale, expired period indefinitely.
+const BILLING_PERIOD_CACHE_TTL_MS = 60 * 1000;
+
+async function fetchBillingPeriodRecordForWorkspace(
+  workspaceId: string
+): Promise<{ cycleStartMs: number; cycleEndMs: number } | null> {
+  const ids = await resolveActiveMetronomeIds(workspaceId);
+  if (!ids) {
+    return null;
+  }
+  const periodResult = await fetchMetronomeCurrentBillingPeriod(ids);
+  if (periodResult.isErr()) {
+    throw periodResult.error;
+  }
+  if (!periodResult.value) {
+    return null;
+  }
+  return {
+    cycleStartMs: periodResult.value.cycleStart.getTime(),
+    cycleEndMs: periodResult.value.cycleEnd.getTime(),
+  };
+}
+
+const getCachedBillingPeriodRecordForWorkspace = cacheWithRedis(
+  fetchBillingPeriodRecordForWorkspace,
+  (workspaceId) => workspaceId,
+  { ttlMs: BILLING_PERIOD_CACHE_TTL_MS, cacheNullValues: false }
+);
+
+/**
+ * Retrieve the current billing period for a workspace's active Metronome contract.
+ */
+export async function getCachedMetronomeCurrentBillingPeriod(
+  workspaceId: string
+): Promise<Result<BillingCycle | null, Error>> {
+  try {
+    const record = await getCachedBillingPeriodRecordForWorkspace(workspaceId);
+    if (!record) {
+      return new Ok(null);
+    }
+    return new Ok({
+      cycleStart: new Date(record.cycleStartMs),
+      cycleEnd: new Date(record.cycleEndMs),
+    });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }

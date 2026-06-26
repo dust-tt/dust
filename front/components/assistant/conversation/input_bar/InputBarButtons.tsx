@@ -18,8 +18,18 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
+import { isProjectType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { Avatar, Button, cn, Robot, XClose } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  cn,
+  Icon,
+  InfoCircle,
+  Robot,
+  Tooltip,
+  XClose,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 interface InputBarButtonsProps {
@@ -35,6 +45,10 @@ interface InputBarButtonsProps {
   fileUploaderService: FileUploaderService;
   handleSingleAgentSelect: (mention: RichMention) => void;
   hideCapabilities: boolean;
+  // When true, the pod's configured default agent isn't available to the
+  // current member (unpublished/deleted), so @dust is shown instead. Surfaces
+  // a notice on the agent pill.
+  isDefaultAgentUnavailable: boolean;
   // When true, disables every picker (tools, attachment) in addition to the
   // agent selector which is muted via `disableAgentSelector`.
   isInputDisabled: boolean;
@@ -66,6 +80,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   fileUploaderService,
   handleSingleAgentSelect,
   hideCapabilities,
+  isDefaultAgentUnavailable,
   isInputDisabled,
   onAgentRemove,
   onMCPServerViewSelect,
@@ -84,6 +99,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const router = useAppRouter();
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+
+  const isPod = space ? isProjectType(space) : false;
+  const defaultAgentUnavailableLabel = isPod
+    ? "This Pod's default agent isn't available to you, so @dust is used instead. Discuss with your Pod editors if you think this is an error."
+    : "This conversation's default agent isn't available to you, so @dust is used instead. Discuss with your Workspace admin if you think this is an error.";
 
   const handleAgentDetailsClick = (agentId: string) => {
     setQueryParam(router, "agentDetails", agentId);
@@ -124,6 +144,27 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             <span className="grow truncate notranslate">
               {selectedAgent.label}
             </span>
+            {isDefaultAgentUnavailable && (
+              <Tooltip
+                tooltipTriggerAsChild
+                trigger={
+                  <span
+                    className="flex items-center text-warning dark:text-warning-night"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
+                    <Icon visual={InfoCircle} size="xs" />
+                  </span>
+                }
+                label={defaultAgentUnavailableLabel}
+              />
+            )}
             <button
               type="button"
               aria-label="Remove agent"

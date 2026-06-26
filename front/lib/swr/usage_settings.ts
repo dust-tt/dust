@@ -1,13 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetProgrammaticUsageLimitResponseBody,
-  PutProgrammaticUsageLimitResponseBody,
-} from "@app/lib/api/credits/programmatic_usage_limit";
-import type { GetCreditUsageConfigurationResponseBody } from "@app/lib/api/credits/usage_configuration";
-import type {
-  GetDefaultUserSpendLimitResponseBody,
-  PutDefaultUserSpendLimitResponseBody,
-} from "@app/lib/api/workspace/default_user_spend_limit";
 import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import {
@@ -15,6 +6,15 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  GetProgrammaticUsageLimitResponseBody,
+  PutProgrammaticUsageLimitResponseBody,
+} from "@app/types/api/credits/programmatic_usage_limit";
+import type { GetCreditUsageConfigurationResponseBody } from "@app/types/api/credits/usage_configuration";
+import type {
+  GetDefaultUserSpendLimitResponseBody,
+  PutDefaultUserSpendLimitResponseBody,
+} from "@app/types/api/workspace/default_user_spend_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -31,7 +31,9 @@ const PutDefaultUserSpendLimitResponseSchema = z.object({
 
 export interface UsageSettings {
   allowUpgradeRequest: boolean;
-  autoUpgradeFreeToPro: boolean;
+  autoSeatUpgradeEnabled: boolean;
+  autoSeatUpgradeAvailable: boolean;
+  topUpEnabled: boolean;
 }
 
 export interface UsageNotifications {
@@ -42,7 +44,9 @@ export interface UsageNotifications {
 
 const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   allowUpgradeRequest: true,
-  autoUpgradeFreeToPro: false,
+  autoSeatUpgradeEnabled: false,
+  autoSeatUpgradeAvailable: false,
+  topUpEnabled: false,
 };
 
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
@@ -93,7 +97,12 @@ export function useUsageSettings({ workspaceId }: { workspaceId: string }) {
   const usageSettings: UsageSettings = {
     ...DEFAULT_USAGE_SETTINGS,
     ...(data
-      ? { allowUpgradeRequest: data.configuration.allowMemberUpgradeRequests }
+      ? {
+          allowUpgradeRequest: data.configuration.allowMemberUpgradeRequests,
+          autoSeatUpgradeEnabled: data.configuration.autoSeatUpgradeEnabled,
+          autoSeatUpgradeAvailable: data.configuration.autoSeatUpgradeAvailable,
+          topUpEnabled: data.configuration.topUpEnabled,
+        }
       : {}),
   };
 
@@ -121,7 +130,9 @@ export function useUpdateUsageSettings({
       if (patch.allowUpgradeRequest !== undefined) {
         body.allowMemberUpgradeRequests = patch.allowUpgradeRequest;
       }
-      // TODO: `autoUpgradeFreeToPro` is intentionally not persisted (out of scope).
+      if (patch.autoSeatUpgradeEnabled !== undefined) {
+        body.autoSeatUpgradeEnabled = patch.autoSeatUpgradeEnabled;
+      }
 
       if (Object.keys(body).length === 0) {
         return true;
@@ -330,8 +341,10 @@ function programmaticUsageLimitUrl(workspaceId: string): string {
 
 export function useProgrammaticUsageLimit({
   workspaceId,
+  disabled,
 }: {
   workspaceId: string;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const limitFetcher: Fetcher<GetProgrammaticUsageLimitResponseBody> = async (
@@ -342,12 +355,13 @@ export function useProgrammaticUsageLimit({
   };
   const { data, error } = useSWRWithDefaults(
     programmaticUsageLimitUrl(workspaceId),
-    limitFetcher
+    limitFetcher,
+    { disabled }
   );
 
   return {
     programmaticUsageLimit: data,
-    isProgrammaticUsageLimitLoading: !error && !data,
+    isProgrammaticUsageLimitLoading: !error && !data && !disabled,
     isProgrammaticUsageLimitError: !!error,
   };
 }
@@ -383,20 +397,21 @@ export function useUpdateProgrammaticUsageLimit({
         await res.json()
       );
 
-      if (monthlyCapCredits === null) {
+      if (monthlyCapCredits === null || monthlyCapCredits === 0) {
         sendNotification({
           type: "success",
-          title: "Programmatic usage limit has been removed",
+          title: "Programmatic access disabled",
         });
       } else {
         sendNotification({
           type: "success",
           title: "Programmatic usage limit updated",
-          description: `The monthly programmatic usage limit has been set to ${monthlyCapCredits.toLocaleString("en-US")} credits.`,
+          description: `Monthly limit set to ${monthlyCapCredits.toLocaleString()} credits.`,
         });
       }
 
       await mutate(programmaticUsageLimitUrl(workspaceId));
+      await mutate(`/api/w/${workspaceId}/usage-status`);
       return body;
     },
     [workspaceId, sendNotification]

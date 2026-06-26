@@ -55,10 +55,21 @@ app.get(
     // Scope the listing to the conversation mount only. For pod conversations the
     // DustFileSystem also has a pod mount and we do not want to expose pod files here.
     const dustFs = fsResult.value;
+    const listResult = await dustFs.list(`${SCOPED_PREFIX_CONVERSATION}${cId}`);
+    if (listResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to list conversation files.",
+        },
+      });
+    }
+
     const files = await enrichListWithFileResourceIds(
       auth,
       dustFs,
-      await dustFs.list(`${SCOPED_PREFIX_CONVERSATION}${cId}`)
+      listResult.value
     );
 
     return ctx.json({ files });

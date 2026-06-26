@@ -17,7 +17,7 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup."
+          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. To mention a user, use <@USER_ID>. To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
         ),
       threadTs: z
         .string()
@@ -63,7 +63,7 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The new message content, using standard Markdown formatting. Do NOT use Slack-specific markup."
+          "The new message content, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. To mention a user, use <@USER_ID>. To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
         ),
     },
     stake: "low",
@@ -216,7 +216,6 @@ The search_all parameter should only be set to true if the user explicitly reque
 });
 
 export const SLACK_BOT_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "slack_bot",
     version: "1.0.0",
@@ -228,13 +227,7 @@ export const SLACK_BOT_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: null,
-    instructions:
-      "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
-      "Direct messages and search operations are not supported. " +
-      "When posting or editing a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). " +
-      "Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
-      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-      "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+    instructions: null,
   },
   tools: Object.values(SLACK_BOT_TOOLS_METADATA).map((t) => ({
     name: t.name,

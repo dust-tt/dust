@@ -29,6 +29,7 @@ import {
   MessagePlusCircle,
   Spinner,
   Star01,
+  StarFilled,
   Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -67,6 +68,8 @@ export function AgentDetailsButtonBar({
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
 
+  const agentIsFavorite = agentConfiguration.userFavorite || isFavoriteDisabled;
+
   const handleNewConversation = async () => {
     onClose();
     await router.push(
@@ -76,39 +79,14 @@ export function AgentDetailsButtonBar({
 
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
-      <div className="group">
-        <Button
-          icon={
-            agentConfiguration.userFavorite || isFavoriteDisabled
-              ? Star01
-              : Star01
-          }
-          tooltip={
-            agentConfiguration.userFavorite || isFavoriteDisabled
-              ? "Remove from favorites"
-              : "Add to favorites"
-          }
-          size="sm"
-          className="group-hover:hidden"
-          variant="outline"
-          disabled={isFavoriteDisabled}
-          onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
-        />
-
-        <Button
-          icon={Star01}
-          tooltip={
-            agentConfiguration.userFavorite || isFavoriteDisabled
-              ? "Remove from favorites"
-              : "Add to favorites"
-          }
-          size="sm"
-          className="hidden group-hover:block"
-          variant="outline"
-          disabled={isFavoriteDisabled}
-          onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
-        />
-      </div>
+      <Button
+        icon={agentIsFavorite ? StarFilled : Star01}
+        tooltip={agentIsFavorite ? "Remove from favorites" : "Add to favorites"}
+        size="sm"
+        variant="outline"
+        disabled={isFavoriteDisabled}
+        onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
+      />
 
       {canShowAgentConversationActions(agentConfiguration.sId) && (
         <Button

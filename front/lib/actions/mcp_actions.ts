@@ -36,6 +36,7 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
+  resolveInternalMCPServerToolStakeLevel,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -1262,26 +1263,41 @@ export async function buildToolConfigurationsFromRawTools(
   } = r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(mcpServerId);
+  const serverNameResult = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+  const internalServerName = serverNameResult.isOk()
+    ? serverNameResult.value.name
+    : null;
 
   const toolsWithStakesRetryPoliciesAndTimeout = allToolsRaw
     .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
-    .map((tool) => ({
-      ...tool,
-      stakeLevel:
+    .map((tool) => {
+      const configuredStakeLevel =
         toolsStakes[tool.name] ||
         (availability === "manual"
           ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-          : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
-      availability,
-      toolServerId: mcpServerId,
-      ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
-      retryPolicy:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        toolsRetryPolicies?.[tool.name] ||
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        toolsRetryPolicies?.["default"] ||
-        DEFAULT_MCP_TOOL_RETRY_POLICY,
-    }));
+          : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL);
+      const stakeLevel = internalServerName
+        ? resolveInternalMCPServerToolStakeLevel(internalServerName, {
+            toolName: tool.name,
+            plan: auth.plan(),
+            configuredStakeLevel,
+          })
+        : configuredStakeLevel;
+
+      return {
+        ...tool,
+        stakeLevel,
+        availability,
+        toolServerId: mcpServerId,
+        ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
+        retryPolicy:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          toolsRetryPolicies?.[tool.name] ||
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          toolsRetryPolicies?.["default"] ||
+          DEFAULT_MCP_TOOL_RETRY_POLICY,
+      };
+    });
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,

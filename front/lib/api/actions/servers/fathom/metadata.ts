@@ -6,7 +6,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const FATHOM_TOOLS_METADATA = createToolsRecord({
   list_meetings: {
-    description: "List Fathom meetings",
+    description:
+      "List Fathom video meeting recordings with optional filters for date range, team, attendee domain, recorded-by email, and CRM data. Returns summaries, action items, and metadata.",
     schema: {
       cursor: z
         .string()

@@ -1,5 +1,6 @@
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
+import { formatCreditsCompact } from "@app/lib/client/credits";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import {
   useAgentAnalytics,
@@ -186,7 +187,7 @@ export function AgentObservability({
             <Spinner />
           </div>
         ) : (
-          <CardGrid adaptColumns>
+          <CardGrid>
             <ValueCard
               title="Active Users"
               className="h-24"
@@ -216,6 +217,53 @@ export function AgentObservability({
                 </div>
               }
             />
+            <div className="hidden @[40rem]:contents">
+              <div></div>
+            </div>
+
+            <div className="hidden @[24rem]:contents">
+              <ValueCard
+                title="Total cost"
+                className="h-24"
+                content={
+                  <div className="flex flex-col gap-1 text-2xl">
+                    <div className="truncate text-foreground dark:text-foreground-night">
+                      {agentAnalytics?.costs?.totalCostCredits != null
+                        ? `${formatCreditsCompact(agentAnalytics.costs.totalCostCredits)} credits`
+                        : "-"}
+                    </div>
+                  </div>
+                }
+              />
+            </div>
+            <ValueCard
+              title="Avg. cost / msg"
+              className="h-24"
+              content={
+                <div className="flex flex-col gap-1 text-2xl">
+                  <div className="truncate text-foreground dark:text-foreground-night">
+                    {agentAnalytics?.costs?.avgCostCredits != null
+                      ? `${formatCreditsCompact(agentAnalytics.costs.avgCostCredits)} credits`
+                      : "-"}
+                  </div>
+                </div>
+              }
+            />
+            <div className="hidden @[40rem]:contents">
+              <ValueCard
+                title="Median cost / msg"
+                className="h-24"
+                content={
+                  <div className="flex flex-col gap-1 text-2xl">
+                    <div className="truncate text-foreground dark:text-foreground-night">
+                      {agentAnalytics?.costs?.medianCostCredits != null
+                        ? `${formatCreditsCompact(agentAnalytics.costs.medianCostCredits)} credits`
+                        : "-"}
+                    </div>
+                  </div>
+                }
+              />
+            </div>
           </CardGrid>
         )}
       </TabContentChildSectionLayout>

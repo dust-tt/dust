@@ -1,14 +1,14 @@
 // Data-driven database initialization with binary caching
 
-import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
+import { binaryExists, getBinaryPath, getCacheSource, type InitBinary } from "./cache";
 import { getServiceContainerId } from "./docker";
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
-import type { Environment } from "./environment";
+import { type Environment, getEnvironmentWorktreeDir } from "./environment";
 import { logger } from "./logger";
-import { getEnvFilePath, getWorktreeDir } from "./paths";
+import { getEnvFilePath } from "./paths";
 import { runSqlSeed } from "./seed";
 import { buildShell } from "./shell";
-import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
+import { getTemporalNamespaces, SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
 
@@ -304,7 +304,7 @@ async function initAllPostgres(env: Environment): Promise<void> {
 // Initialize Qdrant (runs after qdrant is healthy)
 async function initAllQdrant(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const envVars = await loadEnvVars(envShPath);
 
   const result = await initQdrant(worktreePath, envVars);
@@ -317,7 +317,7 @@ async function initAllQdrant(env: Environment): Promise<void> {
 // Initialize Elasticsearch (runs after ES is healthy)
 async function initAllElasticsearch(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const envVars = await loadEnvVars(envShPath);
   envVars["__ENV_SH_PATH__"] = envShPath;
 
@@ -339,7 +339,7 @@ async function initAllElasticsearch(env: Environment): Promise<void> {
 // Run core database init
 async function runCoreDbInit(env: Environment): Promise<{ success: boolean; usedCache: boolean }> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const envVars = await loadEnvVars(envShPath);
 
   const result = await runBinary("init_db", [], {
@@ -360,59 +360,65 @@ async function runCoreDbInit(env: Environment): Promise<{ success: boolean; used
 // Run front database init
 async function runFrontDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
 
-  // Commands and their expected completion markers
-  // Both init_db.sh and init_plans.sh print "Done" when they complete successfully
-  const commands = [
-    { cmd: "./admin/init_db.sh --unsafe", name: "init_db", expectDone: true, env: {} },
-    {
-      cmd: "./admin/init_plans.sh",
-      name: "init_plans",
-      expectDone: true,
-      // pro plans are empty if not in development/test mode
-      env: { NODE_ENV: "development" },
-    },
-  ];
+  // front/admin/init_db.sh (sequelize sync) was removed as deprecated initdb
+  // tooling. Schema setup now goes through the migration tooling, same as
+  // production: the baseline migration (migration 0) creates the full schema.
+  // Idempotent: a re-run reports "No pending migrations" and exits 0.
+  const migrationCommand = buildShell({
+    sourceEnv: envShPath,
+    sourceNvm: true,
+    run: "npm run migration:apply",
+  });
 
-  for (const { cmd, name, expectDone, env } of commands) {
-    const command = buildShell({
-      sourceEnv: envShPath,
-      sourceNvm: true,
-      run: cmd,
-    });
+  const migrationProc = Bun.spawn(["bash", "-c", migrationCommand], {
+    cwd: `${worktreePath}/front`,
+    env: { ...process.env },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
 
-    const proc = Bun.spawn(["bash", "-c", command], {
-      cwd: `${worktreePath}/front`,
-      env: { ...process.env, ...env },
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+  const migrationStdout = await new Response(migrationProc.stdout).text();
+  const migrationStderr = await new Response(migrationProc.stderr).text();
+  await migrationProc.exited;
 
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    await proc.exited;
+  if (migrationProc.exitCode !== 0) {
+    console.log(migrationStdout);
+    console.error(migrationStderr);
+    return false;
+  }
 
-    // Treat "already exists" or "No migrations" as success (idempotent)
-    const alreadyExists =
-      stderr.includes("already exists") ||
-      stdout.includes("already exists") ||
-      stdout.includes("No migrations");
+  // Seed plans (pro plans are empty if not in development/test mode).
+  // init_plans.sh prints "Done" when it completes successfully.
+  const plansCommand = buildShell({
+    sourceEnv: envShPath,
+    sourceNvm: true,
+    run: "./admin/init_plans.sh",
+  });
 
-    if (proc.exitCode !== 0 && !alreadyExists) {
-      console.log(stdout);
-      console.error(stderr);
-      return false;
-    }
+  const plansProc = Bun.spawn(["bash", "-c", plansCommand], {
+    cwd: `${worktreePath}/front`,
+    env: { ...process.env, NODE_ENV: "development" },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
 
-    // Verify script completed successfully by checking for "Done" marker
-    // This catches cases where script exits 0 but didn't actually complete
-    if (expectDone && !stdout.includes("Done")) {
-      logger.error(`${name} did not complete successfully (missing "Done" in output)`);
-      console.log(stdout);
-      console.error(stderr);
-      return false;
-    }
+  const plansStdout = await new Response(plansProc.stdout).text();
+  const plansStderr = await new Response(plansProc.stderr).text();
+  await plansProc.exited;
+
+  if (plansProc.exitCode !== 0) {
+    console.log(plansStdout);
+    console.error(plansStderr);
+    return false;
+  }
+
+  if (!plansStdout.includes("Done")) {
+    logger.error('init_plans did not complete successfully (missing "Done" in output)');
+    console.log(plansStdout);
+    console.error(plansStderr);
+    return false;
   }
 
   return true;
@@ -421,12 +427,17 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
 // Run connectors database init
 async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
 
+  // connectors/admin/init_db.sh (sequelize sync) was removed as deprecated initdb
+  // tooling (#27417). Schema setup now goes through the migration tooling, same as
+  // production: the baseline migration creates the full schema (tables, indexes,
+  // the unaccent extension, and notion search-vector triggers). Idempotent: a
+  // re-run reports "No pending migrations" and exits 0.
   const command = buildShell({
     sourceEnv: envShPath,
     sourceNvm: true,
-    run: "./admin/init_db.sh --unsafe",
+    run: "npm run migration:apply",
   });
 
   const proc = Bun.spawn(["bash", "-c", command], {
@@ -439,14 +450,7 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   const stderr = await new Response(proc.stderr).text();
   await proc.exited;
 
-  // Treat "already exists" or "No migrations" as success (idempotent)
-  // Note: Postgres outputs "relation X already exists" which is caught by "already exists"
-  const alreadyExists =
-    stderr.includes("already exists") ||
-    stdout.includes("already exists") ||
-    stdout.includes("No migrations");
-
-  if (proc.exitCode !== 0 && !alreadyExists) {
+  if (proc.exitCode !== 0) {
     console.log(stdout);
     console.error(stderr);
     return false;

@@ -1,10 +1,17 @@
-import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
+import {
+  reconcileUser,
+  reconcileWorkspaceUserCreditStates,
+} from "@app/lib/api/metronome/reconcile_credit_state";
+import { syncDefaultPoolCapAlertsForWorkspace } from "@app/lib/api/workspace/default_user_spend_limit";
+import { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -33,11 +40,18 @@ export type SeatSyncOutcome =
  *
  * Returns a domain `Result`: a Metronome failure from `syncSeatCount` is
  * propagated as `Err` rather than swallowed, so the caller can surface it.
+ *
+ * `reconcileUserId` scopes the post-sync credit-state reconcile to a single
+ * user (e.g. an auto-upgrade unblocking one member mid-flow) and skips the
+ * workspace-wide cap-alert sync. The seat-count push itself is always
+ * workspace-wide. When omitted, the whole workspace is reconciled.
  */
 export async function syncMetronomeSeatCountForWorkspace({
   workspace,
+  reconcileUserId,
 }: {
   workspace: LightWorkspaceType;
+  reconcileUserId?: string;
 }): Promise<Result<SeatSyncOutcome, Error>> {
   if (!workspace.metronomeCustomerId) {
     return new Ok({
@@ -75,10 +89,39 @@ export async function syncMetronomeSeatCountForWorkspace({
     metronomeCustomerId: workspace.metronomeCustomerId,
     contractId: subscription.metronomeContractId,
     workspace,
+    planCode: subscription.getPlan().code,
     contract,
   });
   if (result.isErr()) {
     return new Err(result.error);
+  }
+
+  // Single-user scope: reconcile just this user from the live balances now that
+  // their seat credits are assigned. Skips the whole-workspace reconcile and the
+  // cap-alert sync below — the debounced workflow runs the full path as backstop.
+  if (reconcileUserId) {
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    if (workspaceResource) {
+      const userReconcile = await reconcileUser({
+        auth,
+        workspace: workspaceResource,
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        userId: reconcileUserId,
+        execute: true,
+      });
+      if (userReconcile.isErr()) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: reconcileUserId,
+            err: userReconcile.error.message,
+          },
+          "[SeatSync] Single-user credit-state reconcile failed; continuing"
+        );
+      }
+    }
+    return new Ok({ status: "synced" });
   }
 
   // Now that per-user seat credits are assigned, reconcile each seated user's
@@ -89,7 +132,18 @@ export async function syncMetronomeSeatCountForWorkspace({
     workspace,
     metronomeCustomerId: workspace.metronomeCustomerId,
     metronomeContractId: subscription.metronomeContractId,
+    planCode: subscription.getPlan().code,
   });
+
+  // Ensure per-seat-type cap alerts exist with the current default pool limit.
+  // Best-effort: a failure here must not fail the seat sync.
+  const alertSyncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
+  if (alertSyncResult.isErr()) {
+    logger.warn(
+      { workspaceId: workspace.sId, err: alertSyncResult.error.message },
+      "[SeatSync] Failed to sync default pool cap alerts; continuing"
+    );
+  }
 
   return new Ok({ status: "synced" });
 }

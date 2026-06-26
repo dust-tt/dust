@@ -1874,6 +1874,117 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * Restores group memberships for a user that were ended at approximately the
+   * same time as a workspace membership revocation. Called when a user rejoins
+   * a workspace to preserve their previously-held group memberships (e.g. agent
+   * editor access).
+   *
+   * Only restores memberships that were active (not suspended) and whose `endAt`
+   * falls within `toleranceMs` of `revokedAt`. Skips global and system groups
+   * (membership is implicit). Skips groups that no longer exist or where the
+   * user already has an active membership.
+   *
+   * Returns the number of group memberships restored.
+   */
+  static async restoreGroupMembershipsRevokedWith({
+    user,
+    workspace,
+    revokedAt,
+    toleranceMs = 60_000,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    revokedAt: Date;
+    toleranceMs?: number;
+    transaction?: Transaction;
+  }): Promise<number> {
+    const rangeStart = new Date(revokedAt.getTime() - toleranceMs);
+    const rangeEnd = new Date(revokedAt.getTime() + toleranceMs);
+
+    const revokedMemberships = await GroupMembershipModel.findAll({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        status: "active",
+        endAt: {
+          [Op.gte]: rangeStart,
+          [Op.lte]: rangeEnd,
+        },
+      },
+      transaction,
+    });
+
+    if (revokedMemberships.length === 0) {
+      return 0;
+    }
+
+    const groupIds = [...new Set(revokedMemberships.map((m) => m.groupId))];
+
+    // Verify groups still exist and are not global/system (implicit membership).
+    const groups = await GroupModel.findAll({
+      where: {
+        id: { [Op.in]: groupIds },
+        workspaceId: workspace.id,
+        kind: { [Op.notIn]: ["global", "system"] },
+      },
+      transaction,
+    });
+
+    if (groups.length === 0) {
+      return 0;
+    }
+
+    const validGroupIds = new Set(groups.map((g) => g.id));
+
+    // Exclude groups where the user already has an active membership.
+    const now = new Date();
+    const existingActive = await GroupMembershipModel.findAll({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        groupId: { [Op.in]: [...validGroupIds] },
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+      attributes: ["groupId"],
+      transaction,
+    });
+    const alreadyActiveGroupIds = new Set(existingActive.map((m) => m.groupId));
+
+    const groupIdsToRestore = [...validGroupIds].filter(
+      (id) => !alreadyActiveGroupIds.has(id)
+    );
+
+    if (groupIdsToRestore.length === 0) {
+      return 0;
+    }
+
+    await GroupMembershipModel.bulkCreate(
+      groupIdsToRestore.map((groupId) => ({
+        groupId,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: now,
+        endAt: null,
+        status: "active" as const,
+      })),
+      { transaction }
+    );
+
+    const workspaceModelId = workspace.id;
+    const userModelId = user.id;
+    invalidateCacheAfterCommit(transaction, async () => {
+      await GroupResource.invalidateGroupIdsCacheForUser({
+        user: { id: userModelId },
+        workspace: { id: workspaceModelId },
+      });
+    });
+
+    return groupIdsToRestore.length;
+  }
+
+  /**
    * Restores all suspended members of this group.
    * Returns array of affected user ModelIds.
    */

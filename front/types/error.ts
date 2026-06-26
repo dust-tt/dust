@@ -179,6 +179,13 @@ export type RegionRedirectError = {
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];
 
+// Error types that are expected outcomes of normal operation rather than
+// failures (e.g. a region redirect). Callers can use this to log them at a
+// lower level so they don't pollute error monitoring.
+export const EXPECTED_API_ERROR_TYPES: ReadonlySet<APIErrorType> = new Set([
+  "workspace_in_different_region",
+]);
+
 export type APIError = {
   type: APIErrorType;
   message: string;

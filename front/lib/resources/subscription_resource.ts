@@ -47,6 +47,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   cacheWithRedis,
@@ -351,6 +352,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       planId: data.planId,
       stripeSubscriptionId: data.stripeSubscriptionId,
       metronomeContractId: data.metronomeContractId ?? null,
+      hubspotDealId: null,
       requestCancelAt: data.requestCancelAt
         ? new Date(data.requestCancelAt)
         : null,
@@ -615,11 +617,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     planCode,
     metronomeContractId,
     startDate,
+    hubspotDealId,
   }: {
     workspaceModelId: ModelId;
     planCode: string;
     metronomeContractId: string;
     startDate: Date;
+    hubspotDealId?: string | null;
   }): Promise<SubscriptionResource> {
     const plan = await this.findPlanOrThrow(planCode);
     return withTransaction(async (t) => {
@@ -647,6 +651,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           endDate: null,
           stripeSubscriptionId: null,
           metronomeContractId,
+          hubspotDealId: hubspotDealId ?? null,
         },
         renderPlanFromModel({ plan }),
         t
@@ -756,6 +761,18 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
 
     await this.endActiveSubscription(workspace);
+
+    // No plan anymore: clear billed seat assignments and plan-level seat caps.
+    await withTransaction(async (t) => {
+      await MembershipResource.resetAllSeatsToNoneForWorkspace({
+        workspace,
+        transaction: t,
+      });
+      await WorkspaceSeatLimitResource.deleteAllForWorkspace({
+        workspace,
+        transaction: t,
+      });
+    });
 
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
 
@@ -934,7 +951,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         metronome.metronomeCustomerId,
         metronome.metronomeContractId,
         renderLightWorkspaceType({ workspace: workspaceResource }),
-        metronome.startingAt
+        metronome.startingAt,
+        plan.code
       );
 
       if (syncResult.isErr()) {
@@ -1243,6 +1261,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     await this.model.destroy({
       where: {
         id: this.id,
+        workspaceId: this.workspaceId,
       },
       transaction,
     });
@@ -1318,6 +1337,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         )
       );
     });
+    // `makeNew` registers invalidation via invalidateCacheAfterCommit (fire-and-
+    // forget). Await it explicitly here so callers that immediately read the
+    // subscription cache (e.g. syncMetronomeSeatCountForWorkspace after a
+    // checkout activation) see the new subscription rather than the stale one.
+    await SubscriptionResource.invalidateSubscriptionCache(this.workspaceId);
   }
 
   /**
@@ -1409,6 +1433,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       seatCurrency: currency,
       billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
       quantity: item.quantity,
+      currentPeriodEndMs: stripeSubscription.current_period_end * 1000,
     };
   }
 
@@ -1456,6 +1481,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       planId: -1,
       stripeSubscriptionId: null,
       metronomeContractId: null,
+      hubspotDealId: null,
       requestCancelAt: null,
     };
   }

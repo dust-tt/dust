@@ -58,6 +58,9 @@ export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
       model: this.modelId,
       messages: toMessages(systemPromptToText(prompt), conversation),
       stream: true,
+      stream_options: {
+        include_usage: true,
+      },
       temperature: this.temperature ?? undefined,
       reasoning_effort: toReasoningParam(
         this.reasoningEffort,

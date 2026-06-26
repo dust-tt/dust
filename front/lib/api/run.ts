@@ -28,7 +28,7 @@ export type {
   GetRunsResponseBody,
   PostRunCancelResponseBody,
   PostRunsResponseBody,
-} from "@app/lib/api/apps";
+} from "@app/types/api/apps";
 
 /**
  * Walks an app-run's `block_execution` traces and emits one `RunUsageType` per trace that carries

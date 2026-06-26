@@ -1,10 +1,17 @@
+import {
+  BillingPeriodSwitch,
+  PaidPlanCards,
+  type PaidPlanTier,
+} from "@app/components/pages/onboarding/SubscriptionPlans";
 import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { getPriceAsString } from "@app/lib/client/subscription";
+import {
+  getPriceAsString,
+  useIsMetronomeCheckout,
+} from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -20,6 +27,7 @@ import {
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import type {
   BillingPeriod,
   SubscriptionPerSeatPricing,
@@ -28,8 +36,6 @@ import type {
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import {
   Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
   Chip,
   ContentMessage,
   CreditCard01,
@@ -190,8 +196,9 @@ function CancelFreeTrialDialog({
 
 export function SubscriptionPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
+  const { subscription, user: authUser } = useAuth();
   const useMetronomePanel = isSubscriptionMetronomeBilled(subscription);
+  const isMetronomeCheckout = useIsMetronomeCheckout();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const type = useSearchParam("type");
@@ -250,6 +257,19 @@ export function SubscriptionPage() {
         `/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}`
       );
     });
+
+  const { submit: handleSubscribeMetronome } = useSubmitFunction(
+    async (seatType: PaidPlanTier) => {
+      const query = new URLSearchParams({
+        seatType,
+        billingPeriod,
+        targetUserId: authUser.sId,
+      });
+      await router.push(
+        `/w/${owner.sId}/subscription/checkout?${query.toString()}`
+      );
+    }
+  );
 
   const {
     submit: handleGoToStripePortal,
@@ -356,7 +376,9 @@ export function SubscriptionPage() {
   const isWorkspaceOnProPlan = isProPlan(plan);
   const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
   const canUpsellToBusinessPlan =
-    isWorkspaceOnProPlan && isWorkspaceWhitelistedBusinessPlan;
+    isWorkspaceOnProPlan &&
+    isWorkspaceWhitelistedBusinessPlan &&
+    !isMetronomeCheckout;
 
   const isProcessing =
     isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
@@ -377,6 +399,39 @@ export function SubscriptionPage() {
         day: "numeric",
       })
     : null;
+
+  const migrationDate = (() => {
+    if (!isWorkspaceOnProPlan || !isMetronomeCheckout) {
+      return null;
+    }
+    if (!perSeatPricing) {
+      return null;
+    }
+    const periodEndMs = perSeatPricing.currentPeriodEndMs;
+    let d: Date;
+    if (perSeatPricing.billingPeriod === "yearly") {
+      d = new Date(2026, 6, 23); // July 23, 2026
+    } else {
+      if (periodEndMs === null) {
+        return null;
+      }
+      d = new Date(periodEndMs);
+      const day = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + 1);
+      const daysInMonth = new Date(
+        d.getFullYear(),
+        d.getMonth() + 1,
+        0
+      ).getDate();
+      d.setDate(Math.min(day, daysInMonth));
+    }
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  })();
 
   if (isLoading) {
     return (
@@ -443,6 +498,18 @@ export function SubscriptionPage() {
                   .
                 </>
               )}
+            </ContentMessage>
+          )}
+          {migrationDate && (
+            <ContentMessage
+              title="Your plan will be migrated to the new credit-based pricing."
+              variant="blue"
+            >
+              Your current plan will be automatically migrated to the new
+              credit-based pricing on{" "}
+              <span className="font-semibold">{migrationDate}</span>. You can
+              cancel your subscription at any time before that date from the
+              Stripe billing portal below.
             </ContentMessage>
           )}
           {useMetronomePanel ? (
@@ -583,37 +650,52 @@ export function SubscriptionPage() {
               )}
               {displayPricingTable && (
                 <div className="pt-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <Page.H variant="h5">Choose a plan</Page.H>
-                      <Page.P>Pick a plan that best suits your team.</Page.P>
-                    </div>
-                    {!isWorkspaceWhitelistedBusinessPlan && (
-                      <ButtonsSwitchList
-                        defaultValue={billingPeriod}
-                        size="xs"
-                        onValueChange={(v) => {
-                          if (v === "monthly" || v === "yearly") {
-                            setBillingPeriod(v);
-                          }
-                        }}
-                      >
-                        <ButtonsSwitch
-                          value="monthly"
-                          label="Monthly billing"
+                  {isMetronomeCheckout ? (
+                    <>
+                      <div className="flex items-start justify-between gap-4">
+                        <Page.H variant="h5">Choose a plan</Page.H>
+                        <BillingPeriodSwitch
+                          defaultValue={billingPeriod}
+                          size="xs"
+                          onValueChange={setBillingPeriod}
                         />
-                        <ButtonsSwitch value="yearly" label="Yearly billing" />
-                      </ButtonsSwitchList>
-                    )}
-                  </div>
-                  <div className="pt-4">
-                    <SubscriptionPlanCards
-                      billingPeriod={billingPeriod}
-                      onSubscribe={handleSubscribePlan}
-                      isProcessing={isProcessing}
-                      owner={owner}
-                    />
-                  </div>
+                      </div>
+                      <div className="flex w-full flex-col gap-4 pt-4 sm:flex-row">
+                        <PaidPlanCards
+                          billingPeriod={billingPeriod}
+                          onSubscribe={(seatType) =>
+                            void handleSubscribeMetronome(seatType)
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <Page.H variant="h5">Choose a plan</Page.H>
+                          <Page.P>
+                            Pick a plan that best suits your team.
+                          </Page.P>
+                        </div>
+                        {!isWorkspaceWhitelistedBusinessPlan && (
+                          <BillingPeriodSwitch
+                            defaultValue={billingPeriod}
+                            size="xs"
+                            onValueChange={setBillingPeriod}
+                          />
+                        )}
+                      </div>
+                      <div className="pt-4">
+                        <SubscriptionPlanCards
+                          billingPeriod={billingPeriod}
+                          onSubscribe={handleSubscribePlan}
+                          isProcessing={isProcessing}
+                          owner={owner}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </>

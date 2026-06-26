@@ -15,11 +15,9 @@ const PokeProgrammaticCostChart = safeLazy(() =>
   )
 );
 
-const PokeMetronomeUsageChart = safeLazy(() =>
-  import("@app/components/poke/credits/PokeMetronomeUsageChart").then(
-    (mod) => ({
-      default: mod.PokeMetronomeUsageChart,
-    })
+const PokeAwuUsageFromAnalyticsChart = safeLazy(() =>
+  import("@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart").then(
+    (mod) => ({ default: mod.PokeAwuUsageFromAnalyticsChart })
   )
 );
 
@@ -30,9 +28,9 @@ function PokeChartFallback() {
 }
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeUnifiedCreditRow } from "@app/lib/api/poke/credits";
 import type { PokeCreditsData } from "@app/poke/swr/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
+import type { PokeUnifiedCreditRow } from "@app/types/api/poke/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -117,6 +115,7 @@ export function CreditsDataTable({
             <PokeDataTable
               columns={makeColumnsForUnifiedCredits({
                 metronomeCustomerId: owner.metronomeCustomerId,
+                owner,
               })}
               data={sortRowsByStartDateDescending(data.rows)}
               defaultFilterColumn="type"
@@ -134,7 +133,7 @@ export function CreditsDataTable({
             />
           </Suspense>
           <Suspense fallback={<PokeChartFallback />}>
-            <PokeMetronomeUsageChart
+            <PokeAwuUsageFromAnalyticsChart
               owner={owner}
               billingCycleStartDay={billingCycleStartDay}
             />

@@ -6,28 +6,31 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("sandboxSkill", () => {
-  it("hides dsbx tools instructions and manifest entry until enabled", async () => {
+  it("includes dsbx tools instructions and manifest entry when sandbox is enabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
-    const instructionsWithoutDsbxTools = await sandboxSkill.fetchInstructions(
-      auth,
-      { spaceIds: [] }
-    );
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
 
-    expect(instructionsWithoutDsbxTools).not.toContain("dsbx tools");
-    expect(instructionsWithoutDsbxTools).not.toContain("name: dsbx");
+    expect(instructions).toContain("dsbx tools");
+    expect(instructions).toContain("name: dsbx");
+  });
 
-    await FeatureFlagFactory.basic(auth, "sandbox_dsbx_tools");
+  it("hides dsbx tools instructions and manifest entry when computer is disabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
 
-    const instructionsWithDsbxTools = await sandboxSkill.fetchInstructions(
-      auth,
-      { spaceIds: [] }
-    );
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
-    expect(instructionsWithDsbxTools).toContain("dsbx tools");
-    expect(instructionsWithDsbxTools).toContain("name: dsbx");
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).not.toContain("dsbx tools");
+    expect(instructions).not.toContain("name: dsbx");
   });
 
   it("instructs the model to analyze mounted tabular files with code", async () => {
@@ -103,7 +106,6 @@ describe("sandboxSkill", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(refreshedAuth, "sandbox_workspace_admin");
 
     const permissiveInstructions = await sandboxSkill.fetchInstructions(
       refreshedAuth,

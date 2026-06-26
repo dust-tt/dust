@@ -403,11 +403,11 @@
  *         costCredits:
  *           type: integer
  *           nullable: true
- *           description: Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
+ *           description: Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
  *         subAgentCostCredits:
  *           type: number
  *           nullable: true
- *           description: Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -503,11 +503,11 @@
  *         costCredits:
  *           type: integer
  *           nullable: true
- *           description: Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
+ *           description: Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message.
  *         subAgentCostCredits:
  *           type: number
  *           nullable: true
- *           description: Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
  *         activitySteps:
  *           type: array
  *           items:
@@ -802,6 +802,52 @@
  *               type: integer
  *             down:
  *               type: integer
+ *     GetGoTemplateDraftResponseBody:
+ *       type: object
+ *       description: Composer draft resolved from a Contentful conversation go template.
+ *       required:
+ *         - title
+ *         - prompt
+ *         - attachments
+ *         - attachmentErrors
+ *       properties:
+ *         title:
+ *           type: string
+ *         prompt:
+ *           type: string
+ *         attachments:
+ *           type: array
+ *           items:
+ *             type: object
+ *             required:
+ *               - fileId
+ *               - name
+ *               - contentType
+ *               - size
+ *               - url
+ *             properties:
+ *               fileId:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               contentType:
+ *                 type: string
+ *               size:
+ *                 type: integer
+ *               url:
+ *                 type: string
+ *         attachmentErrors:
+ *           type: array
+ *           items:
+ *             type: object
+ *             required:
+ *               - url
+ *               - message
+ *             properties:
+ *               url:
+ *                 type: string
+ *               message:
+ *                 type: string
  *     PrivateFileWithUploadUrl:
  *       type: object
  *       description: File record with a pre-signed upload URL.
@@ -1236,6 +1282,7 @@
  *         - $ref: '#/components/schemas/PrivateCompactionMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageDoneEvent'
  *         - $ref: '#/components/schemas/PrivateConversationTitleEvent'
+ *         - $ref: '#/components/schemas/PrivateWakeUpUpdatedEvent'
  *     PrivateUserMessageNewEvent:
  *       type: object
  *       required: [type, created, messageId, message]
@@ -1319,6 +1366,22 @@
  *           type: integer
  *         title:
  *           type: string
+ *     PrivateWakeUpUpdatedEvent:
+ *       type: object
+ *       required: [type, created, conversationId, wakeUpId, userId]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [wake_up_updated]
+ *         created:
+ *           type: integer
+ *         conversationId:
+ *           type: string
+ *         wakeUpId:
+ *           type: string
+ *         userId:
+ *           type: string
+ *           description: sId of the user who owns the wake-up.
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.

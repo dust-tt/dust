@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -13,11 +14,14 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
+  isAllSupportedFileContentType,
   isInteractiveContentType,
   stripMimeParameters,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export async function copyHandler(
   { source, dest }: { source: string; dest: string },
@@ -106,10 +110,36 @@ export async function copyHandler(
     }
   }
 
-  return new Ok([
+  const destFileName = dest.split("/").pop() ?? dest;
+  const items: Array<
+    | { type: "text"; text: string }
+    | { type: "resource"; resource: ToolGeneratedFilePathType }
+  > = [
     {
       type: "text",
-      text: `Copied \`${source}\` to \`${dest}\`.`,
+      text:
+        `Copied \`${source}\` to \`${dest}\`. ` +
+        getFilePreviewDirectiveInstruction({
+          contentType: mimeType,
+          path: dest,
+          title: destFileName,
+        }),
     },
-  ]);
+  ];
+
+  if (isAllSupportedFileContentType(mimeType)) {
+    items.push({
+      type: "resource",
+      resource: {
+        text: `Copied \`${source}\` to \`${dest}\``,
+        uri: dest,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+        path: dest,
+        title: destFileName,
+        contentType: mimeType,
+      },
+    });
+  }
+
+  return new Ok(items);
 }

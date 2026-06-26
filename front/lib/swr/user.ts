@@ -1,10 +1,4 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetPendingInvitationsResponseBody } from "@app/lib/api/invitation";
-import type { GetSlackNotificationResponseBody } from "@app/lib/api/me/slack_notifications";
-import type {
-  GetUserMetadataResponseBody,
-  GetUserResponseBody,
-} from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetWorkspaceUsageStatusResponseBody } from "@app/lib/metronome/user_block";
 import type { GetUserApprovalsResponseBody } from "@app/lib/resources/user_resource";
@@ -16,6 +10,12 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
+import type { GetPendingInvitationsResponseBody } from "@app/types/api/invitation";
+import type { GetSlackNotificationResponseBody } from "@app/types/api/me/slack_notifications";
+import type {
+  GetUserMetadataResponseBody,
+  GetUserResponseBody,
+} from "@app/types/api/user";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -282,13 +282,15 @@ export function useWorkspaceUsageStatus({
   );
 
   return {
-    awuStatus: data?.awuStatus ?? "normal",
+    userNearCreditLimit: data?.userNearCreditLimit ?? false,
     poolCreditState: data?.poolCreditState ?? "active",
     programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
+    programmaticWarningReached: data?.programmaticWarningReached ?? false,
     balanceThresholdReached: data?.balanceThresholdReached ?? false,
-    noSeat: data?.noSeat ?? false,
+    userBlockedReason: data?.userBlockedReason ?? null,
     canRequestUpgrade: data?.canRequestUpgrade ?? false,
     hasPendingUpgradeRequest: data?.hasPendingUpgradeRequest ?? false,
+    willAutoUpgrade: data?.willAutoUpgrade ?? false,
     isUsageStatusLoading: !error && !data && !disabled,
   };
 }

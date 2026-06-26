@@ -27,6 +27,9 @@ const MAX_LIMIT = 100;
 
 const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
   list: async ({ nodeId, limit, nextPageCursor, dataSources }, { auth }) => {
+    const effectiveNodeId = !!nodeId ? nodeId : null;
+    const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
+
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -46,15 +49,15 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     const agentDataSourceConfigurations = dataSourceConfigurationsResult.value;
 
     const result =
-      nodeId === null
+      effectiveNodeId === null
         ? await getAvailableWarehouses(auth, agentDataSourceConfigurations, {
             limit: effectiveLimit,
-            nextPageCursor,
+            nextPageCursor: effectiveCursor,
           })
         : await getWarehouseNodes(auth, agentDataSourceConfigurations, {
-            nodeId,
+            nodeId: effectiveNodeId,
             limit: effectiveLimit,
-            nextPageCursor,
+            nextPageCursor: effectiveCursor,
           });
 
     if (result.isErr()) {
@@ -67,7 +70,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       {
         type: "resource" as const,
         resource: makeBrowseResource({
-          nodeId,
+          nodeId: effectiveNodeId,
           nodes,
           nextPageCursor: newCursor,
           resultCount: dataSources.length,
@@ -80,6 +83,9 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     { query, rootNodeId, limit, nextPageCursor, dataSources },
     { auth }
   ) => {
+    const effectiveRootNodeId = !!rootNodeId ? rootNodeId : null;
+    const effectiveCursor = !!nextPageCursor ? nextPageCursor : undefined;
+
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const effectiveLimit = Math.min(limit || DEFAULT_LIMIT, MAX_LIMIT);
 
@@ -102,10 +108,10 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       auth,
       agentDataSourceConfigurations,
       {
-        nodeId: rootNodeId ?? null,
+        nodeId: effectiveRootNodeId,
         query,
         limit: effectiveLimit,
-        nextPageCursor,
+        nextPageCursor: effectiveCursor,
       }
     );
 
@@ -119,7 +125,7 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
       {
         type: "resource" as const,
         resource: makeBrowseResource({
-          nodeId: rootNodeId ?? null,
+          nodeId: effectiveRootNodeId,
           nodes,
           nextPageCursor: newCursor,
           resultCount: dataSources.length,

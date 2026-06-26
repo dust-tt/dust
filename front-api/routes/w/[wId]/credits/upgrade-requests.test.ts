@@ -8,8 +8,10 @@ function upgradeRequestsUrl(wId: string) {
   return `/api/w/${wId}/credits/upgrade-requests`;
 }
 
-async function metronomeWorkspace(): Promise<WorkspaceType> {
-  return WorkspaceFactory.metronome({ metronomeCustomerId: "cust_test_xxx" });
+async function creditPricedWorkspace(): Promise<WorkspaceType> {
+  return WorkspaceFactory.creditPriced({
+    metronomeCustomerId: "cust_test_xxx",
+  });
 }
 
 async function createMemberRequest(workspace: WorkspaceType) {
@@ -29,7 +31,7 @@ async function createMemberRequest(workspace: WorkspaceType) {
 describe("/api/w/[wId]/credits/upgrade-requests", () => {
   describe("auth", () => {
     it("GET returns 403 when caller is not an admin", async () => {
-      const workspace = await metronomeWorkspace();
+      const workspace = await creditPricedWorkspace();
       await createPrivateApiMockRequest({
         method: "GET",
         role: "user",
@@ -64,7 +66,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
     });
 
     it("creates a pending request for a member", async () => {
-      const workspace = await metronomeWorkspace();
+      const workspace = await creditPricedWorkspace();
       const { user, response } = await createMemberRequest(workspace);
 
       expect(response.status).toBe(200);
@@ -75,7 +77,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
     });
 
     it("is idempotent — a second request reuses the pending one", async () => {
-      const workspace = await metronomeWorkspace();
+      const workspace = await creditPricedWorkspace();
       const { membership, response: first } =
         await createMemberRequest(workspace);
       const firstSId = (await first.json()).request.sId;
@@ -95,7 +97,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
 
   describe("GET + PATCH (admin)", () => {
     it("lists pending requests and resolves them", async () => {
-      const workspace = await metronomeWorkspace();
+      const workspace = await creditPricedWorkspace();
       const { user: member } = await createMemberRequest(workspace);
 
       // Re-authenticate as an admin of the same workspace.
@@ -133,7 +135,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
     });
 
     it("PATCH returns 404 for an unknown request id", async () => {
-      const workspace = await metronomeWorkspace();
+      const workspace = await creditPricedWorkspace();
       await createPrivateApiMockRequest({
         method: "GET",
         role: "admin",
@@ -153,7 +155,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
     });
 
     it("PATCH returns 403 when caller is not an admin", async () => {
-      const workspace = await metronomeWorkspace();
+      const workspace = await creditPricedWorkspace();
       await createPrivateApiMockRequest({
         method: "GET",
         role: "user",

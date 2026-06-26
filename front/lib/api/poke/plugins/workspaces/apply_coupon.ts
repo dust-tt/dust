@@ -34,6 +34,7 @@ export const applyCouponPlugin = createPlugin({
         description: "I confirm I want to apply this coupon to the workspace.",
       },
     },
+    requiredRoles: ["billing"],
   },
   execute: async (auth, _, args) => {
     const validationResult = ApplyCouponArgsSchema.safeParse(args);

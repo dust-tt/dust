@@ -376,7 +376,16 @@ export async function syncOneFile({
     webUrl: file.webUrl ?? null,
   };
 
-  if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
+  // Microsoft Graph sometimes returns text/plain for CSV files instead of text/csv.
+  // Fall back to extension-based detection so they are routed to handleCsvFile
+  // and not rejected by the too_many_separators heuristic in handleTextFile.
+  const isCsv =
+    mimeType === "application/vnd.ms-excel" ||
+    mimeType === "text/csv" ||
+    (mimeType === "text/plain" &&
+      (file.name?.toLowerCase().endsWith(".csv") ?? false));
+
+  if (isCsv) {
     const data = Buffer.from(downloadRes.data);
 
     const parents = [

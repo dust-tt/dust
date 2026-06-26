@@ -657,6 +657,7 @@ async function checkDiffFiles() {
     "front/lib/models/agent/conversation_branch.ts",
     "front/lib/models/agent/conversation_fork.ts",
     "front/lib/models/agent/conversation.ts",
+    "front/lib/models/feature_flag.ts",
     "front/lib/models/plan.ts",
     "front/lib/models/provider_credential.ts",
     "front/lib/resources/storage/models/group_memberships.ts",

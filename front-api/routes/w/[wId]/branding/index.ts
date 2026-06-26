@@ -6,6 +6,7 @@ import {
 import type { BrandingAssetState } from "@app/lib/api/workspace_branding";
 import {
   deleteBrandingAsset,
+  generateAndStoreOgImage,
   getBrandingAssetState,
   promoteBrandingAsset,
   USER_UPLOADABLE_BRANDING_ASSET_NAMES,
@@ -16,6 +17,7 @@ import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { z } from "zod";
 
 const BrandingPromoteBodySchema = z.object({
@@ -74,20 +76,12 @@ app.get(
 app.patch(
   "/",
   ensureIsAdmin(),
+  withFeatureFlag("whitelabel_frames", {
+    message: "Whitelabel frames are not enabled for this workspace.",
+  }),
   validate("json", BrandingPromoteBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const plan = auth.subscription()?.plan;
-    if (!plan?.isBrandedFramesAllowed) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "plan_limit_error",
-          message: "Branded frames are not available on your current plan.",
-        },
-      });
-    }
-
     const { asset, fileId } = ctx.req.valid("json");
 
     if (fileId === null) {
@@ -100,6 +94,11 @@ app.patch(
             message: "Failed to delete branding asset.",
           },
         });
+      }
+
+      // When the logo is removed, the OG card is no longer relevant.
+      if (asset === "logo") {
+        await deleteBrandingAsset(auth, "og");
       }
 
       void emitAuditLogEvent({
@@ -145,6 +144,11 @@ app.patch(
           message: "Failed to promote branding asset.",
         },
       });
+    }
+
+    // Regenerate the OG card whenever the logo is updated.
+    if (asset === "logo") {
+      await generateAndStoreOgImage(auth);
     }
 
     void emitAuditLogEvent({

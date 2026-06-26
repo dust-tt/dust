@@ -9,6 +9,7 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   createContext,
   type ReactNode,
@@ -22,6 +23,11 @@ export type PendingConversationMessage = {
   input: string;
   mentions: RichMention[];
   contentFragments: ContentFragmentsType;
+};
+
+export type PendingInputText = {
+  text: string;
+  replace: boolean;
 };
 
 type CaptureActions = {
@@ -38,8 +44,11 @@ export const InputBarContext = createContext<{
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
-  getAndClearPendingInputText: () => string | null;
-  setPendingInputText: (text: string | null) => void;
+  getAndClearPendingInputText: () => PendingInputText | null;
+  setPendingInputText: (
+    text: string | null,
+    options?: { replace?: boolean }
+  ) => void;
   peekPendingFirstMessage: (
     conversationId: string
   ) => PendingConversationMessage | null;
@@ -48,6 +57,8 @@ export const InputBarContext = createContext<{
     message: PendingConversationMessage
   ) => void;
   clearPendingFirstMessage: (conversationId: string) => void;
+  isLoadingGoTemplate: boolean;
+  setIsLoadingGoTemplate: (loading: boolean) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
 }>({
@@ -62,6 +73,8 @@ export const InputBarContext = createContext<{
   peekPendingFirstMessage: () => null,
   setPendingFirstMessage: () => {},
   clearPendingFirstMessage: () => {},
+  isLoadingGoTemplate: false,
+  setIsLoadingGoTemplate: () => {},
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -97,10 +110,10 @@ export function InputBarContextProvider({
   const [selectedSingleAgent, setSelectedSingleAgent] =
     useState<RichAgentMention | null>(null);
 
-  // Useful when a component needs to pre-fill the input bar with text (e.g. butler suggestions).
-  const [pendingInputText, setPendingInputTextState] = useState<string | null>(
-    null
-  );
+  // Useful when a component needs to pre-fill the input bar with text.
+  const [pendingInputText, setPendingInputTextState] =
+    useState<PendingInputText | null>(null);
+  const [isLoadingGoTemplate, setIsLoadingGoTemplate] = useState(false);
 
   // First message stashed while navigating to a newly-created conversation (deferred-send flow).
   const [
@@ -153,14 +166,24 @@ export function InputBarContextProvider({
   }, [selectedAgent, setSelectedAgent]);
 
   const getAndClearPendingInputText = useCallback(() => {
-    const text = pendingInputText;
+    const pending = pendingInputText;
     setPendingInputTextState(null);
-    return text;
+    return pending;
   }, [pendingInputText]);
 
-  const setPendingInputText = useCallback((text: string | null) => {
-    setPendingInputTextState(text);
-  }, []);
+  const setPendingInputText = useCallback(
+    (text: string | null, options?: { replace?: boolean }) => {
+      if (text === null) {
+        setPendingInputTextState(null);
+        return;
+      }
+      setPendingInputTextState({
+        text,
+        replace: options?.replace ?? false,
+      });
+    },
+    []
+  );
 
   const value = useMemo(
     () => ({
@@ -175,6 +198,8 @@ export function InputBarContextProvider({
       peekPendingFirstMessage,
       setPendingFirstMessage,
       clearPendingFirstMessage,
+      isLoadingGoTemplate,
+      setIsLoadingGoTemplate,
       captureActions,
       fileUploaderService,
     }),
@@ -188,6 +213,7 @@ export function InputBarContextProvider({
       peekPendingFirstMessage,
       setPendingFirstMessage,
       clearPendingFirstMessage,
+      isLoadingGoTemplate,
       captureActions,
       fileUploaderService,
     ]
@@ -207,7 +233,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
   const { workspace } = useAuth();
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
 
   const useCaseMetadata = useMemo(() => {
     if (!conversationId) {
@@ -219,7 +245,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }, [conversationId]);
 
   const fileUploaderService = useFileUploaderService({
-    hasSandboxTools: hasFeature("sandbox_tools"),
+    hasSandboxTools: isComputerFeatureEnabled(featureFlags),
     owner: workspace,
     useCase: "conversation",
     useCaseMetadata,

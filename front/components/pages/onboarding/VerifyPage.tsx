@@ -2,11 +2,9 @@ import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import {
-  CP_FREE_PLAN_CREDITS,
-  useIsMetronomeCheckout,
-} from "@app/lib/client/subscription";
+import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
+import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
 import {
   CODE_LENGTH,
   isValidPhoneNumber,
@@ -29,7 +27,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Country } from "react-phone-number-input";
 
-type Step = "captcha" | "phone" | "code" | "done";
+type Step = "captcha" | "phone" | "code" | "start-trial" | "done";
 
 export function VerifyPage() {
   const { workspace } = useAuth();
@@ -64,6 +62,7 @@ export function VerifyPage() {
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const lastAutoSubmittedCodeRef = useRef<string | null>(null);
 
   // Initialize countryCode once data is loaded.
   useEffect(() => {
@@ -170,68 +169,105 @@ export function VerifyPage() {
       return;
     }
 
+    const data = await response.json();
+    if (data.status === "already_verified") {
+      setStep("start-trial");
+      return;
+    }
+
+    lastAutoSubmittedCodeRef.current = null;
+    setCode(Array(CODE_LENGTH).fill(""));
     setResendCooldown(RESEND_COOLDOWN_SECONDS);
     setStep("code");
   };
 
-  const handleVerifyCode = async () => {
-    const fullCode = code.join("");
-    if (fullCode.length !== CODE_LENGTH) {
-      setPhoneError("Please enter the full 6-digit code.");
+  const activateTrial = useCallback(async () => {
+    const trialResponse = await clientFetch(
+      `/api/w/${workspace.sId}/trial/start`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!trialResponse.ok) {
+      const data = await trialResponse.json();
+      setPhoneError(data.api_error?.message ?? "Failed to start trial");
       return;
     }
 
-    setIsLoading(true);
-    setPhoneError(null);
-    try {
-      const e164Phone = phoneNumber;
+    // Revalidate the auth context so the SPA picks up the new subscription
+    // (canUseProduct is now true) and doesn't redirect back to /trial.
+    await mutateAuthContext();
 
-      const verifyResponse = await clientFetch(
-        `/api/w/${workspace.sId}/verification/validate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: e164Phone, code: fullCode }),
-        }
-      );
-
-      if (!verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        setPhoneError(data.error?.message ?? "Invalid code");
-        return;
-      }
-
-      const trialResponse = await clientFetch(
-        `/api/w/${workspace.sId}/trial/start`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-
-      if (!trialResponse.ok) {
-        const data = await trialResponse.json();
-        setPhoneError(data.api_error?.message ?? "Failed to start trial");
-        return;
-      }
-
-      // Revalidate the auth context so the SPA picks up the new subscription
-      // (canUseProduct is now true) and doesn't redirect back to /trial.
-      await mutateAuthContext();
-
-      // With the credit-priced checkout flow we show a welcome screen before
-      // entering the workspace instead of redirecting there directly.
-      if (isMetronomeCheckout) {
-        setStep("done");
-      } else {
-        goToWorkspace();
-      }
-    } catch {
-      setPhoneError("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
+    // With the credit-priced checkout flow we show a welcome screen before
+    // entering the workspace instead of redirecting there directly.
+    if (isMetronomeCheckout) {
+      setStep("done");
+    } else {
+      goToWorkspace();
     }
-  };
+  }, [workspace.sId, mutateAuthContext, isMetronomeCheckout, goToWorkspace]);
+
+  const verifyCode = useCallback(
+    async (fullCode: string) => {
+      if (fullCode.length !== CODE_LENGTH) {
+        setPhoneError("Please enter the full 6-digit code.");
+        return;
+      }
+
+      setIsLoading(true);
+      setPhoneError(null);
+      try {
+        const e164Phone = phoneNumber;
+
+        const verifyResponse = await clientFetch(
+          `/api/w/${workspace.sId}/verification/validate`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phoneNumber: e164Phone, code: fullCode }),
+          }
+        );
+
+        if (!verifyResponse.ok) {
+          const data = await verifyResponse.json();
+          setPhoneError(data.error?.message ?? "Invalid code");
+          return;
+        }
+
+        await activateTrial();
+      } catch {
+        setPhoneError("Network error. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [phoneNumber, workspace.sId, activateTrial]
+  );
+
+  const handleVerifyCode = useCallback(() => {
+    void verifyCode(code.join(""));
+  }, [code, verifyCode]);
+
+  useEffect(() => {
+    if (step !== "code" || isLoading) {
+      return;
+    }
+
+    const fullCode = code.join("");
+
+    if (fullCode.length !== CODE_LENGTH) {
+      return;
+    }
+
+    if (lastAutoSubmittedCodeRef.current === fullCode) {
+      return;
+    }
+
+    lastAutoSubmittedCodeRef.current = fullCode;
+    void verifyCode(fullCode);
+  }, [code, step, isLoading, verifyCode]);
 
   const handleCodeChange = useCallback((index: number, value: string) => {
     const digit = value.replace(/\D/g, "").slice(-1);
@@ -295,6 +331,7 @@ export function VerifyPage() {
   const handleBack = () => {
     setStep("phone");
     setCode(Array(CODE_LENGTH).fill(""));
+    lastAutoSubmittedCodeRef.current = null;
     setPhoneError(null);
   };
 
@@ -324,8 +361,26 @@ export function VerifyPage() {
     case "done":
       return (
         <WelcomeStep
-          credits={CP_FREE_PLAN_CREDITS}
+          credits={FREE_SEAT_LIFETIME_AWU_CREDITS}
           onStartBuilding={goToWorkspace}
+        />
+      );
+    case "start-trial":
+      return (
+        <StartTrialStep
+          error={phoneError}
+          isLoading={isLoading}
+          onActivate={async () => {
+            setIsLoading(true);
+            setPhoneError(null);
+            try {
+              await activateTrial();
+            } catch {
+              setPhoneError("Network error. Please try again.");
+            } finally {
+              setIsLoading(false);
+            }
+          }}
         />
       );
     case "captcha":
@@ -546,7 +601,7 @@ function CodeVerificationStep({
                     variant="primary"
                     label={isLoading ? "Verifying..." : "Verify now"}
                     onClick={onVerify}
-                    disabled={isLoading}
+                    disabled={isLoading || code.join("").length !== CODE_LENGTH}
                   />
                 </div>
               </div>
@@ -599,6 +654,40 @@ function CaptchaStep({
               />
               <p className="min-h-5 text-sm text-red-500">{error}</p>
             </div>
+          </Page.Vertical>
+        </Page.Horizontal>
+      </div>
+    </Page>
+  );
+}
+
+interface StartTrialStepProps {
+  error: string | null;
+  isLoading: boolean;
+  onActivate: () => void;
+}
+
+function StartTrialStep({ error, isLoading, onActivate }: StartTrialStepProps) {
+  return (
+    <Page>
+      <div className="flex h-full flex-col justify-center">
+        <Page.Horizontal>
+          <Page.Vertical sizing="grow" gap="lg">
+            <div className="flex flex-col gap-2">
+              <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
+                Your phone number has already been verified.
+              </h1>
+              <p className="text-muted-foreground dark:text-muted-foreground-night">
+                Click below to activate your free subscription.
+              </p>
+            </div>
+            <p className="min-h-5 text-sm text-red-500">{error}</p>
+            <Button
+              onClick={onActivate}
+              variant="primary"
+              label={isLoading ? "Activating..." : "Activate trial"}
+              disabled={isLoading}
+            />
           </Page.Vertical>
         </Page.Horizontal>
       </div>

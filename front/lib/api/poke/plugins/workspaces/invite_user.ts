@@ -42,6 +42,7 @@ export const inviteUser = createPlugin({
         defaultValue: false,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const subscription = auth.subscription();

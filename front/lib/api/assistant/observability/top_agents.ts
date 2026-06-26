@@ -1,4 +1,8 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import {
+  fetchAgentCostStats,
+  getAgentCostStats,
+} from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
@@ -82,13 +86,28 @@ export async function fetchTopAgents(
   );
 
   const bucketAgentIds = buckets.map((bucket) => String(bucket.key));
-  const agents =
-    bucketAgentIds.length > 0
-      ? await getAgentConfigurations(auth, {
-          agentIds: bucketAgentIds,
-          variant: "extra_light",
-        })
-      : [];
+  if (bucketAgentIds.length === 0) {
+    return new Ok([]);
+  }
+
+  const [agents, costStatsResult] = await Promise.all([
+    getAgentConfigurations(auth, {
+      agentIds: bucketAgentIds,
+      variant: "extra_light",
+    }),
+    fetchAgentCostStats(auth, {
+      agentIds: bucketAgentIds,
+      days,
+      startDate,
+      endDate,
+    }),
+  ]);
+
+  if (costStatsResult.isErr()) {
+    return costStatsResult;
+  }
+  const costStatsMap = costStatsResult.value;
+
   const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
 
   const rows = buckets.map((bucket) => {
@@ -100,6 +119,8 @@ export async function fetchTopAgents(
       pictureUrl: agent?.pictureUrl ?? null,
       messageCount: bucket.doc_count ?? 0,
       userCount: Math.round(bucket.unique_users?.value ?? 0),
+      totalCostCredits: getAgentCostStats(costStatsMap, agentId)
+        .totalCostCredits,
     };
   });
 

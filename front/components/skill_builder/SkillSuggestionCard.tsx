@@ -230,6 +230,7 @@ interface SkillSuggestionCardProps {
   isSelected?: boolean;
   onSelect?: () => void;
   workspaceId: string;
+  disabled?: boolean;
 }
 
 export function SkillSuggestionCard({
@@ -241,6 +242,7 @@ export function SkillSuggestionCard({
   isSelected = false,
   onSelect,
   workspaceId,
+  disabled = false,
 }: SkillSuggestionCardProps) {
   const { instructionEdits, toolEdits, agentFacingDescriptionEdit } =
     suggestion.suggestion;
@@ -264,12 +266,14 @@ export function SkillSuggestionCard({
                 size="sm"
                 label="Decline"
                 onClick={() => onDecline(suggestion)}
+                disabled={disabled}
               />
               <Button
                 variant="highlight"
                 size="sm"
                 label="Accept"
                 onClick={() => onAccept(suggestion)}
+                disabled={disabled}
               />
             </div>
           )}

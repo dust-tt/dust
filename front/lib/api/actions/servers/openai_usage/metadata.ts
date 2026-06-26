@@ -127,7 +127,8 @@ export const OPENAI_USAGE_SERVER = {
   serverInfo: {
     name: "openai_usage",
     version: "1.0.0",
-    description: "Track API consumption and costs.",
+    description:
+      "Track OpenAI API consumption (token usage, model requests) and organization costs by project, API key, user, and model.",
     authorization: null,
     icon: "OpenaiLogo",
     documentationUrl: null,

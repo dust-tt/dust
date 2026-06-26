@@ -23,6 +23,7 @@ import {
   type WorkspaceSandboxEnvVarKind,
   type WorkspaceSandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
@@ -175,9 +176,7 @@ export function EnvironmentSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasSandboxAdmin =
-    featureFlags.includes("sandbox_tools") &&
-    featureFlags.includes("sandbox_workspace_admin");
+  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToReplace, setEnvVarToReplace] =

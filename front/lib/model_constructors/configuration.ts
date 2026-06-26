@@ -6,7 +6,7 @@ import type { Region } from "@app/lib/model_constructors/types/regions";
 import type { TokenPricing } from "@app/lib/model_constructors/types/token_pricing";
 import type { z } from "zod";
 
-export type BaseModelConfiguration = {
+export type BaseEndpointConfiguration<C extends InputConfig = InputConfig> = {
   // Identity
   id: `${ProviderId}/${ProviderApi}/${Region}/${ModelId}`;
   providerId: ProviderId;
@@ -17,7 +17,10 @@ export type BaseModelConfiguration = {
   // Capabilities
   contextSize: number;
   maxOutputTokens: number;
-  configSchema: z.ZodType<InputConfig>;
+  // Config schemas parse loose external input (with defaults/transforms) into
+  // the precise config `C`, so only the parsed output is constrained; the input
+  // side stays open.
+  configSchema: z.ZodType<C, z.ZodTypeDef, unknown>;
 
   // Pricing
   tokenPricing: TokenPricing;

@@ -23,6 +23,8 @@ import type { GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
   PROJECT_EDITOR_GROUP_PREFIX,
+  PROJECT_GROUP_PREFIX,
+  SPACE_GROUP_PREFIX,
 } from "@app/types/groups";
 import type {
   CombinedResourcePermissions,
@@ -651,17 +653,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
     const regularGroup = this.getSpaceManualMemberGroup();
-    if (this.isRegular()) {
+    if (this.isRegular() || this.isProject()) {
       await regularGroup.updateName(
         auth,
-        `Group for ${this.isProject() ? "project" : "space"} ${trimmedName}`
+        `${this.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${this.name}`
       );
     }
     const spaceEditorGroup = this.getSpaceManualEditorGroup();
-    if (spaceEditorGroup && this.isRegular()) {
+    if (spaceEditorGroup && this.isProject()) {
       await spaceEditorGroup.updateName(
         auth,
-        `Editors for ${this.isProject() ? "project" : "space"} ${trimmedName}`
+        `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`
       );
     }
 
@@ -840,10 +842,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
           // Set members of the editor group using the GroupSpaceEditorResource
           const editorUsers = await UserResource.fetchByIds(editorIds);
-          assert(
-            editorUsers.length > 0,
-            "Projects must have at least one editor."
-          );
+          assert(editorUsers.length > 0, "Pods must have at least one editor.");
           const setEditorsRes = await editorGroupSpaces[0].setMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
             transaction: t,
@@ -885,7 +884,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         if (this.isProject()) {
           assert(
             editorGroupIds.length > 0,
-            "Projects must have at least one editor group."
+            "Pods must have at least one editor group."
           );
           // Add the new editor groups
           const editorGroupsResult = await GroupResource.fetchByIds(
@@ -898,7 +897,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           const selectedEditorGroups = editorGroupsResult.value;
           assert(
             selectedEditorGroups.length > 0,
-            "Projects must have at least one editor group."
+            "Pods must have at least one editor group."
           );
           for (const selectedEditorGroup of selectedEditorGroups) {
             await GroupSpaceEditorResource.makeNew(auth, {
@@ -927,6 +926,45 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
       transaction,
     });
+  }
+
+  private async fetchManualMemberGroupSpace(): Promise<GroupSpaceMemberResource> {
+    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+      space: this,
+      filterOnManagementMode: true,
+    });
+
+    assert(
+      memberGroupSpaces.length === 1,
+      "In manual management mode, there should be exactly one member group space."
+    );
+
+    return memberGroupSpaces[0];
+  }
+
+  private async fetchManualEditorGroupSpace(): Promise<GroupSpaceEditorResource> {
+    assert(this.isProject(), "Only projects can have editor groups.");
+
+    const editorGroupSpaces = await GroupSpaceEditorResource.fetchBySpace({
+      space: this,
+      filterOnManagementMode: true,
+    });
+
+    assert(
+      editorGroupSpaces.length === 1,
+      "In manual management mode, there should be exactly one editor group space."
+    );
+
+    return editorGroupSpaces[0];
+  }
+
+  async fetchActiveEditorUsers(auth: Authenticator): Promise<UserResource[]> {
+    if (!this.isProject()) {
+      return [];
+    }
+
+    const editorGroupSpace = await this.fetchManualEditorGroupSpace();
+    return editorGroupSpace.group.getActiveMembers(auth);
   }
 
   async addMembers(
@@ -980,25 +1018,181 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-      space: this,
-      filterOnManagementMode: true,
-    });
+    let usersToAdd = users;
+    if (this.isProject()) {
+      const activeEditors = await this.fetchActiveEditorUsers(auth);
+      const activeEditorIds = new Set(activeEditors.map((user) => user.sId));
+      usersToAdd = users.filter((user) => !activeEditorIds.has(user.sId));
+      if (usersToAdd.length === 0) {
+        return new Ok([]);
+      }
+    }
 
-    assert(
-      memberGroupSpaces.length === 1,
-      "In manual management mode, there should be exactly one member group space."
-    );
+    const memberGroupSpace = await this.fetchManualMemberGroupSpace();
 
-    const addMemberRes = await memberGroupSpaces[0].addMembers(auth, {
-      users: users.map((user) => user.toJSON()),
+    const addMemberRes = await memberGroupSpace.addMembers(auth, {
+      users: usersToAdd.map((user) => user.toJSON()),
     });
 
     if (addMemberRes.isErr()) {
       return addMemberRes;
     }
 
-    return new Ok(users);
+    return new Ok(usersToAdd);
+  }
+
+  async addEditors(
+    auth: Authenticator,
+    {
+      userIds,
+    }: {
+      userIds: string[];
+    }
+  ): Promise<
+    Result<
+      UserResource[],
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_already_member"
+        | "user_not_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+        | "group_not_found"
+      >
+    >
+  > {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to add editors to this space."
+        )
+      );
+    }
+
+    assert(this.isProject(), "Only projects can have editors.");
+    assert(
+      this.managementMode === "manual",
+      "Can only add editors in manual management mode."
+    );
+
+    const users = await UserResource.fetchByIds(userIds);
+    const foundIds = new Set(users.map((user) => user.sId));
+    const missingIds = userIds.filter((id) => !foundIds.has(id));
+
+    if (missingIds.length > 0) {
+      return new Err(
+        new DustError(
+          "user_not_found",
+          `User(s) not found: ${missingIds.join(", ")}`
+        )
+      );
+    }
+
+    const editorGroupSpace = await this.fetchManualEditorGroupSpace();
+    const activeEditors = await editorGroupSpace.group.getActiveMembers(auth);
+    const activeEditorIds = new Set(activeEditors.map((user) => user.sId));
+    const usersToAdd = users.filter((user) => !activeEditorIds.has(user.sId));
+
+    if (usersToAdd.length === 0) {
+      return new Ok([]);
+    }
+
+    const memberGroupSpace = await this.fetchManualMemberGroupSpace();
+    const activeMembers = await memberGroupSpace.group.getActiveMembers(auth);
+    const activeMemberIds = new Set(activeMembers.map((user) => user.sId));
+    const usersToRemoveFromMembers = usersToAdd.filter((user) =>
+      activeMemberIds.has(user.sId)
+    );
+
+    if (usersToRemoveFromMembers.length > 0) {
+      const removeMemberRes = await memberGroupSpace.removeMembers(auth, {
+        users: usersToRemoveFromMembers.map((user) => user.toJSON()),
+      });
+      if (removeMemberRes.isErr()) {
+        return removeMemberRes;
+      }
+    }
+
+    const addEditorRes = await editorGroupSpace.addMembers(auth, {
+      users: usersToAdd.map((user) => user.toJSON()),
+    });
+
+    if (addEditorRes.isErr()) {
+      return addEditorRes;
+    }
+
+    return new Ok(usersToAdd);
+  }
+
+  async removeEditors(
+    auth: Authenticator,
+    {
+      userIds,
+    }: {
+      userIds: string[];
+    }
+  ): Promise<
+    Result<
+      UserResource[],
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+        | "group_not_found"
+      >
+    >
+  > {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to remove editors from this space."
+        )
+      );
+    }
+
+    assert(this.isProject(), "Only projects can have editors.");
+    assert(
+      this.managementMode === "manual",
+      "Can only remove editors in manual management mode."
+    );
+
+    const users = await UserResource.fetchByIds(userIds);
+    if (users.length === 0) {
+      return new Err(new DustError("user_not_found", "User not found"));
+    }
+
+    const editorGroupSpace = await this.fetchManualEditorGroupSpace();
+    const activeEditors = await editorGroupSpace.group.getActiveMembers(auth);
+    const activeEditorIds = new Set(activeEditors.map((user) => user.sId));
+    const usersToRemove = users.filter((user) => activeEditorIds.has(user.sId));
+
+    if (usersToRemove.length === 0) {
+      return new Ok([]);
+    }
+
+    if (activeEditors.length - usersToRemove.length < 1) {
+      return new Err(
+        new DustError(
+          "group_requirements_not_met",
+          "Pods must have at least one editor."
+        )
+      );
+    }
+
+    const removeEditorRes = await editorGroupSpace.removeMembers(auth, {
+      users: usersToRemove.map((user) => user.toJSON()),
+    });
+
+    if (removeEditorRes.isErr()) {
+      return removeEditorRes;
+    }
+
+    return new Ok(usersToRemove);
   }
 
   async removeMembers(
@@ -1035,18 +1229,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return new Err(new DustError("user_not_found", "User not found"));
     }
 
-    // Get the GroupSpaceMemberResource for the member group
-    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-      space: this,
-      filterOnManagementMode: true,
-    });
+    const memberGroupSpace = await this.fetchManualMemberGroupSpace();
 
-    assert(
-      memberGroupSpaces.length === 1,
-      "In manual management mode, there should be exactly one member group space."
-    );
-
-    const removeMemberRes = await memberGroupSpaces[0].removeMembers(auth, {
+    const removeMemberRes = await memberGroupSpace.removeMembers(auth, {
       users: users.map((user) => user.toJSON()),
     });
 

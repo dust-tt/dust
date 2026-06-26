@@ -65,6 +65,30 @@ vi.mock("@app/lib/api/analytics/users_export", async () => ({
   ),
 }));
 
+vi.mock("@app/lib/api/analytics/skills_export", async () => ({
+  SKILL_EXPORT_HEADERS: [
+    "skillId",
+    "name",
+    "description",
+    "editedByEmail",
+    "createdAt",
+    "lastEdit",
+  ],
+  fetchSkillExportRows: vi.fn(
+    async () =>
+      new Ok([
+        {
+          skillId: "skill-123",
+          name: "Research",
+          description: "Looks things up",
+          editedByEmail: "alice@example.com",
+          createdAt: "2024-05-01",
+          lastEdit: "2024-06-01",
+        },
+      ])
+  ),
+}));
+
 vi.mock("@app/lib/api/assistant/observability/skill_usage", async () => ({
   fetchAvailableSkills: vi.fn(async () => new Ok([])),
   fetchSkillUsageMetrics: vi.fn(async () => new Ok([])),
@@ -86,6 +110,8 @@ vi.mock("@app/lib/api/analytics/messages_export", async () => ({
     "userId",
     "userEmail",
     "source",
+    "toolsUsed",
+    "skillsUsed",
   ],
   fetchMessageExportRows: vi.fn(
     async () =>
@@ -100,6 +126,8 @@ vi.mock("@app/lib/api/analytics/messages_export", async () => ({
           userId: "user-1",
           userEmail: "alice@example.com",
           source: "web",
+          toolsUsed: "Slack__post_message,Slack__search_messages",
+          skillsUsed: "research",
         },
       ])
   ),
@@ -313,6 +341,18 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(csv).toContain("userName,messageCount");
   });
 
+  it("returns CSV for skills table", async () => {
+    const { response } = await setupTest({ table: "skills" });
+
+    expect(response.status).toBe(200);
+    const csv = await response.text();
+    expect(csv).toContain(
+      "skillId,name,description,editedByEmail,createdAt,lastEdit"
+    );
+    expect(csv).toContain("Research");
+    expect(csv).toContain("alice@example.com");
+  });
+
   it("returns CSV for skill_usage table", async () => {
     const { response } = await setupTest({ table: "skill_usage" });
 
@@ -335,10 +375,11 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(response.status).toBe(200);
     const csv = await response.text();
     expect(csv).toContain(
-      "messageId,createdAt,assistantId,assistantName,assistantSettings,conversationId,userId,userEmail,source"
+      "messageId,createdAt,assistantId,assistantName,assistantSettings,conversationId,userId,userEmail,source,toolsUsed,skillsUsed"
     );
     expect(csv).toContain("msg-1");
     expect(csv).toContain("alice@example.com");
+    expect(csv).toContain('"Slack__post_message,Slack__search_messages"');
   });
 
   it("returns CSV for feedback table", async () => {
@@ -439,6 +480,24 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     });
   });
 
+  it("returns typed JSON for skills", async () => {
+    const { response } = await setupTest({
+      table: "skills",
+      format: "json",
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data[0]).toEqual({
+      skillId: "skill-123",
+      name: "Research",
+      description: "Looks things up",
+      editedByEmail: "alice@example.com",
+      createdAt: "2024-05-01",
+      lastEdit: "2024-06-01",
+    });
+  });
+
   it("returns typed JSON for users", async () => {
     const { response } = await setupTest({
       table: "users",
@@ -471,6 +530,8 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
       userId: "user-1",
       userEmail: "alice@example.com",
       source: "web",
+      toolsUsed: "Slack__post_message,Slack__search_messages",
+      skillsUsed: "research",
     });
   });
 

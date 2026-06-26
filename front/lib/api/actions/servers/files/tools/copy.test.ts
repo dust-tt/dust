@@ -4,6 +4,7 @@ import { copyHandler } from "@app/lib/api/actions/servers/files/tools/copy";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -68,12 +69,24 @@ describe("copyHandler", () => {
     if (!result.isOk()) {
       return;
     }
-    expect(result.value).toEqual([
-      {
-        type: "text",
-        text: `Copied \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`.`,
+    expect(result.value[0]).toEqual({
+      type: "text",
+      text:
+        `Copied \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`. ` +
+        getFilePreviewDirectiveInstruction({
+          contentType: "text/plain",
+          path: `pod-${spaceId}/report.pdf`,
+          title: "report.pdf",
+        }),
+    });
+    expect(result.value[1]).toMatchObject({
+      type: "resource",
+      resource: {
+        path: `pod-${spaceId}/report.pdf`,
+        title: "report.pdf",
+        contentType: "text/plain",
       },
-    ]);
+    });
   });
 
   it("copies a file from pod to conversation mount", async () => {

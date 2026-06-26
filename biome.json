@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
   "root": true,
   "plugins": [],
   "vcs": {
@@ -57,7 +57,7 @@
       "marketing/**"
     ],
     "rules": {
-      "recommended": false,
+      "preset": "none",
       "correctness": {
         "noUnusedImports": { "fix": "safe", "level": "error" },
         "noUnusedVariables": "error"

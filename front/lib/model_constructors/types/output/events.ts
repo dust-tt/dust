@@ -64,6 +64,8 @@ export interface ReasoningEvent {
 }
 
 export type TokenUsageContent = {
+  longCacheCreated: number;
+  shortCacheCreated: number;
   cacheCreated: number;
   cacheHit: number;
   standardInput: number;

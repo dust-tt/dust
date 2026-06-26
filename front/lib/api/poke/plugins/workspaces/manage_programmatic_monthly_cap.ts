@@ -1,14 +1,9 @@
 import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-} from "@app/lib/api/audit/workos_audit";
+  getProgrammaticUsageLimit,
+  syncProgrammaticUsageLimit,
+} from "@app/lib/api/credits/programmatic_usage_limit";
 import { dispatchProgrammaticCapReset } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { createPlugin } from "@app/lib/api/poke/types";
-import {
-  clearMetronomeProgrammaticCapAlerts,
-  getMetronomeProgrammaticCap,
-  upsertMetronomeProgrammaticCapAlerts,
-} from "@app/lib/metronome/alerts/programmatic_cap";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
@@ -48,6 +43,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
         async: true,
       },
     },
+    requiredRoles: ["billing"],
   },
 
   // Programmatic cap alerts are AWU-credit based: only meaningful on
@@ -58,7 +54,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
     return plan !== null && isCreditPricedPlan(plan);
   },
 
-  populateAsyncArgs: async (_auth, workspace) => {
+  populateAsyncArgs: async (auth, workspace) => {
     if (!workspace) {
       return new Ok({
         enabled: false,
@@ -76,10 +72,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
       });
     }
 
-    const capResult = await getMetronomeProgrammaticCap({
-      metronomeCustomerId: workspaceResource.metronomeCustomerId,
-      workspaceId: workspace.sId,
-    });
+    const capResult = await getProgrammaticUsageLimit(auth);
     if (capResult.isErr()) {
       return new Err(capResult.error);
     }
@@ -137,69 +130,27 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
     }
     const { enabled, monthlyCapAwu } = parsed.data;
 
-    // Read previous cap for audit metadata (best-effort).
-    const previousResult = await getMetronomeProgrammaticCap({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-    });
-    const previousCapCredits = previousResult.isOk()
-      ? previousResult.value
-      : null;
-
-    if (enabled && monthlyCapAwu) {
-      const result = await upsertMetronomeProgrammaticCapAlerts({
-        metronomeCustomerId,
-        workspaceId: workspace.sId,
-        monthlyCapCredits: monthlyCapAwu,
-      });
-      if (result.isErr()) {
-        return new Err(result.error);
-      }
-
-      // Reset the state machine — thresholds may have changed.
-      await dispatchProgrammaticCapReset({ workspace: workspaceResource });
-
-      void emitAuditLogEvent({
-        auth,
-        action: "workspace.programmatic_usage_limit_updated",
-        targets: [buildAuditLogTarget("workspace", workspace)],
-        metadata: {
-          previous_monthly_cap_credits:
-            previousCapCredits !== null ? String(previousCapCredits) : "unset",
-          new_monthly_cap_credits: String(monthlyCapAwu),
-        },
-      });
-
-      return new Ok({
-        display: "text",
-        value: `Programmatic monthly cap set to ${monthlyCapAwu} AWU for workspace "${workspace.name}".`,
-      });
-    }
-
-    // Disable: clear alerts and reset state.
-    const clearResult = await clearMetronomeProgrammaticCapAlerts({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-    });
-    if (clearResult.isErr()) {
-      return new Err(clearResult.error);
-    }
-    await dispatchProgrammaticCapReset({ workspace: workspaceResource });
-
-    void emitAuditLogEvent({
+    // `syncProgrammaticUsageLimit` persists the cap (DB source of truth),
+    // derives the Metronome alerts, and emits the audit event with the
+    // operator as actor. `null` clears the cap.
+    const monthlyCapCredits = enabled && monthlyCapAwu ? monthlyCapAwu : null;
+    const syncResult = await syncProgrammaticUsageLimit({
       auth,
-      action: "workspace.programmatic_usage_limit_updated",
-      targets: [buildAuditLogTarget("workspace", workspace)],
-      metadata: {
-        previous_monthly_cap_credits:
-          previousCapCredits !== null ? String(previousCapCredits) : "unset",
-        new_monthly_cap_credits: "unset",
-      },
+      monthlyCapCredits,
     });
+    if (syncResult.isErr()) {
+      return new Err(syncResult.error);
+    }
+
+    // Reset the state machine — thresholds may have changed.
+    await dispatchProgrammaticCapReset({ workspace: workspaceResource });
 
     return new Ok({
       display: "text",
-      value: `Programmatic monthly cap removed for workspace "${workspace.name}".`,
+      value:
+        monthlyCapCredits !== null
+          ? `Programmatic monthly cap set to ${monthlyCapCredits} AWU for workspace "${workspace.name}".`
+          : `Programmatic monthly cap removed for workspace "${workspace.name}".`,
     });
   },
 });

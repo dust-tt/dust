@@ -52,10 +52,7 @@ describe("requestSandboxKillsActivity", () => {
     });
 
     expect(hasMore).toBe(false);
-    const marked = await SandboxResource.fetchByConversationId(
-      authenticator,
-      c1.sId
-    );
+    const marked = await SandboxResource.fetchByConversation(authenticator, c1);
     expect(marked?.killRequestedAt).not.toBeNull();
   });
 });

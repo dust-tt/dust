@@ -72,8 +72,6 @@ import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_mana
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
-import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/api/actions/servers/slideshow/instructions";
-import { SLIDESHOW_SERVER } from "@app/lib/api/actions/servers/slideshow/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
@@ -97,7 +95,10 @@ import type {
 } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  isComputerFeatureEnabled,
+  type WhitelistableFeature,
+} from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -137,7 +138,7 @@ export const ASHBY_SERVER_NAME = "ashby";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
-export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4];
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4, 28];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -172,7 +173,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "image_generation",
   "include_data",
   "interactive_content",
-  "slideshow",
   "jira",
   "luma",
   "microsoft_drive",
@@ -540,26 +540,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
     metadata: GOOGLE_DRIVE_SERVER,
-  },
-  slideshow: {
-    id: 28,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("slideshow");
-    },
-    isPreview: true,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: {
-      ...SLIDESHOW_SERVER,
-      // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
-      serverInfo: {
-        ...SLIDESHOW_SERVER.serverInfo,
-        instructions: SLIDESHOW_INSTRUCTIONS,
-      },
-    },
   },
   slack_bot: {
     id: 31,
@@ -1053,7 +1033,7 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("sandbox_tools");
+      return !isComputerFeatureEnabled(featureFlags);
     },
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,
@@ -1176,12 +1156,23 @@ type IsRestrictedCallback = (params: {
   isDeepDiveDisabled: boolean;
 }) => boolean;
 
+type RuntimeToolStakeLevelCallbackParams = {
+  toolName: string;
+  plan: PlanType | null;
+  configuredStakeLevel: MCPToolStakeLevelType;
+};
+
+type RuntimeToolStakeLevelCallback = (
+  params: RuntimeToolStakeLevelCallbackParams
+) => MCPToolStakeLevelType;
+
 type InternalMCPServerEntryCommon = {
   id: number;
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
+  runtimeToolStakeLevelCallback?: RuntimeToolStakeLevelCallback;
   // Defines which arguments require per-agent approval for "medium" stake tools.
   // When a tool has "medium" stake, the user must approve the specific combination
   // of (agent, tool, argument values) before the tool can execute.
@@ -1261,6 +1252,22 @@ export function isAutoInternalMCPServerName(
   return (
     INTERNAL_MCP_SERVERS[name].availability === "auto" ||
     INTERNAL_MCP_SERVERS[name].availability === "auto_hidden_builder"
+  );
+}
+
+// A "hot" tool is one served by a default-attached internal MCP server (an
+// `auto` / `auto_hidden_builder` server, present from the first agent-loop step).
+// These stay non-deferred so they form a stable, cacheable tools prefix. Every
+// other tool (`manual` internal servers, remote servers, client-side tools, and
+// anything enabled mid-run via discover_tools) is cold and gets deferred behind
+// Anthropic's tool search, so it appends inline on discovery instead of mutating
+// the prefix. `mcpServerName` on a tool config is a bare string (only internal
+// server-side configs carry an internal name), so guard the name before the
+// availability lookup.
+export function isHotMCPServerName(mcpServerName: string): boolean {
+  return (
+    isInternalMCPServerName(mcpServerName) &&
+    isAutoInternalMCPServerName(mcpServerName)
   );
 }
 
@@ -1398,6 +1405,18 @@ export function getInternalMCPServerToolStakes(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata.tools_stakes;
+}
+
+export function resolveInternalMCPServerToolStakeLevel(
+  name: InternalMCPServerNameType,
+  params: RuntimeToolStakeLevelCallbackParams
+): MCPToolStakeLevelType {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+
+  return (
+    server.runtimeToolStakeLevelCallback?.(params) ??
+    params.configuredStakeLevel
+  );
 }
 
 export function getInternalMCPServerToolDisplayLabels<

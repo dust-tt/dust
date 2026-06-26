@@ -1,4 +1,8 @@
 import config from "@app/lib/api/config";
+import {
+  getSeatPlan,
+  type SeatPlanResponseBody,
+} from "@app/lib/api/credits/seat_plan";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
@@ -6,6 +10,7 @@ import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_a
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedWorkspaceMetronomeAlerts } from "@app/lib/metronome/alerts/workspace_alerts";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { isWorkspaceProgrammaticWarningReached } from "@app/lib/metronome/user_block";
 import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
@@ -65,6 +70,7 @@ export type PokeWorkspaceInfo = {
   metronomeCustomerId: string | null;
   pendingSubscription: SubscriptionType | null;
   poolCreditState: WorkspacePoolCreditState;
+  seatPlan: SeatPlanResponseBody | null;
   // The Metronome alerts backing each credit dimension — id and current status —
   // for deep-linking and display from Poke. Null when not configured / not
   // Metronome-billed.
@@ -75,6 +81,7 @@ export type PokeWorkspaceInfo = {
   // created by the Metronome setup script and shared across all customers.
   defaultAlerts: DefaultMetronomeAlerts;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
+  programmaticWarningReached: boolean;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeCustomerId: string | null;
   stripeSubscription: PokeStripeSubscriptionWire | null;
@@ -174,10 +181,14 @@ export async function getPokeWorkspaceInfo(
     );
   const pendingSubscription = pendingSubscriptionResource?.toJSON() ?? null;
 
-  const membersCount = await MembershipResource.getMembersCountForWorkspace({
-    workspace: owner,
-    activeOnly: true,
-  });
+  const [membersCount, seatPlanResult] = await Promise.all([
+    MembershipResource.getMembersCountForWorkspace({
+      workspace: owner,
+      activeOnly: true,
+    }),
+    getSeatPlan(auth),
+  ]);
+  const seatPlan = seatPlanResult.isOk() ? seatPlanResult.value : null;
 
   let stripeSubscription: Stripe.Subscription | null = null;
   if (activeSubscription.stripeSubscriptionId) {
@@ -213,6 +224,7 @@ export async function getPokeWorkspaceInfo(
     hasMetronomeFeature,
     membersCount,
     metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
+    seatPlan,
     pendingSubscription,
     poolCreditState: workspaceResource.poolCreditState,
     poolAlert,
@@ -220,6 +232,9 @@ export async function getPokeWorkspaceInfo(
     usageCapAlert,
     defaultAlerts,
     programmaticCreditState: workspaceResource.programmaticCreditState,
+    programmaticWarningReached: await isWorkspaceProgrammaticWarningReached(
+      owner.sId
+    ),
     stripeCustomerId,
     stripeSubscription: stripeSubscription
       ? {

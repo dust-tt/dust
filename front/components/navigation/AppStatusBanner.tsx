@@ -5,6 +5,7 @@ import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
+import { useProgrammaticUsageLimit } from "@app/lib/swr/usage_settings";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { useMetronomeContract } from "@app/lib/swr/workspaces";
@@ -211,8 +212,8 @@ function WorkspaceUsageStatusBanner({
   const {
     poolCreditState,
     programmaticCreditStatus,
+    programmaticWarningReached,
     balanceThresholdReached,
-    noSeat,
   } = useWorkspaceUsageStatus({ owner });
 
   // The low/critical pool states are internal throttling signals and are not
@@ -237,8 +238,22 @@ function WorkspaceUsageStatusBanner({
     poolStateWouldBanner &&
     !isMetronomeContractLoading &&
     !contract?.hasPersonalCreditSeats;
+  // A cap of 0 or null is a deliberate hard block on programmatic API, not an
+  // exhausted budget, so its "cap reached" banner is suppressed. The cap is
+  // only fetched when the banner would otherwise show.
+  const programmaticStateWouldBanner =
+    isAdmin(owner) &&
+    (programmaticCreditStatus === "depleted" || programmaticWarningReached);
+  const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
+    useProgrammaticUsageLimit({
+      workspaceId: owner.sId,
+      disabled: !programmaticStateWouldBanner,
+    });
+  const monthlyCapCredits = programmaticUsageLimit?.monthlyCapCredits ?? 0;
   const showProgrammaticBanner =
-    isAdmin(owner) && programmaticCreditStatus !== "active";
+    programmaticStateWouldBanner &&
+    !isProgrammaticUsageLimitLoading &&
+    monthlyCapCredits !== 0;
   // The admin-configured balance-threshold warning is only relevant before the
   // pool is depleted/overage — those states have their own (stronger) banner.
   const showBalanceThresholdBanner =
@@ -258,17 +273,6 @@ function WorkspaceUsageStatusBanner({
   );
 
   const banner = ((): StatusBannerProps | null => {
-    // A seatless member cannot run agents at all, so this takes precedence over
-    // every credit-related banner.
-    if (noSeat) {
-      return {
-        variant: "danger",
-        title: "You don't have a seat in this workspace",
-        description:
-          "You can no longer run agents. Contact your admin to be assigned a seat.",
-      };
-    }
-
     if (showPoolBanner) {
       return {
         variant: isPoolDepleted ? "danger" : "warning",

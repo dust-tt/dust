@@ -35,14 +35,6 @@ export type FileUseCase =
   // Workspace branding: logo/favicon uploaded by workspace admins.
   | "workspace_branding";
 
-// Audit trail for a plan-mode approval. Recorded on `plan.md.useCaseMetadata` when the user
-// approves a `request_plan_approval` call.
-export type PlanModeApproval = {
-  approvedAt: string; // ISO timestamp.
-  approvedByUserId: string; // sId of the approving user.
-  fileVersion: number; // FileModel.version at the moment of approval.
-};
-
 export type FileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
@@ -59,13 +51,6 @@ export type FileUseCaseMetadata = {
   // only the original blob exists. Stamped together for sandbox-mounted raw delimited files.
   skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
-  // Plan mode. `isPlanFile: true` marks a file as agent-owned (user can't directly mutate).
-  // `planModeLastApproval` is set when the agent's `request_plan_approval` is approved.
-  // `isPlanClosed: true` marks the plan as retired — hidden from UI and ignored by the skill.
-  // Active plans omit `isPlanClosed` (only closed plans have it set).
-  isPlanFile?: boolean;
-  planModeLastApproval?: PlanModeApproval | null;
-  isPlanClosed?: boolean;
   // Which branding asset this file was uploaded for (workspace_branding use case only).
   asset?: string;
 };
@@ -89,8 +74,8 @@ export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 /**
  * Allowlist of files a shared Frame may load via useFile().
- * AuthorizedFileAccessModel stores one row per authorized file; active rows have
- * revokedAt = null.
+ * AuthorizedFileAccessModel stores one row per authorized file ref for the
+ * current frame version (replaced on recompute).
  */
 export const authorizedFileAccessKindSchema = z.enum([
   "file_id",
@@ -104,10 +89,8 @@ export type AuthorizedFileAccessKind = z.infer<
 
 const authorizedFileAccessEntryBaseSchema = {
   shareScope: fileShareScopeSchema,
-  computedByUserId: z.string(),
   frameContentHash: z.string(),
   allowedAt: z.string(),
-  revokedAt: z.string().nullable().optional(),
 };
 
 const authorizedFileIdAccessEntrySchema = z
@@ -207,7 +190,7 @@ export function entryToAuthorizedFileRef(
 
 /** Active allowlist view derived from non-revoked DB rows. */
 export type AuthorizedFileAccessAllowlist = {
-  computedByUserId: string;
+  generatedByUserId: number | null;
   frameContentHash: string;
   refs: AuthorizedFileRef[];
 };
@@ -221,12 +204,6 @@ export function parseAuthorizedFileAccessEntry(
   data: unknown
 ): AuthorizedFileAccessEntry {
   return authorizedFileAccessEntrySchema.parse(data);
-}
-
-export function getActiveAuthorizedFileAccessEntries(
-  entries: AuthorizedFileAccessEntry[]
-): AuthorizedFileAccessEntry[] {
-  return entries.filter((entry) => entry.revokedAt == null);
 }
 
 export type AuthorizedFileAccessShareError = Omit<DustError, "code"> & {

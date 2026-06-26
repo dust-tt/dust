@@ -1,8 +1,4 @@
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
-import type {
-  GetAgentConfigurationsResponseBody,
-  PostAgentConfigurationResponseBody,
-} from "@app/lib/api/assistant/configuration";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
@@ -13,7 +9,11 @@ import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
-} from "@app/types/api/internal/agent_configuration";
+} from "@app/types/api/agent_configuration";
+import type {
+  GetAgentConfigurationsResponseBody,
+  PostAgentConfigurationResponseBody,
+} from "@app/types/api/assistant/configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

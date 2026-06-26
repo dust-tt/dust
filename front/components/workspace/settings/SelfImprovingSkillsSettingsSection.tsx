@@ -176,7 +176,7 @@ function SelfImprovementCapPerSkillItem({
       }
     >
       <ContextItem.Description
-        description={`Maximum cost per skill per self-improvement run (in ${unit === "awu_credits" ? "AWU credits" : "USD"}). Once reached, no further self-improvement runs are started for that skill.`}
+        description={`Maximum cost per skill per self-improvement run (in ${unit === "awu_credits" ? "credits" : "USD"}). Once reached, no further self-improvement runs are started for that skill.`}
       />
     </ContextItem>
   );
@@ -234,7 +234,7 @@ function SelfImprovingCapItem({
       }
     >
       <ContextItem.Description
-        description={`Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in ${unit === "awu_credits" ? "AWU credits" : "USD"}) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month.`}
+        description={`Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in ${unit === "awu_credits" ? "credits" : "USD"}) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month.`}
       />
     </ContextItem>
   );

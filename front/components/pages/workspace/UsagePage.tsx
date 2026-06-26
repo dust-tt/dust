@@ -2,12 +2,17 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
-import { AwuUsageChart } from "@app/components/workspace/AwuUsageChart";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeDisplayName,
+} from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
+import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
@@ -23,11 +28,12 @@ import {
   isFreePlan,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
   useCreditPurchaseInfo,
+  useMyUsage,
   useSeatPlan,
 } from "@app/lib/swr/credits";
 import {
@@ -38,6 +44,7 @@ import {
   useResolveUpgradeRequest,
   useUpgradeRequests,
 } from "@app/lib/swr/upgrade_requests";
+import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
   useAwuUsage,
   usePerSeatPricing,
@@ -53,11 +60,14 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isAdmin } from "@app/types/user";
 import {
   AlertCircle,
   ArrowUp,
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -74,7 +84,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import capitalize from "lodash/capitalize";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 // Build a minimal member from an upgrade request to feed the reused seat / spend
@@ -94,6 +103,7 @@ function memberFromUpgradeRequest(
     consumedFromAllowanceAwuCredits: 0,
     consumedFromPoolAwuCredits: 0,
     billingFrequency: null,
+    nextCreditResetAt: null,
     scheduledSeatType: null,
     scheduledSeatChangeAt: null,
     spendLimitAwuCredits: null,
@@ -103,10 +113,35 @@ function memberFromUpgradeRequest(
     freeCreditLowAlert: null,
     freeCreditEmptyAlert: null,
     creditState: "capped",
+    nearLimit: false,
   };
 }
 
 const DEFAULT_PAGE_SIZE = 25;
+
+function noOrFreeSeatTitle(seatType: "none" | "free"): string {
+  switch (seatType) {
+    case "none":
+      return "You don't have a seat";
+    case "free":
+      return "You're on the Free seat";
+    default:
+      assertNeverAndIgnore(seatType);
+      return "";
+  }
+}
+
+function noOrFreeSeatBody(seatType: "none" | "free"): string {
+  switch (seatType) {
+    case "none":
+      return "Assign yourself a seat to send messages.";
+    case "free":
+      return "The Free seat has limited usage. Upgrade your seat to get more credits.";
+    default:
+      assertNeverAndIgnore(seatType);
+      return "";
+  }
+}
 
 export function UsagePage() {
   const owner = useWorkspace();
@@ -156,9 +191,14 @@ export function UsagePage() {
   }, []);
 
   const sort = sorting[0];
-  const membersOrderColumn = sort?.id === "email" ? "email" : "name";
+  const membersOrderColumn =
+    sort?.id === "email" || sort?.id === "consumedAwuCredits"
+      ? sort.id
+      : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
+  const { myUsage } = useMyUsage({ workspaceId: owner.sId });
+  const openChangeMySeatParam = useSearchParam("openChangeMySeat");
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
     useState<MemberUsageType | null>(null);
@@ -181,9 +221,16 @@ export function UsagePage() {
   );
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
+      // Free seats carry no renewing allowance to preserve, so removing one is
+      // immediate; paid seats keep access until the end of the current billing
+      // period.
+      const message =
+        member.seatType === "free"
+          ? `Are you sure you want to remove ${member.name}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
+          : `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
       const confirmed = await confirm({
         title: "Remove seat",
-        message: `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`,
+        message,
         validateLabel: "Remove seat",
         validateVariant: "warning",
       });
@@ -344,6 +391,13 @@ export function UsagePage() {
     }
   }, [canViewUsage, router, owner.sId]);
 
+  // Auto-open the "change my seat" modal when arriving from a blocked-state
+  useEffect(() => {
+    if (openChangeMySeatParam !== null && myUsage !== null) {
+      setChangeSeatMember(myUsage);
+    }
+  }, [openChangeMySeatParam, myUsage]);
+
   const {
     totalRemainingCredits,
     totalActiveCredits,
@@ -360,10 +414,10 @@ export function UsagePage() {
       disabled: !showBuyCreditDialog,
     });
 
-  const { billingCycleStartDay, isCreditPurchaseInfoLoading } =
-    useCreditPurchaseInfo({
-      workspaceId: owner.sId,
-    });
+  const { billingCycleStartDay } = useCreditPurchaseInfo({
+    workspaceId: owner.sId,
+    disabled: !isReadOnly,
+  });
 
   // Legacy contracts have no pool credits or commits, so the pool summary's
   // overage figure is meaningless. In read-only mode we instead show the
@@ -426,6 +480,8 @@ export function UsagePage() {
     );
   }, [seatPlans]);
 
+  const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
+
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
@@ -454,10 +510,15 @@ export function UsagePage() {
     totalActiveCredits - totalRemainingCredits
   );
   const initialTotalCredits = totalActiveCredits;
+  const hasPool = totalActiveCredits > 0;
 
   if (!canViewUsage) {
     return null;
   }
+
+  const showPoolSection =
+    !isAwuPoolSummaryLoading &&
+    (!!isAwuPoolSummaryError || hasPool || isReadOnly);
 
   const searchAndInviteRow = (
     <div className="flex flex-row gap-2">
@@ -475,6 +536,7 @@ export function UsagePage() {
           perSeatPricing={perSeatPricing}
           onInviteClick={onInviteClick}
           disabled={isReadOnly}
+          isFreePlan={isFreePlanWorkspace}
         />
       )}
     </div>
@@ -489,7 +551,7 @@ export function UsagePage() {
             seatTypeFilter === "none"
               ? "No seat"
               : seatTypeFilter
-                ? capitalize(seatTypeFilter)
+                ? seatTypeDisplayName(seatTypeFilter)
                 : "All seats"
           }
           size="sm"
@@ -503,12 +565,26 @@ export function UsagePage() {
         />
         <DropdownMenuItem
           label="No seat"
+          icon={
+            <Icon
+              visual={SEAT_TYPE_ICONS["none"]}
+              size="sm"
+              className={getSeatIconColorClass("none")}
+            />
+          }
           onClick={() => handleSetSeatTypeFilter("none")}
         />
         {seatFilterOptions.map((seatType) => (
           <DropdownMenuItem
             key={seatType}
-            label={capitalize(seatType)}
+            label={seatTypeDisplayName(seatType)}
+            icon={
+              <Icon
+                visual={SEAT_TYPE_ICONS[seatType]}
+                size="sm"
+                className={getSeatIconColorClass(seatType)}
+              />
+            }
             onClick={() => handleSetSeatTypeFilter(seatType)}
           />
         ))}
@@ -549,20 +625,42 @@ export function UsagePage() {
       />
 
       <div className="flex flex-col items-stretch gap-10 pb-20">
-        <Page.Vertical gap="xs">
-          <Icon
-            visual={PieChart01}
-            className="text-muted-foreground dark:text-muted-foreground-night"
-            size="lg"
-          />
-          <Page.H variant="h3">Usage</Page.H>
-          <Page.P variant="secondary">
-            Manage the usage of your Dust workspace
-          </Page.P>
-        </Page.Vertical>
+        <div className="flex items-center justify-between">
+          <Page.Header title="Usage" icon={PieChart01} />
+          {!isReadOnly && usageSettings.topUpEnabled && (
+            <Button
+              label="Top up"
+              icon={ArrowUp}
+              size="sm"
+              variant="outline"
+              onClick={() => setShowBuyCreditDialog(true)}
+            />
+          )}
+        </div>
 
-        {!isFreePlanWorkspace && (
+        {!isReadOnly &&
+          (myUsage?.seatType === "free" || myUsage?.seatType === "none") && (
+            <ContentMessage
+              title={noOrFreeSeatTitle(myUsage.seatType)}
+              icon={AlertCircle}
+              variant="blue"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <span>{noOrFreeSeatBody(myUsage.seatType)}</span>
+                <Button
+                  label="Change my seat"
+                  variant="primary"
+                  size="xs"
+                  onClick={() => setChangeSeatMember(myUsage)}
+                />
+              </div>
+            </ContentMessage>
+          )}
+
+        {showPoolSection && (
           <Page.Vertical gap="xs" align="stretch">
+            <Page.H variant="h4">Workspace credit pool</Page.H>
+
             {isAwuPoolSummaryError && (
               <ContentMessage
                 title="Failed to load Workspace Credits Pool"
@@ -591,6 +689,16 @@ export function UsagePage() {
                     /{formatCredits(initialTotalCredits)}
                   </span>
                 </div>
+                {hasPool && (
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
+                    <div
+                      className="h-full rounded-full bg-foreground/80 transition-all"
+                      style={{
+                        width: `${Math.min(100, initialTotalCredits > 0 ? (totalConsumedCredits / initialTotalCredits) * 100 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   {isReadOnly ? (
                     <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -604,18 +712,10 @@ export function UsagePage() {
                           {formatCredits(overageCredits)} overage credits
                         </span>
                       )}
-                      {isEnterprise ? (
+                      {isEnterprise && (
                         <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
                           Contact your Dust sales representative to buy credits
                         </span>
-                      ) : (
-                        <Button
-                          label="Top up"
-                          icon={ArrowUp}
-                          size="xs"
-                          variant="outline"
-                          onClick={() => setShowBuyCreditDialog(true)}
-                        />
                       )}
                     </>
                   )}
@@ -625,124 +725,128 @@ export function UsagePage() {
           </Page.Vertical>
         )}
 
-        {isCreditPurchaseInfoLoading ? (
-          <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
-        ) : (
-          <AwuUsageChart
-            workspaceId={owner.sId}
-            billingCycleStartDay={billingCycleStartDay ?? 1}
-          />
-        )}
+        <Tabs defaultValue="members">
+          <TabsList className="mb-4">
+            <TabsTrigger value="members" label="Members" />
+            <TabsTrigger value="settings" label="Settings" />
+          </TabsList>
 
-        {!isFreePlanWorkspace && (
-          <>
-            <UsageSettingsCard workspaceId={owner.sId} readOnly={isReadOnly} />
-
-            <UsageProgrammaticLimitCard
-              workspaceId={owner.sId}
-              readOnly={isReadOnly}
-            />
-
-            <UsageNotificationsCard
-              workspaceId={owner.sId}
-              readOnly={isReadOnly}
-            />
-          </>
-        )}
-
-        <Page.Vertical gap="sm" align="stretch">
-          <span className="heading-2xl text-foreground dark:text-foreground-night">
-            Members
-          </span>
-          {searchAndInviteRow}
-          {isWorkspaceAdmin ? (
-            <Tabs
-              value={membersTab}
-              onValueChange={(value) =>
-                setMembersTab(value === "requests" ? "requests" : "members")
-              }
-            >
-              <div className="flex flex-row items-center justify-between gap-2">
-                <TabsList border={false} className="w-auto">
-                  <TabsTrigger value="members" label="Members" />
-                  <TabsTrigger
-                    value="requests"
-                    label="Requests"
-                    isCounter
-                    counterValue={
-                      filteredUpgradeRequests.length > 0
-                        ? String(filteredUpgradeRequests.length)
-                        : undefined
-                    }
-                  />
-                </TabsList>
-                {membersTab === "members" && seatFilterDropdown}
-              </div>
-              <TabsContent value="members">
-                <div className="pt-2">{membersTable}</div>
-              </TabsContent>
-              <TabsContent value="requests">
-                <div className="pt-2">
-                  <UpgradeRequestsTable
-                    requests={filteredUpgradeRequests}
-                    isLoading={isUpgradeRequestsLoading}
-                    seatPlans={seatPlans}
-                    pendingRequestIds={resolvingRequestIds}
-                    onUpgradePlan={handleUpgradePlanRequest}
-                    onEditLimit={handleEditLimitRequest}
-                    onDeny={handleDenyRequest}
-                  />
+          <TabsContent value="members">
+            <Page.Vertical gap="sm" align="stretch">
+              {searchAndInviteRow}
+              {isWorkspaceAdmin ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-row items-center justify-between gap-2">
+                    <ButtonsSwitchList
+                      size="xs"
+                      defaultValue="members"
+                      onValueChange={(v) =>
+                        setMembersTab(v === "requests" ? "requests" : "members")
+                      }
+                    >
+                      <ButtonsSwitch value="members" label="Members" />
+                      <ButtonsSwitch
+                        value="requests"
+                        label="Requests"
+                        isCounter
+                        counterValue={
+                          filteredUpgradeRequests.length > 0
+                            ? String(filteredUpgradeRequests.length)
+                            : undefined
+                        }
+                      />
+                    </ButtonsSwitchList>
+                    {membersTab === "members" && seatFilterDropdown}
+                  </div>
+                  <div className="pt-2">
+                    {membersTab === "members" ? (
+                      membersTable
+                    ) : (
+                      <UpgradeRequestsTable
+                        requests={filteredUpgradeRequests}
+                        isLoading={isUpgradeRequestsLoading}
+                        seatPlans={seatPlans}
+                        pendingRequestIds={resolvingRequestIds}
+                        onUpgradePlan={handleUpgradePlanRequest}
+                        onEditLimit={handleEditLimitRequest}
+                        onDeny={handleDenyRequest}
+                      />
+                    )}
+                  </div>
                 </div>
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <>
-              {seatFilterDropdown && (
-                <div className="flex flex-row justify-end">
-                  {seatFilterDropdown}
-                </div>
+              ) : (
+                <>
+                  {seatFilterDropdown && (
+                    <div className="flex flex-row justify-end">
+                      {seatFilterDropdown}
+                    </div>
+                  )}
+                  {membersTable}
+                </>
               )}
-              {membersTable}
-            </>
-          )}
-        </Page.Vertical>
+            </Page.Vertical>
+          </TabsContent>
 
-        {inviteBlockedPopupReason && (
-          <ReachedLimitPopup
-            isAdmin={isAdmin(owner)}
-            isOpened={!!inviteBlockedPopupReason}
-            onClose={() => setInviteBlockedPopupReason(null)}
-            subscription={subscription}
-            owner={owner}
-            code={inviteBlockedPopupReason}
-          />
-        )}
-
-        <ChangeSeatModal
-          isOpen={changeSeatMember !== null}
-          onClose={() => {
-            setChangeSeatMember(null);
-            setPendingApproveRequestId(null);
-          }}
-          member={changeSeatMember}
-          owner={owner}
-          seatPlans={seatPlans}
-          onSavingChange={handleSeatChangePendingChange}
-          onSaved={handleApproveOnModalSaved}
-        />
-
-        <EditSpendLimitModal
-          isOpen={editSpendLimitMember !== null}
-          onClose={() => {
-            setEditSpendLimitMember(null);
-            setPendingApproveRequestId(null);
-          }}
-          member={editSpendLimitMember}
-          owner={owner}
-          onSavingChange={handleUsagePendingChange}
-          onSaved={handleApproveOnModalSaved}
-        />
+          <TabsContent value="settings">
+            <div className="flex flex-col gap-10">
+              <UsageSettingsCard
+                workspaceId={owner.sId}
+                readOnly={isReadOnly}
+                hasPool={hasPool}
+              />
+              <LockedSection
+                locked={!isAwuPoolSummaryLoading && !hasPool}
+                className="flex flex-col gap-10"
+              >
+                <UsageProgrammaticLimitCard
+                  workspaceId={owner.sId}
+                  readOnly={isReadOnly}
+                />
+                <UsageNotificationsCard
+                  workspaceId={owner.sId}
+                  readOnly={isReadOnly}
+                />
+              </LockedSection>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {inviteBlockedPopupReason && (
+        <ReachedLimitPopup
+          isAdmin={isAdmin(owner)}
+          isOpened={!!inviteBlockedPopupReason}
+          onClose={() => setInviteBlockedPopupReason(null)}
+          subscription={subscription}
+          owner={owner}
+          code={inviteBlockedPopupReason}
+        />
+      )}
+
+      <ChangeSeatModal
+        isOpen={changeSeatMember !== null}
+        onClose={() => {
+          setChangeSeatMember(null);
+          setPendingApproveRequestId(null);
+        }}
+        member={changeSeatMember}
+        owner={owner}
+        seatPlans={seatPlans}
+        onSavingChange={handleSeatChangePendingChange}
+        onSaved={handleApproveOnModalSaved}
+      />
+
+      <EditSpendLimitModal
+        isOpen={editSpendLimitMember !== null}
+        onClose={() => {
+          setEditSpendLimitMember(null);
+          setPendingApproveRequestId(null);
+        }}
+        member={editSpendLimitMember}
+        owner={owner}
+        onSavingChange={handleUsagePendingChange}
+        onSaved={handleApproveOnModalSaved}
+      />
     </>
   );
 }

@@ -1,19 +1,19 @@
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import {
   getDataSourcesUsageByCategory,
-  getDataSourceViewsUsageByCategory,
+  getDataSourceViewsUsageByModelIds,
 } from "@app/lib/api/agent_data_sources";
-import type {
-  GetSpaceDataSourceViewsResponseBody,
-  PostSpaceDataSourceViewsResponseBody,
-} from "@app/lib/api/data_source_view";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import { ContentSchema } from "@app/types/api/internal/spaces";
+import type {
+  GetSpaceDataSourceViewsResponseBody,
+  PostSpaceDataSourceViewsResponseBody,
+} from "@app/types/api/data_source_view";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import { ContentSchema } from "@app/types/api/spaces";
 import type { DataSourceViewsWithDetails } from "@app/types/data_source_view";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -179,7 +179,10 @@ app.get(
         usages[dsView.id] = usagesByDataSources[dsView.dataSource.id];
       });
     } else {
-      usages = await getDataSourceViewsUsageByCategory({ auth, category });
+      usages = await getDataSourceViewsUsageByModelIds({
+        auth,
+        dataSourceViewModelIds: dataSourceViews.map((dsv) => dsv.id),
+      });
     }
 
     const enhancedDataSourceViews: DataSourceViewsWithDetails[] =

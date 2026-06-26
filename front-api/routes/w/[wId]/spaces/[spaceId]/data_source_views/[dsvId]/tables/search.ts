@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
-import type { SearchTablesResponseBody } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import logger from "@app/logger/logger";
+import type { SearchTablesResponseBody } from "@app/types/api/data_source_view";
 import { CoreAPI } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";

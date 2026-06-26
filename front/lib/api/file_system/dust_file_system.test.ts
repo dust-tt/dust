@@ -862,6 +862,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const workspaceId = auth.getNonNullableWorkspace().sId;
     const prefix = `w/${workspaceId}/conversations/${conversation.sId}/files/`;
+    const updatedAt = new Date("2025-01-01T00:00:00.000Z");
     getAllFilesByPrefixMock.mockResolvedValue({
       files: [
         {
@@ -869,7 +870,7 @@ describe("DustFileSystem.list thumbnail URLs", () => {
           metadata: {
             contentType: "image/png",
             size: "1024",
-            updated: new Date().toISOString(),
+            updated: updatedAt.toISOString(),
           },
         },
       ],
@@ -878,13 +879,14 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
     assert(fsResult.isOk());
-    const entries = await fsResult.value.list();
+    const listResult = await fsResult.value.list();
+    assert(listResult.isOk());
 
-    const file = entries.find((e) => !e.isDirectory);
+    const file = listResult.value.find((e) => !e.isDirectory);
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBe(
       `https://dust.tt/api/w/${workspaceId}` +
-        `/files/path/conversation-${conversation.sId}/photo.png?thumbnail=1`
+        `/files/path/conversation-${conversation.sId}/photo.png?thumbnail=1&v=${updatedAt.getTime()}`
     );
   });
 
@@ -919,9 +921,10 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
     assert(fsResult.isOk());
-    const entries = await fsResult.value.list();
+    const listResult = await fsResult.value.list();
+    assert(listResult.isOk());
 
-    const file = entries.find((e) => !e.isDirectory);
+    const file = listResult.value.find((e) => !e.isDirectory);
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBeNull();
   });

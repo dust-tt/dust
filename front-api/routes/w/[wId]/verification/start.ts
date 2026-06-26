@@ -91,8 +91,12 @@ app.post(
       );
     }
 
+    if (result.value.status === "already_verified") {
+      return ctx.json({ status: "already_verified" as const });
+    }
+
     return ctx.json({
-      success: true as const,
+      status: "code_sent" as const,
       message: "Verification code sent successfully.",
     });
   }

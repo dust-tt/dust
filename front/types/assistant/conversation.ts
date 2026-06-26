@@ -9,6 +9,7 @@ import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
 import { assertNeverAndIgnore } from "../shared/utils/assert_never";
+import type { SpaceType } from "../space";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -252,12 +253,15 @@ export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
 
 // Terminal statuses from which an agent message can never resume. Tools of such a message that
 // are still blocked on user input (e.g. a manual tool approval that was skipped when the message
-// got interrupted) are not actionable anymore. "gracefully_stopped" is not included: a graceful
-// stop keeps pending approvals actionable and approving them resumes the loop.
+// got interrupted or gracefully stopped) are not actionable anymore. "gracefully_stopped" is
+// treated like "succeeded" in most places, but it belongs here for resumption: a graceful stop
+// ends the loop in place, so resolving a leftover approval would relaunch a direction the loop
+// already stopped (and that steering, if any, has since superseded via a newly promoted message).
 export const UNRESUMABLE_AGENT_MESSAGE_STATUSES: AgentMessageStatus[] = [
   "failed",
   "cancelled",
   "interrupted",
+  "gracefully_stopped",
 ];
 
 export function isTerminalAgentMessageStatus(
@@ -563,6 +567,18 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   forkingData?: ConversationForkingDataType;
 };
 
+export type SelectableConversationSpaceType = SpaceType & {
+  selected: boolean;
+};
+
+export type ConversationSelectedSpacesResponse = {
+  selectedSpaces: SelectableConversationSpaceType[];
+  effectiveAcl: {
+    spaceIds: string[];
+    viewerMustHaveAll: true;
+  };
+};
+
 type ConversationDisplayTitleInput = Pick<
   ConversationWithoutContentType,
   "created" | "title" | "forkingData"
@@ -756,17 +772,25 @@ export type ConversationTitleEvent = {
   title: string;
 };
 
-// Event sent when the conversation's plan.md is created, edited, approved, or closed. Carries
-// only metadata (id, version, status flags) — the UI refetches the full file contents via the
-// plan_mode GET endpoint on receipt.
+// Event sent when the conversation's plan.md is created, edited, or closed. A refetch signal: the
+// UI re-reads the plan content via the plan_mode GET endpoint on receipt. `isClosed` lets the UI
+// close the plan panel.
 export type PlanUpdatedEvent = {
   type: "plan_updated";
   created: number;
   conversationId: string;
-  planFileId: string;
-  version: number;
   isClosed: boolean;
-  hasApproval: boolean;
+};
+
+// Event sent when a wake-up in the conversation is created or changes status. Thin payload: the
+// client refetches /wakeups on receipt, so the banner always reflects the committed state
+// regardless of when the event arrives.
+export type WakeUpUpdatedEvent = {
+  type: "wake_up_updated";
+  created: number;
+  conversationId: string;
+  wakeUpId: string;
+  userId: string;
 };
 
 export const ConversationMCPServerViewOrigins = [

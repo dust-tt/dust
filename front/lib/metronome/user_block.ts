@@ -52,7 +52,7 @@ export type UserBlockedReason =
   | "user_cap_reached"
   | "no_seat";
 
-export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
+export type ProgrammaticCreditStatus = "active" | "depleted";
 
 export type FairUseAwuCreditsStatus = {
   limit: number;
@@ -67,15 +67,21 @@ const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
 };
 
 export type GetWorkspaceUsageStatusResponseBody = {
-  awuStatus: "normal" | "warned" | "blocked";
+  // True when the user has consumed ≥ 80 % of their credit allowance (soft warning, not yet blocked).
+  userNearCreditLimit: boolean;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditStatus: ProgrammaticCreditStatus;
+  // True when workspace programmatic usage has crossed WARNING_BALANCE_RATIO of the monthly cap.
+  // Redis-only flag, independent of the throttling states (active_low_balance etc.).
+  programmaticWarningReached: boolean;
   balanceThresholdReached: boolean;
-  // True when the current user has no billable seat in the workspace and is
-  // therefore blocked from sending messages.
-  noSeat: boolean;
+  // Authoritative block reason from isUserBlocked — null means the user can
+  // send messages. Replaces the old client-side derivations (noSeat,
+  // awuStatus === "blocked", poolCreditState === "depleted").
+  userBlockedReason: UserBlockedReason | null;
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
+  willAutoUpgrade: boolean;
 };
 
 export type GetFairUseCreditsResponseBody = {
@@ -108,15 +114,60 @@ async function setFlag(key: string, value: string): Promise<void> {
   });
 }
 
-// Per-user AWU 80% warning — derived from the fine-grained credit state.
-// "*_low_balance" states mean the user is warned but not yet blocked.
+// Per-user "near limit" flag — stored independently of the credit state so
+// the warning signal can be decoupled from the seat↔pool dimension.
+//
+// Set to true by:
+//   - `spend_threshold_reached` (warningAlertId, isPerUser): consumption reached
+//     80% of the per-user cap (seat allowance + pool limit). Pro/max pool users.
+//   - `low_remaining_contract_credit_balance_reached` (threshold > 0): a free
+//     seat's lifetime credit balance crossed the low-balance threshold.
+// Set to false by:
+//   - `spend_threshold_reached` resolved (warningAlertId, isPerUser): cap raised/removed.
+//   - `low_remaining_contract_credit_balance_resolved`: free seat credit recovered.
+//   - Admin removes/raises per-user cap (spend_limit.ts).
+//   - Reconciliation: recomputed from live Metronome balance on each reconcile.
+//
+// Cache-miss fallback: infer from the credit state so that existing
+// `on_pool_low_balance` / `user_seat_low_balance` rows continue to show the
+// banner until they are migrated or reconciled.
+
+function buildUserNearLimitKey(workspaceId: string, userId: string): string {
+  return `metronome:user_near_limit:${workspaceId}:${userId}`;
+}
+
+export async function setUserNearLimit(
+  workspaceId: string,
+  userId: string,
+  nearLimit: boolean
+): Promise<void> {
+  await setFlag(
+    buildUserNearLimitKey(workspaceId, userId),
+    nearLimit ? "1" : "0"
+  );
+}
+
+async function getUserNearLimit(
+  workspaceId: string,
+  userId: string
+): Promise<boolean> {
+  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildUserNearLimitKey(workspaceId, userId))
+  );
+  if (cached !== null) {
+    return cached === "1";
+  }
+  // Cache miss: fall back to credit state for existing rows that haven't been
+  // migrated yet (on_pool_low_balance / user_seat_low_balance).
+  const state = await getUserCreditState(workspaceId, userId);
+  return state === "on_pool_low_balance" || state === "user_seat_low_balance";
+}
 
 export async function isUserAwuWarned(
   workspaceId: string,
   userId: string
 ): Promise<boolean> {
-  const state = await getUserCreditState(workspaceId, userId);
-  return state === "on_pool_low_balance" || state === "user_seat_low_balance";
+  return getUserNearLimit(workspaceId, userId);
 }
 
 // Workspace credit-balance threshold reached (admin-configured early warning).
@@ -144,6 +195,36 @@ export async function isWorkspaceBalanceThresholdReached(
   const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
     client.get(buildWorkspaceBalanceThresholdReachedKey(workspaceId))
   );
+  return val === "1";
+}
+
+// Workspace programmatic 80% warning — set when the warning alert fires,
+// cleared on cap reset or reconcile. Redis-only; no DB fallback (cold miss
+// reads as false). Drives the banner independently of the throttling states.
+
+function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
+  return `metronome:programmatic_warning:${workspaceId}`;
+}
+
+export async function setWorkspaceProgrammaticWarningReached(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "1");
+}
+
+export async function clearWorkspaceProgrammaticWarningReached(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "0");
+}
+
+export async function isWorkspaceProgrammaticWarningReached(
+  workspaceId: string
+): Promise<boolean> {
+  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceProgrammaticWarningKey(workspaceId))
+  );
+  // Redis miss (null) returns false: prefer not showing the banner over a false positive on cache wipe.
   return val === "1";
 }
 

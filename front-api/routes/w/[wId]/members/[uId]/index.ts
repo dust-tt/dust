@@ -7,15 +7,15 @@ import {
   revokeAndTrackMembership,
   updateMembershipRoleAndTrack,
 } from "@app/lib/api/membership";
-import type {
-  GetMemberResponseBody,
-  PostMemberResponseBody,
-} from "@app/lib/api/user";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
+import type {
+  GetMemberResponseBody,
+  PostMemberResponseBody,
+} from "@app/types/api/user";
 import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";

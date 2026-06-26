@@ -387,6 +387,22 @@ const config = {
   getDocumentRendererUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
   },
+  // In local dev Gotenberg runs in Docker and cannot reach localhost.
+  // Set DOCUMENT_RENDERER_APP_URL=http://host.docker.internal:3011 in .env.local.
+  getDocumentRendererAppUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_APP_URL") ??
+      config.getAppUrl()
+    );
+  },
+  // API URL reachable from Gotenberg's Chromium (inside Docker).
+  // Set DOCUMENT_RENDERER_API_URL=http://host.docker.internal:3000 in .env.local.
+  getDocumentRendererApiUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_API_URL") ??
+      config.getApiBaseUrl()
+    );
+  },
   // Public viz URL (used by Gotenberg which routes through egress proxy).
   getVizPublicUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("VIZ_PUBLIC_URL");
@@ -461,6 +477,12 @@ const config = {
   },
   getContentfulAccessToken: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ACCESS_TOKEN");
+  },
+  getContentfulEnvironment: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ENVIRONMENT") ??
+      "master"
+    );
   },
   getContentfulPreviewSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
@@ -642,14 +664,23 @@ const config = {
       "METRONOME_STRIPE_DELIVERY_METHOD_ID"
     );
   },
-  getVertexAiProjectId: (): string => {
-    return EnvironmentConfig.getEnvVariable("VERTEX_AI_PROJECT_ID");
+  getVertexAiProjectId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("VERTEX_AI_PROJECT_ID");
   },
   getDustWebhooksPublicUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DUST_WEBHOOKS_PUBLIC_URL");
   },
   getConvertAPIKey: (): string => {
     return EnvironmentConfig.getEnvVariable("CONVERTAPI_API_KEY");
+  },
+  getImgproxyUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_URL");
+  },
+  getImgproxyKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_KEY");
+  },
+  getImgproxySalt: (): string => {
+    return EnvironmentConfig.getEnvVariable("IMGPROXY_SALT");
   },
 };
 

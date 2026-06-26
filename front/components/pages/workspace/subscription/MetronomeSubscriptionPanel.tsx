@@ -1,8 +1,8 @@
+import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { useSubscriptionContext } from "@app/components/workspace/billing/SubscriptionContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
-import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -19,12 +19,11 @@ import {
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import type { BillingPeriod } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import {
   Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
   Chip,
   ContentMessage,
   CreditCard01,
@@ -361,18 +360,11 @@ export function MetronomeSubscriptionPanel() {
             <Page.H variant="h5">Choose a plan</Page.H>
             <Page.P>Pick a plan that best suits your team.</Page.P>
           </div>
-          <ButtonsSwitchList
+          <BillingPeriodSwitch
             defaultValue={billingPeriod}
             size="xs"
-            onValueChange={(v) => {
-              if (v === "monthly" || v === "yearly") {
-                setBillingPeriod(v);
-              }
-            }}
-          >
-            <ButtonsSwitch value="monthly" label="Monthly billing" />
-            <ButtonsSwitch value="yearly" label="Yearly billing" />
-          </ButtonsSwitchList>
+            onValueChange={setBillingPeriod}
+          />
         </div>
         <div className="pt-4">
           <SubscriptionPlanCards

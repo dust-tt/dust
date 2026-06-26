@@ -1,6 +1,6 @@
-import type { ListTablesResponseBody } from "@app/lib/api/data_source_view";
 import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
+import type { ListTablesResponseBody } from "@app/types/api/data_source_view";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

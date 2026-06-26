@@ -2,6 +2,7 @@ import ConversationSidePanelContent from "@app/components/assistant/conversation
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { useLockDocumentScroll } from "@app/hooks/useLockDocumentScroll";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
@@ -26,25 +27,51 @@ export default function ConversationSidePanelContainer({
   const isFullScreen = fullScreenHash === "true";
 
   const isMobile = useIsMobile();
+  const isMobilePanelOpen = isMobile && !!currentPanel;
+
+  useLockDocumentScroll(isMobilePanelOpen);
 
   useEffect(() => {
+    if (isMobile) {
+      setPanelRef(null);
+      return;
+    }
+
     setPanelRef(panelRef.current);
-  }, [setPanelRef]);
+  }, [isMobile, setPanelRef]);
 
   useEffect(() => {
-    if (!currentPanel || !panelRef.current) {
+    if (isMobile || !currentPanel || !panelRef.current) {
       return;
     }
 
     panelRef.current?.expand(DEFAULT_RIGHT_PANEL_SIZE);
-  }, [currentPanel]);
+  }, [currentPanel, isMobile]);
+
+  if (isMobile) {
+    if (!currentPanel || !conversation) {
+      return null;
+    }
+
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col overflow-hidden overscroll-none bg-panel-background dark:bg-panel-background-night">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+          <ConversationSidePanelContent
+            conversation={conversation}
+            owner={owner}
+            currentPanel={currentPanel}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
       {!!conversation && (
         <ResizableHandle
-          withHandle={currentPanel && !isMobile && !isFullScreen}
-          disabled={!currentPanel || isMobile || isFullScreen}
+          withHandle={currentPanel && !isFullScreen}
+          disabled={!currentPanel || isFullScreen}
           className="z-50"
         />
       )}

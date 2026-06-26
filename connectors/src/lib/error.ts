@@ -105,6 +105,16 @@ export class ExternalOAuthTokenError extends Error {
   }
 }
 
+export class RemoteDatabaseConnectionNotReadonlyError extends Error {
+  declare cause?: Error;
+
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message);
+    this.cause = innerError;
+    this.name = "RemoteDatabaseConnectionNotReadonlyError";
+  }
+}
+
 export class WorkspaceQuotaExceededError extends Error {
   constructor() {
     super(

@@ -505,6 +505,11 @@ const getProcessingFunction = ({
       }
   }
 
+  // For conversation, only tabular files (CSV, TSV, XLSX, XLS dispatched above) are indexed.
+  if (useCase === "conversation") {
+    return undefined;
+  }
+
   if (isSupportedAudioContentType(contentType)) {
     if (useCase === "upsert_document" || useCase === "project_context") {
       return upsertDocumentToDatasource;
@@ -512,21 +517,8 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  if (
-    isSupportedPlainTextContentType(contentType) &&
-    [
-      "conversation",
-      "tool_output",
-      "upsert_document",
-      "folders_document",
-      "project_context",
-    ].includes(useCase)
-  ) {
-    return upsertDocumentToDatasource;
-  }
-
   if (isSupportedPlainTextContentType(contentType)) {
-    return undefined;
+    return upsertDocumentToDatasource;
   }
 
   // Processing is assumed to be irrelevant for internal mime types.
@@ -534,7 +526,7 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Fonts are binary assets used as-is — no processing needed.
+  // Fonts are binary assets with no processing needed.
   if (isSupportedFontContentType(contentType)) {
     return undefined;
   }

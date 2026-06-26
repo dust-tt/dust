@@ -217,7 +217,8 @@ function constructSkillsSection({
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
     `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
     "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
-    `If the referenced skill would help and is not already enabled, call \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
+    `You can enable the skill using \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
+    "It is not useful to enable skills that are already enabled, this would only output the skill's content again.\n" +
     "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
     "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
     `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +
@@ -242,8 +243,25 @@ function constructSkillsSection({
   return skillsSection;
 }
 
+function constructComputerEnableForFilesPrompt(): string {
+  return (
+    "You must enable the Computer skill proactively as soon as the user uploads files, " +
+    "especially PDFs, spreadsheets, archives, or other files that require inspection, " +
+    "text extraction, code execution, or file manipulation."
+  );
+}
+
 // TODO(20260504 FILE SYSTEM): Remove in favor of constructAttachmentsSectionNewFileExplorer.
-function constructAttachmentsSection(): string {
+function constructAttachmentsSection({
+  hasSandboxTools,
+}: {
+  hasSandboxTools: boolean;
+}): string {
+  const sandboxFilesPrompt = hasSandboxTools
+    ? "When using the Computer, conversation files are mounted under `/files/conversation`. " +
+      `${constructComputerEnableForFilesPrompt()}\n`
+    : "";
+
   return (
     "# ATTACHMENTS\n" +
     'The conversation history may contain file attachments, indicated by attachment tags of the form <attachment id="{FILE_ID}" type="{MIME_TYPE}" title="{TITLE}" version="{VERSION}" isIncludable="{IS_INCLUDABLE}" isQueryable="{IS_QUERYABLE}" isSearchable="{IS_SEARCHABLE}" sourceUrl="{SOURCE_URL}"> . ' +
@@ -254,6 +272,7 @@ function constructAttachmentsSection(): string {
     `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
     `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\`,` +
     " contents of this attachment will be considered in the search.\n" +
+    sandboxFilesPrompt +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
   );
 }
@@ -264,7 +283,7 @@ function constructAttachmentsSectionNewFileExplorer({
   hasSandboxTools: boolean;
 }): string {
   const tabularFilesLine = hasSandboxTools
-    ? '- Tabular files (CSV, spreadsheets) attached as `<file>` tags are mounted under /files/conversation; analyze them with code via the sandbox. Tabular files attached as `<attachment isQueryable="true">` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n'
+    ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt()} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
     : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
 
   return (
@@ -459,24 +478,24 @@ export function constructPromptMultiActions(
   });
   const attachmentsSection = isNewFileExplorer
     ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
-    : constructAttachmentsSection();
+    : constructAttachmentsSection({ hasSandboxTools });
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 
   if (hasStaticInstructions) {
     // Structured form with 3 cache tiers, ordered from most stable to most volatile.
     //
-    // Instructions (long cache): stable per agent config — agent instructions,
-    // tools (directives + server listing), skills, format docs, and guidelines.
+    // Instructions (long cache): stable per agent config, covering agent instructions, skills,
+    // format docs, and guidelines.
     //
-    // Shared context (short cache): workspace-scoped data shared across users — date, toolsets,
-    // workspace info. A cache breakpoint here lets different users in the same workspace share
-    // this prefix.
+    // Shared context (short cache): workspace-scoped data shared across users, covering the tools
+    // section (directives + server listing), date, toolsets, and workspace info. A cache breakpoint
+    // here lets different users in the same workspace share this prefix.
     //
-    // Ephemeral context (no breakpoint): per-call data — branch lineage, memories, user profile.
+    // Ephemeral context (no breakpoint): per-call data, covering branch lineage, memories, and user
+    // profile.
     const fullInstructions = [
       instructionsContent,
-      toolsSection,
       skillsSection,
       attachmentsSection,
       pastedContentSection,
@@ -485,7 +504,12 @@ export function constructPromptMultiActions(
       .filter((s) => s.trim() !== "")
       .join("\n");
 
+    // The tools section (directives + available-servers overview) lives in the shared-context
+    // (5min) tier rather than the instructions (1h) tier: its per-server listing and instructions
+    // change whenever a (conditional) JIT server is added mid-run, so keeping it out of the
+    // instructions block lets that block stay cache-stable across server additions.
     const sharedContext: SystemPromptContext[] = [
+      { role: "context" as const, content: toolsSection },
       { role: "context" as const, content: contextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
       { role: "context" as const, content: workspaceContext ?? "" },

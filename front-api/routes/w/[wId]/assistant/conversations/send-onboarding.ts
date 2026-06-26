@@ -1,5 +1,5 @@
-import type { PostSendOnboardingResponseBody } from "@app/lib/api/assistant/onboarding";
 import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
+import type { PostSendOnboardingResponseBody } from "@app/types/api/assistant/onboarding";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

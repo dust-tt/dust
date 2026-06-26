@@ -1,11 +1,8 @@
-import type {
-  DeleteSkillResponseBody,
-  GetSkillResponseBody,
-  GetSkillWithRelationsResponseBody,
-  PatchSkillResponseBody,
-} from "@app/lib/api/skills";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
-import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
+import {
+  getReferencedSkillSpaceModelIds,
+  resolveAdditionalRequestedSpaceModelIds,
+} from "@app/lib/api/skills/space_requirements";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -13,6 +10,12 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  DeleteSkillResponseBody,
+  GetSkillResponseBody,
+  GetSkillWithRelationsResponseBody,
+  PatchSkillResponseBody,
+} from "@app/types/api/skills";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -115,9 +118,6 @@ app.get(
       const usage = await skill.fetchUsage(auth);
       const editors = await skill.listEditors(auth);
       const editedByUser = await skill.fetchEditedByUser(auth);
-      const extendedSkill = serializedSkill.extendedSkillId
-        ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
-        : null;
       const childSkills = await skill.fetchChildSkills(auth);
       const usedBySkills =
         (await SkillResource.batchFetchUsedBySkills(auth, [skill])).get(
@@ -134,7 +134,6 @@ app.get(
           },
           editors: editors ? editors.map((e) => e.toJSON()) : null,
           editedByUser: editedByUser ? editedByUser.toJSON() : null,
-          extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           childSkills: childSkills.map((childSkill) => {
             const {
               instructions,
@@ -273,6 +272,11 @@ app.patch(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       });
+    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
+      auth,
+      body.instructions,
+      skill.sId
+    );
 
     let additionalRequestedSpaceIds: ModelId[];
 
@@ -301,9 +305,16 @@ app.patch(
           mcpServerViews: skill.mcpServerViews,
           attachedKnowledge: previousAttachedKnowledge,
         });
-      const previousComputedRequestedSpaceIdsSet = new Set(
-        previousComputedRequestedSpaceIds
-      );
+      const previousReferencedSkillSpaceIds =
+        await getReferencedSkillSpaceModelIds(
+          auth,
+          skill.instructions,
+          skill.sId
+        );
+      const previousComputedRequestedSpaceIdsSet = new Set([
+        ...previousComputedRequestedSpaceIds,
+        ...previousReferencedSkillSpaceIds,
+      ]);
 
       additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
         (spaceId) => !previousComputedRequestedSpaceIdsSet.has(spaceId)
@@ -312,6 +323,7 @@ app.patch(
 
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds,
+      ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIds,
     ]);
 

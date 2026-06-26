@@ -6,7 +6,6 @@ import {
   CONFIG_ENV_PATH,
   DUST_HIVE_ENVS,
   DUST_HIVE_HOME,
-  HIVES_DIR,
   findRepoRoot,
   getDockerOverridePath,
   getEnvDir,
@@ -17,6 +16,7 @@ import {
   getPidPath,
   getPortsPath,
   getWorktreeDir,
+  HIVES_DIR,
 } from "../../src/lib/paths";
 
 describe("paths", () => {
@@ -57,6 +57,16 @@ describe("paths", () => {
 
     it("handles environment names with hyphens", () => {
       expect(getWorktreeDir("auth-v2", "/path/to/repo")).toBe("/path/to/repo/.hives/auth-v2");
+    });
+
+    it("returns explicit worktree paths when provided", () => {
+      expect(
+        getWorktreeDir(
+          "port-louis",
+          "/path/to/repo",
+          "/path/to/repo/.hives/external/tool/workspaces/project/port-louis"
+        )
+      ).toBe("/path/to/repo/.hives/external/tool/workspaces/project/port-louis");
     });
   });
 

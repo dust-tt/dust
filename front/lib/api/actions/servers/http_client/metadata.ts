@@ -12,7 +12,12 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
 export const HTTP_CLIENT_TOOLS_METADATA = createToolsRecord({
   send_request: {
     description:
-      "Send an HTTP request to an external API. Returns the response status, headers, and body. If a secret is configured for this server, it will be automatically used as a Bearer token for authentication.",
+      "Send an HTTP request to an external REST API and get back the status, headers, and body. " +
+      "Only text-based responses are returned (binary is omitted) and bodies are truncated at ~1MB. " +
+      "Bearer auth is only via a pre-configured server secret, sent as Authorization: Bearer. " +
+      "You cannot set the Authorization header yourself and OAuth is unsupported, but other key schemes (e.g. X-Api-Key) can go in `headers`. " +
+      "If you don't already know the API's exact contract, use `websearch`/`webbrowser` to read its docs " +
+      "(reference, OpenAPI/Swagger) before calling rather than guessing the endpoint. If no docs exist, say so.",
     schema: {
       url: z
         .string()
@@ -55,46 +60,6 @@ export const HTTP_CLIENT_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-export const HTTP_CLIENT_INSTRUCTIONS = `
-This tool allows you to make HTTP requests to external endpoints. It is particularly useful for:
-
-- Interacting with public REST APIs
-- Fetching data from web services
-- Integrating with third-party services
-
-**CRITICAL: If you are not provided with the specific HTTP request details, you must search for the API documentation first.**
-
-If you are not provided with the specific HTTP request parameters, you MUST:
-
-1. **Use the websearch search tool aggressively** to find the API documentation:
-   - Look for official documentation sites
-   - Look for REST API reference documentation
-   - Look for developer guides
-
-2. **Use the webbrowser tool to read documentation**:
-   - Browse the official documentation sites found in search results
-   - Look for OpenAPI/Swagger specifications
-   - Read Postman collections and GitHub repositories with API examples
-   - Navigate through official developer portals and API reference documentation
-
-3. **Extract key information from the documentation**:
-   - Base URL and versioning
-   - Authentication methods (API keys, OAuth, Bearer tokens)
-   - Required headers
-   - Request/response formats
-   - Rate limits
-   - Error codes and meanings
-   - Example requests and responses
-
-4. **Make HTTP requests with proper authentication, headers, and request formatting**.
-
-**If you cannot find documentation, explicitly state this limitation.**
-
-**NEVER make HTTP requests to unknown APIs without first searching for and reading their documentation.**
-
-Note, you can only make HTTP requests with bearer tokens or no authentication. You cannot call endpoints that require oauth.
-`;
-
 // Combine http_client tools with web tools for metadata
 const ALL_HTTP_CLIENT_TOOLS_METADATA = {
   ...HTTP_CLIENT_TOOLS_METADATA,
@@ -102,7 +67,6 @@ const ALL_HTTP_CLIENT_TOOLS_METADATA = {
 };
 
 export const HTTP_CLIENT_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: HTTP_CLIENT_TOOL_NAME,
     version: "1.0.0",
@@ -111,7 +75,7 @@ export const HTTP_CLIENT_SERVER = {
     authorization: null,
     icon: "ActionGlobeAltIcon" as const,
     documentationUrl: null,
-    instructions: HTTP_CLIENT_INSTRUCTIONS,
+    instructions: null,
     developerSecretSelection: "optional" as const,
     developerSecretSelectionDescription:
       "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",

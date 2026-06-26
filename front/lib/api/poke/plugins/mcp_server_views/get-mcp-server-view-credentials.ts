@@ -24,6 +24,7 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
       },
     },
     redactResult: true,
+    requiredRoles: ["engineering"],
   },
   isApplicableTo: (auth, resource) => {
     // Only applicable if the MCP server view exists

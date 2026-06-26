@@ -1,12 +1,12 @@
 import config from "@app/lib/api/config";
-import type {
-  FeaturesType,
-  PokeGetDataSourceDetails,
-} from "@app/lib/api/poke/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import type {
+  FeaturesType,
+  PokeGetDataSourceDetails,
+} from "@app/types/api/poke/data_sources";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { isSlackAutoReadPatterns } from "@app/types/connectors/slack";

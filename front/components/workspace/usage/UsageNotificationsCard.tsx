@@ -27,6 +27,7 @@ export function UsageNotificationsCard({
 
   const [isSavingUpgradeRequestEmail, setIsSavingUpgradeRequestEmail] =
     useState(false);
+  const [isEditingThreshold, setIsEditingThreshold] = useState(false);
 
   const handleToggleUpgradeRequestEmail = async () => {
     setIsSavingUpgradeRequestEmail(true);
@@ -71,24 +72,44 @@ export function UsageNotificationsCard({
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Credit balance threshold"
-          description="Email all workspace admins when your remaining credit balance drops below this amount (in credits). Set to 0 to disable."
+          title="Workspace credit pool threshold"
+          description={
+            <>
+              Email all workspace admins when your remaining workspace credit
+              pool balance drops below this amount.{" "}
+              <strong>Set to 0 to disable.</strong>
+            </>
+          }
           action={
             <div className="w-52">
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={String(currentThreshold)}
-                unit="credits"
+                placeholder="Disabled"
+                value={
+                  currentThreshold === 0
+                    ? ""
+                    : currentThreshold.toLocaleString()
+                }
+                unit={
+                  currentThreshold === 0 && !isEditingThreshold
+                    ? undefined
+                    : "credits"
+                }
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                formatValue={(value) =>
+                  value ? Number(value).toLocaleString() : value
+                }
                 onSave={handleSaveBalanceThreshold}
+                onFocus={() => setIsEditingThreshold(true)}
+                onBlur={() => setIsEditingThreshold(false)}
                 disabled={readOnly || isUsageNotificationsLoading}
               />
             </div>
           }
         />
         <SettingsList.Row
-          title="Upgrade request"
+          title="Upgrade request emails"
           description="Email all workspace admins when a member requests a spend-limit upgrade."
           action={
             <SliderToggle

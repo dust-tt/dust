@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/extension",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Dust Chrome Extension",
   "scripts": {
     "clean": "rm -rf build/*",
@@ -16,7 +16,7 @@
     "tsgo": "tsgo"
   },
   "engines": {
-    "node": ">=24.14.0"
+    "node": ">=24.16.0"
   },
   "author": "@dust-tt",
   "license": "ISC",

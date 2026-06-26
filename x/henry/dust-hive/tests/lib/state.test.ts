@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import type { ServiceName } from "../../src/lib/services";
 import {
-  type EnvironmentState,
-  type StateInfo,
   detectWarnings,
   determineState,
+  type EnvironmentState,
   formatState,
+  type StateInfo,
 } from "../../src/lib/state";
 
 describe("state", () => {

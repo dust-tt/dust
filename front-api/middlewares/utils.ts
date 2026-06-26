@@ -7,6 +7,7 @@ import type {
   APIErrorType,
   APIErrorWithContentfulStatusCode,
 } from "@app/types/error";
+import { EXPECTED_API_ERROR_TYPES } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { getClientIpFromContext } from "@front-api/lib/request";
 import type { Context, ErrorHandler, TypedResponse } from "hono";
@@ -42,10 +43,17 @@ export function apiError(
     stack: error?.stack ?? callstack,
   };
 
-  logger.error(
+  // Some error types are expected outcomes of normal operation (e.g. a region
+  // redirect) rather than failures. Log those at `info` so they don't pollute
+  // error monitoring.
+  const logLevel = EXPECTED_API_ERROR_TYPES.has(err.api_error.type)
+    ? "info"
+    : "error";
+
+  logger[logLevel](
     {
       method: ctx.req.method,
-      url: ctx.req.url,
+      url: ctx.req.path,
       statusCode: err.status_code,
       apiError: { ...err, callstack },
       error: errorAttrs,

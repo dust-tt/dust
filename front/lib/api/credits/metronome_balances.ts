@@ -1,21 +1,9 @@
-import type { Authenticator } from "@app/lib/auth";
-import { listMetronomeBalances } from "@app/lib/metronome/client";
-import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
 import type {
   MetronomeCommit,
   MetronomeCredit,
 } from "@app/lib/metronome/types";
-import {
-  isMetronomeExcessCredit,
-  METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
-} from "@app/lib/metronome/types";
-import type {
-  CreditDisplayData,
-  CreditType,
-  GetCreditsResponseBody,
-} from "@app/types/credits";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
+import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
 function mapMetronomeType(
@@ -94,41 +82,4 @@ export function metronomeBalanceToDisplayData(
     expirationDate: expirationDateMs,
     boughtByUser: null,
   };
-}
-
-export class MetronomeBalancesError extends Error {
-  constructor(
-    readonly type: "not_configured" | "balances_fetch_failed",
-    readonly cause?: Error
-  ) {
-    super(type);
-  }
-}
-
-export async function getMetronomeBalances(
-  auth: Authenticator
-): Promise<Result<GetCreditsResponseBody, MetronomeBalancesError>> {
-  const workspace = auth.getNonNullableWorkspace();
-  const { metronomeCustomerId } = workspace;
-  if (!metronomeCustomerId) {
-    return new Err(new MetronomeBalancesError("not_configured"));
-  }
-
-  const result = await listMetronomeBalances(metronomeCustomerId);
-  if (result.isErr()) {
-    return new Err(
-      new MetronomeBalancesError("balances_fetch_failed", result.error)
-    );
-  }
-
-  const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
-  const credits: CreditDisplayData[] = result.value
-    .filter(
-      (entry) =>
-        entry.access_schedule?.credit_type?.id ===
-          programmaticUsdCreditTypeId && !isMetronomeExcessCredit(entry)
-    )
-    .map(metronomeBalanceToDisplayData);
-
-  return new Ok({ credits });
 }

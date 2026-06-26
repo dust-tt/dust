@@ -1,4 +1,4 @@
-import type { GetProvidersCheckResponseBody } from "@app/lib/api/provider_credentials";
+import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

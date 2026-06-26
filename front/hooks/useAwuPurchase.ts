@@ -4,6 +4,7 @@ import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
 } from "@app/lib/swr/credits";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback, useSyncExternalStore } from "react";
 
 const awuPurchaseLoadingState = new Map<string, boolean>();
@@ -67,7 +68,7 @@ export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
           const message =
-            errorData?.error?.message ?? "Failed to purchase AWU credits";
+            errorData?.error?.message ?? "Failed to purchase credits";
           return { status: "error", message };
         }
 
@@ -79,9 +80,7 @@ export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
 
         return { status: "success" };
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to purchase AWU credits";
-        return { status: "error", message };
+        return { status: "error", message: normalizeError(err).message };
       } finally {
         setAwuPurchaseLoading(workspaceId, false);
       }

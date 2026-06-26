@@ -100,9 +100,10 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup. " +
+          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
-            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
+            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle). " +
+            "To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
         ),
       threadTs: z
         .string()
@@ -148,9 +149,10 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup. " +
+          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
-            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
+            "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle). " +
+            "To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
         ),
       post_at: z
         .union([z.number().int().positive(), z.string()])
@@ -495,7 +497,6 @@ Set search_all=true only if the user explicitly requests to search all public wo
 
 // Server metadata for external consumption (e.g., by SDK).
 export const SLACK_PERSONAL_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "slack",
     version: "1.0.0",
@@ -507,11 +508,7 @@ export const SLACK_PERSONAL_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-    instructions:
-      "When posting a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). " +
-      "Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
-      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the Slack ID (e.g., 'U01234ABCD') of the user you want to mention.\n" +
-      "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+    instructions: null,
   },
   tools: Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => ({
     name: t.name,

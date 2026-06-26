@@ -1,15 +1,18 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
-import type { GetWorkspaceInvitationsResponseBody } from "@app/lib/api/invitation";
-import type { MembersLookupResponseBody } from "@app/lib/api/members";
-import type {
-  GetUserSpendLimitResponseBody,
-  PutUserSpendLimitResponseBody,
-} from "@app/lib/api/users/spend_limit";
 import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
+import type { GetWorkspaceInvitationsResponseBody } from "@app/types/api/invitation";
+import type {
+  GetFreeSeatCountsResponseBody,
+  MembersLookupResponseBody,
+} from "@app/types/api/members";
+import type {
+  GetUserSpendLimitResponseBody,
+  PutUserSpendLimitResponseBody,
+} from "@app/types/api/users/spend_limit";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -33,11 +36,6 @@ const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
 
 const PutUserSpendLimitResponseSchema = z.object({
   limit: SpendLimitResponseSchema,
-  transitionedTo: z.union([
-    z.literal("reached"),
-    z.literal("resolved"),
-    z.null(),
-  ]),
 });
 
 type PaginationParams = {
@@ -174,6 +172,7 @@ export function useSearchMembers<
       `/api/w/${workspaceId}/members/search?${searchParams.toString()}`,
       searchMembersFetcher,
       {
+        keepPreviousData: true,
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
         disabled,
@@ -247,7 +246,7 @@ export function useMembersUsage({
   searchTerm?: string;
   pageIndex: number;
   pageSize: number;
-  orderColumn?: "name" | "email";
+  orderColumn?: "name" | "email" | "consumedAwuCredits";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType | "none";
   disabled?: boolean;
@@ -282,6 +281,7 @@ export function useMembersUsage({
     `${membersUsageUrl(workspaceId)}?${searchParams.toString()}`,
     membersUsageFetcher,
     {
+      keepPreviousData: true,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       disabled,
@@ -478,4 +478,26 @@ export function useUpdateUserSpendLimit({
   );
 
   return { doUpdateSpendLimit };
+}
+
+export function useFreeSeatCounts({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const freeSeatCountsFetcher: Fetcher<GetFreeSeatCountsResponseBody> = fetcher;
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/members/free-seats`,
+    freeSeatCountsFetcher,
+    { disabled }
+  );
+
+  return {
+    freeSeatCounts: data?.freeSeatCounts,
+    isFreeSeatCountsLoading: !error && !data && !disabled,
+    isFreeSeatCountsError: !!error,
+  };
 }

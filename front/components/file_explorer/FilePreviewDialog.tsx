@@ -1,11 +1,23 @@
+import {
+  MarkdownFilePreview,
+  type MarkdownFilePreviewViewMode,
+  MarkdownFilePreviewViewModeSwitch,
+} from "@app/components/file_explorer/MarkdownFilePreview";
+import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
-import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
-import { useFileContent } from "@app/hooks/useFileContent";
+import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { parseCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import {
+  useFileContentByUrl,
+  writeFileContentByPath,
+} from "@app/lib/swr/files";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   ChevronLeft,
@@ -25,7 +37,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSWRConfig } from "swr";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -141,12 +154,50 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
   );
 }
 
+interface AudioPreviewProps {
+  fileUrl: string;
+  fileId: string | null;
+}
+
+function AudioPreview({ fileUrl, fileId }: AudioPreviewProps) {
+  const transcriptUrl = fileId ? `${fileUrl}&version=processed` : null;
+  const { fileContent: transcript } = useFileContentByUrl({
+    url: transcriptUrl,
+    disabled: !transcriptUrl,
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <audio controls className="w-full" src={fileUrl}>
+        Your browser does not support the audio element.
+      </audio>
+      {transcript ? (
+        <div className="flex flex-col gap-2">
+          <h4 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            Transcript
+          </h4>
+          <Markdown content={transcript} isStreaming={false} />
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No transcript available.
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface FilePreviewDialogContentProps {
   category: ReturnType<typeof getFilePreviewConfig>["category"];
   entry: FileEntry;
   fileContent: string | null;
   fileUrl: string;
   isContentLoading: boolean;
+  markdownCanEdit?: boolean;
+  markdownContent?: string;
+  markdownViewMode?: MarkdownFilePreviewViewMode;
+  onMarkdownContentChange?: (content: string) => void;
+  onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
   processedContent: ProcessedContent | null;
 }
 
@@ -156,11 +207,21 @@ function FilePreviewDialogContent({
   fileContent,
   fileUrl,
   isContentLoading,
+  markdownCanEdit,
+  markdownContent,
+  markdownViewMode,
+  onMarkdownContentChange,
+  onMarkdownViewModeChange,
   processedContent,
 }: FilePreviewDialogContentProps) {
   if (isContentLoading) {
     return (
-      <div className="flex h-48 items-center justify-center">
+      <div
+        className={cn(
+          "flex items-center justify-center",
+          category === "markdown" ? "min-h-0 flex-1" : "h-48"
+        )}
+      >
         <Spinner />
       </div>
     );
@@ -179,33 +240,24 @@ function FilePreviewDialogContent({
         />
       );
 
-    case "pdf":
-      return (
-        <iframe
-          src={`${fileUrl}#navpanes=0`}
-          className="h-[70vh] w-full rounded-lg border-0"
-          title={entry.fileName}
-        />
-      );
+    case "pdf": {
+      const sep = fileUrl.includes("?") ? "&" : "?";
+      const pdfUrl = entry.lastModifiedMs
+        ? `${fileUrl}${sep}v=${entry.lastModifiedMs}`
+        : fileUrl;
+      return <PDFViewer key={fileUrl} url={pdfUrl} />;
+    }
 
-    case "viewer":
-      // TODO(20260504 FILE_SYSTEM): add Office viewer preview support.
-      return (
-        <div className="flex h-48 items-center justify-center">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Cannot preview this file type. You can download it instead.
-          </p>
-        </div>
-      );
+    case "viewer": {
+      const sep = fileUrl.includes("?") ? "&" : "?";
+      const viewerUrl = entry.lastModifiedMs
+        ? `${fileUrl}${sep}preview=pdf&v=${entry.lastModifiedMs}`
+        : `${fileUrl}${sep}preview=pdf`;
+      return <PDFViewer key={fileUrl} url={viewerUrl} />;
+    }
 
     case "audio":
-      return (
-        <div className="flex flex-col gap-4">
-          <audio controls className="w-full" src={fileUrl}>
-            Your browser does not support the audio element.
-          </audio>
-        </div>
-      );
+      return <AudioPreview fileUrl={fileUrl} fileId={entry.fileId} />;
 
     case "delimited":
       if (fileContent) {
@@ -218,13 +270,31 @@ function FilePreviewDialogContent({
       }
       return null;
 
-    case "markdown":
     case "text":
       if (processedContent) {
         return (
           <div className="rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
             <Markdown content={processedContent.text} isStreaming={false} />
           </div>
+        );
+      }
+      return null;
+
+    case "markdown":
+      if (
+        processedContent &&
+        markdownContent !== undefined &&
+        markdownViewMode
+      ) {
+        return (
+          <MarkdownFilePreview
+            content={markdownContent}
+            canEdit={markdownCanEdit}
+            showToolbar={false}
+            viewMode={markdownViewMode}
+            onContentChange={onMarkdownContentChange}
+            onViewModeChange={onMarkdownViewModeChange}
+          />
         );
       }
       return null;
@@ -259,6 +329,7 @@ interface FilePreviewDialogProps {
   entry: FileEntry | null;
   fileUrl: string | null;
   isOpen: boolean;
+  owner?: LightWorkspaceType;
   onDownload: (entry: FileEntry) => Promise<void>;
   onNext?: () => void;
   onOpenChange: (open: boolean) => void;
@@ -273,8 +344,25 @@ export function FilePreviewDialog({
   onDownload,
   onPrev,
   onNext,
+  owner,
 }: FilePreviewDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [markdownViewMode, setMarkdownViewMode] =
+    useState<MarkdownFilePreviewViewMode>("preview");
+  const [markdownDraft, setMarkdownDraft] = useState("");
+  const [markdownSavedContent, setMarkdownSavedContent] = useState("");
+  const [markdownSourcePath, setMarkdownSourcePath] = useState<string | null>(
+    null
+  );
+  const [isMarkdownSaving, setIsMarkdownSaving] = useState(false);
+  const [markdownDialogKey, setMarkdownDialogKey] = useState({
+    isOpen,
+    path: entry?.path,
+  });
+  const markdownInitKeyRef = useRef<string | null>(null);
+
+  const sendNotification = useSendNotification();
+  const { mutate } = useSWRConfig();
 
   const handleDownload = async () => {
     if (!entry) {
@@ -322,13 +410,13 @@ export function FilePreviewDialog({
     category === "text" ||
     category === "delimited";
 
-  const { fileContent, isFileContentLoading, fileContentError } =
-    useFileContent({
+  const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
+    useFileContentByUrl({
       url: fileUrl,
       disabled: !isOpen || !entry || !needsTextContent,
     });
 
-  const hasError = needsTextContent && !!fileContentError;
+  const hasError = needsTextContent && (!!fileContentError || isNotFound);
   const isContentLoading =
     isOpen && !!entry && !hasError && needsTextContent && isFileContentLoading;
 
@@ -348,29 +436,128 @@ export function FilePreviewDialog({
       ? getDelimitedRecordCount({ content: truncatedContent })
       : null;
 
+  const editableMarkdownFilePath =
+    entry && owner && parseCanonicalScopedPath(entry.path) ? entry.path : null;
+  const canEditMarkdown = category === "markdown" && !!editableMarkdownFilePath;
+
+  if (
+    isOpen !== markdownDialogKey.isOpen ||
+    entry?.path !== markdownDialogKey.path
+  ) {
+    setMarkdownDialogKey({ isOpen, path: entry?.path });
+    setMarkdownViewMode("preview");
+    setMarkdownSourcePath(null);
+    setMarkdownDraft("");
+    setMarkdownSavedContent("");
+    markdownInitKeyRef.current = null;
+  }
+
+  const isMarkdownDirty = markdownDraft !== markdownSavedContent;
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      !canEditMarkdown ||
+      !entry?.path ||
+      isContentLoading ||
+      !processedContent
+    ) {
+      return;
+    }
+
+    const initKey = `${entry.path}:${processedContent.text}`;
+    if (markdownInitKeyRef.current === initKey) {
+      return;
+    }
+
+    const hadInitializedForPath = markdownInitKeyRef.current?.startsWith(
+      `${entry.path}:`
+    );
+    if (hadInitializedForPath && isMarkdownDirty) {
+      return;
+    }
+
+    setMarkdownSourcePath(entry.path);
+    setMarkdownDraft(processedContent.text);
+    setMarkdownSavedContent(processedContent.text);
+    markdownInitKeyRef.current = initKey;
+  }, [
+    canEditMarkdown,
+    entry?.path,
+    isContentLoading,
+    isMarkdownDirty,
+    isOpen,
+    processedContent?.text,
+    processedContent,
+  ]);
+
+  const handleMarkdownSave = async () => {
+    if (
+      !owner ||
+      !editableMarkdownFilePath ||
+      !isMarkdownDirty ||
+      isMarkdownSaving
+    ) {
+      return;
+    }
+
+    setIsMarkdownSaving(true);
+    try {
+      await writeFileContentByPath({
+        owner,
+        canonicalPath: editableMarkdownFilePath,
+        content: markdownDraft,
+        contentType: "text/markdown",
+      });
+      await mutate(
+        fileUrl,
+        { kind: "loaded", content: markdownDraft },
+        { revalidate: false }
+      );
+      setMarkdownSavedContent(markdownDraft);
+      if (entry?.path) {
+        markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
+      }
+      sendNotification({ type: "success", title: "File saved" });
+    } catch (e) {
+      sendNotification({
+        type: "error",
+        title: "Failed to save file",
+        description: e instanceof Error ? e.message : "Unknown error",
+      });
+    } finally {
+      setIsMarkdownSaving(false);
+    }
+  };
+
+  const handleMarkdownRevert = () => {
+    setMarkdownDraft(markdownSavedContent);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
         <DialogHeader className="flex gap-4">
-          <DialogTitle>Preview Data</DialogTitle>
-          <div className="flex items-center justify-between">
+          <DialogTitle>
             <div className="flex items-center gap-1.5 overflow-hidden">
               {FileIcon && (
                 <Icon
                   visual={FileIcon}
-                  size="xs"
+                  size="sm"
                   className="shrink-0 text-foreground dark:text-foreground-night"
                 />
               )}
               <span
                 className={cn(
-                  "line-clamp-1 text-sm leading-5",
+                  "line-clamp-1 leading-5",
                   "text-foreground dark:text-foreground-night"
                 )}
               >
-                {entry?.fileName ?? ""}
+                {entry?.fileName ?? "Preview Data"}
               </span>
             </div>
+          </DialogTitle>
+          <div className="flex items-center justify-between">
             {recordCounts && (
               <span
                 className={cn(
@@ -384,6 +571,15 @@ export function FilePreviewDialog({
             )}
           </div>
         </DialogHeader>
+        {canEditMarkdown && (
+          <div className="flex shrink-0 justify-end px-4">
+            <MarkdownFilePreviewViewModeSwitch
+              key={`${entry?.path ?? "none"}:${isOpen}`}
+              viewMode={markdownViewMode}
+              onViewModeChange={setMarkdownViewMode}
+            />
+          </div>
+        )}
         {hasError ? (
           <div className="flex h-48 items-center justify-center px-4">
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -399,12 +595,36 @@ export function FilePreviewDialog({
                 fileContent={truncatedContent}
                 fileUrl={fileUrl ?? ""}
                 isContentLoading={isContentLoading}
+                markdownCanEdit={canEditMarkdown}
+                markdownContent={
+                  canEditMarkdown
+                    ? markdownSourcePath === entry.path
+                      ? markdownDraft
+                      : processedContent?.text
+                    : processedContent?.text
+                }
+                markdownViewMode={
+                  canEditMarkdown ? markdownViewMode : "preview"
+                }
+                onMarkdownContentChange={
+                  canEditMarkdown ? setMarkdownDraft : undefined
+                }
+                onMarkdownViewModeChange={
+                  canEditMarkdown ? setMarkdownViewMode : undefined
+                }
                 processedContent={processedContent}
               />
             )}
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto px-4">
+          <div
+            className={cn(
+              "min-h-0 flex-1 px-4",
+              category === "markdown"
+                ? "flex flex-col overflow-hidden"
+                : "overflow-y-auto"
+            )}
+          >
             {entry && (
               <FilePreviewDialogContent
                 category={category}
@@ -412,6 +632,23 @@ export function FilePreviewDialog({
                 fileContent={truncatedContent}
                 fileUrl={fileUrl ?? ""}
                 isContentLoading={isContentLoading}
+                markdownCanEdit={canEditMarkdown}
+                markdownContent={
+                  canEditMarkdown
+                    ? markdownSourcePath === entry.path
+                      ? markdownDraft
+                      : processedContent?.text
+                    : processedContent?.text
+                }
+                markdownViewMode={
+                  canEditMarkdown ? markdownViewMode : "preview"
+                }
+                onMarkdownContentChange={
+                  canEditMarkdown ? setMarkdownDraft : undefined
+                }
+                onMarkdownViewModeChange={
+                  canEditMarkdown ? setMarkdownViewMode : undefined
+                }
                 processedContent={processedContent}
               />
             )}
@@ -437,14 +674,42 @@ export function FilePreviewDialog({
                 tooltip="Next"
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={Download01}
-              label={isDownloading ? "Downloading…" : "Download"}
-              onClick={handleDownload}
-              disabled={!entry || isDownloading}
-            />
+            {canEditMarkdown ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  label="Save"
+                  variant="highlight"
+                  size="sm"
+                  isLoading={isMarkdownSaving}
+                  disabled={!isMarkdownDirty || isMarkdownSaving}
+                  onClick={() => void handleMarkdownSave()}
+                />
+                <Button
+                  label="Revert"
+                  variant="outline"
+                  size="sm"
+                  disabled={!isMarkdownDirty || isMarkdownSaving}
+                  onClick={handleMarkdownRevert}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Download01}
+                  label={isDownloading ? "Downloading…" : "Download"}
+                  onClick={handleDownload}
+                  disabled={!entry || isDownloading || isMarkdownDirty}
+                />
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                icon={Download01}
+                label={isDownloading ? "Downloading…" : "Download"}
+                onClick={handleDownload}
+                disabled={!entry || isDownloading}
+              />
+            )}
           </div>
         </DialogFooter>
       </DialogContent>

@@ -18,7 +18,7 @@ import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ActionCardBlock, Button, Check, XClose } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
   blockedAction: BlockedToolExecution;
@@ -58,6 +58,11 @@ export function MCPServerPersonalAuthenticationRequired({
     owner,
   });
 
+  // Tracks whether the user abandoned (skipped) this action while a connection
+  // attempt is still in flight, so the post-await "completed" branch does not
+  // resolve an action that has already been denied.
+  const cancelledRef = useRef<boolean>(false);
+
   const overridableInputs = getOverridablePersonalAuthInputs({ provider });
 
   const visual = mcpServer?.icon
@@ -79,6 +84,7 @@ export function MCPServerPersonalAuthenticationRequired({
   );
 
   const onConnectClick = async (mcpServer: MCPServerType) => {
+    cancelledRef.current = false;
     setIsConnecting(true);
     setConnectionError(null);
 
@@ -104,6 +110,12 @@ export function MCPServerPersonalAuthenticationRequired({
         return;
       }
 
+      // The user skipped while the connection attempt was still in flight: the
+      // action was already denied, so do not resolve it as completed.
+      if (cancelledRef.current) {
+        return;
+      }
+
       const completionRes = await resolveAuthentication({
         outcome: "completed",
         actionId: blockedAction.actionId,
@@ -124,6 +136,8 @@ export function MCPServerPersonalAuthenticationRequired({
   };
 
   const onSkipClick = async () => {
+    // Signal any in-flight connection attempt to abandon its completed branch.
+    cancelledRef.current = true;
     setConnectionError(null);
 
     const denyRes = await resolveAuthentication({
@@ -202,7 +216,9 @@ export function MCPServerPersonalAuthenticationRequired({
           size="xs"
           label="Skip"
           icon={XClose}
-          disabled={isConnecting || isResolving}
+          // Not gated on `isConnecting`: the user must always be able to abandon
+          // a connection attempt, even if it is (or appears) stuck.
+          disabled={isResolving}
           onClick={() => void onSkipClick()}
         />
         <Button

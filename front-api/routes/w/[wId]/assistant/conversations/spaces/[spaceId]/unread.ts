@@ -1,6 +1,6 @@
-import type { GetSpaceUnreadConversationsResponseBody } from "@app/lib/api/assistant/conversation/spaces";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { GetSpaceUnreadConversationsResponseBody } from "@app/types/api/assistant/conversation/spaces";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

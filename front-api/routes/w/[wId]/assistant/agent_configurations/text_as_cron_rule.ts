@@ -1,10 +1,10 @@
-import type { PostTextAsCronRuleResponseBody } from "@app/lib/api/assistant/configuration/triggers";
 import {
   GENERIC_ERROR_MESSAGE,
   generateScheduleRule,
   INVALID_TIMEZONE_MESSAGE,
   TOO_FREQUENT_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
+import type { PostTextAsCronRuleResponseBody } from "@app/types/api/assistant/configuration/triggers";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

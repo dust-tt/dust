@@ -32,7 +32,7 @@ import {
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isContentFragmentInputWithInlinedContent,
-} from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
 import type {
   AgenticMessageData,
   UserMessageContext,

@@ -1,10 +1,18 @@
-import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
+import {
+  getWhitelistedProviders,
+  selectEnabledModel,
+} from "@app/lib/api/assistant/models";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import {
+  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/resources/provider_credential_resource");
 
@@ -75,5 +83,68 @@ describe("getWhitelistedProviders", () => {
 
     const providers = getWhitelistedProviders(auth);
     expect(providers).toEqual(new Set(["noop"]));
+  });
+});
+
+describe("selectEnabledModel", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // An enterprise (upgraded) workspace is what makes Claude Opus 4.8 otherwise
+  // selectable, so the only remaining gate under test is regional availability.
+  async function enterpriseRegionalOnlyAuth(): Promise<Authenticator> {
+    const workspace = await WorkspaceFactory.enterprise({
+      regionalModelsOnly: true,
+    });
+
+    return Authenticator.internalAdminForWorkspace(workspace.sId);
+  }
+
+  it("skips a candidate that is not available in the current region", async () => {
+    vi.spyOn(regionConfig, "getCurrentRegion").mockReturnValue("europe-west1");
+    const auth = await enterpriseRegionalOnlyAuth();
+
+    // Claude Opus 4.8 is not available in europe-west1, so a regional-only EU
+    // workspace must fall through to the next regionally-available candidate
+    // instead of picking a model conversation.ts would later reject.
+    const selected = selectEnabledModel(
+      auth,
+      [
+        CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      ],
+      { featureFlags: [] }
+    );
+
+    expect(selected?.modelId).toBe(
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+    );
+
+    expect(
+      selectEnabledModel(auth, [CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG], {
+        featureFlags: [],
+      })
+    ).toBeNull();
+  });
+
+  it("keeps the preferred candidate when it is available in the current region", async () => {
+    vi.spyOn(regionConfig, "getCurrentRegion").mockReturnValue("us-central1");
+    const auth = await enterpriseRegionalOnlyAuth();
+
+    // The same workspace keeps Claude Opus 4.8 in us-central1, where it is
+    // regionally available, so the regional gate does not over-block.
+    const selected = selectEnabledModel(
+      auth,
+      [
+        CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      ],
+      { featureFlags: [] }
+    );
+
+    expect(selected?.modelId).toBe(
+      CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId
+    );
   });
 });

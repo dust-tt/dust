@@ -17,12 +17,7 @@
 import config from "@app/lib/api/config";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
-import type {
-  FileSystemDirectoryEntry,
-  FileSystemEntry,
-  FileSystemFileEntry,
-  FileSystemMount,
-} from "@app/lib/api/file_system/types";
+import type { FileSystemMount } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   LEGACY_PREFIX_CONVERSATION,
@@ -37,6 +32,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  FileSystemDirectoryEntry,
+  FileSystemEntry,
+  FileSystemFileEntry,
+} from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { isSupportedImageContentType } from "@app/types/files";
@@ -45,11 +45,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import * as path from "path";
 import type { Readable } from "stream";
 
-export type {
-  FileSystemEntry,
-  FileSystemMount,
-} from "@app/lib/api/file_system/types";
+export type { FileSystemMount } from "@app/lib/api/file_system/types";
 export { DustFileSystemError } from "@app/lib/api/file_system/types";
+export type { FileSystemEntry } from "@app/types/api/file_system/types";
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F-\x9F]/g;
@@ -138,9 +136,11 @@ function collectScopedPrefixesFromPaths(scopedPaths: string[]): {
       case "conversation":
         conversationIds.add(parsed.id);
         break;
+
       case "pod":
         podIds.add(parsed.id);
         break;
+
       default:
         assertNever(parsed);
     }
@@ -599,7 +599,7 @@ export class DustFileSystem {
 
     return (
       `${config.getApiBaseUrl()}/api/w/${workspaceId}` +
-      `/files/path/${encodedPath}?thumbnail=1`
+      `/files/path/${encodedPath}?thumbnail=1&v=${entry.lastModifiedMs}`
     );
   }
 
@@ -611,8 +611,9 @@ export class DustFileSystem {
   async list(
     scopedPath?: string,
     opts?: { maxFiles?: number; includeProcessed?: boolean }
-  ): Promise<FileSystemEntry[]> {
+  ): Promise<Result<FileSystemEntry[], DustFileSystemError>> {
     const workspaceId = this.auth.getNonNullableWorkspace().sId;
+
     const withThumbnails = (entries: FileSystemEntry[]): FileSystemEntry[] =>
       entries.map((entry) =>
         entry.isDirectory
@@ -630,9 +631,15 @@ export class DustFileSystem {
           { err: resolved.error, scopedPath },
           "DustFileSystem.list: access check failed"
         );
-        return [];
+        return new Ok([]);
       }
-      return withThumbnails(await this.backend.list(resolved.value.path, opts));
+
+      const listResult = await this.backend.list(resolved.value.path, opts);
+      if (listResult.isErr()) {
+        return listResult;
+      }
+
+      return new Ok(withThumbnails(listResult.value));
     }
 
     const results: FileSystemEntry[] = [];
@@ -640,10 +647,18 @@ export class DustFileSystem {
       if (!mount.permissions.canRead) {
         continue;
       }
-      const entries = await this.backend.list(`${mount.scopedPrefix}/`, opts);
-      results.push(...withThumbnails(entries));
+
+      const listResult = await this.backend.list(
+        `${mount.scopedPrefix}/`,
+        opts
+      );
+      if (listResult.isErr()) {
+        return listResult;
+      }
+
+      results.push(...withThumbnails(listResult.value));
     }
-    return results;
+    return new Ok(results);
   }
 
   /**

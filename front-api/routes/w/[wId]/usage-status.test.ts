@@ -29,7 +29,8 @@ describe("/api/w/[wId]/usage-status", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.awuStatus).toBe("normal");
+    expect(body.userNearCreditLimit).toBe(false);
+    expect(body.userBlockedReason).toBeNull();
     expect(body.canRequestUpgrade).toBe(false);
     expect(body.hasPendingUpgradeRequest).toBe(false);
   });
@@ -47,7 +48,7 @@ describe("/api/w/[wId]/usage-status", () => {
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.awuStatus).toBe("blocked");
+    expect(body.userBlockedReason).toBe("user_cap_reached");
     expect(body.canRequestUpgrade).toBe(true);
     expect(body.hasPendingUpgradeRequest).toBe(false);
   });
@@ -77,6 +78,35 @@ describe("/api/w/[wId]/usage-status", () => {
     const body = await response.json();
     expect(body.canRequestUpgrade).toBe(true);
     expect(body.hasPendingUpgradeRequest).toBe(true);
+  });
+
+  it("still offers the upgrade request when auto-upgrade is on but no higher seat is available", async () => {
+    const workspace = await creditPricedWorkspace();
+
+    // Auto-upgrade is enabled, but the test workspace has no entitled higher
+    // seat tier (no Metronome contract), so the member can't be auto-upgraded
+    // and must keep the manual request CTA.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await CreditUsageConfigurationResource.makeNew(adminAuth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      autoSeatUpgradeEnabled: true,
+    });
+
+    const { membership } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+      workspace,
+    });
+    await membership.updateCreditState("capped");
+
+    const response = await honoApp.request(usageStatusUrl(workspace.sId));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.canRequestUpgrade).toBe(true);
   });
 
   it("does not offer upgrade requests to admins", async () => {

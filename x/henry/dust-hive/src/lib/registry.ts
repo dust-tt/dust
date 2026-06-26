@@ -1,9 +1,9 @@
 // Service registry - centralized configuration for all services
 
 import { stat } from "node:fs/promises";
-import type { Environment } from "./environment";
+import { type Environment, getEnvironmentWorktreeDir } from "./environment";
 import { logger } from "./logger";
-import { getEnvFilePath, getLogPath, getWorktreeDir } from "./paths";
+import { getEnvFilePath, getLogPath } from "./paths";
 import type { PortAllocation } from "./ports";
 import { isServiceRunning, readFileTail, spawnShellDaemon } from "./process";
 import { ALL_SERVICES, type ServiceName } from "./services";
@@ -39,7 +39,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     buildCommand: () => "npm run watch",
     readinessCheck: {
       type: "file",
-      path: (env) => `${getWorktreeDir(env.name, env.metadata.repoRoot)}/sparkle/dist/esm/index.js`,
+      path: (env) => `${getEnvironmentWorktreeDir(env.metadata)}/sparkle/dist/esm/index.js`,
     },
   },
   sdk: {
@@ -49,8 +49,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     buildCommand: () => "npm run watch",
     readinessCheck: {
       type: "file",
-      path: (env) =>
-        `${getWorktreeDir(env.name, env.metadata.repoRoot)}/sdks/js/dist/client.esm.js`,
+      path: (env) => `${getEnvironmentWorktreeDir(env.metadata)}/sdks/js/dist/client.esm.js`,
     },
   },
   "front-api": {
@@ -207,7 +206,7 @@ function buildServiceCommand(env: Environment, service: ServiceName): string {
 // Get the working directory for a service
 function getServiceCwd(env: Environment, service: ServiceName): string {
   const config = SERVICE_REGISTRY[service];
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   return `${worktreePath}/${config.cwd}`;
 }
 

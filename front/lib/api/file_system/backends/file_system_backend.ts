@@ -1,14 +1,16 @@
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import type {
   DustFileSystemError,
-  FileSystemDirectoryEntry,
-  FileSystemEntry,
   FileSystemMount,
 } from "@app/lib/api/file_system/types";
+import type {
+  FileSystemDirectoryEntry,
+  FileSystemEntry,
+} from "@app/types/api/file_system/types";
 import type { Result } from "@app/types/shared/result";
 import type { Readable } from "stream";
 
-export type { FileSystemEntry } from "@app/lib/api/file_system/types";
+export type { FileSystemEntry } from "@app/types/api/file_system/types";
 
 /**
  * Backend-agnostic file system interface.
@@ -25,11 +27,12 @@ export interface FileSystemBackend {
    * List entries under `scopedPath` (should end with `/` to list a prefix).
    * Returns an empty array when nothing exists under that path.
    * `.processed.*` siblings are filtered out unless `includeProcessed` is true.
+   * Returns `Err` on storage errors (e.g. network failure).
    */
   list(
     scopedPath: string,
     opts?: { maxFiles?: number; includeProcessed?: boolean }
-  ): Promise<FileSystemEntry[]>;
+  ): Promise<Result<FileSystemEntry[], DustFileSystemError>>;
 
   /**
    * Returns `Ok(null)` when the file does not exist, `Ok(Readable)` on success.

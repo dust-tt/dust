@@ -140,6 +140,8 @@ export function WorkspacePage() {
     usageCapAlert,
     defaultAlerts,
     programmaticCreditState,
+    programmaticWarningReached,
+    seatPlan,
     stripeSubscription,
     stripeCustomerId,
     subscriptions,
@@ -251,6 +253,7 @@ export function WorkspacePage() {
                   programmaticUsageConfig={programmaticUsageConfig}
                   hasMetronomeBillingFeature={hasMetronomeFeature}
                   stripeCustomerId={stripeCustomerId}
+                  seatPlan={seatPlan}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">
@@ -357,6 +360,7 @@ export function WorkspacePage() {
                   stripeSubscription={stripeSubscription}
                   poolCreditState={poolCreditState}
                   programmaticCreditState={programmaticCreditState}
+                  programmaticWarningReached={programmaticWarningReached}
                   creditUsageConfig={creditUsageConfig}
                   poolAlert={poolAlert}
                   programmaticAlerts={programmaticAlerts}

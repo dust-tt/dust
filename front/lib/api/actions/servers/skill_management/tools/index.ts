@@ -5,8 +5,73 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { loadSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
+import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { extractUniqueSkillIds } from "@app/lib/skills/format";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { Err, Ok } from "@app/types/shared/result";
+
+async function findAvailableSkillForAgentLoop({
+  auth,
+  agentLoopData,
+  skillName,
+}: {
+  auth: Authenticator;
+  agentLoopData: AgentLoopExecutionData;
+  skillName: string;
+}): Promise<SkillResource | null> {
+  const { enabledSkills, equippedSkills, systemSkills } =
+    await SkillResource.listForAgentLoop(auth, agentLoopData);
+  const userMessageSkills = await SkillResource.fetchActiveByIdsForAgentLoop(
+    auth,
+    extractUniqueSkillIds(agentLoopData.userMessage.content),
+    agentLoopData
+  );
+  const directlyAllowedSkills = [
+    ...enabledSkills,
+    ...equippedSkills,
+    ...userMessageSkills,
+  ];
+
+  const directSkill = directlyAllowedSkills.find(
+    (skill) => skill.name === skillName
+  );
+  if (directSkill) {
+    return directSkill;
+  }
+
+  const parentSkillById = new Map(
+    [...systemSkills, ...enabledSkills, ...equippedSkills].map((skill) => [
+      skill.sId,
+      skill,
+    ])
+  );
+  const candidates = await SkillResource.listActiveByNameForAgentLoop(
+    auth,
+    skillName,
+    agentLoopData
+  );
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(
+    auth,
+    candidates
+  );
+
+  return (
+    candidates.find((skill) =>
+      (usedBySkillsByChild.get(skill.sId) ?? []).some(({ sId }) => {
+        const parentSkill = parentSkillById.get(sId);
+
+        return parentSkill
+          ? extractUniqueSkillIds(parentSkill.instructions).includes(skill.sId)
+          : false;
+      })
+    ) ?? null
+  );
+}
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
   [ENABLE_SKILL_TOOL_NAME]: async (
@@ -17,9 +82,22 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       return new Err(new MCPError("No conversation context available"));
     }
 
-    const { conversation, agentConfiguration } = agentLoopContext.runContext;
+    const { agentConfiguration, agentMessage, conversation, userMessage } =
+      agentLoopContext.runContext;
 
-    const skill = await SkillResource.fetchActiveByName(auth, skillName);
+    const agentLoopData = {
+      agentConfiguration,
+      agentMessage,
+      conversation,
+      userMessage,
+    };
+
+    const skill = await findAvailableSkillForAgentLoop({
+      auth,
+      agentLoopData,
+      skillName,
+    });
+
     if (!skill) {
       return new Err(
         new MCPError(`Skill "${skillName}" not found`, {

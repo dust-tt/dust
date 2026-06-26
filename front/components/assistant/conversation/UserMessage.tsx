@@ -1,3 +1,4 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
@@ -134,6 +135,7 @@ interface UserMessageProps {
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
   isProjectArchived?: boolean;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
 
 export function UserMessage({
@@ -146,6 +148,7 @@ export function UserMessage({
   owner,
   onReactionToggle,
   isProjectArchived = false,
+  setLimitReachedCode,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
@@ -186,11 +189,19 @@ export function UserMessage({
         .trim();
     }
 
-    await editMessage({
+    const result = await editMessage({
       messageId: message.sId,
       content,
       mentions: filteredMentions,
     });
+
+    if (!result) {
+      return;
+    }
+    if (result.isErr()) {
+      setLimitReachedCode?.(result.error);
+      return;
+    }
 
     setShouldShowEditor(false);
   };
@@ -229,6 +240,9 @@ export function UserMessage({
     .filter((m) => isUserMessage(m) && m.visibility === "pending").length;
   const isEmpty = !message.content;
   const isCurrentUser = message.user?.sId === currentUserId;
+  const hasCitations = (citations?.length ?? 0) > 0;
+  const shouldHideMessageContent =
+    isEmpty && hasCitations && !isDeleted && !isPending;
   const canDelete =
     (isCurrentUser || isAdmin) && !isDeleted && !isProjectArchived;
   const canEdit = isCurrentUser && !isDeleted && !isProjectArchived;
@@ -387,6 +401,7 @@ export function UserMessage({
                 type="user"
                 className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
                 reversed={isCurrentUser}
+                showContent={!shouldHideMessageContent}
               >
                 <div
                   className={cn(

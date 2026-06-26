@@ -49,10 +49,15 @@ export function registerPodsGetTool(server: McpServer) {
       if (fsResult.isErr()) {
         return mcpError("Failed to initialise file system for this Pod.");
       }
-      const podFiles = await fsResult.value.list(
+      const podFilesResult = await fsResult.value.list(
         `${SCOPED_PREFIX_POD}${pod.sId}`
       );
-      const fileCount = podFiles.filter((entry) => !entry.isDirectory).length;
+      if (podFilesResult.isErr()) {
+        return mcpError("Failed to list Pod files.");
+      }
+      const fileCount = podFilesResult.value.filter(
+        (entry) => !entry.isDirectory
+      ).length;
 
       return mcpJsonResponse({
         pod: {

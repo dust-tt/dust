@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
-import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/lib/api/data_sources/managed_config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/types/api/data_sources/managed_config";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

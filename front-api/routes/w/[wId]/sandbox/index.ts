@@ -1,6 +1,6 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
+import { withComputerFeature } from "@front-api/middlewares/with_computer_feature";
 
 import egressPolicy from "./egress-policy";
 import envVars from "./env-vars";
@@ -10,19 +10,7 @@ import envVars from "./env-vars";
 const app = workspaceApp();
 
 app.use("*", ensureIsAdmin());
-app.use(
-  "*",
-  withFeatureFlag("sandbox_tools", {
-    message: "Sandbox tools are not enabled for this workspace.",
-  })
-);
-app.use(
-  "*",
-  withFeatureFlag("sandbox_workspace_admin", {
-    message:
-      "Sandbox workspace admin configuration is not enabled for this workspace.",
-  })
-);
+app.use("*", withComputerFeature());
 
 app.route("/egress-policy", egressPolicy);
 app.route("/env-vars", envVars);

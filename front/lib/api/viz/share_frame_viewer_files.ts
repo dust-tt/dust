@@ -150,7 +150,6 @@ export async function getShareFrameViewerFilesForFrame(
     where: {
       shareableFileId: shareableFile.id,
       workspaceId: frameFile.workspaceId,
-      revokedAt: null,
     },
   });
 
@@ -159,7 +158,6 @@ export async function getShareFrameViewerFilesForFrame(
       kind: entry.kind,
       ref: entry.ref,
       shareScope: entry.shareScope,
-      computedByUserId: entry.computedByUserId,
       frameContentHash: entry.frameContentHash,
       allowedAt: entry.allowedAt.toISOString(),
       ...(entry.fileName ? { fileName: entry.fileName } : {}),

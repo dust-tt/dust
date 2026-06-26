@@ -3,7 +3,6 @@ import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimi
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
-import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
@@ -61,6 +60,9 @@ import {
   CompactionStartedEvent,
 } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useConversationWakeUps } from "@app/lib/swr/wakeups";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import {
   type ConversationForkedChildType,
@@ -73,6 +75,7 @@ import {
   isRichAgentMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -99,6 +102,7 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
+import { ConversationErrorDisplay } from "./ConversationError";
 import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -332,6 +336,11 @@ export const ConversationViewer = ({
     useRef<
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
+  const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile);
+  useEffect(() => {
+    isMobileRef.current = isMobile;
+  }, [isMobile]);
   const isAutoScrollEnabledRef = useRef(true);
   const prevScrollLocationRef = useRef({
     scrollHeight: 0,
@@ -419,6 +428,12 @@ export const ConversationViewer = ({
     options: { disabled: true }, // We don't need the participants, only the mutator.
   });
 
+  const { mutateWakeUps } = useConversationWakeUps({
+    owner,
+    conversationId,
+    disabled: true, // We don't fetch here, only patch the cache on wake_up_updated events.
+  });
+
   const { mutateContextUsage } = useConversationContextUsage({
     conversationId,
     workspaceId: owner.sId,
@@ -478,13 +493,12 @@ export const ConversationViewer = ({
     // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
-    if (
-      !initialListData &&
-      conversation &&
-      messages.length > 0 &&
-      !isValidating
-    ) {
+    if (initialListData === undefined && conversation && !isValidating) {
       const raw = messages.flatMap((m) => m.messages);
+      if (raw.length === 0) {
+        return;
+      }
+
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
       const messagesAndNotices = addConversationForkNotices(
         messagesToRender,
@@ -549,7 +563,7 @@ export const ConversationViewer = ({
   // approval modal would never re-open.
   useEffect(() => {
     if (
-      !initialListData ||
+      initialListData === undefined ||
       !openBranch ||
       !virtuosoMessageListRef.current ||
       hasInjectedOpenBranchRef.current
@@ -716,11 +730,10 @@ export const ConversationViewer = ({
 
   const eventIds = useRef<string[]>([]);
 
-  // Last-seen plan.md version for this conversation. Used to auto-open the plan panel on the
-  // skeleton-to-first-edit transition (v1 -> v2+). If the user lands on an already-populated
-  // plan, no auto-open. ConversationViewer is keyed on conversationId by its parent, so the
-  // ref is naturally reset on conversation switch via remount.
-  const lastPlanVersionRef = useRef<number | undefined>(undefined);
+  // Whether we have already auto-opened the plan panel for this conversation, so we open it once
+  // (on the first non-closed plan update) rather than on every edit. ConversationViewer is keyed
+  // on conversationId by its parent, so the ref is naturally reset on conversation switch.
+  const planAutoOpenedRef = useRef(false);
 
   // `onEventCallback` is bound by `useConversationEvents` once at mount and does not re-subscribe
   // on identity changes (see useEventSource intentional behavior). Any state read from the
@@ -1043,11 +1056,12 @@ export const ConversationViewer = ({
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
           case "plan_updated": {
-            const prevVersion = lastPlanVersionRef.current;
-            lastPlanVersionRef.current = event.version;
-            if (event.isClosed && currentPanelRef.current === "plan") {
-              closePanel();
-            } else if (prevVersion === 1 && event.version >= 2) {
+            if (event.isClosed) {
+              if (currentPanelRef.current === "plan") {
+                closePanel();
+              }
+            } else if (!planAutoOpenedRef.current && !isMobileRef.current) {
+              planAutoOpenedRef.current = true;
               openPanel({ type: "plan" });
             }
             void mutate(
@@ -1056,6 +1070,24 @@ export const ConversationViewer = ({
                 conversationId: event.conversationId,
               })
             );
+            break;
+          }
+          case "wake_up_updated": {
+            // Refetch wake-ups, then sync the conversation list's nextWakeupAt. Only one wake-up
+            // can be active per conversation, so the active one fully determines that value.
+            void mutateWakeUps().then((updated) => {
+              const active = updated?.wakeUps.find(isActiveWakeUp) ?? null;
+              const nextWakeupAt = active
+                ? getNextWakeUpFireAtFromScheduleConfig(active.scheduleConfig)
+                : null;
+              void mutateConversations(
+                (currentData: ConversationListItemType[] | undefined) =>
+                  currentData?.map((c) =>
+                    c.sId === conversationId ? { ...c, nextWakeupAt } : c
+                  ),
+                { revalidate: false }
+              );
+            });
             break;
           }
           default:
@@ -1075,6 +1107,7 @@ export const ConversationViewer = ({
       mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
+      mutateWakeUps,
       openPanel,
       owner.sId,
       user.sId,
@@ -1095,7 +1128,8 @@ export const ConversationViewer = ({
       !isConversationLoading &&
       !isLoadingInitialData &&
       messages.length !== 0 &&
-      initialListData !== undefined,
+      initialListData !== undefined &&
+      initialListData.length > 0,
   });
 
   const handleSubmit = useCallback(
@@ -1424,6 +1458,7 @@ export const ConversationViewer = ({
       setBranchIdToApprove,
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
+      setLimitReachedCode,
     };
   }, [
     user,
@@ -1442,6 +1477,7 @@ export const ConversationViewer = ({
     spaceInfo?.name,
     branchIdToApprove,
     limitReachedCode,
+    setLimitReachedCode,
   ]);
 
   return (
@@ -1457,6 +1493,7 @@ export const ConversationViewer = ({
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
           onRenderedDataChange={onRenderedDataChange}
           StickyHeader={ConversationBranchApprovalModal}
+          useWindowScroll={isMobile}
           data={{
             data: initialListData,
             scrollModifier: {
@@ -1477,8 +1514,8 @@ export const ConversationViewer = ({
             "dd-privacy-mask",
             "@container/conversation",
             "touch-pan-y",
-            "overscroll-contain",
-            "h-full w-full px-5",
+            "w-full px-5",
+            !isMobile && "overscroll-contain h-full",
             !agentBuilderContext && "md:px-8"
           )}
           shortSizeAlign="top"

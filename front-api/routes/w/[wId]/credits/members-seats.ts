@@ -1,7 +1,5 @@
-import {
-  type GetMembersSeatsResponseBody,
-  getMembersSeats,
-} from "@app/lib/api/credits/members_seats";
+import { getMembersSeats } from "@app/lib/api/credits/members_seats";
+import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";

@@ -27,6 +27,7 @@ class FileStorageMock {
   private _writeStreamCalls: WriteStreamCall[] = [];
   private _saveFileCalls: SaveFileCall[] = [];
   private _existsPredicate: (filePath: string) => boolean = () => true;
+  private _saveShouldFail: (filePath: string) => boolean = () => false;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
@@ -44,10 +45,19 @@ class FileStorageMock {
     this._existsPredicate = predicate;
   }
 
+  /**
+   * Makes `file(path).save(...)` reject for paths matching the predicate.
+   * Defaults to never failing. Reset between tests via `reset()`.
+   */
+  setFileSaveFails(predicate: (filePath: string) => boolean): void {
+    this._saveShouldFail = predicate;
+  }
+
   reset(): void {
     this._writeStreamCalls.length = 0;
     this._saveFileCalls.length = 0;
     this._existsPredicate = () => true;
+    this._saveShouldFail = () => false;
   }
 
   /**
@@ -98,8 +108,14 @@ class FileStorageMock {
         .fn()
         .mockImplementation(
           (content: Buffer | string, opts?: { contentType?: string }) => {
+            const path = filePath ?? "unknown";
+            if (this._saveShouldFail(path)) {
+              return Promise.reject(
+                new Error(`Simulated GCS write failure: ${path}`)
+              );
+            }
             this._saveFileCalls.push({
-              filePath: filePath ?? "unknown",
+              filePath: path,
               content,
               contentType: opts?.contentType,
             });

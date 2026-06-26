@@ -4,14 +4,8 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
-import type {
-  PostDataSourceRequestBody,
-  PostSpaceDataSourceResponseBody,
-} from "@app/lib/api/data_sources";
 import {
   createDataSourceWithoutProvider,
-  PostDataSourceRequestBodySchema,
-  PostDataSourceWithProviderRequestBodySchema,
   registerSlackWebhookRouterEntry,
 } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
@@ -35,6 +29,14 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
+import type {
+  PostDataSourceRequestBody,
+  PostSpaceDataSourceResponseBody,
+} from "@app/types/api/data_sources";
+import {
+  PostDataSourceRequestBodySchema,
+  PostDataSourceWithProviderRequestBodySchema,
+} from "@app/types/api/data_sources";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { WebCrawlerConfigurationTypeSchema } from "@app/types/connectors/webcrawler";

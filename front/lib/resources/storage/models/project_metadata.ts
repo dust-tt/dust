@@ -21,6 +21,8 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare description: string | null;
   /** Scoped path to a project frame file, e.g. `project/banner.html`. */
   declare pinnedFramePath: CreationOptional<string | null>;
+  /** sId of the agent pre-selected for new conversations in this pod. Null = @dust. */
+  declare defaultAgentId: CreationOptional<string | null>;
 }
 
 ProjectMetadataModel.init(
@@ -59,6 +61,12 @@ ProjectMetadataModel.init(
     pinnedFramePath: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    defaultAgentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+      field: "defaultAgentSId",
     },
   },
   {

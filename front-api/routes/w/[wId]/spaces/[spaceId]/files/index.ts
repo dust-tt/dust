@@ -1,9 +1,4 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type {
-  FileSystemEntry,
-  GetSpaceFilesResponseBody,
-  PostSpaceFolderResponseBody,
-} from "@app/lib/api/file_system/types";
 import {
   isDustFileSystemError,
   SCOPED_PREFIX_POD,
@@ -11,6 +6,11 @@ import {
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";
+import type {
+  FileSystemEntry,
+  GetSpaceFilesResponseBody,
+  PostSpaceFolderResponseBody,
+} from "@app/types/api/file_system/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -54,10 +54,21 @@ app.get(
     }
 
     const dustFs = fsResult.value;
+    const listResult = await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`);
+    if (listResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to list space files.",
+        },
+      });
+    }
+
     const files = await enrichListWithFileResourceIds(
       auth,
       dustFs,
-      await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`)
+      listResult.value
     );
 
     return ctx.json({ files });

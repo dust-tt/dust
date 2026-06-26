@@ -23,6 +23,7 @@ yalc.lock
 front/public/sitemap.xml
 front/public/robots.txt
 mprocs.log
+process-compose*.log
 **/tsconfig.tsbuildinfo
 **/.npm-cache
 AGENTS.local.md

@@ -70,7 +70,6 @@ DustProjectConversationModel.init(
     conversationId: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
     },
     projectId: {
       type: DataTypes.STRING,
@@ -92,7 +91,6 @@ DustProjectConversationModel.init(
   {
     sequelize: connectorsSequelize,
     indexes: [
-      { fields: ["conversationId"], unique: true },
       { fields: ["connectorId", "conversationId"], unique: true },
       { fields: ["connectorId", "sourceUpdatedAt"] },
       {

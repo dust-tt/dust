@@ -95,46 +95,12 @@ export async function cancelPendingContract({
     }
   }
 
-  // 1. Restore the current Metronome contract: remove the scheduled end that
-  //    switch_contract set up so it no longer lapses at the swap time.
-  if (currentSubscription?.metronomeContractId && metronomeCustomerId) {
-    const reactivateResult = await reactivateMetronomeContract({
-      metronomeCustomerId,
-      contractId: currentSubscription.metronomeContractId,
-    });
-    if (reactivateResult.isErr()) {
-      return new Err(
-        new CancelPendingContractError(
-          "restore_failed",
-          "Failed to restore the current Metronome contract " +
-            `${currentSubscription.metronomeContractId}: ` +
-            `${reactivateResult.error.message}. No changes were applied.`
-        )
-      );
-    }
-  }
-
-  // 2. Restore the current Stripe subscription: clear the scheduled
-  //    cancellation so it keeps running.
-  if (currentSubscription?.stripeSubscriptionId) {
-    const clearResult = await clearScheduledSubscriptionCancellation({
-      stripeSubscriptionId: currentSubscription.stripeSubscriptionId,
-    });
-    if (clearResult.isErr()) {
-      return new Err(
-        new CancelPendingContractError(
-          "restore_failed",
-          "Restored the current Metronome contract but failed to clear the " +
-            `scheduled cancellation on Stripe subscription ` +
-            `${currentSubscription.stripeSubscriptionId}: ` +
-            `${clearResult.error.message}. ` +
-            "URGENT: clear cancel_at on the Stripe subscription manually."
-        )
-      );
-    }
-  }
-
-  // 3. Archive the pending Metronome contract (it has not started yet).
+  // 1. Archive the pending Metronome contract first. Metronome rejects clearing
+  //    the end date on the current contract (step 2) while its RENEWAL successor
+  //    has finalized invoices (e.g. prepaid commit invoices created at switch
+  //    time). Archiving with voidInvoices:true removes those invoices, lifting
+  //    the restriction on the current contract. Done before step 2 so that
+  //    step 2 can succeed.
   const pendingContractId = pending.metronomeContractId;
   if (pendingContractId && metronomeCustomerId) {
     const archiveResult = await archiveMetronomeContract({
@@ -144,11 +110,49 @@ export async function cancelPendingContract({
     if (archiveResult.isErr()) {
       return new Err(
         new CancelPendingContractError(
+          "restore_failed",
+          `Failed to archive the pending Metronome contract ${pendingContractId}: ` +
+            `${archiveResult.error.message}. No changes were applied.`
+        )
+      );
+    }
+  }
+
+  // 2. Restore the current Metronome contract: remove the scheduled end that
+  //    switch_contract set up so it no longer lapses at the swap time.
+  if (currentSubscription?.metronomeContractId && metronomeCustomerId) {
+    const reactivateResult = await reactivateMetronomeContract({
+      metronomeCustomerId,
+      contractId: currentSubscription.metronomeContractId,
+    });
+    if (reactivateResult.isErr()) {
+      return new Err(
+        new CancelPendingContractError(
           "cleanup_inconsistent",
-          "Restored the current contract/subscription but failed to archive " +
-            `the pending Metronome contract ${pendingContractId}: ` +
-            `${archiveResult.error.message}. Archive it manually, then delete ` +
-            "the pending subscription."
+          "Archived the pending Metronome contract but failed to restore the " +
+            `current contract ${currentSubscription.metronomeContractId}: ` +
+            `${reactivateResult.error.message}. ` +
+            "URGENT: manually remove the end date from the current contract."
+        )
+      );
+    }
+  }
+
+  // 3. Restore the current Stripe subscription: clear the scheduled
+  //    cancellation so it keeps running.
+  if (currentSubscription?.stripeSubscriptionId) {
+    const clearResult = await clearScheduledSubscriptionCancellation({
+      stripeSubscriptionId: currentSubscription.stripeSubscriptionId,
+    });
+    if (clearResult.isErr()) {
+      return new Err(
+        new CancelPendingContractError(
+          "cleanup_inconsistent",
+          "Archived the pending contract and restored the current Metronome " +
+            "contract, but failed to clear the scheduled cancellation on " +
+            `Stripe subscription ${currentSubscription.stripeSubscriptionId}: ` +
+            `${clearResult.error.message}. ` +
+            "URGENT: clear cancel_at on the Stripe subscription manually."
         )
       );
     }

@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import {
   areRedirectUrisAllowed,
   getDustMcpServerAllowedRedirectUris,
@@ -123,7 +124,44 @@ export const mcpServerAuthMiddleware = createMiddleware<{
     }
 
     if (!tokenAudienceMatchesResource(payload.aud, DUST_MCP_SERVER_URL)) {
-      throw new Error("Token audience does not match MCP resource URL");
+      logger.info(
+        { aud: payload.aud },
+        "Token audience does not match MCP resource URL, falling back to application:client_id claim"
+      );
+
+      const clientId = payload["application:client_id"];
+      if (typeof clientId !== "string" || !clientId.trim()) {
+        throw new Error(
+          "Access token with mismatched audience: missing application:client_id claim"
+        );
+      }
+
+      const applicationResult = await getWorkOSConnectApplication(
+        clientId.trim()
+      );
+      if (applicationResult.isErr()) {
+        throw new Error(
+          "Access token with mismatched audience: failed to fetch WorkOS Connect application"
+        );
+      }
+
+      const application = applicationResult.value;
+      if (application.application_type !== "oauth") {
+        throw new Error("Connect application is not an OAuth application");
+      }
+
+      // Check if it's a dynamically registered application and that the token audience matches workOSClientID.
+      // And check that application client id is not workOSClientID.
+      // This doesn't prove that the token is for the mcp resource but at least we know it's a connect application.
+      if (
+        !application.was_dynamically_registered ||
+        payload.aud !== config.getWorkOSClientId() ||
+        application.client_id === config.getWorkOSClientId()
+      ) {
+        throw new Error(
+          "Access token with mismatched audience: invalid application"
+        );
+      }
     }
 
     const authResult = await getAuthenticatorFromWorkOSClaims(payload);

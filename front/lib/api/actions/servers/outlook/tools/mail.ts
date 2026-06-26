@@ -1,12 +1,18 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerExtra,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   extractTextFromBuffer,
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import {
+  getFileFromConversationAttachment,
+  sanitizeFilename,
+} from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { getAllowedLabelsForMCPServer } from "@app/lib/api/actions/servers/microsoft/utils";
 import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -14,6 +20,64 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
+
+const MAX_ATTACHMENT_SIZE_BYTES = 3 * 1024 * 1024; // 3MB — Graph API inline attachment limit
+
+async function fetchAttachment(
+  auth: ToolHandlerExtra["auth"],
+  attachmentFilePath: string | undefined,
+  agentLoopContext: ToolHandlerExtra["agentLoopContext"]
+): Promise<
+  | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
+  | Err<MCPError>
+> {
+  if (!attachmentFilePath) {
+    return new Ok(null);
+  }
+
+  if (!agentLoopContext) {
+    return new Err(new MCPError("No agent context available"));
+  }
+
+  const fileResult = await getFileFromConversationAttachment(
+    auth,
+    attachmentFilePath,
+    agentLoopContext
+  );
+
+  if (fileResult.isErr()) {
+    return new Err(
+      new MCPError(`File not found: ${attachmentFilePath}`, { tracked: false })
+    );
+  }
+
+  const { buffer, filename, contentType } = fileResult.value;
+
+  if (buffer.length > MAX_ATTACHMENT_SIZE_BYTES) {
+    return new Err(
+      new MCPError(
+        `Attachment file size exceeds the ${MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB limit.`
+      )
+    );
+  }
+
+  return new Ok({ buffer, filename, contentType });
+}
+
+// Builds the Microsoft Graph fileAttachment payload shared by the direct-send
+// (inline) and draft (POST /attachments) paths.
+function buildFileAttachmentPayload(attachment: {
+  buffer: Buffer;
+  filename: string;
+  contentType: string;
+}): Record<string, unknown> {
+  return {
+    "@odata.type": "#microsoft.graph.fileAttachment",
+    name: sanitizeFilename(attachment.filename),
+    contentType: attachment.contentType,
+    contentBytes: attachment.buffer.toString("base64"),
+  };
+}
 
 const DEFAULT_MESSAGE_FIELDS = [
   "id",
@@ -351,6 +415,401 @@ const findFolderByPath = async (
   }
   return { folderId: parentFolderId };
 };
+
+async function createOutlookDraft({
+  basePath,
+  accessToken,
+  replyToMessageId,
+  replyAll,
+  subject,
+  contentType,
+  body,
+  importance,
+  to,
+  cc,
+  bcc,
+  replyTo,
+  sharedMailboxAddress,
+  attachment,
+}: {
+  basePath: string;
+  accessToken: string;
+  replyToMessageId?: string;
+  replyAll?: boolean;
+  subject?: string;
+  contentType?: string;
+  body: string;
+  importance?: string;
+  to?: string[];
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string[];
+  sharedMailboxAddress?: string;
+  attachment: { buffer: Buffer; filename: string; contentType: string } | null;
+}): Promise<Ok<{ draftId: string; conversationId?: string }> | Err<MCPError>> {
+  let draftId: string;
+  let conversationId: string | undefined;
+
+  if (replyToMessageId) {
+    const endpoint =
+      (replyAll ?? false)
+        ? `${basePath}/messages/${encodeURIComponent(replyToMessageId)}/createReplyAll`
+        : `${basePath}/messages/${encodeURIComponent(replyToMessageId)}/createReply`;
+
+    const createDraftResponse = await fetchFromOutlook(endpoint, accessToken, {
+      method: "POST",
+    });
+
+    if (!createDraftResponse.ok) {
+      const errorText = await getErrorText(createDraftResponse);
+      if (createDraftResponse.status === 404) {
+        return new Err(
+          new MCPError(`Message not found: ${replyToMessageId}`, {
+            tracked: false,
+          })
+        );
+      }
+      return new Err(
+        new MCPError(
+          `Failed to create reply draft: ${createDraftResponse.status} ${createDraftResponse.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const createDraftResult = await createDraftResponse.json();
+    draftId = createDraftResult.id;
+    conversationId = createDraftResult.conversationId;
+
+    const existingBody = createDraftResult.body?.content ?? "";
+    const sanitizedBody = sanitizeHtml(body);
+    const combinedBody = `<div>${sanitizedBody}</div><br><br>${existingBody}`;
+
+    const updatePayload: Record<string, unknown> = {
+      body: { contentType: "html", content: combinedBody },
+      importance,
+    };
+    if (to && to.length > 0) {
+      updatePayload.toRecipients = to.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+    if (cc && cc.length > 0) {
+      updatePayload.ccRecipients = cc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+    if (bcc && bcc.length > 0) {
+      updatePayload.bccRecipients = bcc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+    if (replyTo && replyTo.length > 0) {
+      updatePayload.replyTo = replyTo.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+
+    const encodedDraftId = encodeURIComponent(draftId);
+
+    const updateDraftResponse = await fetchFromOutlook(
+      `${basePath}/messages/${encodedDraftId}`,
+      accessToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload),
+      }
+    );
+
+    if (!updateDraftResponse.ok) {
+      void fetchFromOutlook(
+        `${basePath}/messages/${encodedDraftId}`,
+        accessToken,
+        { method: "DELETE" }
+      );
+      const errorText = await getErrorText(updateDraftResponse);
+      return new Err(
+        new MCPError(`Failed to update reply draft: ${errorText}`)
+      );
+    }
+  } else {
+    const message: Record<string, unknown> = {
+      subject,
+      importance,
+      body: { contentType, content: body },
+      toRecipients: (to ?? []).map((email) => ({
+        emailAddress: { address: email },
+      })),
+      isDraft: true,
+    };
+
+    if (sharedMailboxAddress) {
+      message.from = { emailAddress: { address: sharedMailboxAddress } };
+    }
+    if (cc && cc.length > 0) {
+      message.ccRecipients = cc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+    if (bcc && bcc.length > 0) {
+      message.bccRecipients = bcc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+    if (replyTo && replyTo.length > 0) {
+      message.replyTo = replyTo.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+
+    const response = await fetchFromOutlook(
+      `${basePath}/messages`,
+      accessToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(message),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(new MCPError(`Failed to create draft: ${errorText}`));
+    }
+
+    const result = await response.json();
+    draftId = result.id;
+    conversationId = result.conversationId;
+  }
+
+  if (attachment) {
+    const encodedDraftId = encodeURIComponent(draftId);
+    const attachmentResponse = await fetchFromOutlook(
+      `${basePath}/messages/${encodedDraftId}/attachments`,
+      accessToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildFileAttachmentPayload(attachment)),
+      }
+    );
+
+    if (!attachmentResponse.ok) {
+      void fetchFromOutlook(
+        `${basePath}/messages/${encodedDraftId}`,
+        accessToken,
+        { method: "DELETE" }
+      );
+      const errorText = await getErrorText(attachmentResponse);
+      return new Err(new MCPError(`Failed to add attachment: ${errorText}`));
+    }
+  }
+
+  return new Ok({ draftId, conversationId });
+}
+
+async function sendDirectMail({
+  basePath,
+  accessToken,
+  to,
+  cc,
+  bcc,
+  replyTo,
+  subject,
+  contentType,
+  body,
+  importance,
+  saveToSentItems,
+  sharedMailboxAddress,
+  attachment,
+}: {
+  basePath: string;
+  accessToken: string;
+  to?: string[];
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string[];
+  subject?: string;
+  contentType?: string;
+  body: string;
+  importance?: string;
+  saveToSentItems: boolean;
+  sharedMailboxAddress?: string;
+  attachment: { buffer: Buffer; filename: string; contentType: string } | null;
+}): Promise<Ok<null> | Err<MCPError>> {
+  const message: Record<string, unknown> = {
+    subject,
+    importance,
+    body: { contentType: contentType ?? "text", content: body },
+    toRecipients: (to ?? []).map((email) => ({
+      emailAddress: { address: email },
+    })),
+  };
+  if (sharedMailboxAddress) {
+    message.from = { emailAddress: { address: sharedMailboxAddress } };
+  }
+  if (cc && cc.length > 0) {
+    message.ccRecipients = cc.map((email) => ({
+      emailAddress: { address: email },
+    }));
+  }
+  if (bcc && bcc.length > 0) {
+    message.bccRecipients = bcc.map((email) => ({
+      emailAddress: { address: email },
+    }));
+  }
+  if (replyTo && replyTo.length > 0) {
+    message.replyTo = replyTo.map((email) => ({
+      emailAddress: { address: email },
+    }));
+  }
+  if (attachment) {
+    message.attachments = [buildFileAttachmentPayload(attachment)];
+  }
+
+  const response = await fetchFromOutlook(`${basePath}/sendMail`, accessToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, saveToSentItems }),
+  });
+
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    return new Err(
+      new MCPError(
+        `Failed to send email: ${response.status} ${response.statusText} - ${errorText}`
+      )
+    );
+  }
+
+  return new Ok(null);
+}
+
+async function sendReply({
+  basePath,
+  accessToken,
+  replyToMessageId,
+  replyAll,
+  body,
+  importance,
+  to,
+  cc,
+  bcc,
+  replyTo,
+}: {
+  basePath: string;
+  accessToken: string;
+  replyToMessageId: string;
+  replyAll?: boolean;
+  body: string;
+  importance?: string;
+  to?: string[];
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string[];
+}): Promise<Ok<null> | Err<MCPError>> {
+  const endpoint =
+    (replyAll ?? false)
+      ? `${basePath}/messages/${encodeURIComponent(replyToMessageId)}/replyAll`
+      : `${basePath}/messages/${encodeURIComponent(replyToMessageId)}/reply`;
+
+  const message: Record<string, unknown> = {
+    body: { contentType: "html", content: sanitizeHtml(body) },
+    importance,
+  };
+  if (to && to.length > 0) {
+    message.toRecipients = to.map((email) => ({
+      emailAddress: { address: email },
+    }));
+  }
+  if (cc && cc.length > 0) {
+    message.ccRecipients = cc.map((email) => ({
+      emailAddress: { address: email },
+    }));
+  }
+  if (bcc && bcc.length > 0) {
+    message.bccRecipients = bcc.map((email) => ({
+      emailAddress: { address: email },
+    }));
+  }
+  if (replyTo && replyTo.length > 0) {
+    message.replyTo = replyTo.map((email) => ({
+      emailAddress: { address: email },
+    }));
+  }
+
+  const response = await fetchFromOutlook(endpoint, accessToken, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    if (response.status === 404) {
+      return new Err(
+        new MCPError(`Message not found: ${replyToMessageId}`, {
+          tracked: false,
+        })
+      );
+    }
+    return new Err(
+      new MCPError(
+        `Failed to send reply: ${response.status} ${response.statusText} - ${errorText}`
+      )
+    );
+  }
+
+  return new Ok(null);
+}
+
+function validateMailParams({
+  replyToMessageId,
+  subject,
+  contentType,
+  to,
+}: {
+  replyToMessageId?: string;
+  subject?: string;
+  contentType?: string;
+  to?: string[];
+}): Err<MCPError> | null {
+  if (replyToMessageId) {
+    if (subject) {
+      return new Err(
+        new MCPError("subject must be omitted when replyToMessageId is set.")
+      );
+    }
+    if (contentType) {
+      return new Err(
+        new MCPError(
+          "contentType must be omitted when replyToMessageId is set."
+        )
+      );
+    }
+  } else {
+    if (!to || to.length === 0) {
+      return new Err(
+        new MCPError(
+          "At least one recipient is required when replyToMessageId is not set."
+        )
+      );
+    }
+    if (!subject?.trim()) {
+      return new Err(
+        new MCPError("subject is required when replyToMessageId is not set.")
+      );
+    }
+    if (!contentType) {
+      return new Err(
+        new MCPError(
+          "contentType is required when replyToMessageId is not set."
+        )
+      );
+    }
+  }
+  return null;
+}
 
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
@@ -827,61 +1286,68 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   },
 
   create_draft: async (
-    { to, cc, bcc, replyTo, subject, contentType, body, importance = "normal" },
-    { authInfo }
+    {
+      to,
+      cc,
+      bcc,
+      replyTo,
+      subject,
+      contentType,
+      body,
+      importance = "normal",
+      replyToMessageId,
+      replyAll = false,
+      sharedMailboxAddress,
+      attachmentFilePath,
+    },
+    { authInfo, auth, agentLoopContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
 
-    // Create the email message object for Microsoft Graph API
-    const message: Record<string, unknown> = {
+    const attachmentResult = await fetchAttachment(
+      auth,
+      attachmentFilePath,
+      agentLoopContext
+    );
+    if (attachmentResult.isErr()) {
+      return attachmentResult;
+    }
+    const attachment = attachmentResult.value;
+
+    const validationError = validateMailParams({
+      replyToMessageId,
       subject,
-      importance,
-      body: {
-        contentType,
-        content: body,
-      },
-      toRecipients: to.map((email) => ({
-        emailAddress: { address: email },
-      })),
-      isDraft: true,
-    };
-
-    if (cc && cc.length > 0) {
-      message.ccRecipients = cc.map((email) => ({
-        emailAddress: { address: email },
-      }));
-    }
-
-    if (bcc && bcc.length > 0) {
-      message.bccRecipients = bcc.map((email) => ({
-        emailAddress: { address: email },
-      }));
-    }
-
-    if (replyTo && replyTo.length > 0) {
-      message.replyTo = replyTo.map((email) => ({
-        emailAddress: { address: email },
-      }));
-    }
-
-    // Make the API call to create the draft in Outlook
-    const response = await fetchFromOutlook("/me/messages", accessToken, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(message),
+      contentType,
+      to,
     });
-
-    if (!response.ok) {
-      const errorText = await getErrorText(response);
-      return new Err(new MCPError(`Failed to create draft: ${errorText}`));
+    if (validationError) {
+      return validationError;
     }
 
-    const result = await response.json();
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+
+    const result = await createOutlookDraft({
+      basePath,
+      accessToken,
+      replyToMessageId,
+      replyAll,
+      subject,
+      contentType,
+      body,
+      importance,
+      to,
+      cc,
+      bcc,
+      replyTo,
+      sharedMailboxAddress,
+      attachment,
+    });
+    if (result.isErr()) {
+      return result;
+    }
 
     return new Ok([
       { type: "text" as const, text: "Draft created successfully" },
@@ -889,8 +1355,8 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         type: "text" as const,
         text: JSON.stringify(
           {
-            messageId: result.id,
-            conversationId: result.conversationId,
+            messageId: result.value.draftId,
+            conversationId: result.value.conversationId,
           },
           null,
           2
@@ -899,7 +1365,10 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     ]);
   },
 
-  delete_draft: async ({ messageId, subject, to }, { authInfo }) => {
+  delete_draft: async (
+    { messageId, subject, to, sharedMailboxAddress },
+    { authInfo }
+  ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
@@ -912,8 +1381,10 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       );
     }
 
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+
     const response = await fetchFromOutlook(
-      `/me/messages/${messageId}`,
+      `${basePath}/messages/${messageId}`,
       accessToken,
       { method: "DELETE" }
     );
@@ -927,125 +1398,6 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     ]);
   },
 
-  create_reply_draft: async (
-    { messageId, body, contentType = "html", replyAll = false, to, cc, bcc },
-    { authInfo }
-  ) => {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    // Create the reply draft
-    const endpoint = replyAll
-      ? `/me/messages/${messageId}/createReplyAll`
-      : `/me/messages/${messageId}/createReply`;
-
-    const replyMessage: Record<string, unknown> = {
-      message: {
-        body: {
-          contentType,
-          content: body,
-        },
-      },
-    };
-
-    // Add recipients if overriding
-    if (to && to.length > 0) {
-      (replyMessage.message as Record<string, unknown>).toRecipients = to.map(
-        (email) => ({
-          emailAddress: { address: email },
-        })
-      );
-    }
-
-    if (cc && cc.length > 0) {
-      (replyMessage.message as Record<string, unknown>).ccRecipients = cc.map(
-        (email) => ({
-          emailAddress: { address: email },
-        })
-      );
-    }
-
-    if (bcc && bcc.length > 0) {
-      (replyMessage.message as Record<string, unknown>).bccRecipients = bcc.map(
-        (email) => ({
-          emailAddress: { address: email },
-        })
-      );
-    }
-
-    // Create the empty draft
-    const createDraftResponse = await fetchFromOutlook(endpoint, accessToken, {
-      method: "POST",
-    });
-
-    if (!createDraftResponse.ok) {
-      const errorText = await getErrorText(createDraftResponse);
-      if (createDraftResponse.status === 404) {
-        return new Err(
-          new MCPError(`Message not found: ${messageId}`, {
-            tracked: false,
-          })
-        );
-      }
-      return new Err(
-        new MCPError(
-          `Failed to create reply draft: ${createDraftResponse.status} ${createDraftResponse.statusText} - ${errorText}`
-        )
-      );
-    }
-
-    const createDraftResult = await createDraftResponse.json();
-
-    // Get the existing body content from the created draft (includes quoted original message)
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const existingBody = createDraftResult.body?.content || "";
-
-    // Prepend the new body to the existing HTML content
-    const sanitizedBody = sanitizeHtml(body);
-    const combinedBody = `<div>${sanitizedBody}</div><br><br>${existingBody}`;
-
-    const updateDraftResponse = await fetchFromOutlook(
-      `/me/messages/${createDraftResult.id}`,
-      accessToken,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          body: {
-            contentType: "html",
-            content: combinedBody,
-          },
-        }),
-      }
-    );
-
-    if (!updateDraftResponse.ok) {
-      const errorText = await getErrorText(updateDraftResponse);
-      return new Err(new MCPError(`Failed to update the draft: ${errorText}`));
-    }
-
-    return new Ok([
-      { type: "text" as const, text: "Reply draft created successfully" },
-      {
-        type: "text" as const,
-        text: JSON.stringify(
-          {
-            messageId: createDraftResult.id,
-            conversationId: createDraftResult.conversationId,
-            originalMessageId: messageId,
-            subject: createDraftResult.subject,
-          },
-          null,
-          2
-        ),
-      },
-    ]);
-  },
-
   send_mail: async (
     {
       to,
@@ -1053,79 +1405,132 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       bcc,
       replyTo,
       subject,
-      contentType = "text",
+      contentType,
       body,
+      importance,
       saveToSentItems = true,
       sharedMailboxAddress,
+      replyToMessageId,
+      replyAll = false,
+      attachmentFilePath,
     },
-    { authInfo }
+    { authInfo, auth, agentLoopContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
 
+    const validationError = validateMailParams({
+      replyToMessageId,
+      subject,
+      contentType,
+      to,
+    });
+    if (validationError) {
+      return validationError;
+    }
+
+    const attachmentResult = await fetchAttachment(
+      auth,
+      attachmentFilePath,
+      agentLoopContext
+    );
+    if (attachmentResult.isErr()) {
+      return attachmentResult;
+    }
+    const attachment = attachmentResult.value;
+
     const basePath = getMailboxBasePath(sharedMailboxAddress);
 
-    const message: Record<string, unknown> = {
-      subject,
-      body: {
+    if (!replyToMessageId) {
+      const result = await sendDirectMail({
+        basePath,
+        accessToken,
+        to,
+        cc,
+        bcc,
+        replyTo,
+        subject,
         contentType,
-        content: body,
-      },
-      toRecipients: to.map((email) => ({
-        emailAddress: { address: email },
-      })),
-    };
-
-    if (sharedMailboxAddress) {
-      message.from = {
-        emailAddress: { address: sharedMailboxAddress },
-      };
-    }
-
-    if (cc && cc.length > 0) {
-      message.ccRecipients = cc.map((email) => ({
-        emailAddress: { address: email },
-      }));
-    }
-
-    if (bcc && bcc.length > 0) {
-      message.bccRecipients = bcc.map((email) => ({
-        emailAddress: { address: email },
-      }));
-    }
-
-    if (replyTo && replyTo.length > 0) {
-      message.replyTo = replyTo.map((email) => ({
-        emailAddress: { address: email },
-      }));
-    }
-
-    const response = await fetchFromOutlook(
-      `${basePath}/sendMail`,
-      accessToken,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message,
-          saveToSentItems,
-        }),
+        body,
+        importance,
+        saveToSentItems,
+        sharedMailboxAddress,
+        attachment,
+      });
+      if (result.isErr()) {
+        return result;
       }
-    );
-
-    if (!response.ok) {
-      const errorText = await getErrorText(response);
-      return new Err(
-        new MCPError(
-          `Failed to send email: ${response.status} ${response.statusText} - ${errorText}`
-        )
-      );
+      return new Ok([
+        { type: "text" as const, text: "Email sent successfully" },
+      ]);
     }
 
+    // Reply with an attachment: the /reply endpoint doesn't support inline
+    // attachments, so create a reply draft (with the attachment) then send it.
+    if (attachment) {
+      const draftResult = await createOutlookDraft({
+        basePath,
+        accessToken,
+        replyToMessageId,
+        replyAll,
+        body,
+        importance,
+        to,
+        cc,
+        bcc,
+        replyTo,
+        sharedMailboxAddress,
+        attachment,
+      });
+      if (draftResult.isErr()) {
+        return draftResult;
+      }
+      const { draftId } = draftResult.value;
+      const encodedDraftId = encodeURIComponent(draftId);
+
+      const sendResponse = await fetchFromOutlook(
+        `${basePath}/messages/${encodedDraftId}/send`,
+        accessToken,
+        { method: "POST" }
+      );
+
+      if (!sendResponse.ok) {
+        void fetchFromOutlook(
+          `${basePath}/messages/${encodedDraftId}`,
+          accessToken,
+          { method: "DELETE" }
+        );
+        const errorText = await getErrorText(sendResponse);
+        return new Err(
+          new MCPError(
+            `Failed to send email: ${sendResponse.status} ${sendResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+
+      return new Ok([
+        { type: "text" as const, text: "Email sent successfully" },
+      ]);
+    }
+
+    // Reply without an attachment: use the /reply endpoint directly (single call).
+    const result = await sendReply({
+      basePath,
+      accessToken,
+      replyToMessageId,
+      replyAll,
+      body,
+      importance,
+      to,
+      cc,
+      bcc,
+      replyTo,
+    });
+    if (result.isErr()) {
+      return result;
+    }
     return new Ok([{ type: "text" as const, text: "Email sent successfully" }]);
   },
 

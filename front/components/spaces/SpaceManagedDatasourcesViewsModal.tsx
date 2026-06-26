@@ -18,24 +18,37 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-// We need to stabilize the initial state of the selection configurations,
-// to avoid resetting state when swr revalidates initialSelectedDataSources
+// Capture the selection snapshot when the modal opens and keep it stable while open,
+// even if the parent props refresh from SWR revalidation.
 function useStabilizedValue<T>(
   initialValue: T,
   isOpen: boolean,
   defaultValue: T
 ): T {
   const [value, setValue] = useState<T | undefined>();
-  useEffect(() => {
-    if (isOpen && !value) {
+
+  useLayoutEffect(() => {
+    if (isOpen && value === undefined) {
       setValue(initialValue);
     } else if (!isOpen) {
       setValue(undefined);
     }
   }, [isOpen, initialValue, value]);
-  return value ?? defaultValue;
+
+  if (!isOpen) {
+    return defaultValue;
+  }
+
+  return value ?? initialValue;
 }
 
 interface SpaceManagedDataSourcesViewsModalProps {
@@ -107,35 +120,113 @@ export default function SpaceManagedDataSourcesViewsModal({
     useState<DataSourceViewSelectionConfigurations>({});
 
   const [hasChanged, setHasChanged] = useState(false);
-  useEffect(() => {
-    if (
-      !initialConfigurations.isNodesLoading &&
-      !initialConfigurations.isNodesError
-    ) {
-      const converted = initialConfigurations.dataSourceViewsAndNodes.reduce(
-        (acc, config) => {
-          // config.dataSourceView is the system dataSourceView,
-          // searching back the original dataSourceView from initialSelectedDataSources
-          const dataSourceView =
-            spaceDataSourceViews[config.dataSourceView.dataSource.sId];
+  const initializedForKeyRef = useRef<string | null>(null);
+  const [selectorKey, setSelectorKey] = useState(0);
+  const wasOpenRef = useRef(isOpen);
 
-          const isSelectAll = dataSourceView.parentsIn === null;
-          const selectedResources = isSelectAll ? [] : config.nodes;
-
-          acc[config.dataSourceView.sId] = {
-            dataSourceView: config.dataSourceView,
-            selectedResources,
-            excludedResources: [],
-            isSelectAll,
-            tagsFilter: null, // No tags filters needed to list data source views
-          };
-          return acc;
-        },
-        {} as DataSourceViewSelectionConfigurations
-      );
-      setSelectionConfigurations(converted);
+  useLayoutEffect(() => {
+    if (isOpen && !wasOpenRef.current) {
+      setSelectorKey((key) => key + 1);
     }
-  }, [initialConfigurations, spaceDataSourceViews]);
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  const initializationKey = useMemo(
+    () =>
+      JSON.stringify(
+        dataSourceViewsAndInternalIds.map(
+          ({ dataSourceView, internalIds }) => ({
+            dsvId: dataSourceView.sId,
+            internalIds: internalIds.toSorted(),
+          })
+        )
+      ),
+    [dataSourceViewsAndInternalIds]
+  );
+
+  const showInitialLoading =
+    dataSourceViewsAndInternalIds.length > 0 &&
+    initialConfigurations.dataSourceViewsAndNodes.length === 0 &&
+    !initialConfigurations.isNodesError;
+
+  useEffect(() => {
+    if (isOpen) {
+      initialConfigurations.refetch();
+    }
+  }, [isOpen, initialConfigurations.refetch]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      initializedForKeyRef.current = null;
+      setHasChanged(false);
+      setSelectionConfigurations({});
+      return;
+    }
+
+    if (initializedForKeyRef.current === initializationKey) {
+      return;
+    }
+
+    // Wait for useStabilizedValue to populate before treating "no selections" as final.
+    if (
+      initialSelectedDataSources.length > 0 &&
+      dataSourceViewsAndInternalIds.length === 0
+    ) {
+      return;
+    }
+
+    // Wait until content nodes have been fetched (isNodesLoading is false before fetch starts).
+    if (
+      dataSourceViewsAndInternalIds.length > 0 &&
+      initialConfigurations.dataSourceViewsAndNodes.length === 0
+    ) {
+      return;
+    }
+
+    if (initialConfigurations.isNodesError) {
+      return;
+    }
+
+    if (dataSourceViewsAndInternalIds.length === 0) {
+      initializedForKeyRef.current = initializationKey;
+      setSelectionConfigurations({});
+      return;
+    }
+
+    const converted = initialConfigurations.dataSourceViewsAndNodes.reduce(
+      (acc, config) => {
+        const dataSourceView =
+          spaceDataSourceViews[config.dataSourceView.dataSource.sId];
+        if (!dataSourceView) {
+          return acc;
+        }
+
+        const isSelectAll = dataSourceView.parentsIn === null;
+        const selectedResources = isSelectAll ? [] : config.nodes;
+
+        acc[config.dataSourceView.sId] = {
+          dataSourceView: config.dataSourceView,
+          selectedResources,
+          excludedResources: [],
+          isSelectAll,
+          tagsFilter: null,
+        };
+        return acc;
+      },
+      {} as DataSourceViewSelectionConfigurations
+    );
+
+    initializedForKeyRef.current = initializationKey;
+    setSelectionConfigurations(converted);
+  }, [
+    isOpen,
+    initializationKey,
+    initialSelectedDataSources.length,
+    dataSourceViewsAndInternalIds.length,
+    initialConfigurations.isNodesError,
+    initialConfigurations.dataSourceViewsAndNodes,
+    spaceDataSourceViews,
+  ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectionConfigurationsCallback = useCallback(
@@ -164,26 +255,31 @@ export default function SpaceManagedDataSourcesViewsModal({
             {title ?? `Add connected data to space "${space.name}"`}
           </SheetTitle>
         </SheetHeader>
-        <SheetContainer>
-          <div className="overflow-x-auto">
-            {initialConfigurations.isNodesLoading ? (
-              <div className="flex items-center justify-center">
-                <Spinner />
-              </div>
-            ) : (
-              <DataSourceViewsSelector
-                useCase="spaceDatasourceManagement"
-                dataSourceViews={systemSpaceDataSourceViews}
-                owner={owner}
-                selectionConfigurations={selectionConfigurations}
-                setSelectionConfigurations={setSelectionConfigurationsCallback}
-                viewType="all"
-                isRootSelectable={isRootSelectable}
-                space={systemSpace}
-                allowAdminSearch={isAdmin(owner)}
-              />
-            )}
-          </div>
+        <SheetContainer
+          noScroll
+          isListSelector
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          {showInitialLoading ? (
+            <div className="flex items-center justify-center">
+              <Spinner />
+            </div>
+          ) : (
+            <DataSourceViewsSelector
+              key={selectorKey}
+              useCase="spaceDatasourceManagement"
+              dataSourceViews={systemSpaceDataSourceViews}
+              owner={owner}
+              selectionConfigurations={selectionConfigurations}
+              setSelectionConfigurations={setSelectionConfigurationsCallback}
+              viewType="all"
+              isRootSelectable={isRootSelectable}
+              space={systemSpace}
+              allowAdminSearch={isAdmin(owner)}
+              fixedSearchLayout
+              focusSearchOnOpen={isOpen}
+            />
+          )}
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{

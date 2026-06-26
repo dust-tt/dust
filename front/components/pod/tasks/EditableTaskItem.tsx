@@ -38,6 +38,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
     viewerUserId,
     owner,
     activeAgents,
+    defaultAgentId,
     isAgentsLoading,
     agentNameById,
     newItemKeys,
@@ -234,6 +235,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                 isStarting={isStarting}
                 isFirstOnboardingTask={isFirstOnboardingTask}
                 defaultGoToConversation={!!task.agentInstructions?.trim()}
+                defaultAgentId={defaultAgentId}
                 onOpenChange={setStartMenuOpen}
                 onStart={(opts) => handleStartWorking(task, opts)}
               />

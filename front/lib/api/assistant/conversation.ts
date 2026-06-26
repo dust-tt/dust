@@ -53,6 +53,7 @@ import {
   deriveAgentTriggerType,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import {
@@ -115,8 +116,8 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
-} from "@app/types/api/internal/assistant";
-import { isContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+} from "@app/types/api/assistant";
+import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
   LightAgentConfigurationType,
   ToolErrorEvent,
@@ -619,6 +620,8 @@ export async function postUserMessage(
 
   // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
   // Must run before the plan rate-limit check so the resulting agent message is counted.
+  // Note: the per-pod default agent is applied client-side via the input bar sticky mention,
+  // so the normal pod flow sends an explicit mention and never reaches this backstop.
   if (
     !skipDustAutoMention &&
     mentions.length === 0 &&
@@ -2482,6 +2485,20 @@ async function checkMessagesLimit(
         ? ("credits_exhausted" as const)
         : null;
     if (blockedReason === "no_seat") {
+      // If the workspace opted into auto-upgrades, try to assign a seat
+      // (none → workspace) so the member can proceed with this very message.
+      // We await the result (it no-ops unless eligible): on success the user
+      // is no longer seat-less, so we fall through instead of rejecting a
+      // message we just unblocked.
+      if (user) {
+        const upgrade = await maybeAutoUpgradeSeat({
+          workspaceId: owner.sId,
+          userId: user.sId,
+        });
+        if (upgrade.isOk() && upgrade.value.upgraded) {
+          return new Ok(undefined);
+        }
+      }
       return new Err({
         status_code: 403,
         api_error: {
@@ -3032,6 +3049,7 @@ export async function isConversationEventAllowedForAuth(
     case "conversation_title":
     case "user_message_promoted":
     case "plan_updated":
+    case "wake_up_updated":
       return true;
     default:
       assertNever(type);
@@ -3060,6 +3078,9 @@ export async function updateAgentMessageWithFinalStatus(
 ): Promise<{
   completedTs: number;
   status: Exclude<AgentMessageStatus, "created">;
+  // False when the message was already finalized (or deleted): callers must skip the terminal
+  // side effects (event publish, unread state, conversation flags) of a late terminal event.
+  applied: boolean;
 }> {
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
@@ -3069,10 +3090,15 @@ export async function updateAgentMessageWithFinalStatus(
     promotedAuth,
     agentMessage: newAgentMessage,
     deniedActions,
+    skippedTransition,
   } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    await AgentMessageModel.update(
+    // Only transition from "created": finalization is single-shot. A late terminal event from an
+    // orphaned activity (e.g. an LLM call still running after an interrupt) must not overwrite
+    // the final status nor re-run the pending-messages promotion below, which would spawn a
+    // second concurrent agent loop.
+    const [updatedCount] = await AgentMessageModel.update(
       {
         status,
         completedAt,
@@ -3088,10 +3114,30 @@ export async function updateAgentMessageWithFinalStatus(
         where: {
           id: agentMessage.agentMessageId,
           workspaceId: owner.id,
+          status: "created",
         },
         transaction: t,
       }
     );
+
+    if (updatedCount === 0) {
+      const existingAgentMessage = await AgentMessageModel.findOne({
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      });
+
+      // existingAgentMessage is null when the message row was deleted mid-finalize.
+      return {
+        promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
+        promotedAuth: auth,
+        agentMessage: null as AgentMessageType | null,
+        deniedActions: [],
+        skippedTransition: { existingAgentMessage },
+      };
+    }
 
     const deniedActions = UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)
       ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
@@ -3121,6 +3167,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth: auth,
         agentMessage: null as AgentMessageType | null,
         deniedActions,
+        skippedTransition: null,
       };
     }
 
@@ -3177,6 +3224,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth,
         agentMessage: null,
         deniedActions,
+        skippedTransition: null,
       };
     }
 
@@ -3189,6 +3237,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth,
         agentMessage: null,
         deniedActions,
+        skippedTransition: null,
       };
     }
 
@@ -3216,8 +3265,34 @@ export async function updateAgentMessageWithFinalStatus(
       promotedAuth,
       agentMessage: agentMessages[0] ?? null,
       deniedActions,
+      skippedTransition: null,
     };
   });
+
+  if (skippedTransition) {
+    const { existingAgentMessage } = skippedTransition;
+
+    logger.warn(
+      {
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+        currentStatus: existingAgentMessage?.status ?? "not_found",
+        requestedStatus: status,
+        workspaceId: owner.sId,
+      },
+      "updateAgentMessageWithFinalStatus: message already finalized, skipping"
+    );
+
+    return {
+      completedTs:
+        existingAgentMessage?.completedAt?.getTime() ?? completedAt.getTime(),
+      status:
+        existingAgentMessage && existingAgentMessage.status !== "created"
+          ? existingAgentMessage.status
+          : status,
+      applied: false,
+    };
+  }
 
   // Publish events and launch agent loop outside of the advisory lock.
   if (promotedUserMessages.length > 0) {
@@ -3280,5 +3355,6 @@ export async function updateAgentMessageWithFinalStatus(
   return {
     completedTs: completedAt.getTime(),
     status,
+    applied: true,
   };
 }

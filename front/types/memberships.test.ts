@@ -57,7 +57,7 @@ describe("expectedUserCreditState", () => {
     ).toBe("user_seat");
   });
 
-  it("pro seat with ≤20% personal balance remaining → user_seat_low_balance", () => {
+  it("pro seat with ≤20% personal balance remaining → user_seat (no low-balance sub-state)", () => {
     expect(
       expectedUserCreditState({
         seatType: "pro",
@@ -66,7 +66,7 @@ describe("expectedUserCreditState", () => {
         perUserCapAwuCredits: CAP,
         consumedAwuCredits: 0.8 * PRO_ALLOWANCE,
       })
-    ).toBe("user_seat_low_balance");
+    ).toBe("user_seat");
   });
 
   it("pro seat with exhausted personal balance, below the cap warning → on_pool", () => {
@@ -145,7 +145,7 @@ describe("expectedUserCreditState", () => {
     ).toBe("capped");
   });
 
-  it("on pool at ≥80% of cap → on_pool_low_balance", () => {
+  it("on pool at ≥80% of cap → on_pool (near-limit tracked separately via nearLimit flag)", () => {
     expect(
       expectedUserCreditState({
         seatType: "workspace",
@@ -154,7 +154,7 @@ describe("expectedUserCreditState", () => {
         perUserCapAwuCredits: CAP,
         consumedAwuCredits: 0.8 * CAP,
       })
-    ).toBe("on_pool_low_balance");
+    ).toBe("on_pool");
   });
 
   it("no cap configured → never capped (uncapped pool user)", () => {

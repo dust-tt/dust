@@ -1,20 +1,27 @@
-import { PLAN_MODE_SKELETON } from "@app/lib/api/actions/servers/plan_mode/metadata";
+import { PLAN_FILE_NAME } from "@app/lib/api/actions/servers/plan_mode/metadata";
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
+import { writeToConversationFolder } from "@app/lib/api/files/action_output_fs";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
-import { FileResource } from "@app/lib/resources/file_resource";
-import type { FileType, PlanModeApproval } from "@app/types/files";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 
-export type PlanApprovalState = "draft" | "pending" | "approved";
+// Plan mode has no database model: all state is derived from the conversation file system.
+const ARCHIVED_PLANS_DIR = "archived_plans";
 
-export type GetConversationPlanModeResponseBody = {
-  planFile: FileType | null;
-  content: string | null;
-  approvalState: PlanApprovalState;
-};
+function planPath(conversation: ConversationWithoutContentType): string {
+  return `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${PLAN_FILE_NAME}`;
+}
 
-// Conversation-scoped lock for all plan-mode operations. One plan per conversation, so a single
-// lock keyed on conversation sId serializes create/edit/approve/close and prevents races (e.g.
-// edit landing on a just-closed plan, two concurrent creates, approval stamping a closed plan).
+function archivedPlansDir(
+  conversation: ConversationWithoutContentType
+): string {
+  return `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${ARCHIVED_PLANS_DIR}`;
+}
+
+// One plan per conversation: a conversation-scoped lock serializes create/edit/close.
 export async function withPlanModeLock<T>(
   conversationId: string,
   fn: () => Promise<T>
@@ -22,97 +29,116 @@ export async function withPlanModeLock<T>(
   return executeWithLock(`plan_mode:${conversationId}`, fn);
 }
 
-// Find the currently active plan file for a conversation. "Active" = attached to the conversation
-// with `isPlanFile: true` and NOT `isPlanClosed: true`. Returns null if no active plan exists.
-//
-// Plan counts per conversation are small (1-2), so the TS-side filter is cheap. If plan mode
-// sees heavy use, a partial expression index on
-// `(workspaceId, useCase, (useCaseMetadata ->> 'conversationId'))` would help.
-export async function findActivePlanFile(
+// Read the active plan's markdown. Ok(null) when there is no active plan; Err only on a real read
+// failure, so callers can tell "no plan" apart from "failed to read".
+export async function getActivePlanContent(
   auth: Authenticator,
-  conversationId: string
-): Promise<FileResource | null> {
-  const files = await FileResource.listPlanFilesForConversation(auth, {
-    conversationId,
-  });
-  return files.find((f) => !f.useCaseMetadata?.isPlanClosed) ?? null;
+  conversation: ConversationWithoutContentType
+): Promise<Result<string | null, Error>> {
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(new Error(fsResult.error.message));
+  }
+
+  const bufferResult = await fsResult.value.readBuffer(planPath(conversation));
+  if (bufferResult.isErr()) {
+    return new Err(new Error(bufferResult.error.message));
+  }
+
+  return new Ok(
+    bufferResult.value ? bufferResult.value.toString("utf8") : null
+  );
 }
 
-// Create a fresh plan.md file attached to the conversation, seeded with the skeleton. Does not
-// check for existing active plans — callers should guard against that.
-export async function createPlanFile(
+// Shared by create_plan and edit_plan; the "is there already an active plan" guard lives in the
+// handlers.
+export async function writePlanContent(
   auth: Authenticator,
-  {
-    conversationId,
-    agentConfigurationId,
-  }: {
-    conversationId: string;
-    agentConfigurationId?: string;
-  }
-): Promise<FileResource> {
-  const workspace = auth.getNonNullableWorkspace();
-
-  const file = await FileResource.makeNew({
-    workspaceId: workspace.id,
-    fileName: "plan.md",
+  conversation: ConversationWithoutContentType,
+  content: string
+): Promise<Result<void, Error>> {
+  const writeResult = await writeToConversationFolder(auth, conversation, {
+    content,
     contentType: "text/markdown",
-    fileSize: 0,
-    useCase: "conversation",
-    useCaseMetadata: {
-      conversationId,
-      isPlanFile: true,
-      planModeLastApproval: null,
-      lastEditedByAgentConfigurationId: agentConfigurationId,
-    },
+    fileName: PLAN_FILE_NAME,
   });
-
-  await file.uploadContent(auth, PLAN_MODE_SKELETON);
-
-  return file;
-}
-
-// Stamp the plan file with approval metadata. Called by the request_plan_approval tool handler
-// after user approval. No-ops (returns null) if the plan is already closed — this covers the race
-// where close_plan runs between approval request and approval decision.
-export async function markPlanApproved(
-  auth: Authenticator,
-  planFile: FileResource,
-  approvedByUserId: string
-): Promise<PlanModeApproval | null> {
-  if (planFile.useCaseMetadata?.isPlanClosed) {
-    return null;
+  if (writeResult.isErr()) {
+    return new Err(new Error(writeResult.error.message));
   }
 
-  const approval: PlanModeApproval = {
-    approvedAt: new Date().toISOString(),
-    approvedByUserId,
-    fileVersion: planFile.version,
-  };
-
-  await planFile.setUseCaseMetadata(auth, {
-    ...planFile.useCaseMetadata,
-    planModeLastApproval: approval,
-  });
-
-  return approval;
+  return new Ok(undefined);
 }
 
-// Retire the plan. Sets `isPlanClosed: true`. The file stays in DB for audit; the skill and UI
-// stop referencing it. Any pending approval on this plan should be resolved separately by the
-// caller (close_plan handler).
-export async function markPlanClosed(
+export async function closePlan(
   auth: Authenticator,
-  planFile: FileResource
+  conversation: ConversationWithoutContentType
+): Promise<Result<void, Error>> {
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(new Error(fsResult.error.message));
+  }
+  const fs = fsResult.value;
+
+  const listResult = await fs.list(archivedPlansDir(conversation));
+  if (listResult.isErr()) {
+    return new Err(new Error(listResult.error.message));
+  }
+
+  // Next index = max existing `plan-{n}.md` + 1 (robust to gaps). Empty folder => 1.
+  const maxIndex = listResult.value.reduce((max, entry) => {
+    const match = entry.isDirectory
+      ? null
+      : entry.fileName.match(/^plan-(\d+)\.md$/);
+    return match ? Math.max(max, parseInt(match[1], 10)) : max;
+  }, 0);
+
+  const dest = `${archivedPlansDir(conversation)}/plan-${maxIndex + 1}.md`;
+  const moveResult = await fs.move({ src: planPath(conversation), dest });
+  if (moveResult.isErr()) {
+    return new Err(new Error(moveResult.error.message));
+  }
+
+  return new Ok(undefined);
+}
+
+export async function publishPlanUpdated(
+  conversationId: string,
+  { isClosed }: { isClosed: boolean }
 ): Promise<void> {
-  if (planFile.useCaseMetadata?.isPlanClosed) {
-    return;
-  }
-  await planFile.setUseCaseMetadata(auth, {
-    ...planFile.useCaseMetadata,
-    isPlanClosed: true,
-  });
+  await publishConversationEvent(
+    {
+      type: "plan_updated",
+      created: Date.now(),
+      conversationId,
+      isClosed,
+    },
+    { conversationId }
+  );
 }
 
-export function isPlanApproved(file: FileResource): boolean {
-  return file.useCaseMetadata?.planModeLastApproval != null;
+// Close the active plan end to end: under the conversation lock, archive plan.md and publish the
+// plan_updated event. Shared by the close_plan tool and the HTTP close endpoint. `closed` is false
+// when there was no active plan to begin with (stale card, another tab, or the agent closed it
+// first), so callers can treat that as an idempotent no-op rather than a failure.
+export async function closeActivePlan(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<{ closed: boolean }, Error>> {
+  return withPlanModeLock(conversation.sId, async () => {
+    const existing = await getActivePlanContent(auth, conversation);
+    if (existing.isErr()) {
+      return new Err(existing.error);
+    }
+    if (existing.value === null) {
+      return new Ok({ closed: false });
+    }
+
+    const moved = await closePlan(auth, conversation);
+    if (moved.isErr()) {
+      return new Err(moved.error);
+    }
+
+    await publishPlanUpdated(conversation.sId, { isClosed: true });
+    return new Ok({ closed: true });
+  });
 }

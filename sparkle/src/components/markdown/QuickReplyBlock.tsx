@@ -1,7 +1,7 @@
 import { Button } from "@sparkle/components/Button";
 import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
-import React, { useContext, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import type { Node } from "unist";
 import { visit } from "unist-util-visit";
 
@@ -34,10 +34,13 @@ export function QuickReplyContainer({
 }: QuickReplyContainerProps) {
   const [isOpen, setIsOpen] = useState(true);
 
+  const quickReplyContextValue = useMemo(
+    () => ({ onItemExecuted: () => setIsOpen(false) }),
+    []
+  );
+
   return (
-    <QuickReplyContainerContext.Provider
-      value={{ onItemExecuted: () => setIsOpen(false) }}
-    >
+    <QuickReplyContainerContext.Provider value={quickReplyContextValue}>
       <div
         className={cn(
           "s-overflow-hidden s-transition-all s-duration-200 s-ease-in-out",

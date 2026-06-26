@@ -1,4 +1,5 @@
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
@@ -26,7 +27,10 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
+import {
+  CREDIT_COST_ITEM_CLASS_NAME,
+  useCreditCostMenuItem,
+} from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -48,36 +52,32 @@ import {
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
-import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
-import type { FetchConversationMessageResponseLight } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
-import { useConversationWakeUps } from "@app/lib/swr/wakeups";
+import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { FetchConversationMessageResponseLight } from "@app/types/api/assistant/messages";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
-import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
-import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
@@ -216,6 +216,7 @@ interface AgentMessageProps {
   additionalMarkdownPlugins?: PluggableList;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isProjectArchived?: boolean;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
 
 export function AgentMessage({
@@ -235,6 +236,7 @@ export function AgentMessage({
   additionalMarkdownPlugins,
   isAutoScrollEnabledRef,
   isProjectArchived = false,
+  setLimitReachedCode,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
@@ -249,6 +251,13 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // Latches to true the first time the menu opens. We use this rather than
+  // `isMenuOpen` to gate the cost fetch so the query stays enabled after the
+  // menu closes: otherwise disabling it nulls the SWR key, dropping
+  // `refreshedMessage` back to the prop values (which never carry
+  // `subAgentCostCredits`) and flickering the displayed total during the close
+  // animation.
+  const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
   // Re-fetch (on menu open) only if a cost we want to show is still missing:
   // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
   // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
@@ -258,22 +267,26 @@ export function AgentMessage({
     agentMessage.costCredits == null ||
     (hasMessageSpawnedSubAgent(agentMessage) &&
       agentMessage.subAgentCostCredits == null);
-  const { message: refreshedMessage } = useConversationMessage({
-    conversationId,
-    workspaceId: owner.sId,
-    messageId: agentMessage.sId,
-    options: {
-      disabled: !isMenuOpen || !needsCostFetch,
-    },
-  });
+  const { message: refreshedMessage, isMessageLoading } =
+    useConversationMessage({
+      conversationId,
+      workspaceId: owner.sId,
+      messageId: agentMessage.sId,
+      options: {
+        disabled: !hasOpenedMenu || !needsCostFetch,
+      },
+    });
   const refreshedAgentMessage =
     refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
-  const creditCostItem = useCreditCostMenuItem({
+  const { creditCostItem, isCreditPriced } = useCreditCostMenuItem({
     credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
     subAgentCredits:
       refreshedAgentMessage?.subAgentCostCredits ??
       agentMessage.subAgentCostCredits,
   });
+  // On a credit-priced plan, keep the cost section visible while the fetch is
+  // in flight (showing a loader) rather than popping it in once it resolves.
+  const isCreditCostLoading = needsCostFetch && isMessageLoading;
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -293,15 +306,6 @@ export function AgentMessage({
   const { mutateSandboxFiles } = useConversationSandboxFiles({
     conversationId,
     owner,
-    options: { disabled: true },
-  });
-  const { mutateWakeUps } = useConversationWakeUps({
-    owner,
-    conversationId,
-    disabled: true,
-  });
-  const { mutateConversations } = useConversations({
-    workspaceId: owner.sId,
     options: { disabled: true },
   });
 
@@ -443,24 +447,6 @@ export function AgentMessage({
             ) {
               void mutateSandboxFiles();
             }
-            if (action.internalMCPServerName === "wakeups") {
-              void mutateWakeUps().then((updated) => {
-                const activeWakeUp =
-                  updated?.wakeUps.find(isActiveWakeUp) ?? null;
-                const nextWakeupAt = activeWakeUp
-                  ? getNextWakeUpFireAtFromScheduleConfig(
-                      activeWakeUp.scheduleConfig
-                    )
-                  : null;
-                void mutateConversations(
-                  (currentData: ConversationListItemType[] | undefined) =>
-                    currentData?.map((c) =>
-                      c.sId === conversationId ? { ...c, nextWakeupAt } : c
-                    ),
-                  { revalidate: false }
-                );
-              });
-            }
             break;
           }
           case "end-of-stream":
@@ -482,8 +468,6 @@ export function AgentMessage({
         mutateConversationAttachments,
         mutateSandboxStatus,
         mutateSandboxFiles,
-        mutateWakeUps,
-        mutateConversations,
       ]
     ),
     streamId,
@@ -779,14 +763,17 @@ export function AgentMessage({
       blockedOnly?: boolean;
     }) => {
       setIsRetryHandlerProcessing(true);
-      await retryMessage({
+      const result = await retryMessage({
         conversationId,
         messageId,
         blockedOnly,
       });
       setIsRetryHandlerProcessing(false);
+      if (result.isErr()) {
+        setLimitReachedCode?.(result.error);
+      }
     },
-    [retryMessage]
+    [retryMessage, setLimitReachedCode]
   );
 
   const reloadMessage = useCallback(
@@ -901,7 +888,14 @@ export function AgentMessage({
           icon={isCopied ? ClipboardCheck : Clipboard}
           className="text-muted-foreground dark:text-muted-foreground-night"
         />
-        <DropdownMenu onOpenChange={setIsMenuOpen}>
+        <DropdownMenu
+          onOpenChange={(open) => {
+            setIsMenuOpen(open);
+            if (open) {
+              setHasOpenedMenu(true);
+            }
+          }}
+        >
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
@@ -911,9 +905,20 @@ export function AgentMessage({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {creditCostItem && (
+            {isCreditPriced && (creditCostItem || isCreditCostLoading) && (
               <>
-                <DropdownMenuItem {...creditCostItem} />
+                {creditCostItem ? (
+                  <DropdownMenuItem {...creditCostItem} />
+                ) : (
+                  <DropdownMenuItem
+                    label="Credit cost"
+                    endComponent={
+                      <div className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
+                    }
+                    className={CREDIT_COST_ITEM_CLASS_NAME}
+                    onSelect={(e) => e.preventDefault()}
+                  />
+                )}
                 <DropdownMenuSeparator />
               </>
             )}
@@ -1330,6 +1335,9 @@ function AgentMessageContent({
   );
   const matches = (agentMessage.content ?? "").matchAll(markdownImageRegex);
   const referencedFileIds = new Set([...matches].map((m) => m[1]));
+  const referencedFilePaths = getFilePreviewDirectivePaths(
+    agentMessage.content ?? ""
+  );
 
   // Get completed images that are not already referenced in the Markdown content.
   // Combine from actions (updated during streaming) and generatedFiles (available on reload).
@@ -1382,7 +1390,8 @@ function AgentMessageContent({
   const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
-      !isInteractiveContentType(file.contentType)
+      !isInteractiveContentType(file.contentType) &&
+      (file.filePath === undefined || !referencedFilePaths.has(file.filePath))
   );
 
   return (
@@ -1503,7 +1512,7 @@ function getCitations({
       <AttachmentCitation
         key={index}
         attachmentCitation={attachmentCitation}
-        compact
+        size="sm"
       />
     );
   });

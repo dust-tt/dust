@@ -91,6 +91,7 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
+  | "accounts/fireworks/models/glm-5p2" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4-latest" // xAI
@@ -700,15 +701,17 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_shrink_wrap"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
+  | "anthropic_cache_diagnostics"
+  | "anthropic_tool_search"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "claude_fable_5_feature"
-  | "sessions_branching"
   | "databricks_tool"
   | "deepseek_feature"
   | "dev_mcp_actions"
   | "exa_people_and_company"
+  | "disable_computer_feature"
   | "disable_formatting_prompt"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
@@ -721,7 +724,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
-  | "force_us_api_url"
   | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "gpt_image_2_feature"
@@ -741,11 +743,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "power_bi_mcp"
   | "reinforced_agents"
   | "self_improvement_beta_tester"
-  | "metronome_billing"
+  | "legacy_billing"
   | "plan_mode"
+  | "pod_default_agent"
   | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
+  | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "sandbox_dsbx_tools"
@@ -774,8 +778,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "new_file_explorer"
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
-  | "user_settings_v2"
   | "admin_governance"
+  | "use_new_llm_router"
+  | "live_speech_to_text"
+  | "force_us_api_url"
+  | "workspace_default_agent"
+  | "sound_notification"
+  | "whitelabel_frames"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3033,6 +3042,7 @@ const AnalyticsExportTableSchema = z.enum([
   "source",
   "agents",
   "users",
+  "skills",
   "skill_usage",
   "tool_usage",
   "messages",
@@ -3315,6 +3325,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionSpeakIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
+  | "AdomikLogo"
   | "AmplitudeLogo"
   | "ApifyLogo"
   | "AsanaLogo"
@@ -3345,6 +3356,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "HubspotLogo"
   | "IntercomLogo"
   | "JiraLogo"
+  | "LemlistLogo"
   | "LinearLogo"
   | "LumaLogo"
   | "MicrosoftExcelLogo"

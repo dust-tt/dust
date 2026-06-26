@@ -70,6 +70,12 @@ type SkillListAggs = {
   };
 };
 
+type SkillIdListAggs = {
+  skills_nested: {
+    by_skill_id: estypes.AggregationsMultiBucketAggregateBase<SkillBucket>;
+  };
+};
+
 function bucketToPoint(bucket: DateBucket, timezone: string): SkillUsagePoint {
   return {
     timestamp: bucket.key,
@@ -213,4 +219,38 @@ export async function fetchAvailableSkills(
   }));
 
   return new Ok(skills);
+}
+
+export async function fetchUsedSkills(
+  baseQuery: estypes.QueryDslQueryContainer
+): Promise<Result<string[], Error>> {
+  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
+    skills_nested: {
+      nested: { path: "skills_used" },
+      aggs: {
+        by_skill_id: {
+          terms: {
+            field: "skills_used.skill_id",
+            size: 1000,
+            order: { _count: "desc" },
+          },
+        },
+      },
+    },
+  };
+
+  const result = await searchAnalytics<never, SkillIdListAggs>(baseQuery, {
+    aggregations: aggs,
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return new Err(new Error(result.error.message));
+  }
+
+  const skillIdBuckets = bucketsToArray<SkillBucket>(
+    result.value.aggregations?.skills_nested?.by_skill_id?.buckets
+  );
+
+  return new Ok(skillIdBuckets.map((bucket) => bucket.key));
 }

@@ -1,4 +1,3 @@
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
   isContentNodeAttachmentType,
@@ -6,10 +5,9 @@ import {
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { DustFileSystem } from "@app/lib/api/file_system";
-import type { FileSystemDirectoryEntry } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
-  SCOPED_PREFIX_POD,
+  podScopedPath,
 } from "@app/lib/api/file_system/types";
 import {
   deleteGCSMountFile,
@@ -36,7 +34,9 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
+import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
+import type { FileSystemDirectoryEntry } from "@app/types/api/file_system/types";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";
@@ -402,7 +402,7 @@ export async function addFileToProject(
     }
 
     const destFileName = file.fileName;
-    const destScopedPath = `${SCOPED_PREFIX_POD}${space.sId}/${destFileName}`;
+    const destScopedPath = podScopedPath(space.sId, destFileName);
 
     // Reject the move when a file with the same name already exists in the Pod, rather
     // than silently overwriting it. moveFile (raw GCS) does not check, so we check the
@@ -628,6 +628,7 @@ export async function removeFileFromProject(
 /**
  * Create an empty folder in a project GCS mount via a trailing-slash placeholder object.
  */
+// TODO(FILE_SYSTEM): Delete this abstraction.
 export async function createProjectFolder(
   auth: Authenticator,
   {
@@ -670,9 +671,7 @@ export async function createProjectFolder(
     return fsResult;
   }
 
-  return fsResult.value.mkdir(
-    `${SCOPED_PREFIX_POD}${space.sId}/${relativeDirPath}`
-  );
+  return fsResult.value.mkdir(podScopedPath(space.sId, relativeDirPath));
 }
 
 /**
@@ -782,18 +781,14 @@ export async function renameProjectFile(
     return new Ok(undefined);
   }
 
-  // Look up the linked FileResource by either the new `pods/` form or the old
-  // `projects/` form, since old DB rows are not yet backfilled.
   const podsPrefix = getPodFilesBasePath({
     workspaceId: owner.sId,
     podId: space.sId,
   });
   const podsGcsPath = `${podsPrefix}${normalized}`;
-  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
     podsGcsPath,
-    legacyGcsPath,
   ]);
 
   const renameResult = await renameGCSMountFile(
@@ -879,12 +874,8 @@ export async function deleteProjectFile(
     }
   }
 
-  const podsGcsPath = `${mountBasePath}${normalized}`;
-  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
-
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    podsGcsPath,
-    legacyGcsPath,
+    gcsPath,
   ]);
   if (fileResources.length > 0) {
     return removeFileFromProject(auth, {

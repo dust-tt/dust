@@ -18,6 +18,8 @@ import {
   getPod,
   getWritablePodContext,
   makeSuccessResponse,
+  partitionMembersToRemove,
+  resolvePodUserRolesBySId,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
@@ -26,6 +28,7 @@ import {
   SEMANTIC_SEARCH_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { partitionMembersToAdd } from "@app/lib/api/actions/servers/pod_manager/types";
 import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
@@ -44,7 +47,7 @@ import {
   listProjectContextAttachments,
   removeContentNodesFromProject,
 } from "@app/lib/api/projects/context";
-import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
+import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
@@ -66,6 +69,7 @@ import {
 } from "@app/types/assistant/conversation";
 import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { formatConversationsForDisplay } from "./conversation_formatting";
 
@@ -336,20 +340,66 @@ export function createProjectManagerTools(
           );
         }
 
-        const addMemberIds = params.addMemberIds ?? [];
-        const removeMemberIds = params.removeMemberIds ?? [];
+        const membersToAdd = params.membersToAdd ?? {};
+        const membersToRemove = params.membersToRemove ?? [];
+        const { editorIds: addEditorIds, memberIds: addMemberIds } =
+          partitionMembersToAdd(membersToAdd);
 
-        if (addMemberIds.length === 0 && removeMemberIds.length === 0) {
+        if (
+          addMemberIds.length === 0 &&
+          membersToRemove.length === 0 &&
+          addEditorIds.length === 0
+        ) {
           return new Err(
             new MCPError(
-              "At least one of addMemberIds or removeMemberIds must be provided",
+              "At least one of membersToAdd or membersToRemove must be provided",
               { tracked: false }
             )
           );
         }
 
-        const added: string[] = [];
-        const removed: string[] = [];
+        const roleByUserSId = await resolvePodUserRolesBySId(auth, pod);
+        const { editorIds: removeEditorIds, memberIds: removeMemberIds } =
+          partitionMembersToRemove(membersToRemove, roleByUserSId);
+
+        const addedMembers: string[] = [];
+        const removedMembers: string[] = [];
+        const addedEditors: string[] = [];
+        const removedEditors: string[] = [];
+
+        if (addEditorIds.length > 0) {
+          const uniqueAddEditorIds = [...new Set(addEditorIds)];
+          const addEditorsRes = await pod.addEditors(auth, {
+            userIds: uniqueAddEditorIds,
+          });
+          if (addEditorsRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to add editors: ${addEditorsRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+          addedEditors.push(...addEditorsRes.value.map((user) => user.sId));
+        }
+
+        if (removeEditorIds.length > 0) {
+          const uniqueRemoveEditorIds = [...new Set(removeEditorIds)];
+          const removeEditorsRes = await pod.removeEditors(auth, {
+            userIds: uniqueRemoveEditorIds,
+          });
+          if (removeEditorsRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to remove editors: ${removeEditorsRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+          removedEditors.push(
+            ...removeEditorsRes.value.map((user) => user.sId)
+          );
+        }
 
         if (addMemberIds.length > 0) {
           const uniqueAddIds = [...new Set(addMemberIds)];
@@ -364,10 +414,10 @@ export function createProjectManagerTools(
               )
             );
           }
-          added.push(...addMembersRes.value.map((user) => user.sId));
+          addedMembers.push(...addMembersRes.value.map((user) => user.sId));
           notifyPodMembersAdded(auth, {
             pod: pod.toJSON(),
-            addedUserIds: uniqueAddIds,
+            addedUserIds: addedMembers,
           });
         }
 
@@ -384,15 +434,33 @@ export function createProjectManagerTools(
               )
             );
           }
-          removed.push(...removeMembersRes.value.map((user) => user.sId));
+          removedMembers.push(
+            ...removeMembersRes.value.map((user) => user.sId)
+          );
         }
 
         return new Ok(
           makeSuccessResponse({
             success: true,
-            added,
-            removed,
-            message: `Pod members updated successfully.${added.length > 0 ? ` Added: ${added.join(", ")}.` : ""}${removed.length > 0 ? ` Removed: ${removed.join(", ")}.` : ""}`,
+            addedMembers,
+            removedMembers,
+            addedEditors,
+            removedEditors,
+            message: [
+              "Pod members updated successfully.",
+              addedEditors.length > 0
+                ? ` Added editors: ${addedEditors.join(", ")}.`
+                : "",
+              removedEditors.length > 0
+                ? ` Removed editors: ${removedEditors.join(", ")}.`
+                : "",
+              addedMembers.length > 0
+                ? ` Added members: ${addedMembers.join(", ")}.`
+                : "",
+              removedMembers.length > 0
+                ? ` Removed members: ${removedMembers.join(", ")}.`
+                : "",
+            ].join(""),
           })
         );
       }, "Failed to update Pod members");
@@ -434,10 +502,17 @@ export function createProjectManagerTools(
             })
           );
         }
-        const podFiles = await fsResult.value.list(
+        const podFilesResult = await fsResult.value.list(
           `${SCOPED_PREFIX_POD}${pod.sId}`
         );
-        const projectFileCount = podFiles.filter((e) => !e.isDirectory).length;
+        if (podFilesResult.isErr()) {
+          return new Err(
+            new MCPError("Failed to list Pod files.", { tracked: true })
+          );
+        }
+        const projectFileCount = podFilesResult.value.filter(
+          (e) => !e.isDirectory
+        ).length;
 
         // Construct project URL
         const projectPath = getPodRoute(owner.sId, pod.sId);
@@ -595,19 +670,74 @@ export function createProjectManagerTools(
         );
       }, "Failed to list Pod members");
     },
-    list_pods: async () => {
+    list_pods: async (params) => {
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
         const workspaceSId = owner.sId;
-        const { nonArchivedSpaces } =
-          await listNonArchivedMemberSpacesWithMetadata(auth);
-        const memberPods = nonArchivedSpaces
-          .filter((space) => space.isProject())
-          .sort((a, b) =>
-            a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
-          );
+        const { access = "member", q, limit = 20, pageCursor } = params;
 
-        const pods = memberPods.map((pod) => ({
+        const decodedPageOffset = pageCursor
+          ? Number.parseInt(pageCursor, 10)
+          : 0;
+        const pageOffset =
+          Number.isInteger(decodedPageOffset) && decodedPageOffset >= 0
+            ? decodedPageOffset
+            : null;
+
+        if (pageOffset === null) {
+          return new Err(
+            new MCPError(
+              "Invalid pageCursor. Expected an offset cursor from a previous list_pods response.",
+              { tracked: false }
+            )
+          );
+        }
+
+        const {
+          pods: pagePods,
+          total,
+          hasMore,
+        } = await listPodsForScope(auth, {
+          access,
+          q,
+          pagination: { limit, pageOffset },
+        });
+
+        if (total === 0) {
+          let emptyMessage: string;
+          switch (access) {
+            case "open":
+              emptyMessage = q?.trim()
+                ? `No open Pods found matching "${q.trim()}".`
+                : "No non-archived open Pods found in this workspace.";
+              break;
+            case "member":
+              emptyMessage = q?.trim()
+                ? `No Pods found matching "${q.trim()}" where you are a member.`
+                : "No non-archived Pods found where you are a space member.";
+              break;
+            default:
+              assertNever(access);
+          }
+
+          return new Ok(
+            makeSuccessResponse({
+              success: true,
+              count: 0,
+              total: 0,
+              hasMore: false,
+              nextPageCursor: null,
+              pods: [],
+              message: emptyMessage,
+            })
+          );
+        }
+
+        const nextPageCursor = hasMore
+          ? String(pageOffset + pagePods.length)
+          : null;
+
+        const pods = pagePods.map((pod) => ({
           id: pod.sId,
           name: pod.name,
           dustPod: {
@@ -616,15 +746,32 @@ export function createProjectManagerTools(
           },
         }));
 
+        let accessLabel: string;
+        switch (access) {
+          case "open":
+            accessLabel = "open Pod(s)";
+            break;
+          case "member":
+            accessLabel = "Pod(s) you are a member of";
+            break;
+          default:
+            assertNever(access);
+        }
+        const filterLabel = q?.trim() ? ` matching "${q.trim()}"` : "";
+
         return new Ok(
           makeSuccessResponse({
             success: true,
             count: pods.length,
+            total,
+            hasMore,
+            nextPageCursor,
             pods,
             message:
-              pods.length === 0
-                ? "No non-archived Pods found where you are a space member."
-                : `Found ${pods.length} Pod(s). Use each entry's dustPod as the dustPod argument for other pod_manager tools.`,
+              `Found ${pods.length} of ${total} ${accessLabel}${filterLabel}.` +
+              (hasMore
+                ? " Pass nextPageCursor to fetch more Pods."
+                : " Use each entry's dustPod as the dustPod argument for other pod_manager tools."),
           })
         );
       }, "Failed to list Pods");
@@ -687,7 +834,22 @@ export function createProjectManagerTools(
           }
         }
 
-        const pod = createSpaceRes.value;
+        // createSpaceAndGroup grants the creator editor access via a new group
+        // membership. Refresh auth so this tool can administrate the Pod immediately
+        // (e.g. addMembers, seedInitialTasks) and later tools see the membership.
+        await auth.refresh();
+
+        const pod = await SpaceResource.fetchById(
+          auth,
+          createSpaceRes.value.sId
+        );
+        if (!pod) {
+          return new Err(
+            new MCPError("Pod created but could not be retrieved.", {
+              tracked: false,
+            })
+          );
+        }
 
         if (params.description) {
           const metadata = await ProjectMetadataResource.fetchBySpace(
@@ -703,10 +865,32 @@ export function createProjectManagerTools(
           }
         }
 
-        if (params.memberIds && params.memberIds.length > 0) {
-          const uniqueMemberIds = [...new Set(params.memberIds)];
+        const creatorId = auth.getNonNullableUser().sId;
+        const membersToAdd = Object.fromEntries(
+          Object.entries(params.membersToAdd ?? {}).filter(
+            ([userId]) => userId !== creatorId
+          )
+        );
+        const { editorIds: additionalEditorIds, memberIds } =
+          partitionMembersToAdd(membersToAdd);
+
+        if (additionalEditorIds.length > 0) {
+          const addEditorsRes = await pod.addEditors(auth, {
+            userIds: additionalEditorIds,
+          });
+          if (addEditorsRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Pod created but failed to add some editors: ${addEditorsRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+        }
+
+        if (memberIds.length > 0) {
           const addMembersRes = await pod.addMembers(auth, {
-            userIds: uniqueMemberIds,
+            userIds: memberIds,
           });
           if (addMembersRes.isErr()) {
             return new Err(

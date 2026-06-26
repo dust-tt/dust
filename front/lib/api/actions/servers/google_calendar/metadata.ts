@@ -44,7 +44,7 @@ const sharedEventFields = {
 export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   list_calendars: {
     description:
-      "List all calendars accessible by the user. Supports pagination via pageToken.",
+      "List all Google Calendars accessible by the user. Supports pagination via pageToken.",
     schema: {
       pageToken: z.string().optional().describe("Page token for pagination."),
       maxResults: z
@@ -106,14 +106,20 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_event: {
-    description: "Create a new event in a Google Calendar.",
+    description:
+      "Create a new event in a Google Calendar. By default: (1) add the calling user as both organizer and attendee, (2) call check_availability to verify attendee availability beforehand, (3) call get_user_timezones first to determine attendee timezones for accurate scheduling.",
     schema: {
       calendarId: z
         .string()
         .default("primary")
         .describe("The calendar ID (default: 'primary')."),
       summary: z.string().describe("Title of the event."),
-      description: z.string().optional().describe("Description of the event."),
+      description: z
+        .string()
+        .optional()
+        .describe(
+          "Description of the event. Supports basic HTML tags (<b>, <i>, <br>, <ul>, <li>, <a href='...'>). Use raw HTML tags — never escape them as entities. Use plain text only when no formatting is needed."
+        ),
       start: z
         .object({ dateTime: z.string().describe("RFC3339 start time") })
         .describe("Start time object."),
@@ -155,7 +161,12 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .describe("The calendar ID (default: 'primary')."),
       eventId: z.string().describe("The ID of the event to update."),
       summary: z.string().optional().describe("Title of the event."),
-      description: z.string().optional().describe("Description of the event."),
+      description: z
+        .string()
+        .optional()
+        .describe(
+          "Description of the event. Only include this field when intentionally changing the description. Supports basic HTML tags (<b>, <i>, <br>, <ul>, <li>, <a href='...'>). Use raw HTML tags — never escape them as entities. Use plain text only when no formatting is needed."
+        ),
       start: z
         .object({ dateTime: z.string().describe("RFC3339 start time") })
         .optional()
@@ -201,7 +212,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   },
   check_availability: {
     description:
-      "Compute combined availability across multiple participants within a date range.",
+      "Compute combined free/busy availability across multiple participants within a date range using Google Calendar.",
     schema: {
       participants: z
         .array(
@@ -268,7 +279,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   },
   get_user_timezones: {
     description:
-      "Get timezone information for multiple users by attempting to access their calendars. Only works for calendars shared with you.",
+      "Get timezone settings for multiple users from their Google Calendar configuration. Only works for calendars shared with you.",
     schema: {
       emails: z
         .array(z.string())
@@ -284,11 +295,11 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
 });
 
 export const GOOGLE_CALENDAR_SERVER = {
-  // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "google_calendar",
     version: "1.0.0",
-    description: "Access calendar schedules and appointments.",
+    description:
+      "Manage Google Calendar: list calendars, create and update meeting events, check free/busy availability, and look up attendee timezones.",
     authorization: {
       provider: "google_drive",
       supported_use_cases: ["personal_actions", "platform_actions"],
@@ -297,8 +308,7 @@ export const GOOGLE_CALENDAR_SERVER = {
     },
     icon: "GcalLogo",
     documentationUrl: "https://docs.dust.tt/docs/google-calendar",
-    instructions:
-      "By default when creating a meeting, (1) set the calling user as the organizer and an attendee (2) check availability for attendees using the check_availability tool (3) use get_user_timezones to check attendee timezones for better scheduling.",
+    instructions: null,
   },
   tools: Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => ({
     name: t.name,

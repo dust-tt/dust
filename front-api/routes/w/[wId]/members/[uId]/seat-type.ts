@@ -1,5 +1,7 @@
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
+import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import { getUserForWorkspace } from "@app/lib/api/user";
+import logger from "@app/logger/logger";
 import {
   MEMBERSHIP_SEAT_TYPES,
   type MembershipSeatType,
@@ -91,6 +93,15 @@ app.patch(
                 "The free seat is reserved for first-time members and cannot be assigned again.",
             },
           });
+        case "paid_seat_not_allowed_on_free_plan":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "A paid seat cannot be assigned while the workspace is on a free plan. Upgrade the workspace first.",
+            },
+          });
         case "seat_limit_reached":
           return apiError(ctx, {
             status_code: 400,
@@ -110,6 +121,24 @@ app.patch(
           });
         default:
           assertNever(result.error.type);
+      }
+    }
+
+    // When the user is upgrading their own seat, sync immediately so credits
+    // are available right away instead of waiting for the debounced workflow.
+    if (uId === auth.getNonNullableUser().sId) {
+      const syncResult = await syncMetronomeSeatCountForWorkspace({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      if (syncResult.isErr()) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            userId: uId,
+            err: syncResult.error.message,
+          },
+          "[SeatType] Immediate seat sync after self-upgrade failed; debounced workflow will retry"
+        );
       }
     }
 

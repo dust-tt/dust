@@ -4,7 +4,10 @@ import {
   upsertTable,
 } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import {
+  isFileTypeUpsertableForUseCase,
+  processAndUpsertToDataSource,
+} from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -107,10 +110,14 @@ describe("processAndUpsertToDataSource", () => {
       getNonNullableWorkspace: () => workspace,
     } as unknown as Authenticator;
 
-    // Reset mocks
+    // Reset mocks. vi.clearAllMocks() only clears call history, not implementations,
+    // so explicitly restore default implementations that some tests override.
     vi.clearAllMocks();
     vi.mocked(getFileContent).mockReset();
     vi.mocked(upsertDocument).mockReset();
+    vi.mocked(upsertTable).mockResolvedValue(
+      new Ok({ table: { table_id: "test-table-id" } })
+    );
   });
 
   it("should skip all processing for tool_output files with skipDataSourceIndexing", async () => {
@@ -142,23 +149,22 @@ describe("processAndUpsertToDataSource", () => {
     expect(createDataSourceFolder).not.toHaveBeenCalled();
   });
 
-  it("should keep over-quota text conversation files without indexing them", async () => {
-    const file = await FileFactory.create(auth, null, {
-      contentType: "text/plain",
-      fileName: "large-conversation-file.txt",
+  it("should keep over-quota CSV conversation files without indexing them", async () => {
+    const file = await FileFactory.csv(auth, null, {
+      fileName: "large-conversation-file.csv",
       fileSize: overQuotaFileSizeBytes,
       status: "ready",
       useCase: "conversation",
       useCaseMetadata: {
         conversationId: "test-conversation-id",
+        generatedTables: [],
       },
     });
 
     const space = await SpaceFactory.global(workspace);
     const datasourceView = await DataSourceViewFactory.folder(workspace, space);
 
-    vi.mocked(getFileContent).mockResolvedValue("large text content");
-    vi.mocked(upsertDocument).mockResolvedValue(
+    vi.mocked(upsertTable).mockResolvedValue(
       new Err(new DustError("data_source_quota_error", "File is too large."))
     );
 
@@ -176,7 +182,6 @@ describe("processAndUpsertToDataSource", () => {
       "test-conversation-id"
     );
     expect(updatedFile?.useCaseMetadata?.skipDataSourceIndexing).toBe(true);
-    expect(updatedFile?.snippet).toBe("Mocked snippet");
   });
 
   it("should keep data source quota errors fatal for non-conversation files", async () => {
@@ -209,22 +214,21 @@ describe("processAndUpsertToDataSource", () => {
   });
 
   it("should keep unrelated conversation indexing errors fatal", async () => {
-    const file = await FileFactory.create(auth, null, {
-      contentType: "text/plain",
-      fileName: "conversation-file.txt",
+    const file = await FileFactory.csv(auth, null, {
+      fileName: "conversation-file.csv",
       fileSize: 1000,
       status: "ready",
       useCase: "conversation",
       useCaseMetadata: {
         conversationId: "test-conversation-id",
+        generatedTables: [],
       },
     });
 
     const space = await SpaceFactory.global(workspace);
     const datasourceView = await DataSourceViewFactory.folder(workspace, space);
 
-    vi.mocked(getFileContent).mockResolvedValue("text content");
-    vi.mocked(upsertDocument).mockResolvedValue(
+    vi.mocked(upsertTable).mockResolvedValue(
       new Err(
         new DustError("invalid_request_error", "Missing embedding API key.")
       )
@@ -239,6 +243,45 @@ describe("processAndUpsertToDataSource", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.code).toBe("invalid_request_error");
+    }
+  });
+
+  it("should reject non-tabular files for conversation use case", async () => {
+    const nonTabularTypes = [
+      { contentType: "text/plain" as const, fileName: "notes.txt" },
+      {
+        contentType:
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation" as const,
+        fileName: "slides.pptx",
+      },
+      { contentType: "application/pdf" as const, fileName: "doc.pdf" },
+    ];
+
+    const space = await SpaceFactory.global(workspace);
+    const datasourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    for (const { contentType, fileName } of nonTabularTypes) {
+      const file = await FileFactory.create(auth, null, {
+        contentType,
+        fileName,
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "test-conversation-id" },
+      });
+
+      const result = await processAndUpsertToDataSource(
+        auth,
+        datasourceView.dataSource,
+        { file }
+      );
+
+      expect(result.isErr(), `${contentType} should not be upsertable`).toBe(
+        true
+      );
+      if (result.isErr()) {
+        expect(result.error.code).toBe("invalid_file");
+      }
     }
   });
 
@@ -549,6 +592,98 @@ id,category,description
       expect(generatedTables).toContain(`${file.sId}-${slugify("Sheet1")}`);
       expect(generatedTables).toContain(`${file.sId}-${slugify("Sheet2")}`);
       expect(generatedTables.length).toBe(2);
+    }
+  });
+});
+
+describe("isFileTypeUpsertableForUseCase", () => {
+  const TABULAR_TYPES = [
+    "text/csv",
+    "text/comma-separated-values",
+    "text/tsv",
+    "text/tab-separated-values",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+  ] as const;
+
+  const NON_TABULAR_TYPES = [
+    "text/plain",
+    "text/markdown",
+    "application/json",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/pdf",
+    "image/png",
+    "audio/mpeg",
+  ] as const;
+
+  it("only indexes tabular files for the conversation use case", () => {
+    for (const contentType of TABULAR_TYPES) {
+      expect(
+        isFileTypeUpsertableForUseCase({
+          contentType,
+          useCase: "conversation",
+        }),
+        `expected ${contentType} to be upsertable for conversation`
+      ).toBe(true);
+    }
+    for (const contentType of NON_TABULAR_TYPES) {
+      expect(
+        isFileTypeUpsertableForUseCase({
+          contentType,
+          useCase: "conversation",
+        }),
+        `expected ${contentType} to NOT be upsertable for conversation`
+      ).toBe(false);
+    }
+  });
+
+  it("indexes plain-text files for non-conversation use cases", () => {
+    for (const useCase of [
+      "upsert_document",
+      "folders_document",
+      "tool_output",
+      "project_context",
+    ] as const) {
+      expect(
+        isFileTypeUpsertableForUseCase({ contentType: "text/plain", useCase }),
+        `expected text/plain to be upsertable for ${useCase}`
+      ).toBe(true);
+    }
+  });
+
+  it("does not index binary office formats for the conversation use case", () => {
+    const binaryTypes = [
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/pdf",
+    ] as const;
+
+    for (const contentType of binaryTypes) {
+      expect(
+        isFileTypeUpsertableForUseCase({
+          contentType,
+          useCase: "conversation",
+        }),
+        `expected ${contentType} to NOT be upsertable for conversation`
+      ).toBe(false);
+    }
+  });
+
+  it("indexes binary office formats for non-conversation use cases after text extraction", () => {
+    const binaryTypes = [
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/pdf",
+    ] as const;
+
+    for (const contentType of binaryTypes) {
+      for (const useCase of ["upsert_document", "folders_document"] as const) {
+        expect(
+          isFileTypeUpsertableForUseCase({ contentType, useCase }),
+          `expected ${contentType} to be upsertable for ${useCase}`
+        ).toBe(true);
+      }
     }
   });
 });

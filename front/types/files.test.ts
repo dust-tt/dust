@@ -1,8 +1,6 @@
-import type { AuthorizedFileAccessEntry } from "@app/types/files";
 import {
   authorizedFileAccessEntrySchema,
   ensureFileSize,
-  getActiveAuthorizedFileAccessEntries,
   getAuthorizedFileRefLabel,
   parseAuthorizedFileAccessEntry,
   resolveFileContentType,
@@ -54,7 +52,6 @@ describe("resolveMaxFileSizes", () => {
 describe("authorizedFileAccessEntrySchema", () => {
   const baseEntry = {
     shareScope: "workspace" as const,
-    computedByUserId: "usr_abc",
     frameContentHash: "hash123",
     allowedAt: "2026-06-05T12:00:00.000Z",
   };
@@ -85,17 +82,6 @@ describe("authorizedFileAccessEntrySchema", () => {
     }
   });
 
-  it("accepts a revoked entry", () => {
-    const entry = {
-      kind: "file_id" as const,
-      ref: "fil_abc",
-      ...baseEntry,
-      revokedAt: "2026-06-05T13:00:00.000Z",
-    };
-
-    expect(authorizedFileAccessEntrySchema.parse(entry)).toEqual(entry);
-  });
-
   it("rejects legacyPath on file_id entries", () => {
     expect(() =>
       authorizedFileAccessEntrySchema.parse({
@@ -116,34 +102,6 @@ describe("authorizedFileAccessEntrySchema", () => {
         ...baseEntry,
       })
     ).toThrow();
-  });
-});
-
-describe("getActiveAuthorizedFileAccessEntries", () => {
-  const baseEntry = {
-    shareScope: "workspace" as const,
-    computedByUserId: "usr_abc",
-    frameContentHash: "hash_v1",
-    allowedAt: "2026-06-05T12:00:00.000Z",
-  } satisfies Omit<AuthorizedFileAccessEntry, "kind" | "ref">;
-
-  it("returns only entries with revokedAt = null", () => {
-    const active = {
-      kind: "file_id" as const,
-      ref: "fil_active",
-      ...baseEntry,
-    };
-    const revoked = {
-      kind: "file_id" as const,
-      ref: "fil_revoked",
-      ...baseEntry,
-      revokedAt: "2026-06-05T13:00:00.000Z",
-    };
-
-    expect(getActiveAuthorizedFileAccessEntries([active, revoked])).toEqual([
-      active,
-    ]);
-    expect(getActiveAuthorizedFileAccessEntries([])).toEqual([]);
   });
 });
 

@@ -18,10 +18,8 @@ import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import type {
-  MembershipInvitationType,
-  PendingInvitationOption,
-} from "@app/types/membership_invitation";
+import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -34,54 +32,14 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import { ActiveRoleSchema } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
-import { z } from "zod";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
 const EMAIL_CONCURRENCY = 8;
-
-export type GetWorkspaceInvitationsResponseBody = {
-  invitations: MembershipInvitationType[];
-};
-
-export type GetPendingInvitationsLookupResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
-
-export type GetPendingInvitationsResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
-
-export const PostInvitationRequestBodySchema = z.array(
-  z.object({
-    email: z.string(),
-    role: ActiveRoleSchema,
-  })
-);
-
-export type PostInvitationRequestBody = z.infer<
-  typeof PostInvitationRequestBodySchema
->;
-
-export type PostInvitationResponseBody = {
-  success: boolean;
-  email: string;
-  error_message?: string;
-}[];
-
-export type PostMemberInvitationsResponseBody = {
-  invitation: MembershipInvitationType;
-};
-
-export const PostMemberInvitationBodySchema = z.object({
-  status: z.enum(["revoked", "pending"]),
-  initialRole: ActiveRoleSchema,
-});
 
 export async function getInvitation(
   auth: Authenticator,
@@ -186,6 +144,7 @@ export async function batchUnrevokeInvitations(
 interface MembershipInvitationBlob {
   email: string;
   role: ActiveRoleType;
+  seatType?: MembershipSeatType | null;
 }
 
 export interface HandleMembershipInvitationResult {
@@ -361,6 +320,7 @@ export async function handleMembershipInvitations(
         originalEmail: string;
         sanitizedEmail: string;
         role: ActiveRoleType;
+        seatType?: MembershipSeatType | null;
       }[] = [];
       for (const req of emailsToSendInvitations) {
         if (existingMemberEmails.has(req.email)) {
@@ -374,6 +334,7 @@ export async function handleMembershipInvitations(
             originalEmail: req.email,
             sanitizedEmail: sanitizeString(req.email),
             role: req.role,
+            seatType: req.seatType,
           });
         }
       }
@@ -398,6 +359,7 @@ export async function handleMembershipInvitations(
       const toCreate: {
         inviteEmail: string;
         initialRole: ActiveRoleType;
+        seatType?: MembershipSeatType | null;
       }[] = [];
       const invitationBySanitizedEmail = new Map<
         string,
@@ -407,12 +369,17 @@ export async function handleMembershipInvitations(
       for (const {
         sanitizedEmail,
         role,
+        seatType,
       } of uniqueCandidateBySanitizedEmail.values()) {
         const existing = existingByEmail.get(sanitizedEmail);
         if (existing) {
           toRevokeModelIds.push(existing.id);
         }
-        toCreate.push({ inviteEmail: sanitizedEmail, initialRole: role });
+        toCreate.push({
+          inviteEmail: sanitizedEmail,
+          initialRole: role,
+          seatType: seatType ?? null,
+        });
       }
 
       await MembershipInvitationResource.bulkRevokeByModelIds(auth, {

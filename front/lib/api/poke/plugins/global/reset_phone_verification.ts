@@ -28,6 +28,7 @@ export const resetPhoneVerificationPlugin = createPlugin({
           "Confirm you want to delete every verification attempt for this phone number.",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (_, __, args) => {
     const { phoneNumber, confirmReset } = args;

@@ -3,9 +3,9 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type { PostMemberInvitationsResponseBody } from "@app/lib/api/invitation";
-import { PostMemberInvitationBodySchema } from "@app/lib/api/invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import type { PostMemberInvitationsResponseBody } from "@app/types/api/invitation";
+import { PostMemberInvitationBodySchema } from "@app/types/api/invitation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

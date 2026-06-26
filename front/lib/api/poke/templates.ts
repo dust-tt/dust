@@ -16,15 +16,6 @@ export type PokeFetchAssistantTemplateResponse = ReturnType<
   TemplateResource["toJSON"]
 >;
 
-export interface PokeCreateTemplateResponseBody {
-  success: boolean;
-}
-
-export type PullTemplatesResponseBody = {
-  success: true;
-  count: number;
-};
-
 /**
  * Shared subset of `TemplateModel` attributes that the poke create and
  * update endpoints both write. Each endpoint adds its own extras

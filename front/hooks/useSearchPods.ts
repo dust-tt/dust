@@ -1,9 +1,9 @@
-import type { SearchProjectsResponseBody } from "@app/lib/api/projects/lookup";
 import {
   emptyArray,
   useFetcher,
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
+import type { SearchProjectsResponseBody } from "@app/types/api/projects/list";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 

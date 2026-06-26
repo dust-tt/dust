@@ -111,14 +111,18 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
   /**
    * Delete all seat-limit rows for a workspace. Called during workspace
    * deletion/scrubbing to satisfy the `ON DELETE RESTRICT` FK before the
-   * workspace row itself is removed.
+   * workspace row itself is removed, and when a workspace loses its plan
+   * (reset to FREE_NO_PLAN), where plan-level seat caps no longer apply.
    */
-  static async deleteAllForWorkspace(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
+  static async deleteAllForWorkspace({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<void> {
     await this.model.destroy({
-      where: { workspaceId: auth.getNonNullableWorkspace().id },
+      where: { workspaceId: workspace.id },
       transaction,
     });
   }

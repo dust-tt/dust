@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
     <title>Dust</title>
+
+    <!-- PWA: web app manifest enables installation and standalone (no browser chrome) launch. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#FBFAF9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1C222D" media="(prefers-color-scheme: dark)" />
+
+    <!-- PWA: iOS Safari standalone support ("Add to Home Screen"). -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Dust" />
+    <link rel="apple-touch-icon" href="/static/AppIcon_180.png" />
     <link rel="preload" href="/static/fonts/GeistVariable.woff2" as="font" type="font/woff2" crossorigin />
     <!-- Datadog RUM (Real User Monitoring) -->
     <script>

@@ -22,6 +22,7 @@ import { useState } from "react";
 type AgentBuilderRightPanelTabType = "sidekick" | "preview" | "insights";
 
 interface PanelHeaderProps {
+  isSidekickDisabled: boolean;
   isPreviewPanelOpen: boolean;
   selectedTab: AgentBuilderRightPanelTabType;
   onTogglePanel: () => void;
@@ -29,6 +30,7 @@ interface PanelHeaderProps {
 }
 
 function PanelHeader({
+  isSidekickDisabled,
   isPreviewPanelOpen,
   selectedTab,
   onTogglePanel,
@@ -48,12 +50,14 @@ function PanelHeader({
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
                 />
-                <TabsTrigger
-                  value="sidekick"
-                  label="Sidekick"
-                  icon={Sidekick}
-                  onClick={() => onTabChange("sidekick")}
-                />
+                {!isSidekickDisabled && (
+                  <TabsTrigger
+                    value="sidekick"
+                    label="Sidekick"
+                    icon={Sidekick}
+                    onClick={() => onTabChange("sidekick")}
+                  />
+                )}
                 <TabsTrigger
                   value="preview"
                   label="Preview"
@@ -90,19 +94,25 @@ function PanelHeader({
 }
 
 interface CollapsedTabsProps {
+  isSidekickDisabled: boolean;
   onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
 }
 
-function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
+function CollapsedTabs({
+  isSidekickDisabled,
+  onTabSelect,
+}: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
-      <Button
-        icon={Sidekick}
-        variant="ghost"
-        size="sm"
-        tooltip="Sidekick"
-        onClick={() => onTabSelect("sidekick")}
-      />
+      {!isSidekickDisabled && (
+        <Button
+          icon={Sidekick}
+          variant="ghost"
+          size="sm"
+          tooltip="Sidekick"
+          onClick={() => onTabSelect("sidekick")}
+        />
+      )}
       <Button
         icon={Beaker02}
         variant="ghost"
@@ -125,16 +135,18 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
 
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
+  isSidekickDisabled: boolean;
   agentConfigurationId?: string;
 }
 
 function ExpandedContent({
   selectedTab,
+  isSidekickDisabled,
   agentConfigurationId,
 }: ExpandedContentProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {selectedTab === "sidekick" && (
+      {selectedTab === "sidekick" && !isSidekickDisabled && (
         <div className="min-h-0 flex-1">
           <AgentBuilderSidekick />
         </div>
@@ -164,26 +176,39 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationId?: string;
+  isSidekickDisabled?: boolean;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationId,
+  isSidekickDisabled = false,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
 
-  const [selectedTab, setSelectedTab] =
-    useState<AgentBuilderRightPanelTabType>("sidekick");
+  const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
+    isSidekickDisabled ? "preview" : "sidekick"
+  );
+  const activeTab =
+    isSidekickDisabled && selectedTab === "sidekick" ? "preview" : selectedTab;
 
   const handleTogglePanel = () => {
     setIsPreviewPanelOpen((prev) => !prev);
   };
 
   const handleTabChange = (tab: AgentBuilderRightPanelTabType) => {
+    if (isSidekickDisabled && tab === "sidekick") {
+      return;
+    }
+
     setSelectedTab(tab);
   };
 
   const handleTabSelect = (tab: AgentBuilderRightPanelTabType) => {
+    if (isSidekickDisabled && tab === "sidekick") {
+      return;
+    }
+
     setSelectedTab(tab);
     setIsPreviewPanelOpen(true);
   };
@@ -192,19 +217,24 @@ export function AgentBuilderRightPanel({
     <div className="flex h-full flex-col">
       <div className="mx-4">
         <PanelHeader
+          isSidekickDisabled={isSidekickDisabled}
           isPreviewPanelOpen={isPreviewPanelOpen}
-          selectedTab={selectedTab}
+          selectedTab={activeTab}
           onTogglePanel={handleTogglePanel}
           onTabChange={handleTabChange}
         />
       </div>
       {isPreviewPanelOpen ? (
         <ExpandedContent
-          selectedTab={selectedTab}
+          selectedTab={activeTab}
+          isSidekickDisabled={isSidekickDisabled}
           agentConfigurationId={agentConfigurationId}
         />
       ) : (
-        <CollapsedTabs onTabSelect={handleTabSelect} />
+        <CollapsedTabs
+          isSidekickDisabled={isSidekickDisabled}
+          onTabSelect={handleTabSelect}
+        />
       )}
     </div>
   );

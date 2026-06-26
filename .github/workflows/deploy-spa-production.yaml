@@ -36,8 +36,6 @@ jobs:
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
-        with:
-          node-version: "22.22.0"
 
       - name: Resolve version ID
         id: version
@@ -49,7 +47,7 @@ jobs:
             echo "::error::No version ID provided for ${{ matrix.app }}. Cannot promote without an explicit version ID."
             exit 1
           fi
-          echo "id=${VERSION_ID}" >> $GITHUB_OUTPUT
+          echo "id=${VERSION_ID}" >> "$GITHUB_OUTPUT"
           echo "Promoting version: ${VERSION_ID}"
 
       - name: Promote version to production

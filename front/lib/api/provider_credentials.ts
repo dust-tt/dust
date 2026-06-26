@@ -15,10 +15,6 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
 
-export type GetProvidersCheckResponseBody =
-  | { ok: true }
-  | { ok: false; error: string };
-
 // Fraction of requests that use BYOK credentials during the transition period.
 const BYOK_TRANSITION_BYOK_KEYS_RATIO = 1; // 100%
 
@@ -79,6 +75,7 @@ export async function getLlmCredentials(
     OPENAI_USE_EU_ENDPOINT:
       config.getRegion() === "europe-west1" ? "true" : "false",
     OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
+    AGENT_PLATFORM_PROJECT_ID: config.getVertexAiProjectId(),
   };
 
   if (!plan.isByok) {

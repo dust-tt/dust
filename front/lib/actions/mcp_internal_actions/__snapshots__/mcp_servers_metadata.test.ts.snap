@@ -123,6 +123,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list": "never_ask",
     "move": "never_ask",
     "resolve": "never_ask",
+    "upload_from_url": "never_ask",
   },
   "freshservice": {
     "add_ticket_note": "low",
@@ -154,6 +155,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_solution_categories": "never_ask",
     "list_solution_folders": "never_ask",
     "list_ticket_approvals": "never_ask",
+    "list_ticket_requested_items": "never_ask",
     "list_ticket_tasks": "never_ask",
     "list_tickets": "never_ask",
     "request_service_approval": "low",
@@ -459,7 +461,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "outlook": {
     "create_contact": "high",
     "create_draft": "medium",
-    "create_reply_draft": "medium",
     "delete_draft": "low",
     "get_attachments": "never_ask",
     "get_contacts": "never_ask",
@@ -486,7 +487,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "close_plan": "never_ask",
     "create_plan": "never_ask",
     "edit_plan": "never_ask",
-    "request_plan_approval": "high",
   },
   "pod_manager": {
     "add_content_node": "never_ask",
@@ -622,11 +622,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "read_thread_messages": "never_ask",
     "remove_reaction": "low",
     "search_user": "never_ask",
-  },
-  "slideshow": {
-    "create_slideshow_file": "never_ask",
-    "edit_slideshow_file": "never_ask",
-    "retrieve_slideshow_file": "never_ask",
   },
   "snowflake": {
     "describe_semantic_view": "never_ask",

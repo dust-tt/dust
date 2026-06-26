@@ -16,13 +16,17 @@ import { baseUniquenessKey } from "@app/lib/metronome/alerts";
 import { DEFAULT_ALERT_UNIQUENESS_KEYS } from "@app/lib/metronome/alerts/default_alerts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
+  CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
+  HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
   PROD_CREDIT_TYPE_AWU_ID,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
   STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY,
@@ -45,9 +49,7 @@ import {
 import {
   getNewPackages,
   getNewRateCards,
-  MAX_SEAT_MONTHLY_AWU_CREDITS,
   NEW_METRICS,
-  PRO_SEAT_MONTHLY_AWU_CREDITS,
 } from "@app/lib/metronome/setup_new_pricing";
 
 if (!process.env.METRONOME_API_KEY) {
@@ -1447,6 +1449,7 @@ const CUSTOM_FIELD_KEYS: Array<{
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
   { entity: "contract", key: PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY },
+  { entity: "contract", key: HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY },
   // Stamped on individual contract_credit instances to identify excess
   // recurring credits ("excess") vs. workspace-pool credits ("pool"). Lets
   // the default ContractCredit-balance alerts filter on value="pool" to
@@ -1471,7 +1474,7 @@ const CUSTOM_FIELD_KEYS: Array<{
     key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   },
   // Stamped per-instance on each free-seat per-user credit, carrying the seat's
-  // user sId (see `addPerUserCreditToContract`). Lets a per-user
+  // user sId (see `addPerUserCreditToCustomer`). Lets a per-user
   // `low_remaining_contract_credit_balance_reached` alert filter on the
   // custom field (the only filter a credit-balance alert supports — presentation
   // specifiers can't be filtered) so it fires as each free user depletes their
@@ -1479,6 +1482,18 @@ const CUSTOM_FIELD_KEYS: Array<{
   {
     entity: "contract_credit",
     key: PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
+  },
+  // Stamped on the non-recurring contract-level commits/credits whose unused
+  // balance is carried into the successor contract on a RENEWAL transition (see
+  // `CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY`). Registered on both entities so the
+  // `contract.start` webhook can filter source commits and credits alike.
+  {
+    entity: "commit",
+    key: CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  },
+  {
+    entity: "contract_credit",
+    key: CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in

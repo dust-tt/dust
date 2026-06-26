@@ -4,6 +4,7 @@ import type {
   LLMTraceContext,
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
+import type { Region } from "@app/lib/model_constructors/types/regions";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
@@ -117,8 +118,11 @@ export type LLMParameterOverwrites = Partial<
 
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;
+  // Holds the inference provider for legacy clients (e.g. "google_vertex_ai")
+  // and the new router's `providerApi` value (e.g. "agent-platform").
   inferenceProvider: string;
   inferenceRegion: InferenceRegionType;
+  region?: Region;
   modelId: ModelIdType;
 };
 
@@ -135,6 +139,13 @@ export interface LLMStreamParameters {
    */
   forceToolCall?: ForceToolCall;
   omittedThinking?: boolean;
+  /**
+   * Opt into Anthropic prompt-cache diagnostics (Anthropic direct only). Tri-state:
+   * - `undefined`: feature off, send nothing.
+   * - `null`: feature on, first call with no prior to compare against.
+   * - `string`: feature on, the previous response id to compare this request against.
+   */
+  previousMessageId?: string | null;
 }
 
 export interface LLMStreamMetadata {

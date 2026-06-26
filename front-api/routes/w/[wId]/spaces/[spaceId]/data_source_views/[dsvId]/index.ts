@@ -1,11 +1,11 @@
 import config from "@app/lib/api/config";
-import type {
-  GetDataSourceViewResponseBody,
-  PatchDataSourceViewResponseBody,
-} from "@app/lib/api/data_source_view";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import logger from "@app/logger/logger";
+import type {
+  GetDataSourceViewResponseBody,
+  PatchDataSourceViewResponseBody,
+} from "@app/types/api/data_source_view";
 import { PatchDataSourceViewSchema } from "@app/types/api/public/spaces";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
@@ -165,7 +165,10 @@ const app = workspaceApp();
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  withDataSourceView({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({
+    requireCanReadOrAdministrate: true,
+    includeEditedBy: true,
+  }),
   async (ctx): HandlerResult<GetDataSourceViewResponseBody> => {
     const dataSourceView = ctx.get("dataSourceView");
     let connector: ConnectorType | null = null;

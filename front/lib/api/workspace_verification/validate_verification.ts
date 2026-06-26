@@ -36,10 +36,8 @@ export async function validateVerification(
   }
 
   if (attempt.status === "verified") {
-    return new Err({
-      type: "invalid_request_error",
-      message: "This workspace is already verified.",
-    });
+    // Already verified — idempotent success so callers can proceed to trial activation.
+    return new Ok({ verified: true });
   }
 
   const verifyResult = await checkOtp(phoneNumber, code);

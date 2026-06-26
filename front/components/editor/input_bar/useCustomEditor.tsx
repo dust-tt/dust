@@ -1,17 +1,20 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
+import { FilePreviewExtension } from "@app/components/editor/extensions/input_bar/FilePreviewExtension";
 import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
-import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
@@ -23,8 +26,10 @@ import {
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
 import { markdownStyles } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
@@ -43,13 +48,125 @@ function isLongTextPaste(text: string, maxCharThreshold?: number) {
   return text.length > maxChars;
 }
 
-const useEditorService = (editor: Editor | null) => {
+const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
   return useMemo(() => {
     // Return the service object with utility functions.
     return {
       // Insert text helper function.
       insertText: (text: string) => {
         editor?.chain().focus().insertContent(text).run();
+      },
+      // Append text at the end of the document (always at the end, regardless of cursor position).
+      appendText: (text: string) => {
+        editor?.chain().focus("end").insertContent(text).run();
+      },
+      // Insert or update the animated voicePartial node at the end of the document.
+      // Called on each partial transcript while voice recording is active.
+      setVoicePartialText: (text: string) => {
+        if (!editor) {
+          return;
+        }
+        const shouldFocus = !isMobileViewport;
+        let partialPos: number | null = null;
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "voicePartial" && partialPos === null) {
+            partialPos = pos;
+            return false;
+          }
+          return true;
+        });
+        if (partialPos !== null) {
+          const p = partialPos;
+          editor
+            .chain()
+            .command(({ tr }) => {
+              tr.setNodeMarkup(p, undefined, { text });
+              return true;
+            })
+            .run();
+        } else {
+          const content = { type: "voicePartial", attrs: { text } };
+          if (shouldFocus) {
+            editor.chain().focus("end").insertContent(content).run();
+          } else {
+            editor
+              .chain()
+              .insertContentAt(editor.state.doc.content.size, content, {
+                updateSelection: false,
+              })
+              .run();
+          }
+        }
+      },
+      // Replace the voicePartial node with the committed plain text.
+      // Called when the transcription engine finalizes a segment.
+      commitVoicePartialText: (committedText: string) => {
+        if (!editor) {
+          return;
+        }
+        const shouldFocus = !isMobileViewport;
+        let found = false;
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "voicePartial" && !found) {
+            found = true;
+            const nodeSize = node.nodeSize;
+            editor
+              .chain()
+              .command(({ tr }) => {
+                if (committedText) {
+                  tr.replaceWith(
+                    pos,
+                    pos + nodeSize,
+                    editor.schema.text(committedText)
+                  );
+                } else {
+                  tr.delete(pos, pos + nodeSize);
+                }
+                return true;
+              })
+              .run();
+            return false;
+          }
+          return true;
+        });
+        if (!found && committedText) {
+          if (shouldFocus) {
+            editor.chain().focus("end").insertContent(committedText).run();
+          } else {
+            editor
+              .chain()
+              .insertContentAt(editor.state.doc.content.size, committedText, {
+                updateSelection: false,
+              })
+              .run();
+          }
+        }
+      },
+      // Convert any pending voicePartial node to plain text in place.
+      // Called when recording stops to finalize whatever partial was last shown.
+      finalizeVoicePartial: () => {
+        if (!editor) {
+          return;
+        }
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === "voicePartial") {
+            const text = node.attrs.text as string;
+            const nodeSize = node.nodeSize;
+            editor
+              .chain()
+              .command(({ tr }) => {
+                if (text) {
+                  tr.replaceWith(pos, pos + nodeSize, editor.schema.text(text));
+                } else {
+                  tr.delete(pos, pos + nodeSize);
+                }
+                return true;
+              })
+              .run();
+            return false;
+          }
+          return true;
+        });
       },
       // Insert mention helper function.
       insertMention: ({
@@ -170,7 +287,7 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.setEditable(!loading);
       },
     };
-  }, [editor]);
+  }, [editor, isMobileViewport]);
 };
 
 export type EditorService = ReturnType<typeof useEditorService>;
@@ -205,15 +322,20 @@ export interface CustomEditorProps {
     ((agentId: string) => void) | undefined
   >;
   slashSuggestion?: {
+    // The conversation may only exist after the editor is initialized, hence the ref.
+    conversationIdRef?: React.RefObject<string | null>;
     enabledRef: React.RefObject<boolean>;
-    onSelectRef: React.RefObject<
-      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-    >;
-    onDetailsRef?: React.RefObject<
-      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
-    >;
+    onSelectRef: React.RefObject<((item: SlashCommand) => void) | undefined>;
+    onDetailsRef?: React.RefObject<((item: SlashCommand) => void) | undefined>;
     onSkillDetails?: (skillId: string) => void;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
+    slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
+    includeAttachKnowledgeRef: React.RefObject<boolean>;
+    attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
+    onNodeSelectRef: React.RefObject<
+      ((node: DataSourceViewContentNode) => void) | undefined
+    >;
+    spaceIdRef: React.RefObject<string | null | undefined>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
@@ -335,6 +457,7 @@ export const buildEditorExtensions = ({
     SkillNode.configure({
       onSkillDetails: slashSuggestion?.onSkillDetails,
     }),
+    VoicePartialNode,
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
       placeholder: ({ node }) => {
@@ -349,19 +472,24 @@ export const buildEditorExtensions = ({
     PastedAttachmentExtension.configure({
       onInlineText,
     }),
+    FilePreviewExtension,
     URLStorageExtension,
   ];
 
   if (slashSuggestion) {
     extensions.push(
       InputBarSlashSuggestionExtension.configure({
+        attachedNodesRef: slashSuggestion.attachedNodesRef,
         owner,
+        conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,
-        selectedMCPServerViewIdsRef:
-          slashSuggestion.selectedMCPServerViewIdsRef,
+        onNodeSelectRef: slashSuggestion.onNodeSelectRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
+        slashCommandsRef: slashSuggestion.slashCommandsRef,
+        includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
+        spaceIdRef: slashSuggestion.spaceIdRef,
       })
     );
   }
@@ -442,7 +570,8 @@ const useCustomEditor = ({
     [conversationId, placeholderOverride]
   );
 
-  const editorService = useEditorService(editor);
+  const isMobileViewport = useIsMobile();
+  const editorService = useEditorService(editor, isMobileViewport);
   const lastSubmitTimestampMsRef = useRef(0);
 
   // Set keydown handler after editor is initialized to avoid synchronous updates during render.

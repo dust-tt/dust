@@ -212,6 +212,9 @@ async function backfillMcpServerConfigurationSidForWorkspace(
           mcp_server_configuration_sid: sid,
           execution_time_ms: action.executionDurationMs,
           status: action.status,
+          // This historical backfill predates per-tool cost tracking; cost_awu
+          // is populated by the live analytics activity going forward.
+          cost_awu: 0,
         });
       }
 

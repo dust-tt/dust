@@ -7,8 +7,9 @@ import type { MouseEvent } from "react";
 import { useMemo } from "react";
 
 interface PendingInvitationsTableRow extends PendingInvitationOption {
-  isExpired: boolean;
   onJoin: () => void;
+  // Present only to satisfy DataTable's TBaseData constraint, which requires a row
+  // to share at least one of its optional props. Joining is button-only.
   onClick?: () => void;
 }
 

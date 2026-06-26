@@ -3,15 +3,12 @@ import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_i
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockListMetronomeSeatBalances,
-  mockFetchPerUserAwuUsage,
-  mockGetMetronomeDefaultUserCapAlertForSeatType,
-} = vi.hoisted(() => ({
-  mockListMetronomeSeatBalances: vi.fn(),
-  mockFetchPerUserAwuUsage: vi.fn(),
-  mockGetMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
-}));
+const { mockListMetronomeSeatBalances, mockFetchPerUserAwuUsage } = vi.hoisted(
+  () => ({
+    mockListMetronomeSeatBalances: vi.fn(),
+    mockFetchPerUserAwuUsage: vi.fn(),
+  })
+);
 
 vi.mock("@app/lib/metronome/client", async () => {
   const actual = await vi.importActual<
@@ -28,17 +25,6 @@ vi.mock("@app/lib/metronome/per_user_usage", async () => {
     typeof import("@app/lib/metronome/per_user_usage")
   >("@app/lib/metronome/per_user_usage");
   return { ...actual, fetchPerUserAwuUsage: mockFetchPerUserAwuUsage };
-});
-
-vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/alerts/spend_limits")
-  >("@app/lib/metronome/alerts/spend_limits");
-  return {
-    ...actual,
-    getMetronomeDefaultUserCapAlertForSeatType:
-      mockGetMetronomeDefaultUserCapAlertForSeatType,
-  };
 });
 
 const CUSTOMER_ID = "cust_test";
@@ -63,13 +49,10 @@ function seatBalance(balanceAwu: number, startingAwu: number) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockFetchPerUserAwuUsage.mockResolvedValue(new Ok(new Map<string, number>()));
-  mockGetMetronomeDefaultUserCapAlertForSeatType.mockResolvedValue(
-    new Ok(null)
-  );
 });
 
 describe("fetchLiveUserCreditInputs", () => {
-  it("reads the live seat balance for a seat-based user", async () => {
+  it("reads the live seat balance for a seat-based user with default 0 pool cap", async () => {
     mockListMetronomeSeatBalances.mockResolvedValue(
       new Ok(seatBalance(40000, 40000))
     );
@@ -79,6 +62,7 @@ describe("fetchLiveUserCreditInputs", () => {
       userId: USER_ID,
       seatType: "max",
       poolCapOverrideAwuCredits: null,
+      defaultPoolCapAwuCredits: 0,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,
     });
@@ -87,10 +71,11 @@ describe("fetchLiveUserCreditInputs", () => {
     if (result.isOk()) {
       expect(result.value.seatBalanceAwu).toBe(40000);
       expect(result.value.seatStartingBalanceAwu).toBe(40000);
-      // No cap configured → cap fields null, usage not fetched.
-      expect(result.value.effectiveCapAwuCredits).toBeNull();
-      expect(result.value.capSource).toBe("none");
-      expect(result.value.consumedAwuCredits).toBeNull();
+      // Default 0 pool cap → effectiveCapAwuCredits = seatAllowance + 0.
+      // No contract resolves for "ws_test" so seatAllowance = 0 → cap = 0.
+      expect(result.value.effectiveCapAwuCredits).toBe(0);
+      expect(result.value.capSource).toBe("default");
+      expect(result.value.consumedAwuCredits).toBe(0);
     }
   });
 
@@ -109,6 +94,7 @@ describe("fetchLiveUserCreditInputs", () => {
       // Pool-only override from the membership; no contract resolves for
       // "ws_test" so the seat allowance is 0 and the total cap equals it.
       poolCapOverrideAwuCredits: 50000,
+      defaultPoolCapAwuCredits: 0,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,
     });
@@ -132,6 +118,7 @@ describe("fetchLiveUserCreditInputs", () => {
       userId: USER_ID,
       seatType: "max",
       poolCapOverrideAwuCredits: null,
+      defaultPoolCapAwuCredits: 0,
       metronomeCustomerId: CUSTOMER_ID,
       metronomeContractId: CONTRACT_ID,
     });

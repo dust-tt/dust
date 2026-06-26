@@ -1,14 +1,14 @@
 /** @ignoreswagger */
 
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
-import type {
-  GetProgrammaticUsageLimitResponseBody,
-  PutProgrammaticUsageLimitResponseBody,
-} from "@app/lib/api/credits/programmatic_usage_limit";
 import {
   getProgrammaticUsageLimit,
   syncProgrammaticUsageLimit,
 } from "@app/lib/api/credits/programmatic_usage_limit";
+import type {
+  GetProgrammaticUsageLimitResponseBody,
+  PutProgrammaticUsageLimitResponseBody,
+} from "@app/types/api/credits/programmatic_usage_limit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

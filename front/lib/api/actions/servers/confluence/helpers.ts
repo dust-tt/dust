@@ -19,6 +19,7 @@ import {
   CreatePagePayloadSchema,
 } from "@app/lib/api/actions/servers/confluence/types";
 import logger from "@app/logger/logger";
+import { normalizeAtlassianCloudUrl } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -113,9 +114,12 @@ async function getConfluenceBaseUrlAndResourceInfo(
     return null;
   }
 
-  const resource = !cloudUrl
+  const normalizedCloudUrl = cloudUrl
+    ? normalizeAtlassianCloudUrl(cloudUrl)
+    : null;
+  const resource = !normalizedCloudUrl
     ? resources[0]
-    : (resources.find((r) => r.url === cloudUrl) ?? null);
+    : (resources.find((r) => r.url === normalizedCloudUrl) ?? null);
 
   if (!resource) {
     return null;

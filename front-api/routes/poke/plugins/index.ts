@@ -2,6 +2,7 @@ import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PokeListPluginsForScopeResponseBody } from "@app/lib/api/poke/plugins/list";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
+import { hasPokeRole } from "@app/lib/poke/roles";
 import { isSupportedResourceType } from "@app/types/poke/plugins";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -44,11 +45,18 @@ app.get(
       ? await fetchPluginResource(auth, resourceType, resourceId)
       : null;
 
+    const userRoles = ctx.get("pokeRoles");
+
     const pluginList = plugins
       .filter((p) => !resourceId || p.isApplicableTo(auth, resource))
       .filter((p) => !p.manifest.isHidden)
       // During maintenance, only show readonly plugins.
       .filter((p) => !maintenance || p.manifest.readonly)
+      .filter(
+        (p) =>
+          !p.manifest.requiredRoles ||
+          hasPokeRole(userRoles, p.manifest.requiredRoles)
+      )
       .map((p) => ({
         id: p.manifest.id,
         name: p.manifest.name,

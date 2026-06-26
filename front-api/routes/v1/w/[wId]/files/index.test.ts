@@ -113,6 +113,23 @@ describe("POST /api/v1/w/[wId]/files", () => {
     expect(file?.useCaseMetadata?.skipDataSourceIndexing).toBe(true);
   });
 
+  it("keeps the 50 MB CSV limit when disable_computer_feature is enabled", async () => {
+    const { workspace, key, auth } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
+    const response = await postFile(workspace, key, {
+      contentType: "text/csv",
+      fileName: "large.csv",
+      fileSize: 60 * 1024 * 1024,
+      useCase: "conversation",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("keeps the 50 MB CSV limit when sandbox_tools is not enabled", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       method: "POST",

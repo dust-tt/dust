@@ -1,4 +1,9 @@
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
+import type { AgentCostStats } from "@app/types/api/assistant/observability/overview";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -73,16 +78,112 @@ export async function fetchAgentOverview(
   });
 }
 
-export type GetAgentOverviewResponseBody = {
-  activeUsers: number;
-  mentions: {
-    messageCount: number;
-    conversationCount: number;
-    timePeriodSec: number;
-  };
-  feedbacks: {
-    positiveFeedbacks: number;
-    negativeFeedbacks: number;
-    timePeriodSec: number;
-  };
+const EMPTY_COST_STATS: AgentCostStats = {
+  totalCostCredits: null,
+  avgCostCredits: null,
+  medianCostCredits: null,
 };
+
+type KeyedTDigestPercentiles = Omit<
+  estypes.AggregationsTDigestPercentilesAggregate,
+  "values"
+> & {
+  values: Record<string, number | null>;
+};
+
+type CostAgentBucket = {
+  key: string;
+  total_cost?: estypes.AggregationsSumAggregate;
+  avg_cost?: estypes.AggregationsAvgAggregate;
+  median_cost?: KeyedTDigestPercentiles;
+};
+
+type AgentCostStatsAggs = {
+  by_agent?: estypes.AggregationsMultiBucketAggregateBase<CostAgentBucket>;
+};
+
+export async function fetchAgentCostStats(
+  auth: Authenticator,
+  {
+    agentIds,
+    days,
+    startDate,
+    endDate,
+    version,
+  }: {
+    agentIds: string[];
+    days?: number;
+    startDate?: string;
+    endDate?: string;
+    version?: string;
+  }
+): Promise<Result<Map<string, AgentCostStats>, ElasticsearchError>> {
+  if (agentIds.length === 0) {
+    return new Ok(new Map());
+  }
+
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    agentIds,
+    days,
+    startDate,
+    endDate,
+    version,
+  });
+
+  const query: estypes.QueryDslQueryContainer = {
+    bool: {
+      filter: [
+        baseQuery,
+        // Mirror the billed scope: failed messages carry a non-zero
+        // `cost.full_awu` in the index but are never billed by Metronome.
+        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+        { range: { "cost.full_awu": { gt: 0 } } },
+      ],
+    },
+  };
+
+  const result = await searchAnalytics<never, AgentCostStatsAggs>(query, {
+    aggregations: {
+      by_agent: {
+        terms: { field: "agent_id", size: agentIds.length },
+        aggs: {
+          total_cost: { sum: { field: "cost.full_awu" } },
+          avg_cost: { avg: { field: "cost.full_awu" } },
+          median_cost: {
+            percentiles: { field: "cost.full_awu", percents: [50] },
+          },
+        },
+      },
+    },
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const buckets = bucketsToArray<CostAgentBucket>(
+    result.value.aggregations?.by_agent?.buckets
+  );
+
+  return new Ok(
+    new Map(
+      buckets.map((bucket) => [
+        String(bucket.key),
+        {
+          totalCostCredits: bucket.total_cost?.value ?? null,
+          avgCostCredits: bucket.avg_cost?.value ?? null,
+          medianCostCredits: bucket.median_cost?.values?.["50.0"] ?? null,
+        },
+      ])
+    )
+  );
+}
+
+export function getAgentCostStats(
+  map: Map<string, AgentCostStats>,
+  agentId: string
+): AgentCostStats {
+  return map.get(agentId) ?? EMPTY_COST_STATS;
+}

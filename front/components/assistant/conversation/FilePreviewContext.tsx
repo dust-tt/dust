@@ -48,16 +48,16 @@ export function FilePreviewProvider({
 
   const openFilePreview = useCallback(
     (file: PreviewableFile) => {
-      const fileUrl = file.fileId
-        ? getFileViewUrl(owner, file.fileId)
-        : file.filePath
-          ? getFilePathViewUrl(owner, file.filePath)
+      const fileUrl = file.filePath
+        ? getFilePathViewUrl(owner, file.filePath)
+        : file.fileId
+          ? getFileViewUrl(owner, file.fileId)
           : null;
 
-      const downloadUrl = file.fileId
-        ? getFileDownloadUrl(owner, file.fileId)
-        : file.filePath
-          ? getFilePathDownloadUrl(owner, file.filePath)
+      const downloadUrl = file.filePath
+        ? getFilePathDownloadUrl(owner, file.filePath)
+        : file.fileId
+          ? getFileDownloadUrl(owner, file.fileId)
           : null;
 
       if (!fileUrl || !downloadUrl) {
@@ -69,7 +69,7 @@ export function FilePreviewProvider({
           kind: "file",
           isDirectory: false,
           fileName: file.title,
-          path: file.title,
+          path: file.filePath ?? file.title,
           contentType: file.contentType,
           fileId: file.fileId ?? null,
           thumbnailUrl: null,
@@ -104,6 +104,7 @@ export function FilePreviewProvider({
           }
         }}
         onDownload={handleDownload}
+        owner={owner}
       />
     </FilePreviewContext.Provider>
   );

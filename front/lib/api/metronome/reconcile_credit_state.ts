@@ -1,11 +1,8 @@
-import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
 import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
-import { getMetronomeProgrammaticCapAlertStates } from "@app/lib/metronome/alerts/programmatic_cap";
-import type { MetronomeCapAlertInfo } from "@app/lib/metronome/alerts/spend_limits";
-import { getCachedDefaultCapThresholdsBySeatType } from "@app/lib/metronome/alerts/spend_limits";
+import { WARNING_BALANCE_RATIO } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
-  listContractPerUserCreditBalances,
+  listCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import { CONTRACT_CREDIT_TYPE_FREE_SEAT } from "@app/lib/metronome/constants";
@@ -14,16 +11,25 @@ import {
   fetchLiveUserCreditInputs,
 } from "@app/lib/metronome/live_user_credit_inputs";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
+import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
+import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
-  expectedProgrammaticCreditStateFromAlerts,
+  expectedProgrammaticCreditStateFromUsage,
   setProgrammaticCreditStateReconciled,
 } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import {
+  clearWorkspaceProgrammaticWarningReached,
+  setUserNearLimit,
+  setWorkspaceProgrammaticWarningReached,
+} from "@app/lib/metronome/user_block";
 import { setUserCreditStateReconciled } from "@app/lib/metronome/user_credit_state_machine";
 import {
   expectedPoolCreditStateFromBalance,
   setWorkspacePoolCreditStateReconciled,
 } from "@app/lib/metronome/workspace_credit_state_machine";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -39,6 +45,7 @@ import type {
   UserCreditState,
 } from "@app/types/memberships";
 import {
+  computeUserNearLimit,
   expectedUserCreditState,
   normalizeToPoolLimitSeatType,
 } from "@app/types/memberships";
@@ -77,7 +84,8 @@ type ProgrammaticReconcileReport = {
   wasInvalid: boolean;
   corrected: boolean;
   executed: boolean;
-  alarms: { cap: boolean; low: boolean; critical: boolean };
+  monthlyCapCredits: number;
+  spentAwuCredits: number | null;
 };
 
 type UserReconcileReport = {
@@ -142,7 +150,12 @@ export async function reconcileCreditState({
     case "pool":
       return reconcilePool({ auth, workspace, metronomeCustomerId, execute });
     case "programmatic":
-      return reconcileProgrammatic({ workspace, metronomeCustomerId, execute });
+      return reconcileProgrammatic({
+        workspace,
+        metronomeCustomerId,
+        metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
+        execute,
+      });
     case "user":
       if (!userId) {
         return new Err(
@@ -161,7 +174,7 @@ export async function reconcileCreditState({
   }
 }
 
-async function reconcilePool({
+export async function reconcilePool({
   auth,
   workspace,
   metronomeCustomerId,
@@ -212,45 +225,72 @@ async function reconcilePool({
   });
 }
 
-async function reconcileProgrammatic({
+export async function reconcileProgrammatic({
   workspace,
   metronomeCustomerId,
+  metronomeContractId,
   execute,
 }: {
   workspace: WorkspaceResource;
   metronomeCustomerId: string;
+  metronomeContractId: string | null;
   execute: boolean;
 }): Promise<Result<ProgrammaticReconcileReport, Error>> {
-  const statesResult = await getMetronomeProgrammaticCapAlertStates({
-    metronomeCustomerId,
+  const config = await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+    workspace.id
+  );
+  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? 0;
+
+  const previousState = workspace.programmaticCreditState;
+
+  // Cap of 0/null → always depleted; no spend to read.
+  if (monthlyCapCredits === 0 || !metronomeContractId) {
+    if (execute) {
+      await setProgrammaticCreditStateReconciled(workspace, "depleted");
+      void clearWorkspaceProgrammaticWarningReached(workspace.sId);
+    }
+    const newState = workspace.programmaticCreditState;
+    return new Ok({
+      target: "programmatic",
+      previousState,
+      expectedState: "depleted",
+      newState,
+      wasInvalid: previousState !== "depleted",
+      corrected: previousState !== newState,
+      executed: execute,
+      monthlyCapCredits,
+      spentAwuCredits: null,
+    });
+  }
+
+  const spendResult = await fetchProgrammaticAwuSpend({
     workspaceId: workspace.sId,
+    metronomeCustomerId,
   });
-  if (statesResult.isErr()) {
+  if (spendResult.isErr()) {
     return new Err(
       new Error(
-        `Failed to read programmatic cap alerts: ${statesResult.error.message}`
+        `Failed to read programmatic spend: ${spendResult.error.message}`
       )
     );
   }
-  const { cap, low, critical } = statesResult.value;
-  const alarms = {
-    cap: cap?.status === "in_alarm",
-    low: low?.status === "in_alarm",
-    critical: critical?.status === "in_alarm",
-  };
-  const expectedState = expectedProgrammaticCreditStateFromAlerts({
-    capInAlarm: alarms.cap,
-    criticalInAlarm: alarms.critical,
-    lowInAlarm: alarms.low,
+  const spentAwuCredits = spendResult.value ?? 0;
+  const expectedState = expectedProgrammaticCreditStateFromUsage({
+    spentAwuCredits,
+    monthlyCapCredits,
   });
-
-  const previousState = workspace.programmaticCreditState;
-  const wasInvalid = previousState !== expectedState;
 
   let newState = previousState;
   if (execute) {
     await setProgrammaticCreditStateReconciled(workspace, expectedState);
     newState = workspace.programmaticCreditState;
+    const warningReached =
+      spentAwuCredits >= monthlyCapCredits * WARNING_BALANCE_RATIO;
+    if (warningReached) {
+      void setWorkspaceProgrammaticWarningReached(workspace.sId);
+    } else {
+      void clearWorkspaceProgrammaticWarningReached(workspace.sId);
+    }
   }
 
   return new Ok({
@@ -258,14 +298,15 @@ async function reconcileProgrammatic({
     previousState,
     expectedState,
     newState,
-    wasInvalid,
+    wasInvalid: previousState !== expectedState,
     corrected: previousState !== newState,
     executed: execute,
-    alarms,
+    monthlyCapCredits,
+    spentAwuCredits,
   });
 }
 
-async function reconcileUser({
+export async function reconcileUser({
   auth,
   workspace,
   metronomeCustomerId,
@@ -298,13 +339,17 @@ async function reconcileUser({
   const seatType = membership.seatType;
   const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
 
+  const creditUsageConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+
   const liveResult = await fetchLiveUserCreditInputs({
     workspaceId: workspace.sId,
     userId,
     seatType,
-    // Pool-only override persisted on the membership; the live-inputs helper
-    // adds the seat allowance back to get the total threshold.
+    // Pool-only values persisted in the DB; the live-inputs helper adds the
+    // seat allowance back to get the total threshold.
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
     metronomeCustomerId,
     metronomeContractId,
   });
@@ -326,6 +371,13 @@ async function reconcileUser({
     perUserCapAwuCredits: effectiveCapAwuCredits,
     consumedAwuCredits,
   });
+  const nearLimit = computeUserNearLimit({
+    seatType,
+    seatBalanceAwu,
+    seatStartingBalanceAwu,
+    effectiveCapAwuCredits,
+    consumedAwuCredits,
+  });
   const wasInvalid = normalizeUserCreditState(previousState) !== expectedState;
 
   let newState = previousState;
@@ -335,6 +387,7 @@ async function reconcileUser({
       userId,
       seatType,
     });
+    void setUserNearLimit(workspace.sId, userId, nearLimit);
   }
 
   return new Ok({
@@ -371,11 +424,16 @@ export async function reconcileWorkspaceUserCreditStates({
   workspace,
   metronomeCustomerId,
   metronomeContractId,
+  planCode,
 }: {
   workspace: LightWorkspaceType;
   metronomeCustomerId: string;
   metronomeContractId: string;
+  planCode: string;
 }): Promise<void> {
+  if (!isCreditPricedPlanPrefix(planCode)) {
+    return;
+  }
   const workspaceId = workspace.sId;
 
   // These return our `Result` type: handle their errors with early returns
@@ -398,9 +456,8 @@ export async function reconcileWorkspaceUserCreditStates({
   // free user with credit remaining lands on `user_seat` (not `on_pool`) and is
   // moved to `capped` once exhausted. A read failure leaves the map empty —
   // free users then fall back to the seat-balance path (null) as before.
-  const perUserCreditBalancesResult = await listContractPerUserCreditBalances({
+  const perUserCreditBalancesResult = await listCustomerPerUserCreditBalances({
     metronomeCustomerId,
-    metronomeContractId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (perUserCreditBalancesResult.isErr()) {
@@ -413,20 +470,21 @@ export async function reconcileWorkspaceUserCreditStates({
     ? perUserCreditBalancesResult.value
     : new Map<string, { balanceAwu: number; startingBalanceAwu: number }>();
 
-  // The cap-threshold caches (Metronome alert list / contract) and the
-  // membership query (DB) can genuinely throw, so they stay wrapped — the
-  // ERR1-authorised case. The per-user overrides themselves come from the
-  // memberships (pool-only values); the seat allowances are needed to derive
-  // the total thresholds.
+  // The seat-allowance cache (contract) and the DB queries can genuinely
+  // throw, so they stay wrapped — the ERR1-authorised case. The per-user
+  // overrides come from the memberships and the workspace default from the
+  // credit-usage configuration (both pool-only values); the seat allowances
+  // are needed to derive the total thresholds.
   let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
-  let defaultCaps: Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>;
+  let defaultPoolCapAwuCredits: number;
   let memberships: MembershipResource[];
   try {
     seatAllowances = await getSeatAllowancesByNormalizedSeatType(workspaceId);
-    defaultCaps = await getCachedDefaultCapThresholdsBySeatType({
-      metronomeCustomerId,
-      workspaceId,
-    });
+    const creditUsageConfig =
+      await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+        workspace.id
+      );
+    defaultPoolCapAwuCredits = creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
     ({ memberships } = await MembershipResource.getActiveMemberships({
       workspace,
     }));
@@ -444,8 +502,8 @@ export async function reconcileWorkspaceUserCreditStates({
     .map((m) => m.user?.sId)
     .filter((sId): sId is string => sId !== undefined);
   const usageResult = await fetchPerUserAwuUsage({
+    workspaceId,
     metronomeCustomerId,
-    metronomeContractId,
     userIds: memberUserIds,
   });
   if (usageResult.isErr()) {
@@ -470,13 +528,13 @@ export async function reconcileWorkspaceUserCreditStates({
     const seatType = membership.seatType;
 
     const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
-    const effectiveCapAwuCredits =
-      membership.poolCapOverrideAwuCredits !== null
-        ? membership.poolCapOverrideAwuCredits +
-          (normalizedSeatType ? (seatAllowances[normalizedSeatType] ?? 0) : 0)
-        : normalizedSeatType
-          ? (defaultCaps[normalizedSeatType]?.threshold ?? null)
-          : null;
+    // Cap + usage only apply to pool-limit seat types (pro/max/workspace),
+    // matching fetchLiveUserCreditInputs. Free/none seats have no pool access —
+    // their effective cap is null and near-limit uses the seat-balance path.
+    const effectiveCapAwuCredits = normalizedSeatType
+      ? (membership.poolCapOverrideAwuCredits ?? defaultPoolCapAwuCredits) +
+        (seatAllowances[normalizedSeatType] ?? 0)
+      : null;
     // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
     // seats read their per-user credit balance instead (not a seat balance).
     // Pro/max read their seat balance. `expectedUserCreditState` decides routing
@@ -486,25 +544,36 @@ export async function reconcileWorkspaceUserCreditStates({
       awuSeatBalanceForUser(seatBalances, userId) ??
       perUserCreditBalances.get(userId) ??
       null;
+    const seatBalanceAwu = seat?.balanceAwu ?? null;
+    const seatStartingBalanceAwu = seat?.startingBalanceAwu ?? null;
+    const consumedAwuCredits =
+      effectiveCapAwuCredits !== null ? (usageByUser.get(userId) ?? 0) : null;
+
     const expectedState = expectedUserCreditState({
       seatType,
-      seatBalanceAwu: seat?.balanceAwu ?? null,
-      seatStartingBalanceAwu: seat?.startingBalanceAwu ?? null,
+      seatBalanceAwu,
+      seatStartingBalanceAwu,
       perUserCapAwuCredits: effectiveCapAwuCredits,
-      consumedAwuCredits:
-        effectiveCapAwuCredits !== null ? (usageByUser.get(userId) ?? 0) : null,
+      consumedAwuCredits,
+    });
+    const nearLimit = computeUserNearLimit({
+      seatType,
+      seatBalanceAwu,
+      seatStartingBalanceAwu,
+      effectiveCapAwuCredits,
+      consumedAwuCredits,
     });
 
-    if (normalizeUserCreditState(membership.creditState) === expectedState) {
-      continue;
-    }
-
     try {
+      // Always call setUserCreditStateReconciled even when DB state already
+      // matches: it skips the DB write but always refreshes the Redis cache,
+      // fixing stale "capped" entries that survive after the DB is corrected.
       await setUserCreditStateReconciled(membership, expectedState, {
         workspaceId,
         userId,
         seatType,
       });
+      void setUserNearLimit(workspaceId, userId, nearLimit);
     } catch (err) {
       logger.error(
         { workspaceId, userId, err: normalizeError(err) },

@@ -26,4 +26,5 @@ cd "$SCRIPT_DIR"/../ && npm install
 cd $SCRIPT_DIR
 
 # Start the dev environment using mprocs
+export DUST_USE_START_MPROCS=1
 mprocs

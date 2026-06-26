@@ -60,7 +60,7 @@ export const NavigationSidebar = React.forwardRef<
     return "";
   }, [router.isReady, router.pathname]);
 
-  const { featureFlags } = useFeatureFlags();
+  const { hasFeature } = useFeatureFlags();
 
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
 
@@ -130,8 +130,7 @@ export const NavigationSidebar = React.forwardRef<
                         {nav.menus
                           .filter(
                             (menu) =>
-                              !menu.featureFlag ||
-                              featureFlags.includes(menu.featureFlag)
+                              !menu.featureFlag || hasFeature(menu.featureFlag)
                           )
                           .map((menu) => (
                             <NavigationListItem

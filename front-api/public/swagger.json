@@ -258,7 +258,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count.\n- \"users\": Top users by message count.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
+            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count, including credits.\n- \"users\": Top users by message count, including credits.\n- \"skills\": Skill metadata catalog.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs, including comma-separated lists of tools (as \"server__tool\") and skills used per message.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -267,6 +267,7 @@
                 "source",
                 "agents",
                 "users",
+                "skills",
                 "skill_usage",
                 "tool_usage",
                 "messages",
@@ -3510,6 +3511,14 @@
                       "override"
                     ],
                     "description": "Conflict handling strategy. Defaults to error."
+                  },
+                  "editors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "description": "Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors."
                   }
                 }
               }
@@ -5388,6 +5397,9 @@
           },
           "404": {
             "description": "The row was not found"
+          },
+          "429": {
+            "description": "Too many pending table updates are queued for this table. Retry later."
           }
         }
       }
@@ -5612,6 +5624,9 @@
           },
           "404": {
             "description": "Data source or workspace not found."
+          },
+          "429": {
+            "description": "Too many pending table updates are queued for this table. Retry later."
           },
           "500": {
             "description": "Internal Server Error."
@@ -8147,6 +8162,58 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/go-template": {
+      "get": {
+        "summary": "Resolve a conversation go template draft",
+        "description": "Fetches a Contentful conversation go template by slug and returns a composer-ready draft with optional pre-uploaded attachments.",
+        "tags": [
+          "Private Assistant"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "slug",
+            "required": true,
+            "description": "Contentful template slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Composer draft resolved from the template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetGoTemplateDraftResponseBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found or disabled"
+          },
+          "422": {
+            "description": "Missing slug query parameter"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/mentions/suggestions": {
       "get": {
         "summary": "Get mention suggestions",
@@ -10403,12 +10470,12 @@
           "costCredits": {
             "type": "integer",
             "nullable": true,
-            "description": "Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
+            "description": "Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
           },
           "subAgentCostCredits": {
             "type": "number",
             "nullable": true,
-            "description": "Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
           }
         }
       },
@@ -10554,12 +10621,12 @@
           "costCredits": {
             "type": "integer",
             "nullable": true,
-            "description": "Cost of producing this agent message, in AWU credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
+            "description": "Cost of producing this agent message, in credits (intelligence + tool credits). Null when no billable usage is attributed to the message."
           },
           "subAgentCostCredits": {
             "type": "number",
             "nullable": true,
-            "description": "Aggregated AWU credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
           },
           "activitySteps": {
             "type": "array",
@@ -11011,6 +11078,72 @@
               },
               "down": {
                 "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "GetGoTemplateDraftResponseBody": {
+        "type": "object",
+        "description": "Composer draft resolved from a Contentful conversation go template.",
+        "required": [
+          "title",
+          "prompt",
+          "attachments",
+          "attachmentErrors"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "fileId",
+                "name",
+                "contentType",
+                "size",
+                "url"
+              ],
+              "properties": {
+                "fileId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "contentType": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "attachmentErrors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "url",
+                "message"
+              ],
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
               }
             }
           }
@@ -11717,6 +11850,9 @@
           },
           {
             "$ref": "#/components/schemas/PrivateConversationTitleEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateWakeUpUpdatedEvent"
           }
         ]
       },
@@ -11885,6 +12021,37 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "PrivateWakeUpUpdatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "wakeUpId",
+          "userId"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "wake_up_updated"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "wakeUpId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "description": "sId of the user who owns the wake-up."
           }
         }
       },
@@ -13619,7 +13786,8 @@
           },
           "isExtendable": {
             "type": "boolean",
-            "description": "Whether this skill can be extended by another skill"
+            "deprecated": true,
+            "description": "Deprecated compatibility field. Always false."
           },
           "isDefault": {
             "type": "boolean",
@@ -13628,7 +13796,8 @@
           "extendedSkillId": {
             "type": "string",
             "nullable": true,
-            "description": "Identifier of the extended skill, when applicable"
+            "deprecated": true,
+            "description": "Deprecated compatibility field. Always null."
           },
           "instructions": {
             "type": "string",

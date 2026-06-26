@@ -13,9 +13,11 @@ import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -32,8 +34,9 @@ import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
+import { getWorkspaceDefaultAgentId, isAdmin } from "@app/types/user";
 import {
   Button,
   Card,
@@ -81,6 +84,11 @@ export function ConversationContainerVirtuoso({
 
   const sendNotification = useSendNotification();
 
+  const { hasFeature } = useFeatureFlags();
+  const workspaceDefaultAgentId = hasFeature("workspace_default_agent")
+    ? getWorkspaceDefaultAgentId(owner)
+    : null;
+
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: { disabled: true },
@@ -96,7 +104,9 @@ export function ConversationContainerVirtuoso({
   // A seatless member can never send a message. We surface this up-front rather
   // than relying on the deferred background message-post failure, which lands
   // after navigation and would otherwise leave behind an empty conversation.
-  const { noSeat } = useWorkspaceUsageStatus({ owner });
+  const { userBlockedReason } = useWorkspaceUsageStatus({
+    owner,
+  });
 
   // Maps a message-send failure to the right surface: blocking limits (no seat,
   // credits, per-user cap, plan limit) open the dedicated popup, everything else
@@ -132,15 +142,33 @@ export function ConversationContainerVirtuoso({
         });
       }
 
-      // Block seatless members before creating the conversation: the backend
-      // would reject the message anyway, and doing it here shows the popup
-      // immediately without leaving an empty conversation behind.
-      if (noSeat) {
-        setLimitReachedCode("no_seat");
+      // Pre-check blocking conditions before creating the conversation.
+      // With deferMessage:true the message posts after navigation, so backend
+      // errors arrive too late and leave an empty conversation behind.
+      // userBlockedReason comes directly from isUserBlocked on the server —
+      // no blocking logic lives here.
+      if (userBlockedReason) {
+        let limitCode: WorkspaceLimit;
+        switch (userBlockedReason) {
+          case "no_seat":
+            limitCode = "no_seat";
+            break;
+          case "user_cap_reached":
+            limitCode = "user_credits_exhausted";
+            break;
+          case "credits_exhausted":
+            limitCode = "pool_credits_exhausted";
+            break;
+          default:
+            assertNeverAndIgnore(userBlockedReason);
+            limitCode = "pool_credits_exhausted";
+            break;
+        }
+        setLimitReachedCode(limitCode);
         return new Err({
           code: "internal_error",
-          name: "NoSeat",
-          message: "You don't have a seat in this workspace.",
+          name: "UserBlocked",
+          message: "You are not allowed to send messages.",
         });
       }
 
@@ -195,7 +223,7 @@ export function ConversationContainerVirtuoso({
     },
     [
       isSubmitting,
-      noSeat,
+      userBlockedReason,
       mutateConversations,
       owner,
       router,
@@ -211,6 +239,7 @@ export function ConversationContainerVirtuoso({
   }, [user]);
 
   const { startConversationRef } = useWelcomeTourGuide();
+  const isMobile = useIsMobile();
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -244,7 +273,7 @@ export function ConversationContainerVirtuoso({
             className={classNames(
               "sticky bottom-0 z-20 flex max-h-dvh w-full",
               "pb-2",
-              "sm:w-full sm:max-w-conversation sm:pb-4"
+              "md:w-full md:max-w-conversation md:pb-4"
             )}
           >
             <InputBar
@@ -253,6 +282,7 @@ export function ConversationContainerVirtuoso({
               onSubmit={handleConversationCreation}
               draftKey="home-new-conversation"
               disableAutoFocus={false}
+              defaultAgentId={workspaceDefaultAgentId}
             />
           </div>
 
@@ -309,6 +339,8 @@ export function ConversationContainerVirtuoso({
   // when there is no active conversation
   return activeConversationId ? (
     body
+  ) : isMobile ? (
+    <div className="px-4">{body}</div>
   ) : (
     <ScrollArea className="px-4 md:px-8">{body}</ScrollArea>
   );

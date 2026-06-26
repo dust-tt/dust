@@ -1,11 +1,7 @@
 import { SelfImprovingSkillsConsumptionSection } from "@app/components/pages/workspace/developers/SelfImprovingSkillsConsumptionSection";
 import { SelfImprovingSkillsListSection } from "@app/components/workspace/settings/SelfImprovingSkillsListSection";
 import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import {
   getReinforcementMonthlyCapAwuCredits,
@@ -14,21 +10,13 @@ import {
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { useReinforcementBillingUnit } from "@app/lib/swr/useSelfImprovingSkillsSettings";
-import {
-  ContentMessage,
-  InfoCircle,
-  LinkWrapper,
-  Page,
-  Stars02,
-} from "@dust-tt/sparkle";
+import { ContentMessage, InfoCircle, Page, Stars02 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 export function SelfImprovingSkillsPage() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const hasSelfImprovement = useIsSelfImprovementAvailable();
-  const isBetaTester = hasFeature("self_improvement_beta_tester");
 
   const unit = useReinforcementBillingUnit({ owner });
 
@@ -63,24 +51,6 @@ export function SelfImprovingSkillsPage() {
     }
     return (
       <>
-        {isBetaTester && (
-          <ContentMessage variant="info" size="lg">
-            This feature is currently in <strong>beta</strong>, and only
-            available to a select group of customers.
-            <br />
-            Note that the feature is currently free during beta testing but will
-            generate additional costs upon release.
-            <br />
-            Contact{" "}
-            <LinkWrapper
-              href="mailto:self-improving-skills@dust.tt"
-              className="underline"
-            >
-              self-improving-skills@dust.tt
-            </LinkWrapper>{" "}
-            to share some feedback about this feature.
-          </ContentMessage>
-        )}
         <SelfImprovingSkillsSettingsSection
           owner={owner}
           onCapSaved={setCap}

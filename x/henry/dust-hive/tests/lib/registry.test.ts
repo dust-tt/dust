@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { calculatePorts } from "../../src/lib/ports";
-import { SERVICE_REGISTRY, WARM_SERVICES, getHealthChecks } from "../../src/lib/registry";
+import { getHealthChecks, SERVICE_REGISTRY, WARM_SERVICES } from "../../src/lib/registry";
 import { ALL_SERVICES } from "../../src/lib/services";
 
 describe("registry", () => {

@@ -69,7 +69,7 @@ type CouponFormValues = z.infer<typeof couponFormSchema>;
 type CheckoutPhase =
   | "card_capture" // Phase 1 — Stripe setup iframe
   | "payment_review" // Phase 2 — tax breakdown + confirm button
-  | "confirming" // Phase 3 — POST /payment in progress
+  | "confirming" // Phase 3 — POST /business-activation
   | "waiting_for_payment" // Phase 4 — polling Redis for Metronome webhook result
   | "checkout_success" // Phase 5 — success screen, user continues manually
   | "error"; // Terminal error
@@ -139,6 +139,9 @@ export function CheckoutPage() {
   // Once the user has gone through card_capture at least once, skip the full-page
   // spinner on restart so the two-pane layout stays visible.
   const hasHadSessionRef = useRef(false);
+  // Coupon code to pass to initSession when restarting from payment_review ("Change" button).
+  // Cleared after each use so normal restarts and error retries start without a coupon.
+  const pendingCouponForRestartRef = useRef<string | undefined>(undefined);
 
   const { createSession, isCreating } = useCreateCheckoutSession({
     workspaceId: owner.sId,
@@ -274,11 +277,14 @@ export function CheckoutPage() {
   }, []);
 
   // Phase "card_capture": init (or re-init on billingPeriod change).
+  // Reads pendingCouponForRestartRef so that "Change" restarts preserve the applied coupon.
   useEffect(() => {
     if (!isInitialized || phase !== "card_capture") {
       return;
     }
-    void initSession();
+    const couponCode = pendingCouponForRestartRef.current;
+    pendingCouponForRestartRef.current = undefined;
+    void initSession(couponCode);
   }, [isInitialized, phase, initSession]);
 
   const handleConfirmPayment = useCallback(async () => {
@@ -336,14 +342,30 @@ export function CheckoutPage() {
     setAppliedCoupon(null);
     setPreparePayment(null);
     setPendingContractId(null);
+    pendingCouponForRestartRef.current = undefined;
     resetCoupon();
     confirmCalledRef.current = false;
     setPhase("card_capture");
   }, [resetCoupon]);
 
+  // Called by the "Change" button in payment_review.
+  // Preserves the applied coupon.
+  const handleChangePaymentMethod = useCallback(() => {
+    hasHadSessionRef.current = true;
+    setClientSecret(null);
+    setSetupSessionId(null);
+    setPhaseError(null);
+    setPendingContractId(null);
+    pendingCouponForRestartRef.current = appliedCoupon?.code;
+    confirmCalledRef.current = false;
+    setPreparePayment(null);
+    setPhase("card_capture");
+  }, [appliedCoupon]);
+
   const handleRemoveCoupon = async () => {
     setAppliedCoupon(null);
     resetCoupon();
+    setPreparePayment(null);
     setIsSessionRefreshing(true);
     await initSession();
     setIsSessionRefreshing(false);
@@ -596,9 +618,18 @@ export function CheckoutPage() {
         </div>
       </div>
 
-      {/* Right pane: phase-dependent content — centered except when showing the Stripe iframe */}
+      {/* Right pane: phase-dependent content.
+          payment_review + error: top padding of 296px aligns content with the "Price per seat" row in the left pane.
+          card_capture (with Stripe iframe): uniform p-24 with no centering so the iframe fills from the top.
+          All other phases (spinners): centered. */}
       <div
-        className={`flex w-1/2 flex-col overflow-y-auto bg-white p-24 ${phase === "card_capture" && clientSecret ? "" : phase === "payment_review" ? "justify-center" : "items-center justify-center"}`}
+        className={`flex w-1/2 flex-col overflow-y-auto bg-white ${
+          phase === "card_capture" && clientSecret
+            ? "p-24"
+            : phase === "payment_review" || phase === "error"
+              ? "px-24 pb-24 pt-[296px]"
+              : "items-center justify-center p-24"
+        }`}
       >
         <RightPane
           phase={phase}
@@ -611,6 +642,7 @@ export function CheckoutPage() {
           cardLast4={preparePayment?.cardLast4}
           sepaLast4={preparePayment?.sepaLast4}
           onRestart={handleRestart}
+          onChangePaymentMethod={handleChangePaymentMethod}
           onConfirmPayment={handleConfirmPayment}
           onCardCaptureComplete={handleCardCaptureComplete}
         />
@@ -681,6 +713,7 @@ interface RightPaneProps {
   cardLast4?: string;
   sepaLast4?: string;
   onRestart: () => void;
+  onChangePaymentMethod: () => void;
   onConfirmPayment: () => void;
   onCardCaptureComplete: () => void;
 }
@@ -696,6 +729,7 @@ function RightPane({
   cardLast4,
   sepaLast4,
   onRestart,
+  onChangePaymentMethod,
   onConfirmPayment,
   onCardCaptureComplete,
 }: RightPaneProps) {
@@ -747,7 +781,7 @@ function RightPane({
             <Spinner size="lg" />
           ) : (
             <>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 pb-4">
                 <h2 className="text-2xl font-semibold text-foreground">
                   Select payment method
                 </h2>
@@ -762,12 +796,12 @@ function RightPane({
                     brand: cardBrand,
                     last4: cardLast4,
                   }}
-                  onRestart={onRestart}
+                  onRestart={onChangePaymentMethod}
                 />
               ) : sepaLast4 ? (
                 <PaymentMethodRow
                   paymentMethod={{ type: "sepa_debit", last4: sepaLast4 }}
-                  onRestart={onRestart}
+                  onRestart={onChangePaymentMethod}
                 />
               ) : null}
               <Button

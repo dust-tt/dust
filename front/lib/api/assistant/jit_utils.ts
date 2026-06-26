@@ -1,15 +1,15 @@
 // Okay to use public API types because here front is talking to core API.
 
-import type {
-  ContentNodeAttachmentType,
-  ConversationAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
 import {
   getAttachmentFromContentFragment,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { truncateLegacyPastedSnippet } from "@app/lib/api/files/snippet";
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  ContentNodeAttachmentType,
+  ConversationAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";

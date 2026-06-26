@@ -1,6 +1,6 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import type { GetSuggestionsResponseBody } from "@app/lib/api/assistant/tag_manager";
 import { getWorkspaceTagSuggestions } from "@app/lib/api/assistant/tag_manager";
+import type { GetSuggestionsResponseBody } from "@app/types/api/assistant/tag_manager";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isAdmin } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";

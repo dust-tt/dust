@@ -1,6 +1,6 @@
-import type { PostMessagesResponseBody } from "@app/lib/api/assistant/messages";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
 import type {
   ClientMessageOrigin,
   SubmitMessageError,

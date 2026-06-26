@@ -8,4 +8,5 @@ export interface PodMetadataType {
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
+  defaultAgentId: string | null;
 }

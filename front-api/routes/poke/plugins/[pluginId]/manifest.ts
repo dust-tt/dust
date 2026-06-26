@@ -1,5 +1,5 @@
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import type { PokeGetPluginDetailsResponseBody } from "@app/lib/api/poke/plugins/manifest";
+import type { PokeGetPluginDetailsResponseBody } from "@app/types/api/poke/plugins/manifest";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

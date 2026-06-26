@@ -35,6 +35,7 @@ export const workspaceKillSwitchPlugin = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (_auth, workspace, args) => {
     if (!workspace) {

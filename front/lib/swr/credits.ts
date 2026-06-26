@@ -1,5 +1,3 @@
-import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
-import type { GetMembersSeatsResponseBody } from "@app/lib/api/credits/members_seats";
 import type { GetMemberUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/lib/api/credits/purchase";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
@@ -7,6 +5,8 @@ import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purcha
 import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
@@ -57,35 +57,27 @@ function resetPostPurchaseRefreshCount(workspaceId: string): void {
 
 export function useCredits({
   workspaceId,
-  metronomeCustomerId,
   disabled,
 }: {
   workspaceId: string;
-  metronomeCustomerId?: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const creditsFetcher: Fetcher<GetCreditsResponseBody> = fetcher;
 
-  const endpoint = metronomeCustomerId
-    ? `/api/w/${workspaceId}/credits/metronome-balances`
-    : `/api/w/${workspaceId}/credits`;
-
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    endpoint,
+    `/api/w/${workspaceId}/credits`,
     creditsFetcher,
     {
       disabled,
-      refreshInterval: metronomeCustomerId
-        ? undefined
-        : () => {
-            const count = getPostPurchaseRefreshCount(workspaceId);
-            if (count < 5) {
-              incrementPostPurchaseRefreshCount(workspaceId);
-              return 5000;
-            }
-            return 0;
-          },
+      refreshInterval: () => {
+        const count = getPostPurchaseRefreshCount(workspaceId);
+        if (count < 5) {
+          incrementPostPurchaseRefreshCount(workspaceId);
+          return 5000;
+        }
+        return 0;
+      },
     }
   );
 
@@ -346,6 +338,7 @@ export function useMyUsage({
 
   return {
     myUsage: data?.member ?? null,
+    nextCreditResetAt: data?.member?.nextCreditResetAt ?? null,
     isMyUsageLoading: !error && !data && !disabled,
     isMyUsageError: error,
   };

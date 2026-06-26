@@ -1,64 +1,140 @@
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import {
+  INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
+  isRunCommandSlashCommand,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { describe, expect, it } from "vitest";
 
-import { filterInputBarSlashSuggestions } from "./InputBarSlashSuggestionDropdown";
+import { buildInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
+import {
+  getAvailableInputBarSlashCommands,
+  INPUT_BAR_SLASH_COMMANDS,
+  type InputBarSlashCommand,
+} from "./InputBarSlashSuggestionTypes";
 
-describe("filterInputBarSlashSuggestions", () => {
-  it("filters capabilities by name only", async () => {
-    const { auth, globalSpace, workspace } =
-      await createPrivateApiMockRequest();
-    const skill = await SkillFactory.create(auth, {
-      name: "Summarize",
-      userFacingDescription: "Search spreadsheets and documents.",
-    });
-    const calendarServer = await RemoteMCPServerFactory.create(workspace, {
-      name: "Calendar",
-      description: "Search spreadsheets and documents.",
-    });
-    const calendarServerView = await MCPServerViewFactory.create(
-      workspace,
-      calendarServer.sId,
-      globalSpace
-    );
+const ALL_COMMANDS = getAvailableInputBarSlashCommands({
+  hasAttachment: true,
+  hasConversation: true,
+});
 
-    const result = filterInputBarSlashSuggestions({
-      query: "spreadsheet",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [calendarServerView.toJSON()],
-      skills: [skill.toJSON(auth)],
+function getInputBarSlashCommandItemId(item: SlashCommand): string {
+  if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
+    return item.data.command.id;
+  }
+
+  return item.id;
+}
+
+describe("getAvailableInputBarSlashCommands", () => {
+  it("includes upload file when attachments are enabled", () => {
+    expect(
+      getAvailableInputBarSlashCommands({
+        hasAttachment: true,
+        hasConversation: false,
+      }).map((command) => command.id)
+    ).toEqual(["upload-file"]);
+  });
+
+  it("includes compact only when a conversation exists", () => {
+    expect(
+      getAvailableInputBarSlashCommands({
+        hasAttachment: true,
+        hasConversation: true,
+      }).map((command) => command.id)
+    ).toEqual(["upload-file", "compact"]);
+  });
+});
+
+describe("buildInputBarSlashCommandItems", () => {
+  it("returns no commands when none are available", () => {
+    const result = buildInputBarSlashCommandItems({
+      commands: [],
+      includeAttachKnowledge: false,
+      query: "",
     });
 
     expect(result).toEqual([]);
   });
 
-  it("orders non-substring matches by fuzzy relevance", async () => {
-    const { auth } = await createPrivateApiMockRequest();
-    const generateDailyReportSkill = await SkillFactory.create(auth, {
-      name: "Generate Daily Report",
-      userFacingDescription: "",
-    });
-    const googleDriveSkill = await SkillFactory.create(auth, {
-      name: "Google Drive",
-      userFacingDescription: "",
+  it("lists commands in INPUT_BAR_SLASH_COMMAND_ORDER", () => {
+    const result = buildInputBarSlashCommandItems({
+      commands: ALL_COMMANDS,
+      includeAttachKnowledge: true,
+      query: "",
     });
 
-    const result = filterInputBarSlashSuggestions({
-      query: "gd",
-      selectedMCPServerViewIds: new Set(),
-      serverViews: [],
-      skills: [
-        generateDailyReportSkill.toJSON(auth),
-        googleDriveSkill.toJSON(auth),
-      ],
-    });
+    expect(result.map(getInputBarSlashCommandItemId)).toEqual([
+      "compact",
+      "upload-file",
+      "attach-knowledge",
+    ]);
+  });
+
+  it("excludes attach knowledge when includeAttachKnowledge is false", () => {
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        query: "",
+      }).map(getInputBarSlashCommandItemId)
+    ).toEqual(["compact", "upload-file"]);
 
     expect(
-      result.map((capability) =>
-        capability.kind === "skill" ? capability.skill.name : ""
-      )
-    ).toEqual(["Google Drive", "Generate Daily Report"]);
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: false,
+        query: "knowledge",
+      })
+    ).toEqual([]);
+  });
+
+  it("filters commands by the query", () => {
+    const result = buildInputBarSlashCommandItems({
+      commands: ALL_COMMANDS,
+      includeAttachKnowledge: true,
+      query: "compact",
+    });
+
+    expect(result.map(getInputBarSlashCommandItemId)).toEqual(["compact"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: INPUT_BAR_SLASH_COMMANDS,
+        includeAttachKnowledge: true,
+        query: "upload",
+      }).map(getInputBarSlashCommandItemId)
+    ).toEqual(["upload-file"]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        query: "knowledge",
+      }).map((item) => item.action)
+    ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        query: "reference",
+      }).map((item) => item.action)
+    ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        query: "company",
+      }).map((item) => item.action)
+    ).toEqual([INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION]);
+
+    expect(
+      buildInputBarSlashCommandItems({
+        commands: ALL_COMMANDS,
+        includeAttachKnowledge: true,
+        query: "zzz",
+      })
+    ).toEqual([]);
   });
 });

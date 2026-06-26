@@ -228,6 +228,7 @@ export async function getMembers(
       ...user.toJSON(),
       workspaces: [{ ...owner, role, flags: null }],
       origin,
+      seatType: m.seatType,
     };
   });
 
@@ -573,6 +574,7 @@ export interface WorkspaceMetadata {
   selfImprovementCapPerSkillAwuCredits?: number;
   webSearchProvider?: WebSearchProvider;
   webBrowseProvider?: WebBrowseProvider;
+  workspaceDefaultAgentId?: string;
 }
 
 export async function updateWorkspaceMetadata(

@@ -1,5 +1,7 @@
 import dayjs from "dayjs";
 
+export { isPastedFile } from "@app/lib/files";
+
 export const getDisplayNameFromPastedFileId = (id: string): string => {
   const match = id.match(/^pasted-text-(\d+)_/);
   if (match) {
@@ -29,8 +31,4 @@ export const getDisplayDateFromPastedFileId = (
 
 export const getPastedFileName = (count: number): string => {
   return `pasted-text-${count}_${dayjs().format("YYYY-MM-DD_HH-mm-ss")}.txt`;
-};
-
-export const isPastedFile = (contentType: string | undefined): boolean => {
-  return contentType === "text/vnd.dust.attachment.pasted";
 };

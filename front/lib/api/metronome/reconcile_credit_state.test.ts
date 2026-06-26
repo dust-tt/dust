@@ -90,6 +90,7 @@ describe("reconcileWorkspaceUserCreditStates", () => {
       workspace: renderLightWorkspaceType({ workspace }),
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
       metronomeContractId: METRONOME_CONTRACT_ID,
+      planCode: "CP_BUSINESS_PLAN",
     });
 
     const refreshed =
@@ -120,6 +121,7 @@ describe("reconcileWorkspaceUserCreditStates", () => {
       workspace: renderLightWorkspaceType({ workspace }),
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
       metronomeContractId: METRONOME_CONTRACT_ID,
+      planCode: "CP_BUSINESS_PLAN",
     });
 
     const refreshed =
@@ -147,6 +149,7 @@ describe("reconcileWorkspaceUserCreditStates", () => {
       workspace: renderLightWorkspaceType({ workspace }),
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
       metronomeContractId: METRONOME_CONTRACT_ID,
+      planCode: "CP_BUSINESS_PLAN",
     });
 
     const refreshed =

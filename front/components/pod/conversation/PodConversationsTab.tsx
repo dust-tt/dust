@@ -11,10 +11,12 @@ import { usePodUnreadConversationIds } from "@app/hooks/conversations";
 import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations";
-import type { GetSpaceResponseBody } from "@app/lib/api/spaces";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
+import { usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type {
   ConversationWithoutContentType,
   LightConversationType,
@@ -23,7 +25,11 @@ import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
-import type { UserType, WorkspaceType } from "@app/types/user";
+import {
+  resolveDefaultAgentId,
+  type UserType,
+  type WorkspaceType,
+} from "@app/types/user";
 import {
   Button,
   ButtonsSwitch,
@@ -86,6 +92,7 @@ export function PodConversationsTab({
   onNavigateToTasks,
 }: PodConversationsTabProps) {
   const { isEditor } = podInfo;
+  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -96,6 +103,21 @@ export function PodConversationsTab({
   const { unreadConversationIds } = usePodUnreadConversationIds({
     workspaceId: owner.sId,
     podId: podInfo.sId,
+  });
+  // This pod's default agent, applied to new conversations started here. Resolved
+  // downstream in `useHandleMentions`, falling back to @dust.
+  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId: podInfo.sId,
+  });
+
+  // Unless a pod default is explicitly set, fall back to the workspace-wide default
+  // agent. The final fallback to @dust happens in `useHandleMentions`.
+  const defaultAgentId = resolveDefaultAgentId({
+    owner,
+    podDefaultAgentId: podMetadata?.defaultAgentId,
+    hasWorkspaceDefaultAgentFeature: hasFeature("workspace_default_agent"),
+    hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
@@ -183,7 +205,7 @@ export function PodConversationsTab({
               )}
             </div>
             {podInfo.archivedAt ? (
-              <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+              <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
                 <EmptyCTA
                   message="This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}
@@ -198,6 +220,8 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 placeholder={`Get work done in ${podInfo.name}`}
+                defaultAgentId={defaultAgentId}
+                isDefaultAgentLoading={isPodMetadataLoading}
               />
             ) : (
               <PodJoinCTA

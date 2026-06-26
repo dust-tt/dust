@@ -23,6 +23,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -130,7 +131,8 @@ export abstract class LLM<TPayload = unknown> {
       yield* this.completeStream(streamParameters, metadata);
       return;
     }
-    const { conversation, prompt, specifications } = streamParameters;
+    const { conversation, prompt, specifications, previousMessageId } =
+      streamParameters;
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(
@@ -161,6 +163,9 @@ export abstract class LLM<TPayload = unknown> {
       name: startCase(this.context.operationType),
       metadata: {
         dustTraceId: this.traceId,
+        // Prompt-cache diagnostics: the previous response id we threaded into this
+        // request (the current one is added below from the `interaction_id` event).
+        ...(previousMessageId && { previousMessageId }),
         // All contextual data as key-value pairs for better filtering in Langfuse UI.
         ...(this.authenticator.user()?.sId && {
           actualUserId: this.authenticator.user()!.sId,
@@ -202,6 +207,7 @@ export abstract class LLM<TPayload = unknown> {
       `model_id:${this.modelId}`,
       `client_id:${this.metadata.clientId}`,
       `inference_provider:${this.metadata.inferenceProvider}`,
+      ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
       `operation_type:${this.context.operationType}`,
     ];
 
@@ -249,6 +255,7 @@ export abstract class LLM<TPayload = unknown> {
               errorContent: currentEvent.content,
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
+              region: this.metadata.region,
               context: this.context,
               traceId: this.traceId,
             },
@@ -265,6 +272,7 @@ export abstract class LLM<TPayload = unknown> {
               llmEventType: "success",
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
+              region: this.metadata.region,
               context: this.context,
               traceId: this.traceId,
             },
@@ -336,6 +344,11 @@ export abstract class LLM<TPayload = unknown> {
             this.modelId,
             { inferenceRegion: this.metadata.inferenceRegion }
           );
+        }
+
+        const simulatedRunUsages = this.getSimulatedRunUsages();
+        if (simulatedRunUsages) {
+          await run.recordRunUsage(this.authenticator, simulatedRunUsages);
         }
 
         yield currentEvent;
@@ -578,6 +591,7 @@ export abstract class LLM<TPayload = unknown> {
         `model_id:${this.modelId}`,
         `client_id:${this.metadata.clientId}`,
         `inference_provider:${this.metadata.inferenceProvider}`,
+        ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
         `operation_type:${this.context!.operationType}`,
       ];
 
@@ -658,6 +672,14 @@ export abstract class LLM<TPayload = unknown> {
    * provider-specific API calls and response streaming.
    */
   protected abstract sendRequest(payload: TPayload): AsyncGenerator<LLMEvent>;
+
+  /**
+   * Override to inject run usages that bypass token-based pricing (e.g. noop simulation).
+   * Called after the stream completes; returned entries are recorded via recordRunUsage.
+   */
+  protected getSimulatedRunUsages(): RunUsageType[] | null {
+    return null;
+  }
 
   /**
    * Orchestrates the request lifecycle: build -> capture for tracing -> send.

@@ -1,6 +1,10 @@
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { POD_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import {
+  formatPodAgentsMdPromptSection,
+  readPodAgentsMdContent,
+} from "@app/lib/api/projects/agents_md";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -63,6 +67,8 @@ When you need to find information, use this order (skip steps if the relevant to
   // Auto-enabled whenever the conversation belongs to a Pod.
   isAutoEnabledForAgentLoop: ({ conversation }) =>
     isPodConversation(conversation),
+  // Auto-equipped for all agent loops.
+  isAutoEquippedForAgentLoop: (): boolean => true,
 } as const satisfies GlobalSkillDefinition;
 
 export async function constructProjectContext(
@@ -82,6 +88,11 @@ export async function constructProjectContext(
 IMPORTANT: This conversation (id: ${conversation.sId}) is part of the Pod "${space?.name}" (id: ${space?.sId}).
 Therefore, ALWAYS start by using the Pod tools to search for information before using company-wide tools.
 `;
+
+    const agentsMd = await readPodAgentsMdContent(auth, conversation.spaceId);
+    if (agentsMd) {
+      instructions += formatPodAgentsMdPromptSection(agentsMd);
+    }
   }
 
   return instructions;

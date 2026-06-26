@@ -162,6 +162,8 @@ const ParamsSchema = z.object({
  *        description: Bad Request. Missing or invalid parameters.
  *      401:
  *        description: Unauthorized. Invalid or missing authentication token.
+ *      429:
+ *        description: Too many pending table updates are queued for this table. Retry later.
  *      500:
  *        description: Internal Server Error.
  *      404:
@@ -353,6 +355,18 @@ app.post(
     });
 
     if (upsertRes.isErr()) {
+      if (upsertRes.error.code === "too_many_pending_upserts") {
+        return apiError(ctx, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "Too many pending table updates are queued for this table. " +
+              "Please retry later.",
+          },
+        });
+      }
+
       logger.error(
         {
           dataSourceId: dataSource.sId,

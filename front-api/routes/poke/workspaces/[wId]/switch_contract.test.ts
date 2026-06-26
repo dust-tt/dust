@@ -1,5 +1,10 @@
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
-import { listMetronomePackages } from "@app/lib/metronome/client";
+import {
+  archiveMetronomeContract,
+  listMetronomePackages,
+  reactivateMetronomeContract,
+} from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
@@ -32,7 +37,9 @@ vi.mock("@app/lib/metronome/client", async () => {
   >("@app/lib/metronome/client");
   return {
     ...actual,
+    archiveMetronomeContract: vi.fn(),
     listMetronomePackages: vi.fn(),
+    reactivateMetronomeContract: vi.fn(),
   };
 });
 
@@ -55,6 +62,16 @@ vi.mock("@app/lib/metronome/seats", async () => {
   return {
     ...actual,
     remapMembershipSeatTypesForContract: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/api/workos/organization", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/api/workos/organization")
+  >("@app/lib/api/workos/organization");
+  return {
+    ...actual,
+    getOrCreateWorkOSOrganization: vi.fn(),
   };
 });
 
@@ -120,7 +137,6 @@ async function ensureEnterprisePlan(): Promise<void> {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
-    isBrandedFramesAllowed: false,
   });
 }
 
@@ -200,6 +216,13 @@ function postSwitchContract(workspaceId: string, body: unknown) {
 }
 
 beforeEach(() => {
+  vi.mocked(getOrCreateWorkOSOrganization).mockResolvedValue(
+    new Ok({
+      id: "org_test",
+    } as unknown as import("@workos-inc/node").Organization)
+  );
+  vi.mocked(archiveMetronomeContract).mockResolvedValue(new Ok(undefined));
+  vi.mocked(reactivateMetronomeContract).mockResolvedValue(new Ok(undefined));
   vi.mocked(ensureMetronomeCustomerForWorkspace).mockResolvedValue(
     new Ok({ metronomeCustomerId: METRONOME_CUSTOMER_ID })
   );
@@ -215,6 +238,7 @@ beforeEach(() => {
         tier: "enterprise",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
       {
         id: PRO_PACKAGE_ID,
@@ -223,6 +247,7 @@ beforeEach(() => {
         tier: "pro",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
       {
         id: BUSINESS_PACKAGE_ID,
@@ -231,6 +256,7 @@ beforeEach(() => {
         tier: "business",
         currency: "usd",
         seats: [],
+        billingAnchor: "contract_start_date" as const,
       },
     ])
   );

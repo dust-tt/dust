@@ -3,7 +3,7 @@
 import { setLastActiveEnv } from "./activity";
 import { type Environment, getEnvironment } from "./environment";
 import { restoreTerminal, selectEnvironment } from "./prompt";
-import { CommandError, Err, Ok, type Result, envNotFoundError } from "./result";
+import { CommandError, Err, envNotFoundError, Ok, type Result } from "./result";
 
 export type EnvironmentNameArg = string | string[] | undefined;
 

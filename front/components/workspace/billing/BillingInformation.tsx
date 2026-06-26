@@ -2,11 +2,11 @@ import {
   CardBrandIcon,
   formatBrandName,
 } from "@app/components/checkout/PaymentMethodRow";
+import { useBillingInfo } from "@app/lib/swr/workspaces";
 import type {
   BillingAddress,
   BillingPaymentMethod,
-} from "@app/lib/api/billing/info";
-import { useBillingInfo } from "@app/lib/swr/workspaces";
+} from "@app/types/api/billing/info";
 import {
   Button,
   Hash01,

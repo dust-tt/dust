@@ -17,7 +17,7 @@ import {
   Hoverable,
   Page,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"
@@ -28,6 +28,25 @@ export type WorkspaceLimit =
   | "pool_credits_exhausted"
   | "user_credits_exhausted"
   | "no_seat";
+
+// Maps a raw API error.type string (from retry/edit endpoints) to the blocking
+// popup code, or null when it's a non-limit error.
+export function getWorkspaceLimitFromApiErrorType(
+  type: string
+): WorkspaceLimit | null {
+  switch (type) {
+    case "plan_message_limit_exceeded":
+      return "message_limit";
+    case "credits_exhausted":
+      return "pool_credits_exhausted";
+    case "user_cap_reached":
+      return "user_credits_exhausted";
+    case "no_seat":
+      return "no_seat";
+    default:
+      return null;
+  }
+}
 
 // Maps a message-send failure to the blocking popup it should open, or null when
 // the failure is transient and should be surfaced as a notification instead.
@@ -275,12 +294,18 @@ function getLimitPromptForCode(
     case "no_seat": {
       return {
         title: "No seat assigned",
-        validateLabel: "Ok",
+        validateLabel: isAdmin ? "Go to usage page" : "Ok",
+        onValidate: isAdmin
+          ? () => {
+              void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
+            }
+          : undefined,
         children: (
           <>
             <Page.P>
-              You don&apos;t have a seat assigned in this workspace. Please
-              contact your administrator to assign you one.
+              {isAdmin
+                ? "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+                : "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."}
             </Page.P>
           </>
         ),
@@ -293,14 +318,14 @@ function getLimitPromptForCode(
         validateLabel: isAdmin ? "Go to Usage" : "Ok",
         onValidate: isAdmin
           ? () => {
-              void router.push(`/w/${owner.sId}/usage`);
+              void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
             }
           : undefined,
         children: (
           <>
             <Page.P>
               {isAdmin
-                ? "You have reached your personal usage cap. You can adjust user caps from the usage page."
+                ? "You have reached your personal usage cap. On the usage page you can change your seat or adjust user caps."
                 : "You have reached your personal usage cap. Please contact your administrator to increase it."}
             </Page.P>
           </>
@@ -331,11 +356,19 @@ export function ReachedLimitPopup({
 }) {
   const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
 
+  // Keep the last code that was shown while open so the closing animation
+  // doesn't flash the fallback content when the parent nulls limitReachedCode.
+  const activeCodeRef = useRef(code);
+  if (isOpened) {
+    activeCodeRef.current = code;
+  }
+  const activeCode = activeCodeRef.current;
+
   const router = useAppRouter();
   const limitPrompt = getLimitPromptForCode(
     router,
     owner,
-    code,
+    activeCode,
     subscription,
     () => setIsFairUsageModalOpened(true),
     isAdmin

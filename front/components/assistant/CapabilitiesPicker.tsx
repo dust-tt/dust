@@ -1,4 +1,8 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
+import {
+  matchesSlashCommandCapabilityQuery,
+  sortSlashCommandCapabilityMatches,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   getMcpServerViewDescription,
@@ -65,25 +69,6 @@ type CapabilityPickerItem = CapabilityPickerItemBase &
         server: MCPServerType;
       }
   );
-
-function matchesCapabilityPickerSearchQuery({
-  description,
-  label,
-  normalizedQuery,
-}: {
-  description?: string;
-  label: string;
-  normalizedQuery: string;
-}) {
-  if (normalizedQuery.length === 0) {
-    return true;
-  }
-
-  return (
-    label.toLowerCase().includes(normalizedQuery) ||
-    (description?.toLowerCase().includes(normalizedQuery) ?? false)
-  );
-}
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -357,10 +342,10 @@ export function CapabilitiesPicker({
         const description = skill.userFacingDescription;
 
         if (
-          !matchesCapabilityPickerSearchQuery({
+          !matchesSlashCommandCapabilityQuery({
             description,
             label: skill.name,
-            normalizedQuery: normalizedSearchText,
+            query: normalizedSearchText,
           })
         ) {
           continue;
@@ -384,10 +369,10 @@ export function CapabilitiesPicker({
         if (
           !isJITMCPServerView(serverView) ||
           selectedMCPServerViewIds.has(serverView.sId) ||
-          !matchesCapabilityPickerSearchQuery({
+          !matchesSlashCommandCapabilityQuery({
             description,
             label,
-            normalizedQuery: normalizedSearchText,
+            query: normalizedSearchText,
           })
         ) {
           continue;
@@ -417,10 +402,10 @@ export function CapabilitiesPicker({
         if (
           installedServerNames.has(server.name) ||
           server.availability !== "manual" ||
-          !matchesCapabilityPickerSearchQuery({
+          !matchesSlashCommandCapabilityQuery({
             description,
             label,
-            normalizedQuery: normalizedSearchText,
+            query: normalizedSearchText,
           })
         ) {
           continue;
@@ -438,17 +423,18 @@ export function CapabilitiesPicker({
       }
     }
 
-    return items.toSorted((a, b) => {
-      const aGroupOrder = a.kind === "uninstalled_tool" ? 1 : 0;
-      const bGroupOrder = b.kind === "uninstalled_tool" ? 1 : 0;
-      const groupComparison = aGroupOrder - bGroupOrder;
-
-      if (groupComparison !== 0) {
-        return groupComparison;
-      }
-
-      return a.sortName.localeCompare(b.sortName);
-    });
+    const installedItems = items.filter((i) => i.kind !== "uninstalled_tool");
+    const uninstalledItems = items.filter((i) => i.kind === "uninstalled_tool");
+    return [
+      ...sortSlashCommandCapabilityMatches({
+        items: installedItems,
+        normalizedQuery: normalizedSearchText,
+      }),
+      ...sortSlashCommandCapabilityMatches({
+        items: uninstalledItems,
+        normalizedQuery: normalizedSearchText,
+      }),
+    ];
   })();
 
   const hasNoVisibleItems =

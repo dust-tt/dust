@@ -1,14 +1,9 @@
-import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
+import { getDataSourceViewsUsageByModelIds } from "@app/lib/api/agent_data_sources";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type {
-  GetSpaceResponseBody,
-  PatchSpaceResponseBody,
-  SpaceCategoryInfo,
-} from "@app/lib/api/spaces";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -16,8 +11,13 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
+import type {
+  GetSpaceResponseBody,
+  PatchSpaceResponseBody,
+  SpaceCategoryInfo,
+} from "@app/types/api/spaces";
+import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -251,40 +251,28 @@ app.get(
       (a) => a.toJSON().server.availability === "manual"
     ).length;
 
+    const usages = await getDataSourceViewsUsageByModelIds({
+      auth,
+      dataSourceViewModelIds: dataSourceViewsList.map((dsv) => dsv.id),
+    });
+
     const categories: { [key: string]: SpaceCategoryInfo } = {};
     for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
-      categories[category] = {
-        count: 0,
-        usage: { count: 0, agents: [] },
-      };
-
       const dataSourceViewsInCategory = dataSourceViewsList.filter(
         (view) => view.toJSON().category === category
       );
 
-      // The usage call is expensive, so only run it when there are views.
-      if (dataSourceViewsInCategory.length > 0) {
-        const usages = await getDataSourceViewsUsageByCategory({
-          auth,
-          category,
-        });
+      const agents = uniqBy(
+        dataSourceViewsInCategory.flatMap(
+          (view) => usages[view.id]?.agents ?? []
+        ),
+        "sId"
+      );
 
-        for (const dsView of dataSourceViewsInCategory) {
-          categories[category].count += 1;
-          const usage = usages[dsView.id];
-          if (usage) {
-            categories[category].usage.agents = categories[
-              category
-            ].usage.agents.concat(usage.agents);
-            categories[category].usage.agents = uniqBy(
-              categories[category].usage.agents,
-              "sId"
-            );
-          }
-        }
-        categories[category].usage.count =
-          categories[category].usage.agents.length;
-      }
+      categories[category] = {
+        count: dataSourceViewsInCategory.length,
+        usage: { count: agents.length, agents },
+      };
     }
 
     categories["apps"].count = appsList.length;

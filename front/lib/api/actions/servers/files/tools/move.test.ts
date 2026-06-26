@@ -3,6 +3,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { moveHandler } from "@app/lib/api/actions/servers/files/tools/move";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -75,7 +76,13 @@ describe("moveHandler", () => {
     }
     expect(result.value[0]).toEqual({
       type: "text",
-      text: `Moved \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`. The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
+      text:
+        `Moved \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`. ` +
+        getFilePreviewDirectiveInstruction({
+          contentType: "text/plain",
+          path: `pod-${spaceId}/report.pdf`,
+          title: "report.pdf",
+        }),
     });
   });
 

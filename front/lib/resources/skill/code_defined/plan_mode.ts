@@ -4,7 +4,6 @@ import {
   CREATE_PLAN_TOOL_NAME,
   EDIT_PLAN_TOOL_NAME,
   PLAN_MODE_SERVER_NAME,
-  REQUEST_PLAN_APPROVAL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -26,16 +25,14 @@ Exactly one active plan is allowed per conversation. If a plan already exists in
 
 Clarifying questions go through \`${ASK_USER_QUESTION_TOOL_NAME}\`: use it liberally before drafting the plan and whenever ambiguity arises mid-execution.
 
-**Approval (\`${REQUEST_PLAN_APPROVAL_TOOL_NAME}\`)**:
-- MANDATORY when the user explicitly asked for plan mode (e.g. "use plan mode", "plan this for me", "draft a plan before you do anything"). Call it once the plan is populated and before starting execution.
-- Otherwise optional. Call it only if the stakes warrant a human checkpoint (irreversible actions, big scope, ambiguous intent). For transparency-only flows, skip it and just keep editing the plan as you execute.
-- Only call when plan.md is ready. Do not call with an incomplete plan.
+**Approval**: plan mode has no dedicated approval tool. When you need explicit sign-off before executing, you MUST request it through \`${ASK_USER_QUESTION_TOOL_NAME}\` with a question like "Approve this plan?" and options such as "Approve" and "Reject". Never ask for approval in your normal response text: a plain sentence like "Do you approve?" gives the user no clear choice, is not an approval gate, and does not pause for a decision. If you are seeking approval, the LAST thing you do in the turn is the \`${ASK_USER_QUESTION_TOOL_NAME}\` call, not a written question.
+- Request approval this way when the user explicitly asked for plan mode (e.g. "use plan mode", "plan this for me", "draft a plan before you do anything"): ask once the plan is populated and before starting execution.
+- Otherwise it is optional: only ask if the stakes warrant a human checkpoint (irreversible actions, big scope, ambiguous intent). For transparency-only flows, skip approval and just keep editing the plan as you execute.
+- Only ask for approval when plan.md is ready. Do not ask with an incomplete plan.
 
-**If \`${REQUEST_PLAN_APPROVAL_TOOL_NAME}\` is REJECTED (tool result status: denied): STOP.** Do NOT proceed with execution under any circumstance. Do NOT call research, side-effect, or write tools.
-
-Your next step MUST be to call \`${ASK_USER_QUESTION_TOOL_NAME}\` to ask the user what to change. Offer options like: a concrete revision direction, "proceed anyway without approval", or "drop the plan". Based on the user's answer:
-- If they give you a revision, revise the plan via \`${EDIT_PLAN_TOOL_NAME}\` and call \`${REQUEST_PLAN_APPROVAL_TOOL_NAME}\` again.
-- If they say to proceed anyway, continue execution without re-requesting approval (keep updating plan.md via \`${EDIT_PLAN_TOOL_NAME}\` for transparency).
+**If the user does NOT approve: STOP.** Do NOT proceed with execution under any circumstance. Do NOT call research, side-effect, or write tools. Ask again via \`${ASK_USER_QUESTION_TOOL_NAME}\` what to change, offering options like a concrete revision direction, "proceed anyway without approval", or "drop the plan". Based on the answer:
+- If they give you a revision, revise the plan via \`${EDIT_PLAN_TOOL_NAME}\` and ask for approval again.
+- If they say to proceed anyway, continue execution without re-asking (keep updating plan.md via \`${EDIT_PLAN_TOOL_NAME}\` for transparency).
 - If they ask to drop the plan, call \`${CLOSE_PLAN_TOOL_NAME}\`.
 
 **Closing the plan (\`${CLOSE_PLAN_TOOL_NAME}\`)** in two cases:
@@ -51,9 +48,9 @@ export const planModeSkill = {
   sId: "plan_mode",
   name: "Plan Mode",
   userFacingDescription:
-    "Let agents maintain a live plan.md the user can follow, with an optional approval step for risky work.",
+    "Let agents maintain a live plan.md the user can follow as work progresses.",
   agentFacingDescription:
-    "Create and maintain a plan.md for non-trivial tasks to give the user visibility. Optionally request approval for risky steps.",
+    "Create and maintain a plan.md for non-trivial tasks to give the user visibility.",
   instructions: PLAN_MODE_INSTRUCTIONS,
   mcpServers: [{ name: PLAN_MODE_SERVER_NAME }],
   version: 1,

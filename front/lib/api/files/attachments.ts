@@ -1,10 +1,12 @@
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
+import { generateSnippet } from "@app/lib/api/files/snippet";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
+import { isPastedFile } from "@app/lib/files";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -44,15 +46,42 @@ export async function maybeUpsertFileAttachment(
     const results = await concurrentExecutor(
       fileResources,
       async (fileResource): Promise<Result<undefined, Error>> => {
-        if (
-          fileResource.useCase === "conversation" &&
-          !fileResource.useCaseMetadata?.conversationId
-        ) {
+        const isConversationFile = fileResource.useCase === "conversation";
+        const isMissingConversationId =
+          isConversationFile && !fileResource.useCaseMetadata?.conversationId;
+
+        if (isMissingConversationId) {
           await fileResource.setUseCaseMetadata(auth, {
             ...(fileResource.useCaseMetadata ?? {}),
             conversationId: conversation.sId,
           });
+        }
 
+        if (
+          isConversationFile &&
+          isPastedFile(fileResource.contentType) &&
+          fileResource.snippet === null
+        ) {
+          const snippetRes = await generateSnippet(auth, {
+            file: fileResource,
+          });
+          if (snippetRes.isErr()) {
+            logger.error(
+              {
+                fileModelId: fileResource.id,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: snippetRes.error,
+              },
+              "Failed to generate pasted file snippet."
+            );
+            return new Ok(undefined);
+          }
+
+          await fileResource.setSnippet(snippetRes.value);
+          return new Ok(undefined);
+        }
+
+        if (isMissingConversationId) {
           // Only upsert if the file is upsertable.
           if (
             !isSandboxRawDelimitedConversationFile(fileResource) &&

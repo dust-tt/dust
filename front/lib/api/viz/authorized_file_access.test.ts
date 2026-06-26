@@ -13,6 +13,7 @@ import {
   isAllowlistShareScopeStale,
   isAllowlistStale,
   isAuthorizedFileRef,
+  isVerifiableAuthorizedFileIdRefUseCase,
   resolveAllowlistedCanonicalPath,
 } from "@app/lib/api/viz/authorized_file_access_policy";
 import { Authenticator } from "@app/lib/auth";
@@ -22,11 +23,14 @@ import { AuthorizedFileAccessModel } from "@app/lib/resources/storage/models/fil
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   type AuthorizedFileAccessAllowlist,
+  type FileUseCase,
   frameContentType,
   isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
@@ -43,7 +47,7 @@ function makeAllowlist(
   overrides: Partial<AuthorizedFileAccessAllowlist> = {}
 ): AuthorizedFileAccessAllowlist {
   return {
-    computedByUserId: "usr_test",
+    generatedByUserId: null,
     frameContentHash: "hash",
     refs: [],
     ...overrides,
@@ -79,6 +83,27 @@ describe("isAllowlistShareScopeStale", () => {
     expect(isAllowlistShareScopeStale("workspace", "workspace")).toBe(false);
     expect(isAllowlistShareScopeStale("workspace", "public")).toBe(true);
     expect(isAllowlistShareScopeStale("emails_only", "public")).toBe(true);
+  });
+});
+
+describe("isVerifiableAuthorizedFileIdRefUseCase", () => {
+  it.each([
+    "conversation",
+    "tool_output",
+    "project_context",
+  ] satisfies FileUseCase[])("allows %s", (useCase) => {
+    expect(isVerifiableAuthorizedFileIdRefUseCase(useCase)).toBe(true);
+  });
+
+  it.each([
+    "avatar",
+    "upsert_document",
+    "folders_document",
+    "upsert_table",
+    "skill_attachment",
+    "workspace_branding",
+  ] satisfies FileUseCase[])("rejects %s", (useCase) => {
+    expect(isVerifiableAuthorizedFileIdRefUseCase(useCase)).toBe(false);
   });
 });
 
@@ -177,7 +202,7 @@ describe("computeAuthorizedFileAccess", () => {
       },
     ]);
     expect(result.unverifiableRefs).toEqual(["fil_ZZZZZZZZZZ"]);
-    expect(result.computedByUserId).toBe(auth.user()!.sId);
+    expect(result.generatedByUserId).toBe(auth.user()!.id);
     expect(result.frameContentHash).toBe(computeFrameContentHash(frameContent));
   });
 
@@ -421,7 +446,312 @@ describe("computeAuthorizedFileAccess", () => {
       frameContent,
     });
 
-    expect(result.computedByUserId).toBe(user.sId);
+    expect(result.generatedByUserId).toBe(user.id);
+  });
+
+  it("marks file_id refs without conversation or space metadata as unverifiable", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const fileWithoutContext = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "orphan.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const result = await frameFile.computeAuthorizedFileAccess(auth, {
+      frameContent: `useFile("${fileWithoutContext.sId}");`,
+    });
+
+    expect(result.refs).toEqual([]);
+    expect(result.unverifiableRefs).toEqual([fileWithoutContext.sId]);
+  });
+
+  it("verifies tool_output file_id refs with conversation metadata", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const toolOutputFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "tool-output.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "tool_output",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const result = await frameFile.computeAuthorizedFileAccess(auth, {
+      frameContent: `useFile("${toolOutputFile.sId}");`,
+    });
+
+    expect(result.refs).toEqual([
+      {
+        kind: "file_id",
+        ref: toolOutputFile.sId,
+        fileName: "tool-output.txt",
+      },
+    ]);
+    expect(result.unverifiableRefs).toBeUndefined();
+  });
+
+  it.each([
+    "avatar",
+    "upsert_document",
+    "folders_document",
+    "upsert_table",
+    "skill_attachment",
+    "workspace_branding",
+  ] satisfies FileUseCase[])("marks %s file_id refs as unverifiable even with conversation metadata", async (useCase) => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const excludedFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: `${useCase}.txt`,
+      fileSize: 10,
+      status: "ready",
+      useCase,
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const result = await frameFile.computeAuthorizedFileAccess(auth, {
+      frameContent: `useFile("${excludedFile.sId}");`,
+    });
+
+    expect(result.refs).toEqual([]);
+    expect(result.unverifiableRefs).toEqual([excludedFile.sId]);
+  });
+
+  it("verifies file_id refs from another accessible conversation", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const frameConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const sourceConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const crossConversationFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "cross.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: sourceConversation.sId },
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: frameConversation.sId },
+    });
+
+    const result = await frameFile.computeAuthorizedFileAccess(auth, {
+      frameContent: `useFile("${crossConversationFile.sId}");`,
+    });
+
+    expect(result.refs).toEqual([
+      {
+        kind: "file_id",
+        ref: crossConversationFile.sId,
+        fileName: "cross.txt",
+      },
+    ]);
+    expect(result.unverifiableRefs).toBeUndefined();
+  });
+
+  it("verifies file_id refs from an accessible pod space", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const project = await SpaceFactory.project(workspace);
+    await project.addMembers(internalAdminAuth, {
+      userIds: [auth.user()!.sId],
+    });
+    await auth.refresh();
+
+    const podFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "pod-data.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: project.sId },
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: project.sId },
+    });
+
+    const result = await frameFile.computeAuthorizedFileAccess(auth, {
+      frameContent: `useFile("${podFile.sId}");`,
+    });
+
+    expect(result.refs).toEqual([
+      {
+        kind: "file_id",
+        ref: podFile.sId,
+        fileName: "pod-data.txt",
+      },
+    ]);
+    expect(result.unverifiableRefs).toBeUndefined();
+  });
+
+  it("marks file_id refs from inaccessible spaces as unverifiable", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const accessibleProject = await SpaceFactory.project(workspace);
+    const restrictedProject = await SpaceFactory.project(workspace);
+
+    await accessibleProject.addMembers(internalAdminAuth, {
+      userIds: [auth.user()!.sId],
+    });
+
+    const restrictedFile = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "secret.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: restrictedProject.sId },
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: accessibleProject.sId },
+    });
+
+    const result = await frameFile.computeAuthorizedFileAccess(auth, {
+      frameContent: `useFile("${restrictedFile.sId}");`,
+    });
+
+    expect(result.refs).toEqual([]);
+    expect(result.unverifiableRefs).toEqual([restrictedFile.sId]);
+  });
+
+  it("marks file_id refs from inaccessible conversations as unverifiable", async () => {
+    const { workspace, user } = await createResourceTest({});
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const restrictedProject = await SpaceFactory.project(workspace);
+    await restrictedProject.addMembers(internalAdminAuth, {
+      userIds: [user.sId],
+    });
+
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const restrictedConversation = await ConversationFactory.create(
+      memberAuth,
+      {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+        spaceId: restrictedProject.id,
+      }
+    );
+
+    const restrictedFile = await FileFactory.create(memberAuth, null, {
+      contentType: "text/plain",
+      fileName: "restricted.txt",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: restrictedConversation.sId },
+    });
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const otherConversation = await ConversationFactory.create(otherAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const frameFile = await FileFactory.create(otherAuth, null, {
+      contentType: frameContentType,
+      fileName: "Frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: otherConversation.sId },
+    });
+
+    const result = await frameFile.computeAuthorizedFileAccess(otherAuth, {
+      frameContent: `useFile("${restrictedFile.sId}");`,
+    });
+
+    expect(result.refs).toEqual([]);
+    expect(result.unverifiableRefs).toEqual([restrictedFile.sId]);
   });
 });
 
@@ -465,7 +795,6 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       where: {
         shareableFileId: shareableFile!.id,
         workspaceId: frameFile.workspaceId,
-        revokedAt: null,
       },
     });
     expect(rows).toHaveLength(0);
@@ -514,10 +843,9 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       fileName: "data.txt",
       legacyPath: null,
       shareScope: initialShareScope,
-      computedByUserId: auth.user()!.sId,
+      generatedByUserId: auth.user()!.id,
       frameContentHash: computeFrameContentHash(frameContent),
       allowedAt: new Date(),
-      revokedAt: null,
     });
 
     await frameFile.setShareScope(auth, "public");
@@ -534,12 +862,12 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       where: {
         shareableFileId: shareableFile!.id,
         workspaceId: frameFile.workspaceId,
-        revokedAt: null,
       },
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.shareScope).toBe("public");
     expect(rows[0]?.ref).toBe(dataFile.sId);
+    expect(rows[0]?.generatedByUserId).toBe(auth.user()!.id);
     expect(rows[0]?.frameContentHash).toBe(
       computeFrameContentHash(frameContent)
     );
@@ -564,7 +892,7 @@ describe("ensureAuthorizedFileAccessForShare", () => {
     });
 
     const activeSnapshot = makeAllowlist({
-      computedByUserId: auth.user()!.sId,
+      generatedByUserId: auth.user()!.id,
       frameContentHash: computeFrameContentHash(frameContent),
       refs: [],
     });
@@ -581,10 +909,9 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       fileName: null,
       legacyPath: null,
       shareScope: shareableFile!.shareScope,
-      computedByUserId: activeSnapshot.computedByUserId,
+      generatedByUserId: auth.user()!.id,
       frameContentHash: activeSnapshot.frameContentHash,
       allowedAt: new Date(),
-      revokedAt: null,
     });
 
     vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -598,8 +925,8 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       expect(result.value.frameContentHash).toBe(
         activeSnapshot.frameContentHash
       );
-      expect(result.value.computedByUserId).toBe(
-        activeSnapshot.computedByUserId
+      expect(result.value.generatedByUserId).toBe(
+        activeSnapshot.generatedByUserId
       );
     }
 
@@ -607,7 +934,6 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       where: {
         shareableFileId: shareableFile!.id,
         workspaceId: frameFile.workspaceId,
-        revokedAt: null,
       },
     });
     expect(rows).toHaveLength(1);
@@ -644,10 +970,9 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       fileName: null,
       legacyPath: null,
       shareScope: shareableFile!.shareScope,
-      computedByUserId: auth.user()!.sId,
+      generatedByUserId: auth.user()!.id,
       frameContentHash: "stale-hash",
       allowedAt: new Date(),
-      revokedAt: null,
     });
 
     vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -666,7 +991,6 @@ describe("ensureAuthorizedFileAccessForShare", () => {
       where: {
         shareableFileId: shareableFile!.id,
         workspaceId: frameFile.workspaceId,
-        revokedAt: null,
       },
     });
     expect(rows).toHaveLength(1);
@@ -707,7 +1031,7 @@ describe("readAllowlistedScopedVizFile", () => {
 
     const canonicalPath = "pod-vlt_otherPod/chart.png";
     const allowlist = makeAllowlist({
-      computedByUserId: auth.user()!.sId,
+      generatedByUserId: auth.user()!.id,
       refs: [
         { kind: "canonical_path", ref: canonicalPath, fileName: "chart.png" },
       ],
@@ -819,7 +1143,7 @@ describe("assertVizFileAuthorized", () => {
 
     const frameContent = `useFile("${dataFile.sId}");`;
     const allowlist = makeAllowlist({
-      computedByUserId: auth.user()!.sId,
+      generatedByUserId: auth.user()!.id,
       frameContentHash: computeFrameContentHash(frameContent),
       refs: [{ kind: "file_id", ref: dataFile.sId, fileName: "data.txt" }],
     });
@@ -854,7 +1178,7 @@ describe("reverifyAuthorAccess", () => {
     });
 
     const allowlist = makeAllowlist({
-      computedByUserId: auth.user()!.sId,
+      generatedByUserId: auth.user()!.id,
       refs: [{ kind: "file_id", ref: dataFile.sId, fileName: "data.txt" }],
     });
 
@@ -883,7 +1207,7 @@ describe("reverifyAuthorAccess", () => {
 
     const canonicalPath = `conversation-${conversation.sId}/report.csv`;
     const allowlist = makeAllowlist({
-      computedByUserId: auth.user()!.sId,
+      generatedByUserId: auth.user()!.id,
       refs: [
         {
           kind: "canonical_path",
@@ -1011,10 +1335,9 @@ describe("public share referenced files change notice", () => {
       fileName: "data.txt",
       legacyPath: null,
       shareScope: shareableFile!.shareScope,
-      computedByUserId: auth.user()!.sId,
+      generatedByUserId: auth.user()!.id,
       frameContentHash: "hash",
       allowedAt: new Date(),
-      revokedAt: null,
     });
 
     const state = await fetchShareableFileAllowlistState(frameFile);

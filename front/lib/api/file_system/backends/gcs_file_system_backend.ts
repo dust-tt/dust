@@ -1,11 +1,7 @@
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
-import type {
-  FileSystemDirectoryEntry,
-  FileSystemEntry,
-  FileSystemMount,
-} from "@app/lib/api/file_system/types";
+import type { FileSystemMount } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
@@ -15,6 +11,10 @@ import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import logger from "@app/logger/logger";
+import type {
+  FileSystemDirectoryEntry,
+  FileSystemEntry,
+} from "@app/types/api/file_system/types";
 import { stripMimeParameters } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -140,7 +140,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       maxFiles,
       includeProcessed = false,
     }: { maxFiles?: number; includeProcessed?: boolean } = {}
-  ): Promise<FileSystemEntry[]> {
+  ): Promise<Result<FileSystemEntry[], DustFileSystemError>> {
     const normalised = scopedPath.endsWith("/") ? scopedPath : `${scopedPath}/`;
     const gcsPrefix = this.toGCSPath(normalised);
 
@@ -150,36 +150,42 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         "GCSFileSystemBackend.list: unrecognised scoped path"
       );
 
-      return [];
+      return new Ok([]);
     }
 
     const bucket = getPrivateUploadBucket();
     let rawFiles: { name: string; metadata: Record<string, unknown> }[];
 
-    if (maxFiles !== undefined) {
-      rawFiles = await bucket.getFiles({
-        prefix: gcsPrefix,
-        maxResults: maxFiles,
-      });
-    } else {
-      const result = await bucket.getAllFilesByPrefix({
-        prefix: gcsPrefix,
-        pageSize: GCS_LIST_PAGE_SIZE,
-      });
+    try {
+      if (maxFiles !== undefined) {
+        rawFiles = await bucket.getFiles({
+          prefix: gcsPrefix,
+          maxResults: maxFiles,
+        });
+      } else {
+        const result = await bucket.getAllFilesByPrefix({
+          prefix: gcsPrefix,
+          pageSize: GCS_LIST_PAGE_SIZE,
+        });
 
-      if (result.pageFetchCount > 1) {
-        logger.warn(
-          {
-            workspaceId: this.workspaceId,
-            prefix: gcsPrefix,
-            pageFetchCount: result.pageFetchCount,
-            objectCount: result.files.length,
-          },
-          "GCSFileSystemBackend.list: multiple GCS list requests, prefix has many objects"
-        );
+        if (result.pageFetchCount > 1) {
+          logger.warn(
+            {
+              workspaceId: this.workspaceId,
+              prefix: gcsPrefix,
+              pageFetchCount: result.pageFetchCount,
+              objectCount: result.files.length,
+            },
+            "GCSFileSystemBackend.list: multiple GCS list requests, prefix has many objects"
+          );
+        }
+
+        rawFiles = result.files;
       }
-
-      rawFiles = result.files;
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
 
     const folderPlaceholders = rawFiles.filter((f) => f.name.endsWith("/"));
@@ -248,7 +254,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       };
     });
 
-    return [...folderEntries, ...fileEntries];
+    return new Ok([...folderEntries, ...fileEntries]);
   }
 
   async read(

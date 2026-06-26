@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { getMetronomeProgrammaticCap } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
   ceilToMidnightUTC,
   floorToMidnightUTC,
@@ -11,11 +10,12 @@ import {
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
-import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
   isToolCategory,
   TOOL_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -40,22 +40,13 @@ export async function getRemainingProgrammaticUsageFromMetronome(
     return Infinity;
   }
 
-  const programmaticCapRes = await getMetronomeProgrammaticCap({
-    metronomeCustomerId,
-    workspaceId: workspace.sId,
-  });
-  if (programmaticCapRes.isErr()) {
-    logger.warn(
-      { workspaceId: workspace.sId, error: programmaticCapRes.error },
-      "[Metronome] Failed to fetch the programmatic cap — treating the programmatic headroom as unlimited"
-    );
-    return Infinity;
-  }
-  if (programmaticCapRes.value === null) {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  if (config?.programmaticMonthlyCapAwuCredits == null) {
     // No programmatic cap configured.
     return Infinity;
   }
-  const programmaticCapAwuCredits = programmaticCapRes.value;
+  const programmaticCapAwuCredits = config.programmaticMonthlyCapAwuCredits;
 
   const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
   if (!metronomeContractId) {
@@ -63,8 +54,8 @@ export async function getRemainingProgrammaticUsageFromMetronome(
   }
 
   const programmaticSpendRes = await fetchProgrammaticAwuSpend({
+    workspaceId: workspace.sId,
     metronomeCustomerId,
-    metronomeContractId,
   });
   if (programmaticSpendRes.isErr()) {
     logger.warn(
@@ -103,16 +94,14 @@ export async function getRemainingProgrammaticUsageFromMetronome(
  * risk of being capped server-side.
  */
 export async function fetchProgrammaticAwuSpend({
+  workspaceId,
   metronomeCustomerId,
-  metronomeContractId,
 }: {
+  workspaceId: string;
   metronomeCustomerId: string;
-  metronomeContractId: string;
 }): Promise<Result<number | null, Error>> {
-  const periodResult = await getMetronomeCurrentBillingPeriod({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
+  const periodResult =
+    await getCachedMetronomeCurrentBillingPeriod(workspaceId);
   if (periodResult.isErr()) {
     return new Err(periodResult.error);
   }

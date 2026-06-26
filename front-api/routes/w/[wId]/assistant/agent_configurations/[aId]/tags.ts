@@ -1,7 +1,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { PatchAgentTagsResponseBody } from "@app/lib/api/assistant/configuration/agent_tags";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { PatchAgentTagsResponseBody } from "@app/types/api/assistant/configuration/agent_tags";
 import { isBuilder } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

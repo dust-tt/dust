@@ -4,6 +4,7 @@ import {
   computeSeatCreditTransfers,
   getSeatCreditNameForSeatType,
   hasContractSeatSubscription,
+  promoteNoneSeatTypesForContract,
   resolveRemappedSeatType,
 } from "@app/lib/metronome/seats";
 import {
@@ -188,48 +189,36 @@ describe("resolveRemappedSeatType — keep / yearly-convert", () => {
     ).toBe("max");
   });
 
-  it("returns none for returning members when no seat matches", () => {
-    // `free` not on contract, no yearly equivalent, no committed seatLimits → none.
+  it("returns none for free when free is not on the new contract", () => {
+    // `free` not on contract → lapses to none.
     expect(resolveRemappedSeatType("free", contract, productSeatTypes)).toBe(
       "none"
     );
   });
+
+  it("keeps free when the new contract still offers it", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [
+        { seatType: "free" },
+        { seatType: "pro_yearly", awu: 8000, frequency: "ANNUAL" },
+        { seatType: "max", awu: 40000, frequency: "MONTHLY" },
+      ],
+    });
+    expect(resolveRemappedSeatType("free", c, pt)).toBe("free");
+  });
 });
 
-describe("resolveRemappedSeatType — fallback via getDefaultSeatTypeForContract", () => {
-  // Contract bills `free` (0 AWU) and `pro` (8000 AWU).
+describe("resolveRemappedSeatType — none stays none", () => {
+  // Contract bills `free` and `pro`. A member on `none` has no seat to
+  // preserve and should stay on `none` regardless of what the contract offers.
   const { contract, productSeatTypes } = makeContract({
     seats: [{ seatType: "free" }, { seatType: "pro", awu: 8000 }],
   });
 
-  it("returns none for returning members (free blocked by one-shot rule)", () => {
-    // Default isReturningMember=true → free blocked → none.
+  it("returns none regardless of what the contract offers", () => {
     expect(resolveRemappedSeatType("none", contract, productSeatTypes)).toBe(
       "none"
     );
-  });
-
-  it("assigns free for members who only ever had none seats", () => {
-    // isReturningMember=false → free on contract → free.
-    expect(
-      resolveRemappedSeatType("none", contract, productSeatTypes, {
-        isReturningMember: false,
-      })
-    ).toBe("free");
-  });
-
-  it("assigns committed seat in fallback when slots available", () => {
-    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
-      ["pro", { minSeats: 5, maxSeats: null }],
-    ]);
-    const seatCounts = { pro: 2 };
-    expect(
-      resolveRemappedSeatType("none", contract, productSeatTypes, {
-        isReturningMember: false,
-        seatLimits,
-        seatCounts,
-      })
-    ).toBe("pro");
   });
 });
 
@@ -263,6 +252,213 @@ describe("resolveRemappedSeatType — entitlement-aware", () => {
     expect(resolveRemappedSeatType("max", contract, productSeatTypes)).toBe(
       "none"
     );
+  });
+});
+
+describe("resolveRemappedSeatType — workspace-tier fallback for enterprise pooled", () => {
+  // Contract bills only `workspace_yearly` (enterprise pooled plan).
+  const { contract, productSeatTypes } = makeContract({
+    seats: [{ seatType: "workspace_yearly", entitled: true }],
+  });
+
+  it("upgrades pro_yearly to workspace_yearly", () => {
+    expect(
+      resolveRemappedSeatType("pro_yearly", contract, productSeatTypes)
+    ).toBe("workspace_yearly");
+  });
+
+  it("upgrades pro to workspace_yearly", () => {
+    expect(resolveRemappedSeatType("pro", contract, productSeatTypes)).toBe(
+      "workspace_yearly"
+    );
+  });
+
+  it("keeps workspace_yearly when already on it", () => {
+    expect(
+      resolveRemappedSeatType("workspace_yearly", contract, productSeatTypes)
+    ).toBe("workspace_yearly");
+  });
+
+  it("leaves none users at none (no real seat to preserve)", () => {
+    expect(resolveRemappedSeatType("none", contract, productSeatTypes)).toBe(
+      "none"
+    );
+  });
+
+  it("prefers committed seat over non-committed when multiple candidates exist", () => {
+    // Contract bills both `pro_yearly` (no commitment) and `workspace_yearly`
+    // (minSeats=25, committed). A `pro_yearly` user re-mapped to this contract
+    // should land on `workspace_yearly` because it has a commitment.
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [
+        { seatType: "pro_yearly", entitled: true },
+        { seatType: "workspace_yearly", entitled: true },
+      ],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 25, maxSeats: null }],
+    ]);
+    // Without seatLimits: cheapest at-or-above tier wins → pro_yearly.
+    expect(resolveRemappedSeatType("pro_yearly", c, pt)).toBe("pro_yearly");
+    // With seatLimits: committed workspace_yearly wins over uncommitted pro_yearly.
+    expect(resolveRemappedSeatType("pro_yearly", c, pt, { seatLimits })).toBe(
+      "workspace_yearly"
+    );
+  });
+});
+
+describe("promoteNoneSeatTypesForContract", () => {
+  const { contract, productSeatTypes } = makeContract({
+    seats: [{ seatType: "free" }, { seatType: "pro", awu: 8000 }],
+  });
+
+  it("promotes every none member when committed capacity covers them all", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 3, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("promotes none members when capacity exactly matches the none count", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 2, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("promotes no one (all-or-nothing) when capacity is short of the none count", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 2, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none", "none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["none", "none", "none", "none"]);
+  });
+
+  it("counts seats already taken by non-none targets against capacity", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 3, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["pro", "pro", "none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "pro", "none", "none"]);
+  });
+
+  it("does not promote when there is no committed paid seat", () => {
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+      })
+    ).toEqual(["none", "none"]);
+  });
+
+  it("never hands out the one-shot free tier on promotion", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 2, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("leaves non-none targets untouched", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["max", "pro_yearly", "free"],
+        seatLimits,
+      })
+    ).toEqual(["max", "pro_yearly", "free"]);
+  });
+
+  it("promotes into committed workspace tiers, not just pro", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [{ seatType: "workspace_yearly", entitled: true }],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 25, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["workspace_yearly", "workspace_yearly", "workspace_yearly"]);
+  });
+
+  it("never auto-promotes into a committed max tier", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [{ seatType: "max", awu: 40000, entitled: true }],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["max", { minSeats: 10, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["none", "none"]);
+  });
+
+  it("fills the lowest committed tier first when several are available", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 8000, entitled: true },
+        { seatType: "workspace_yearly", entitled: true },
+      ],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 1, maxSeats: null }],
+      ["workspace_yearly", { minSeats: 1, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "workspace_yearly"]);
   });
 });
 
@@ -401,8 +597,8 @@ describe("classifySeatChange", () => {
     ).toEqual({ kind: "deferred", at: new Date("2026-07-01T00:00:00Z") });
   });
 
-  it("treats free → none as a no-op (free is a one-shot tier)", () => {
-    expect(classify("free", "none")).toEqual({ kind: "noop" });
+  it("removes a free seat (free → none) immediately (no renewing allowance to preserve)", () => {
+    expect(classify("free", "none")).toEqual({ kind: "immediate" });
   });
 
   it("returns undefined for a deferral when no anchor date exists", () => {

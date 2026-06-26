@@ -1,0 +1,33 @@
+name: React Doctor
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  group: react-doctor-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  react-doctor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # Pinned to v2.1.0: the floating @v2 (v2.1.1+) passes `--scope`, which the
+      # react-doctor CLI that .npmrc `min-release-age=7` lets us install (<=0.5.1)
+      # doesn't support, crashing every PR scan. v2.1.0 uses only `--changed-files-from`.
+      - uses: millionco/react-doctor@v2.1.0
+        with:
+          blocking: none
+          scope: changed
+          comment: false
