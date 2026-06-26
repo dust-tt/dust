@@ -19,6 +19,7 @@ import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
+import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
@@ -39,6 +40,7 @@ const SERVERS: ServerEntry[] = [
   { name: "microsoft_teams", tools: MICROSOFT_TEAMS_SERVER.tools },
   { name: "confluence", tools: CONFLUENCE_SERVER.tools },
   { name: "hubspot", tools: HUBSPOT_SERVER.tools },
+  { name: "salesforce", tools: SALESFORCE_SERVER.tools },
 ];
 
 function out(line: string): void {

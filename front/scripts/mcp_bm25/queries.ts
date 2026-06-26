@@ -528,6 +528,48 @@ export const QUERIES: LabeledQuery[] = [
     expected: "hubspot.get_email_campaign",
   },
 
+  // --- salesforce ---
+  {
+    query: "run a soql query in salesforce",
+    expected: "salesforce.execute_read_query",
+  },
+  {
+    query: "query salesforce accounts by industry",
+    expected: "salesforce.execute_read_query",
+  },
+  {
+    query: "list salesforce custom objects",
+    expected: "salesforce.list_objects",
+  },
+  {
+    query: "find the exact api name for a salesforce object",
+    expected: "salesforce.list_objects",
+  },
+  {
+    query: "what fields exist on salesforce account",
+    expected: "salesforce.describe_object",
+  },
+  {
+    query: "describe the salesforce lead object metadata",
+    expected: "salesforce.describe_object",
+  },
+  {
+    query: "create a salesforce account record",
+    expected: "salesforce.create_object",
+  },
+  {
+    query: "update a salesforce contact record",
+    expected: "salesforce.update_object",
+  },
+  {
+    query: "list files attached to a salesforce opportunity",
+    expected: "salesforce.list_attachments",
+  },
+  {
+    query: "read a salesforce attachment file",
+    expected: "salesforce.read_attachment",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
