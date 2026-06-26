@@ -16,6 +16,7 @@ import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/m
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
+import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
@@ -41,6 +42,7 @@ const SERVERS: ServerEntry[] = [
   { name: "confluence", tools: CONFLUENCE_SERVER.tools },
   { name: "hubspot", tools: HUBSPOT_SERVER.tools },
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
+  { name: "interactive_content", tools: INTERACTIVE_CONTENT_SERVER.tools },
 ];
 
 function out(line: string): void {
