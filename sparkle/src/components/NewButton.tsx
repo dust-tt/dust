@@ -71,7 +71,7 @@ const newButtonVariants = cva(
           "s-bg-gradient-to-b s-from-stone-700 s-to-stone-800",
           "s-text-white",
           SOLID_SHADOW("#364153"),
-          "hover:after:s-bg-white/10 active:after:s-bg-black/10",
+          "active:after:s-bg-black/10",
           "disabled:s-from-stone-300 disabled:s-to-stone-400 disabled:s-shadow-none",
           "dark:s-border dark:s-border-border-dark",
           "dark:s-from-white dark:s-to-stone-50 dark:s-text-muted-foreground",
@@ -84,7 +84,7 @@ const newButtonVariants = cva(
           "s-bg-gradient-to-b s-from-highlight-400 s-to-highlight-500",
           "s-text-white",
           SOLID_SHADOW("#4BABFF"),
-          "hover:after:s-bg-white/10 active:after:s-bg-black/10",
+          "active:after:s-bg-black/10",
           "disabled:s-from-highlight-200 disabled:s-to-highlight-300 disabled:s-shadow-none"
         ),
         warning: cn(
@@ -92,7 +92,7 @@ const newButtonVariants = cva(
           "s-bg-gradient-to-b s-from-red-400 s-to-red-500",
           "s-text-white",
           SOLID_SHADOW("#E76449"),
-          "hover:after:s-bg-white/10 active:after:s-bg-black/10",
+          "active:after:s-bg-black/10",
           "disabled:s-from-red-200 disabled:s-to-red-300 disabled:s-shadow-none"
         ),
         outline: cn(
@@ -105,7 +105,7 @@ const newButtonVariants = cva(
           "disabled:s-shadow-none disabled:s-text-faint",
           "dark:s-border-0 dark:s-from-stone-700 dark:s-to-stone-800 dark:s-text-white",
           DARK_SOLID_SHADOW,
-          "dark:hover:after:s-bg-white/10 dark:active:after:s-bg-black/10",
+          "dark:active:after:s-bg-black/10",
           "dark:disabled:s-from-stone-300 dark:disabled:s-to-stone-400 dark:disabled:s-text-white dark:disabled:s-shadow-none"
         ),
         ghost: cn(
@@ -163,6 +163,30 @@ const newButtonVariants = cva(
       { size: "xs", isIconOnly: true, className: "s-w-6 s-px-0" },
       { size: "sm", isIconOnly: true, className: "s-w-8 s-px-0" },
       { size: "md", isIconOnly: true, className: "s-w-10 s-px-0" },
+      // White hover overlay on solid variants: large buttons get a stronger
+      // tint (Figma uses white/0.2 at Large, white/0.1 at Small/Medium).
+      {
+        variant: ["primary", "highlight", "warning"],
+        size: ["xs", "sm"],
+        className: "hover:after:s-bg-white/10",
+      },
+      {
+        variant: ["primary", "highlight", "warning"],
+        size: "md",
+        className: "hover:after:s-bg-white/20",
+      },
+      // Outline renders as a dark solid in dark mode, so it follows the same
+      // size rule for its (dark-only) white hover overlay.
+      {
+        variant: "outline",
+        size: ["xs", "sm"],
+        className: "dark:hover:after:s-bg-white/10",
+      },
+      {
+        variant: "outline",
+        size: "md",
+        className: "dark:hover:after:s-bg-white/20",
+      },
     ],
     defaultVariants: {
       variant: "primary",
