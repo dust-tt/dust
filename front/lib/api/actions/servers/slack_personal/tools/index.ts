@@ -1081,6 +1081,132 @@ export function createSlackPersonalTools(
         );
       }
     },
+
+    add_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.add({
+          channel,
+          timestamp,
+          name,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error adding reaction: ${response.error}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Successfully added :${name}: reaction to message`,
+          },
+        ]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error adding reaction: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    remove_reaction: async ({ channel, timestamp, name }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.remove({
+          channel,
+          timestamp,
+          name,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error removing reaction: ${response.error}`)
+          );
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Successfully removed :${name}: reaction from message`,
+          },
+        ]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error removing reaction: ${normalizeError(error)}`)
+        );
+      }
+    },
+
+    get_reactions: async ({ channel, timestamp, full }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      const slackClient = await getSlackClient(accessToken);
+
+      try {
+        const response = await slackClient.reactions.get({
+          channel,
+          timestamp,
+          full,
+        });
+
+        if (!response.ok) {
+          return new Err(
+            new MCPError(`Error getting reactions: ${response.error}`)
+          );
+        }
+
+        const reactions = response.message?.reactions ?? [];
+        if (reactions.length === 0) {
+          return new Ok([
+            { type: "text" as const, text: "No reactions on this message." },
+          ]);
+        }
+
+        const lines = reactions.map((r) => {
+          const count = r.count ?? 0;
+          const users = r.users?.map((u) => `<@${u}>`).join(", ") ?? "";
+          return users
+            ? `:${r.name}: ×${count} — ${users}`
+            : `:${r.name}: ×${count}`;
+        });
+
+        return new Ok([
+          { type: "text" as const, text: lines.join("\n") },
+        ]);
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error getting reactions: ${normalizeError(error)}`)
+        );
+      }
+    },
   };
 
   const rawTools = buildTools(SLACK_PERSONAL_TOOLS_METADATA, handlers);

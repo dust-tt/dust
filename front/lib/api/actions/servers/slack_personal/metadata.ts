@@ -570,6 +570,67 @@ Set search_all=true only if the user explicitly requests to search all public wo
     toolCostCategory: "advanced",
     freeUsage: false,
   },
+  add_reaction: {
+    description:
+      "Add a reaction emoji to a Slack message. Supports both standard emoji (e.g., 'thumbsup', 'heart') and custom workspace emoji.",
+    schema: {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp (ts) of the message to react to"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction without colons (e.g., 'thumbsup', 'heart', 'custom-emoji-name')"
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Adding Slack reaction",
+      done: "Add Slack reaction",
+    },
+  },
+  remove_reaction: {
+    description:
+      "Remove a reaction emoji from a Slack message. Supports both standard and custom workspace emoji.",
+    schema: {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp (ts) of the message to remove reaction from"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction to remove without colons (e.g., 'thumbsup', 'heart', 'custom-emoji-name')"
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Removing Slack reaction",
+      done: "Remove Slack reaction",
+    },
+  },
+  get_reactions: {
+    description:
+      "Get all emoji reactions on a Slack message, including the emoji names and the users who reacted.",
+    schema: {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp (ts) of the message to get reactions for"),
+      full: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, returns the full list of users who reacted for each emoji (may be truncated otherwise for reactions with many users)"
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Slack reactions",
+      done: "Get Slack reactions",
+    },
+  },
 });
 
 // Server metadata for external consumption (e.g., by SDK).
