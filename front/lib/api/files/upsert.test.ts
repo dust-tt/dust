@@ -17,7 +17,7 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { TABLE_PREFIX } from "@app/types/files";
+import { sandboxFunctionContentType, TABLE_PREFIX } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
@@ -636,6 +636,15 @@ describe("isFileTypeUpsertableForUseCase", () => {
         `expected ${contentType} to NOT be upsertable for conversation`
       ).toBe(false);
     }
+  });
+
+  it("does not index sandbox function files", () => {
+    expect(
+      isFileTypeUpsertableForUseCase({
+        contentType: sandboxFunctionContentType,
+        useCase: "conversation",
+      })
+    ).toBe(false);
   });
 
   it("indexes plain-text files for non-conversation use cases", () => {

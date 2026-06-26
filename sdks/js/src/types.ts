@@ -306,11 +306,15 @@ const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 const FrameSlideshowContentTypeSchema = z.literal(
   "application/vnd.dust.frame.slideshow"
 );
+const SandboxFunctionContentTypeSchema = z.literal(
+  "application/vnd.dust.sandbox.function"
+);
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
   FrameSlideshowContentTypeSchema,
+  SandboxFunctionContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(

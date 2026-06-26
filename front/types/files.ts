@@ -438,7 +438,6 @@ export const FILE_FORMATS = {
     exts: [".json"],
     isSafeToDisplay: true,
   },
-
   // Data.
   "text/plain": {
     cat: "data",
@@ -633,6 +632,8 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
 export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
+export const sandboxFunctionContentType =
+  "application/vnd.dust.sandbox.function";
 
 // Interactive Content MIME types for specialized use cases (not exposed via APIs).
 export const INTERACTIVE_CONTENT_FILE_FORMATS = {
@@ -655,13 +656,26 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
 export type InteractiveContentFileContentType =
   keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
+export const SANDBOX_FUNCTION_FILE_FORMATS = {
+  [sandboxFunctionContentType]: {
+    cat: "code",
+    exts: [".ts"],
+    isSafeToDisplay: false,
+  },
+} as const satisfies Record<string, FileFormat>;
+
+export type SandboxFunctionFileContentType =
+  keyof typeof SANDBOX_FUNCTION_FILE_FORMATS;
+
 export const ALL_FILE_FORMATS = {
   ...INTERACTIVE_CONTENT_FILE_FORMATS,
+  ...SANDBOX_FUNCTION_FILE_FORMATS,
   ...FILE_FORMATS,
 };
-// Union type for all supported content types (public + Interactive Content).
+// Union type for all supported content types.
 export type AllSupportedFileContentType =
   | InteractiveContentFileContentType
+  | SandboxFunctionFileContentType
   | SupportedFileContentType;
 
 export type AllSupportedWithDustSpecificFileContentType =
@@ -722,11 +736,20 @@ export function isInteractiveContentType(
   ];
 }
 
+export function isSandboxFunctionContentType(
+  contentType: string
+): contentType is SandboxFunctionFileContentType {
+  return !!SANDBOX_FUNCTION_FILE_FORMATS[
+    contentType as SandboxFunctionFileContentType
+  ];
+}
+
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
     isInteractiveContentType(contentType) ||
+    isSandboxFunctionContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }
