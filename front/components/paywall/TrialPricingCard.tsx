@@ -50,7 +50,6 @@ export function TrialPricingCard({
         {/* Billing toggle */}
         <BillingPeriodSwitch
           defaultValue={billingPeriod}
-          size="xs"
           onValueChange={onBillingPeriodChange}
         />
       </div>
