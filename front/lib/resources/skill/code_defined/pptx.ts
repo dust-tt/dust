@@ -29,20 +29,21 @@ this document is detail in service of one of its steps. One pass of the loop:
    scratch — and **decompose the job into a list of one edit per slide** — §3.
 4. **Edit, then QA — in two passes, not interleaved per slide.** First make
    **every** edit across **every** slide in one pass (§4.1) — ideally one script
-   that opens the deck once and saves once. **Then** QA the deck **one slide at a
-   time** (§4.2), running this turn on each:
+   that opens the deck once and saves once. **Then** QA the slides you changed in
+   one \`--qa\` call (§4.2) — pass them as a slide pattern (\`--qa 2,5,7-9\`) so the
+   whole batch renders in a single pass — and read **each** one back:
 
-   > **\`pptx_inspect --qa N\` → read slide N back against its text → fix what's
-   > wrong on it → re-run \`--qa N\` → and only once *that* slide reads back
-   > clean do you move to the next slide.**
+   > **\`pptx_inspect --qa 2,5,7-9\` → read every slide back against its text →
+   > fix what's wrong → re-run \`--qa N\` on each slide you fixed → done only once
+   > every slide reads back clean.**
 
-   This per-slide QA pass is the **single most important thing in the skill, and
-   it is itself a loop** — for any slide that doesn't read clean you edit it and
-   re-run \`--qa N\` on that *same* slide until it does, and you close each slide
-   before you open the next. A slide is done only when its own \`--qa N\`, run
-   *after its last edit*, reads back clean. QA'ing only some slides — or glancing
-   at a box-free render and calling it good — is the most common way a broken
-   deck ships. **Never skip a slide's \`--qa\`.**
+   This QA pass is the **single most important thing in the skill, and it is
+   itself a loop** — for any slide that doesn't read clean you edit it and re-run
+   \`--qa N\` on that *same* slide until it does. Batching the render is only for
+   speed; it does **not** mean skimming — every edited slide still gets its own
+   readback, run *after its last edit*. QA'ing only some slides — or glancing at
+   a box-free render and calling it good — is the most common way a broken deck
+   ships. **Never skip a slide's readback.**
 
 5. **Audit the whole deck** with \`--compare\`, clear every \`[!]\`, then deliver
    — §5.
@@ -264,10 +265,11 @@ exceed the density ceiling (Design guidance).
 
 This is the heart of the loop, in two passes. **First** edit every slide you are
 changing in one pass (§4.1) — ideally a single script that opens the deck once
-and saves once. **Then** QA the deck one slide at a time (§4.2): \`--qa N\`, read
-it back, fix that slide, re-QA it, and only move on once it reads clean. Batch
-the **edits**; never batch the **QA** — every slide gets its own \`--qa\`, and a
-fix found in QA means re-running \`--qa\` on that slide.
+and saves once. **Then** QA the slides you changed in one \`--qa\` call (§4.2):
+pass them as a pattern (\`--qa 2,5,7-9\`) so the whole batch renders in a single
+pass, then read **each** slide back in turn and fix what's wrong. Batch the
+**edits** and batch the **render** — but never skip a slide's readback, and a fix
+found in QA means re-running \`--qa\` on that slide.
 
 ### 4.1 Edit the slides — one pass
 
@@ -427,17 +429,24 @@ prompts, notes / off-slide text ("replace with this quarter's figures";
 \`--text\` includes notes). Read them, act on them, then remove them so none
 survive in the delivered deck.
 
-### 4.2 QA each slide — \`pptx_inspect --qa N\` (never skip)
+### 4.2 QA the edited slides — \`pptx_inspect --qa N[,N,...]\` (never skip a readback)
 
-Once every slide is edited (§4.1), QA the deck **one slide at a time**, starting
-at slide 1 — this is not a final glance, it is the gate, and it is **not
-optional**. \`--qa N\` bundles the two halves of QA so you can't look at one
-without the other — the slide's \`#id\`-tagged text and its boxed diagnostic
-render:
+Once every slide is edited (§4.1), QA them — this is not a final glance, it is
+the gate, and it is **not optional**. \`--qa\` takes a slide pattern, so QA the
+whole batch you changed in one call: it converts the deck once and reuses that
+render across the slides, far faster than a call per slide. \`--qa\` bundles the
+two halves of QA so you can't look at one without the other — each slide's
+\`#id\`-tagged text and its boxed diagnostic render:
 
 \`\`\`bash
-pptx_inspect output.pptx --qa 6              # slide 6's #id-tagged text + boxed render
+pptx_inspect output.pptx --qa 2,5,7-9        # QA every edited slide in one render pass
+pptx_inspect output.pptx --qa 6              # re-QA just slide 6 after fixing it
 \`\`\`
+
+Read **every** slide in the batch back individually (see "The gate is a readback"
+below); batching the render is for speed, not an excuse to skim. On a large deck,
+split the batch into a few \`--qa\` calls if the combined output is truncated. A
+slide is done only when its own readback is clean, run after its last edit.
 
 \`--render\` (no boxes) is only a quick visual look — it shows nothing
 diagnostic, so it is **not** a QA step. The diagnostic boxes live in \`--qa\`.
