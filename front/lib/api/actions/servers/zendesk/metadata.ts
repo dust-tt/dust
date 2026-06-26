@@ -65,7 +65,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   },
   list_ticket_fields: {
     description:
-      "Lists Zendesk ticket field definitions — both built-in fields (Subject, Priority, Status) and custom fields — with their id, title, type, and active state.",
+      "Lists Zendesk ticket field definitions. Both built-in fields (Subject, Priority, Status) and custom fields. With their id, title, type, and active state.",
     schema: {
       includeInactive: z
         .boolean()
@@ -116,7 +116,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   },
   update_ticket_tags: {
     description:
-      "Add tags to a Zendesk ticket, or replace all of its tags. By default (override=false) the provided tags are added to the existing ones; with override=true they replace the full list (omitted tags are removed).",
+      "Add tags to a Zendesk ticket, or replace all of its tags. By default (override=false) the provided tags are added to the existing ones. With override=true they replace the full list (omitted tags are removed).",
     schema: {
       ticketId: z
         .number()

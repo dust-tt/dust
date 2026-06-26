@@ -248,7 +248,7 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
   },
   send_message: {
     description:
-      "Reply or respond to a customer on a Front conversation. Sends a customer-facing email by default; can also post an internal note.",
+      "Reply or respond to a customer on a Front conversation. Sends a customer-facing email by default. Can also post an internal note.",
     schema: {
       conversation_id: z.string().describe("The unique ID of the conversation"),
       body: z.string().describe("The message content (supports markdown)"),

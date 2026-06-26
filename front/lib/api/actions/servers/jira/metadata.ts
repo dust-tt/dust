@@ -26,7 +26,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issue: {
     description:
-      "Looks up and retrieves a single Jira issue (ticket) by its key (e.g., 'PROJ-123'). Returns a minimal set of fields by default; pass the fields parameter to request others.",
+      "Looks up and retrieves a single Jira issue (ticket) by its key (e.g., 'PROJ-123'). Returns a minimal set of fields by default. Pass the fields parameter to request others.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       fields: z
@@ -88,7 +88,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issues: {
     description:
-      "Search or list Jira issues (tickets, bugs) by filters: status (open, in progress, done), priority, labels, who they are assigned to, fixVersion, or dates. Supports fuzzy matching and sorting — use it to browse the backlog or find issues by criteria.",
+      "Search or list Jira issues (tickets, bugs) by filters: status (open, in progress, done), priority, labels, who they are assigned to, fixVersion, or dates. Supports fuzzy matching and sorting. Use it to browse the backlog or find issues by criteria.",
     schema: {
       filters: z
         .array(JiraSearchFilterSchema)
@@ -231,7 +231,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   read_attachment: {
     description:
-      "Read the content of an attachment on a Jira issue. Extracts text from PDF, Word, Excel, CSV, and plain-text files (with OCR for scans); other files are returned as-is.",
+      "Read the content of an attachment on a Jira issue. Extracts text from PDF, Word, Excel, CSV, and plain-text files (with OCR for scans). Other files are returned as-is.",
     schema: {
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
       attachmentId: z.string().describe("The ID of the attachment to read"),
@@ -271,7 +271,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   transition_issue: {
     description:
-      "Moves or changes a Jira issue (ticket) to a different status — e.g. to In Progress or Done. Performs a workflow transition.",
+      "Moves or changes a Jira issue (ticket) to a different status (e.g. to In Progress or Done). Performs a workflow transition.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
@@ -284,7 +284,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   create_issue: {
     description:
-      "Creates a new Jira issue — also called a ticket — in a project; use it to log a bug, raise a request, or open a task or story. Description fields accept plain text or rich ADF; required fields vary by project and issue type.",
+      "Creates a new Jira issue, or ticket, in a project. Use it to log a bug, raise a request, or open a task or story. Description fields accept plain text or rich ADF. Required fields vary by project and issue type.",
     schema: {
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"

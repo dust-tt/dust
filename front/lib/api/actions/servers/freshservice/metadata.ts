@@ -57,13 +57,13 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   get_ticket: {
     description:
-      "Gets a specific Freshservice ticket by its ID. By default returns essential fields for performance; pass the fields parameter to request others.",
+      "Gets a specific Freshservice ticket by its ID. By default returns essential fields for performance. Pass the fields parameter to request others.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       fields: z
         .array(FreshserviceTicketSchema.keyof())
         .optional()
-        .describe("Optional fields to include; defaults to essential fields."),
+        .describe("Optional fields to include. Defaults to essential fields."),
       include: z
         .array(z.enum(ALLOWED_TICKET_INCLUDES))
         .optional()
@@ -102,7 +102,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   create_ticket: {
     description:
-      "Creates a new Freshservice ticket — for example to log an incident, submit an IT support request, or report a problem. Required fields vary by ticket type; pass them in custom_fields.",
+      "Creates a new Freshservice ticket. For example to log an incident, submit an IT support request, or report a problem. Required fields vary by ticket type. Pass them in custom_fields.",
     schema: {
       email: z.string().describe("Requester email address"),
       subject: z.string().describe("Ticket subject"),
@@ -537,7 +537,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   list_solution_articles: {
     description:
-      "Lists the Freshservice knowledge base articles (solution articles) in a folder. Returns metadata only; fetch an article by id for its full content.",
+      "Lists the Freshservice knowledge base articles (solution articles) in a folder. Returns metadata only. Fetch an article by id for its full content.",
     schema: {
       folder_id: z
         .number()
