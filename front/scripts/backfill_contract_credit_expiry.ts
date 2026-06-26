@@ -39,6 +39,8 @@ import type {
   MetronomeCommit,
   MetronomeCredit,
 } from "@app/lib/metronome/types";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { Logger } from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -252,6 +254,13 @@ async function backfillForWorkspace(
     return; // Workspace not provisioned in Metronome — skip.
   }
 
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription || !isCreditPricedPlanPrefix(subscription.getPlan().code)) {
+    return;
+  }
+
   const commitsResult = await listMetronomeCustomerCommits({
     metronomeCustomerId,
     includeContractCommits: true,
@@ -333,7 +342,7 @@ makeScript(
       async (workspace) => {
         await backfillForWorkspace(workspace, execute, logger);
       },
-      { concurrency: 4, wId: workspaceId }
+      { concurrency: 1, wId: workspaceId }
     );
   }
 );
