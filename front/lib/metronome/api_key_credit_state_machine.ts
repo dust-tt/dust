@@ -12,6 +12,25 @@ export type ApiKeyCreditContext = {
   keyModelId: number;
 };
 
+/**
+ * Derive the expected per-key credit state from live usage vs. the configured
+ * cap. `capAwuCredits === null` means no cap (unlimited) → always `on_pool`.
+ * Used by reconciliation. Mirrors the Metronome alert threshold (`reached`
+ * fires at spend >= cap), so the two agree.
+ */
+export function expectedApiKeyCreditStateFromUsage({
+  spentAwuCredits,
+  capAwuCredits,
+}: {
+  spentAwuCredits: number;
+  capAwuCredits: number | null;
+}): ApiKeyCreditState {
+  if (capAwuCredits === null) {
+    return "on_pool";
+  }
+  return spentAwuCredits >= capAwuCredits ? "capped" : "on_pool";
+}
+
 export type ApiKeyCreditEvent =
   /** This key hit its admin-configured per-key spend cap. */
   | { type: "api_key_cap_reached" }
