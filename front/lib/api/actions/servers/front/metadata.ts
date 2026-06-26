@@ -311,7 +311,6 @@ export const FRONT_SERVER = {
     authorization: null,
     icon: "FrontLogo",
     documentationUrl: "https://docs.dust.tt/docs/front-mcp",
-    instructions: null,
   },
   tools: Object.values(FRONT_TOOLS_METADATA).map((t) => ({
     name: t.name,

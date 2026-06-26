@@ -349,7 +349,6 @@ export const MICROSOFT_TEAMS_SERVER = {
       ],
     },
     documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
-    instructions: null,
   },
   tools: Object.values(MICROSOFT_TEAMS_TOOLS_METADATA).map((t) => ({
     name: t.name,

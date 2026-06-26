@@ -267,7 +267,6 @@ export const INTERACTIVE_CONTENT_SERVER = {
     authorization: null,
     icon: "ActionFrameIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(INTERACTIVE_CONTENT_TOOLS_METADATA).map((t) => ({
     name: t.name,

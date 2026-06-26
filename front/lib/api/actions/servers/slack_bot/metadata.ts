@@ -227,7 +227,6 @@ export const SLACK_BOT_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(SLACK_BOT_TOOLS_METADATA).map((t) => ({
     name: t.name,

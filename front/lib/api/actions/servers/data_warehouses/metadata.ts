@@ -168,7 +168,6 @@ export const DATA_WAREHOUSES_SERVER = {
     authorization: null,
     icon: "ActionTableIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(DATA_WAREHOUSES_TOOLS_METADATA).map((t) => ({
     name: t.name,

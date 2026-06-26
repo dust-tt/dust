@@ -508,7 +508,6 @@ export const SLACK_PERSONAL_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-    instructions: null,
   },
   tools: Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -92,7 +92,6 @@ export const CLARI_COPILOT_SERVER = {
     authorization: null,
     icon: "ClariLogo",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(CLARI_COPILOT_TOOLS_METADATA).map((t) => ({
     name: t.name,

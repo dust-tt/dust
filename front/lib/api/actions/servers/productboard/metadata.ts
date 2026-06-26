@@ -381,7 +381,6 @@ export const PRODUCTBOARD_SERVER = {
     },
     icon: "ProductboardLogo",
     documentationUrl: "https://docs.dust.tt/docs/productboard",
-    instructions: null,
   },
   tools: Object.values(PRODUCTBOARD_TOOLS_METADATA).map((t) => ({
     name: t.name,

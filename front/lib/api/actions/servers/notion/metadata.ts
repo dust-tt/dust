@@ -533,7 +533,6 @@ export const NOTION_SERVER = {
     },
     icon: "NotionLogo",
     documentationUrl: "https://docs.dust.tt/docs/notion-mcp",
-    instructions: null,
   },
   tools: Object.values(NOTION_TOOLS_METADATA).map((t) => ({
     name: t.name,

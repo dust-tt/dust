@@ -102,7 +102,6 @@ export const QUERY_TABLES_V2_SERVER = {
     icon: "ActionTableIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(QUERY_TABLES_V2_TOOLS_METADATA).map((t) => ({
     name: t.name,

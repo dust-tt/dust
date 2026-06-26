@@ -144,7 +144,6 @@ export const SALESFORCE_SERVER = {
     },
     icon: "SalesforceLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesforce",
-    instructions: null,
   },
   tools: Object.values(SALESFORCE_TOOLS_METADATA).map((t) => ({
     name: t.name,

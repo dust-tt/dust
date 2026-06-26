@@ -781,7 +781,6 @@ export const HUBSPOT_SERVER = {
     },
     icon: "HubspotLogo",
     documentationUrl: "https://docs.dust.tt/docs/hubspot",
-    instructions: null,
   },
   tools: Object.values(HUBSPOT_TOOLS_METADATA).map((t) => ({
     name: t.name,

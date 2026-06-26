@@ -235,7 +235,6 @@ export const MICROSOFT_EXCEL_SERVER = {
       ],
     },
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(MICROSOFT_EXCEL_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -325,7 +325,6 @@ export const VANTA_SERVER = {
     },
     icon: "VantaLogo",
     documentationUrl: "https://docs.dust.tt/docs/vanta",
-    instructions: null,
   },
   tools: Object.values(VANTA_TOOLS_METADATA).map((t) => ({
     name: t.name,

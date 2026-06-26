@@ -123,7 +123,6 @@ export const SANDBOX_SERVER = {
     authorization: null,
     icon: "CommandLineIcon",
     documentationUrl: null,
-    instructions: null,
   },
   // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
   // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.
