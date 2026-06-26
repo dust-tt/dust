@@ -11,6 +11,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -76,8 +77,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       "The file must belong to the authenticated workspace."
     );
     assert(
-      file.useCase === "sandbox_function",
-      "The file must use the sandbox_function use case."
+      file.contentType === sandboxFunctionContentType,
+      `The file must use the ${sandboxFunctionContentType} content type.`
+    );
+    assert(
+      file.useCase === "project_context",
+      "The file must use the project_context use case."
+    );
+    assert(
+      file.useCaseMetadata?.spaceId === pod.sId,
+      "The file must belong to the same Pod as the sandbox function."
     );
 
     const sandboxFunction = await this.model.create(
@@ -151,6 +160,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const sandboxFunctions = await this.listByPod(auth, pod);
     for (const sandboxFunction of sandboxFunctions) {
+      // TODO(spolu): potentially optimize as this may be quite slow (each delete calls file delete
+      // which deletes a whole bunch of records).
       const result = await sandboxFunction.delete(auth);
       if (result.isErr()) {
         throw result.error;

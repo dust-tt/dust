@@ -4,6 +4,7 @@ import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { sandboxFunctionContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 
@@ -30,11 +31,12 @@ describe("SandboxFunctionResource", () => {
     });
     const pod = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
-      contentType: "text/typescript",
+      contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
-      useCase: "sandbox_function",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
     });
 
     const sandboxFunction = await SandboxFunctionResource.makeNew(
@@ -69,11 +71,12 @@ describe("SandboxFunctionResource", () => {
     });
     const regularSpace = await SpaceFactory.regular(workspace);
     const file = await FileFactory.create(authenticator, null, {
-      contentType: "text/typescript",
+      contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
-      useCase: "sandbox_function",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: regularSpace.sId },
     });
 
     await expect(
@@ -86,17 +89,41 @@ describe("SandboxFunctionResource", () => {
     ).rejects.toThrow("Sandbox functions can only belong to Pod spaces.");
   });
 
+  it("rejects a file outside project context", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+    const file = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "comments.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "conversation",
+    });
+
+    await expect(
+      SandboxFunctionResource.makeNew(authenticator, {
+        pod,
+        file,
+        inputSchema,
+        outputSchema,
+      })
+    ).rejects.toThrow("The file must use the project_context use case.");
+  });
+
   it("rejects an invalid JSON Schema", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
     const pod = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
-      contentType: "text/typescript",
+      contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
-      useCase: "sandbox_function",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
     });
 
     await expect(
@@ -126,11 +153,12 @@ describe("SandboxFunctionResource", () => {
     });
     const pod = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
-      contentType: "text/typescript",
+      contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
-      useCase: "sandbox_function",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
     });
     const sandboxFunction = await SandboxFunctionResource.makeNew(
       authenticator,
