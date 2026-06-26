@@ -1374,6 +1374,17 @@ export async function processMetronomeWebhook({
         );
       }
 
+      // The contract was archived (cancelled) after the start webhook was
+      // enqueued but before it was delivered — skip to avoid swapping the
+      // active subscription onto a dead contract.
+      if (contractResult.value.archived_at) {
+        logger.info(
+          { contractId, workspaceId: workspace.sId },
+          "[Metronome Webhook] contract.start: contract is archived, skipping"
+        );
+        break;
+      }
+
       const renewalTransition = contractResult.value.transitions?.find(
         (t) => t.to_contract_id === contractId
       );
