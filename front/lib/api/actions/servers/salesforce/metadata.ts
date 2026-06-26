@@ -8,11 +8,11 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
   execute_read_query: {
     description:
       "Run a read-only SOQL query on Salesforce to retrieve or discover data. It never writes. " +
-      "The usual flow is list_objects to find an object name, then describe_object to learn its exact fields and relationships, then this tool. " +
-      "Custom objects and fields end in `__c` and custom relationships end in `__r`. " +
-      "Use dot notation for child-to-parent (e.g. SELECT Account.Name FROM Contact) and a subquery for parent-to-child (e.g. SELECT Name, (SELECT LastName FROM Contacts) FROM Account). " +
-      "To list fields inline instead of calling describe_object, use FIELDS(ALL), FIELDS(CUSTOM), or FIELDS(STANDARD), which require a LIMIT of at most 200. " +
-      'A "No such column" or "Didn\'t understand relationship" error usually means the name is wrong, so confirm it with describe_object.',
+      "The usual flow is list_objects to find an object name, then describe_object to learn exact fields and relationships, then this tool. " +
+      "Custom objects and fields end in `__c`; custom relationships used in parent-to-child subqueries end in `__r`. " +
+      "Use child-to-parent dot notation (e.g. SELECT Account.Name, LastName FROM Contact) and parent-to-child subqueries (e.g. SELECT Name, (SELECT FirstName, LastName FROM Contacts) FROM Account or SELECT Name, (SELECT Name FROM MyCustomChildren__r) FROM Account). " +
+      "To list fields inline instead of calling describe_object, use FIELDS(ALL) for all fields, FIELDS(CUSTOM) for custom fields, or FIELDS(STANDARD) for standard fields. FIELDS() requires a LIMIT clause, with a maximum of 200. " +
+      'A "No such column" or "Didn\'t understand relationship" error usually means the name is wrong, so confirm it with describe_object. If errors persist, the field, object, or relationship might not exist or the connected user may lack permissions.',
     schema: {
       query: z.string().describe("The SOQL read query to execute"),
     },
@@ -24,7 +24,7 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
   },
   list_objects: {
     description:
-      "List Salesforce objects (standard, custom, or all). Use it to find an object's exact API name before describing or querying it.",
+      "List Salesforce objects (standard, custom, or all). Use it to find an object's exact API name before describing or querying it when you are unsure.",
     schema: {
       filter: z
         .enum(["all", "standard", "custom"])
@@ -40,8 +40,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
   },
   describe_object: {
     description:
-      "Get detailed metadata for a Salesforce object from its API name (e.g. Account, Lead, MyCustomObject__c): all fields with their names and types, child relationship names for subqueries, and record types. " +
-      "This is the reliable way to confirm field and relationship names before an execute_read_query.",
+      "Get detailed metadata for a Salesforce object from its API name (e.g. Account, Lead, MyCustomObject__c): fields with names, labels, types, and other properties; child relationship names for SOQL subqueries; record types; and other object-level properties. " +
+      "This is the most reliable way to discover and confirm field and relationship names before an execute_read_query.",
     schema: {
       objectName: z.string().describe("The name of the object to describe"),
     },
@@ -52,7 +52,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_object: {
-    description: "Create one or more records in Salesforce",
+    description:
+      "Create one or more records in Salesforce. Use describe_object first if the required fields or exact field API names are uncertain.",
     schema: {
       objectName: z
         .string()
@@ -76,7 +77,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
   },
   update_object: {
-    description: "Update one or more records in Salesforce",
+    description:
+      "Update one or more records in Salesforce. Use describe_object first if the exact field API names are uncertain; every record must include its Salesforce Id.",
     schema: {
       objectName: z
         .string()
