@@ -211,20 +211,24 @@ export const DataSourceFilesystemCatInputSchema = z.object({
     .optional()
     .describe(
       "The character position to start reading from (0-based). If not provided, starts from " +
-        "the beginning."
+        "the beginning. The tool output reports the total document size and, when more content " +
+        "remains, the offset to use to continue reading."
     ),
   limit: z
     .number()
     .optional()
     .describe(
-      "The maximum number of characters to read. If not provided, reads all characters."
+      "The maximum number of characters to read. If not provided, reads all characters. For " +
+        "large documents, do not page through the whole document by repeatedly incrementing " +
+        "offset (this exhausts the context window). Prefer grep to extract only the relevant content."
     ),
   grep: z
     .string()
     .optional()
     .describe(
       "A regular expression to filter lines. Applied after offset/limit slicing. Only lines " +
-        "matching this pattern will be returned."
+        "matching this pattern will be returned. Prefer this over reading a large document in " +
+        "full when you are looking for specific content."
     ),
 });
 

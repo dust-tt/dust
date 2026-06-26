@@ -26,9 +26,11 @@ export const FILESYSTEM_LIST_TOOL_NAME = "list";
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
     description:
-      "Read and retrieve the full text content of a document or page by its nodeId (like 'cat' in Unix). " +
+      "Read and retrieve the text content of a document or page by its nodeId (like 'cat' in Unix). " +
       `Use to open, view, or read a specific file after locating it via '${FILESYSTEM_FIND_TOOL_NAME}', '${FILESYSTEM_LIST_TOOL_NAME}', or '${FILESYSTEM_SEARCH_TOOL_NAME}'. ` +
-      "The nodeId is the unique identifier exposed in the output of all navigation and search tools in this server.",
+      "The nodeId is the unique identifier exposed in the output of all navigation and search tools in this server. " +
+      "The output reports the document's total size; for large documents, use 'grep' to extract only the relevant " +
+      "content rather than paging through the whole document by incrementing 'offset', which exhausts the context window.",
     schema: DataSourceFilesystemCatInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
