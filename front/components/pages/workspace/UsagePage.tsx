@@ -9,6 +9,7 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
+import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
@@ -16,6 +17,8 @@ import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
+import { useMembersSelection } from "@app/hooks/useMembersSelection";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
   useAuth,
@@ -150,6 +153,7 @@ export function UsagePage() {
   const { subscription } = useAuth();
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags();
+  const sendNotification = useSendNotification();
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Legacy-contract workspaces can view this page in read-only mode behind a
   // flag: analytics and member spend render as usual, but every action (top up,
@@ -469,6 +473,28 @@ export function UsagePage() {
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
 
+  // Cross-page selection for batch actions on the members table. Resets when the
+  // filter identity changes (the "all matching" set is no longer the same).
+  const pageItemIds = useMemo(
+    () => membersUsage.map((m) => m.sId),
+    [membersUsage]
+  );
+  const selection = useMembersSelection({
+    pageItemIds,
+    totalCount: totalMembersUsage,
+    resetKey: `${searchTerm}|${seatTypeFilter ?? ""}|${groupFilter ?? ""}`,
+  });
+
+  const handleBatchEditSpendLimit = useCallback(() => {
+    // TODO(bulk-spend-limit): open the bulk EditSpendLimitModal (PR 6) wired to
+    // the bulk endpoint (PR 4) using selection.descriptor().
+    sendNotification({
+      type: "info",
+      title: "Coming soon",
+      description: `Batch spend-limit editing for ${selection.selectedCount} members is not wired up yet.`,
+    });
+  }, [sendNotification, selection]);
+
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
   });
@@ -615,7 +641,7 @@ export function UsagePage() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          label={selectedGroupName ?? "Groups"}
+          label={selectedGroupName ?? "All groups"}
           size="sm"
           isSelect
         />
@@ -653,7 +679,24 @@ export function UsagePage() {
       totalRowCount={totalMembersUsage}
       sorting={sorting}
       setSorting={handleSetSorting}
-      showGroupsColumn={pricingGroupsEnabled}
+      showGroupsColumn={pricingGroupsEnabled && groups.length > 0}
+      enableSelection={pricingGroupsEnabled && isWorkspaceAdmin && !isReadOnly}
+      rowSelection={selection.rowSelection}
+      onRowSelectionChange={selection.onRowSelectionChange}
+    />
+  );
+
+  const selectionBanner = (
+    <MembersSelectionBanner
+      selectedCount={selection.selectedCount}
+      pageCount={membersUsage.length}
+      totalCount={totalMembersUsage}
+      isAllAcrossPagesSelected={selection.isAllAcrossPagesSelected}
+      hasMorePagesToSelect={selection.hasMorePagesToSelect}
+      onSelectAllAcrossPages={selection.selectAllAcrossPages}
+      onClear={selection.clearSelection}
+      onBatchEditSpendLimit={handleBatchEditSpendLimit}
+      disabled={isReadOnly}
     />
   );
 
@@ -808,9 +851,12 @@ export function UsagePage() {
                       </div>
                     )}
                   </div>
-                  <div className="pt-2">
+                  <div className="flex flex-col gap-2 pt-2">
                     {membersTab === "members" ? (
-                      membersTable
+                      <>
+                        {selectionBanner}
+                        {membersTable}
+                      </>
                     ) : (
                       <UpgradeRequestsTable
                         requests={filteredUpgradeRequests}

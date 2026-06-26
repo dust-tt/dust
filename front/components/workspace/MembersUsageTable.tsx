@@ -18,6 +18,7 @@ import {
 } from "@app/types/memberships";
 import {
   Clock,
+  createSelectionColumn,
   DataTable,
   Icon,
   LoadingBlock,
@@ -29,6 +30,7 @@ import type {
   CellContext,
   ColumnDef,
   PaginationState,
+  RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -437,8 +439,15 @@ const actionsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildColumns(showGroupsColumn: boolean): ColumnDef<RowData, string>[] {
+function buildColumns({
+  enableSelection,
+  showGroupsColumn,
+}: {
+  enableSelection: boolean;
+  showGroupsColumn: boolean;
+}): ColumnDef<RowData, string>[] {
   return [
+    ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
     seatTypeColumn,
@@ -464,6 +473,9 @@ interface MembersUsageTableProps {
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
   showGroupsColumn?: boolean;
+  enableSelection?: boolean;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
 }
 
 export function MembersUsageTable({
@@ -483,6 +495,9 @@ export function MembersUsageTable({
   sorting,
   setSorting,
   showGroupsColumn = false,
+  enableSelection = false,
+  rowSelection,
+  onRowSelectionChange,
 }: MembersUsageTableProps) {
   const rows: RowData[] = useMemo(
     () =>
@@ -570,8 +585,8 @@ export function MembersUsageTable({
   );
 
   const columns = useMemo(
-    () => buildColumns(showGroupsColumn),
-    [showGroupsColumn]
+    () => buildColumns({ enableSelection, showGroupsColumn }),
+    [enableSelection, showGroupsColumn]
   );
 
   if (isLoading) {
@@ -594,6 +609,10 @@ export function MembersUsageTable({
       sorting={sorting}
       setSorting={setSorting}
       isServerSideSorting
+      enableRowSelection={enableSelection}
+      rowSelection={rowSelection}
+      setRowSelection={onRowSelectionChange}
+      getRowId={(row) => row.sId}
     />
   );
 }
