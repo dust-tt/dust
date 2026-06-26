@@ -589,6 +589,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Adding Slack reaction",
       done: "Add Slack reaction",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   remove_reaction: {
     description:
@@ -609,6 +611,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Removing Slack reaction",
       done: "Remove Slack reaction",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_reactions: {
     description:
@@ -630,6 +634,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Getting Slack reactions",
       done: "Get Slack reactions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
