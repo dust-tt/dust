@@ -11,6 +11,7 @@
 //
 // Usage: npx tsx scripts/mcp_bm25/run.ts   (from the front/ directory)
 
+import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
@@ -35,13 +36,14 @@ const SERVERS: ServerEntry[] = [
   { name: "slack", tools: SLACK_PERSONAL_SERVER.tools },
   { name: "slack_bot", tools: SLACK_BOT_SERVER.tools },
   { name: "microsoft_teams", tools: MICROSOFT_TEAMS_SERVER.tools },
+  { name: "confluence", tools: CONFLUENCE_SERVER.tools },
 ];
 
 function out(line: string): void {
   process.stdout.write(line + "\n");
 }
 
-function main(): number {
+function main(): void {
   const docs = buildDocs(SERVERS);
   const idx = buildIndex(docs);
 

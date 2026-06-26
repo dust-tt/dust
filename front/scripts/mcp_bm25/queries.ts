@@ -432,6 +432,40 @@ export const QUERIES: LabeledQuery[] = [
     expected: "microsoft_teams.list_messages",
   },
 
+  // --- confluence ---
+  {
+    query: "search confluence for pages about onboarding",
+    expected: "confluence.get_pages",
+  },
+  {
+    query: "find a confluence page about the release process",
+    expected: "confluence.get_pages",
+  },
+  {
+    query: "get a confluence page by its id",
+    expected: "confluence.get_page",
+  },
+  {
+    query: "read the content of a confluence page",
+    expected: "confluence.get_page",
+  },
+  {
+    query: "create a new confluence page in a space",
+    expected: "confluence.create_page",
+  },
+  {
+    query: "update the content of an existing confluence page",
+    expected: "confluence.update_page",
+  },
+  {
+    query: "list the confluence spaces",
+    expected: "confluence.get_spaces",
+  },
+  {
+    query: "who am i in confluence",
+    expected: "confluence.get_current_user",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
