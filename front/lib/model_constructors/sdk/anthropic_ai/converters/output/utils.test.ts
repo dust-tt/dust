@@ -611,6 +611,57 @@ describe("contentBlockStartToEvents", () => {
     expect(events).toEqual([]);
     expect(state).toBe(prior);
   });
+
+  it("opens a server tool search block as a tool_search cursor", () => {
+    const event = {
+      type: "content_block_start",
+      index: 5,
+      content_block: {
+        type: "server_tool_use",
+        id: "srvtoolu_1",
+        name: "tool_search_tool_bm25",
+        input: {},
+      },
+    } as RawContentBlockStartEvent;
+    const [events, state] = contentBlockStartToEvents(
+      event,
+      null,
+      metadata,
+      realConverters
+    );
+    expect(events).toEqual([]);
+    expect(state).toEqual({
+      index: 5,
+      accumulator: "",
+      type: "tool_search",
+      toolName: "tool_search_tool_bm25",
+    });
+  });
+
+  it("consumes a tool search result block without opening a cursor", () => {
+    const event = {
+      type: "content_block_start",
+      index: 6,
+      content_block: {
+        type: "tool_search_tool_result",
+        tool_use_id: "srvtoolu_1",
+        content: {
+          type: "tool_search_tool_search_result",
+          tool_references: [
+            { type: "tool_reference", tool_name: "slack__post_message" },
+          ],
+        },
+      },
+    } as RawContentBlockStartEvent;
+    const [events, state] = contentBlockStartToEvents(
+      event,
+      null,
+      metadata,
+      realConverters
+    );
+    expect(events).toEqual([]);
+    expect(state).toBeNull();
+  });
 });
 
 describe("contentBlockDeltaToEvents", () => {
@@ -900,6 +951,18 @@ describe("contentBlockStopToEvents", () => {
         metadata,
       },
     ]);
+  });
+
+  it("closes a tool_search block without emitting a tool_call", () => {
+    const state = {
+      index: 0,
+      accumulator: '{"query":"send a slack message"}',
+      type: "tool_search" as const,
+      toolName: "tool_search_tool_bm25",
+    };
+    expect(
+      contentBlockStopToEvents(stopEvent, state, metadata, realConverters)
+    ).toEqual([[], null]);
   });
 });
 
