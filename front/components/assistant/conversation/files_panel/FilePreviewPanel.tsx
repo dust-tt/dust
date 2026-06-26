@@ -1,6 +1,6 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FilePreviewCategory } from "@app/components/file_explorer/utils";
 import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
@@ -50,7 +50,7 @@ export function FilePreviewPanel({
 
   return (
     <div className="flex h-panel min-h-0 flex-col">
-      <InteractiveContentHeader onClose={closePanel}>
+      <ConversationSidePanelHeader onClose={closePanel}>
         <div className="flex min-w-0 items-center gap-1.5">
           <Icon visual={FileIcon} size="sm" className="shrink-0" />
           <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
@@ -66,7 +66,7 @@ export function FilePreviewPanel({
             rel="noopener noreferrer"
           />
         </div>
-      </InteractiveContentHeader>
+      </ConversationSidePanelHeader>
       <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
         <FilePreviewContent
           category={category}
