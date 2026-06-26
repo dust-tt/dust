@@ -1,4 +1,7 @@
-import { reconcileApiKey } from "@app/lib/api/metronome/reconcile_credit_state";
+import {
+  reconcileApiKey,
+  reconcileWorkspaceApiKeyCreditStates,
+} from "@app/lib/api/metronome/reconcile_credit_state";
 import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomeApiKeyCapAlert,
@@ -20,6 +23,10 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 export const MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS = 1;
 export const MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS = 1_000_000;
+
+// 1 AWU credit = $0.01 = 10,000 microUSD. Used to convert the legacy per-key
+// USD cap to the new credit cap during backfill.
+const MICRO_USD_PER_AWU_CREDIT = 10_000;
 
 export type ApiKeySpendLimitErrorType =
   | "key_not_found"
@@ -250,4 +257,53 @@ export async function syncApiKeyCapAlertsForWorkspace(
     },
     { concurrency: 5 }
   );
+}
+
+/**
+ * One-shot backfill for a workspace adopting credit-priced per-key caps:
+ * convert any legacy USD cap to the new credit cap, (re)create the Metronome
+ * alerts, then reconcile each key's credit state. Idempotent.
+ */
+export async function backfillApiKeyCreditCapsForWorkspace(
+  workspace: LightWorkspaceType,
+  {
+    metronomeContractId,
+    planCode,
+  }: { metronomeContractId: string | null; planCode: string }
+): Promise<{ converted: number }> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return { converted: 0 };
+  }
+
+  const keys = await KeyResource.listNonSystemKeysByWorkspace(workspace);
+  let converted = 0;
+  // One UPDATE per legacy key being migrated. Bounded by the workspace's key
+  // count (small) and only runs on this one-shot admin backfill, not a hot path.
+  for (const key of keys) {
+    if (
+      key.isActive &&
+      key.monthlyCapAwuCredits === null &&
+      key.monthlyCapMicroUsd !== null
+    ) {
+      // Clamp to >= 1 so a tiny legacy cap doesn't become a 0-credit
+      // (always-capped) limit.
+      const credits = Math.max(
+        MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS,
+        Math.round(key.monthlyCapMicroUsd / MICRO_USD_PER_AWU_CREDIT)
+      );
+      await key.updateMonthlyCapAwuCredits(credits);
+      converted += 1;
+    }
+  }
+
+  await syncApiKeyCapAlertsForWorkspace(workspace);
+  await reconcileWorkspaceApiKeyCreditStates({
+    workspace,
+    metronomeCustomerId,
+    metronomeContractId,
+    planCode,
+  });
+
+  return { converted };
 }
