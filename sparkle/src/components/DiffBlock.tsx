@@ -168,7 +168,7 @@ export function DiffBlock({
         {isCollapsible && (
           <div className="s-flex s-justify-start s-px-3">
             <Button
-              size="sm"
+              size="xs"
               variant="outline"
               label={isExpanded ? "Show less" : "Show more"}
               onClick={(e) => {

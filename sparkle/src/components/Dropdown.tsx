@@ -976,7 +976,7 @@ const DropdownMenuFiltersInner = <T extends string>(
         return (
           <Button
             key={filter.value}
-            size="sm"
+            size="xs"
             variant={isSelected ? "primary" : "outline"}
             label={filter.label}
             onClick={() => onSelectFilter(filter.value)}

@@ -35,7 +35,7 @@ export function FilterChips<T extends string>({
           label={filterName}
           variant={selectedFilter === filterName ? "primary" : "outline"}
           key={filterName}
-          size="sm"
+          size="xs"
           onClick={() => handleFilterClick(filterName)}
         />
       ))}

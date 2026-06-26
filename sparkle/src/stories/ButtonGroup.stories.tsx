@@ -89,9 +89,9 @@ export const WithIcons: Story = {
   args: {
     children: (
       <>
-        <Button icon={Plus} label="Add" variant="outline" size="md" />
-        <Button icon={Robot} label="Agent" variant="outline" size="md" />
-        <Button label="More" variant="outline" size="md" />
+        <Button icon={Plus} label="Add" variant="outline" size="sm" />
+        <Button icon={Robot} label="Agent" variant="outline" size="sm" />
+        <Button label="More" variant="outline" size="sm" />
       </>
     ),
   },
@@ -106,21 +106,21 @@ export const WithCounters: Story = {
           isCounter
           counterValue="5"
           variant="outline"
-          size="md"
+          size="sm"
         />
         <Button
           label="Sent"
           isCounter
           counterValue="12"
           variant="outline"
-          size="md"
+          size="sm"
         />
         <Button
           label="Drafts"
           isCounter
           counterValue="3"
           variant="outline"
-          size="md"
+          size="sm"
         />
       </>
     ),
@@ -188,10 +188,10 @@ export const WithDropdownMenu: Story = {
             icon={Clipboard}
             tooltip="Copy to clipboard"
             variant="outline"
-            size="sm"
+            size="xs"
           />
           <ButtonGroupDropdown
-            trigger={<Button variant="outline" size="sm" icon={ChevronDown} />}
+            trigger={<Button variant="outline" size="xs" icon={ChevronDown} />}
             items={[
               { label: "Retry", icon: RefreshCw02 },
               { label: "Delete", icon: Trash01, variant: "warning" },
@@ -204,10 +204,10 @@ export const WithDropdownMenu: Story = {
         <h3 className="s-mb-2 s-text-sm s-font-medium">Multiple variations</h3>
         <div className="s-flex s-flex-wrap s-gap-4">
           <ButtonGroup>
-            <Button label="Copy" variant="outline" size="md" />
+            <Button label="Copy" variant="outline" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="outline" size="md" icon={ChevronDown} />
+                <Button variant="outline" size="sm" icon={ChevronDown} />
               }
               items={[
                 { label: "Option 1" },
@@ -218,21 +218,21 @@ export const WithDropdownMenu: Story = {
           </ButtonGroup>
 
           <ButtonGroup>
-            <Button label="Save" variant="primary" size="md" />
+            <Button label="Save" variant="primary" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="primary" size="md" icon={ChevronDown} />
+                <Button variant="primary" size="sm" icon={ChevronDown} />
               }
               items={[{ label: "Save and close" }, { label: "Save as draft" }]}
             />
           </ButtonGroup>
 
           <ButtonGroup>
-            <Button icon={Plus} label="Add" variant="outline" size="md" />
-            <Button icon={Robot} label="Agent" variant="outline" size="md" />
+            <Button icon={Plus} label="Add" variant="outline" size="sm" />
+            <Button icon={Robot} label="Agent" variant="outline" size="sm" />
             <ButtonGroupDropdown
               trigger={
-                <Button variant="outline" size="md" icon={ChevronDown} />
+                <Button variant="outline" size="sm" icon={ChevronDown} />
               }
               items={[
                 { label: "More options", icon: Plus },

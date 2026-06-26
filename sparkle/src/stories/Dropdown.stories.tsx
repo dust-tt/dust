@@ -152,7 +152,7 @@ export const ComplexDropdown: Story = {
               icon={User01}
               label="Profile"
               endComponent={
-                <Button size="sm" icon={Upload01} variant="ghost" />
+                <Button size="xs" icon={Upload01} variant="ghost" />
               }
             />
             <DropdownMenuItem icon={ArrowCircleBrokenDown} label="Billing" />

@@ -103,7 +103,7 @@ const TabsTrigger = React.forwardRef<
       >
         <Button
           variant={variant}
-          size="md"
+          size="sm"
           label={label}
           tooltip={tooltip}
           icon={icon}

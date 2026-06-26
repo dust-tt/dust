@@ -124,7 +124,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
         action={
           onRemove ? (
             <CardActionButton
-              size="sm"
+              size="xs"
               icon={XClose}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 onRemove();
@@ -167,7 +167,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                 )}
                 {canAdd && (
                   <Button
-                    size="sm"
+                    size="xs"
                     variant="outline"
                     icon={Plus}
                     label="Add"

@@ -42,7 +42,7 @@ export const SliderExample = () => (
     </div>
 
     <div className="s-flex s-items-center s-gap-2">
-      <Button variant="outline" size="sm" label="Settings" />
+      <Button variant="outline" size="xs" label="Settings" />
       <SliderToggle size="xs" />
       <SliderToggle size="xs" selected />
       <SliderToggle size="xs" disabled />

@@ -79,7 +79,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             <Button
               icon={XClose}
               variant="ghost"
-              size="sm"
+              size="xs"
               onClick={clearInputField}
             />
           ) : (
@@ -275,7 +275,7 @@ function BaseSearchInputWithPopover<T>(
               {onSelectAll && items.length > 0 && (
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="xs"
                   onClick={onSelectAll}
                   label="Select all"
                   icon={CheckDone01}

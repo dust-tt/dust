@@ -195,7 +195,7 @@ const SheetHeader = ({
   >
     {children}
     <SheetClose asChild className="s-absolute s-right-3 s-top-4">
-      {!hideButton && <Button icon={XClose} variant="ghost" size="md" />}
+      {!hideButton && <Button icon={XClose} variant="ghost" size="sm" />}
     </SheetClose>
   </div>
 );

@@ -179,7 +179,7 @@ const MultiPageSheetContent = React.forwardRef<
                   <Button
                     icon={ChevronLeft}
                     variant="ghost"
-                    size="md"
+                    size="sm"
                     disabled={!hasPrevious}
                     onClick={handlePrevious}
                     tooltip={hasPrevious ? "Previous page" : undefined}
@@ -187,7 +187,7 @@ const MultiPageSheetContent = React.forwardRef<
                   <Button
                     icon={ChevronRight}
                     variant="ghost"
-                    size="md"
+                    size="sm"
                     disabled={nextButtonDisabled}
                     onClick={handleNext}
                     tooltip={hasNext && !disableNext ? "Next page" : undefined}

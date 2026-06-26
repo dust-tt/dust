@@ -32,7 +32,7 @@ export function RecentInvoices() {
           <Button
             label="See all"
             variant="ghost"
-            size="md"
+            size="sm"
             href={portalHref}
             target="_blank"
           />
@@ -74,7 +74,7 @@ export function RecentInvoices() {
                     <Button
                       label="See invoice"
                       variant="ghost"
-                      size="md"
+                      size="sm"
                       href={invoiceUrl ?? "target-blank-placeholder"}
                       target="_blank"
                       disabled={!invoiceUrl}

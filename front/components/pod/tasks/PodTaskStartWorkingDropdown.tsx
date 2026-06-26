@@ -247,7 +247,7 @@ export function PodTaskStartWorkingDropdown({
                 showDropdownArrow={false}
                 showFooterButtons={false}
                 side="bottom"
-                size="sm"
+                size="xs"
                 onItemClick={(agent) => setSelectedStartAgent(agent)}
                 pickerButton={
                   <button

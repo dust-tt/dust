@@ -56,7 +56,7 @@ export function BillingUpgrade() {
           <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
             {planName}
           </div>
-          <Button size="md" {...buttonProps} />
+          <Button size="sm" {...buttonProps} />
         </div>
         <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
           {features.map((feature) => (

@@ -33,14 +33,14 @@ type Story = StoryObj<typeof meta>;
 
 const MockToolbar = () => (
   <div className="s-flex s-items-center s-gap-1 s-px-3 s-py-2">
-    <Button icon={Bold01} size="sm" variant="ghost-secondary" tooltip="Bold" />
+    <Button icon={Bold01} size="xs" variant="ghost-secondary" tooltip="Bold" />
     <Button
       icon={Italic01}
-      size="sm"
+      size="xs"
       variant="ghost-secondary"
       tooltip="Italic"
     />
-    <Button icon={Link01} size="sm" variant="ghost-secondary" tooltip="Link" />
+    <Button icon={Link01} size="xs" variant="ghost-secondary" tooltip="Link" />
   </div>
 );
 

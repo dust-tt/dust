@@ -206,7 +206,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                 {onClose && (
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="xs"
                     icon={XClose}
                     tooltip="Remove"
                     onClick={handleClose}
@@ -215,7 +215,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                 {!onClose && downloadUrl && (
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="xs"
                     icon={Download01}
                     tooltip="Download"
                     onClick={handleDownload}

@@ -136,7 +136,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
     case "back":
       return (
         <Button
-          size="md"
+          size="sm"
           icon={ChevronLeft}
           variant="ghost"
           tooltip="Back"
@@ -146,7 +146,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
     case "close":
       return (
         <Button
-          size="md"
+          size="sm"
           icon={XClose}
           variant="ghost"
           tooltip="Close"
@@ -164,14 +164,14 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
       return (
         <>
           <Button
-            size="md"
+            size="sm"
             icon={Trash01}
             tooltip="Delete"
             variant="ghost"
             onClick={props.onDelete}
           />
           <Button
-            size="md"
+            size="sm"
             label="Share"
             icon={Upload01}
             variant="ghost"

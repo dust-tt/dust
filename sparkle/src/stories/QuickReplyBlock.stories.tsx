@@ -44,7 +44,7 @@ export const Examples: Story = {
       <div className="s-flex s-w-[280px] s-flex-col s-gap-3">
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           label="Re initiate"
           onClick={() => setResetKey((value) => value + 1)}
         />
