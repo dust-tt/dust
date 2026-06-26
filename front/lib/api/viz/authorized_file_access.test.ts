@@ -100,6 +100,7 @@ describe("isVerifiableAuthorizedFileIdRefUseCase", () => {
     "upsert_document",
     "folders_document",
     "upsert_table",
+    "sandbox_function",
     "skill_attachment",
     "workspace_branding",
   ] satisfies FileUseCase[])("rejects %s", (useCase) => {
@@ -527,6 +528,7 @@ describe("computeAuthorizedFileAccess", () => {
     "upsert_document",
     "folders_document",
     "upsert_table",
+    "sandbox_function",
     "skill_attachment",
     "workspace_branding",
   ] satisfies FileUseCase[])("marks %s file_id refs as unverifiable even with conversation metadata", async (useCase) => {

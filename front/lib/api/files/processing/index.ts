@@ -5,6 +5,7 @@ import { isSupportedForAvatar } from "@app/lib/api/files/use_cases/avatar";
 import { isSupportedForConversation } from "@app/lib/api/files/use_cases/conversation";
 import { isSupportedForFoldersDocument } from "@app/lib/api/files/use_cases/folders_document";
 import { isSupportedForProjectContext } from "@app/lib/api/files/use_cases/project_context";
+import { isSupportedForSandboxFunction } from "@app/lib/api/files/use_cases/sandbox_function";
 import { isSupportedForSkillAttachment } from "@app/lib/api/files/use_cases/skill_attachment";
 import { isSupportedForToolOutput } from "@app/lib/api/files/use_cases/tool_output";
 import { isSupportedForUpsertDocument } from "@app/lib/api/files/use_cases/upsert_document";
@@ -386,6 +387,9 @@ export function isUploadSupportedForContentType({
 
     case "project_context":
       return isSupportedForProjectContext(contentType);
+
+    case "sandbox_function":
+      return isSupportedForSandboxFunction(contentType);
 
     case "skill_attachment":
       return isSupportedForSkillAttachment(contentType);

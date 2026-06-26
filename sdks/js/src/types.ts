@@ -3102,6 +3102,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   // See also front/types/files.ts.
   | "folders_document"
   | "project_context"
+  | "sandbox_function"
   | "skill_attachment"
   | "workspace_branding"
 >();

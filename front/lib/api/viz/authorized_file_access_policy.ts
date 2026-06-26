@@ -73,6 +73,7 @@ export function isVerifiableAuthorizedFileIdRefUseCase(
     case "upsert_document":
     case "folders_document":
     case "upsert_table":
+    case "sandbox_function":
     case "skill_attachment":
     case "workspace_branding":
       return false;

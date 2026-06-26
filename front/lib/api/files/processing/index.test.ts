@@ -379,6 +379,21 @@ describe("other use cases", () => {
       ).toBe(true);
     });
 
+    it("only TypeScript is supported for sandbox_function", () => {
+      expect(
+        isUploadSupportedForContentType({
+          contentType: "text/typescript",
+          useCase: "sandbox_function",
+        })
+      ).toBe(true);
+      expect(
+        isUploadSupportedForContentType({
+          contentType: "text/plain",
+          useCase: "sandbox_function",
+        })
+      ).toBe(false);
+    });
+
     it("images are supported for skill_attachment", () => {
       expect(
         isUploadSupportedForContentType({

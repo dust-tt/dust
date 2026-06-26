@@ -29,6 +29,8 @@ export type FileUseCase =
   // Project context: case in which a file is uploaded to a project's shared
   // context datasource. Accessible to all conversations within the project.
   | "project_context"
+  // TypeScript source file backing a sandbox function.
+  | "sandbox_function"
   // Skill attachment: file attached to a skill configuration, synced to the
   // sandbox at /dust/skills/<skill-name>/<filename>.
   | "skill_attachment"
@@ -378,7 +380,8 @@ type FileFormat = {
   isSafeToDisplay: boolean;
   // When set, restricts which upload use cases expose this format in their file picker.
   // Possible values: conversation, avatar, tool_output, skill_attachment, upsert_document,
-  // folders_document, upsert_table, project_context. Omit to allow in all contexts.
+  // folders_document, upsert_table, project_context, sandbox_function. Omit to allow in all
+  // contexts.
   allowedFileUploadUseCases?: readonly FileUseCase[];
 };
 
