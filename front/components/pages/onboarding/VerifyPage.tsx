@@ -674,10 +674,10 @@ function StartTrialStep({ error, isLoading, onActivate }: StartTrialStepProps) {
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
             <div className="flex flex-col gap-2">
-              <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
+              <h1 className="text-2xl font-bold text-foreground">
                 Your phone number has already been verified.
               </h1>
-              <p className="text-muted-foreground dark:text-muted-foreground-night">
+              <p className="text-muted-foreground">
                 Click below to activate your free subscription.
               </p>
             </div>

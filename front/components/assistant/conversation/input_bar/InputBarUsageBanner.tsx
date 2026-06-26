@@ -27,11 +27,10 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
       <div
         className={cn(
           "mb-2 flex w-full items-center gap-2 rounded-2xl border px-4 py-3",
-          "border-warning-200 bg-warning-100",
-          "dark:border-warning-200-night dark:bg-warning-100-night"
+          "border-warning-200 bg-warning-100"
         )}
       >
-        <span className="copy-sm grow truncate text-warning-900 dark:text-warning-900-night">
+        <span className="copy-sm grow truncate text-warning-900">
           You don&apos;t have a seat in this workspace.
         </span>
         {showUpgradeCta && (

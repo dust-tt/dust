@@ -27,9 +27,7 @@ const MOBILE_NAV_MENU_BUTTON_CLASSES = cn(
   INPUT_BAR_COMPACT_SURFACE_CLASSES,
   "transition-none",
   "hover:border-transparent hover:bg-hover hover:backdrop-blur-none",
-  "dark:hover:bg-hover-night",
-  "active:border-transparent active:bg-primary-300 active:backdrop-blur-none",
-  "dark:active:bg-hover-night"
+  "active:border-transparent active:bg-primary-300 active:backdrop-blur-none"
 );
 
 interface NavigationProps {

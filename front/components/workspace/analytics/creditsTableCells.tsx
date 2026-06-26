@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 export function EmptyCell() {
   return (
-    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+    <span className="text-xs text-muted-foreground">
       —
     </span>
   );

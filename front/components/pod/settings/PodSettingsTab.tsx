@@ -164,9 +164,9 @@ export function PodSettingsTab({
       }
       aria-disabled={!interactive}
       className={cn(
-        "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200",
+        "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border bg-background text-sm text-primary transition-colors duration-200",
         interactive
-          ? "cursor-pointer hover:bg-primary-100 hover:border-primary-150 dark:hover:bg-primary-900 dark:hover:border-border-night"
+          ? "cursor-pointer hover:bg-primary-100 hover:border-primary-150 dark:hover:bg-primary-900"
           : "opacity-50 pointer-events-none"
       )}
     >
@@ -174,7 +174,7 @@ export function PodSettingsTab({
       <span className="grow truncate notranslate">
         {displayedDefaultAgent?.name ?? "Dust"}
         {isInheritingWorkspaceDefault && (
-          <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+          <span className="ml-1 text-muted-foreground">
             · Workspace default
           </span>
         )}
@@ -184,7 +184,7 @@ export function PodSettingsTab({
           tooltipTriggerAsChild
           trigger={
             <span
-              className="flex items-center text-warning dark:text-warning-night"
+              className="flex items-center text-warning"
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -204,7 +204,7 @@ export function PodSettingsTab({
         <Icon
           visual={ChevronDown}
           size="xs"
-          className="-mr-1 text-faint dark:text-faint-night"
+          className="-mr-1 text-faint"
         />
       )}
     </div>
@@ -442,7 +442,7 @@ export function PodSettingsTab({
 
         <div className="flex w-full flex-col gap-2">
           <div className="heading-lg">Instructions for Agents</div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm text-muted-foreground">
             Seen by all agents in this Pod, stored as{" "}
             <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
             Pod's files.
@@ -462,7 +462,7 @@ export function PodSettingsTab({
         {isDefaultAgentEnabled && (
           <div className="flex w-full flex-col gap-2">
             <div className="heading-lg">Default agent</div>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               The agent pre-selected when anyone starts a new conversation in
               this Pod.{" "}
               {hasWorkspaceDefaultAgentFeature &&

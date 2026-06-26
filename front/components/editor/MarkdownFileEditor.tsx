@@ -157,7 +157,7 @@ export function MarkdownFileEditor({
 
   if (isFileContentLoading) {
     return (
-      <div className="flex h-60 items-center justify-center rounded-xl border border-border dark:border-border-night">
+      <div className="flex h-60 items-center justify-center rounded-xl border border-border">
         <Spinner />
       </div>
     );

@@ -20,7 +20,7 @@ export function PreferencesSection({ owner }: PreferencesSectionProps) {
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Preferences</Page.H>
       <ContextItem.List>
-        <div className="h-full border-b border-border dark:border-border-night" />
+        <div className="h-full border-b border-border" />
         {hasWorkspaceDefaultAgent && (
           <WorkspaceDefaultAgentPicker owner={owner} />
         )}

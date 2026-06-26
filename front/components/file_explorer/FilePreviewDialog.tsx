@@ -169,13 +169,13 @@ function AudioPreview({ fileUrl, fileId }: AudioPreviewProps) {
       </audio>
       {transcript ? (
         <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
+          <h4 className="text-sm font-semibold text-muted-foreground">
             Transcript
           </h4>
           <Markdown content={transcript} isStreaming={false} />
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p className="text-sm text-muted-foreground">
           No transcript available.
         </p>
       )}

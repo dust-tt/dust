@@ -225,7 +225,7 @@ export function AgentObservability({
                 className="h-24"
                 content={
                   <div className="flex flex-col gap-1 text-2xl">
-                    <div className="truncate text-foreground dark:text-foreground-night">
+                    <div className="truncate text-foreground">
                       {agentAnalytics?.costs?.totalCostCredits != null
                         ? `${formatCreditsCompact(agentAnalytics.costs.totalCostCredits)} credits`
                         : "-"}
@@ -239,7 +239,7 @@ export function AgentObservability({
               className="h-24"
               content={
                 <div className="flex flex-col gap-1 text-2xl">
-                  <div className="truncate text-foreground dark:text-foreground-night">
+                  <div className="truncate text-foreground">
                     {agentAnalytics?.costs?.avgCostCredits != null
                       ? `${formatCreditsCompact(agentAnalytics.costs.avgCostCredits)} credits`
                       : "-"}
@@ -253,7 +253,7 @@ export function AgentObservability({
                 className="h-24"
                 content={
                   <div className="flex flex-col gap-1 text-2xl">
-                    <div className="truncate text-foreground dark:text-foreground-night">
+                    <div className="truncate text-foreground">
                       {agentAnalytics?.costs?.medianCostCredits != null
                         ? `${formatCreditsCompact(agentAnalytics.costs.medianCostCredits)} credits`
                         : "-"}

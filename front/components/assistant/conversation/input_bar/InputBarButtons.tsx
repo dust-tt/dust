@@ -149,7 +149,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                 tooltipTriggerAsChild
                 trigger={
                   <span
-                    className="flex items-center text-warning dark:text-warning-night"
+                    className="flex items-center text-warning"
                     onPointerDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

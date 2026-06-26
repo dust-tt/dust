@@ -126,13 +126,13 @@ export function SoundNotificationPreferences({
   };
 
   return (
-    <div className="rounded-xl border border-border dark:border-border-night">
+    <div className="rounded-xl border border-border">
       <div className="flex items-center p-4">
         <div className="flex flex-1 flex-col">
-          <span className="heading-sm text-foreground dark:text-foreground-night">
+          <span className="heading-sm text-foreground">
             Manual actions sound notification
           </span>
-          <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+          <span className="copy-sm text-muted-foreground">
             Play a sound when a manual action is required
           </span>
         </div>
@@ -153,7 +153,7 @@ export function SoundNotificationPreferences({
         />
       </div>
 
-      <div className="border-t border-border dark:border-border-night" />
+      <div className="border-t border-border" />
 
       <div className="flex items-center p-4">
         <div className="flex flex-1 flex-col">
@@ -161,8 +161,8 @@ export function SoundNotificationPreferences({
             className={cn(
               "heading-sm",
               enabledField.value
-                ? "text-foreground dark:text-foreground-night"
-                : "text-faint dark:text-faint-night"
+                ? "text-foreground"
+                : "text-faint"
             )}
           >
             Customize sound notification
@@ -171,8 +171,8 @@ export function SoundNotificationPreferences({
             className={cn(
               "copy-sm",
               enabledField.value
-                ? "text-muted-foreground dark:text-muted-foreground-night"
-                : "text-faint dark:text-faint-night"
+                ? "text-muted-foreground"
+                : "text-faint"
             )}
           >
             Choose the sound you prefer
@@ -200,7 +200,7 @@ export function SoundNotificationPreferences({
                       <Icon
                         visual={Check}
                         size="xs"
-                        className="text-muted-foreground dark:text-muted-foreground-night"
+                        className="text-muted-foreground"
                       />
                     ) : undefined
                   }
@@ -212,7 +212,7 @@ export function SoundNotificationPreferences({
             variant="ghost"
             size="xs"
             label="Play"
-            className="text-highlight-500 dark:text-highlight-500-night"
+            className="text-highlight-500"
             onClick={handlePlay}
             disabled={disabled || !enabledField.value}
           />
