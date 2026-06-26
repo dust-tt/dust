@@ -206,7 +206,6 @@ type GuidanceSkillBackfillConfig = {
   instructions: string;
   internalMCPServerName: InternalMCPServerNameType;
   label: string;
-  replaceToolReferencesInSkills: boolean;
   skillName: string;
   userFacingDescription: string;
 };
@@ -219,7 +218,6 @@ const GUIDANCE_SKILL_BACKFILL_CONFIGS: GuidanceSkillBackfillConfig[] = [
     instructions: PRODUCTBOARD_SKILL_INSTRUCTIONS,
     internalMCPServerName: "productboard",
     label: "Productboard",
-    replaceToolReferencesInSkills: true,
     skillName: PRODUCTBOARD_SKILL_NAME,
     userFacingDescription: PRODUCTBOARD_SKILL_USER_DESCRIPTION,
   },
@@ -230,7 +228,6 @@ const GUIDANCE_SKILL_BACKFILL_CONFIGS: GuidanceSkillBackfillConfig[] = [
     instructions: SALESFORCE_SKILL_INSTRUCTIONS,
     internalMCPServerName: "salesforce",
     label: "Salesforce",
-    replaceToolReferencesInSkills: true,
     skillName: SALESFORCE_SKILL_NAME,
     userFacingDescription: SALESFORCE_SKILL_USER_DESCRIPTION,
   },
@@ -666,7 +663,7 @@ async function replaceToolReferencesWithSkillInReferencedSkills(
     skill: SkillResource;
   }
 ): Promise<number> {
-  if (!config.replaceToolReferencesInSkills || mcpServerViews.length === 0) {
+  if (mcpServerViews.length === 0) {
     return 0;
   }
 
@@ -741,9 +738,10 @@ async function backfillWorkspaceForConfig(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   const existingSkill = await fetchActiveSkill(config, auth);
-  const referencedSkills = config.replaceToolReferencesInSkills
-    ? await SkillResource.listByMCPServerViewIds(auth, mcpServerViewModelIds)
-    : [];
+  const referencedSkills = await SkillResource.listByMCPServerViewIds(
+    auth,
+    mcpServerViewModelIds
+  );
   const referencedSkillsToUpdate = referencedSkills.filter(
     (referencedSkill) => referencedSkill.id !== existingSkill?.id
   );
