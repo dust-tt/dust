@@ -174,6 +174,9 @@ export const MembersUsagePaginationSchema = z.object({
   // Optional seat-type filter. A base seat type (e.g. "pro") matches its
   // monthly and yearly variants; "none" matches members with no seat.
   seatType: z.enum(MEMBERSHIP_SEAT_TYPES).optional().catch(undefined),
+  // Optional group filter (group sId). Restricts the table to the active
+  // members of that group. Combined with `seatType` as an intersection.
+  groupId: z.string().optional().catch(undefined),
 });
 
 export type MembersUsagePaginationInput = z.infer<
@@ -1003,6 +1006,24 @@ async function resolveSeatTypeFilterUserIds({
   );
 }
 
+// Resolve the active member user sIds of a group (by sId). Handed to
+// Elasticsearch as an allowlist, like the seat-type filter. An unknown or
+// unreadable group resolves to an empty set (empty page).
+async function resolveGroupFilterUserIds({
+  auth,
+  groupId,
+}: {
+  auth: Authenticator;
+  groupId: string;
+}): Promise<string[]> {
+  const groupRes = await GroupResource.fetchById(auth, groupId);
+  if (groupRes.isErr()) {
+    return [];
+  }
+  const members = await groupRes.value.getActiveMembers(auth);
+  return members.map((u) => u.sId);
+}
+
 // "name"/"email" live in the user search index, which owns sort + pagination
 // for those columns. "consumedAwuCredits" is not indexed, so to sort by it we
 // fetch the full matching set with Elasticsearch `search_after`, rank it by
@@ -1108,15 +1129,35 @@ export async function getMembersUsage({
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
 
-  // When a seat-type filter is active, resolve the matching user sIds up front
-  // and restrict the search to them so pagination and the returned `total`
-  // reflect the filtered set. No match means an empty page.
-  let restrictToUserIds: string[] | undefined;
+  // When a seat-type and/or group filter is active, resolve the matching user
+  // sIds up front and restrict the search to their intersection, so pagination
+  // and the returned `total` reflect the filtered set. No match (in any active
+  // filter) means an empty page.
+  const restrictionSets: string[][] = [];
   if (paginationParams.seatType) {
-    restrictToUserIds = await resolveSeatTypeFilterUserIds({
-      workspace,
-      seatType: paginationParams.seatType,
-    });
+    restrictionSets.push(
+      await resolveSeatTypeFilterUserIds({
+        workspace,
+        seatType: paginationParams.seatType,
+      })
+    );
+  }
+  if (paginationParams.groupId) {
+    restrictionSets.push(
+      await resolveGroupFilterUserIds({
+        auth,
+        groupId: paginationParams.groupId,
+      })
+    );
+  }
+
+  let restrictToUserIds: string[] | undefined;
+  if (restrictionSets.length > 0) {
+    const [firstSet, ...otherSets] = restrictionSets;
+    restrictToUserIds = otherSets.reduce((acc, set) => {
+      const allowed = new Set(set);
+      return acc.filter((sId) => allowed.has(sId));
+    }, firstSet);
     if (restrictToUserIds.length === 0) {
       return { members: [], total: 0 };
     }
