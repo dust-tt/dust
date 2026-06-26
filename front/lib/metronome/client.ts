@@ -2709,6 +2709,129 @@ export async function listCustomerPerUserCreditBalances({
 }
 
 /**
+ * Find a member's per-user customer credit (e.g. the free-seat credit) and the
+ * access-schedule segment active at `coveringDate`, plus its starting balance
+ * (sum of the credit's schedule-item amounts). Returns the
+ * `{ creditId, segmentId }` pair required to post a manual ledger entry via
+ * `adjustCustomerCreditBalance`. `userId` is the value stored in the per-user
+ * custom field — the free-prefixed Metronome user id ("free-<sId>") for free
+ * seats. Skips contract-scoped credits (these are standalone customer credits)
+ * and archived ones (we only adjust the active credit). Returns null when no
+ * matching active segment is found.
+ */
+export async function findPerUserCustomerCreditSegment({
+  metronomeCustomerId,
+  contractCreditType,
+  userId,
+  coveringDate = new Date(),
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+  userId: string;
+  coveringDate?: Date;
+}): Promise<
+  Result<
+    { creditId: string; segmentId: string; startingBalanceAwu: number } | null,
+    Error
+  >
+> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(null);
+  }
+
+  const client = getMetronomeClient();
+  const coveringMs = coveringDate.getTime();
+
+  try {
+    for await (const entry of client.v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      include_balance: false,
+    })) {
+      if (entry.contract) {
+        continue;
+      }
+      if (
+        entry.custom_fields?.[PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY] !==
+          userId ||
+        entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
+          contractCreditType
+      ) {
+        continue;
+      }
+      const scheduleItems = entry.access_schedule?.schedule_items ?? [];
+      const segment = scheduleItems.find((item) => {
+        const startMs = new Date(item.starting_at).getTime();
+        const endMs = new Date(item.ending_before).getTime();
+        return startMs <= coveringMs && coveringMs < endMs;
+      });
+      if (segment) {
+        return new Ok({
+          creditId: entry.id,
+          segmentId: segment.id,
+          startingBalanceAwu: scheduleItems.reduce(
+            (sum, item) => sum + item.amount,
+            0
+          ),
+        });
+      }
+    }
+    return new Ok(null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, userId },
+      "[Metronome] Failed to find per-user customer credit segment"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Post a manual ledger entry against a customer-level credit (no contract), such
+ * as a free-seat per-user credit. A positive amount tops the balance up, a
+ * negative one draws it down. This is the customer-level counterpart of
+ * `adjustSeatCreditBalances` (which targets seat-managed contract credit pools):
+ * `contract_id` is left blank so Metronome updates the customer-level balance,
+ * and the `reason` is recorded on the credit's ledger. `timestamp` defaults to
+ * the start of the segment.
+ */
+export async function adjustCustomerCreditBalance({
+  metronomeCustomerId,
+  creditId,
+  segmentId,
+  amount,
+  reason,
+}: {
+  metronomeCustomerId: string;
+  creditId: string;
+  segmentId: string;
+  amount: number;
+  reason: string;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
+      id: creditId,
+      customer_id: metronomeCustomerId,
+      segment_id: segmentId,
+      amount,
+      reason,
+    });
+    logger.info(
+      { metronomeCustomerId, creditId, segmentId, amount },
+      "[Metronome] Customer credit manual ledger entry applied"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, creditId, segmentId, amount },
+      "[Metronome] Failed to apply customer credit manual ledger entry"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Revoke a per-user customer credit by setting its end date to the next round
  * hour. Metronome requires hour-aligned timestamps; ceiling to the next hour is
  * safe here because the credit is keyed on the free-seat Metronome user id
