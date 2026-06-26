@@ -220,7 +220,8 @@ export const NotionBlockSchema: z.ZodType = z.union([
 
 export const NOTION_TOOLS_METADATA = createToolsRecord({
   search: {
-    description: "Search for pages or databases in Notion.",
+    description:
+      "Search Notion to find and locate pages or databases by keyword across the workspace. Use this first to find a page or database when you only know its name or topic and not its ID.",
     schema: {
       query: z.string().describe("Search query string."),
       relativeTimeFrame: z
@@ -254,7 +255,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
   },
   retrieve_database_schema: {
-    description: "Retrieve a Notion database's schema by its ID.",
+    description:
+      "Retrieve the schema of a Notion database by its ID: the list of columns and property definitions and their types. Use to inspect a database's structure.",
     schema: {
       databaseId: z.string().describe("The Notion database ID."),
     },
@@ -265,7 +267,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
   },
   retrieve_database_content: {
-    description: "Retrieve the content (pages) of a Notion database by its ID.",
+    description:
+      "List all entries (the rows and pages) contained in a Notion database by its ID, with optional filtering and sorting. Returns every page in the database.",
     schema: {
       databaseId: z.string().describe("The Notion database ID."),
       filter: dbFilterSchema.optional(),
