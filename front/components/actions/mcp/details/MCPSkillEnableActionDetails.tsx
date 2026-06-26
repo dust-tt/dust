@@ -93,7 +93,7 @@ export function MCPSkillEnableActionDetails({
                     content={instructions}
                     htmlContent={skill?.instructionsHtml ?? ""}
                     owner={owner}
-                    className="max-h-[400px] overflow-y-auto"
+                    className="max-h-150 overflow-y-auto"
                   />
                 ) : null}
               </div>
