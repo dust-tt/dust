@@ -46,6 +46,7 @@ import {
   TOOL_SEARCH_INSTRUCTION,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
 import assert from "assert";
@@ -202,6 +203,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   private async buildBaseRequestPayload({
     conversation,
     hasConditionalJITTools,
+    toolSearchEnabled,
     prompt,
     specifications,
     forceToolCall,
@@ -246,7 +248,26 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     // Build the tools once so the system prompt can be derived from what is
     // actually sent: the tool search instruction is added only when the search
     // tool is present in this request.
-    const tools = toToolsParam(specifications, forceToolCall);
+    const tools = toToolsParam(
+      specifications,
+      forceToolCall,
+      toolSearchEnabled ?? false
+    );
+
+    // TODO(tool-search): remove this rollout log once the eager set is validated.
+    if (toolSearchEnabled) {
+      logger.info(
+        {
+          eagerTools: tools
+            .filter((t) => !("defer_loading" in t && t.defer_loading))
+            .map((t) => t.name),
+          deferredToolCount: tools.filter(
+            (t) => "defer_loading" in t && t.defer_loading
+          ).length,
+        },
+        "[tool-search] Anthropic eager tools"
+      );
+    }
 
     const system = buildSystemBlocks(normalizePrompt(prompt), {
       hasConditionalJITTools,

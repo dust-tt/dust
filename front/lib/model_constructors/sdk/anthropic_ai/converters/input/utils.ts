@@ -325,7 +325,10 @@ export function outputFormatToOutputConfig(outputFormat: OutputFormat): {
   };
 }
 
-export function toolSpecToAnthropicAITool(tool: ToolSpecification): Tool {
+export function toolSpecToAnthropicAITool(
+  tool: ToolSpecification,
+  toolSearchEnabled: boolean
+): Tool {
   return {
     name: tool.name,
     description: tool.description,
@@ -334,20 +337,26 @@ export function toolSpecToAnthropicAITool(tool: ToolSpecification): Tool {
     // https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming
     eager_input_streaming: true,
     input_schema: { type: "object", ...tool.inputSchema },
-    // Only set when true so non-deferred tools serialize identically (stable prefix bytes).
-    ...(tool.deferLoading ? { defer_loading: true } : {}),
+    // Defer non-eager tools behind tool search when it is enabled. Eager tools
+    // (and every tool when tool search is off) stay in the cached prefix. Only
+    // set when true so non-deferred tools serialize identically (stable bytes).
+    ...(toolSearchEnabled && !tool.eager ? { defer_loading: true } : {}),
   };
 }
 
 export function toolSpecsToAnthropicAITools(
   tools: ToolSpecification[],
-  { forceTool }: { forceTool: string | undefined }
+  {
+    forceTool,
+    toolSearchEnabled,
+  }: { forceTool: string | undefined; toolSearchEnabled: boolean }
 ): Array<Tool | typeof TOOL_SEARCH_TOOL> {
   const converted = tools.map((tool) =>
     // A forced tool cannot be deferred: the API requires the tool_choice target
-    // to be loaded, so treat it as non-deferred.
+    // to be loaded, so treat it as eager.
     toolSpecToAnthropicAITool(
-      tool.name === forceTool ? { ...tool, deferLoading: false } : tool
+      tool.name === forceTool ? { ...tool, eager: true } : tool,
+      toolSearchEnabled
     )
   );
 

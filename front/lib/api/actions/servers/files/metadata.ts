@@ -86,6 +86,7 @@ const LIST_TOOL = {
     ),
   },
   stake: "never_ask" as const,
+  eager: true,
   displayLabels: {
     running: "Listing available files",
     done: "Listed available files",
@@ -210,6 +211,7 @@ const FILES_TOOLS_COMMON_METADATA = {
         ),
     },
     stake: "never_ask" as const,
+    eager: true,
     displayLabels: {
       running: "Reading file",
       done: "Read file",

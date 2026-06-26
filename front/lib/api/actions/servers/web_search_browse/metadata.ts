@@ -20,6 +20,7 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
     schema: WebsearchInputSchema.shape,
     stake: "never_ask",
     enableAlerting: true,
+    eager: true,
     displayLabels: {
       running: "Searching the web",
       done: "Web search",
@@ -30,6 +31,7 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
     schema: WebbrowseInputSchema.shape,
     stake: "never_ask",
     enableAlerting: true,
+    eager: true,
     displayLabels: {
       running: "Browsing web page",
       done: "Browse web page",

@@ -239,6 +239,7 @@ export async function getOutputFromLLMStream(
     modelConversationRes,
     conversation,
     hasConditionalJITTools,
+    toolSearchEnabled,
     cacheDiagnosticsEnabled,
     specifications,
     flushParserTokens,
@@ -289,6 +290,7 @@ export async function getOutputFromLLMStream(
     {
       conversation: modelConversationRes.value.modelConversation,
       hasConditionalJITTools,
+      toolSearchEnabled,
       prompt,
       specifications,
       previousMessageId,

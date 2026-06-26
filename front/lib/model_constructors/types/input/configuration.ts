@@ -31,10 +31,10 @@ export const toolSpecificationSchema = z.object({
   name: z.string(),
   description: z.string(),
   inputSchema: z.record(z.unknown()),
-  // When true, providers that support tool search (Anthropic) keep this tool's
-  // schema out of the cached prefix and load it on demand. Ignored by providers
-  // without tool-search support.
-  deferLoading: z.boolean().optional(),
+  // Whether this tool is loaded upfront in the cached prefix. Intrinsic,
+  // provider-agnostic property. Anthropic defers non-eager tools when tool
+  // search is enabled. Other providers ignore it.
+  eager: z.boolean().optional(),
 });
 export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
 
@@ -43,6 +43,9 @@ export const inputConfigSchema = z.object({
   reasoning: reasoningSchema.optional(),
   tools: z.array(toolSpecificationSchema).optional(),
   forceTool: z.string().optional(),
+  // When true, the Anthropic client defers non-eager tools behind tool search.
+  // Other provider clients ignore it.
+  toolSearchEnabled: z.boolean().optional(),
   outputFormat: outputFormatSchema.optional(),
   cacheKey: z.string().optional(),
 });

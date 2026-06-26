@@ -40,6 +40,9 @@ export type GetOutputRequestParams = {
   }>;
   conversation: ConversationType;
   hasConditionalJITTools: boolean;
+  // When true, the Anthropic client defers non-eager tools behind tool search.
+  // Provider-agnostic signal: clients without tool-search support ignore it.
+  toolSearchEnabled: boolean;
   // When true, opt this step's Anthropic call into prompt-cache diagnostics and
   // thread the previous step's response id via Redis (see cache_diagnostics.ts).
   cacheDiagnosticsEnabled: boolean;
