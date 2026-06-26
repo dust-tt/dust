@@ -1194,9 +1194,7 @@ export function createSlackPersonalTools(
             : `:${r.name}: ×${count}`;
         });
 
-        return new Ok([
-          { type: "text" as const, text: lines.join("\n") },
-        ]);
+        return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
       } catch (error) {
         const authError = handleSlackAuthError(error);
         if (authError) {
