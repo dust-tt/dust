@@ -89,7 +89,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
     assert(
       file.useCaseMetadata?.spaceId === space.sId,
-      "The file must belong to the same space as the sandbox function."
+      "The file must belong to the same pod as the sandbox function."
     );
 
     const sandboxFunction = await this.model.create(
