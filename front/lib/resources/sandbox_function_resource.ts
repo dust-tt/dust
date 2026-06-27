@@ -195,6 +195,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
+      if (!this.pod.canReadOrAdministrate(auth)) {
+        return new Err(new Error("Sandbox function Pod is not accessible."));
+      }
+
       const file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
       if (!file) {
         return new Err(new Error("Sandbox function file not found."));

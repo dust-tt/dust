@@ -287,4 +287,46 @@ describe("SandboxFunctionResource", () => {
       FileResource.fetchById(authenticator, file.sId)
     ).resolves.toBeNull();
   });
+
+  it("refuses to delete when the user cannot access the Pod", async () => {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+    const file = await FileFactory.create(adminAuth, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "comments.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+    });
+    const sandboxFunction = await SandboxFunctionResource.makeNew(adminAuth, {
+      pod,
+      file,
+      inputSchema,
+      outputSchema,
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    expect(userAuth).not.toBeNull();
+    if (!userAuth) {
+      return;
+    }
+
+    const deleteResult = await sandboxFunction.delete(userAuth);
+
+    expect(deleteResult.isErr()).toBe(true);
+    expect(deleteResult.isErr() ? deleteResult.error.message : null).toBe(
+      "Sandbox function Pod is not accessible."
+    );
+    await expect(
+      SandboxFunctionResource.fetchById(adminAuth, sandboxFunction.sId)
+    ).resolves.toMatchObject({ id: sandboxFunction.id });
+  });
 });
