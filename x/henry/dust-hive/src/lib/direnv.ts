@@ -11,6 +11,24 @@ function getDirenvBlock(name: string, envShPath: string): string {
   ].join("\n");
 }
 
+export function hasDirenvBlock(content: string, name: string, envShPath: string): boolean {
+  return (
+    content.includes(`# >>> dust-hive ${name} >>>`) &&
+    content.includes(`source "${envShPath}"`) &&
+    content.includes(`# <<< dust-hive ${name} <<<`)
+  );
+}
+
+export async function hasDirenvIntegration(name: string, worktreePath: string): Promise<boolean> {
+  const envrcPath = join(worktreePath, ".envrc");
+  const file = Bun.file(envrcPath);
+  if (!(await file.exists())) {
+    return false;
+  }
+
+  return hasDirenvBlock(await file.text(), name, getEnvFilePath(name));
+}
+
 export function removeDirenvBlock(content: string, name: string): string {
   const startMarker = `# >>> dust-hive ${name} >>>`;
   const endMarker = `# <<< dust-hive ${name} <<<`;

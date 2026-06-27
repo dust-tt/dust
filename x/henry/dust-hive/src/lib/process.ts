@@ -8,6 +8,12 @@ interface CwdIdentity {
   ino: number;
 }
 
+interface PidCwdValidation {
+  pid: number;
+  matchesCwd: boolean;
+  verified: boolean;
+}
+
 export function parseLsofCwdIdentity(output: string): CwdIdentity | null {
   let dev: number | null = null;
   let ino: number | null = null;
@@ -110,11 +116,11 @@ export async function readPid(envName: string, service: ServiceName): Promise<nu
   return pid;
 }
 
-export async function readPidForCwd(
+async function validatePidCwd(
   envName: string,
   service: ServiceName,
   cwd: string
-): Promise<number | null> {
+): Promise<PidCwdValidation | null> {
   const pid = await readPid(envName, service);
   if (pid === null) {
     return null;
@@ -126,22 +132,48 @@ export async function readPidForCwd(
   ]);
 
   if (expectedCwd === null) {
-    await killProcess(pid).catch(() => undefined);
-    await cleanupPidFile(envName, service);
-    return null;
+    return { pid, matchesCwd: false, verified: true };
   }
 
+  // If lsof cannot report the cwd, keep the pid valid rather than killing a process
+  // that we cannot confidently attribute to an old worktree.
   if (processCwd === null) {
-    return pid;
+    return { pid, matchesCwd: true, verified: false };
   }
 
   if (processCwd.dev === expectedCwd.dev && processCwd.ino === expectedCwd.ino) {
-    return pid;
+    return { pid, matchesCwd: true, verified: true };
   }
 
-  await killProcess(pid).catch(() => undefined);
+  return { pid, matchesCwd: false, verified: true };
+}
+
+export async function readPidForCwd(
+  envName: string,
+  service: ServiceName,
+  cwd: string
+): Promise<number | null> {
+  const validation = await validatePidCwd(envName, service, cwd);
+  if (validation === null || !validation.matchesCwd) {
+    return null;
+  }
+
+  return validation.pid;
+}
+
+export async function cleanupPidForWrongCwd(
+  envName: string,
+  service: ServiceName,
+  cwd: string
+): Promise<boolean> {
+  const validation = await validatePidCwd(envName, service, cwd);
+  if (validation === null || validation.matchesCwd || !validation.verified) {
+    return false;
+  }
+
+  await killProcess(validation.pid);
   await cleanupPidFile(envName, service);
-  return null;
+  return true;
 }
 
 // Write PID to file

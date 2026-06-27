@@ -7,7 +7,7 @@ import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
 import { logger } from "../lib/logger";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
-import { readPidForCwd, stopService } from "../lib/process";
+import { cleanupPidForWrongCwd, readPidForCwd, stopService } from "../lib/process";
 import {
   getServiceCwd,
   isServiceRunningForEnvironment,
@@ -131,6 +131,11 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
     "connectors",
     "oauth",
   ];
+  await Promise.all(
+    portServices.map((service) =>
+      cleanupPidForWrongCwd(env.name, service, getServiceCwd(env, service))
+    )
+  );
   const servicePids = await Promise.all(
     portServices.map((service) => readPidForCwd(env.name, service, getServiceCwd(env, service)))
   );

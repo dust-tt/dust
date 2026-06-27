@@ -5,7 +5,7 @@ import { type Environment, getEnvironmentWorktreeDir } from "./environment";
 import { logger } from "./logger";
 import { getEnvFilePath, getLogPath } from "./paths";
 import type { PortAllocation } from "./ports";
-import { isServiceRunningForCwd, spawnShellDaemon } from "./process";
+import { cleanupPidForWrongCwd, isServiceRunningForCwd, spawnShellDaemon } from "./process";
 import { ALL_SERVICES, type ServiceName } from "./services";
 import { buildShell } from "./shell";
 
@@ -219,7 +219,12 @@ export async function isServiceRunningForEnvironment(
 
 // Start a single service (assumes dependencies are already running)
 export async function startService(env: Environment, service: ServiceName): Promise<void> {
-  if (await isServiceRunningForEnvironment(env, service)) {
+  const cwd = getServiceCwd(env, service);
+  if (await cleanupPidForWrongCwd(env.name, service, cwd)) {
+    logger.warn(`${service} had a stale pid from a different worktree; restarting`);
+  }
+
+  if (await isServiceRunningForCwd(env.name, service, cwd)) {
     logger.info(`${service} already running`);
     return;
   }
@@ -227,7 +232,6 @@ export async function startService(env: Environment, service: ServiceName): Prom
   logger.step(`Starting ${service}...`);
 
   const command = buildServiceCommand(env, service);
-  const cwd = getServiceCwd(env, service);
 
   await spawnShellDaemon(env.name, service, command, { cwd });
   logger.success(`${service} started`);

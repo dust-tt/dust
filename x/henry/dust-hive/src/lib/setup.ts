@@ -9,13 +9,14 @@
 // NOTE: cargo target is symlinked to share Rust compilation cache.
 
 import { mkdirSync, readdirSync, readlinkSync, symlinkSync } from "node:fs";
-import { lstat, mkdir, rm, unlink } from "node:fs/promises";
+import { lstat, mkdir, readlink, rm, unlink } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
-import { setupDirenv } from "./direnv";
+import { hasDirenvIntegration, setupDirenv } from "./direnv";
 import { type EnvironmentMetadata, getEnvironmentWorktreeDir } from "./environment";
-import { directoryExists, fileExists } from "./fs";
+import { isErrnoException } from "./errors";
+import { directoryExists } from "./fs";
 import { logger } from "./logger";
 
 // User config directories to copy from main repo to worktree
@@ -223,8 +224,11 @@ async function removePath(path: string): Promise<boolean> {
       await rm(path, { recursive: true });
     }
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return false;
+    }
+    throw error;
   }
 }
 
@@ -234,6 +238,23 @@ async function pathExists(path: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function isSymlinkToPath(path: string, expectedTarget: string): Promise<boolean> {
+  try {
+    const info = await lstat(path);
+    if (!info.isSymbolicLink()) {
+      return false;
+    }
+
+    const target = await readlink(path);
+    return resolve(dirname(path), target) === expectedTarget;
+  } catch (error) {
+    if (isErrnoException(error) && error.code === "ENOENT") {
+      return false;
+    }
+    throw error;
   }
 }
 
@@ -355,7 +376,7 @@ export async function getMissingEnvironmentSetup(metadata: EnvironmentMetadata):
   const worktreePath = getEnvironmentWorktreeDir(metadata);
   const missing: string[] = [];
 
-  if (!(await fileExists(`${worktreePath}/.envrc`))) {
+  if (!(await hasDirenvIntegration(metadata.name, worktreePath))) {
     missing.push(".envrc");
   }
 
@@ -388,7 +409,7 @@ export async function getMissingEnvironmentSetup(metadata: EnvironmentMetadata):
   for (const { name, src, dest } of COMPATIBILITY_NODE_MODULE_LINKS) {
     if (
       (await directoryExists(join(metadata.repoRoot, src))) &&
-      !(await directoryExists(join(worktreePath, dest)))
+      !(await isSymlinkToPath(join(worktreePath, dest), join(metadata.repoRoot, src)))
     ) {
       missing.push(name);
     }
