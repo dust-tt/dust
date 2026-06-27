@@ -95,7 +95,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     const sandboxFunction = await this.model.create(
       {
         workspaceId: auth.getNonNullableWorkspace().id,
-        podId: pod.id,
+        spaceId: pod.id,
         fileId: file.id,
         inputSchema,
         outputSchema,
@@ -123,7 +123,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       auth,
       Array.from(
         new Set(
-          sandboxFunctions.map((sandboxFunction) => sandboxFunction.get().podId)
+          sandboxFunctions.map(
+            (sandboxFunction) => sandboxFunction.get().spaceId
+          )
         )
       )
     );
@@ -134,7 +136,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
 
     return sandboxFunctions.flatMap((sandboxFunction) => {
-      const pod = accessiblePodsById.get(sandboxFunction.get().podId);
+      const pod = accessiblePodsById.get(sandboxFunction.get().spaceId);
       if (!pod) {
         return [];
       }
@@ -171,7 +173,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return [];
     }
 
-    return this.baseFetch(auth, { where: { podId: pod.id } });
+    return this.baseFetch(auth, { where: { spaceId: pod.id } });
   }
 
   static async deleteAllForPod(

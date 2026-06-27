@@ -53,7 +53,7 @@ describe("SandboxFunctionResource", () => {
     );
 
     expect(sandboxFunction.sId).toMatch(/^sfn_/);
-    expect(sandboxFunction.podId).toBe(pod.id);
+    expect(sandboxFunction.spaceId).toBe(pod.id);
     expect(sandboxFunction.fileId).toBe(file.id);
     expect(sandboxFunction.inputSchema).toEqual(inputSchema);
     expect(sandboxFunction.outputSchema).toEqual(outputSchema);
