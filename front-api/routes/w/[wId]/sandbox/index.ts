@@ -5,13 +5,12 @@ import { withComputerFeature } from "@front-api/middlewares/with_computer_featur
 import egressPolicy from "./egress-policy";
 import envVars from "./env-vars";
 
-// Mounted at /api/w/:wId/sandbox. This subtree is admin-only and gated behind the broader
-// Computer feature. User-facing Sandbox Function invocation endpoints live under
-// /api/w/:wId/sandbox-functions.
+// Mounted at /api/w/:wId/sandbox. The shared admin + feature-flag gates are
+// applied here so every leaf below inherits them.
 const app = workspaceApp();
 
-app.use("*", withComputerFeature());
 app.use("*", ensureIsAdmin());
+app.use("*", withComputerFeature());
 
 app.route("/egress-policy", egressPolicy);
 app.route("/env-vars", envVars);
