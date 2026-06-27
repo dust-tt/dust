@@ -4,13 +4,17 @@ import { withComputerFeature } from "@front-api/middlewares/with_computer_featur
 
 import egressPolicy from "./egress-policy";
 import envVars from "./env-vars";
+import functions from "./functions";
 
-// Mounted at /api/w/:wId/sandbox. The shared admin + feature-flag gates are
-// applied here so every leaf below inherits them.
+// Mounted at /api/w/:wId/sandbox. Function invocation endpoints are user-facing
+// and authorize through SandboxFunctionResource, while sandbox settings remain admin-only.
 const app = workspaceApp();
 
-app.use("*", ensureIsAdmin());
 app.use("*", withComputerFeature());
+
+app.route("/functions", functions);
+
+app.use("*", ensureIsAdmin());
 
 app.route("/egress-policy", egressPolicy);
 app.route("/env-vars", envVars);
