@@ -27,7 +27,7 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
-  declare pod: NonAttribute<SpaceModel>;
+  declare space: NonAttribute<SpaceModel>;
   declare file: NonAttribute<FileModel>;
 }
 
@@ -91,7 +91,7 @@ SandboxFunctionModel.init(
 SandboxFunctionModel.belongsTo(SpaceModel, {
   foreignKey: { name: "spaceId", allowNull: false },
   onDelete: "RESTRICT",
-  as: "pod",
+  as: "space",
 });
 
 SpaceModel.hasMany(SandboxFunctionModel, {

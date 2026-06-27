@@ -28,24 +28,24 @@ const outputSchema: JSONSchema = {
 };
 
 describe("SandboxFunctionResource", () => {
-  it("creates and fetches a sandbox function for a Pod", async () => {
+  it("creates and fetches a sandbox function for a space", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
+    const space = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
       contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
       useCase: "project_context",
-      useCaseMetadata: { spaceId: pod.sId },
+      useCaseMetadata: { spaceId: space.sId },
     });
 
     const sandboxFunction = await SandboxFunctionResource.makeNew(
       authenticator,
       {
-        pod,
+        space,
         file,
         inputSchema,
         outputSchema,
@@ -53,7 +53,7 @@ describe("SandboxFunctionResource", () => {
     );
 
     expect(sandboxFunction.sId).toMatch(/^sfn_/);
-    expect(sandboxFunction.spaceId).toBe(pod.id);
+    expect(sandboxFunction.spaceId).toBe(space.id);
     expect(sandboxFunction.fileId).toBe(file.id);
     expect(sandboxFunction.inputSchema).toEqual(inputSchema);
     expect(sandboxFunction.outputSchema).toEqual(outputSchema);
@@ -63,26 +63,29 @@ describe("SandboxFunctionResource", () => {
       sandboxFunction.sId
     );
     expect(fetched?.id).toBe(sandboxFunction.id);
-    expect(fetched?.pod.id).toBe(pod.id);
+    expect(fetched?.space.id).toBe(space.id);
 
-    const listed = await SandboxFunctionResource.listByPod(authenticator, pod);
+    const listed = await SandboxFunctionResource.listBySpace(
+      authenticator,
+      space
+    );
     expect(listed.map(({ id }) => id)).toEqual([sandboxFunction.id]);
-    expect(listed.map(({ pod }) => pod.id)).toEqual([pod.id]);
+    expect(listed.map(({ space }) => space.id)).toEqual([space.id]);
   });
 
-  it("only fetches sandbox functions from accessible Pods", async () => {
+  it("only fetches sandbox functions from accessible spaces", async () => {
     const { authenticator: adminAuth, workspace } = await createResourceTest({
       role: "admin",
     });
-    const accessiblePod = await SpaceFactory.project(workspace);
-    const restrictedPod = await SpaceFactory.project(workspace);
+    const accessibleSpace = await SpaceFactory.project(workspace);
+    const restrictedSpace = await SpaceFactory.project(workspace);
     const accessibleFile = await FileFactory.create(adminAuth, null, {
       contentType: sandboxFunctionContentType,
       fileName: "accessible.ts",
       fileSize: 100,
       status: "created",
       useCase: "project_context",
-      useCaseMetadata: { spaceId: accessiblePod.sId },
+      useCaseMetadata: { spaceId: accessibleSpace.sId },
     });
     const restrictedFile = await FileFactory.create(adminAuth, null, {
       contentType: sandboxFunctionContentType,
@@ -90,12 +93,12 @@ describe("SandboxFunctionResource", () => {
       fileSize: 100,
       status: "created",
       useCase: "project_context",
-      useCaseMetadata: { spaceId: restrictedPod.sId },
+      useCaseMetadata: { spaceId: restrictedSpace.sId },
     });
     const accessibleSandboxFunction = await SandboxFunctionResource.makeNew(
       adminAuth,
       {
-        pod: accessiblePod,
+        space: accessibleSpace,
         file: accessibleFile,
         inputSchema,
         outputSchema,
@@ -104,7 +107,7 @@ describe("SandboxFunctionResource", () => {
     const restrictedSandboxFunction = await SandboxFunctionResource.makeNew(
       adminAuth,
       {
-        pod: restrictedPod,
+        space: restrictedSpace,
         file: restrictedFile,
         inputSchema,
         outputSchema,
@@ -113,12 +116,10 @@ describe("SandboxFunctionResource", () => {
 
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    const addMemberResult = await accessiblePod.groups[0].dangerouslyAddMember(
-      adminAuth,
-      {
+    const addMemberResult =
+      await accessibleSpace.groups[0].dangerouslyAddMember(adminAuth, {
         user: user.toJSON(),
-      }
-    );
+      });
     expect(addMemberResult.isOk()).toBe(true);
 
     const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -134,23 +135,25 @@ describe("SandboxFunctionResource", () => {
       SandboxFunctionResource.fetchById(userAuth, accessibleSandboxFunction.sId)
     ).resolves.toMatchObject({
       id: accessibleSandboxFunction.id,
-      pod: expect.objectContaining({ id: accessiblePod.id }),
+      space: expect.objectContaining({ id: accessibleSpace.id }),
     });
     await expect(
       SandboxFunctionResource.fetchById(userAuth, restrictedSandboxFunction.sId)
     ).resolves.toBeNull();
 
-    const accessibleList = await SandboxFunctionResource.listByPod(
+    const accessibleList = await SandboxFunctionResource.listBySpace(
       userAuth,
-      accessiblePod
+      accessibleSpace
     );
     expect(accessibleList.map(({ id }) => id)).toEqual([
       accessibleSandboxFunction.id,
     ]);
-    expect(accessibleList.map(({ pod }) => pod.id)).toEqual([accessiblePod.id]);
+    expect(accessibleList.map(({ space }) => space.id)).toEqual([
+      accessibleSpace.id,
+    ]);
 
     await expect(
-      SandboxFunctionResource.listByPod(userAuth, restrictedPod)
+      SandboxFunctionResource.listBySpace(userAuth, restrictedSpace)
     ).resolves.toEqual([]);
 
     await expect(
@@ -160,11 +163,11 @@ describe("SandboxFunctionResource", () => {
       )
     ).resolves.toMatchObject({
       id: restrictedSandboxFunction.id,
-      pod: expect.objectContaining({ id: restrictedPod.id }),
+      space: expect.objectContaining({ id: restrictedSpace.id }),
     });
   });
 
-  it("rejects a non-Pod space", async () => {
+  it("rejects a non-project space", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -180,19 +183,19 @@ describe("SandboxFunctionResource", () => {
 
     await expect(
       SandboxFunctionResource.makeNew(authenticator, {
-        pod: regularSpace,
+        space: regularSpace,
         file,
         inputSchema,
         outputSchema,
       })
-    ).rejects.toThrow("Sandbox functions can only belong to Pod spaces.");
+    ).rejects.toThrow("Sandbox functions can only belong to project spaces.");
   });
 
   it("rejects a file outside project context", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
+    const space = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
       contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
@@ -203,7 +206,7 @@ describe("SandboxFunctionResource", () => {
 
     await expect(
       SandboxFunctionResource.makeNew(authenticator, {
-        pod,
+        space,
         file,
         inputSchema,
         outputSchema,
@@ -215,19 +218,19 @@ describe("SandboxFunctionResource", () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
+    const space = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
       contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
       useCase: "project_context",
-      useCaseMetadata: { spaceId: pod.sId },
+      useCaseMetadata: { spaceId: space.sId },
     });
 
     await expect(
       SandboxFunctionResource.makeNew(authenticator, {
-        pod,
+        space,
         file,
         inputSchema: { type: "number", multipleOf: 0 },
         outputSchema,
@@ -246,32 +249,32 @@ describe("SandboxFunctionResource", () => {
     );
   });
 
-  it("deletes all sandbox functions for a Pod", async () => {
+  it("deletes all sandbox functions for a space", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
+    const space = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(authenticator, null, {
       contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
       useCase: "project_context",
-      useCaseMetadata: { spaceId: pod.sId },
+      useCaseMetadata: { spaceId: space.sId },
     });
     const sandboxFunction = await SandboxFunctionResource.makeNew(
       authenticator,
       {
-        pod,
+        space,
         file,
         inputSchema,
         outputSchema,
       }
     );
 
-    const deleteResult = await SandboxFunctionResource.deleteAllForPod(
+    const deleteResult = await SandboxFunctionResource.deleteAllForSpace(
       authenticator,
-      pod
+      space
     );
 
     expect(deleteResult.isOk()).toBe(true);
@@ -285,21 +288,21 @@ describe("SandboxFunctionResource", () => {
     ).resolves.toBeNull();
   });
 
-  it("refuses to delete when the user cannot access the Pod", async () => {
+  it("refuses to delete when the user cannot access the space", async () => {
     const { authenticator: adminAuth, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
+    const space = await SpaceFactory.project(workspace);
     const file = await FileFactory.create(adminAuth, null, {
       contentType: sandboxFunctionContentType,
       fileName: "comments.ts",
       fileSize: 100,
       status: "created",
       useCase: "project_context",
-      useCaseMetadata: { spaceId: pod.sId },
+      useCaseMetadata: { spaceId: space.sId },
     });
     const sandboxFunction = await SandboxFunctionResource.makeNew(adminAuth, {
-      pod,
+      space,
       file,
       inputSchema,
       outputSchema,
@@ -320,7 +323,7 @@ describe("SandboxFunctionResource", () => {
 
     expect(deleteResult.isErr()).toBe(true);
     expect(deleteResult.isErr() ? deleteResult.error.message : null).toBe(
-      "Sandbox function Pod is not accessible."
+      "Sandbox function space is not accessible."
     );
     await expect(
       SandboxFunctionResource.fetchById(adminAuth, sandboxFunction.sId)
