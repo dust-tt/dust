@@ -72,7 +72,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   ): Promise<SandboxFunctionResource> {
     assert(
       space.isProject(),
-      "Sandbox functions can only belong to project spaces."
+      "Sandbox functions can only belong to pods."
     );
     assert(
       space.workspaceId === auth.getNonNullableWorkspace().id,
@@ -187,7 +187,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   ): Promise<Result<number, Error>> {
     assert(
       space.isProject(),
-      "Sandbox functions can only belong to project spaces."
+      "Sandbox functions can only belong to pods."
     );
 
     const sandboxFunctions = await this.listBySpace(auth, space);
