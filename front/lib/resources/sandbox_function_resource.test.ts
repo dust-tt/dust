@@ -57,6 +57,7 @@ describe("SandboxFunctionResource", () => {
     expect(sandboxFunction.fileId).toBe(file.id);
     expect(sandboxFunction.inputSchema).toEqual(inputSchema);
     expect(sandboxFunction.outputSchema).toEqual(outputSchema);
+    expect(sandboxFunction.file.id).toBe(file.id);
 
     const fetched = await SandboxFunctionResource.fetchById(
       authenticator,
@@ -64,6 +65,7 @@ describe("SandboxFunctionResource", () => {
     );
     expect(fetched?.id).toBe(sandboxFunction.id);
     expect(fetched?.space.id).toBe(space.id);
+    expect(fetched?.file.id).toBe(file.id);
 
     const listed = await SandboxFunctionResource.listBySpace(
       authenticator,
@@ -71,6 +73,7 @@ describe("SandboxFunctionResource", () => {
     );
     expect(listed.map(({ id }) => id)).toEqual([sandboxFunction.id]);
     expect(listed.map(({ space }) => space.id)).toEqual([space.id]);
+    expect(listed.map(({ file }) => file.id)).toEqual([file.id]);
   });
 
   it("only fetches sandbox functions from accessible spaces", async () => {
@@ -136,6 +139,7 @@ describe("SandboxFunctionResource", () => {
     ).resolves.toMatchObject({
       id: accessibleSandboxFunction.id,
       space: expect.objectContaining({ id: accessibleSpace.id }),
+      file: expect.objectContaining({ id: accessibleFile.id }),
     });
     await expect(
       SandboxFunctionResource.fetchById(userAuth, restrictedSandboxFunction.sId)
@@ -151,6 +155,9 @@ describe("SandboxFunctionResource", () => {
     expect(accessibleList.map(({ space }) => space.id)).toEqual([
       accessibleSpace.id,
     ]);
+    expect(accessibleList.map(({ file }) => file.id)).toEqual([
+      accessibleFile.id,
+    ]);
 
     await expect(
       SandboxFunctionResource.listBySpace(userAuth, restrictedSpace)
@@ -164,6 +171,7 @@ describe("SandboxFunctionResource", () => {
     ).resolves.toMatchObject({
       id: restrictedSandboxFunction.id,
       space: expect.objectContaining({ id: restrictedSpace.id }),
+      file: expect.objectContaining({ id: restrictedFile.id }),
     });
   });
 
@@ -188,7 +196,7 @@ describe("SandboxFunctionResource", () => {
         inputSchema,
         outputSchema,
       })
-    ).rejects.toThrow("Sandbox functions can only belong to project spaces.");
+    ).rejects.toThrow("Sandbox functions can only belong to pods.");
   });
 
   it("rejects a file outside project context", async () => {

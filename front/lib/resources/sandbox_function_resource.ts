@@ -28,14 +28,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static model: ModelStaticWorkspaceAware<SandboxFunctionModel> =
     SandboxFunctionModel;
   space: SpaceResource;
+  file: FileResource;
 
   constructor(
     model: ModelStaticWorkspaceAware<SandboxFunctionModel>,
     blob: Attributes<SandboxFunctionModel>,
-    space: SpaceResource
+    space: SpaceResource,
+    file: FileResource
   ) {
     super(model, blob);
     this.space = space;
+    this.file = file;
   }
 
   get sId(): string {
@@ -103,7 +106,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       { transaction }
     );
 
-    return new this(this.model, sandboxFunction.get(), space);
+    return new this(this.model, sandboxFunction.get(), space, file);
   }
 
   private static async baseFetch(
@@ -137,13 +140,26 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         .map((space) => [space.id, space])
     );
 
+    const files = await FileResource.fetchByModelIdsWithAuth(
+      auth,
+      Array.from(
+        new Set(
+          sandboxFunctions.map(
+            (sandboxFunction) => sandboxFunction.get().fileId
+          )
+        )
+      )
+    );
+    const filesById = new Map(files.map((file) => [file.id, file]));
+
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const space = accessibleSpacesById.get(sandboxFunction.get().spaceId);
-      if (!space) {
+      const file = filesById.get(sandboxFunction.get().fileId);
+      if (!space || !file) {
         return [];
       }
 
-      return [new this(this.model, sandboxFunction.get(), space)];
+      return [new this(this.model, sandboxFunction.get(), space, file)];
     });
   }
 
@@ -203,11 +219,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         return new Err(new Error("Sandbox function space is not accessible."));
       }
 
-      const file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
-      if (!file) {
-        return new Err(new Error("Sandbox function file not found."));
-      }
-
       await this.model.destroy({
         where: {
           id: this.id,
@@ -215,7 +226,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         },
       });
 
-      return file.delete(auth);
+      return this.file.delete(auth);
     } catch (error) {
       return new Err(normalizeError(error));
     }
