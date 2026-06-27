@@ -22,7 +22,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import {
-  ConversationSandboxModel,
   SandboxModel,
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
@@ -59,8 +58,6 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
-  private static conversationSandboxModel: ModelStaticWorkspaceAware<ConversationSandboxModel> =
-    ConversationSandboxModel;
   private static sandboxOwnerModel: ModelStaticWorkspaceAware<SandboxOwnerModel> =
     SandboxOwnerModel;
 
@@ -136,15 +133,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           workspaceId,
           lastActivityAt: now,
           statusChangedAt: now,
-        },
-        { transaction: t }
-      );
-
-      await ConversationSandboxModel.create(
-        {
-          workspaceId,
-          conversationId: blob.conversationId,
-          sandboxId: sandbox.id,
         },
         { transaction: t }
       );
@@ -229,19 +217,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       },
     });
 
-    const link =
-      owner ??
-      (await this.conversationSandboxModel.findOne({
-        where: {
-          workspaceId: conversation.workspaceId,
-          conversationId: conversation.id,
-        },
-      }));
-
-    if (link) {
+    if (owner) {
       const sandbox = await this.model.findOne({
         where: {
-          id: link.sandboxId,
+          id: owner.sandboxId,
           workspaceId: conversation.workspaceId,
         },
       });
@@ -266,19 +245,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       },
     });
 
-    const link =
-      owner ??
-      (await this.conversationSandboxModel.findOne({
-        where: {
-          conversationId: conversation.id,
-          workspaceId,
-        },
-      }));
-
-    if (link) {
+    if (owner) {
       const sandboxes = await this.baseFetch(auth, {
         where: {
-          id: link.sandboxId,
+          id: owner.sandboxId,
         },
       });
 
@@ -331,22 +301,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         attributes: ["sandboxId", "conversationId"],
       });
 
-      const conversationRows = await this.conversationSandboxModel.findAll({
-        where: {
-          workspaceId: workspaceModelId,
-          sandboxId: {
-            [Op.in]: sandboxModelIds,
-          },
-        },
-        attributes: ["sandboxId", "conversationId"],
-      });
-
-      for (const row of conversationRows) {
-        conversationModelIdsBySandboxModelId.set(
-          row.sandboxId,
-          row.conversationId
-        );
-      }
       for (const row of ownerRows) {
         if (row.conversationId !== null) {
           conversationModelIdsBySandboxModelId.set(
@@ -409,14 +363,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         transaction: t,
       });
 
-      await ConversationSandboxModel.destroy({
-        where: {
-          sandboxId: this.id,
-          workspaceId,
-        },
-        transaction: t,
-      });
-
       return SandboxModel.destroy({
         where: {
           id: this.id,
@@ -467,14 +413,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         await SandboxOwnerModel.destroy({
           where: {
             sandboxId: sandbox.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          transaction,
-        });
-
-        await ConversationSandboxModel.destroy({
-          where: {
-            conversationId: conversation.id,
             workspaceId: auth.getNonNullableWorkspace().id,
           },
           transaction,
@@ -1198,7 +1136,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return {
       id: this.sId,
       workspaceId: this.workspaceId,
-      conversationId: this.conversationId,
       providerId: this.providerId,
       status: this.status,
       lastActivityAt: this.lastActivityAt.toISOString(),
