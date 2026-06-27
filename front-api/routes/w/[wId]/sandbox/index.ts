@@ -7,13 +7,13 @@ import envVars from "./env-vars";
 import functions from "./functions";
 
 // Mounted at /api/w/:wId/sandbox. Function invocation endpoints are user-facing
-// and authorize through SandboxFunctionResource, while sandbox settings remain admin-only.
+// and authorize through SandboxFunctionResource + their own feature flag, while sandbox settings
+// remain admin-only and gated behind the broader Computer feature.
 const app = workspaceApp();
-
-app.use("*", withComputerFeature());
 
 app.route("/functions", functions);
 
+app.use("*", withComputerFeature());
 app.use("*", ensureIsAdmin());
 
 app.route("/egress-policy", egressPolicy);

@@ -24,16 +24,16 @@ const outputSchema: JSONSchema = {
 
 async function setupSandboxFunction({
   addCallerToSpace = true,
-  withFeatureFlags = true,
+  withSandboxFunctionsFeatureFlag = true,
 }: {
   addCallerToSpace?: boolean;
-  withFeatureFlags?: boolean;
+  withSandboxFunctionsFeatureFlag?: boolean;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
   });
-  if (withFeatureFlags) {
-    await FeatureFlagFactory.basic(adminAuth, "sandbox_tools");
+  if (withSandboxFunctionsFeatureFlag) {
+    await FeatureFlagFactory.basic(adminAuth, "enable_sandbox_functions");
   }
 
   const space = await SpaceFactory.project(workspace);
@@ -132,9 +132,20 @@ describe("POST /api/w/:wId/sandbox/functions/:functionId/invocations", () => {
     });
   });
 
-  it("requires sandbox tools to be enabled", async () => {
+  it("does not require the broader sandbox tools feature flag", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionId: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+  });
+
+  it("requires sandbox functions to be enabled", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction({
-      withFeatureFlags: false,
+      withSandboxFunctionsFeatureFlag: false,
     });
 
     const response = await postInvocation({
@@ -144,7 +155,10 @@ describe("POST /api/w/:wId/sandbox/functions/:functionId/invocations", () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
+      error: {
+        type: "feature_flag_not_found",
+        message: "Sandbox Functions are not enabled for this workspace.",
+      },
     });
   });
 });
