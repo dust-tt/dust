@@ -13,7 +13,7 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, type Result } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -155,7 +155,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static async deleteAllForPod(
     auth: Authenticator,
     pod: SpaceResource
-  ): Promise<number> {
+  ): Promise<Result<number, Error>> {
     assert(pod.isProject(), "Sandbox functions can only belong to Pod spaces.");
 
     const sandboxFunctions = await this.listByPod(auth, pod);
@@ -164,11 +164,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       // which deletes a whole bunch of records).
       const result = await sandboxFunction.delete(auth);
       if (result.isErr()) {
-        throw result.error;
+        return new Err(result.error);
       }
     }
 
-    return sandboxFunctions.length;
+    return new Ok(sandboxFunctions.length);
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {

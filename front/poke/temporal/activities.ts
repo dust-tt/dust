@@ -163,7 +163,11 @@ export async function scrubSpaceActivity({
   if (space.isProject()) {
     // Delete sandbox functions first because their file foreign keys can otherwise prevent Pod
     // files from being deleted.
-    await SandboxFunctionResource.deleteAllForPod(auth, space);
+    const deleteSandboxFunctionsResult =
+      await SandboxFunctionResource.deleteAllForPod(auth, space);
+    if (deleteSandboxFunctionsResult.isErr()) {
+      throw deleteSandboxFunctionsResult.error;
+    }
   }
 
   // Delete all the data sources of the spaces.

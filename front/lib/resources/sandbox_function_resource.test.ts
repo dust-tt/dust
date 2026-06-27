@@ -170,7 +170,13 @@ describe("SandboxFunctionResource", () => {
       }
     );
 
-    await SandboxFunctionResource.deleteAllForPod(authenticator, pod);
+    const deleteResult = await SandboxFunctionResource.deleteAllForPod(
+      authenticator,
+      pod
+    );
+
+    expect(deleteResult.isOk()).toBe(true);
+    expect(deleteResult.isOk() ? deleteResult.value : undefined).toBe(1);
 
     await expect(
       SandboxFunctionResource.fetchById(authenticator, sandboxFunction.sId)
