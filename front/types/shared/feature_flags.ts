@@ -220,7 +220,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
     stage: "on_demand",
   },
-  enable_sandbox_functions: {
+  sandbox_functions: {
     description: "Enable Sandbox Function invocation endpoints",
     stage: "dust_only",
   },

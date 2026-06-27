@@ -7,7 +7,7 @@ const app = workspaceApp();
 
 app.use(
   "*",
-  withFeatureFlag("enable_sandbox_functions", {
+  withFeatureFlag("sandbox_functions", {
     message: "Sandbox Functions are not enabled for this workspace.",
   })
 );

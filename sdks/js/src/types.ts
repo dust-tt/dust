@@ -756,7 +756,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
-  | "enable_sandbox_functions"
+  | "sandbox_functions"
   | "sandbox_dsbx_tools"
   | "sandbox_tools"
   | "sandbox_workspace_admin"

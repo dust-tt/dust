@@ -33,7 +33,7 @@ async function setupSandboxFunction({
     role: "admin",
   });
   if (withSandboxFunctionsFeatureFlag) {
-    await FeatureFlagFactory.basic(adminAuth, "enable_sandbox_functions");
+    await FeatureFlagFactory.basic(adminAuth, "sandbox_functions");
   }
 
   const space = await SpaceFactory.project(workspace);
