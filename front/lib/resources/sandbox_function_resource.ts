@@ -70,10 +70,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionResource> {
-    assert(
-      space.isProject(),
-      "Sandbox functions can only belong to pods."
-    );
+    assert(space.isProject(), "Sandbox functions can only belong to pods.");
     assert(
       space.workspaceId === auth.getNonNullableWorkspace().id,
       "The space must belong to the authenticated workspace."
@@ -185,10 +182,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     space: SpaceResource
   ): Promise<Result<number, Error>> {
-    assert(
-      space.isProject(),
-      "Sandbox functions can only belong to pods."
-    );
+    assert(space.isProject(), "Sandbox functions can only belong to pods.");
 
     const sandboxFunctions = await this.listBySpace(auth, space);
     for (const sandboxFunction of sandboxFunctions) {
