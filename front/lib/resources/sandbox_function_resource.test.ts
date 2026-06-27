@@ -113,10 +113,12 @@ describe("SandboxFunctionResource", () => {
 
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    const addMemberResult =
-      await accessiblePod.groups[0].dangerouslyAddMember(adminAuth, {
+    const addMemberResult = await accessiblePod.groups[0].dangerouslyAddMember(
+      adminAuth,
+      {
         user: user.toJSON(),
-      });
+      }
+    );
     expect(addMemberResult.isOk()).toBe(true);
 
     const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -129,10 +131,7 @@ describe("SandboxFunctionResource", () => {
     }
 
     await expect(
-      SandboxFunctionResource.fetchById(
-        userAuth,
-        accessibleSandboxFunction.sId
-      )
+      SandboxFunctionResource.fetchById(userAuth, accessibleSandboxFunction.sId)
     ).resolves.toMatchObject({
       id: accessibleSandboxFunction.id,
       pod: expect.objectContaining({ id: accessiblePod.id }),
@@ -148,9 +147,7 @@ describe("SandboxFunctionResource", () => {
     expect(accessibleList.map(({ id }) => id)).toEqual([
       accessibleSandboxFunction.id,
     ]);
-    expect(accessibleList.map(({ pod }) => pod.id)).toEqual([
-      accessiblePod.id,
-    ]);
+    expect(accessibleList.map(({ pod }) => pod.id)).toEqual([accessiblePod.id]);
 
     await expect(
       SandboxFunctionResource.listByPod(userAuth, restrictedPod)
