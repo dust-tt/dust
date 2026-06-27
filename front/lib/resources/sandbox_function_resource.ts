@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -27,12 +27,15 @@ export interface SandboxFunctionResource
 export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionModel> =
     SandboxFunctionModel;
+  pod: SpaceResource;
 
   constructor(
     model: ModelStaticWorkspaceAware<SandboxFunctionModel>,
-    blob: Attributes<SandboxFunctionModel>
+    blob: Attributes<SandboxFunctionModel>,
+    pod: SpaceResource
   ) {
     super(model, blob);
+    this.pod = pod;
   }
 
   get sId(): string {
@@ -100,7 +103,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       { transaction }
     );
 
-    return new this(this.model, sandboxFunction.get());
+    return new this(this.model, sandboxFunction.get(), pod);
   }
 
   private static async baseFetch(
@@ -116,9 +119,28 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       ...rest,
     });
 
-    return sandboxFunctions.map(
-      (sandboxFunction) => new this(this.model, sandboxFunction.get())
+    const pods = await SpaceResource.fetchByModelIds(
+      auth,
+      Array.from(
+        new Set(
+          sandboxFunctions.map((sandboxFunction) => sandboxFunction.get().podId)
+        )
+      )
     );
+    const accessiblePodsById = new Map(
+      pods
+        .filter((pod) => pod.isProject() && pod.canReadOrAdministrate(auth))
+        .map((pod) => [pod.id, pod])
+    );
+
+    return sandboxFunctions.flatMap((sandboxFunction) => {
+      const pod = accessiblePodsById.get(sandboxFunction.get().podId);
+      if (!pod) {
+        return [];
+      }
+
+      return [new this(this.model, sandboxFunction.get(), pod)];
+    });
   }
 
   static async fetchById(

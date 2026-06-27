@@ -1,9 +1,12 @@
+import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
@@ -60,9 +63,108 @@ describe("SandboxFunctionResource", () => {
       sandboxFunction.sId
     );
     expect(fetched?.id).toBe(sandboxFunction.id);
+    expect(fetched?.pod.id).toBe(pod.id);
 
     const listed = await SandboxFunctionResource.listByPod(authenticator, pod);
     expect(listed.map(({ id }) => id)).toEqual([sandboxFunction.id]);
+    expect(listed.map(({ pod }) => pod.id)).toEqual([pod.id]);
+  });
+
+  it("only fetches sandbox functions from accessible Pods", async () => {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const accessiblePod = await SpaceFactory.project(workspace);
+    const restrictedPod = await SpaceFactory.project(workspace);
+    const accessibleFile = await FileFactory.create(adminAuth, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "accessible.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: accessiblePod.sId },
+    });
+    const restrictedFile = await FileFactory.create(adminAuth, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "restricted.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: restrictedPod.sId },
+    });
+    const accessibleSandboxFunction = await SandboxFunctionResource.makeNew(
+      adminAuth,
+      {
+        pod: accessiblePod,
+        file: accessibleFile,
+        inputSchema,
+        outputSchema,
+      }
+    );
+    const restrictedSandboxFunction = await SandboxFunctionResource.makeNew(
+      adminAuth,
+      {
+        pod: restrictedPod,
+        file: restrictedFile,
+        inputSchema,
+        outputSchema,
+      }
+    );
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const addMemberResult =
+      await accessiblePod.groups[0].dangerouslyAddMember(adminAuth, {
+        user: user.toJSON(),
+      });
+    expect(addMemberResult.isOk()).toBe(true);
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    expect(userAuth).not.toBeNull();
+    if (!userAuth) {
+      return;
+    }
+
+    await expect(
+      SandboxFunctionResource.fetchById(
+        userAuth,
+        accessibleSandboxFunction.sId
+      )
+    ).resolves.toMatchObject({
+      id: accessibleSandboxFunction.id,
+      pod: expect.objectContaining({ id: accessiblePod.id }),
+    });
+    await expect(
+      SandboxFunctionResource.fetchById(userAuth, restrictedSandboxFunction.sId)
+    ).resolves.toBeNull();
+
+    const accessibleList = await SandboxFunctionResource.listByPod(
+      userAuth,
+      accessiblePod
+    );
+    expect(accessibleList.map(({ id }) => id)).toEqual([
+      accessibleSandboxFunction.id,
+    ]);
+    expect(accessibleList.map(({ pod }) => pod.id)).toEqual([
+      accessiblePod.id,
+    ]);
+
+    await expect(
+      SandboxFunctionResource.listByPod(userAuth, restrictedPod)
+    ).resolves.toEqual([]);
+
+    await expect(
+      SandboxFunctionResource.fetchById(
+        adminAuth,
+        restrictedSandboxFunction.sId
+      )
+    ).resolves.toMatchObject({
+      id: restrictedSandboxFunction.id,
+      pod: expect.objectContaining({ id: restrictedPod.id }),
+    });
   });
 
   it("rejects a non-Pod space", async () => {
