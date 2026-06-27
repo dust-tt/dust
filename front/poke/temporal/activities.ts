@@ -162,7 +162,7 @@ export async function scrubSpaceActivity({
 
   if (space.isProject()) {
     const deleteSandboxFunctionsResult =
-      await SandboxFunctionResource.deleteAllForPod(auth, space);
+      await SandboxFunctionResource.deleteAllForSpace(auth, space);
     if (deleteSandboxFunctionsResult.isErr()) {
       throw deleteSandboxFunctionsResult.error;
     }
