@@ -79,7 +79,7 @@ function postInvocation({
   body?: unknown;
 }) {
   return honoApp.request(
-    `/api/w/${workspaceId}/sandbox/functions/${functionId}/invocations`,
+    `/api/w/${workspaceId}/sandbox-functions/${functionId}/invocations`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -88,7 +88,7 @@ function postInvocation({
   );
 }
 
-describe("POST /api/w/:wId/sandbox/functions/:functionId/invocations", () => {
+describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
   it("creates a UUID-only invocation for a non-admin user with access to the function space", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
 

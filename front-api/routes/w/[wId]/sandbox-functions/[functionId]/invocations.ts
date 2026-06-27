@@ -25,7 +25,7 @@ const PostSandboxFunctionInvocationBodySchema = z
   })
   .strict();
 
-// Mounted at /api/w/:wId/sandbox/functions/:functionId/invocations.
+// Mounted at /api/w/:wId/sandbox-functions/:functionId/invocations.
 const app = workspaceApp();
 
 /** @ignoreswagger */

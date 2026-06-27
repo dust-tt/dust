@@ -4,14 +4,11 @@ import { withComputerFeature } from "@front-api/middlewares/with_computer_featur
 
 import egressPolicy from "./egress-policy";
 import envVars from "./env-vars";
-import functions from "./functions";
 
-// Mounted at /api/w/:wId/sandbox. Function invocation endpoints are user-facing
-// and authorize through SandboxFunctionResource + their own feature flag, while sandbox settings
-// remain admin-only and gated behind the broader Computer feature.
+// Mounted at /api/w/:wId/sandbox. This subtree is admin-only and gated behind the broader
+// Computer feature. User-facing Sandbox Function invocation endpoints live under
+// /api/w/:wId/sandbox-functions.
 const app = workspaceApp();
-
-app.route("/functions", functions);
 
 app.use("*", withComputerFeature());
 app.use("*", ensureIsAdmin());
