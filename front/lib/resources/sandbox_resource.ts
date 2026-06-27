@@ -125,11 +125,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   ) {
     const now = new Date();
     const workspaceId = auth.getNonNullableWorkspace().id;
+    const { conversationId, ...sandboxBlob } = blob;
 
     const createSandbox = async (t: Transaction) => {
       const sandbox = await this.model.create(
         {
-          ...blob,
+          ...sandboxBlob,
           workspaceId,
           lastActivityAt: now,
           statusChangedAt: now,
@@ -140,7 +141,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       await SandboxOwnerModel.create(
         {
           workspaceId,
-          conversationId: blob.conversationId,
+          conversationId,
           sandboxId: sandbox.id,
         },
         { transaction: t }
