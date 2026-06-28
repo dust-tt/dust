@@ -254,14 +254,14 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   },
   [PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Publish a Frame from its source files in the Computer. After creating or editing a " +
-      "Frame's `.tsx` source files directly in the Computer, call this to build them into the " +
-      "live Frame. It resolves the Frame's dependency tree from the given directory (inlining " +
-      "relative imports), validates TypeScript and JSX, then updates the canonical Frame so " +
-      "viewers and shares see the new version. A syntax error blocks publishing and is reported " +
-      "back so you can fix it. Tailwind warnings are returned but do not block. Pass the " +
-      "`file_id` of the Frame you created via the Frames tools and the scoped path of the " +
-      "directory where its files live.",
+      "Publish a Frame from its source files in the Computer. A Frame you created is already " +
+      "mounted in the Computer at `/files/conversation-<conversationId>/<filename>`, so edit it " +
+      "there in place rather than copying it elsewhere, then call this to build it into the live " +
+      "Frame. It resolves the Frame's dependency tree from the given directory (inlining relative " +
+      "imports), validates TypeScript and JSX, then updates the canonical Frame so viewers and " +
+      "shares see the new version. A syntax error blocks publishing and is reported back so you " +
+      "can fix it. Tailwind warnings are returned but do not block. Pass the `file_id` of the " +
+      "Frame and `path` set to `conversation-<conversationId>`, the directory that holds the file.",
     schema: {
       file_id: z
         .string()
@@ -272,12 +272,13 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       path: z
         .string()
         .describe(
-          "Scoped path of the directory holding the Frame's source files " +
-            "(e.g. `conversation-<id>/dashboards/sales`). This directory is the bundling root: " +
-            "the entry is the Frame's file name within it, and only relative imports resolving " +
-            "to files under this root are bundled. Keep every source file under this root. " +
-            "Anything that reaches outside it, whether `../` above the root or another scoped " +
-            "path such as `pod-<id>/...`, is not bundled and will not resolve at render."
+          "Scoped path of the directory holding the Frame's source files, normally the " +
+            "conversation root `conversation-<conversationId>` (the directory that holds the " +
+            "file, not a subdirectory). This directory is the bundling root: the entry is the " +
+            "Frame's file name within it, and only relative imports resolving to files under " +
+            "this root are bundled. Keep every source file under this root. Anything that " +
+            "reaches outside it, whether `../` above the root or another scoped path such as " +
+            "`pod-<id>/...`, is not bundled and will not resolve at render."
         ),
     },
     enableAlerting: true,
