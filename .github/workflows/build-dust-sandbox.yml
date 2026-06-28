@@ -89,3 +89,9 @@ jobs:
         working-directory: cli/dust-sandbox
         # The e2e harness spawns subprocess listeners and shared local proxy/upstream fixtures.
         run: cargo test --test e2e_local -- --test-threads=1 --nocapture
+
+      - name: Test functions runner
+        # The runner's logic lives in TypeScript; cargo never executes the bundle,
+        # so its bun:test suite is the only coverage of protocol/invoke/schema/runner.
+        working-directory: cli/dust-sandbox/functions-runner
+        run: bun test
