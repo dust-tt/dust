@@ -16,6 +16,7 @@ import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
@@ -23,11 +24,8 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
-import {
-  type EnsureSandboxResult,
-  type SandboxCreateBlob,
-  type SandboxDeleteOwner,
-  type SandboxLifecycleOwner,
+import type {
+  EnsureSandboxResult,
   SandboxResource,
 } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -364,105 +362,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => this.fromModel(c, null));
   }
 
-  private static async fetchSandboxByConversation(
-    auth: Authenticator,
-    conversation: ConversationSandboxOwner
-  ): Promise<SandboxResource | null> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const link = await SandboxOwnerModel.findOne({
-      where: {
-        conversationId: conversation.id,
-        workspaceId: workspaceModelId,
-      },
-    });
-
-    if (!link) {
-      return null;
-    }
-
-    return SandboxResource.fetchByModelIdForWorkspace(auth, link.sandboxId);
-  }
-
-  private static async dangerouslyFetchSandboxByConversation(
-    conversation: Pick<ConversationResource, "id" | "workspaceId">
-  ): Promise<SandboxResource | null> {
-    const link = await SandboxOwnerModel.findOne({
-      where: {
-        workspaceId: conversation.workspaceId,
-        conversationId: conversation.id,
-      },
-    });
-
-    if (!link) {
-      return null;
-    }
-
-    return SandboxResource.dangerouslyFetchByModelIdForWorkspace({
-      sandboxModelId: link.sandboxId,
-      workspaceModelId: conversation.workspaceId,
-    });
-  }
-
-  private static async createSandboxRecordForConversation(
-    auth: Authenticator,
-    conversation: ConversationSandboxOwner,
-    blob: SandboxCreateBlob
-  ): Promise<SandboxResource> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-
-    return withTransaction(async (transaction) => {
-      const sandbox = await SandboxResource.makeNew(auth, blob, {
-        transaction,
-      });
-
-      await SandboxOwnerModel.create(
-        {
-          workspaceId: workspaceModelId,
-          conversationId: conversation.id,
-          sandboxId: sandbox.id,
-        },
-        { transaction }
-      );
-
-      return sandbox;
-    });
-  }
-
-  private static toSandboxLifecycleOwner(
-    conversation: ConversationResource
-  ): SandboxLifecycleOwner {
-    return {
-      lockKey: conversation.sId,
-      fetchSandbox: () =>
-        this.dangerouslyFetchSandboxByConversation(conversation),
-    };
-  }
-
-  private static toSandboxDeleteOwner(
-    auth: Authenticator,
-    conversation: ConversationResource
-  ): SandboxDeleteOwner {
-    return {
-      lockKey: conversation.sId,
-      fetchSandbox: () => this.fetchSandboxByConversation(auth, conversation),
-      deleteSandbox: async (sandbox, transaction) => {
-        await SandboxOwnerModel.destroy({
-          where: {
-            conversationId: conversation.id,
-            sandboxId: sandbox.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          transaction,
-        });
-      },
-    };
-  }
-
   static async fetchSandbox(
     auth: Authenticator,
     conversation: ConversationSandboxOwner
   ): Promise<SandboxResource | null> {
-    return this.fetchSandboxByConversation(auth, conversation);
+    return ConversationSandboxAdapter.fetchSandbox(auth, conversation);
   }
 
   async fetchSandbox(auth: Authenticator): Promise<SandboxResource | null> {
@@ -473,14 +377,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversation: ConversationSandboxOwner
   ): Promise<Result<EnsureSandboxResult, Error>> {
-    return SandboxResource.ensureActive(auth, {
-      lockKey: conversation.sId,
-      envVars: { CONVERSATION_ID: conversation.sId },
-      logLabel: "conversation",
-      fetchSandbox: () => this.fetchSandbox(auth, conversation),
-      createSandbox: (blob) =>
-        this.createSandboxRecordForConversation(auth, conversation, blob),
-    });
+    return ConversationSandboxAdapter.ensureSandboxActive(auth, conversation);
   }
 
   async ensureSandboxActive(
@@ -493,10 +390,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversation: ConversationSandboxOwner
   ): Promise<Result<void, Error>> {
-    return SandboxResource.pauseForApproval(auth, {
-      lockKey: conversation.sId,
-      fetchSandbox: () => this.fetchSandboxByConversation(auth, conversation),
-    });
+    return ConversationSandboxAdapter.pauseSandboxForApproval(
+      auth,
+      conversation
+    );
   }
 
   async pauseSandboxForApproval(
@@ -506,45 +403,42 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   async deleteSandbox(auth: Authenticator): Promise<Result<void, Error>> {
-    return SandboxResource.deleteByOwner(
-      auth,
-      ConversationResource.toSandboxDeleteOwner(auth, this)
-    );
+    return ConversationSandboxAdapter.deleteSandbox(auth, this);
   }
 
   async dangerouslySleepSandboxIfRunning(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    return SandboxResource.dangerouslySleepIfRunning(
+    return ConversationSandboxAdapter.dangerouslySleepSandboxIfRunning(
       auth,
-      ConversationResource.toSandboxLifecycleOwner(this)
+      this
     );
   }
 
   async dangerouslySleepSandboxIfPendingApproval(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    return SandboxResource.dangerouslySleepIfPendingApproval(
+    return ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
       auth,
-      ConversationResource.toSandboxLifecycleOwner(this)
+      this
     );
   }
 
   async dangerouslyDestroySandboxIfSleeping(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    return SandboxResource.dangerouslyDestroyIfSleeping(
+    return ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
       auth,
-      ConversationResource.toSandboxLifecycleOwner(this)
+      this
     );
   }
 
   async dangerouslyDestroySandboxIfKillRequested(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    return SandboxResource.dangerouslyDestroyIfKillRequested(
+    return ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
       auth,
-      ConversationResource.toSandboxLifecycleOwner(this)
+      this
     );
   }
 
