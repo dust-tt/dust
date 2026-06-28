@@ -2,7 +2,7 @@
 // discover — scan a folder of fetch handlers and emit a catalog of their I/O
 // contracts as JSON Schema, suitable for LLM tool-use discovery.
 //
-//   discover ./handlers   →   { handlers: [...], skipped: [...] } on stdout
+//   dust-functions discover ./handlers   →   { handlers, skipped } on stdout
 //
 // A handler declares its contract by exporting `schema` (see README):
 //   export const schema = { description, input: ZodType, output: ZodType }
@@ -120,13 +120,19 @@ export async function discover(folder: string): Promise<Catalog> {
   return { handlers, skipped };
 }
 
-async function main(): Promise<void> {
-  const folder = process.argv[2];
+/**
+ * CLI entry for the `discover` subcommand. Scans the folder at `args[0]`, writes
+ * the catalog JSON to stdout, and returns the process exit code (0 on success,
+ * 2 on bad usage or an invalid folder).
+ */
+export async function discoverCli(args: string[]): Promise<number> {
+  const folder = args[0];
   if (!folder) {
     process.stdout.write(
-      JSON.stringify({ error: "usage: discover <folder>" }) + "\n"
+      JSON.stringify({ error: "usage: dust-functions discover <folder>" }) +
+        "\n"
     );
-    process.exit(2);
+    return 2;
   }
 
   let catalog: Catalog;
@@ -136,12 +142,9 @@ async function main(): Promise<void> {
     process.stdout.write(
       JSON.stringify({ error: (e as Error).message }) + "\n"
     );
-    process.exit(2);
+    return 2;
   }
 
   process.stdout.write(JSON.stringify(catalog) + "\n");
-}
-
-if (import.meta.main) {
-  await main();
+  return 0;
 }

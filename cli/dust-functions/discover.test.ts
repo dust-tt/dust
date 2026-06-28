@@ -96,17 +96,3 @@ describe("discover", () => {
     ).rejects.toThrow();
   });
 });
-
-describe("CLI end-to-end", () => {
-  test("prints the catalog as JSON for a folder argument", async () => {
-    const proc = Bun.spawn(
-      ["bun", join(import.meta.dir, "discover.ts"), catalogDir],
-      { stdout: "pipe", stderr: "pipe" }
-    );
-    const stdout = await new Response(proc.stdout).text();
-    expect(await proc.exited).toBe(0);
-    const out = JSON.parse(stdout);
-    expect(out.handlers.find((h: any) => h.name === "greet")).toBeDefined();
-    expect(Array.isArray(out.skipped)).toBe(true);
-  });
-});

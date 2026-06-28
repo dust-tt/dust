@@ -8,7 +8,7 @@ Runs on [Bun](https://bun.com/) (handlers are plain `.ts` files executed
 natively).
 
 ```
-echo '{"url":"http://localhost/api?name=David"}' | bun run_request.ts ./fixtures/hello.ts
+echo '{"url":"http://localhost/api?name=David"}' | dust-functions run ./fixtures/hello.ts
 ```
 ```json
 {"ok":true,"response":{"status":200,"headers":{"content-type":"application/json;charset=utf-8"},"body":"{\"hello\":\"David\"}","encoding":"utf8"}}
@@ -50,7 +50,7 @@ export const schema = {
 ## Usage
 
 ```
-bun run_request.ts <handler-file> < request.json
+dust-functions run <handler.ts> < request.json
 ```
 
 ### Input (stdin) — one JSON object
@@ -83,8 +83,8 @@ Branch on `ok`:
 
 ## Input validation
 
-If a handler exports `schema.input` (a Zod schema, see above), `run_request`
-validates the request body against it **before calling the handler**:
+If a handler exports `schema.input` (a Zod schema, see above), `dust-functions
+run` validates the request body against it **before calling the handler**:
 
 - Body is parsed as JSON and checked against `schema.input`.
 - On failure (missing/invalid fields, or non-JSON body) it returns an HTTP
@@ -112,7 +112,7 @@ Scan a folder of handlers and emit their I/O contracts as JSON Schema, ready to
 drop into a tool-use / function-calling API:
 
 ```
-bun discover.ts ./fixtures/catalog
+dust-functions discover ./fixtures/catalog
 ```
 
 ```json
@@ -137,6 +137,25 @@ bun discover.ts ./fixtures/catalog
 - `discover` never crashes on a bad file — every per-file problem (not a
   handler, missing/invalid `schema`, import error) becomes a `skipped` entry.
   It exits nonzero only when the folder itself is invalid.
+
+## Build a standalone binary
+
+`bun build --compile` packages the harness — runtime included — into a single
+self-contained executable. **Bun is not needed on the target machine**, and it
+still loads external `.ts` handlers dynamically at runtime.
+
+```
+bun run build                # dist/dust-functions (this platform)
+bun run build:linux-x64      # cross-compile for linux x64
+bun run build:linux-arm64    # cross-compile for linux arm64
+
+./dist/dust-functions run ./some/handler.ts < request.json
+./dist/dust-functions discover ./handlers
+```
+
+Handlers keep their own dependencies: a handler that `import`s a package
+resolves it from that handler's location on disk (the binary neither bundles nor
+provides handler deps).
 
 ## Develop
 

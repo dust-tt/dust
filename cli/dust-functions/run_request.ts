@@ -2,7 +2,7 @@
 // run_request — invoke a Web-standard fetch handler as if serving one HTTP
 // request, without running a server.
 //
-//   run_request ./handler.ts < request.json   →   response.json on stdout
+//   dust-functions run ./handler.ts < request.json   →   response.json on stdout
 //
 // Input/output wire format lives in protocol.ts.
 
@@ -156,19 +156,24 @@ function typeOf(v: unknown): string {
   return typeof v;
 }
 
-async function main(): Promise<void> {
-  const handlerPath = process.argv[2];
+/**
+ * CLI entry for the `run` subcommand. Reads a request as JSON on stdin, invokes
+ * the handler at `args[0]`, writes the result JSON to stdout, and returns the
+ * process exit code (0 on success, 1 on invocation failure, 2 on bad usage/input).
+ */
+export async function runCli(args: string[]): Promise<number> {
+  const handlerPath = args[0];
   if (!handlerPath) {
     process.stdout.write(
       JSON.stringify({
         ok: false,
         error: {
           kind: "bad_input",
-          message: "usage: run_request <handler> < request.json",
+          message: "usage: dust-functions run <handler> < request.json",
         },
       }) + "\n"
     );
-    process.exit(2);
+    return 2;
   }
 
   const raw = await Bun.stdin.text();
@@ -182,14 +187,10 @@ async function main(): Promise<void> {
       JSON.stringify({ ok: false, error: { kind: "bad_input", message } }) +
         "\n"
     );
-    process.exit(2);
+    return 2;
   }
 
   const out = await invoke(handlerPath, input);
   process.stdout.write(JSON.stringify(out) + "\n");
-  process.exit(out.ok ? 0 : 1);
-}
-
-if (import.meta.main) {
-  await main();
+  return out.ok ? 0 : 1;
 }

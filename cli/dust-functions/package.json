@@ -5,11 +5,13 @@
   "description": "Run Web-standard HTTP handlers as isolated, serverless-style invocations (no server), and discover their I/O contracts for model tool-use.",
   "type": "module",
   "bin": {
-    "run_request": "run_request.ts",
-    "discover": "discover.ts"
+    "dust-functions": "cli.ts"
   },
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "build": "bun build cli.ts --compile --outfile dist/dust-functions",
+    "build:linux-x64": "bun build cli.ts --compile --target=bun-linux-x64 --outfile dist/dust-functions-linux-x64",
+    "build:linux-arm64": "bun build cli.ts --compile --target=bun-linux-arm64 --outfile dist/dust-functions-linux-arm64"
   },
   "keywords": ["dust", "functions", "handlers", "serverless"],
   "author": "Dust",
