@@ -60,7 +60,14 @@ if [[ "$NO_BUILD" == false ]]; then
   # cross only mounts and embeds it (bun is not needed inside the container).
   echo "==> Building functions runner bundle..."
   (cd "$SCRIPT_DIR/functions-runner" && bun install --frozen-lockfile && bun run build)
-  (cd "$SCRIPT_DIR" && cross build --release --target "$TARGET")
+  # Force the rustc wrapper empty for the cross build. A common host setup is
+  # `rustc-wrapper = "sccache"` in ~/.cargo/config.toml, which cross mounts into
+  # the build container — but sccache isn't installed there, so the compile fails
+  # with `sccache rustc` exit 127. Empty env vars (forwarded via Cross.toml
+  # passthrough) override the mounted config and disable the wrapper in-container.
+  (cd "$SCRIPT_DIR" &&
+    RUSTC_WRAPPER="" CARGO_BUILD_RUSTC_WRAPPER="" \
+      cross build --release --target "$TARGET")
   echo "==> Build complete: $BINARY"
 else
   echo "==> Skipping build (--no-build)"
