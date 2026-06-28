@@ -37,7 +37,9 @@ export function parseInput(raw: string): RequestInput {
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
-    throw new BadInputError(`stdin is not valid JSON: ${(e as Error).message}`);
+    throw new BadInputError(
+      `stdin is not valid JSON: ${e instanceof Error ? e.message : String(e)}`
+    );
   }
   if (typeof parsed !== "object" || parsed === null) {
     throw new BadInputError("input must be a JSON object");

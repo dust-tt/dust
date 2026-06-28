@@ -31,7 +31,7 @@ async function getHandler(handlerPath: string): Promise<number> {
     return 0;
   } catch (e) {
     process.stdout.write(
-      `${JSON.stringify({ error: (e as Error).message })}\n`
+      `${JSON.stringify({ error: e instanceof Error ? e.message : String(e) })}\n`
     );
     return 1;
   }
