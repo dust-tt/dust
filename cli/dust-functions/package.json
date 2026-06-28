@@ -1,0 +1,28 @@
+{
+  "name": "@dust-tt/dust-functions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Run Web-standard HTTP handlers as isolated, serverless-style invocations (no server), and discover their I/O contracts for model tool-use.",
+  "type": "module",
+  "bin": {
+    "run_request": "run_request.ts",
+    "discover": "discover.ts"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "keywords": ["dust", "functions", "handlers", "serverless"],
+  "author": "Dust",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dust-tt/dust",
+    "directory": "cli/dust-functions"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
