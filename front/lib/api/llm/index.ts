@@ -251,6 +251,7 @@ export async function getStreamLLM(
       { modelId: llmParameters.modelId },
       `Sending request to ${llmParameters.modelId} with new router`
     );
+
     return streamEndpointLLM;
   }
 
