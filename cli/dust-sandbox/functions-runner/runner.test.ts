@@ -36,6 +36,12 @@ describe("runner run", () => {
     expect(code).toBe(1);
     expect(JSON.parse(stdout).error.kind).toBe("threw");
   });
+
+  test("exits 2 with bad_input when stdin is malformed JSON", async () => {
+    const { stdout, code } = await run(["run", fx("hello.ts")], "not json");
+    expect(code).toBe(2);
+    expect(JSON.parse(stdout).error.kind).toBe("bad_input");
+  });
 });
 
 describe("runner get", () => {

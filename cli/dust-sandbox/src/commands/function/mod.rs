@@ -8,10 +8,10 @@ mod run;
 pub use get::cmd_function_get;
 pub use run::cmd_function_run;
 
-use std::fs;
 use std::io::Write;
 
 use clap::Subcommand;
+use tempfile::TempPath;
 
 const FUNCTIONS_DIR_ENV: &str = "DUST_FUNCTIONS_DIR";
 
@@ -34,20 +34,18 @@ pub enum FunctionCommand {
     },
 }
 
-/// Write the embedded runner to a stable temp path (once per version) and
-/// return it. Idempotent across invocations.
-pub(crate) fn ensure_runner() -> Result<PathBuf> {
-    let path = std::env::temp_dir().join(format!(
-        "dsbx-functions-runner-{}.js",
-        env!("CARGO_PKG_VERSION")
-    ));
-    if !path.exists() {
-        let mut file = fs::File::create(&path)
-            .map_err(|e| anyhow!("failed to write runner to {}: {e}", path.display()))?;
-        file.write_all(RUNNER_JS.as_bytes())
-            .map_err(|e| anyhow!("failed to write runner: {e}"))?;
-    }
-    Ok(path)
+/// Write the embedded runner to a fresh uniquely-named temp file (mode 0600)
+/// and return its `TempPath`. The file is deleted when the `TempPath` is closed
+/// or dropped.
+pub(crate) fn ensure_runner() -> Result<TempPath> {
+    let mut file = tempfile::Builder::new()
+        .prefix("dsbx-functions-runner-")
+        .suffix(".js")
+        .tempfile()
+        .map_err(|e| anyhow!("failed to create runner temp file: {e}"))?;
+    file.write_all(RUNNER_JS.as_bytes())
+        .map_err(|e| anyhow!("failed to write runner: {e}"))?;
+    Ok(file.into_temp_path())
 }
 
 /// Resolve a function, erroring with a JSON `{error}` on stdout (and a non-zero
@@ -62,7 +60,7 @@ pub(crate) fn resolve_existing(name: &str) -> Result<PathBuf> {
 
 /// Print `{ "error": msg }` to stdout and return an error that exits non-zero
 /// without the tracing line (the JSON is the contract).
-fn emit_error(error: anyhow::Error) -> anyhow::Error {
+pub(crate) fn emit_error(error: anyhow::Error) -> anyhow::Error {
     println!("{}", serde_json::json!({ "error": error.to_string() }));
     error
 }

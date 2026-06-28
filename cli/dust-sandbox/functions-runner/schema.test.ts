@@ -40,10 +40,12 @@ describe("getFunctionSchema", () => {
   });
 
   test("throws when the function declares no schema", async () => {
-    expect(getFunctionSchema(fx("no-schema.ts"))).rejects.toThrow(/schema/);
+    await expect(getFunctionSchema(fx("no-schema.ts"))).rejects.toThrow(
+      /schema/
+    );
   });
 
   test("throws when the file cannot be imported", async () => {
-    expect(getFunctionSchema(fx("nope.ts"))).rejects.toThrow();
+    await expect(getFunctionSchema(fx("nope.ts"))).rejects.toThrow();
   });
 });
