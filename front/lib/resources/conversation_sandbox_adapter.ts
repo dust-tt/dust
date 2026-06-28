@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   type EnsureSandboxResult,
   type SandboxCreateBlob,
@@ -7,20 +8,24 @@ import {
   SandboxResource,
 } from "@app/lib/resources/sandbox_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
-import type { Transaction } from "sequelize";
+import { Op, type Transaction } from "sequelize";
 
 type ConversationSandboxOwner = Pick<
   ConversationWithoutContentType,
   "id" | "sId"
 >;
 
-type ConversationSandboxLifecycleOwner = ConversationSandboxOwner & {
-  workspaceId: ModelId;
-};
+type ConversationSandboxLifecycleOwner = Pick<
+  ConversationResource,
+  "id" | "sId" | "workspaceId"
+>;
+
+const SANDBOX_OWNER_LOOKUP_CONCURRENCY = 4;
 
 export class ConversationSandboxAdapter {
   private static async fetchSandboxByConversation(
@@ -199,5 +204,56 @@ export class ConversationSandboxAdapter {
       auth,
       this.toSandboxLifecycleOwner(conversation)
     );
+  }
+
+  static async dangerouslyFetchConversationModelIdsBySandboxes(
+    sandboxes: Pick<SandboxResource, "id" | "workspaceId">[]
+  ): Promise<Map<ModelId, ModelId>> {
+    if (sandboxes.length === 0) {
+      return new Map();
+    }
+
+    const sandboxModelIdsByWorkspaceModelId = new Map<ModelId, ModelId[]>();
+    for (const sandbox of sandboxes) {
+      const sandboxModelIds =
+        sandboxModelIdsByWorkspaceModelId.get(sandbox.workspaceId) ?? [];
+      sandboxModelIds.push(sandbox.id);
+      sandboxModelIdsByWorkspaceModelId.set(
+        sandbox.workspaceId,
+        sandboxModelIds
+      );
+    }
+
+    const rows = (
+      await concurrentExecutor(
+        [...sandboxModelIdsByWorkspaceModelId.entries()],
+        async ([workspaceModelId, sandboxModelIds]) =>
+          SandboxOwnerModel.findAll({
+            where: {
+              workspaceId: workspaceModelId,
+              conversationId: {
+                [Op.ne]: null,
+              },
+              sandboxId: {
+                [Op.in]: sandboxModelIds,
+              },
+            },
+            attributes: ["sandboxId", "conversationId"],
+          }),
+        { concurrency: SANDBOX_OWNER_LOOKUP_CONCURRENCY }
+      )
+    ).flat();
+
+    const conversationModelIdsBySandboxModelId = new Map<ModelId, ModelId>();
+    for (const row of rows) {
+      if (row.conversationId !== null) {
+        conversationModelIdsBySandboxModelId.set(
+          row.sandboxId,
+          row.conversationId
+        );
+      }
+    }
+
+    return conversationModelIdsBySandboxModelId;
   }
 }

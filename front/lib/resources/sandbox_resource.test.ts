@@ -665,7 +665,7 @@ describe("ConversationSandboxAdapter.fetchSandbox", () => {
     const sandbox = await SandboxFactory.create(authenticator, conversation);
 
     const conversationModelIdsBySandboxModelId =
-      await ConversationResource.dangerouslyFetchConversationModelIdsBySandboxes(
+      await ConversationSandboxAdapter.dangerouslyFetchConversationModelIdsBySandboxes(
         [sandbox]
       );
 
@@ -679,7 +679,7 @@ describe("ConversationSandboxAdapter.fetchSandbox", () => {
     const sandbox = await SandboxFactory.create(authenticator, conversation);
 
     const conversationModelIdsBySandboxModelId =
-      await ConversationResource.dangerouslyFetchConversationModelIdsBySandboxes(
+      await ConversationSandboxAdapter.dangerouslyFetchConversationModelIdsBySandboxes(
         [
           {
             id: sandbox.id,

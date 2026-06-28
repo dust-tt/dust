@@ -23,11 +23,9 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
-import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -94,8 +92,6 @@ export type FetchConversationOptions = {
 };
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
-
-const SANDBOX_OWNER_LOOKUP_CONCURRENCY = 4;
 
 interface UserParticipation {
   actionRequired: boolean;
@@ -351,57 +347,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return conversations.map((c) => this.fromModel(c, null));
-  }
-
-  static async dangerouslyFetchConversationModelIdsBySandboxes(
-    sandboxes: Pick<SandboxResource, "id" | "workspaceId">[]
-  ): Promise<Map<ModelId, ModelId>> {
-    if (sandboxes.length === 0) {
-      return new Map();
-    }
-
-    const sandboxModelIdsByWorkspaceModelId = new Map<ModelId, ModelId[]>();
-    for (const sandbox of sandboxes) {
-      const sandboxModelIds =
-        sandboxModelIdsByWorkspaceModelId.get(sandbox.workspaceId) ?? [];
-      sandboxModelIds.push(sandbox.id);
-      sandboxModelIdsByWorkspaceModelId.set(
-        sandbox.workspaceId,
-        sandboxModelIds
-      );
-    }
-
-    const rows = (
-      await concurrentExecutor(
-        [...sandboxModelIdsByWorkspaceModelId.entries()],
-        async ([workspaceModelId, sandboxModelIds]) =>
-          SandboxOwnerModel.findAll({
-            where: {
-              workspaceId: workspaceModelId,
-              conversationId: {
-                [Op.ne]: null,
-              },
-              sandboxId: {
-                [Op.in]: sandboxModelIds,
-              },
-            },
-            attributes: ["sandboxId", "conversationId"],
-          }),
-        { concurrency: SANDBOX_OWNER_LOOKUP_CONCURRENCY }
-      )
-    ).flat();
-
-    const conversationModelIdsBySandboxModelId = new Map<ModelId, ModelId>();
-    for (const row of rows) {
-      if (row.conversationId !== null) {
-        conversationModelIdsBySandboxModelId.set(
-          row.sandboxId,
-          row.conversationId
-        );
-      }
-    }
-
-    return conversationModelIdsBySandboxModelId;
   }
 
   get forkingData(): ConversationForkingDataType | undefined {

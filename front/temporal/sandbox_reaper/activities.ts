@@ -61,7 +61,7 @@ async function fetchConversationMap(
   sandboxes: SandboxResource[]
 ): Promise<ConversationMaps> {
   const conversationModelIdsBySandboxModelId =
-    await ConversationResource.dangerouslyFetchConversationModelIdsBySandboxes(
+    await ConversationSandboxAdapter.dangerouslyFetchConversationModelIdsBySandboxes(
       sandboxes
     );
   const conversationModelIds = [
