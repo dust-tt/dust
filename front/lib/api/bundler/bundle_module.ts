@@ -56,7 +56,10 @@ export interface BundleModuleParams {
   transform?: (relPath: string, content: string) => string;
 }
 
-// Extensions probed when a relative import omits one (e.g. `./Chart` -> `./Chart.tsx`).
+// Extensions probed, in order, when a relative import omits one (e.g. `./Chart` -> `./Chart.tsx`).
+// Resolution is first-match-wins by this order, never an ambiguity error, so the order is the
+// tie-breaker when sibling files share a base name (`./Chart` resolves to Chart.tsx over Chart.ts).
+// The leading "" matches a specifier that already carries its extension.
 const RESOLVE_EXTENSIONS = ["", ".tsx", ".ts", ".jsx", ".js", ".json"] as const;
 const BUNDLE_NAMESPACE = "bundle";
 
@@ -154,19 +157,24 @@ export async function bundleModule({
       return { error: "escape" };
     }
 
-    for (const ext of RESOLVE_EXTENSIONS) {
-      if (index.has(`${joined}${ext}`)) {
-        return { rel: `${joined}${ext}` };
-      }
-    }
+    const probe = (base: string, allowBare: boolean): string | null => {
+      for (const ext of RESOLVE_EXTENSIONS) {
+        if (!ext && !allowBare) {
+          continue;
+        }
 
-    for (const ext of RESOLVE_EXTENSIONS) {
-      if (ext && index.has(`${joined}/index${ext}`)) {
-        return { rel: `${joined}/index${ext}` };
+        if (index.has(`${base}${ext}`)) {
+          return `${base}${ext}`;
+        }
       }
-    }
 
-    return { error: "missing" };
+      return null;
+    };
+
+    // A direct file (with or without extension) wins over a directory index.
+    const resolved = probe(joined, true) ?? probe(`${joined}/index`, false);
+
+    return resolved ? { rel: resolved } : { error: "missing" };
   };
 
   // Captures a read failure inside onLoad so we can surface it as a typed error rather than
