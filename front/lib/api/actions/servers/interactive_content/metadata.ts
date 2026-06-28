@@ -252,30 +252,32 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       done: "Export Frame",
     },
   },
-  // TODO: Remove Sandbox concept/wording from here. We should use computer.
   [PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
-      "Publish a Frame from its source files in the Computer (sandbox). After creating or " +
-      "editing a Frame's `.tsx` source files directly in the sandbox, call this to build them " +
-      "into the live Frame: it resolves the Frame's dependency tree from the given root " +
-      "(inlining relative imports), validates TypeScript/JSX, then updates the canonical Frame " +
-      "so viewers and shares see the new version. A syntax error blocks publishing and is " +
-      "reported back so you can fix it; Tailwind warnings are returned but do not block. Pass " +
-      "the `file_id` of the Frame you created via the Frames tools and the sandbox root path " +
-      "where its files live.",
+      "Publish a Frame from its source files in the Computer. After creating or editing a " +
+      "Frame's `.tsx` source files directly in the Computer, call this to build them into the " +
+      "live Frame. It resolves the Frame's dependency tree from the given directory (inlining " +
+      "relative imports), validates TypeScript and JSX, then updates the canonical Frame so " +
+      "viewers and shares see the new version. A syntax error blocks publishing and is reported " +
+      "back so you can fix it. Tailwind warnings are returned but do not block. Pass the " +
+      "`file_id` of the Frame you created via the Frames tools and the scoped path of the " +
+      "directory where its files live.",
     schema: {
       file_id: z
         .string()
         .describe(
-          "The ID of the Frame to publish (e.g., 'fil_abc123'): the canonical Frame you " +
-            "created or previously edited via the Frames tools."
+          "The ID of the Frame to publish (e.g. 'fil_abc123'), the canonical Frame you created " +
+            "or previously edited via the Frames tools."
         ),
-      sandbox_root_path: z
+      path: z
         .string()
         .describe(
-          "The scoped path of the directory in the Computer holding the Frame's source files " +
-            "(e.g., 'conversation-<id>/dashboards/sales'). The entry file is the Frame's file " +
-            "name within this directory; relative imports are resolved and bundled from here."
+          "Scoped path of the directory holding the Frame's source files " +
+            "(e.g. `conversation-<id>/dashboards/sales`). This directory is the bundling root: " +
+            "the entry is the Frame's file name within it, and only relative imports resolving " +
+            "to files under this root are bundled. Keep every source file under this root. " +
+            "Anything that reaches outside it, whether `../` above the root or another scoped " +
+            "path such as `pod-<id>/...`, is not bundled and will not resolve at render."
         ),
     },
     enableAlerting: true,

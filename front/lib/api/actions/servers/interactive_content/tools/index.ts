@@ -357,7 +357,7 @@ export async function createInteractiveContentTools(
     },
 
     publish_interactive_content_file: async (
-      { file_id, sandbox_root_path },
+      { file_id, path },
       { sendNotification, _meta }
     ) => {
       const { agentConfiguration } = agentLoopContext?.runContext ?? {};
@@ -369,13 +369,17 @@ export async function createInteractiveContentTools(
         );
       }
 
-      // TODO: Assert that the file is a Frame, and that the agent has permission to publish it.
+      if (!file.isInteractiveContent) {
+        return new Err(
+          new MCPError(
+            `File '${file_id}' is not a Frame (content type: ${file.contentType}).`,
+            { tracked: false }
+          )
+        );
+      }
 
-      // Infer the conversation/pod mount from the root prefix and read the frame's sources.
-      const fsResult = await DustFileSystem.fromScopedPath(
-        auth,
-        sandbox_root_path
-      );
+      // Resolve the Computer mount that holds the Frame's source files.
+      const fsResult = await DustFileSystem.fromScopedPath(auth, path);
       if (fsResult.isErr()) {
         return new Err(
           new MCPError(fsResult.error.message, { tracked: false })
@@ -384,8 +388,8 @@ export async function createInteractiveContentTools(
 
       const result = await publishFrame(auth, {
         file,
-        reader: createMountFrameSourceReader(fsResult.value, sandbox_root_path),
-        rootScopedPath: sandbox_root_path,
+        reader: createMountFrameSourceReader(fsResult.value, path),
+        rootScopedPath: path,
         publishedByAgentConfigurationId: agentConfiguration?.sId,
       });
       if (result.isErr()) {

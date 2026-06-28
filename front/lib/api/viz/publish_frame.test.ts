@@ -39,6 +39,28 @@ function inMemoryReader(sources: Record<string, string>): FrameSourceReader {
   };
 }
 
+// Like inMemoryReader but records every path actually read, so tests can assert the publish
+// only pulls the entry's import graph and never the rest of the mount.
+function recordingReader(sources: Record<string, string>): {
+  reader: FrameSourceReader;
+  reads: string[];
+} {
+  const reads: string[] = [];
+  return {
+    reads,
+    reader: {
+      list: async () => Object.keys(sources),
+      read: async (relPath) => {
+        if (!(relPath in sources)) {
+          return null;
+        }
+        reads.push(relPath);
+        return sources[relPath];
+      },
+    },
+  };
+}
+
 const ROOT = "conversation-conv_test/dashboards/sales";
 
 // A valid two-file frame: the entry imports a relative component and an external dependency.
@@ -94,7 +116,7 @@ describe("publishFrame", () => {
       // resource methods publishFrame drives (spies still call through).
       const uploadBundleSpy = vi.spyOn(
         FileResource.prototype,
-        "uploadProcessedFrameBundle"
+        "uploadProcessed"
       );
       const uploadOriginalSpy = vi.spyOn(
         FileResource.prototype,
@@ -142,7 +164,7 @@ describe("publishFrame", () => {
       const file = await createFrameFile(auth);
       const uploadBundleSpy = vi.spyOn(
         FileResource.prototype,
-        "uploadProcessedFrameBundle"
+        "uploadProcessed"
       );
 
       const result = await publishFrame(auth, {
@@ -165,6 +187,54 @@ describe("publishFrame", () => {
       // No bundle built or persisted, and the frame still renders its source.
       expect(uploadBundleSpy).not.toHaveBeenCalled();
       expect(file.getRenderableVersion()).toBe("original");
+    },
+    TEST_TIMEOUT_MS
+  );
+
+  it(
+    "reads only the entry's import graph, ignoring unrelated files in the mount",
+    async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      const file = await createFrameFile(auth);
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from([Buffer.from("self contained", "utf-8")])
+      );
+      const uploadBundleSpy = vi.spyOn(
+        FileResource.prototype,
+        "uploadProcessed"
+      );
+
+      // A self-contained entry alongside an unrelated, syntactically broken file the frame never
+      // imports. The broken file must neither be pulled from the mount nor block the publish.
+      const { reader, reads } = recordingReader({
+        "Dashboard.tsx": `export default function Dashboard() {
+  return (
+    <div className="p-4">
+      <h1>Sales</h1>
+    </div>
+  );
+}
+`,
+        "broken.tsx": `export default function Broken() { const x = ; }`,
+      });
+
+      const result = await publishFrame(auth, {
+        file,
+        reader,
+        rootScopedPath: ROOT,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.warnings).toEqual([]);
+      }
+      expect(file.getRenderableVersion()).toBe("processed");
+      expect(uploadBundleSpy).toHaveBeenCalledTimes(1);
+
+      // Only the entry was read (graph-driven), so the broken sibling could not contribute a
+      // syntax error.
+      expect(reads).toEqual(["Dashboard.tsx"]);
     },
     TEST_TIMEOUT_MS
   );

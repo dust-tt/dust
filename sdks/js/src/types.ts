@@ -790,6 +790,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workspace_default_agent"
   | "sound_notification"
   | "whitelabel_frames"
+  | "frame_publish"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

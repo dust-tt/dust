@@ -652,10 +652,13 @@ export class FileResource extends BaseResource<FileModel> {
 
   /**
    * The version the viz engine should render for a frame. A published frame's bundle is stored
-   * as the processed version; until a frame is published (no bundle) the source ("original")
+   * as the processed version. Until a frame is published (no bundle) the source ("original")
    * renders. Non-frame files always render their original, so this is safe to call generically.
    */
   getRenderableVersion(): FileVersion {
+    // Frame-specific signal, deliberately kept in useCaseMetadata rather than a FileResource field
+    // to avoid growing frame concerns on this generic resource. A dedicated Frame data model will
+    // likely own this soon.
     if (
       this.isInteractiveContent &&
       this.useCaseMetadata?.frameBundleRootPath
@@ -1035,15 +1038,12 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
-   * Store a published Frame's built bundle as the processed version. This is the artifact the
-   * viz engine renders (see {@link getRenderableVersion}). Unlike {@link uploadContent} it does
-   * not touch the mount path (the bundle is a derived render artifact, not a mounted source) and
-   * does not bump the version (which tracks source edits).
+   * Store derived content as the file's processed version. Unlike {@link uploadContent} it does
+   * not touch the mount path (the processed version is a derived artifact, not a mounted source)
+   * and does not bump the version (which tracks source edits). Frames use it for their built
+   * bundle, the artifact {@link getRenderableVersion} renders.
    */
-  async uploadProcessedFrameBundle(
-    auth: Authenticator,
-    content: string
-  ): Promise<void> {
+  async uploadProcessed(auth: Authenticator, content: string): Promise<void> {
     await this.getBucketForVersion("processed").uploadRawContentToBucket({
       content,
       contentType: this.contentType,
