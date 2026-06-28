@@ -1,4 +1,5 @@
 pub mod env;
+pub mod function;
 pub mod forward;
 pub mod healthcheck;
 pub mod resolve;
