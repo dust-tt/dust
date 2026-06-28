@@ -193,15 +193,18 @@ export function useVisualizationAPI(
       newText,
       oldText,
       targetFileId,
+      source,
     }: {
       newText: string;
       oldText: string;
       targetFileId?: string;
+      source?: string;
     }) => {
       return await sendCrossDocumentMessage("editText", {
         oldText,
         newText,
         targetFileId,
+        source,
       });
     },
     [sendCrossDocumentMessage]

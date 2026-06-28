@@ -74,6 +74,10 @@ const EditTextParamsSchema = z.object({
   newText: z.string(),
   oldText: z.string(),
   targetFileId: z.string().optional(),
+  // When set, the edit is routed back to the source by location: the value is the clicked
+  // element's `data-source` ("<relPath>:<line>:<col>") from a published (bundled) Frame, and
+  // oldText/newText are the visible (trimmed) text. Absent for legacy context-match edits.
+  source: z.string().optional(),
 });
 
 type EditTextParams = z.infer<typeof EditTextParamsSchema>;

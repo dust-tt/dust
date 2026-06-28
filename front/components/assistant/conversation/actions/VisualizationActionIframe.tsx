@@ -191,6 +191,7 @@ function useVisualizationDataHandler({
               newText: data.params.newText,
               oldText: data.params.oldText,
               targetFileId: data.params.targetFileId,
+              source: data.params.source,
             });
 
             sendResponseToIframe(data, editResult, event.source);

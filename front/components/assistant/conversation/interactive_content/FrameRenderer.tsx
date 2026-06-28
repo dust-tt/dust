@@ -154,18 +154,24 @@ export function FrameRenderer({
       newText,
       oldText,
       targetFileId,
+      source,
     }: {
       newText: string;
       oldText: string;
       targetFileId?: string;
+      source?: string;
     }) => {
       try {
+        // Location-based edits address the published entry Frame (the clicked bundle); the source
+        // path inside `source` resolves within its build root. Legacy context edits route to the
+        // nested target file.
+        const editFileId = source ? fileId : (targetFileId ?? fileId);
         const response = await clientFetch(
-          `/api/w/${owner.sId}/files/${targetFileId ?? fileId}/edit-text`,
+          `/api/w/${owner.sId}/files/${editFileId}/edit-text`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ oldText, newText }),
+            body: JSON.stringify({ oldText, newText, source }),
           }
         );
 

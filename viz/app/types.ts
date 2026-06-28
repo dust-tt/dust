@@ -25,6 +25,9 @@ interface EditTextParams {
   oldText: string;
   newText: string;
   targetFileId?: string;
+  // Clicked element's `data-source` ("<relPath>:<line>:<col>") for location-based edits on a
+  // published (bundled) Frame. When set, oldText/newText are the visible (trimmed) text.
+  source?: string;
 }
 
 // Define a mapped type to extend the base with specific parameters.
