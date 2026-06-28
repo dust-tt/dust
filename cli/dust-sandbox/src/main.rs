@@ -24,6 +24,11 @@ enum Commands {
     Healthcheck(commands::healthcheck::HealthcheckArgs),
     /// List sandbox environment variables and DSEC allowlists
     Env(commands::env::EnvArgs),
+    /// Run or inspect sandbox functions
+    Function {
+        #[command(subcommand)]
+        command: commands::function::FunctionCommand,
+    },
     /// Interact with MCP servers and tools
     Tools {
         /// Emit the tool execution result as JSON (`{ content, isError }`)
@@ -60,6 +65,14 @@ async fn run() -> anyhow::Result<()> {
         Commands::Resolve(args) => commands::cmd_resolve(args).await?,
         Commands::Healthcheck(args) => commands::cmd_healthcheck(args)?,
         Commands::Env(args) => commands::cmd_env(args)?,
+        Commands::Function { command } => match command {
+            commands::function::FunctionCommand::Run { name } => {
+                commands::cmd_function_run(&name).await?
+            }
+            commands::function::FunctionCommand::Get { name } => {
+                commands::cmd_function_get(&name).await?
+            }
+        },
         Commands::Tools {
             json,
             server_name,
@@ -145,5 +158,29 @@ mod tests {
         let cli = Cli::try_parse_from(["dsbx", "tools", "srv", "tool"]).expect("should parse");
         let (json, ..) = tools_fields(cli);
         assert!(!json);
+    }
+
+    #[test]
+    fn function_run_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "function", "run", "greet"]).expect("parse");
+        match cli.command {
+            Commands::Function { command } => match command {
+                commands::function::FunctionCommand::Run { name } => assert_eq!(name, "greet"),
+                _ => panic!("expected run"),
+            },
+            _ => panic!("expected function"),
+        }
+    }
+
+    #[test]
+    fn function_get_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "function", "get", "greet"]).expect("parse");
+        match cli.command {
+            Commands::Function { command } => match command {
+                commands::function::FunctionCommand::Get { name } => assert_eq!(name, "greet"),
+                _ => panic!("expected get"),
+            },
+            _ => panic!("expected function"),
+        }
     }
 }

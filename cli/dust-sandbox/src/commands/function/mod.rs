@@ -2,12 +2,74 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 
+mod get;
+mod run;
+
+pub use get::cmd_function_get;
+pub use run::cmd_function_run;
+
+use std::fs;
+use std::io::Write;
+
+use clap::Subcommand;
+
 const FUNCTIONS_DIR_ENV: &str = "DUST_FUNCTIONS_DIR";
+
+/// The function bundle runner, pre-bundled (Zod inlined) at dev time and
+/// committed. Embedded so `dsbx` is a single binary; cross-compilation does
+/// not need `bun`.
+const RUNNER_JS: &str = include_str!("../../../functions-runner/runner.js");
+
+#[derive(Subcommand)]
+pub enum FunctionCommand {
+    /// Execute a function: request envelope JSON on stdin, response JSON on stdout
+    Run {
+        /// Function name (resolved to ${DUST_FUNCTIONS_DIR}/<name>.ts)
+        name: String,
+    },
+    /// Print a function's JSON-Schema I/O contract
+    Get {
+        /// Function name (resolved to ${DUST_FUNCTIONS_DIR}/<name>.ts)
+        name: String,
+    },
+}
+
+/// Write the embedded runner to a stable temp path (once per version) and
+/// return it. Idempotent across invocations.
+pub(crate) fn ensure_runner() -> Result<PathBuf> {
+    let path = std::env::temp_dir().join(format!(
+        "dsbx-functions-runner-{}.js",
+        env!("CARGO_PKG_VERSION")
+    ));
+    if !path.exists() {
+        let mut file = fs::File::create(&path)
+            .map_err(|e| anyhow!("failed to write runner to {}: {e}", path.display()))?;
+        file.write_all(RUNNER_JS.as_bytes())
+            .map_err(|e| anyhow!("failed to write runner: {e}"))?;
+    }
+    Ok(path)
+}
+
+/// Resolve a function, erroring with a JSON `{error}` on stdout (and a non-zero
+/// exit) for the user-facing failure modes (bad env/name/missing file).
+pub(crate) fn resolve_existing(name: &str) -> Result<PathBuf> {
+    let path = resolve_function_path(name).map_err(emit_error)?;
+    if !path.is_file() {
+        return Err(emit_error(anyhow!("function not found: {name}")));
+    }
+    Ok(path)
+}
+
+/// Print `{ "error": msg }` to stdout and return an error that exits non-zero
+/// without the tracing line (the JSON is the contract).
+fn emit_error(error: anyhow::Error) -> anyhow::Error {
+    println!("{}", serde_json::json!({ "error": error.to_string() }));
+    error
+}
 
 /// A valid function name is a non-empty string of `[A-Za-z0-9_-]`. This both
 /// matches the tool-name convention and prevents path traversal.
-#[allow(dead_code)]
-fn is_valid_name(name: &str) -> bool {
+pub(crate) fn is_valid_name(name: &str) -> bool {
     !name.is_empty()
         && name
             .chars()
@@ -15,8 +77,7 @@ fn is_valid_name(name: &str) -> bool {
 }
 
 /// Resolve a function name to `${DUST_FUNCTIONS_DIR}/<name>.ts`.
-#[allow(dead_code)]
-fn resolve_function_path(name: &str) -> Result<PathBuf> {
+pub(crate) fn resolve_function_path(name: &str) -> Result<PathBuf> {
     if !is_valid_name(name) {
         return Err(anyhow!(
             "invalid function name {name:?}: must match [A-Za-z0-9_-]+"
