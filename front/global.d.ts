@@ -65,6 +65,7 @@ declare global {
       onReady: (callback: () => void) => void;
       setUser: (user: { id: string; name?: string; email?: string }) => void;
       setGlobalContext: (context: { [key: string]: string }) => void;
+      startSessionReplayRecording: () => void;
     };
   }
   interface ImportMeta {

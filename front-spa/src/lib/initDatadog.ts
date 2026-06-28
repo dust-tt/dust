@@ -62,6 +62,14 @@ export function initDatadogRUM() {
           return false;
         }
 
+        // Start replay recording for real errors so engineers have browser-level
+        // context when investigating bugs — eliminates the manual reproduction step.
+        // The ambient sessionReplaySampleRate (5%) captures a random baseline;
+        // this ensures every real error session is also recorded.
+        if (event.type === "error") {
+          window.DD_RUM.startSessionReplayRecording();
+        }
+
         // Mask click actions within privacy-masked elements
         if (
           event.type === "action" &&
