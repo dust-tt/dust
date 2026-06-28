@@ -6,7 +6,7 @@ import path from "path";
 
 /**
  * Reads a module's source tree, abstracted from storage so the engine works over any backend
- * (an in-memory tree, a Frame mount, a future Function store). Paths are root-relative
+ * (an in-memory tree, DustFileSystem). Paths are root-relative
  * (e.g. `index.ts`, `components/Chart.tsx`).
  */
 export interface SourceReader {
@@ -17,9 +17,9 @@ export interface SourceReader {
 }
 
 export type BundleErrorCode =
+  | "build_failed"
   | "entry_not_found"
-  | "read_failed"
-  | "build_failed";
+  | "read_failed";
 
 export class BundleError extends Error {
   constructor(
@@ -68,15 +68,19 @@ function loaderForPath(relPath: string): Loader {
   if (relPath.endsWith(".ts")) {
     return "ts";
   }
+
   if (relPath.endsWith(".js")) {
     return "js";
   }
+
   if (relPath.endsWith(".jsx")) {
     return "jsx";
   }
+
   if (relPath.endsWith(".json")) {
     return "json";
   }
+
   return "tsx";
 }
 
@@ -100,12 +104,13 @@ function formatEsbuildError(err: unknown): string {
       return messages.join("; ");
     }
   }
+
   return normalizeError(err).message;
 }
 
 /**
  * Bundle a multi-file module into a single self-contained file. Storage- and consumer-agnostic
- * build engine shared by Frames and (later) Functions: it walks a relative-import graph and inlines
+ * build engine shared by Frames and Functions: it walks a relative-import graph and inlines
  * it.
  *
  * - Relative imports (`./`, `../`) resolve against the module root, with extension probing
@@ -144,19 +149,23 @@ export async function bundleModule({
     const joined = path.posix.normalize(
       path.posix.join(path.posix.dirname(importerRel), spec)
     );
+    // TODO(FRAMES BUNDLE): Consider relaxing this to allow imports from pods/ in the conversation.
     if (joined.startsWith("..") || path.posix.isAbsolute(joined)) {
       return { error: "escape" };
     }
+
     for (const ext of RESOLVE_EXTENSIONS) {
       if (index.has(`${joined}${ext}`)) {
         return { rel: `${joined}${ext}` };
       }
     }
+
     for (const ext of RESOLVE_EXTENSIONS) {
       if (ext && index.has(`${joined}/index${ext}`)) {
         return { rel: `${joined}/index${ext}` };
       }
     }
+
     return { error: "missing" };
   };
 
@@ -171,6 +180,7 @@ export async function bundleModule({
         if (args.kind === "entry-point") {
           return { path: entryRelPath, namespace: BUNDLE_NAMESPACE };
         }
+
         if (isRelativeSpecifier(args.path)) {
           const resolved = resolveRelative(args.importer, args.path);
           if ("error" in resolved) {
@@ -178,10 +188,13 @@ export async function bundleModule({
               resolved.error === "escape"
                 ? `Refusing import outside module root: "${args.path}" from "${args.importer}"`
                 : `Cannot resolve "${args.path}" from "${args.importer}"`;
+
             return { errors: [{ text: message }] };
           }
+
           return { path: resolved.rel, namespace: BUNDLE_NAMESPACE };
         }
+
         // Non-relative specifiers stay external (resolved by the runtime import scope).
         return { path: args.path, external: true };
       });
@@ -195,8 +208,10 @@ export async function bundleModule({
               "read_failed",
               `Failed to read module source: ${args.path}`
             );
+
             return { errors: [{ text: readError.message }] };
           }
+
           return {
             contents: transform ? transform(args.path, content) : content,
             loader: loaderForPath(args.path),
@@ -241,6 +256,7 @@ export async function bundleModule({
     if (readError) {
       return new Err(readError);
     }
+
     return new Err(new BundleError("build_failed", formatEsbuildError(err)));
   }
 }

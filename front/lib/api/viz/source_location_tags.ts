@@ -38,14 +38,17 @@ export function injectSourceLocationTags(
         const { line, character } = sourceFile.getLineAndCharacterOfPosition(
           node.tagName.getStart(sourceFile)
         );
+
         const value = `${fileName}:${line + 1}:${character + 1}`;
         inserts.push({
           pos: node.tagName.getEnd(),
           text: ` ${SOURCE_LOCATION_ATTRIBUTE}="${value}"`,
         });
       }
+
       ts.forEachChild(node, visit);
     };
+
     visit(sourceFile);
   } catch (err) {
     logger.error({ err, fileName }, "Failed to inject source-location tags");
@@ -59,5 +62,6 @@ export function injectSourceLocationTags(
   for (const ins of inserts) {
     out = out.slice(0, ins.pos) + ins.text + out.slice(ins.pos);
   }
+
   return out;
 }

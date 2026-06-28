@@ -1,5 +1,6 @@
 import type {
   BundleError,
+  BundleEsbuildOptions,
   SourceReader,
 } from "@app/lib/api/bundler/bundle_module";
 import { bundleModule } from "@app/lib/api/bundler/bundle_module";
@@ -14,18 +15,18 @@ export type FrameSourceReader = SourceReader;
 // Frames render in an iframe via `react-runner`, which transpiles JSX, so JSX is preserved. Output
 // targets the browser and is not minified so data refs (`fil_...`) stay discoverable by
 // `extract_file_refs`.
-const FRAME_ESBUILD_OPTIONS = {
+const FRAME_ESBUILD_OPTIONS: BundleEsbuildOptions = {
   format: "esm",
   jsx: "preserve",
   platform: "browser",
   minify: false,
-} as const;
+};
 
 /**
  * Bundle a multi-file frame into a single self-contained module. Thin wrapper over
  * {@link bundleModule} supplying the viz esbuild options and the JSX source-location transform, so
  * live edits on the rendered bundle route back to the correct source file. All graph-walking lives
- * in the generic engine, shared with future consumers (e.g. Functions).
+ * in the generic engine.
  */
 export async function buildFrameBundle({
   entryRelPath,
@@ -63,8 +64,10 @@ export function createMountFrameSourceReader(
           { err: listResult.error, root },
           "buildFrameBundle: failed to list frame root"
         );
+
         return [];
       }
+
       return listResult.value
         .filter((entry) => !entry.isDirectory && entry.path.startsWith(prefix))
         .map((entry) => entry.path.slice(prefix.length));
@@ -76,8 +79,10 @@ export function createMountFrameSourceReader(
           { err: bufferResult.error, root, relPath },
           "buildFrameBundle: failed to read frame source"
         );
+
         return null;
       }
+
       return bufferResult.value ? bufferResult.value.toString("utf8") : null;
     },
   };
