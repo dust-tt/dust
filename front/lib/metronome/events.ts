@@ -106,6 +106,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   extract_data: "advanced",
   http_client: "advanced",
   sandbox: "advanced",
+  sandbox_functions: "advanced",
   file_generation: "advanced",
   image_generation: "advanced",
   sound_studio: "advanced",

@@ -68,6 +68,7 @@ import {
   SANDBOX_MCP_REQUEST_TIMEOUT_MS,
   SANDBOX_SERVER,
 } from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
@@ -220,6 +221,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "pod_tasks",
   "poke",
   "sandbox",
+  "sandbox_functions",
   "ask_user_question",
   "wakeups",
   "plan_mode",
@@ -1045,6 +1047,19 @@ export const INTERNAL_MCP_SERVERS = {
     // Derived from the max command timeout plus a buffer so the in-container
     // timeout returns captured output before this MCP deadline aborts the call.
     timeoutMs: SANDBOX_MCP_REQUEST_TIMEOUT_MS,
+  },
+  sandbox_functions: {
+    id: 1037,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_functions");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SANDBOX_FUNCTIONS_SERVER,
   },
   user_mentions: {
     id: 1026,
