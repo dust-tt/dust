@@ -6838,12 +6838,10 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "conversation_mcp_server_view",
   "conversation_participant",
   "conversation_selected_spaces",
-  "conversation_sandbox",
   "conversation_skills",
   "data_source",
   "message",
   "project_todo_conversation",
-  "sandbox",
   "sandbox_owner",
   // skill_suggestion.notificationConversationId is ON DELETE SET NULL, so no
   // explicit cleanup is needed in destroyConversation — the DB clears it.

@@ -15,9 +15,6 @@ export class SandboxModel extends WorkspaceAwareModel<SandboxModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  // TODO(2026-06-17 SANDBOX): Drop this legacy owner column once
-  // sandbox_owners fully replaces it.
-  declare conversationId: ForeignKey<ConversationModel["id"]> | null;
   declare providerId: string;
   declare status: SandboxStatus;
   declare statusChangedAt: CreationOptional<Date>;
@@ -25,9 +22,6 @@ export class SandboxModel extends WorkspaceAwareModel<SandboxModel> {
   declare baseImage: CreationOptional<string | null>;
   declare version: CreationOptional<string | null>;
   declare killRequestedAt: CreationOptional<Date | null>;
-
-  // Associations.
-  declare conversation: NonAttribute<ConversationModel>;
 }
 
 SandboxModel.init(
@@ -41,14 +35,6 @@ SandboxModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    conversationId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      references: {
-        model: ConversationModel,
-        key: "id",
-      },
     },
     providerId: {
       type: DataTypes.STRING,
@@ -86,16 +72,6 @@ SandboxModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        unique: true,
-        fields: ["workspaceId", "conversationId"],
-        name: "sandboxes_workspace_conversation_idx",
-      },
-      {
-        fields: ["conversationId"],
-        name: "sandboxes_conversation_id_idx",
-        concurrently: true,
-      },
-      {
         fields: ["status", "lastActivityAt"],
         name: "sandboxes_status_last_activity_idx",
       },
@@ -111,89 +87,6 @@ SandboxModel.init(
     ],
   }
 );
-
-ConversationModel.hasMany(SandboxModel, {
-  foreignKey: "conversationId",
-  onDelete: "RESTRICT",
-});
-
-SandboxModel.belongsTo(ConversationModel, {
-  foreignKey: "conversationId",
-});
-
-export class ConversationSandboxModel extends WorkspaceAwareModel<ConversationSandboxModel> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare conversationId: ForeignKey<ConversationModel["id"]>;
-  declare sandboxId: ForeignKey<SandboxModel["id"]>;
-
-  declare conversation: NonAttribute<ConversationModel>;
-  declare sandbox: NonAttribute<SandboxModel>;
-}
-
-ConversationSandboxModel.init(
-  {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    conversationId: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-    },
-    sandboxId: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-    },
-  },
-  {
-    modelName: "conversation_sandbox",
-    sequelize: frontSequelize,
-    indexes: [
-      {
-        unique: true,
-        fields: ["workspaceId", "conversationId"],
-        name: "conversation_sandboxes_workspace_conversation_idx",
-        concurrently: true,
-      },
-      {
-        unique: true,
-        fields: ["workspaceId", "sandboxId"],
-        name: "conversation_sandboxes_workspace_sandbox_idx",
-        concurrently: true,
-      },
-    ],
-  }
-);
-
-ConversationSandboxModel.belongsTo(ConversationModel, {
-  foreignKey: { name: "conversationId", allowNull: false },
-  onDelete: "RESTRICT",
-  as: "conversation",
-});
-
-ConversationModel.hasMany(ConversationSandboxModel, {
-  foreignKey: { name: "conversationId", allowNull: false },
-  as: "sandboxLinks",
-});
-
-ConversationSandboxModel.belongsTo(SandboxModel, {
-  foreignKey: { name: "sandboxId", allowNull: false },
-  onDelete: "RESTRICT",
-  as: "sandbox",
-});
-
-SandboxModel.hasOne(ConversationSandboxModel, {
-  foreignKey: { name: "sandboxId", allowNull: false },
-  as: "conversationLink",
-});
 
 export class SandboxOwnerModel extends WorkspaceAwareModel<SandboxOwnerModel> {
   declare createdAt: CreationOptional<Date>;
