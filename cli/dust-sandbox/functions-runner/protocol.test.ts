@@ -14,12 +14,17 @@ describe("parseInput", () => {
     expect(input.headers).toEqual({});
   });
 
+  test("defaults url to http://localhost/ when omitted", () => {
+    const input = parseInput(JSON.stringify({ method: "GET" }));
+    expect(input.url).toBe("http://localhost/");
+  });
+
   test("throws BadInputError on invalid JSON", () => {
     expect(() => parseInput("nope")).toThrow(BadInputError);
   });
 
-  test("throws BadInputError when url is missing", () => {
-    expect(() => parseInput(JSON.stringify({ method: "GET" }))).toThrow(
+  test("throws BadInputError when url is present but not a string", () => {
+    expect(() => parseInput(JSON.stringify({ url: 42 }))).toThrow(
       BadInputError
     );
   });

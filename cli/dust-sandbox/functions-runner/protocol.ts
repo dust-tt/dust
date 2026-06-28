@@ -46,9 +46,10 @@ export function parseInput(raw: string): RequestInput {
   }
   const obj = parsed as Record<string, unknown>;
 
-  if (typeof obj.url !== "string") {
-    throw new BadInputError("input.url is required and must be a string");
+  if (obj.url !== undefined && typeof obj.url !== "string") {
+    throw new BadInputError("input.url must be a string");
   }
+  const url = obj.url === undefined ? "http://localhost/" : obj.url;
   const method = obj.method === undefined ? "GET" : obj.method;
   if (typeof method !== "string") {
     throw new BadInputError("input.method must be a string");
@@ -72,7 +73,7 @@ export function parseInput(raw: string): RequestInput {
   if (encoding !== "utf8" && encoding !== "base64") {
     throw new BadInputError('input.encoding must be "utf8" or "base64"');
   }
-  return { method, url: obj.url, headers, body, encoding };
+  return { method, url, headers, body, encoding };
 }
 
 export function decodeRequestBody(input: RequestInput): Uint8Array | undefined {
