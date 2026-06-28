@@ -43,11 +43,11 @@ export class CacheDataAPI implements VisualizationDataAPI {
 
   async callFunction(functionId: string) {
     console.error(
-      `Sandbox function ${functionId} is not supported in cached frames.`
+      `Sandbox function ${functionId} is not supported in public frames.`
     );
     return {
       result: null,
-      error: "Sandbox functions are not supported in cached frames.",
+      error: "Sandbox functions are not supported in public frames.",
     };
   }
 

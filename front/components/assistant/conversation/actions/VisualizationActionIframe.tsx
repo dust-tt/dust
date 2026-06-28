@@ -15,7 +15,9 @@ import type {
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   AlertCircle,
   Button,
@@ -98,7 +100,7 @@ function useVisualizationDataHandler({
   createSandboxFunctionInvocation: (
     functionId: string,
     input?: unknown
-  ) => Promise<SandboxFunctionInvocationType>;
+  ) => Promise<Result<SandboxFunctionInvocationType, Error>>;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -163,26 +165,26 @@ function useVisualizationDataHandler({
 
       switch (data.command) {
         case "callFunction": {
-          // TODO(spolu): manage lifecycle of the function invocation.
-          try {
-            await createSandboxFunctionInvocation(
-              data.params.functionId,
-              data.params.input
-            );
-          } catch (error) {
+          const invocationRes = await createSandboxFunctionInvocation(
+            data.params.functionId,
+            data.params.input
+          );
+
+          if (invocationRes.isErr()) {
             sendResponseToIframe(
               data,
               {
                 result: null,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : "Failed to create sandbox function invocation.",
+                error: "Failed to call function: " + invocationRes.error.message,
               },
               event.source
             );
             break;
           }
+
+          // TODO(spolu): manage lifecycle of the function invocation, pulling events related to
+          // handle tools validations and returning the result to the iframe. For now, we just
+          // return a dummy result.
 
           sendResponseToIframe(
             data,
@@ -399,9 +401,11 @@ export const VisualizationActionIframe = forwardRef<
     async (
       functionId: string,
       input?: unknown
-    ): Promise<SandboxFunctionInvocationType> => {
+    ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
       if (isPublic) {
-        throw new Error("Sandbox functions are not supported in shared frames.");
+        throw new Error(
+          "Sandbox functions are not supported in shared frames."
+        );
       }
 
       const body: PostSandboxFunctionInvocationRequestBody = {
@@ -429,13 +433,9 @@ export const VisualizationActionIframe = forwardRef<
         const result: PostSandboxFunctionInvocationResponseBody =
           await response.json();
 
-        return result.invocation;
+        return new Ok(result.invocation);
       } catch (error) {
-        throw new Error(
-          error instanceof Error
-            ? error.message
-            : "Failed to create sandbox function invocation."
-        );
+        return new Err(normalizeError(error));
       }
     },
     [frameFileId, isPublic, workspaceId]
