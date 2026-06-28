@@ -355,6 +355,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
     stage: "on_demand",
   },
+  frame_publish: {
+    description:
+      "Publish a Frame's edited source tree into a built bundle so model and live edits become the rendered, shareable Frame.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

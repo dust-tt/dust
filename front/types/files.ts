@@ -53,6 +53,10 @@ export type FileUseCaseMetadata = {
   skipFileProcessing?: boolean;
   // Which branding asset this file was uploaded for (workspace_branding use case only).
   asset?: string;
+  // Root scoped path of a published Frame's source tree in the mount (interactive content
+  // only). Set when the frame has been published: its presence means a built bundle exists
+  // (stored as the processed version) and records where to re-read sources on republish.
+  frameBundleRootPath?: string;
 };
 
 export function isConversationFileUseCase(

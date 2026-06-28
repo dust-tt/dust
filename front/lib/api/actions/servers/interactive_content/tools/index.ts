@@ -9,6 +9,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
 import { INTERACTIVE_CONTENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { fetchTemplateContent } from "@app/lib/api/actions/servers/interactive_content/template_utils";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import {
   createClientExecutableFile,
   editClientExecutableFile,
@@ -20,15 +21,19 @@ import {
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import { exportInteractiveContentFileAsPdf } from "@app/lib/api/files/pdf_export";
 import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot";
+import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
+import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-export function createInteractiveContentTools(
+export async function createInteractiveContentTools(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): ToolDefinition[] {
+): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof INTERACTIVE_CONTENT_TOOLS_METADATA> = {
     create_interactive_content_file: async (
       { file_name, mime_type, mode, source, description },
@@ -350,7 +355,80 @@ export function createInteractiveContentTools(
           assertNever(format);
       }
     },
+
+    publish_interactive_content_file: async (
+      { file_id, sandbox_root_path },
+      { sendNotification, _meta }
+    ) => {
+      const { agentConfiguration } = agentLoopContext?.runContext ?? {};
+
+      const file = await FileResource.fetchById(auth, file_id);
+      if (!file) {
+        return new Err(
+          new MCPError(`Frame not found: ${file_id}`, { tracked: false })
+        );
+      }
+
+      // TODO: Assert that the file is a Frame, and that the agent has permission to publish it.
+
+      // Infer the conversation/pod mount from the root prefix and read the frame's sources.
+      const fsResult = await DustFileSystem.fromScopedPath(
+        auth,
+        sandbox_root_path
+      );
+      if (fsResult.isErr()) {
+        return new Err(
+          new MCPError(fsResult.error.message, { tracked: false })
+        );
+      }
+
+      const result = await publishFrame(auth, {
+        file,
+        reader: createMountFrameSourceReader(fsResult.value, sandbox_root_path),
+        rootScopedPath: sandbox_root_path,
+        publishedByAgentConfigurationId: agentConfiguration?.sId,
+      });
+      if (result.isErr()) {
+        return new Err(
+          new MCPError(result.error.message, {
+            tracked: result.error.code === "internal",
+          })
+        );
+      }
+
+      let responseText = `Frame '${file.sId}' published successfully.`;
+      responseText += formatValidationWarningsForLLM(result.value.warnings);
+
+      if (_meta?.progressToken) {
+        const notification: MCPProgressNotificationType =
+          buildInteractiveContentFileNotification(
+            _meta.progressToken,
+            file,
+            "Publishing Frame..."
+          );
+
+        // Notify the MCP client to refresh the now-republished Frame.
+        await sendNotification(notification);
+      }
+
+      return new Ok([
+        {
+          type: "text",
+          text: responseText,
+        },
+      ]);
+    },
   };
 
-  return buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
+  const tools = buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
+
+  // Publishing a Frame's edited source tree into the rendered bundle is gated behind frame_publish.
+  const flags = await getFeatureFlags(auth);
+  if (flags.includes("frame_publish")) {
+    return tools;
+  }
+
+  return tools.filter(
+    (tool) => tool.name !== "publish_interactive_content_file"
+  );
 }

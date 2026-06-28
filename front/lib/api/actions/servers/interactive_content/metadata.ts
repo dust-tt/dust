@@ -28,6 +28,8 @@ export const GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME =
   "get_interactive_content_file_share_url";
 export const EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "export_interactive_content_file";
+export const PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
+  "publish_interactive_content_file";
 
 export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   [CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -248,6 +250,39 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Exporting Frame",
       done: "Export Frame",
+    },
+  },
+  // TODO: Remove Sandbox concept/wording from here. We should use computer.
+  [PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+    description:
+      "Publish a Frame from its source files in the Computer (sandbox). After creating or " +
+      "editing a Frame's `.tsx` source files directly in the sandbox, call this to build them " +
+      "into the live Frame: it resolves the Frame's dependency tree from the given root " +
+      "(inlining relative imports), validates TypeScript/JSX, then updates the canonical Frame " +
+      "so viewers and shares see the new version. A syntax error blocks publishing and is " +
+      "reported back so you can fix it; Tailwind warnings are returned but do not block. Pass " +
+      "the `file_id` of the Frame you created via the Frames tools and the sandbox root path " +
+      "where its files live.",
+    schema: {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Frame to publish (e.g., 'fil_abc123'): the canonical Frame you " +
+            "created or previously edited via the Frames tools."
+        ),
+      sandbox_root_path: z
+        .string()
+        .describe(
+          "The scoped path of the directory in the Computer holding the Frame's source files " +
+            "(e.g., 'conversation-<id>/dashboards/sales'). The entry file is the Frame's file " +
+            "name within this directory; relative imports are resolved and bundled from here."
+        ),
+    },
+    enableAlerting: true,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Publishing Frame",
+      done: "Publish Frame",
     },
   },
 });
