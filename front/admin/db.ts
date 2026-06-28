@@ -121,8 +121,8 @@ import {
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import {
-  ConversationSandboxModel,
   SandboxModel,
+  SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -257,7 +257,7 @@ export function loadAllModels() {
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
     SandboxModel,
-    ConversationSandboxModel,
+    SandboxOwnerModel,
     ConversationBranchModel,
     ConversationForkModel,
     ProjectTaskModel,

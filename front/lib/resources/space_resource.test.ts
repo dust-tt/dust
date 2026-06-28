@@ -1746,6 +1746,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "group_vaults",
   "mcp_server_view",
   "sandbox_function",
+  "sandbox_owner",
   "project_metadata",
   "project_todo",
   "project_todo_state",
