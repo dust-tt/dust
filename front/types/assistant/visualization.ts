@@ -16,6 +16,13 @@ const GetFileParamsSchema = z.object({
 
 type GetFileParams = z.infer<typeof GetFileParamsSchema>;
 
+const CallFunctionParamsSchema = z.object({
+  functionId: z.string(),
+  input: z.unknown().optional(),
+});
+
+type CallFunctionParams = z.infer<typeof CallFunctionParamsSchema>;
+
 const SetContentHeightParamsSchema = z.object({
   height: z.number(),
 });
@@ -43,6 +50,11 @@ type SetErrorMessageParams = z.infer<typeof SetErrorMessageParamsSchema>;
 const GetFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   command: z.literal("getFile"),
   params: GetFileParamsSchema,
+});
+
+const CallFunctionRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("callFunction"),
+  params: CallFunctionParamsSchema,
 });
 
 const GetCodeToExecuteRequestSchema = VisualizationRPCRequestBaseSchema.extend({
@@ -88,6 +100,7 @@ const EditTextRequestSchema = VisualizationRPCRequestBaseSchema.extend({
 });
 
 const VisualizationRPCRequestSchema = z.union([
+  CallFunctionRequestSchema,
   GetFileRequestSchema,
   GetCodeToExecuteRequestSchema,
   SetContentHeightRequestSchema,
@@ -105,6 +118,7 @@ export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
 
 // Define a mapped type for backward compatibility.
 export type VisualizationRPCRequestMap = {
+  callFunction: CallFunctionParams;
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
@@ -116,6 +130,7 @@ export type VisualizationRPCRequestMap = {
 
 // Command results.
 export interface CommandResultMap {
+  callFunction: { result: Record<string, unknown> | null; error?: string };
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };

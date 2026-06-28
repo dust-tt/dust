@@ -41,6 +41,16 @@ export class CacheDataAPI implements VisualizationDataAPI {
     }
   }
 
+  async callFunction(functionId: string) {
+    console.error(
+      `Sandbox function ${functionId} is not supported in cached frames.`
+    );
+    return {
+      result: null,
+      error: "Sandbox functions are not supported in cached frames.",
+    };
+  }
+
   async fetchFile(fileId: string): Promise<File | null> {
     return this.fileCache.get(fileId) || null;
   }
