@@ -53,8 +53,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
-  ConversationSandboxModel,
   SandboxModel,
+  SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -64,6 +64,7 @@ import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { encrypt } from "@app/types/shared/utils/encryption";
+import type { WhereOptions } from "sequelize";
 
 describe("SandboxResource.updateStatus", () => {
   let authenticator: Authenticator;
@@ -236,7 +237,7 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
     expect(reloaded?.status).toBe("deleted");
   });
 
-  it("does not fall back to the legacy conversationId column when ownership is missing", async () => {
+  it("does not operate on a sandbox when ownership is missing", async () => {
     const sandbox = await SandboxFactory.create(
       authenticator,
       conversationResource.toJSON(),
@@ -245,12 +246,11 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
       }
     );
 
-    await ConversationSandboxModel.destroy({
-      where: {
-        sandboxId: sandbox.id,
-        workspaceId: authenticator.getNonNullableWorkspace().id,
-      },
-    });
+    const where: WhereOptions = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
+    await SandboxOwnerModel.destroy({ where });
 
     const result = await SandboxResource.dangerouslyDestroyIfSleeping(
       authenticator,
@@ -390,7 +390,7 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
   });
 
   it("returns rows with killRequestedAt set and status != deleted", async () => {
-    await SandboxFactory.create(authenticator, conversation, {
+    const sandbox = await SandboxFactory.create(authenticator, conversation, {
       status: "running",
       killRequestedAt: new Date(),
     });
@@ -400,7 +400,7 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
     });
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.conversationId).toBe(conversation.id);
+    expect(rows[0]?.id).toBe(sandbox.id);
   });
 
   it("skips deleted rows even when killRequestedAt is set", async () => {
@@ -585,15 +585,9 @@ describe("SandboxResource.fetchByConversation", () => {
     });
   }
 
-  it("reads from conversation_sandboxes even when the legacy conversationId column disagrees", async () => {
+  it("reads from sandbox_owners", async () => {
     const conversation = await makeConversation();
-    const otherConversation = await makeConversation();
     const sandbox = await SandboxFactory.create(authenticator, conversation);
-
-    await SandboxModel.update(
-      { conversationId: otherConversation.id },
-      { where: { id: sandbox.id } }
-    );
 
     const fetched = await SandboxResource.fetchByConversation(
       authenticator,
@@ -603,16 +597,26 @@ describe("SandboxResource.fetchByConversation", () => {
     expect(fetched?.id).toBe(sandbox.id);
   });
 
+  it("writes sandbox_owners", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+    const where = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
+
+    await expect(SandboxOwnerModel.count({ where })).resolves.toBe(1);
+  });
+
   it("returns null when no ownership row exists", async () => {
     const conversation = await makeConversation();
     const sandbox = await SandboxFactory.create(authenticator, conversation);
+    const where = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
 
-    await ConversationSandboxModel.destroy({
-      where: {
-        sandboxId: sandbox.id,
-        workspaceId: authenticator.getNonNullableWorkspace().id,
-      },
-    });
+    await SandboxOwnerModel.destroy({ where });
 
     const fetched = await SandboxResource.fetchByConversation(
       authenticator,
@@ -807,7 +811,7 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.baseImage).toBe("test-image");
     expect(persisted?.version).toBe("0.0.1");
 
-    const link = await ConversationSandboxModel.findOne({
+    const link = await SandboxOwnerModel.findOne({
       where: {
         conversationId: conversation.id,
         workspaceId: authenticator.getNonNullableWorkspace().id,

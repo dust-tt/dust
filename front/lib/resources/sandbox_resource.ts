@@ -22,8 +22,8 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import {
-  ConversationSandboxModel,
   SandboxModel,
+  SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -58,8 +58,8 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
-  private static conversationSandboxModel: ModelStaticWorkspaceAware<ConversationSandboxModel> =
-    ConversationSandboxModel;
+  private static sandboxOwnerModel: ModelStaticWorkspaceAware<SandboxOwnerModel> =
+    SandboxOwnerModel;
 
   private static deleteEgressPolicyAfterDestroy(
     sandbox: SandboxResource
@@ -137,7 +137,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         { transaction: t }
       );
 
-      await ConversationSandboxModel.create(
+      await SandboxOwnerModel.create(
         {
           workspaceId,
           conversationId: blob.conversationId,
@@ -210,16 +210,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   private static async dangerouslyFetchByConversation(
     conversation: ConversationResource
   ): Promise<SandboxResource | null> {
-    const link = await this.conversationSandboxModel.findOne({
+    const owner = await this.sandboxOwnerModel.findOne({
       where: {
         workspaceId: conversation.workspaceId,
         conversationId: conversation.id,
       },
     });
-    if (link) {
+
+    if (owner) {
       const sandbox = await this.model.findOne({
         where: {
-          id: link.sandboxId,
+          id: owner.sandboxId,
           workspaceId: conversation.workspaceId,
         },
       });
@@ -236,17 +237,18 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     auth: Authenticator,
     conversation: ConversationSandboxOwner
   ): Promise<SandboxResource | null> {
-    const link = await this.conversationSandboxModel.findOne({
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const owner = await this.sandboxOwnerModel.findOne({
       where: {
         conversationId: conversation.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId,
       },
     });
 
-    if (link) {
+    if (owner) {
       const sandboxes = await this.baseFetch(auth, {
         where: {
-          id: link.sandboxId,
+          id: owner.sandboxId,
         },
       });
 
@@ -281,24 +283,35 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       );
     }
 
-    const rows: ConversationSandboxModel[] = [];
+    const conversationModelIdsBySandboxModelId = new Map<ModelId, ModelId>();
     for (const [
       workspaceModelId,
       sandboxModelIds,
     ] of sandboxModelIdsByWorkspaceModelId.entries()) {
-      const workspaceRows = await this.conversationSandboxModel.findAll({
+      const ownerRows = await this.sandboxOwnerModel.findAll({
         where: {
           workspaceId: workspaceModelId,
+          conversationId: {
+            [Op.ne]: null,
+          },
           sandboxId: {
             [Op.in]: sandboxModelIds,
           },
         },
         attributes: ["sandboxId", "conversationId"],
       });
-      rows.push(...workspaceRows);
+
+      for (const row of ownerRows) {
+        if (row.conversationId !== null) {
+          conversationModelIdsBySandboxModelId.set(
+            row.sandboxId,
+            row.conversationId
+          );
+        }
+      }
     }
 
-    return new Map(rows.map((r) => [r.sandboxId, r.conversationId]));
+    return conversationModelIdsBySandboxModelId;
   }
 
   async updateStatus(
@@ -342,7 +355,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   ): Promise<Result<number, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
     const deleteSandbox = async (t: Transaction) => {
-      await ConversationSandboxModel.destroy({
+      await SandboxOwnerModel.destroy({
         where: {
           sandboxId: this.id,
           workspaceId,
@@ -397,9 +410,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       }
 
       await withTransaction(async (transaction) => {
-        await ConversationSandboxModel.destroy({
+        await SandboxOwnerModel.destroy({
           where: {
-            conversationId: conversation.id,
+            sandboxId: sandbox.id,
             workspaceId: auth.getNonNullableWorkspace().id,
           },
           transaction,
@@ -1123,7 +1136,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return {
       id: this.sId,
       workspaceId: this.workspaceId,
-      conversationId: this.conversationId,
       providerId: this.providerId,
       status: this.status,
       lastActivityAt: this.lastActivityAt.toISOString(),
