@@ -8,6 +8,7 @@ const {
   mockLoggerError,
   mockLoggerInfo,
   mockLoggerWarn,
+  mockLoggerChild,
   mockForConversation,
   mockSetupSandboxMount,
   mockRefreshSandboxMount,
@@ -23,6 +24,7 @@ const {
     mockLoggerError: vi.fn(),
     mockLoggerInfo: vi.fn(),
     mockLoggerWarn: vi.fn(),
+    mockLoggerChild: vi.fn(),
     mockForConversation: vi.fn(),
     mockSetupSandboxMount,
     mockRefreshSandboxMount,
@@ -50,19 +52,22 @@ vi.mock("@app/lib/api/sandbox/telemetry", () => ({
   startTelemetry: mockStartTelemetry,
 }));
 
-vi.mock("@app/lib/resources/conversation_resource", () => ({
-  ConversationResource: {
+vi.mock("@app/lib/resources/conversation_sandbox_adapter", () => ({
+  ConversationSandboxAdapter: {
     ensureSandboxActive: mockEnsureSandboxActive,
   },
 }));
 
-vi.mock("@app/logger/logger", () => ({
-  default: {
+vi.mock("@app/logger/logger", () => {
+  const logger = {
     error: mockLoggerError,
     info: mockLoggerInfo,
     warn: mockLoggerWarn,
-  },
-}));
+    child: mockLoggerChild,
+  };
+  mockLoggerChild.mockReturnValue(logger);
+  return { default: logger };
+});
 
 import { ensureSandboxReady } from "./lifecycle";
 

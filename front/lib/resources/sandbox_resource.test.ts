@@ -51,6 +51,7 @@ vi.mock("@app/lib/lock", () => ({
 
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   SandboxModel,
@@ -140,7 +141,7 @@ describe("SandboxResource.updateStatus", () => {
 
     expect(mockDistribution).not.toHaveBeenCalled();
 
-    const reloaded = await ConversationResource.fetchSandbox(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -161,7 +162,7 @@ describe("SandboxResource.updateStatus", () => {
     await sandbox.updateStatus("sleeping", { ctx });
     const afterTransition = Date.now();
 
-    const reloaded = await ConversationResource.fetchSandbox(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -175,7 +176,7 @@ describe("SandboxResource.updateStatus", () => {
   });
 });
 
-describe("ConversationResource.dangerouslyDestroySandboxIfSleeping", () => {
+describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping", () => {
   let authenticator: Authenticator;
   let conversationResource: ConversationResource;
 
@@ -220,8 +221,9 @@ describe("ConversationResource.dangerouslyDestroySandboxIfSleeping", () => {
     );
 
     const result =
-      await conversationResource.dangerouslyDestroySandboxIfSleeping(
-        authenticator
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+        authenticator,
+        conversationResource
       );
 
     expect(result.isOk()).toBe(true);
@@ -230,7 +232,7 @@ describe("ConversationResource.dangerouslyDestroySandboxIfSleeping", () => {
     });
     expect(mockDeleteSandboxPolicy).toHaveBeenCalledWith(sandbox.providerId);
 
-    const reloaded = await ConversationResource.fetchSandbox(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
@@ -253,8 +255,9 @@ describe("ConversationResource.dangerouslyDestroySandboxIfSleeping", () => {
     await SandboxOwnerModel.destroy({ where });
 
     const result =
-      await conversationResource.dangerouslyDestroySandboxIfSleeping(
-        authenticator
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+        authenticator,
+        conversationResource
       );
 
     expect(result.isOk()).toBe(true);
@@ -276,7 +279,10 @@ describe("ConversationResource.dangerouslyDestroySandboxIfSleeping", () => {
     );
     const workspaceModelId = authenticator.getNonNullableWorkspace().id;
 
-    const result = await conversationResource.deleteSandbox(authenticator);
+    const result = await ConversationSandboxAdapter.deleteSandbox(
+      authenticator,
+      conversationResource
+    );
 
     expect(result.isOk()).toBe(true);
     const [linkCount, sandboxCount] = await Promise.all([
@@ -295,7 +301,7 @@ describe("ConversationResource.dangerouslyDestroySandboxIfSleeping", () => {
   });
 });
 
-describe("ConversationResource.dangerouslyDestroySandboxIfKillRequested", () => {
+describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", () => {
   let authenticator: Authenticator;
   let conversationResource: ConversationResource;
 
@@ -345,8 +351,9 @@ describe("ConversationResource.dangerouslyDestroySandboxIfKillRequested", () => 
     );
 
     const result =
-      await conversationResource.dangerouslyDestroySandboxIfKillRequested(
-        authenticator
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+        authenticator,
+        conversationResource
       );
 
     expect(result.isOk()).toBe(true);
@@ -354,7 +361,7 @@ describe("ConversationResource.dangerouslyDestroySandboxIfKillRequested", () => 
       workspaceId: authenticator.getNonNullableWorkspace().sId,
     });
 
-    const reloaded = await ConversationResource.fetchSandbox(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
@@ -367,14 +374,15 @@ describe("ConversationResource.dangerouslyDestroySandboxIfKillRequested", () => 
     });
 
     const result =
-      await conversationResource.dangerouslyDestroySandboxIfKillRequested(
-        authenticator
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+        authenticator,
+        conversationResource
       );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
 
-    const reloaded = await ConversationResource.fetchSandbox(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
@@ -388,8 +396,9 @@ describe("ConversationResource.dangerouslyDestroySandboxIfKillRequested", () => 
     });
 
     const result =
-      await conversationResource.dangerouslyDestroySandboxIfKillRequested(
-        authenticator
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+        authenticator,
+        conversationResource
       );
 
     expect(result.isOk()).toBe(true);
@@ -498,7 +507,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(2);
-    const stillUnmarked = await ConversationResource.fetchSandbox(
+    const stillUnmarked = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       other
     );
@@ -535,7 +544,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(2);
-    const matched = await ConversationResource.fetchSandbox(
+    const matched = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       cMatch
     );
@@ -565,7 +574,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(1);
-    const alreadyMarked = await ConversationResource.fetchSandbox(
+    const alreadyMarked = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       cAlreadyMarked
     );
@@ -589,7 +598,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
   });
 });
 
-describe("ConversationResource.fetchSandbox", () => {
+describe("ConversationSandboxAdapter.fetchSandbox", () => {
   let authenticator: Authenticator;
   let agentConfigId: string;
 
@@ -614,7 +623,7 @@ describe("ConversationResource.fetchSandbox", () => {
     const conversation = await makeConversation();
     const sandbox = await SandboxFactory.create(authenticator, conversation);
 
-    const fetched = await ConversationResource.fetchSandbox(
+    const fetched = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -643,7 +652,7 @@ describe("ConversationResource.fetchSandbox", () => {
 
     await SandboxOwnerModel.destroy({ where });
 
-    const fetched = await ConversationResource.fetchSandbox(
+    const fetched = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -786,7 +795,7 @@ describe("SandboxResource.ensureActive", () => {
       },
     ]);
 
-    const result = await ConversationResource.ensureSandboxActive(
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
       conversation
     );
@@ -828,14 +837,14 @@ describe("SandboxResource.ensureActive", () => {
   });
 
   it("records baseImage and version from the registered image on fresh create", async () => {
-    const result = await ConversationResource.ensureSandboxActive(
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
       conversation
     );
 
     expect(result.isOk()).toBe(true);
 
-    const persisted = await ConversationResource.fetchSandbox(
+    const persisted = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -858,14 +867,14 @@ describe("SandboxResource.ensureActive", () => {
       version: "0.0.0-old",
     });
 
-    const result = await ConversationResource.ensureSandboxActive(
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
       conversation
     );
 
     expect(result.isOk()).toBe(true);
 
-    const persisted = await ConversationResource.fetchSandbox(
+    const persisted = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -883,7 +892,7 @@ describe("SandboxResource.ensureActive", () => {
       killRequestedAt: new Date(),
     });
 
-    const result = await ConversationResource.ensureSandboxActive(
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
       conversation
     );
@@ -894,7 +903,7 @@ describe("SandboxResource.ensureActive", () => {
     });
     expect(mockProviderCreate).toHaveBeenCalled();
 
-    const persisted = await ConversationResource.fetchSandbox(
+    const persisted = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );

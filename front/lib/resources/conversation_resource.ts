@@ -16,7 +16,6 @@ import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
-import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
@@ -24,10 +23,7 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
-import type {
-  EnsureSandboxResult,
-  SandboxResource,
-} from "@app/lib/resources/sandbox_resource";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -88,11 +84,6 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
-
-type ConversationSandboxOwner = Pick<
-  ConversationWithoutContentType,
-  "id" | "sId"
->;
 
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
@@ -360,86 +351,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return conversations.map((c) => this.fromModel(c, null));
-  }
-
-  static async fetchSandbox(
-    auth: Authenticator,
-    conversation: ConversationSandboxOwner
-  ): Promise<SandboxResource | null> {
-    return ConversationSandboxAdapter.fetchSandbox(auth, conversation);
-  }
-
-  async fetchSandbox(auth: Authenticator): Promise<SandboxResource | null> {
-    return ConversationResource.fetchSandbox(auth, this);
-  }
-
-  static async ensureSandboxActive(
-    auth: Authenticator,
-    conversation: ConversationSandboxOwner
-  ): Promise<Result<EnsureSandboxResult, Error>> {
-    return ConversationSandboxAdapter.ensureSandboxActive(auth, conversation);
-  }
-
-  async ensureSandboxActive(
-    auth: Authenticator
-  ): Promise<Result<EnsureSandboxResult, Error>> {
-    return ConversationResource.ensureSandboxActive(auth, this);
-  }
-
-  static async pauseSandboxForApproval(
-    auth: Authenticator,
-    conversation: ConversationSandboxOwner
-  ): Promise<Result<void, Error>> {
-    return ConversationSandboxAdapter.pauseSandboxForApproval(
-      auth,
-      conversation
-    );
-  }
-
-  async pauseSandboxForApproval(
-    auth: Authenticator
-  ): Promise<Result<void, Error>> {
-    return ConversationResource.pauseSandboxForApproval(auth, this);
-  }
-
-  async deleteSandbox(auth: Authenticator): Promise<Result<void, Error>> {
-    return ConversationSandboxAdapter.deleteSandbox(auth, this);
-  }
-
-  async dangerouslySleepSandboxIfRunning(
-    auth: Authenticator
-  ): Promise<Result<void, Error>> {
-    return ConversationSandboxAdapter.dangerouslySleepSandboxIfRunning(
-      auth,
-      this
-    );
-  }
-
-  async dangerouslySleepSandboxIfPendingApproval(
-    auth: Authenticator
-  ): Promise<Result<void, Error>> {
-    return ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
-      auth,
-      this
-    );
-  }
-
-  async dangerouslyDestroySandboxIfSleeping(
-    auth: Authenticator
-  ): Promise<Result<void, Error>> {
-    return ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
-      auth,
-      this
-    );
-  }
-
-  async dangerouslyDestroySandboxIfKillRequested(
-    auth: Authenticator
-  ): Promise<Result<void, Error>> {
-    return ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
-      auth,
-      this
-    );
   }
 
   static async dangerouslyFetchConversationModelIdsBySandboxes(

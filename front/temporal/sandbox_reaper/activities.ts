@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -166,7 +167,10 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     await processSandboxes(
       killRequestedSandboxes,
       (auth, conversation) =>
-        conversation.dangerouslyDestroySandboxIfKillRequested(auth),
+        ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+          auth,
+          conversation
+        ),
       "Reaper: failed to destroy kill-requested sandbox — continuing."
     );
   }
@@ -187,7 +191,10 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     await processSandboxes(
       runningSandboxes,
       (auth, conversation) =>
-        conversation.dangerouslySleepSandboxIfRunning(auth),
+        ConversationSandboxAdapter.dangerouslySleepSandboxIfRunning(
+          auth,
+          conversation
+        ),
       "Reaper: failed to sleep sandbox — continuing."
     );
   }
@@ -208,7 +215,10 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     await processSandboxes(
       pendingSandboxes,
       (auth, conversation) =>
-        conversation.dangerouslySleepSandboxIfPendingApproval(auth),
+        ConversationSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
+          auth,
+          conversation
+        ),
       "Reaper: failed to transition pending_approval sandbox — continuing."
     );
   }
@@ -229,7 +239,10 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
     await processSandboxes(
       sleepingSandboxes,
       (auth, conversation) =>
-        conversation.dangerouslyDestroySandboxIfSleeping(auth),
+        ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+          auth,
+          conversation
+        ),
       "Reaper: failed to destroy sandbox — continuing."
     );
   }

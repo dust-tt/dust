@@ -1,4 +1,4 @@
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { requestSandboxKillsActivity } from "@app/temporal/sandbox_reaper/kill_requester/activities";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -52,7 +52,10 @@ describe("requestSandboxKillsActivity", () => {
     });
 
     expect(hasMore).toBe(false);
-    const marked = await ConversationResource.fetchSandbox(authenticator, c1);
+    const marked = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      c1
+    );
     expect(marked?.killRequestedAt).not.toBeNull();
   });
 });

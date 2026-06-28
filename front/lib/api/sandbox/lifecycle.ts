@@ -10,7 +10,7 @@ import {
 } from "@app/lib/api/sandbox/instrumentation";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -22,7 +22,7 @@ export interface EnsureSandboxReadyResult {
 }
 
 // /!\ All sandbox-touching tools must use this helper rather than calling
-// ConversationResource.ensureSandboxActive directly, otherwise the GCS FUSE mount and
+// ConversationSandboxAdapter.ensureSandboxActive directly, otherwise the GCS FUSE mount and
 // egress forwarder bring-up will be skipped.
 export async function ensureSandboxReady(
   auth: Authenticator,
@@ -38,7 +38,7 @@ export async function ensureSandboxReady(
     return await traceSandboxStartupPhase("total", async () => {
       const ensureResult = await traceSandboxStartupPhase(
         "provider_ensure",
-        () => ConversationResource.ensureSandboxActive(auth, conversation)
+        () => ConversationSandboxAdapter.ensureSandboxActive(auth, conversation)
       );
       if (ensureResult.isErr()) {
         status = "error";
