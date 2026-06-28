@@ -175,7 +175,8 @@ function useVisualizationDataHandler({
               data,
               {
                 result: null,
-                error: "Failed to call function: " + invocationRes.error.message,
+                error:
+                  "Failed to call function: " + invocationRes.error.message,
               },
               event.source
             );
