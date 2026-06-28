@@ -25,11 +25,24 @@ dsbx function      Run a sandbox function (run) or print its schema (get)
 
 ## Build
 
+The functions runner bundle (`functions-runner/runner.js`) is a generated
+artifact and is **not committed**. Build it once before compiling `dsbx`:
+
+```sh
+cd cli/dust-sandbox/functions-runner
+bun install
+bun run build
+```
+
+Then build the CLI:
+
 ```sh
 cd cli/dust-sandbox
 cargo build
 ./target/debug/dsbx --help
 ```
+
+(If the bundle is missing, `build.rs` fails the build with this instruction.)
 
 ## Functions
 
@@ -41,5 +54,10 @@ Functions are self-contained Bun bundles in `$DUST_FUNCTIONS_DIR`, named
 - `dsbx function get <name>` — prints `{name, description, input_schema,
   output_schema}` (JSON Schema).
 
-The embedded runner is committed at `functions-runner/runner.js`; regenerate it
-after changing the runner sources with `cd functions-runner && bun run build`.
+The runner is bundled (Zod inlined) into `functions-runner/runner.js`, a
+generated artifact that is **not committed** (it is `.gitignore`d). `dsbx`
+embeds it via `include_str!`, so it must be built with `bun run build` before
+compiling `dsbx`; `build.rs` fails early with instructions if it is missing. CI,
+the release workflow, and `upsert_dsbx_to_sandbox.sh` build it on the host
+first. Rebuild it after changing any runner source (`protocol.ts`, `invoke.ts`,
+`schema.ts`, `runner.ts`).

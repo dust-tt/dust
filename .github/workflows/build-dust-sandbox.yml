@@ -58,6 +58,17 @@ jobs:
         with:
           workspaces: cli/dust-sandbox
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - name: Build functions runner bundle
+        # runner.js is a generated bundle (not committed); dsbx embeds it via
+        # include_str!, so it must exist before any cargo compile (clippy/build/test).
+        working-directory: cli/dust-sandbox/functions-runner
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
       - name: Lint
         working-directory: cli/dust-sandbox
         run: cargo fmt --all -- --check

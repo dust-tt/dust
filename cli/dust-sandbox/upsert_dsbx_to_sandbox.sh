@@ -51,6 +51,15 @@ if [[ "$NO_BUILD" == false ]]; then
     echo "(Requires Docker running)"
     exit 1
   fi
+  if ! command -v bun &>/dev/null; then
+    echo "Error: 'bun' is not installed (needed to build the functions runner bundle)."
+    echo "Install it from https://bun.com/ (or: curl -fsSL https://bun.sh/install | bash)"
+    exit 1
+  fi
+  # runner.js is a generated bundle (not committed); build it on the host so
+  # cross only mounts and embeds it (bun is not needed inside the container).
+  echo "==> Building functions runner bundle..."
+  (cd "$SCRIPT_DIR/functions-runner" && bun install --frozen-lockfile && bun run build)
   (cd "$SCRIPT_DIR" && cross build --release --target "$TARGET")
   echo "==> Build complete: $BINARY"
 else
