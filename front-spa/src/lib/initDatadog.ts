@@ -66,6 +66,9 @@ export function initDatadogRUM() {
         // context when investigating bugs — eliminates the manual reproduction step.
         // The ambient sessionReplaySampleRate (5%) captures a random baseline;
         // this ensures every real error session is also recorded.
+        //
+        // Non-optional access is intentional: this callback only fires after
+        // onReady → init(), so window.DD_RUM is guaranteed defined here.
         if (event.type === "error") {
           window.DD_RUM.startSessionReplayRecording();
         }
