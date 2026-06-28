@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { z } from "zod";
 import { join } from "node:path";
+import { z } from "zod";
 import { getFunctionSchema, toJsonSchema } from "./schema.ts";
 
 const fx = (n: string) => join(import.meta.dir, "fixtures", n);

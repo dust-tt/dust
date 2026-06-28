@@ -19,7 +19,9 @@ describe("invoke", () => {
       req({ url: "http://localhost/?name=bun" })
     );
     expect(out.ok).toBe(true);
-    if (!out.ok) return;
+    if (!out.ok) {
+      return;
+    }
     expect(out.response.status).toBe(200);
     expect(JSON.parse(out.response.body!)).toEqual({ hello: "bun" });
   });
@@ -27,7 +29,9 @@ describe("invoke", () => {
   test("a 404 is still ok:true", async () => {
     const out = await invoke(fx("notfound.ts"), req());
     expect(out.ok).toBe(true);
-    if (out.ok) expect(out.response.status).toBe(404);
+    if (out.ok) {
+      expect(out.response.status).toBe(404);
+    }
   });
 
   test("passes the request body through", async () => {
@@ -36,37 +40,49 @@ describe("invoke", () => {
       req({ method: "POST", body: "payload" })
     );
     expect(out.ok).toBe(true);
-    if (out.ok) expect(out.response.body).toBe("echo:POST:payload");
+    if (out.ok) {
+      expect(out.response.body).toBe("echo:POST:payload");
+    }
   });
 
   test("binary response encodes as base64", async () => {
     const out = await invoke(fx("binary.ts"), req());
     expect(out.ok).toBe(true);
-    if (out.ok) expect(out.response.encoding).toBe("base64");
+    if (out.ok) {
+      expect(out.response.encoding).toBe("base64");
+    }
   });
 
   test("thrown handler → ok:false threw", async () => {
     const out = await invoke(fx("throws.ts"), req());
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.error.kind).toBe("threw");
+    if (!out.ok) {
+      expect(out.error.kind).toBe("threw");
+    }
   });
 
   test("missing file → import_failed", async () => {
     const out = await invoke(fx("nope.ts"), req());
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.error.kind).toBe("import_failed");
+    if (!out.ok) {
+      expect(out.error.kind).toBe("import_failed");
+    }
   });
 
   test("no fetch export → import_failed", async () => {
     const out = await invoke(fx("no-fetch.ts"), req());
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.error.kind).toBe("import_failed");
+    if (!out.ok) {
+      expect(out.error.kind).toBe("import_failed");
+    }
   });
 
   test("non-Response return → bad_return", async () => {
     const out = await invoke(fx("bad-return.ts"), req());
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.error.kind).toBe("bad_return");
+    if (!out.ok) {
+      expect(out.error.kind).toBe("bad_return");
+    }
   });
 
   test("valid body satisfies schema.input → 200", async () => {
@@ -75,8 +91,9 @@ describe("invoke", () => {
       req({ method: "POST", body: JSON.stringify({ name: "David" }) })
     );
     expect(out.ok).toBe(true);
-    if (out.ok)
+    if (out.ok) {
       expect(JSON.parse(out.response.body!)).toEqual({ greeting: "Hi, David" });
+    }
   });
 
   test("missing required field → 400 without calling handler", async () => {
@@ -85,7 +102,9 @@ describe("invoke", () => {
       req({ method: "POST", body: "{}" })
     );
     expect(out.ok).toBe(true);
-    if (!out.ok) return;
+    if (!out.ok) {
+      return;
+    }
     expect(out.response.status).toBe(400);
     expect(JSON.parse(out.response.body!).error).toBe("invalid input");
   });
@@ -96,7 +115,9 @@ describe("invoke", () => {
       req({ method: "POST", body: "not json" })
     );
     expect(out.ok).toBe(true);
-    if (out.ok) expect(out.response.status).toBe(400);
+    if (out.ok) {
+      expect(out.response.status).toBe(400);
+    }
   });
 
   test("non-Zod schema.input is skipped (handler runs)", async () => {
@@ -105,6 +126,8 @@ describe("invoke", () => {
       req({ method: "POST", body: "{}" })
     );
     expect(out.ok).toBe(true);
-    if (out.ok) expect(out.response.body).toBe("ok");
+    if (out.ok) {
+      expect(out.response.body).toBe("ok");
+    }
   });
 });
