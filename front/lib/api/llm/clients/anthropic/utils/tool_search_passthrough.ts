@@ -2,6 +2,7 @@ import type {
   ServerToolUseBlockParam,
   ToolSearchToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import logger from "@app/logger/logger";
 import { z } from "zod";
 
 // Anthropic runs tool search server-side inside a single assistant turn, emitting
@@ -56,6 +57,10 @@ export type AnthropicToolSearchBlock = z.infer<
   typeof anthropicToolSearchBlockSchema
 >;
 
+function hasBlockType(value: unknown): value is { type: unknown } {
+  return typeof value === "object" && value !== null && "type" in value;
+}
+
 // Parses an opaque persisted block back into a typed Anthropic block param.
 // Returns null when the block is not a recognized tool-search block so the
 // caller can skip it rather than send a malformed request.
@@ -64,6 +69,13 @@ export function parseAnthropicToolSearchBlock(
 ): ServerToolUseBlockParam | ToolSearchToolResultBlockParam | null {
   const r = anthropicToolSearchBlockSchema.safeParse(block);
   if (!r.success) {
+    // We only ever store blocks we captured ourselves, so a parse failure means
+    // storage drift or a newly enabled server tool the schema does not know.
+    // Surface it: dropping the block would re-break interleaved thinking.
+    logger.warn(
+      { blockType: hasBlockType(block) ? block.type : undefined },
+      "[tool-search] Dropping unparseable Anthropic passthrough block"
+    );
     return null;
   }
   // Reconstruct the param explicitly so required fields (e.g. `input`) are

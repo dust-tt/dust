@@ -6,6 +6,7 @@ import type {
 import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   assistantMessageToContentBlocks,
+  assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
   assistantTextMessageToTextBlock,
   assistantToolCallRequestToToolUseBlock,
@@ -30,6 +31,7 @@ import type {
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
+  BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
@@ -55,6 +57,7 @@ const realConverters: MessageBlockConverters = {
   assistantTextMessageToTextBlock,
   assistantReasoningMessageToThinkingBlocks,
   assistantToolCallRequestToToolUseBlock,
+  assistantProviderPassthroughMessageToBlocks,
 };
 
 // A fully stubbed converters object, so composites can be checked for pure
@@ -86,6 +89,7 @@ function makeStubConverters(): MessageBlockConverters {
           input: {},
         }) as ToolUseBlockParam
     ),
+    assistantProviderPassthroughMessageToBlocks: vi.fn(() => []),
   };
 }
 
@@ -624,6 +628,76 @@ describe("assistantMessageToContentBlocks", () => {
     expect(result).toEqual([
       { type: "tool_use", id: "stub-id", name: "stub-name", input: {} },
     ]);
+  });
+
+  it("delegates provider_passthrough messages to assistantProviderPassthroughMessageToBlocks", () => {
+    const stub = makeStubConverters();
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: { type: "x" } },
+    };
+    assistantMessageToContentBlocks(message, stub);
+    expect(
+      stub.assistantProviderPassthroughMessageToBlocks
+    ).toHaveBeenCalledWith(message);
+  });
+});
+
+describe("assistantProviderPassthroughMessageToBlocks", () => {
+  const serverToolUseBlock = {
+    type: "server_tool_use",
+    id: "srvtoolu_1",
+    name: "tool_search_tool_bm25",
+    input: { query: "x" },
+  };
+  const toolSearchResultBlock = {
+    type: "tool_search_tool_result",
+    tool_use_id: "srvtoolu_1",
+    content: {
+      type: "tool_search_tool_search_result",
+      tool_references: [{ type: "tool_reference", tool_name: "slack__post" }],
+    },
+  };
+
+  it("replays an anthropic server_tool_use block verbatim", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: serverToolUseBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([
+      serverToolUseBlock,
+    ]);
+  });
+
+  it("replays an anthropic tool_search_tool_result block verbatim", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: toolSearchResultBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([
+      toolSearchResultBlock,
+    ]);
+  });
+
+  it("skips a block tagged for another provider", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "openai", block: serverToolUseBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([]);
+  });
+
+  it("skips an anthropic block that fails to parse", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: { type: "text", text: "no" } },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([]);
   });
 });
 

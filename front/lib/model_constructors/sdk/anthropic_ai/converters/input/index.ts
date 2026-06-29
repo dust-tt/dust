@@ -11,6 +11,7 @@ import {
   TOOL_SEARCH_INSTRUCTION,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import {
+  assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
   assistantTextMessageToTextBlock,
   assistantToolCallRequestToToolUseBlock,
@@ -52,6 +53,8 @@ export function WithAnthropicAIInputConverter<
       assistantReasoningMessageToThinkingBlocks;
     assistantToolCallRequestToToolUseBlock =
       assistantToolCallRequestToToolUseBlock;
+    assistantProviderPassthroughMessageToBlocks =
+      assistantProviderPassthroughMessageToBlocks;
     reasoningToThinkingConfig = reasoningToThinkingConfig;
     modelIdToApiModelId = (modelId: ModelId): Model => modelId;
 

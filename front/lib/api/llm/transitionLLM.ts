@@ -84,7 +84,7 @@ function mapReasoningEffort(
 /**
  * Converts an old-system message to new BaseMessage(s).
  */
-function toBaseMessages(
+export function toBaseMessages(
   message: ModelMessageTypeMultiActionsWithoutContentFragment
 ): BaseMessage[] {
   switch (message.role) {
@@ -171,8 +171,16 @@ function toBaseMessages(
                 },
               ];
             case "provider_passthrough":
-              // Opaque provider block, not yet round-tripped through this router.
-              return [];
+              return [
+                {
+                  role: "assistant",
+                  type: "provider_passthrough",
+                  content: {
+                    provider: c.value.provider,
+                    block: c.value.block,
+                  },
+                },
+              ];
             default:
               assertNever(c);
           }
@@ -282,7 +290,7 @@ function mapErrorType(errorType: ErrorType): {
 /**
  * Converts a single new model event to its old LLM event equivalent.
  */
-function convertToOldEvent(
+export function convertToOldEvent(
   event: ModelResponseEvent,
   metadata: LLMClientMetadata
 ): LLMEvent {
@@ -407,6 +415,13 @@ function convertToOldEvent(
         metadata,
       };
     }
+
+    case "provider_passthrough":
+      return {
+        type: "provider_passthrough",
+        content: event.content,
+        metadata,
+      };
 
     case "error": {
       const { type: errorType, isRetryable } = mapErrorType(event.content.type);

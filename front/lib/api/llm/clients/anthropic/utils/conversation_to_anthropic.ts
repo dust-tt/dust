@@ -148,9 +148,11 @@ function assistantContentToParam(
     }
     case "provider_passthrough": {
       // Replay the provider's own tool-search blocks verbatim so interleaved
-      // thinking signatures stay valid. Skip blocks tagged for another provider
-      // or that fail to parse.
-      if (content.value.provider !== ANTHROPIC_PROVIDER_ID) {
+      // thinking signatures stay valid. When thinking is omitted there are no
+      // signatures to protect, so drop the server blocks too rather than send
+      // them orphaned from the thinking they were emitted with. Also skip blocks
+      // tagged for another provider or that fail to parse.
+      if (omittedThinking || content.value.provider !== ANTHROPIC_PROVIDER_ID) {
         return undefined;
       }
       return parseAnthropicToolSearchBlock(content.value.block) ?? undefined;

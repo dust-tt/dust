@@ -293,5 +293,24 @@ describe("toMessage", () => {
 
       expect(result.content).toEqual([{ type: "text", text: "hello" }]);
     });
+
+    it("drops passthrough blocks when thinking is omitted", async () => {
+      // With thinking omitted there are no signatures to protect, so the server
+      // blocks must not be sent orphaned from their thinking.
+      const result = await toMessage(assistantMessage, {
+        isFirst: false,
+        omittedThinking: true,
+      });
+
+      expect(result.content).toEqual([
+        { type: "text", text: "Let me find a tool." },
+        {
+          type: "tool_use",
+          id: "toolu_1",
+          name: "github__create_issue",
+          input: {},
+        },
+      ]);
+    });
   });
 });

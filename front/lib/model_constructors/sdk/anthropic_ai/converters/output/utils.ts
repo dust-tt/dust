@@ -25,6 +25,7 @@ import type {
   ErrorEvent,
   ModelResponseEvent,
   NonDeltaResponseEvent,
+  ProviderPassthroughEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
   ResponseIdEvent,
@@ -122,6 +123,8 @@ export type BlockState =
       accumulator: string;
       type: "tool_search";
       toolName: string;
+      // The server_tool_use block id, needed to replay the block verbatim.
+      toolId: string;
     };
 
 // The per-signal leaf converters. Composites below take an object satisfying
@@ -170,6 +173,10 @@ export interface OutputEventConverters {
     name: string,
     invalidJson: string
   ): ToolCallEvent;
+  serverToolBlockToProviderPassthroughEvent(
+    metadata: EndpointMetadata,
+    block: unknown
+  ): ProviderPassthroughEvent;
   messageDeltaUsageToTokenUsageEvent(
     metadata: EndpointMetadata,
     usage: MessageDeltaUsage,
@@ -278,6 +285,17 @@ export function invalidJsonToolCallToToolCallEvent(
   return {
     type: "tool_call",
     content: { id, name, arguments: { INVALID_JSON: invalidJson } },
+    metadata,
+  };
+}
+
+export function serverToolBlockToProviderPassthroughEvent(
+  metadata: EndpointMetadata,
+  block: unknown
+): ProviderPassthroughEvent {
+  return {
+    type: "provider_passthrough",
+    content: { provider: metadata.providerId, block },
     metadata,
   };
 }
@@ -522,8 +540,8 @@ export function contentBlockStartToEvents(
       ];
 
     case "server_tool_use":
-      // The only server tool we enable is tool search. Track its state so the
-      // query deltas accumulate, then log the query at content_block_stop.
+      // The only server tool we enable is tool search. Accumulate the query
+      // deltas, then emit the block as passthrough at content_block_stop.
       return [
         [],
         {
@@ -531,17 +549,27 @@ export function contentBlockStartToEvents(
           accumulator: "",
           type: "tool_search",
           toolName: block.name,
+          toolId: block.id,
         },
       ];
 
     case "tool_search_tool_result":
-      // The discovered tool references arrive inline here (no deltas), so log
-      // them now. State stays null and the matching stop is a no-op.
+      // Discovered references arrive inline (no deltas). Emit a passthrough for
+      // verbatim replay and log them. State stays null, so the stop is a no-op.
       logToolSearchResult({
         content: block.content,
         logFields: toolSearchLogFields(metadata),
       });
-      return [[], null];
+      return [
+        [
+          converters.serverToolBlockToProviderPassthroughEvent(metadata, {
+            type: "tool_search_tool_result",
+            tool_use_id: block.tool_use_id,
+            content: block.content,
+          }),
+        ],
+        null,
+      ];
 
     // Block types we don't surface: redacted thinking, other server tools, and
     // their result / container blocks. Listed explicitly so the default stays
@@ -678,7 +706,7 @@ export function contentBlockStopToEvents(
       ];
     }
 
-    case "tool_search":
+    case "tool_search": {
       logToolSearchQuery({
         rawInput: block.accumulator,
         toolName: block.toolName,
@@ -689,7 +717,22 @@ export function contentBlockStopToEvents(
         ],
         logFields: toolSearchLogFields(metadata),
       });
-      return [[], null];
+      // Replay the server_tool_use block verbatim so interleaved thinking
+      // signatures stay valid, falling back to an empty input if the query
+      // failed to parse.
+      const parsedInput = safeParseJSON(block.accumulator);
+      return [
+        [
+          converters.serverToolBlockToProviderPassthroughEvent(metadata, {
+            type: "server_tool_use",
+            id: block.toolId,
+            name: block.toolName,
+            input: parsedInput.isOk() ? parsedInput.value : {},
+          }),
+        ],
+        null,
+      ];
+    }
 
     default:
       assertNever(block);
@@ -925,17 +968,23 @@ export function messageToEvents(
         events.push(event);
         break;
       }
-      // Block types we don't surface: redacted thinking, server tools, and
-      // their result / container blocks. Listed explicitly so the default
-      // stays exhaustive.
-      case "redacted_thinking":
       case "server_tool_use":
+      case "tool_search_tool_result":
+        // Replay tool-search blocks verbatim so interleaved thinking signatures
+        // stay valid.
+        events.push(
+          converters.serverToolBlockToProviderPassthroughEvent(metadata, block)
+        );
+        break;
+      // Block types we don't surface: redacted thinking, other server tools, and
+      // their result / container blocks. Listed explicitly so the default stays
+      // exhaustive.
+      case "redacted_thinking":
       case "web_search_tool_result":
       case "web_fetch_tool_result":
       case "code_execution_tool_result":
       case "bash_code_execution_tool_result":
       case "text_editor_code_execution_tool_result":
-      case "tool_search_tool_result":
       case "container_upload":
         break;
       default:
