@@ -721,16 +721,16 @@ export function UsagePage() {
 
         {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
           <FreePlanUpgradeSection
-              action={
-                <Button
-                  label="Change my seat"
-                  variant="highlight"
-                  size="sm"
-                  onClick={() => setChangeSeatMember(myUsage)}
-                />
-              }
-            />
-          )}
+            action={
+              <Button
+                label="Change my seat"
+                variant="highlight"
+                size="sm"
+                onClick={() => setChangeSeatMember(myUsage)}
+              />
+            }
+          />
+        )}
 
         {showPoolSection && (
           <Page.Vertical gap="xs" align="stretch">
