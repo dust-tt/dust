@@ -167,6 +167,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
     stage: "on_demand",
   },
+  pricing_groups: {
+    description:
+      "Surface org groups on the Usage page: groups column, groups filter, and bulk spend-limit editing across a selection of members.",
+    stage: "on_demand",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",

@@ -38,6 +38,7 @@ import {
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { isUserAwuWarned } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
@@ -72,6 +73,7 @@ export type MemberUsageType = {
   name: string;
   email: string | null;
   image: string | null;
+  groups: string[];
   seatType: MembershipSeatType | null;
   // Per-user AWU allocation granted by the seat (in credits). Null when the
   // user has no seat or the seat carries no allocation.
@@ -861,6 +863,12 @@ export async function getMemberUsage({
     return { member: null };
   }
 
+  const groupNamesByUserModelId =
+    await GroupResource.listGroupNamesByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: [userResource.id],
+    });
+
   const metronomeUserId =
     membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
   const totalConsumedCredits =
@@ -935,6 +943,7 @@ export async function getMemberUsage({
       name: userResource.fullName() || userResource.name,
       email: userResource.email ?? null,
       image: userResource.imageUrl ?? null,
+      groups: groupNamesByUserModelId.get(userResource.id) ?? [],
       seatType: membership.seatType ?? null,
       memberUsageLimit:
         effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
@@ -1157,6 +1166,7 @@ export async function getMembersUsage({
     { freeBalanceByUserId, freeStartingByUserId },
     perUserSpendLimits,
     freeCreditAlertIdsByUserId,
+    groupNamesByUserModelId,
   ] = await Promise.all([
     fetchConsumedAwuCreditsByUserId({
       workspace,
@@ -1201,6 +1211,10 @@ export async function getMembersUsage({
           workspaceId: workspace.sId,
         })
       : Promise.resolve(null),
+    GroupResource.listGroupNamesByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: users.map((u) => u.id),
+    }),
   ]);
   const freeCreditAlertIds =
     freeCreditAlertIdsByUserId?.isOk() === true
@@ -1331,6 +1345,7 @@ export async function getMembersUsage({
         name: u.fullName() || u.name,
         email: u.email ?? null,
         image: u.imageUrl ?? null,
+        groups: groupNamesByUserModelId.get(u.id) ?? [],
         seatType: membership.seatType ?? null,
         memberUsageLimit:
           effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,

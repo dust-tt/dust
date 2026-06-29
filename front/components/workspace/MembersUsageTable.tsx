@@ -38,6 +38,7 @@ type RowData = {
   name: string;
   email: string | null;
   image: string | null;
+  groups: string[];
   seatType: MembershipSeatType | null;
   memberUsageLimit: number | null;
   seatBalanceAwu: number | null;
@@ -333,6 +334,26 @@ export function AwuUsageBar({
 
 const nameColumn = buildMemberNameColumn<RowData>();
 
+const groupsColumn: ColumnDef<RowData, string> = {
+  id: "groups" as const,
+  header: "Groups",
+  enableSorting: false,
+  accessorFn: (row) => row.groups.join(", "),
+  cell: (info: Info) => {
+    const { groups } = info.row.original;
+    return (
+      <DataTable.CellContent>
+        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {groups.length > 0 ? groups.join(", ") : "--"}
+        </span>
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-48",
+  },
+};
+
 const seatTypeColumn: ColumnDef<RowData, string> = {
   id: "seatType" as const,
   header: "Seat",
@@ -400,9 +421,6 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
       />
     </div>
   ),
-  meta: {
-    className: "w-64",
-  },
   enableSorting: true,
 };
 
@@ -419,8 +437,14 @@ const actionsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildColumns(): ColumnDef<RowData, string>[] {
-  return [nameColumn, seatTypeColumn, consumedAwuCreditsColumn, actionsColumn];
+function buildColumns(showGroupsColumn: boolean): ColumnDef<RowData, string>[] {
+  return [
+    nameColumn,
+    ...(showGroupsColumn ? [groupsColumn] : []),
+    seatTypeColumn,
+    { ...consumedAwuCreditsColumn, meta: { className: "w-64" } },
+    actionsColumn,
+  ];
 }
 
 interface MembersUsageTableProps {
@@ -439,6 +463,7 @@ interface MembersUsageTableProps {
   totalRowCount: number;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
+  showGroupsColumn?: boolean;
 }
 
 export function MembersUsageTable({
@@ -457,6 +482,7 @@ export function MembersUsageTable({
   totalRowCount,
   sorting,
   setSorting,
+  showGroupsColumn = false,
 }: MembersUsageTableProps) {
   const rows: RowData[] = useMemo(
     () =>
@@ -465,6 +491,7 @@ export function MembersUsageTable({
         name: m.name,
         email: m.email,
         image: m.image,
+        groups: m.groups,
         seatType: m.seatType,
         memberUsageLimit: m.memberUsageLimit,
         seatBalanceAwu: m.seatBalanceAwu,
@@ -542,7 +569,10 @@ export function MembersUsageTable({
     ]
   );
 
-  const columns = useMemo(() => buildColumns(), []);
+  const columns = useMemo(
+    () => buildColumns(showGroupsColumn),
+    [showGroupsColumn]
+  );
 
   if (isLoading) {
     return (
