@@ -256,5 +256,33 @@ describe("ProjectMetadataResource", () => {
       );
       expect(deleted).toBeNull();
     });
+
+    it("removes default skill mappings when the custom skill is deleted", async () => {
+      const { workspace: skillWorkspace, authenticator } =
+        await createResourceTest({ role: "admin" });
+      const space = await SpaceFactory.project(skillWorkspace);
+      const skill = await SkillFactory.create(authenticator, { name: "A" });
+
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills([skill]);
+
+      // Default skills are stored inline as sIds in the `defaultSkillsIds`
+      // array. Deleting a skill scrubs its sId from every pod's array
+      // via `array_remove`, so the pinned default disappears.
+      const result = await skill.delete(authenticator);
+      expect(result.isOk()).toBe(true);
+
+      const reloaded = await ProjectMetadataResource.fetchBySpace(
+        authenticator,
+        space
+      );
+      expect(reloaded!.defaultSkillIds).toEqual([]);
+      // Removing the pod's last default skill collapses the column to null.
+      expect(reloaded!.defaultSkillsIds).toBeNull();
+    });
   });
 });

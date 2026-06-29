@@ -10,6 +10,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { col, fn, literal, Op } from "sequelize";
 
 export type ProjectMetadataBlob = Omit<
   CreationAttributes<ProjectMetadataModel>,
@@ -94,6 +95,35 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     // query is needed.
     return models.map((model) =>
       ProjectMetadataResource.fromModel(model, model.spaceId)
+    );
+  }
+
+  // Prune a skill's sId from every pod's inline default-skill list in the
+  // workspace. Default skills are stored as an sId array on `project_metadata`,
+  // so when a skill is deleted we strip its sId from the arrays that contain
+  // it via `array_remove`.
+  static async removeSkillFromAllDefaultSkills(
+    auth: Authenticator,
+    skillSId: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    await ProjectMetadataModel.update(
+      {
+        // Collapse to null (not an empty `{}` array) when this was the pod's last
+        // default skill, keeping the "no defaults" state consistent with setDefaultSkills.
+        defaultSkillsIds: fn(
+          "nullif",
+          fn("array_remove", col("defaultSkillsIds"), skillSId),
+          literal("'{}'")
+        ),
+      },
+      {
+        where: {
+          defaultSkillsIds: { [Op.contains]: [skillSId] },
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
     );
   }
 
