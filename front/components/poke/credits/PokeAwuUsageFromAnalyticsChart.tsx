@@ -1,4 +1,5 @@
 import type {
+  AnalyticsEntityFilter,
   AnalyticsGroupBy,
   Granularity,
 } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
@@ -22,6 +23,12 @@ export function PokeAwuUsageFromAnalyticsChart({
     undefined
   );
   const [groupByCount, setGroupByCount] = useState<number>(5);
+  const [userFilter, setUserFilter] = useState<AnalyticsEntityFilter | null>(
+    null
+  );
+  const [agentFilter, setAgentFilter] = useState<AnalyticsEntityFilter | null>(
+    null
+  );
 
   const now = new Date();
   const { cycleStart } = getBillingCycleFromDay(
@@ -41,6 +48,8 @@ export function PokeAwuUsageFromAnalyticsChart({
       groupByCount,
       granularity,
       days,
+      userId: userFilter?.id,
+      agentId: agentFilter?.id,
     });
 
   return (
@@ -56,6 +65,10 @@ export function PokeAwuUsageFromAnalyticsChart({
       setGroupByCount={setGroupByCount}
       days={days}
       exportUrlPrefix={`/api/poke/workspaces/${owner.sId}/analytics/awu-usage-analytics`}
+      userFilter={userFilter}
+      agentFilter={agentFilter}
+      onUserFilterChange={setUserFilter}
+      onAgentFilterChange={setAgentFilter}
     />
   );
 }

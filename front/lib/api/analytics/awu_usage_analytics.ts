@@ -26,6 +26,10 @@ export const AwuUsageAnalyticsQuerySchema = z.object({
   groupByCount: z.coerce.number().optional().default(5),
   granularity: z.enum(["day", "week", "month"]).optional().default("day"),
   days: z.coerce.number().int().positive().optional().default(30),
+  // Optional scope filters: restrict the whole series to a single user and/or
+  // agent (by sId). Sticky across groupBy changes on the client.
+  userId: z.string().optional(),
+  agentId: z.string().optional(),
 });
 
 export type AwuUsageAnalyticsQuery = z.infer<
@@ -62,9 +66,11 @@ export async function getAwuUsageFromAnalytics(
   query: AwuUsageAnalyticsQuery,
   options: { userIds?: string[] } = {}
 ): Promise<Result<AwuUsageAnalyticsResponse, AwuUsageAnalyticsError>> {
-  const { groupBy, groupByCount, granularity, days } = query;
-  const { userIds } = options;
+  const { groupBy, groupByCount, granularity, days, userId, agentId } = query;
   const { startDate, endDate } = daysToInstantRange(days, "UTC");
+
+  const userIds = options.userIds ?? (userId ? [userId] : undefined);
+  const agentIds = agentId ? [agentId] : undefined;
 
   if (!groupBy) {
     const result = await fetchCreditTimeseries(auth, {
@@ -72,8 +78,9 @@ export async function getAwuUsageFromAnalytics(
       endDate,
       granularity,
       timezone: "UTC",
-      userIds,
       fillWindow: true,
+      userIds,
+      agentIds,
     });
     if (result.isErr()) {
       return new Err(toError(result.error));
@@ -97,8 +104,9 @@ export async function getAwuUsageFromAnalytics(
       endDate,
       granularity,
       timezone: "UTC",
-      userIds,
       fillWindow: true,
+      userIds,
+      agentIds,
     });
     if (result.isErr()) {
       return new Err(toError(result.error));
@@ -129,8 +137,9 @@ export async function getAwuUsageFromAnalytics(
     timezone: "UTC",
     breakdownBy: groupBy,
     limit: groupByCount,
-    userIds,
     fillWindow: true,
+    userIds,
+    agentIds,
   });
   if (result.isErr()) {
     return new Err(toError(result.error));

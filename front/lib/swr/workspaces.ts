@@ -655,6 +655,8 @@ export function useAwuUsageFromAnalytics({
   groupByCount,
   granularity,
   days,
+  userId,
+  agentId,
   disabled,
   urlPrefix,
 }: {
@@ -663,6 +665,8 @@ export function useAwuUsageFromAnalytics({
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;
+  userId?: string;
+  agentId?: string;
   disabled?: boolean;
   urlPrefix?: string;
 }) {
@@ -681,6 +685,12 @@ export function useAwuUsageFromAnalytics({
   }
   if (days !== undefined) {
     queryParams.set("days", days.toString());
+  }
+  if (userId) {
+    queryParams.set("userId", userId);
+  }
+  if (agentId) {
+    queryParams.set("agentId", agentId);
   }
   const queryString = queryParams.toString();
   const prefix =

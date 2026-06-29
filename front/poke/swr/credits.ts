@@ -94,12 +94,16 @@ export function usePokeAwuUsageFromAnalytics({
   groupByCount,
   granularity,
   days,
+  userId,
+  agentId,
   disabled,
 }: PokeConditionalFetchProps & {
   groupBy?: "usage_type" | "agent" | "user" | "origin";
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;
+  userId?: string;
+  agentId?: string;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<AwuUsageAnalyticsResponse> = fetcher;
@@ -116,6 +120,12 @@ export function usePokeAwuUsageFromAnalytics({
   }
   if (days !== undefined) {
     queryParams.set("days", days.toString());
+  }
+  if (userId) {
+    queryParams.set("userId", userId);
+  }
+  if (agentId) {
+    queryParams.set("agentId", agentId);
   }
   const queryString = queryParams.toString();
   const key = `/api/poke/workspaces/${owner.sId}/analytics/awu-usage-analytics?${queryString}`;

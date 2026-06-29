@@ -19,6 +19,7 @@ import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
 import {
   Button,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,12 +32,24 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 interface AwuUsageFromAnalyticsChartProps {
   workspaceId: string;
   period: ObservabilityTimeRangeType;
+  userFilter: AnalyticsEntityFilter | null;
+  agentFilter: AnalyticsEntityFilter | null;
+  onUserFilterChange: (filter: AnalyticsEntityFilter | null) => void;
+  onAgentFilterChange: (filter: AnalyticsEntityFilter | null) => void;
 }
 
 export type Granularity = "day" | "week" | "month";
 export type AnalyticsGroupBy = "usage_type" | "agent" | "user" | "origin";
 
 type GroupByOption = { value: AnalyticsGroupBy | undefined; label: string };
+
+// A sticky scope filter on the credit usage chart: restricts every series to a
+// single user or agent (by sId). Persists across groupBy changes so that, e.g.,
+// scoping to a user then switching to "By Agent" shows that user's agents.
+export interface AnalyticsEntityFilter {
+  id: string;
+  name: string;
+}
 
 const GROUP_BY_OPTIONS: GroupByOption[] = [
   { value: undefined, label: "Total" },
@@ -104,6 +117,13 @@ export interface BaseAwuUsageFromAnalyticsChartProps {
   exportUrlPrefix: string;
   // Available group-by options; defaults to the full workspace-wide list.
   groupByOptions?: GroupByOption[];
+  // Sticky scope filters. When set, the chart is restricted to that user/agent
+  // and a removable chip is shown. Legend clicks in "user"/"agent" mode set the
+  // matching filter when the corresponding setter is provided.
+  userFilter?: AnalyticsEntityFilter | null;
+  agentFilter?: AnalyticsEntityFilter | null;
+  onUserFilterChange?: (filter: AnalyticsEntityFilter | null) => void;
+  onAgentFilterChange?: (filter: AnalyticsEntityFilter | null) => void;
 }
 
 export function BaseAwuUsageFromAnalyticsChart({
@@ -119,6 +139,10 @@ export function BaseAwuUsageFromAnalyticsChart({
   days,
   exportUrlPrefix,
   groupByOptions = GROUP_BY_OPTIONS,
+  userFilter,
+  agentFilter,
+  onUserFilterChange,
+  onAgentFilterChange,
 }: BaseAwuUsageFromAnalyticsChartProps) {
   // Legend-driven drilldown: when non-null, only these series are shown.
   const [enabledKeys, setEnabledKeys] = useState<string[] | null>(null);
@@ -165,6 +189,12 @@ export function BaseAwuUsageFromAnalyticsChart({
     [points]
   );
 
+  // In "user"/"agent" mode, legend clicks set the sticky scope filter (a server
+  // refetch) rather than toggling client-side series visibility, so the choice
+  // survives groupBy changes.
+  const userScopeMode = groupBy === "user" && !!onUserFilterChange;
+  const agentScopeMode = groupBy === "agent" && !!onAgentFilterChange;
+
   const legendItems: LegendItem[] = useMemo(
     () =>
       groups.map((group) => {
@@ -176,17 +206,63 @@ export function BaseAwuUsageFromAnalyticsChart({
           !!groupBy &&
           group.groupKey !== "others" &&
           group.groupKey !== "total";
+        const colorClassName = getColorClassName(
+          groupBy,
+          group.groupKey,
+          allKeys
+        );
+
+        if (canFilter && userScopeMode) {
+          const isSelected = userFilter?.id === group.groupKey;
+          return {
+            key: group.groupKey,
+            label,
+            colorClassName,
+            onClick: () =>
+              onUserFilterChange?.(
+                isSelected ? null : { id: group.groupKey, name: group.name }
+              ),
+            isActive: !userFilter || isSelected,
+          };
+        }
+
+        if (canFilter && agentScopeMode) {
+          const isSelected = agentFilter?.id === group.groupKey;
+          return {
+            key: group.groupKey,
+            label,
+            colorClassName,
+            onClick: () =>
+              onAgentFilterChange?.(
+                isSelected ? null : { id: group.groupKey, name: group.name }
+              ),
+            isActive: !agentFilter || isSelected,
+          };
+        }
+
         return {
           key: group.groupKey,
           label,
-          colorClassName: getColorClassName(groupBy, group.groupKey, allKeys),
+          colorClassName,
           onClick: canFilter ? () => toggleGroup(group.groupKey) : undefined,
           isActive:
             !effectiveEnabledKeys ||
             effectiveEnabledKeys.includes(group.groupKey),
         };
       }),
-    [groups, groupBy, allKeys, effectiveEnabledKeys, toggleGroup]
+    [
+      groups,
+      groupBy,
+      allKeys,
+      effectiveEnabledKeys,
+      toggleGroup,
+      userScopeMode,
+      agentScopeMode,
+      userFilter,
+      agentFilter,
+      onUserFilterChange,
+      onAgentFilterChange,
+    ]
   );
 
   const visibleKeys = useMemo(
@@ -205,6 +281,13 @@ export function BaseAwuUsageFromAnalyticsChart({
   if (groupBy) {
     exportParams.set("groupBy", groupBy);
     exportParams.set("groupByCount", groupByCount.toString());
+  }
+  // Mirror the sticky scope filters so the export matches the chart.
+  if (userFilter) {
+    exportParams.set("userId", userFilter.id);
+  }
+  if (agentFilter) {
+    exportParams.set("agentId", agentFilter.id);
   }
   // Mirror the legend drilldown: export only the series currently shown.
   if (effectiveEnabledKeys) {
@@ -226,6 +309,20 @@ export function BaseAwuUsageFromAnalyticsChart({
       }
       additionalControls={
         <div className="flex items-center gap-2">
+          {userFilter && (
+            <Chip
+              size="xs"
+              label={`User: ${userFilter.name}`}
+              onRemove={() => onUserFilterChange?.(null)}
+            />
+          )}
+          {agentFilter && (
+            <Chip
+              size="xs"
+              label={`Agent: ${agentFilter.name}`}
+              onRemove={() => onAgentFilterChange?.(null)}
+            />
+          )}
           {effectiveEnabledKeys && (
             <Button
               label="Clear filters"
@@ -366,6 +463,10 @@ export function BaseAwuUsageFromAnalyticsChart({
 export function AwuUsageFromAnalyticsChart({
   workspaceId,
   period,
+  userFilter,
+  agentFilter,
+  onUserFilterChange,
+  onAgentFilterChange,
 }: AwuUsageFromAnalyticsChartProps) {
   const [granularity, setGranularity] = useState<Granularity>("day");
   const [groupBy, setGroupBy] = useState<AnalyticsGroupBy | undefined>(
@@ -380,6 +481,8 @@ export function AwuUsageFromAnalyticsChart({
       groupByCount,
       granularity,
       days: period,
+      userId: userFilter?.id,
+      agentId: agentFilter?.id,
     });
 
   return (
@@ -395,6 +498,10 @@ export function AwuUsageFromAnalyticsChart({
       setGroupByCount={setGroupByCount}
       days={period}
       exportUrlPrefix={`/api/w/${workspaceId}/analytics/awu-usage-analytics`}
+      userFilter={userFilter}
+      agentFilter={agentFilter}
+      onUserFilterChange={onUserFilterChange}
+      onAgentFilterChange={onAgentFilterChange}
     />
   );
 }
