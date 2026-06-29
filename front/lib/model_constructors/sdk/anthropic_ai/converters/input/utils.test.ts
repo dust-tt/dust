@@ -805,35 +805,35 @@ describe("reasoningToThinkingConfig", () => {
   it("enables adaptive thinking for 'xhigh'", () => {
     expect(reasoningToThinkingConfig({ effort: "xhigh" })).toEqual({
       output_config: { effort: "xhigh" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'low'", () => {
     expect(reasoningToThinkingConfig({ effort: "low" })).toEqual({
       output_config: { effort: "low" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'medium'", () => {
     expect(reasoningToThinkingConfig({ effort: "medium" })).toEqual({
       output_config: { effort: "medium" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'high'", () => {
     expect(reasoningToThinkingConfig({ effort: "high" })).toEqual({
       output_config: { effort: "high" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("maps 'maximal' effort to Anthropic's 'max'", () => {
     expect(reasoningToThinkingConfig({ effort: "maximal" })).toEqual({
       output_config: { effort: "max" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 });

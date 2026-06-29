@@ -14,23 +14,23 @@ const setup: StreamSetup = {
   // `null` runs the case with its default checkers; a checker array overrides
   // them. Every case always runs.
   tests: {
-    // Pro supports low/medium/high only. `minimal`, `none`, and `maximal` are
-    // unsupported and rejected by the config schema.
+    // Pro supports none/low/medium/high; `minimal` and `maximal` are rejected.
     "simple/no-tools/t-default/r-minimal": [INPUT_CONFIGURATION_ERROR],
-    "simple/no-tools/t-default/r-none": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-default/r-maximal": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0/r-minimal": [INPUT_CONFIGURATION_ERROR],
-    "simple/no-tools/t-0/r-none": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0/r-maximal": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0.1/r-minimal": [INPUT_CONFIGURATION_ERROR],
-    "simple/no-tools/t-0.1/r-none": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-0.1/r-maximal": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-1/r-minimal": [INPUT_CONFIGURATION_ERROR],
-    "simple/no-tools/t-1/r-none": [INPUT_CONFIGURATION_ERROR],
     "simple/no-tools/t-1/r-maximal": [INPUT_CONFIGURATION_ERROR],
-    "calc/calc/t-default/r-none/force-tool": [INPUT_CONFIGURATION_ERROR],
-    "reasoning/no-tools/t-default/r-none": [INPUT_CONFIGURATION_ERROR],
-    "output-format/json-schema/t-default/r-none": [INPUT_CONFIGURATION_ERROR],
+
+    "simple/no-tools/t-default/r-none": null,
+    "simple/no-tools/t-0/r-none": null,
+    "simple/no-tools/t-0.1/r-none": null,
+    "simple/no-tools/t-1/r-none": null,
+    "calc/calc/t-default/r-none/force-tool": null,
+    "reasoning/no-tools/t-default/r-none": null,
+    "output-format/json-schema/t-default/r-none": null,
 
     "simple/no-tools/t-default/r-default": null,
     "simple/no-tools/t-default/r-low": null,
