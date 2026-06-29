@@ -28,6 +28,7 @@ import {
 } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import {
+  isCreditPricedFreePlan,
   isEnterprisePlanPrefix,
   isFreePlan,
   isUpgraded,
@@ -718,9 +719,8 @@ export function UsagePage() {
           )}
         </div>
 
-        {!isReadOnly &&
-          (myUsage?.seatType === "free" || myUsage?.seatType === "none") && (
-            <FreePlanUpgradeSection
+        {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
+          <FreePlanUpgradeSection
               action={
                 <Button
                   label="Change my seat"
