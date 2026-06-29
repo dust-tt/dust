@@ -2,6 +2,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import * as bulkClient from "@app/temporal/bulk_spend_limit/client";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -32,16 +33,10 @@ beforeEach(() => {
   vi.mocked(bulkClient.launchBulkSetUserSpendLimitWorkflow).mockResolvedValue(
     new Ok({ workflowId: "wf_test_bulk" })
   );
-  // Echo the restricted ids back as active members (the workspace-scoped search
-  // that validates membership). Tests override this for empty / error cases.
-  vi.spyOn(UserResource, "searchAllUsers").mockImplementation(
-    async (_auth, { restrictToUserIds }) => {
-      const ids = restrictToUserIds ?? [];
-      return new Ok({
-        users: ids.map((sId) => ({ sId }) as unknown as UserResource),
-        total: ids.length,
-      });
-    }
+  // The workspace-scoped search that validates membership. Default to "no
+  // match"; tests that need members override with real UserFactory users.
+  vi.spyOn(UserResource, "searchAllUsers").mockResolvedValue(
+    new Ok({ users: [], total: 0 })
   );
 });
 
@@ -152,8 +147,17 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
     });
     await FeatureFlagFactory.basic(auth, "pricing_groups");
 
+    const member1 = await UserFactory.basic();
+    const member2 = await UserFactory.basic();
+    vi.mocked(UserResource.searchAllUsers).mockResolvedValue(
+      new Ok({ users: [member1, member2], total: 2 })
+    );
+
     const response = await post(workspace.sId, {
-      selection: { mode: "ids", userIds: ["u1", "u2", "u2"] },
+      selection: {
+        mode: "ids",
+        userIds: [member1.sId, member2.sId, member2.sId],
+      },
       limit: { kind: "limited", awuCredits: 1000 },
     });
 
@@ -165,7 +169,7 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
     expect(bulkClient.launchBulkSetUserSpendLimitWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId: workspace.sId,
-        userIds: ["u1", "u2"],
+        userIds: [member1.sId, member2.sId],
         limit: { kind: "limited", awuCredits: 1000 },
       })
     );

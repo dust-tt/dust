@@ -1,21 +1,29 @@
 import { resolveMatchingMemberUserIds } from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { MembershipSeatType } from "@app/types/memberships";
+import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { z } from "zod";
 
-export type BulkSpendLimitFilter = {
-  seatType?: MembershipSeatType;
-  groupId?: string;
-  search?: string;
-};
+const BulkSpendLimitFilterSchema = z.object({
+  seatType: z.enum(MEMBERSHIP_SEAT_TYPES).optional(),
+  groupId: z.string().optional(),
+  search: z.string().optional(),
+});
 
-// Either an explicit set of member sIds, or "everything matching the current
-// filter, minus a few" (resolved server-side).
-export type BulkSpendLimitSelection =
-  | { mode: "ids"; userIds: string[] }
-  | { mode: "all"; filter: BulkSpendLimitFilter; excludeUserIds: string[] };
+export const BulkSpendLimitSelectionSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("ids"), userIds: z.array(z.string()).min(1) }),
+  z.object({
+    mode: z.literal("all"),
+    filter: BulkSpendLimitFilterSchema,
+    excludeUserIds: z.array(z.string()),
+  }),
+]);
+
+export type BulkSpendLimitSelection = z.infer<
+  typeof BulkSpendLimitSelectionSchema
+>;
 
 export async function resolveBulkSpendLimitUserIds(
   auth: Authenticator,

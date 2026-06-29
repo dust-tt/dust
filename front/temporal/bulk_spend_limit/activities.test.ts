@@ -1,7 +1,7 @@
-import type * as audit from "@app/lib/api/audit/workos_audit";
 import * as spendLimit from "@app/lib/api/users/spend_limit";
-import { Authenticator } from "@app/lib/auth";
 import { setSpendLimitForUsersActivity } from "@app/temporal/bulk_spend_limit/activities";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,18 +10,16 @@ vi.mock("@app/lib/api/users/spend_limit", async (importOriginal) => {
   return { ...actual, setUserSpendLimit: vi.fn() };
 });
 
-vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
-  const actual = await importOriginal<typeof audit>();
-  return {
-    ...actual,
-    getAuditLogContext: vi.fn(() => ({ location: "internal" })),
-  };
-});
+// Real workspace + actor so the activity builds a genuine Authenticator
+// (only setUserSpendLimit, the dependency under test, is mocked).
+let workspaceId: string;
+let actorUserId: string;
 
-beforeEach(() => {
-  vi.spyOn(Authenticator, "fromUserIdAndWorkspaceId").mockResolvedValue(
-    {} as Authenticator
-  );
+beforeEach(async () => {
+  const workspace = await WorkspaceFactory.basic();
+  const user = await UserFactory.basic();
+  workspaceId = workspace.sId;
+  actorUserId = user.sId;
 });
 
 describe("setSpendLimitForUsersActivity", () => {
@@ -36,8 +34,8 @@ describe("setSpendLimitForUsersActivity", () => {
     );
 
     const result = await setSpendLimitForUsersActivity({
-      workspaceId: "w1",
-      actorUserId: "admin1",
+      workspaceId,
+      actorUserId,
       userIds: ["ok1", "bad", "ok2"],
       limit: { kind: "limited", awuCredits: 1000 },
     });
@@ -59,8 +57,8 @@ describe("setSpendLimitForUsersActivity", () => {
 
     await expect(
       setSpendLimitForUsersActivity({
-        workspaceId: "w1",
-        actorUserId: "admin1",
+        workspaceId,
+        actorUserId,
         userIds: ["ok1", "flaky"],
         limit: { kind: "limited", awuCredits: 1000 },
       })
@@ -73,8 +71,8 @@ describe("setSpendLimitForUsersActivity", () => {
     );
 
     const result = await setSpendLimitForUsersActivity({
-      workspaceId: "w1",
-      actorUserId: "admin1",
+      workspaceId,
+      actorUserId,
       userIds: ["a", "b"],
       limit: { kind: "unlimited" },
     });

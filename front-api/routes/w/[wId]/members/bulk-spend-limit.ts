@@ -1,32 +1,18 @@
-import type { BulkSpendLimitSelection } from "@app/lib/api/users/bulk_spend_limit";
-import { resolveBulkSpendLimitUserIds } from "@app/lib/api/users/bulk_spend_limit";
+import {
+  BulkSpendLimitSelectionSchema,
+  resolveBulkSpendLimitUserIds,
+} from "@app/lib/api/users/bulk_spend_limit";
 import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/lib/api/users/spend_limit";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { launchBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
-import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-const FilterSchema = z.object({
-  seatType: z.enum(MEMBERSHIP_SEAT_TYPES).optional(),
-  groupId: z.string().optional(),
-  search: z.string().optional(),
-});
-
-const SelectionSchema = z.discriminatedUnion("mode", [
-  z.object({ mode: z.literal("ids"), userIds: z.array(z.string()).min(1) }),
-  z.object({
-    mode: z.literal("all"),
-    filter: FilterSchema,
-    excludeUserIds: z.array(z.string()),
-  }),
-]);
 
 const LimitSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("unlimited") }),
@@ -41,7 +27,7 @@ const LimitSchema = z.discriminatedUnion("kind", [
 ]);
 
 const BodySchema = z.object({
-  selection: SelectionSchema,
+  selection: BulkSpendLimitSelectionSchema,
   limit: LimitSchema,
 });
 
@@ -84,10 +70,7 @@ app.post(
 
     const { selection, limit } = ctx.req.valid("json");
 
-    const userIdsResult = await resolveBulkSpendLimitUserIds(
-      auth,
-      selection as BulkSpendLimitSelection
-    );
+    const userIdsResult = await resolveBulkSpendLimitUserIds(auth, selection);
     if (userIdsResult.isErr()) {
       return apiError(ctx, {
         status_code: 500,
