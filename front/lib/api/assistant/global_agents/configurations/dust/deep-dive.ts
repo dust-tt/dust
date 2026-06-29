@@ -439,10 +439,7 @@ export function _getDeepDiveGlobalAgent(
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
-  const {
-    run_agent: runAgentMCPServerView,
-    ask_user_question: askUserQuestionMCPServerView,
-  } = mcpServerViews;
+  const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(auth, { featureFlags, excludeProviders });
 
@@ -568,27 +565,6 @@ export function _getDeepDiveGlobalAgent(
       dataSources: null,
       tables: null,
       childAgentId: GLOBAL_AGENTS_SID.DUST_PLANNING,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    });
-  }
-
-  if (askUserQuestionMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-ask-user-question",
-      type: "mcp_server_configuration",
-      name: "ask_user_question",
-      description: "Ask the user a question with multiple-choice options.",
-      mcpServerViewId: askUserQuestionMCPServerView.sId,
-      internalMCPServerId: askUserQuestionMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
