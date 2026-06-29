@@ -88,17 +88,19 @@ export async function activateCreditPricedFreePlan(
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  const user = auth.getNonNullableUser();
-  const seatResult = await updateMembershipSeatAndTrack({
-    user,
-    workspace: lightWorkspace,
-    newSeatType: "free",
-    author: "no-author",
-  });
-  if (seatResult.isErr()) {
-    throw new Error(
-      `Failed to update user to free seat: ${seatResult.error.type}`
-    );
+  const user = auth.user();
+  if (user) {
+    const seatResult = await updateMembershipSeatAndTrack({
+      user,
+      workspace: lightWorkspace,
+      newSeatType: "free",
+      author: "no-author",
+    });
+    if (seatResult.isErr()) {
+      throw new Error(
+        `Failed to update user to free seat: ${seatResult.error.type}`
+      );
+    }
   }
 
   const contractResult = await provisionMetronomeContract({
