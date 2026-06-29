@@ -23,7 +23,7 @@ const citationVariants = cva(
         true: "s:border-0 s:p-0",
       },
       compact: {
-        true: "s:flex-row s:flex-wrap s:items-center s:gap-x-2 s:pt-0",
+        true: "s:flex-row s:flex-wrap s:items-center s:gap-x-2",
         false: "s:flex-col",
       },
     },
