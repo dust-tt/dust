@@ -52,6 +52,7 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import type {
   AgentFunctionCallContentType,
+  AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
@@ -83,7 +84,7 @@ function mapReasoningEffort(
 /**
  * Converts an old-system message to new BaseMessage(s).
  */
-function toBaseMessages(
+export function toBaseMessages(
   message: ModelMessageTypeMultiActionsWithoutContentFragment
 ): BaseMessage[] {
   switch (message.role) {
@@ -131,6 +132,7 @@ function toBaseMessages(
             | AgentTextContentType
             | AgentReasoningContentType
             | AgentFunctionCallContentType
+            | AgentProviderPassthroughContentType
         ): BaseMessage[] => {
           switch (c.type) {
             case "text_content":
@@ -166,6 +168,17 @@ function toBaseMessages(
                     arguments: c.value.arguments,
                   },
                   signature: c.value.metadata?.thoughtSignature,
+                },
+              ];
+            case "provider_passthrough":
+              return [
+                {
+                  role: "assistant",
+                  type: "provider_passthrough",
+                  content: {
+                    provider: c.value.provider,
+                    block: c.value.block,
+                  },
                 },
               ];
             default:
@@ -277,7 +290,7 @@ function mapErrorType(errorType: ErrorType): {
 /**
  * Converts a single new model event to its old LLM event equivalent.
  */
-function convertToOldEvent(
+export function convertToOldEvent(
   event: ModelResponseEvent,
   metadata: LLMClientMetadata
 ): LLMEvent {
@@ -402,6 +415,13 @@ function convertToOldEvent(
         metadata,
       };
     }
+
+    case "provider_passthrough":
+      return {
+        type: "provider_passthrough",
+        content: event.content,
+        metadata,
+      };
 
     case "error": {
       const { type: errorType, isRetryable } = mapErrorType(event.content.type);

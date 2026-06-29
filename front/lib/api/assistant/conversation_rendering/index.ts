@@ -358,6 +358,8 @@ async function countTokensForMessages(
             text += c.value;
           } else if (c.type === "function_call") {
             text += `${c.value.name} ${c.value.arguments}`;
+          } else if (c.type === "provider_passthrough") {
+            // Opaque provider block, not counted here.
           } else {
             assertNever(c);
           }

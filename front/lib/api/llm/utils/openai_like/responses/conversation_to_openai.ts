@@ -104,6 +104,9 @@ function toAssistantInputItem(
         type: "message",
         content: content.value.message,
       };
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Skip.
+      return null;
     default:
       assertNever(content);
   }

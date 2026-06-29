@@ -16,7 +16,7 @@ import type {
 } from "@app/lib/model_constructors/types/input/messages";
 import type { ReasoningEffort } from "@app/lib/model_constructors/types/reasoning_efforts";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isRecord } from "@app/types/shared/utils/general";
+import { isRecord, removeNulls } from "@app/types/shared/utils/general";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
@@ -164,7 +164,7 @@ function userMessageToMessage(
 function assistantMessageToMessage(
   message: BaseAssistantMessage,
   converters: OpenAICompletionsMessageConverters
-): ChatCompletionMessageParam {
+): ChatCompletionMessageParam | null {
   switch (message.type) {
     case "text":
       return converters.assistantTextMessageToMessage(message);
@@ -172,6 +172,9 @@ function assistantMessageToMessage(
       return converters.assistantReasoningMessageToMessage(message);
     case "tool_call_request":
       return converters.assistantToolCallRequestToMessage(message);
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Dropped at the loop, not sent.
+      return null;
     default:
       assertNever(message);
   }
@@ -184,16 +187,18 @@ export function conversationToOpenAICompletionsMessages(
   const system = conversation.system.map((message) =>
     converters.systemMessageToMessage(message)
   );
-  const messages = conversation.messages.map((message) => {
-    switch (message.role) {
-      case "user":
-        return userMessageToMessage(message, converters);
-      case "assistant":
-        return assistantMessageToMessage(message, converters);
-      default:
-        assertNever(message);
-    }
-  });
+  const messages = removeNulls(
+    conversation.messages.map((message) => {
+      switch (message.role) {
+        case "user":
+          return userMessageToMessage(message, converters);
+        case "assistant":
+          return assistantMessageToMessage(message, converters);
+        default:
+          assertNever(message);
+      }
+    })
+  );
   return [...system, ...messages];
 }
 

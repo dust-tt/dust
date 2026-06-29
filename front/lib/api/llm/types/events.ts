@@ -1,6 +1,7 @@
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type { AgentMessagePhase } from "@app/types/assistant/agent_message_content";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 
 export type Delta = {
   delta: string;
@@ -80,6 +81,15 @@ export interface ReasoningGeneratedEvent {
   metadata: LLMClientMetadata & { id?: string; encrypted_content?: string };
 }
 
+// Opaque provider-specific block that must be persisted and replayed verbatim
+// to the producing provider. The generic pipeline forwards `block` without
+// interpreting it.
+export interface ProviderPassthroughEvent {
+  type: "provider_passthrough";
+  content: { provider: ModelProviderIdType; block: unknown };
+  metadata: LLMClientMetadata;
+}
+
 export type LLMOutputItem =
   | TextGeneratedEvent
   | ReasoningGeneratedEvent
@@ -136,6 +146,7 @@ export type LLMEvent =
   | ToolCallEvent
   | TextGeneratedEvent
   | ReasoningGeneratedEvent
+  | ProviderPassthroughEvent
   | TokenUsageEvent
   | SuccessCompletionEvent
   | EventError;

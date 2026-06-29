@@ -33,6 +33,7 @@ import {
   messageToEvents,
   rawOutputToEvents,
   reasoningDeltaToReasoningDeltaEvent,
+  serverToolBlockToProviderPassthroughEvent,
   stopReasonToErrorEvent,
   streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
@@ -61,6 +62,7 @@ const realConverters: OutputEventConverters = {
   inputJsonDeltaToToolCallDeltaEvent,
   accumulatedToolCallToToolCallEvent,
   invalidJsonToolCallToToolCallEvent,
+  serverToolBlockToProviderPassthroughEvent,
   messageDeltaUsageToTokenUsageEvent,
   stopReasonToErrorEvent,
   streamErrorToErrorEvent,
@@ -116,6 +118,11 @@ function makeStubConverters(): OutputEventConverters {
         name: "stub-tool",
         arguments: { INVALID_JSON: "stub-invalid" },
       },
+      metadata,
+    })),
+    serverToolBlockToProviderPassthroughEvent: vi.fn(() => ({
+      type: "provider_passthrough" as const,
+      content: { provider: "anthropic" as const, block: {} },
       metadata,
     })),
     messageDeltaUsageToTokenUsageEvent: vi.fn(() => ({
@@ -635,10 +642,11 @@ describe("contentBlockStartToEvents", () => {
       accumulator: "",
       type: "tool_search",
       toolName: "tool_search_tool_bm25",
+      toolId: "srvtoolu_1",
     });
   });
 
-  it("consumes a tool search result block without opening a cursor", () => {
+  it("emits a tool search result block as passthrough without opening a cursor", () => {
     const event = {
       type: "content_block_start",
       index: 6,
@@ -659,7 +667,25 @@ describe("contentBlockStartToEvents", () => {
       metadata,
       realConverters
     );
-    expect(events).toEqual([]);
+    expect(events).toEqual([
+      {
+        type: "provider_passthrough",
+        content: {
+          provider: "anthropic",
+          block: {
+            type: "tool_search_tool_result",
+            tool_use_id: "srvtoolu_1",
+            content: {
+              type: "tool_search_tool_search_result",
+              tool_references: [
+                { type: "tool_reference", tool_name: "slack__post_message" },
+              ],
+            },
+          },
+        },
+        metadata,
+      },
+    ]);
     expect(state).toBeNull();
   });
 });
@@ -953,16 +979,65 @@ describe("contentBlockStopToEvents", () => {
     ]);
   });
 
-  it("closes a tool_search block without emitting a tool_call", () => {
+  it("closes a tool_search block by emitting the server_tool_use as passthrough", () => {
     const state = {
       index: 0,
       accumulator: '{"query":"send a slack message"}',
       type: "tool_search" as const,
-      toolName: "tool_search_tool_bm25",
+      toolName: "tool_search_tool_bm25" as const,
+      toolId: "srvtoolu_1",
     };
     expect(
       contentBlockStopToEvents(stopEvent, state, metadata, realConverters)
-    ).toEqual([[], null]);
+    ).toEqual([
+      [
+        {
+          type: "provider_passthrough",
+          content: {
+            provider: "anthropic",
+            block: {
+              type: "server_tool_use",
+              id: "srvtoolu_1",
+              name: "tool_search_tool_bm25",
+              input: { query: "send a slack message" },
+            },
+          },
+          metadata,
+        },
+      ],
+      null,
+    ]);
+  });
+
+  it("falls back to an empty input when the tool_search query did not parse", () => {
+    const state = {
+      index: 0,
+      accumulator: "{not json",
+      type: "tool_search" as const,
+      toolName: "tool_search_tool_bm25" as const,
+      toolId: "srvtoolu_1",
+    };
+    const [events] = contentBlockStopToEvents(
+      stopEvent,
+      state,
+      metadata,
+      realConverters
+    );
+    expect(events).toEqual([
+      {
+        type: "provider_passthrough",
+        content: {
+          provider: "anthropic",
+          block: {
+            type: "server_tool_use",
+            id: "srvtoolu_1",
+            name: "tool_search_tool_bm25",
+            input: {},
+          },
+        },
+        metadata,
+      },
+    ]);
   });
 });
 
@@ -1288,6 +1363,39 @@ describe("messageToEvents", () => {
       "response_id",
       "token_usage",
       "success",
+    ]);
+  });
+
+  it("emits server_tool_use and tool_search_tool_result as passthrough", () => {
+    const serverToolUseBlock = {
+      type: "server_tool_use",
+      id: "srvtoolu_1",
+      name: "tool_search_tool_bm25",
+      input: { query: "x" },
+    };
+    const toolSearchResultBlock = {
+      type: "tool_search_tool_result",
+      tool_use_id: "srvtoolu_1",
+      content: {
+        type: "tool_search_tool_search_result",
+        tool_references: [{ type: "tool_reference", tool_name: "slack__post" }],
+      },
+    };
+    const message = messageWith({
+      content: [serverToolUseBlock, toolSearchResultBlock],
+    } as Partial<Message>);
+    const events = messageToEvents(message, metadata, realConverters);
+    expect(events.filter((e) => e.type === "provider_passthrough")).toEqual([
+      {
+        type: "provider_passthrough",
+        content: { provider: "anthropic", block: serverToolUseBlock },
+        metadata,
+      },
+      {
+        type: "provider_passthrough",
+        content: { provider: "anthropic", block: toolSearchResultBlock },
+        metadata,
+      },
     ]);
   });
 });

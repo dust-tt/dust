@@ -11,6 +11,7 @@ import { toolUseLLMEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/
 import { emptyToolCallModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_output/empty_tool_call";
 import { reasoningModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_output/reasoning";
 import { toolUseModelEvents } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_output/tool_use";
+import type { ProviderPassthroughEvent } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 import { CLAUDE_4_SONNET_20250514_MODEL_ID } from "@app/types/assistant/models/anthropic";
@@ -218,15 +219,43 @@ describe("streamLLMEvents", () => {
       result.push(event);
     }
 
-    // The search itself yields no tool_call; only the heartbeat deltas, then the
-    // usual end-of-turn events.
+    // The search yields no tool_call: heartbeat deltas, then the two server-tool
+    // blocks captured as passthrough for verbatim replay, then end-of-turn events.
     expect(result.map((e) => e.type)).toEqual([
       "tool_call_delta",
       "tool_call_delta",
+      "provider_passthrough",
+      "provider_passthrough",
       "token_usage",
       "success",
     ]);
     expect(result.some((e) => e.type === "tool_call")).toBe(false);
+
+    const passthroughs = result.filter(
+      (e): e is ProviderPassthroughEvent => e.type === "provider_passthrough"
+    );
+    expect(passthroughs[0].content).toEqual({
+      provider: "anthropic",
+      block: {
+        type: "server_tool_use",
+        id: "srvtoolu_01ABC",
+        name: "tool_search_tool_bm25",
+        input: { query: "send a slack message" },
+      },
+    });
+    expect(passthroughs[1].content).toEqual({
+      provider: "anthropic",
+      block: {
+        type: "tool_search_tool_result",
+        tool_use_id: "srvtoolu_01ABC",
+        content: {
+          type: "tool_search_tool_search_result",
+          tool_references: [
+            { type: "tool_reference", tool_name: "slack__post_message" },
+          ],
+        },
+      },
+    });
   });
 });
 

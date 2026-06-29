@@ -167,6 +167,9 @@ export function assistantMessageToInputItems(
       return converters.assistantReasoningMessageToInputItems(message);
     case "tool_call_request":
       return [converters.assistantToolCallRequestToInputItem(message)];
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Skip.
+      return [];
     default:
       assertNever(message);
   }

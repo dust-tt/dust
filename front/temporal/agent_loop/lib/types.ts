@@ -7,6 +7,7 @@ import type { AgentMessageContentParser } from "@app/lib/llms/agent_message_cont
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentFunctionCallContentType,
+  AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
@@ -30,6 +31,7 @@ export type Output = {
     | AgentTextContentType
     | AgentFunctionCallContentType
     | AgentReasoningContentType
+    | AgentProviderPassthroughContentType
   >;
 };
 

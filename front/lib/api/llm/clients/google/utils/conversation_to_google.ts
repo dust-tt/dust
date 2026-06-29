@@ -5,6 +5,7 @@ import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentFunctionCallContentType,
+  AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
@@ -18,6 +19,7 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import type {
   Content,
@@ -144,7 +146,8 @@ function assistantContentToPart(
     | AgentReasoningContentType
     | AgentTextContentType
     | AgentFunctionCallContentType
-): Part {
+    | AgentProviderPassthroughContentType
+): Part | null {
   switch (content.type) {
     case "reasoning":
       assert(content.value.reasoning, "Reasoning content is missing reasoning");
@@ -169,6 +172,9 @@ function assistantContentToPart(
         thoughtSignature: content.value.metadata?.thoughtSignature,
       };
     }
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Skip.
+      return null;
     default:
       assertNever(content);
   }
@@ -181,7 +187,9 @@ async function assistantMessageToParts(
 ): Promise<Content> {
   assert(message.contents, "Assistant message is missing contents");
 
-  const parts = await Promise.all(message.contents.map(assistantContentToPart));
+  const parts = removeNulls(
+    await Promise.all(message.contents.map(assistantContentToPart))
+  );
 
   return {
     role: "model",
