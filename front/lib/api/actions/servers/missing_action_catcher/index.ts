@@ -11,7 +11,7 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer("missing_action_catcher");
 
-  const tools = createMissingActionCatcherTools(agentLoopContext);
+  const tools = createMissingActionCatcherTools(auth, agentLoopContext);
   for (const tool of tools) {
     registerTool(auth, agentLoopContext, server, tool, {
       monitoringName: "missing_action_catcher",
