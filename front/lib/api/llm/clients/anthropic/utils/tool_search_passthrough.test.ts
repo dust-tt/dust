@@ -1,5 +1,10 @@
+import type {
+  ServerToolUseBlockParam,
+  ToolSearchToolResultBlockParam,
+} from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import type { AnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 describe("parseAnthropicToolSearchBlock", () => {
   it("parses a server_tool_use block verbatim", () => {
@@ -50,5 +55,28 @@ describe("parseAnthropicToolSearchBlock", () => {
       null
     );
     expect(parseAnthropicToolSearchBlock(null)).toBe(null);
+  });
+});
+
+describe("schema matches the Anthropic SDK param types", () => {
+  // Compile-time guard against SDK drift: each zod-inferred block must stay
+  // assignable to its SDK param. A newly required SDK field, a renamed field, or
+  // a changed enum value breaks these (tsgo type-checks test files). It is
+  // assignability, not equality, on purpose: we omit the optional caller /
+  // cache_control fields the params allow, and treat `input` as present (the
+  // param requires it where z.unknown() infers it optional), matching how
+  // parseAnthropicToolSearchBlock reconstructs the block.
+  it("keeps server_tool_use assignable to ServerToolUseBlockParam", () => {
+    expectTypeOf<
+      Extract<AnthropicToolSearchBlock, { type: "server_tool_use" }> & {
+        input: unknown;
+      }
+    >().toMatchTypeOf<ServerToolUseBlockParam>();
+  });
+
+  it("keeps tool_search_tool_result assignable to ToolSearchToolResultBlockParam", () => {
+    expectTypeOf<
+      Extract<AnthropicToolSearchBlock, { type: "tool_search_tool_result" }>
+    >().toMatchTypeOf<ToolSearchToolResultBlockParam>();
   });
 });
