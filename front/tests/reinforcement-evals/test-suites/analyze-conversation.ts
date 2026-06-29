@@ -677,6 +677,116 @@ Score 1 if edit_skill is called only for skill_github_reporter but the suggestio
 Score 3 if edit_skill is called only for skill_github_reporter, the suggestion adds DevCode to the project list, and no other skills are modified.`,
     },
     {
+      scenarioId: "nested-skill-targeted-attribution",
+      type: "analysis",
+      skillConfigs: [
+        {
+          name: "Report Orchestrator",
+          sId: "skill_report_orchestrator",
+          description:
+            "Orchestrates building and publishing financial reports by gathering data and delegating formatting before posting the result",
+          instructions: [
+            "You are the Report Orchestrator skill for Acme Corp's finance team. Use this skill to build and publish financial reports.",
+            "",
+            "## Workflow",
+            "",
+            "Follow these steps in order:",
+            "1. Use `notion-get-page` to retrieve the raw financial figures from the source page the user references.",
+            "2. Hand the raw figures to the Data Formatter skill, which owns all table and number formatting rules. Always delegate formatting to it rather than formatting numbers yourself.",
+            "3. Use `slack-post-message` to publish the formatted report to the channel the user specifies.",
+            "",
+            "## Delegation",
+            "",
+            "Formatting of the report contents (tables, columns, and how figures are rendered) is the responsibility of the Data Formatter skill referenced below. Pass it the raw figures and use its output verbatim.",
+            "",
+            '<skill id="skill_data_formatter" name="Data Formatter" />',
+          ].join("\n"),
+          tools: [
+            { name: "Notion", sId: "mcp_notion" },
+            { name: "Slack", sId: "mcp_slack" },
+          ],
+        },
+        {
+          name: "Data Formatter",
+          sId: "skill_data_formatter",
+          description:
+            "Formats raw financial figures into clean Markdown tables for inclusion in reports",
+          instructions: `You are the Data Formatter skill for Acme Corp. Use this skill to turn raw financial figures into a clean Markdown table that other skills can publish.
+
+## Formatting rules
+
+- Render the figures as a Markdown table with one row per line item.
+- Use the columns: "Line Item", "Amount", and "Change vs. Prior Period".
+- Right-align the "Amount" and "Change vs. Prior Period" columns.
+- Use thousands separators for large numbers (e.g., 1,200,000).
+- Express "Change vs. Prior Period" as a signed percentage (e.g., +12%, -4%).
+- Sort rows from largest to smallest amount.`,
+        },
+      ],
+      conversation: [
+        {
+          role: "user",
+          content:
+            "Build the Q2 revenue report from the figures on our finance Notion page and post it to the #finance channel.",
+        },
+        {
+          role: "agent",
+          content:
+            "I'll pull the Q2 figures from Notion, format them into the report table, and post it to #finance.",
+          actions: [
+            {
+              functionCallName: "notion-get-page",
+              status: "succeeded",
+              params: { pageId: "page_q2_finance" },
+              output:
+                '{"figures": [{"lineItem": "Subscriptions", "amount": 1200000, "changePct": 12}, {"lineItem": "Professional Services", "amount": 850000, "changePct": -4}, {"lineItem": "Support Contracts", "amount": 320000, "changePct": 7}]}',
+            },
+            {
+              functionCallName: "slack-post-message",
+              status: "succeeded",
+              params: {
+                channel: "#finance",
+                text: "*Q2 Revenue Report*\n\n| Line Item | Amount | Change vs. Prior Period |\n|---|--:|--:|\n| Subscriptions | 1,200,000 | +12% |\n| Professional Services | 850,000 | -4% |\n| Support Contracts | 320,000 | +7% |",
+              },
+              output: '{"ts": "1712750400.000100", "channel": "#finance"}',
+            },
+          ],
+        },
+        {
+          role: "agent",
+          content:
+            "I've posted the Q2 revenue report to #finance. It lists Subscriptions (1,200,000, +12%), Professional Services (850,000, -4%), and Support Contracts (320,000, +7%).",
+        },
+        {
+          role: "user",
+          content:
+            "The amounts in that table are just bare numbers — there's no currency on them at all. I can't tell whether these are dollars or euros, and finance can't post an ambiguous report like that.",
+          feedback: {
+            direction: "down",
+            comment:
+              "The amounts in the report table have no currency — they're ambiguous numbers, so nobody can tell if they're dollars or euros.",
+          },
+        },
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [editSkillWithInstructions("skill_data_formatter")],
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for the child skill "skill_data_formatter" ONLY.
+The failure originates in the Data Formatter skill's formatting rules: they describe the table columns and number formatting but never require a currency to be shown on the "Amount" column, which produced the ambiguous bare numbers the user complained about. The Report Orchestrator delegated correctly and its own instructions are complete and correct.
+The suggestion should:
+- Add a formatting rule to the Data Formatter requiring monetary amounts to be rendered with an explicit currency (a symbol or ISO currency code, e.g. $1,200,000 or 1,200,000 USD)
+- Reference that the current rules omit currency, causing the ambiguous numbers in the posted report
+- Preserve the existing formatting rules (columns, thousands separators, signed percentages, sort order)
+
+CRITICAL constraints:
+- The analyst MUST target the child skill "skill_data_formatter" with instructionEdits
+- There MUST NOT be any edit_skill call targeting the parent "skill_report_orchestrator"
+- The fix must address the specific child-owned defect (missing currency on amounts); the parent's instructions are correct and its delegation to the Data Formatter worked as intended
+
+Score 0 if no edit_skill with instructionEdits call is made for skill_data_formatter, or if edit_skill targets the parent skill_report_orchestrator.
+Score 1 if edit_skill targets only skill_data_formatter but the edit doesn't specifically address requiring a currency on the amounts.
+Score 3 if edit_skill targets skill_data_formatter only, adds a rule requiring an explicit currency on monetary amounts, and leaves the parent skill_report_orchestrator untouched.`,
+    },
+    {
       scenarioId: "misleading-agent-facing-description",
       type: "analysis",
       skillConfigs: [
