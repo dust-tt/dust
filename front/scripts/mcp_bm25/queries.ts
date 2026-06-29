@@ -778,6 +778,60 @@ export const QUERIES: LabeledQuery[] = [
     expected: "query_tables_v2.execute_database_query",
   },
 
+  // --- pod_manager ---
+  {
+    query: "show me the pods I belong to",
+    expected: "pod_manager.list_pods",
+  },
+  {
+    query: "create a new private pod for the launch plan",
+    expected: "pod_manager.create_pod",
+  },
+  {
+    query: "what is this pod's title description and linked content",
+    expected: "pod_manager.get_information",
+  },
+  {
+    query: "rename this pod and update its description",
+    expected: "pod_manager.edit_information",
+  },
+  {
+    query: "add a teammate as an editor to this pod",
+    expected: "pod_manager.update_members",
+  },
+  {
+    query: "list all members and editors in this pod",
+    expected: "pod_manager.list_members",
+  },
+  {
+    query: "attach this company data folder to the pod context",
+    expected: "pod_manager.add_content_node",
+  },
+  {
+    query: "remove this linked company data node from the pod",
+    expected: "pod_manager.remove_content_node",
+  },
+  {
+    query: "find pod files and conversations about pricing",
+    expected: "pod_manager.semantic_search",
+  },
+  {
+    query: "show the most recent pod documents from last week",
+    expected: "pod_manager.retrieve_recent_documents",
+  },
+  {
+    query: "start a new pod conversation with the research agent",
+    expected: "pod_manager.create_conversation",
+  },
+  {
+    query: "show unread conversations in this pod",
+    expected: "pod_manager.list_conversations",
+  },
+  {
+    query: "send a follow up message to an existing pod conversation",
+    expected: "pod_manager.add_message_to_conversation",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
