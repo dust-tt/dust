@@ -1295,6 +1295,7 @@ export async function getMembersUsage({
     GroupResource.listGroupNamesByUserModelIdInWorkspace({
       workspace,
       userModelIds: users.map((u) => u.id),
+      groupKinds: ["provisioned"],
     }),
   ]);
   const freeCreditAlertIds =

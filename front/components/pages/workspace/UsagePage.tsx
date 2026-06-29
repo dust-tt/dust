@@ -438,7 +438,7 @@ export function UsagePage() {
 
   const { groups } = useGroups({
     owner,
-    kinds: ["regular", "provisioned"],
+    kinds: ["provisioned"],
     disabled: !isWorkspaceAdmin || !pricingGroupsEnabled,
   });
   const selectedGroupName =
