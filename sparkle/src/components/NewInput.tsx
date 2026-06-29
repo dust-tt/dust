@@ -154,7 +154,6 @@ export interface NewInputProps
   isError?: boolean;
   className?: string;
   containerClassName?: string;
-  fieldClassName?: string;
   label?: string;
   icon?: React.ComponentType;
   iconRight?: React.ComponentType;
@@ -167,7 +166,6 @@ export const NewInput = forwardRef<HTMLInputElement, NewInputProps>(
     {
       className,
       containerClassName,
-      fieldClassName,
       size = "sm",
       message,
       messageStatus,
@@ -196,7 +194,7 @@ export const NewInput = forwardRef<HTMLInputElement, NewInputProps>(
             {label}
           </label>
         )}
-        <div className={cn(fieldVariants({ size, state }), fieldClassName)}>
+        <div className={cn(fieldVariants({ size, state }), className)}>
           {prefix && <div className={slotBoxVariants({ size })}>{prefix}</div>}
           {icon && (
             <Icon
@@ -210,7 +208,7 @@ export const NewInput = forwardRef<HTMLInputElement, NewInputProps>(
           )}
           <input
             ref={ref}
-            className={cn(innerInputVariants({ size }), className)}
+            className={innerInputVariants({ size })}
             data-1p-ignore={props.type !== "password"}
             value={value ?? undefined}
             disabled={disabled}
