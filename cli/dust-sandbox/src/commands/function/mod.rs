@@ -6,6 +6,7 @@ use std::process::Stdio;
 use anyhow::{anyhow, Result};
 use clap::Subcommand;
 use tempfile::{TempDir, TempPath};
+use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 
 mod get;
@@ -113,7 +114,10 @@ fn resolve_drop_target() -> Result<Option<DropTarget>> {
 }
 
 /// Spawn the embedded runner under `bun` for `subcommand` (`run` or `get`)
-/// against the resolved function, and exit with the child's status code.
+/// against the resolved function. Returns `(exit_code, captured_stdout)`; when
+/// `capture_stdout` is set the child's stdout is captured (piped) and returned
+/// instead of inherited, so the caller can deliver it somewhere (e.g. the Dust
+/// result API). Does not exit the process — the caller decides.
 ///
 /// The `bun` child (runner harness + the untrusted function bundle) is
 /// downgraded to the agent uid/gid (clearing supplementary groups) whenever
@@ -121,7 +125,12 @@ fn resolve_drop_target() -> Result<Option<DropTarget>> {
 /// stay root: it chowns the runner and stages the bundle into a uid-owned temp
 /// dir (named `<name>.ts` so `get`'s schema name is preserved), so the dropped
 /// child can read both even when the originals are root-only.
-pub(crate) async fn run_bun(subcommand: &str, name: &str, inherit_stdin: bool) -> Result<()> {
+pub(crate) async fn spawn_function(
+    subcommand: &str,
+    name: &str,
+    inherit_stdin: bool,
+    capture_stdout: bool,
+) -> Result<(i32, Option<String>)> {
     let path = resolve_existing(name)?;
     // The function runs with $DUST_FUNCTIONS_DIR as its working directory (the
     // parent of the resolved <name>.ts), not wherever dsbx was invoked from.
@@ -155,7 +164,11 @@ pub(crate) async fn run_bun(subcommand: &str, name: &str, inherit_stdin: bool) -
         } else {
             Stdio::null()
         })
-        .stdout(Stdio::inherit())
+        .stdout(if capture_stdout {
+            Stdio::piped()
+        } else {
+            Stdio::inherit()
+        })
         .stderr(Stdio::inherit());
     if let Some(dir) = &functions_dir {
         // chdir happens before the pre_exec privilege drop, i.e. while still
@@ -185,15 +198,33 @@ pub(crate) async fn run_bun(subcommand: &str, name: &str, inherit_stdin: bool) -
         }
     }
 
-    let status = cmd
-        .status()
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| emit_error(anyhow!("failed to run bun: {e}")))?;
+
+    // Capturing reads stdout to EOF (child closes it on exit) before waiting.
+    // Only stdout is piped; stderr/stdin are inherited, so there is no deadlock.
+    let captured = if capture_stdout {
+        let mut buf = Vec::new();
+        if let Some(mut out) = child.stdout.take() {
+            out.read_to_end(&mut buf)
+                .await
+                .map_err(|e| emit_error(anyhow!("failed to read function output: {e}")))?;
+        }
+        Some(String::from_utf8_lossy(&buf).into_owned())
+    } else {
+        None
+    };
+
+    let status = child
+        .wait()
         .await
         .map_err(|e| emit_error(anyhow!("failed to run bun: {e}")))?;
     runner.close().ok();
     if let Some(dir) = staged {
         dir.close().ok();
     }
-    std::process::exit(status.code().unwrap_or(1));
+    Ok((status.code().unwrap_or(1), captured))
 }
 
 /// Copy a function bundle into a fresh temp dir owned by `uid`/`gid`, as
