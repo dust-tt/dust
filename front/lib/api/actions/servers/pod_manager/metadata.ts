@@ -278,7 +278,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   [SEMANTIC_SEARCH_TOOL_NAME]: {
     description:
-      "Semantic search over a Pod using the same retrieval pipeline as company data search. Scope selects the Pod data source slice (files vs conversation transcripts vs both) plus searchable context nodes for files/all.",
+      "Search semantically over a Pod using the same retrieval pipeline as company data search. Scope selects the Pod data source slice (files vs conversation transcripts vs both) plus searchable context nodes for files/all.",
     schema: {
       query: z
         .string()

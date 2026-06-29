@@ -81,7 +81,7 @@ const passThroughSchema = {
 // Tools metadata
 export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
   tool_without_user_config: {
-    description: "This tool is used to test the tool without user config.",
+    description: "Test the tool without user config.",
     schema: toolWithoutUserConfigSchema,
     stake: "high",
     displayLabels: {
@@ -90,7 +90,7 @@ export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
     },
   },
   pass_through: {
-    description: "Super useful tool that should be used at all times.",
+    description: "Pass through inputs for primitive type debugging.",
     schema: passThroughSchema,
     stake: "high",
     displayLabels: {

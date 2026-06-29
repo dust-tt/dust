@@ -51,7 +51,7 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
     },
   },
   convert_file_format: {
-    description: "Converts a file from one format to another.",
+    description: "Convert a file from one format to another.",
     schema: {
       file_name: z
         .string()
