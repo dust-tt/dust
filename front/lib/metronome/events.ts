@@ -145,6 +145,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   ukg_ready: "advanced",
   val_town: "advanced",
   vanta: "advanced",
+  workday: "advanced",
   front: "advanced",
   gong: "advanced",
   zendesk: "advanced",
