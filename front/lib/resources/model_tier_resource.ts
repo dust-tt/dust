@@ -1,6 +1,8 @@
 import { isModelTier, type ModelTier } from "@app/lib/api/models_picker/tiers";
 import type { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModelTierModel } from "@app/lib/resources/storage/models/group_model_tier";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserModelTierModel } from "@app/lib/resources/storage/models/user_model_tier";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -100,6 +102,36 @@ export class ModelTierResource {
     }
   }
 
+  static async listUserTiers(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Record<string, ModelTier>> {
+    const workspace = auth.getNonNullableWorkspace();
+    const rows = await UserModelTierModel.findAll({
+      where: { workspaceId: workspace.id },
+      transaction,
+    });
+    if (rows.length === 0) {
+      return {};
+    }
+
+    const users = await UserModel.findAll({
+      where: { id: rows.map((row) => row.userId) },
+      attributes: ["id", "sId"],
+      transaction,
+    });
+    const sIdByUserId = new Map(users.map((user) => [user.id, user.sId]));
+
+    const tiers: Record<string, ModelTier> = {};
+    for (const row of rows) {
+      const sId = sIdByUserId.get(row.userId);
+      if (sId) {
+        tiers[sId] = row.tier;
+      }
+    }
+    return tiers;
+  }
+
   static async getUserTier(
     auth: Authenticator,
     {
@@ -182,6 +214,28 @@ export class ModelTierResource {
     } catch (err) {
       return new Err(normalizeError(err));
     }
+  }
+
+  static async listGroupTiers(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Record<string, ModelTier>> {
+    const workspace = auth.getNonNullableWorkspace();
+    const rows = await GroupModelTierModel.findAll({
+      where: { workspaceId: workspace.id },
+      transaction,
+    });
+
+    const tiers: Record<string, ModelTier> = {};
+    for (const row of rows) {
+      tiers[
+        GroupResource.modelIdToSId({
+          id: row.groupId,
+          workspaceId: workspace.id,
+        })
+      ] = row.tier;
+    }
+    return tiers;
   }
 
   static async getGroupTier(

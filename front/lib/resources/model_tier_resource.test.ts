@@ -89,6 +89,10 @@ describe("ModelTierResource", () => {
   });
 
   describe("user tier override", () => {
+    it("returns an empty map when there are no overrides", async () => {
+      expect(await ModelTierResource.listUserTiers(adminAuth)).toEqual({});
+    });
+
     it("returns null when the user has no override", async () => {
       const user = await UserFactory.basic();
 
@@ -158,9 +162,32 @@ describe("ModelTierResource", () => {
         await ModelTierResource.getUserTier(adminAuth, { userId: user.id })
       ).toBe("fast");
     });
+
+    it("lists all user tier overrides keyed by user sId", async () => {
+      const user1 = await UserFactory.basic();
+      const user2 = await UserFactory.basic();
+
+      await ModelTierResource.setUserTier(adminAuth, {
+        userId: user1.id,
+        tier: "fast",
+      });
+      await ModelTierResource.setUserTier(adminAuth, {
+        userId: user2.id,
+        tier: "balanced",
+      });
+
+      expect(await ModelTierResource.listUserTiers(adminAuth)).toEqual({
+        [user1.sId]: "fast",
+        [user2.sId]: "balanced",
+      });
+    });
   });
 
   describe("group tier override", () => {
+    it("returns an empty map when there are no overrides", async () => {
+      expect(await ModelTierResource.listGroupTiers(adminAuth)).toEqual({});
+    });
+
     it("sets and clears a group tier override as admin", async () => {
       const group = await GroupFactory.regular(adminWorkspace, "Engineering");
 
@@ -209,6 +236,25 @@ describe("ModelTierResource", () => {
       expect(
         await ModelTierResource.getGroupTier(adminAuth, { groupId: group.id })
       ).toBe("powerful");
+    });
+
+    it("lists all group tier overrides keyed by group sId", async () => {
+      const group1 = await GroupFactory.regular(adminWorkspace, "Product");
+      const group2 = await GroupFactory.regular(adminWorkspace, "Sales");
+
+      await ModelTierResource.setGroupTier(adminAuth, {
+        groupId: group1.id,
+        tier: "powerful",
+      });
+      await ModelTierResource.setGroupTier(adminAuth, {
+        groupId: group2.id,
+        tier: "frontier",
+      });
+
+      expect(await ModelTierResource.listGroupTiers(adminAuth)).toEqual({
+        [group1.sId]: "powerful",
+        [group2.sId]: "frontier",
+      });
     });
   });
 
