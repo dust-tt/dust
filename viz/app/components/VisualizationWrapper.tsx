@@ -439,6 +439,8 @@ export function VisualizationWrapper({
           "@dust/slideshow/v1": dustSlideshowV1,
           "@dust/slideshow/v2": dustSlideshowV2,
           "@dust/react-hooks": {
+            callFunction: (functionId: string, input?: unknown) =>
+              api.data.callFunction(functionId, input),
             captureScreenshot: handleScreenshotDownload,
             triggerUserFileDownload: memoizedDownloadFile,
             useFile: (fileId: string) => useFile(fileId, api.data),

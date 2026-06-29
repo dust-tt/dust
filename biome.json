@@ -26,7 +26,8 @@
       "!!extension/packages",
       "!!**/package-lock.json",
       "!!**/__snapshots__",
-      "!!**/.git"
+      "!!**/.git",
+      "!!cli/dust-sandbox/functions-runner/runner.js"
     ]
   },
   "formatter": {
@@ -54,7 +55,8 @@
       "front-spa/**",
       "front/**",
       "front-api/**",
-      "marketing/**"
+      "marketing/**",
+      "cli/dust-sandbox/functions-runner/**"
     ],
     "rules": {
       "preset": "none",
@@ -258,7 +260,8 @@
       "connectors/**",
       "front-spa/**",
       "front/**",
-      "front-api/**"
+      "front-api/**",
+      "cli/dust-sandbox/functions-runner/**"
     ],
     "enabled": true,
     "actions": {

@@ -732,6 +732,38 @@ export const QUERIES: LabeledQuery[] = [
     expected: "snowflake.query",
   },
 
+  // --- run_agent (sample dynamic child agents) ---
+  {
+    query: "delegate competitive pricing research to another agent",
+    expected: "run_agent.run_ResearchAnalyst",
+  },
+  {
+    query: "ask an agent to investigate a customer refund ticket",
+    expected: "run_agent.run_SupportTriage",
+  },
+  {
+    query: "have a specialist review this pull request for regressions",
+    expected: "run_agent.run_CodeReviewer",
+  },
+
+  // --- data_warehouses ---
+  {
+    query: "browse the schemas in our revenue warehouse",
+    expected: "data_warehouses.list",
+  },
+  {
+    query: "find customer tables in the data warehouse",
+    expected: "data_warehouses.find",
+  },
+  {
+    query: "describe the schema and columns for this warehouse table",
+    expected: "data_warehouses.describe_tables",
+  },
+  {
+    query: "calculate monthly revenue by querying warehouse tables",
+    expected: "data_warehouses.query",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",

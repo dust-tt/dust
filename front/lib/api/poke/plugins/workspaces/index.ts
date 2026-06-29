@@ -16,6 +16,7 @@ export * from "./disable_sso_enforcement";
 export * from "./extend_trial";
 export * from "./extension_blacklist_domains";
 export * from "./grant_awu_credits";
+export * from "./grant_user_free_credits";
 export * from "./insert_verified_workspace_verification_attempt";
 export * from "./invite_user";
 export * from "./manage_audit_logs_kill_switch";

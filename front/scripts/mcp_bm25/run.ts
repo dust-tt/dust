@@ -13,6 +13,7 @@
 
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
+import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
@@ -22,6 +23,11 @@ import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interac
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
+import {
+  getRunAgentToolDescription,
+  RUN_AGENT_CONFIGURABLE_PROPERTIES,
+  RUN_AGENT_TOOL_SCHEMA,
+} from "@app/lib/api/actions/servers/run_agent/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
@@ -31,6 +37,52 @@ import { buildIndex, rank } from "@app/scripts/mcp_bm25/bm25";
 import type { ServerEntry } from "@app/scripts/mcp_bm25/corpus";
 import { buildDocs } from "@app/scripts/mcp_bm25/corpus";
 import { QUERIES } from "@app/scripts/mcp_bm25/queries";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+const RUN_AGENT_SAMPLE_TOOL_SCHEMA = zodToJsonSchema(
+  z.object({
+    ...RUN_AGENT_TOOL_SCHEMA,
+    ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
+  })
+) as JSONSchema;
+
+// run_agent tools are dynamic: one tool per configured child agent. The static
+// server metadata only contains the builder placeholder, which is never exposed
+// to an agent, so the harness adds representative child-agent tools instead.
+const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
+  {
+    name: "run_ResearchAnalyst",
+    description: getRunAgentToolDescription({
+      executionMode: "run-agent",
+      childAgentName: "ResearchAnalyst",
+      childAgentDescription:
+        "Competitive market and customer research specialist for pricing, positioning, and source gathering.",
+    }),
+    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+  },
+  {
+    name: "run_SupportTriage",
+    description: getRunAgentToolDescription({
+      executionMode: "run-agent",
+      childAgentName: "SupportTriage",
+      childAgentDescription:
+        "Customer support specialist that investigates tickets, refunds, escalations, and account issues.",
+    }),
+    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+  },
+  {
+    name: "run_CodeReviewer",
+    description: getRunAgentToolDescription({
+      executionMode: "run-agent",
+      childAgentName: "CodeReviewer",
+      childAgentDescription:
+        "Engineering reviewer for pull requests, regressions, implementation risks, and test coverage.",
+    }),
+    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+  },
+];
 
 const SERVERS: ServerEntry[] = [
   { name: "agent_memory", tools: AGENT_MEMORY_SERVER.tools },
@@ -49,6 +101,11 @@ const SERVERS: ServerEntry[] = [
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
   { name: "interactive_content", tools: INTERACTIVE_CONTENT_SERVER.tools },
   { name: "snowflake", tools: SNOWFLAKE_SERVER.tools },
+  {
+    name: "run_agent",
+    tools: RUN_AGENT_SAMPLE_TOOLS,
+  },
+  { name: "data_warehouses", tools: DATA_WAREHOUSES_SERVER.tools },
 ];
 
 function out(line: string): void {

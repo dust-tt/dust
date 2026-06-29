@@ -33,6 +33,18 @@ jobs:
           VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - name: Build functions runner bundle
+        # runner.js is a generated bundle (not committed). Build it on the host
+        # so cross only needs to mount and embed it — bun is not required inside
+        # the cross/musl build container.
+        working-directory: cli/dust-sandbox/functions-runner
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
       - name: Build with cross
         working-directory: cli/dust-sandbox
         run: cross build --release --target x86_64-unknown-linux-musl

@@ -104,15 +104,16 @@ function createConversationMount(
 
 function createPodMount(
   auth: Authenticator,
-  space: SpaceResource
+  space: SpaceResource,
+  { includeLegacy }: { includeLegacy: boolean }
 ): FileSystemMount {
   return {
     kind: "pod",
     id: space.sId,
     scopedPrefix: `${SCOPED_PREFIX_POD}${space.sId}`,
     sandboxMountPoint: `/files/${SCOPED_PREFIX_POD}${space.sId}`,
-    legacyPrefix: LEGACY_PREFIX_PROJECT,
-    legacySandboxMountPoint: `/files/pod`,
+    legacyPrefix: includeLegacy ? LEGACY_PREFIX_PROJECT : null,
+    legacySandboxMountPoint: includeLegacy ? `/files/pod` : null,
     permissions: {
       canRead: space.canRead(auth),
       canWrite: space.canWrite(auth),
@@ -223,7 +224,7 @@ export class DustFileSystem {
       for (const spaceId of uniqueSpaceIds) {
         const space = spaceById.get(spaceId);
         if (space) {
-          mounts.push(createPodMount(auth, space));
+          mounts.push(createPodMount(auth, space, { includeLegacy: true }));
         }
       }
     }
@@ -267,7 +268,7 @@ export class DustFileSystem {
     }
 
     const owner = auth.getNonNullableWorkspace();
-    const mount = createPodMount(auth, space);
+    const mount = createPodMount(auth, space, { includeLegacy: false });
 
     const backend = new GCSFileSystemBackend(
       owner.sId,
@@ -353,7 +354,7 @@ export class DustFileSystem {
           );
         }
 
-        mounts.push(createPodMount(auth, space));
+        mounts.push(createPodMount(auth, space, { includeLegacy: false }));
       }
     }
 

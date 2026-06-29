@@ -77,7 +77,7 @@ export type SandboxDeleteOwner = SandboxLifecycleOwner & {
 // only enforces the env contract and does not interpret owner types.
 const SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES = new Set([
   "CONVERSATION_ID",
-  "POD_ID",
+  "SPACE_ID",
 ]);
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

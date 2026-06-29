@@ -1,7 +1,13 @@
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
+import type {
+  PostSandboxFunctionInvocationRequestBody,
+  PostSandboxFunctionInvocationResponseBody,
+  SandboxFunctionInvocationType,
+} from "@app/types/api/sandbox/functions";
 import type {
   CommandResultMap,
   EditTextFn,
@@ -9,7 +15,9 @@ import type {
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   AlertCircle,
   Button,
@@ -80,6 +88,7 @@ const getExtensionFromBlob = (blob: Blob): string => {
 
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
+  createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
   setCodeDrawerOpened,
@@ -88,6 +97,10 @@ function useVisualizationDataHandler({
   visualization,
   vizIframeRef,
 }: {
+  createSandboxFunctionInvocation: (
+    functionId: string,
+    input?: unknown
+  ) => Promise<Result<SandboxFunctionInvocationType, Error>>;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -151,6 +164,37 @@ function useVisualizationDataHandler({
       }
 
       switch (data.command) {
+        case "callFunction": {
+          const invocationRes = await createSandboxFunctionInvocation(
+            data.params.functionId,
+            data.params.input
+          );
+
+          if (invocationRes.isErr()) {
+            sendResponseToIframe(
+              data,
+              {
+                result: null,
+                error:
+                  "Failed to call function: " + invocationRes.error.message,
+              },
+              event.source
+            );
+            break;
+          }
+
+          // TODO(spolu): manage lifecycle of the function invocation, pulling events related to
+          // handle tools validations and returning the result to the iframe. For now, we just
+          // return a dummy result.
+
+          sendResponseToIframe(
+            data,
+            { result: { hello: "world" } },
+            event.source
+          );
+          break;
+        }
+
         case "getFile":
           const fileBlob = await getFileBlob(data.params.fileId);
 
@@ -215,6 +259,7 @@ function useVisualizationDataHandler({
     return () => window.removeEventListener("message", listener);
   }, [
     code,
+    createSandboxFunctionInvocation,
     downloadFileFromBlob,
     getFileBlob,
     onEditText,
@@ -260,6 +305,7 @@ export function CodeDrawer({
 interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   conversationId: string | null;
+  frameFileId?: string;
   isEditable?: boolean;
   isInDrawer?: boolean;
   isPublic?: boolean;
@@ -301,6 +347,7 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
+    frameFileId,
     isEditable = false,
     isInDrawer = false,
     isPublic = false,
@@ -352,7 +399,52 @@ export const VisualizationActionIframe = forwardRef<
     [workspaceId, conversationId, spaceId]
   );
 
+  const createSandboxFunctionInvocation = useCallback(
+    async (
+      functionId: string,
+      input?: unknown
+    ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
+      if (isPublic) {
+        throw new Error(
+          "Sandbox functions are not supported in shared frames."
+        );
+      }
+
+      const body: PostSandboxFunctionInvocationRequestBody = {
+        input,
+        context: frameFileId ? { frameFileId } : undefined,
+      };
+
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/sandbox-functions/${functionId}/invocations`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await getErrorFromResponse(response);
+          throw new Error(error.message);
+        }
+
+        const result: PostSandboxFunctionInvocationResponseBody =
+          await response.json();
+
+        return new Ok(result.invocation);
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+    },
+    [frameFileId, isPublic, workspaceId]
+  );
+
   useVisualizationDataHandler({
+    createSandboxFunctionInvocation,
     getFileBlob,
     onEditText,
     setCodeDrawerOpened,

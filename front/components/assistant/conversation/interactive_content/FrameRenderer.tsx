@@ -442,6 +442,7 @@ export function FrameRenderer({
                 identifier: `viz-${fileId}`,
               }}
               key={`viz-${fileId}`}
+              frameFileId={fileId}
               conversationId={conversation?.sId ?? null}
               isEditable={true}
               spaceId={frameSpaceId ?? undefined}

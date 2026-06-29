@@ -158,6 +158,57 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("listGroupNamesByUserModelIdInWorkspace", () => {
+    it("returns regular + provisioned group names per user, sorted, excluding global", async () => {
+      const user2 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user2, { role: "user" });
+      const user3 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user3, { role: "user" });
+
+      const sales = await GroupResource.makeNew({
+        name: "Sales",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      await sales.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+      // Provisioned groups are synced from WorkOS; members are seeded directly.
+      await GroupResource.makeNew(
+        {
+          name: "Engineering",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-eng-group",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+
+      const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
+        {
+          workspace,
+          userModelIds: [user.id, user2.id, user3.id],
+        }
+      );
+
+      // user is implicitly in the global group, which must be excluded.
+      expect(result.get(user.id)).toEqual(["Engineering", "Sales"]);
+      expect(result.get(user2.id)).toEqual(["Engineering"]);
+      expect(result.has(user3.id)).toBe(false);
+    });
+
+    it("returns an empty map when no user ids are given", async () => {
+      const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
+        {
+          workspace,
+          userModelIds: [],
+        }
+      );
+
+      expect(result.size).toBe(0);
+    });
+  });
+
   describe("dangerouslyListUserGroupsForAuth caching", () => {
     it("returns groups for authenticated user", async () => {
       const regularGroup = await GroupResource.makeNew({

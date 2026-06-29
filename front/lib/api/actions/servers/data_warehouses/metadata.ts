@@ -18,8 +18,8 @@ const dataSourcesSchema =
 export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
   list: {
     description:
-      "List the direct contents of a warehouse, database, or schema. Can be used to see what is inside a " +
-      "specific location in the tables hierarchy, like 'ls' in Unix. If no nodeId is provided, lists " +
+      "Browse and list the direct contents inside a warehouse, database, or schema: child databases, schemas, nested schemas, and tables. " +
+      "Use this to explore or navigate the tables hierarchy, like 'ls' in Unix. If no nodeId is provided, shows " +
       "all available data warehouses at the root level. Hierarchy supports: warehouse → database → schema → " +
       "nested schemas → tables. Schemas can be arbitrarily nested within other schemas. Results are paginated " +
       "with a default limit and you can fetch additional pages using the nextPageCursor.",
@@ -55,10 +55,10 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
   },
   find: {
     description:
-      "Find tables, schemas and databases based on their name starting from a specific node in the tables hierarchy. " +
-      "Can be used to search for tables by name across warehouses, databases, and schemas. " +
-      "The query supports partial matching - for example, searching for 'sales' will find " +
-      "'sales_2024', 'monthly_sales_report', etc. This is like using 'find' in Unix for tables.",
+      "Find, search, or locate tables, schemas, and databases by name starting from a specific node in the warehouse hierarchy. " +
+      "Use this for table-name lookup when you know a full or partial table, schema, or database name. " +
+      "The query supports partial matching - for example, searching for 'customer' will find " +
+      "'customer_profiles', 'dim_customers', etc. This is like using 'find' in Unix for tables.",
     schema: {
       dataSources: dataSourcesSchema,
       query: z
@@ -66,8 +66,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "The table name to search for. This supports partial matching and does not require the " +
-            "exact name. For example, searching for 'revenue' will find 'revenue_2024', " +
-            "'monthly_revenue', 'revenue_by_region', etc. If omitted, lists all tables."
+            "exact name. For example, searching for 'invoice' will find 'invoices', " +
+            "'invoice_lines', 'archived_invoices', etc. If omitted, lists all tables."
         ),
       rootNodeId: z
         .string()
@@ -100,10 +100,10 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
   },
   describe_tables: {
     description:
-      "Get detailed schema information for one or more tables. Provides DBML schema definitions, " +
+      "Describe known warehouse tables by retrieving their schema details: columns, types, DBML definitions, " +
       "SQL dialect-specific query guidelines, and example rows. All tables must be from the same " +
       "warehouse - cross-warehouse schema requests are not supported. Use this to understand table " +
-      "structure before writing queries.",
+      "structure before writing SQL queries.",
     schema: {
       dataSources: dataSourcesSchema,
       tableIds: z
@@ -123,8 +123,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
   },
   query: {
     description:
-      "Execute SQL queries on tables from the same warehouse. You MUST call describe_tables at least once " +
-      "before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
+      "Run, execute, or write SQL queries on selected data warehouse tables to calculate metrics, aggregate results, analyze revenue, or answer business questions. " +
+      "You MUST call describe_tables at least once before attempting to query tables to understand their structure. The query must respect the SQL dialect " +
       "and guidelines provided by describe_tables. All tables in a single query must be from the same warehouse.",
     schema: {
       dataSources: dataSourcesSchema,

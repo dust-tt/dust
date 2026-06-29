@@ -230,6 +230,7 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
                     }
                     consumedFromPool={myUsage?.consumedFromPoolAwuCredits ?? 0}
                     memberUsageLimit={myUsage?.memberUsageLimit ?? null}
+                    seatBalanceAwu={myUsage?.seatBalanceAwu ?? null}
                     effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
                     seatType={myUsage?.seatType ?? null}
                     isTotalAllowedUsagePending={false}

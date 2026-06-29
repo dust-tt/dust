@@ -6,6 +6,7 @@ import {
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -14,6 +15,40 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 // This is a placeholder tool name used in the metadata for UI detection.
 // The actual tool name is dynamic: `run_<agent_name>`.
 export const RUN_AGENT_PLACEHOLDER_TOOL_NAME = "run_agent" as const;
+
+type RunAgentToolDescriptionArgs =
+  | {
+      executionMode: "run-agent";
+      childAgentName: string;
+      childAgentDescription: string;
+    }
+  | {
+      executionMode: "handoff";
+      childAgentName: string;
+      childAgentDescription: string;
+      childAgentMention: string;
+    };
+
+export function getRunAgentToolDescription(
+  args: RunAgentToolDescriptionArgs
+): string {
+  switch (args.executionMode) {
+    case "run-agent":
+      return (
+        `Delegate to ${args.childAgentName} (${args.childAgentDescription}) as a child agent/sub-agent in the background. ` +
+        "Use this configured child agent when the request should run in its own conversation, then use its results in the main conversation."
+      );
+
+    case "handoff":
+      return (
+        `Handoff completely to ${args.childAgentName} (${args.childAgentDescription}). ` +
+        `Inform the user that you are handing off to ${args.childAgentMention} before calling the tool since this child agent will respond directly in the conversation.`
+      );
+
+    default:
+      return assertNever(args);
+  }
+}
 
 export const RUN_AGENT_CONFIGURABLE_PROPERTIES = {
   executionMode: z
@@ -58,14 +93,13 @@ export const RUN_AGENT_TOOL_SCHEMA = {
   description: z
     .string()
     .describe(
-      "The reason this agent is being called and what it achieves, in a few words. Use infinitive verbs (e.g. " +
+      "A short phrase explaining why you are delegating to this child agent/sub-agent and what it should achieve. Use infinitive verbs (e.g. " +
         '"Review Q1 performance", "Assess support backlog").'
     ),
   query: z
     .string()
     .describe(
-      "The query sent to the agent. This is the question or instruction that will be " +
-        "processed by the agent, which will respond with its own capabilities and knowledge."
+      "The question or instruction to send to the child agent/sub-agent. The agent will process it using its own capabilities and knowledge."
     ),
   toolsetsToAdd: z
     .array(
@@ -74,7 +108,7 @@ export const RUN_AGENT_TOOL_SCHEMA = {
         .regex(new RegExp(`^${getResourcePrefix("mcp_server_view")}_\\w+$`))
     )
     .describe(
-      "The toolsets ids to add to the agent in addition to the ones already set in the agent configuration."
+      "The toolset IDs to give to the child agent in addition to the ones already set in the agent configuration."
     )
     .optional()
     .nullable(),
