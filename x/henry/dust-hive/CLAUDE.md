@@ -2,11 +2,26 @@
 
 Follow all rules in **CODING_RULES.md** before making changes.
 
+## Workspace layout
+
+`x/henry/dust-hive/` is a Bun workspace with two packages:
+
+- **`cli/`** — the `dust-hive` CLI and in-bee runtime (the original package; what
+  `dust-hive` on your PATH points to). Runtime data files (`docker-compose.yml`,
+  `tika-config.xml`, `elasticsearch.Dockerfile`, `completions/`) live here because
+  `DUST_HIVE_ROOT` is anchored relative to `cli/src/lib/paths.ts`.
+- **`control-plane/`** — the Hive control plane (Cloud Hive pilot): provisions,
+  lists, connects to, and reclaims bees behind mandatory client auth. All Blaxel
+  calls are isolated behind `control-plane/src/blaxel/provider.ts`.
+
+Each package has its own `package.json`, `tsconfig.json`, `biome.json`, and tests.
+Run `bun run check` from **inside the package you changed** (`cli/` or `control-plane/`).
+
 ## Development Workflow
 
 **CRITICAL**: Always run `bun run check` before committing. This runs typecheck, lint, and tests. Never commit code that fails these checks.
 
-**IMPORTANT**: Always use `bun run` commands from within the `x/henry/dust-hive` directory. Do NOT run `tsc`, `biome`, or other tools directly - use the npm scripts which ensure correct configuration.
+**IMPORTANT**: Always use `bun run` commands from within the package directory (`cli/` or `control-plane/`). Do NOT run `tsc`, `biome`, or other tools directly - use the npm scripts which ensure correct configuration.
 
 ```bash
 # Before committing - run ALL checks (MANDATORY)
@@ -50,9 +65,12 @@ bun run test         # bun test
 
 ## Project Structure
 
+The CLI package (`cli/`):
+
 ```
-src/
-├── index.ts           # CLI entry point
+cli/
+├── src/
+│   ├── index.ts       # CLI entry point
 ├── forward-daemon.ts  # TCP forwarder daemon (ports 3000,3001,3002,3006 → env)
 ├── commands/          # Command implementations (all MVP commands complete)
 │   ├── cache.ts       # Cache management (show cache status)

@@ -2,6 +2,7 @@
 
 import { cac } from "cac";
 import { adoptCommand } from "./commands/adopt";
+import { beeInitCommand } from "./commands/bee-init";
 import { cacheCommand } from "./commands/cache";
 import { cdCommand } from "./commands/cd";
 import { coolCommand } from "./commands/cool";
@@ -69,6 +70,7 @@ cli
   .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
   .option("-C, --compact", "Use compact layout (no tab bar)")
   .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
+  .option("-R, --remote", "Provision a bee via the control plane instead of a local worktree")
   .action(
     async (
       name: string | undefined,
@@ -83,6 +85,7 @@ cli
         command?: string;
         compact?: boolean;
         unifiedLogs?: boolean;
+        remote?: boolean;
       }
     ) => {
       // Validate --wait cannot be used with --no-open
@@ -103,7 +106,11 @@ cli
         command?: string;
         compact?: boolean;
         unifiedLogs?: boolean;
+        remote?: boolean;
       } = {};
+      if (options.remote) {
+        spawnOptions.remote = true;
+      }
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
       }
@@ -162,6 +169,26 @@ cli
           path: options.path,
           branchName: options.branchName,
           baseBranch: options.baseBranch,
+          wait: options.wait,
+        })
+      );
+    }
+  );
+
+cli
+  .command("bee-init [name]", "Provision the current checkout as a single-tenant bee environment")
+  .option("-n, --name <name>", "Environment name")
+  .option("-w, --warm", "Run dust-hive warm after provisioning")
+  .option("-W, --wait", "Wait for build watchers to finish their initial builds")
+  .action(
+    async (
+      name: string | undefined,
+      options: { name?: string; warm?: boolean; wait?: boolean }
+    ) => {
+      await prepareAndRun(
+        beeInitCommand({
+          name: name ?? options.name,
+          warm: options.warm,
           wait: options.wait,
         })
       );
@@ -277,8 +304,9 @@ cli
   .command("list", "Show all environments")
   .alias("ls")
   .alias("l")
-  .action(async () => {
-    await prepareAndRun(listCommand());
+  .option("-R, --remote", "List bees from the control plane")
+  .action(async (options: { remote?: boolean }) => {
+    await prepareAndRun(listCommand({ remote: Boolean(options.remote) }));
   });
 
 cli
@@ -308,9 +336,12 @@ cli
     }
   );
 
-cli.command("url [name]", "Print front URL").action(async (name: string | undefined) => {
-  await prepareAndRun(urlCommand(name));
-});
+cli
+  .command("url [name]", "Print front URL")
+  .option("-R, --remote", "Resolve the bee's preview URL via the control plane")
+  .action(async (name: string | undefined, options: { remote?: boolean }) => {
+    await prepareAndRun(urlCommand(name, { remote: Boolean(options.remote) }));
+  });
 
 cli
   .command("cd [name]", "Print worktree path (use with: cd $(dust-hive cd <env>))")

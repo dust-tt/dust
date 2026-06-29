@@ -1,7 +1,6 @@
 // Data-driven database initialization with binary caching
 
 import { binaryExists, getBinaryPath, getCacheSource, type InitBinary } from "./cache";
-import { getServiceContainerId } from "./docker";
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import { type Environment, getEnvironmentWorktreeDir } from "./environment";
 import { logger } from "./logger";
@@ -244,34 +243,55 @@ async function initElasticsearchTS(
   return true;
 }
 
-// Wait for a Docker container to be healthy
-// Uses getServiceContainerId instead of constructing container name (more reliable)
-async function waitForContainer(envName: string, service: string): Promise<void> {
-  const maxWait = 60000;
+// Service readiness is probed over the published host port, not via Docker
+// healthchecks: CMD/CMD-SHELL healthchecks don't run in a Blaxel sandbox, so
+// `docker inspect .State.Health.Status` never reports "healthy" there. Host-port
+// probes behave identically on a laptop and in a bee. Mirrors the endpoints the
+// compose healthchecks used (pg port, ES /_cluster/health).
+const READINESS_TIMEOUT_MS = 60000;
+const READINESS_POLL_MS = 500;
+
+// Postgres only binds TCP once it is ready to serve, so a successful connect is
+// a reliable readiness signal.
+async function waitForTcpPort(label: string, port: number): Promise<void> {
   const start = Date.now();
-
-  while (Date.now() - start < maxWait) {
-    // Get container ID using docker compose (handles naming variations)
-    const containerId = await getServiceContainerId(envName, service);
-    if (!containerId) {
-      // Container doesn't exist yet, wait and retry
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      continue;
-    }
-
-    const proc = Bun.spawn(
-      ["docker", "inspect", "--format", "{{.State.Health.Status}}", containerId],
-      { stdout: "pipe", stderr: "pipe" }
-    );
-    const output = await new Response(proc.stdout).text();
-    await proc.exited;
-
-    if (proc.exitCode === 0 && output.trim() === "healthy") {
+  while (Date.now() - start < READINESS_TIMEOUT_MS) {
+    if (await canConnectTcp(port)) {
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, READINESS_POLL_MS));
   }
-  throw new Error(`Container ${service} did not become healthy`);
+  throw new Error(`${label} did not accept connections on port ${port}`);
+}
+
+async function canConnectTcp(port: number): Promise<boolean> {
+  try {
+    const socket = await Bun.connect({
+      hostname: "127.0.0.1",
+      port,
+      socket: { data() {}, open() {}, close() {}, error() {} },
+    });
+    socket.end();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function waitForHttpOk(label: string, url: string): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < READINESS_TIMEOUT_MS) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // Not up yet — keep polling.
+    }
+    await new Promise((resolve) => setTimeout(resolve, READINESS_POLL_MS));
+  }
+  throw new Error(`${label} did not become ready at ${url}`);
 }
 
 // Initialize all postgres-related things (runs after postgres is healthy)
@@ -463,15 +483,18 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
 // Each init waits for its container, then runs
 export async function runAllDbInits(env: Environment): Promise<void> {
   logger.info("Initializing databases (parallel)...");
+  const { ports } = env;
 
-  // Run all inits in parallel - each waits for its container first
+  // Run all inits in parallel - each waits for its service port first
   await Promise.all([
-    // Postgres: wait for container → create DBs → run schema inits
-    waitForContainer(env.name, "db").then(() => initAllPostgres(env)),
-    // Qdrant: wait for container → create collections
-    waitForContainer(env.name, "qdrant").then(() => initAllQdrant(env)),
-    // Elasticsearch: wait for container → create indices
-    waitForContainer(env.name, "elasticsearch").then(() => initAllElasticsearch(env)),
+    // Postgres: wait for port → create DBs → run schema inits
+    waitForTcpPort("postgres", ports.postgres).then(() => initAllPostgres(env)),
+    // Qdrant: wait for HTTP → create collections
+    waitForHttpOk("qdrant", `http://127.0.0.1:${ports.qdrantHttp}/`).then(() => initAllQdrant(env)),
+    // Elasticsearch: wait for cluster health → create indices
+    waitForHttpOk("elasticsearch", `http://127.0.0.1:${ports.elasticsearch}/_cluster/health`).then(
+      () => initAllElasticsearch(env)
+    ),
   ]);
 
   logger.success("All databases initialized");

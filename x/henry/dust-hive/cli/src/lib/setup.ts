@@ -155,12 +155,33 @@ async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<voi
   }
 }
 
-// Run npm install in a directory
+// Workspaces a bee actually runs. MUST stay in sync with the scoped
+// `npm ci -w ...` in bee-image/Dockerfile: a bare root install also builds
+// cli/dust-cli, whose native keytar dep needs libsecret (absent in the bee) and
+// fails. `sync` scopes its install to these when running inside a bee.
+export const BEE_WORKSPACES = [
+  "sdks/js",
+  "sparkle",
+  "front",
+  "front-spa",
+  "front-api",
+  "marketing",
+  "connectors",
+  "viz",
+] as const;
+
+// Run npm install in a directory. `workspaces` scopes the install with `-w`
+// flags (used in bee mode to skip workspaces a bee can't build).
 export async function runNpmInstall(
   dir: string,
-  options?: { preferOffline?: boolean }
+  options?: { preferOffline?: boolean; workspaces?: readonly string[] }
 ): Promise<boolean> {
   const args = ["install"];
+  if (options?.workspaces) {
+    for (const workspace of options.workspaces) {
+      args.push("-w", workspace);
+    }
+  }
   if (options?.preferOffline) {
     args.push("--prefer-offline");
   }

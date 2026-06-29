@@ -24,6 +24,9 @@ const EnvironmentMetadataFields = z.object({
   repoRoot: z.string(),
   worktreePath: z.string().optional(),
   worktreeOwner: WorktreeOwnerSchema.optional(),
+  // True when the environment is a "bee": the checkout itself is the worktree,
+  // provisioned in-place (no worktree/symlinks, single-tenant base port).
+  beeMode: z.boolean().optional(),
 });
 
 export const EnvironmentMetadataSchema = EnvironmentMetadataFields.passthrough();

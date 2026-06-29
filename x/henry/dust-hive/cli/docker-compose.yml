@@ -37,6 +37,12 @@ services:
       start_period: 10s
 
   elasticsearch:
+    # Stable tag so the image can be prebuilt and baked (the bee bakes it; see
+    # bee-image/). With `image` set, `compose up` uses it when present and only
+    # falls back to `build` when absent — laptops still build+tag it as before
+    # (no regression), while a bee finds the baked image and skips the build (it
+    # has no buildx, and building in a warm base image is the wrong model).
+    image: dust-hive-elasticsearch:8.11.3
     build:
       context: .
       dockerfile: elasticsearch.Dockerfile

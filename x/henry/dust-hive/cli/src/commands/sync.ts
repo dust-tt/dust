@@ -15,6 +15,7 @@ import {
   saveSyncState,
   setCacheSource,
 } from "../lib/cache";
+import { listEnvironments, loadMetadata } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { isGitSpiceAvailable, repoSyncWithGitSpice } from "../lib/git-spice";
 import { logger } from "../lib/logger";
@@ -22,7 +23,7 @@ import { findRepoRoot } from "../lib/paths";
 import { checkMainRepoPreconditions } from "../lib/repo-preconditions";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { loadSettings } from "../lib/settings";
-import { runNpmInstall } from "../lib/setup";
+import { BEE_WORKSPACES, runNpmInstall } from "../lib/setup";
 
 export interface SyncOptions {
   force?: boolean;
@@ -164,23 +165,40 @@ async function checkNeedsCargoBuild(
   return false;
 }
 
-// Run npm install at root level if needed
+// Run npm install at root level if needed. In a bee, scope to BEE_WORKSPACES —
+// a bare root install builds cli/dust-cli (keytar → libsecret) and fails.
 async function updateNpmDependencies(
   repoRoot: string,
-  needsUpdate: boolean
+  needsUpdate: boolean,
+  workspaces?: readonly string[]
 ): Promise<Result<void>> {
   if (!needsUpdate) {
     logger.info("Node dependencies up to date (no changes detected)");
     return Ok(undefined);
   }
 
-  logger.step("Running npm install at root level...");
-  const success = await runNpmInstall(repoRoot);
+  logger.step(
+    workspaces ? "Running npm install (bee workspaces)..." : "Running npm install at root level..."
+  );
+  const success = await runNpmInstall(repoRoot, workspaces ? { workspaces } : undefined);
   if (!success) {
-    return Err(new CommandError("npm install failed at root level"));
+    return Err(new CommandError("npm install failed"));
   }
   logger.success("Node dependencies updated");
   return Ok(undefined);
+}
+
+// A bee registers exactly one environment, marked beeMode. `sync` runs against
+// the repo (not a specific env), so detect bee mode by scanning the registry.
+async function isBeeEnvironment(): Promise<boolean> {
+  const names = await listEnvironments();
+  for (const name of names) {
+    const metadata = await loadMetadata(name);
+    if (metadata?.beeMode) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Build Rust binaries if needed
@@ -278,10 +296,16 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
     return Err(new CommandError("Not in a git repository. Run from within the Dust repo."));
   }
 
-  // Check preconditions
-  const preconditionResult = await checkMainRepoPreconditions(repoRoot, { commandName: "sync" });
-  if (!preconditionResult.ok) {
-    return preconditionResult;
+  // In a bee, sync is the catch-up path while developing — the checkout is the
+  // single-tenant env and is expected to be on a feature branch with edits. The
+  // main-repo preconditions (on `main`, clean tree, not a worktree) would block
+  // that, so skip them in bee mode.
+  const isBee = await isBeeEnvironment();
+  if (!isBee) {
+    const preconditionResult = await checkMainRepoPreconditions(repoRoot, { commandName: "sync" });
+    if (!preconditionResult.ok) {
+      return preconditionResult;
+    }
   }
 
   logger.info(`Syncing: ${repoRoot}${force ? " (forced)" : ""}`);
@@ -315,8 +339,12 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
   const needsCargoBuild = await checkNeedsCargoBuild(repoRoot, savedState, headAfterPull, force);
   const needsBunInstall = force || !savedState || bunHash !== savedState.bun;
 
-  // Run npm ci at root level if needed
-  const npmResult = await updateNpmDependencies(repoRoot, needsNpmUpdate);
+  // Run npm install if needed — scoped to bee workspaces inside a bee.
+  const npmResult = await updateNpmDependencies(
+    repoRoot,
+    needsNpmUpdate,
+    isBee ? BEE_WORKSPACES : undefined
+  );
   if (!npmResult.ok) {
     return npmResult;
   }

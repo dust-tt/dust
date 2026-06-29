@@ -12,10 +12,11 @@
 // WebSocket upgrades are forwarded to the same target the HTTP routing would
 // pick, so Next.js HMR keeps working through the proxy.
 //
-// Hostname: we use "localhost" both for listen and upstream. node-server (used
-// by front-api) and Next dev bind to "localhost" by default, and on Node 17+
-// macOS that's IPv6-only (::1) — picking "localhost" everywhere makes the OS
-// resolve both ends the same way.
+// Hostname: upstream dials always use "localhost". node-server (used by
+// front-api) and Next dev bind to "localhost" by default, and on Node 17+ macOS
+// that's IPv6-only (::1) — dialing "localhost" makes the OS resolve both ends
+// the same way. The listen host defaults to "localhost" too, but bee mode binds
+// 0.0.0.0 so the Blaxel preview (which dials over the VM interface) can reach it.
 
 import type { ServerWebSocket } from "bun";
 
@@ -113,10 +114,14 @@ function safeClose(
   }
 }
 
-export function startProxy(listenPort: number, ports: Record<Target, number>) {
+export function startProxy(
+  listenPort: number,
+  ports: Record<Target, number>,
+  listenHost = "localhost"
+) {
   return Bun.serve<WsClientData>({
     port: listenPort,
-    hostname: "localhost",
+    hostname: listenHost,
     async fetch(req, srv) {
       const url = new URL(req.url);
 
@@ -224,14 +229,16 @@ export function startProxy(listenPort: number, ports: Record<Target, number>) {
 }
 
 if (import.meta.main) {
-  const [listenPortArg, frontApiPortArg, marketingPortArg] = process.argv.slice(2);
+  const [listenPortArg, frontApiPortArg, marketingPortArg, listenHostArg] = process.argv.slice(2);
   const listenPort = parsePort(listenPortArg, "listen port");
   const ports: Record<Target, number> = {
     "front-api": parsePort(frontApiPortArg, "front-api port"),
     marketing: parsePort(marketingPortArg, "marketing port"),
   };
+  // Defaults to localhost; bee mode passes 0.0.0.0 so the Blaxel preview reaches it.
+  const listenHost = listenHostArg ?? "localhost";
 
-  const server = startProxy(listenPort, ports);
+  const server = startProxy(listenPort, ports, listenHost);
 
   logger.info(
     `proxy daemon listening on http://${server.hostname}:${server.port} ` +

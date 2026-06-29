@@ -1,0 +1,18 @@
+name = "dust-bee"
+type = "sandbox"
+description = "Warm dust-hive environment (a bee): full Dust stack on base port 10000."
+
+[runtime]
+# mk3 is the current sandbox generation. Memory drives CPU (16 GB → ~6 cores)
+# and ~50% is the writable/tmpfs layer — the binding constraint for the warm
+# stack, so start at 16 GB and measure working-set in M0 (design Risk #3).
+generation = "mk3"
+memory = 16384
+
+# The in-bee proxy (dust-hive `front`, base port 10000) routes /api/* to
+# front-api and everything else to marketing. Blaxel exposes it as the bee's
+# authenticated preview URL.
+[[runtime.ports]]
+name = "front"
+target = 10000
+protocol = "tcp"

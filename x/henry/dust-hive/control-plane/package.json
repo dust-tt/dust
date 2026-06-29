@@ -1,0 +1,26 @@
+{
+  "name": "hive-control-plane",
+  "version": "0.1.0",
+  "description": "Hive control plane: provision, list, connect, and reclaim bees (Blaxel-backed dust-hive sandboxes)",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test": "bun test",
+    "check": "bun run typecheck && bun run lint && bun run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.0",
+    "@types/bun": "latest",
+    "bun-types": "latest",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@blaxel/core": "^0.2.94",
+    "zod": "^4.3.5",
+    "zod-validation-error": "^3.4.0"
+  }
+}

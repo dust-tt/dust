@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { setCacheSource } from "../lib/cache";
+import { ControlPlaneClient } from "../lib/control-plane-client";
 import { setupDirenv } from "../lib/direnv";
 import { writeDockerComposeOverride } from "../lib/docker";
 import { writeEnvSh } from "../lib/envgen";
@@ -42,6 +43,32 @@ interface SpawnOptions {
   command?: string;
   compact?: boolean;
   unifiedLogs?: boolean;
+  remote?: boolean;
+}
+
+// `spawn --remote` asks the control plane to provision a bee (it boots dust-hive
+// in bee mode inside a Blaxel sandbox). The local worktree path is skipped
+// entirely — provisioning a bee is not a worktree-on-disk operation.
+async function remoteSpawn(name: string | undefined): Promise<Result<void>> {
+  if (!name) {
+    return Err(new CommandError("--remote requires a bee name: dust-hive spawn --remote <name>"));
+  }
+  const clientResult = await ControlPlaneClient.create();
+  if (!clientResult.ok) {
+    return clientResult;
+  }
+  const beeResult = await clientResult.value.provisionBee(name);
+  if (!beeResult.ok) {
+    return beeResult;
+  }
+  const bee = beeResult.value;
+  logger.success(`Provisioned remote bee '${bee.name}' (${bee.hostState})`);
+  if (bee.previewUrl) {
+    logger.info(`Preview: ${bee.previewUrl}`);
+  }
+  logger.info(`Connect:  dust hive ${bee.name}   (interactive session — M3)`);
+  logger.info(`Open:     dust-hive url --remote ${bee.name}`);
+  return Ok(undefined);
 }
 
 async function promptForName(): Promise<string> {
@@ -217,6 +244,10 @@ export async function startBuildWatchers(
 }
 
 export async function spawnCommand(options: SpawnOptions): Promise<Result<void>> {
+  if (options.remote) {
+    return remoteSpawn(options.name);
+  }
+
   // Find repo root (could be main repo or worktree)
   const currentRepoRoot = await findRepoRoot();
   if (!currentRepoRoot) {

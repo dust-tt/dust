@@ -40,7 +40,7 @@ describe("registry", () => {
 
     it("proxy config has correct settings", () => {
       const config = SERVICE_REGISTRY.proxy;
-      expect(config.cwd).toBe("x/henry/dust-hive");
+      expect(config.cwd).toBe("x/henry/dust-hive/cli");
       expect(config.needsNvm).toBe(false);
       expect(config.needsEnvSh).toBe(false);
       expect(config.portKey).toBe("front");
@@ -202,9 +202,15 @@ describe("registry", () => {
       expect(command).toBe("npm run dev -- -p 10004");
     });
 
-    it("proxy receives all three ports as argv", () => {
+    it("proxy receives all three ports as argv and binds localhost off-bee", () => {
       const command = SERVICE_REGISTRY.proxy.buildCommand(mockEnv);
-      expect(command).toBe("bun run src/proxy-daemon.ts 10000 10003 10004");
+      expect(command).toBe("bun run src/proxy-daemon.ts 10000 10003 10004 localhost");
+    });
+
+    it("proxy binds 0.0.0.0 in bee mode so the Blaxel preview can reach it", () => {
+      const beeEnv = { ...mockEnv, metadata: { ...mockEnv.metadata, beeMode: true } };
+      const command = SERVICE_REGISTRY.proxy.buildCommand(beeEnv);
+      expect(command).toBe("bun run src/proxy-daemon.ts 10000 10003 10004 0.0.0.0");
     });
 
     it("core returns cargo run --bin core-api", () => {

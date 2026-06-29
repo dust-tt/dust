@@ -1,0 +1,3 @@
+# Prebuilt Elasticsearch image baked into the bee (produced by `make es-image`).
+# Large binary build artifact — rebuilt from elasticsearch.Dockerfile, not tracked.
+es-image.tar

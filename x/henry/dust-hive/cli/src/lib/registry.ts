@@ -85,11 +85,13 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     portKey: "marketing",
   },
   proxy: {
-    cwd: "x/henry/dust-hive",
+    cwd: "x/henry/dust-hive/cli",
     needsNvm: false,
     needsEnvSh: false,
+    // In a bee the proxy must bind 0.0.0.0 so the Blaxel preview can reach it;
+    // on a laptop it stays on localhost.
     buildCommand: (env) =>
-      `bun run src/proxy-daemon.ts ${env.ports.front} ${env.ports.frontApi} ${env.ports.marketing}`,
+      `bun run src/proxy-daemon.ts ${env.ports.front} ${env.ports.frontApi} ${env.ports.marketing} ${env.metadata.beeMode ? "0.0.0.0" : "localhost"}`,
     readinessCheck: {
       type: "http",
       url: (ports) => `http://localhost:${ports.front}/__hive/healthz`,

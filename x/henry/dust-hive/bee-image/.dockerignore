@@ -1,0 +1,9 @@
+# Keep the build context lean — the image installs deps and builds binaries
+# fresh (npm ci, cargo build), so existing artifacts are excluded. .git is NOT
+# excluded: bee-init reads the current branch and the agent commits/pushes.
+**/node_modules
+**/target
+**/.next
+**/.turbo
+**/dist
+.hives
