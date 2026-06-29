@@ -1,5 +1,5 @@
 import * as spendLimit from "@app/lib/api/users/spend_limit";
-import { setSpendLimitForUsersActivity } from "@app/temporal/bulk_spend_limit/activities";
+import { setSpendLimitForUsersActivity } from "@app/temporal/metronome_events_queue/activities";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
