@@ -35,6 +35,32 @@ export const QUERIES: LabeledQuery[] = [
     expected: "agent_memory.compact_memory",
   },
 
+  // --- conversation_files ---
+  {
+    query: "list the files attached to this conversation",
+    expected: "conversation_files.list",
+  },
+  {
+    query: "show the Notion pages and queryable tables attached here",
+    expected: "conversation_files.list_content_nodes_and_tables",
+  },
+  {
+    query: "read the attached conversation file by file id",
+    expected: "conversation_files.cat",
+  },
+  {
+    query: "grep an attached file for a specific error code",
+    expected: "conversation_files.cat",
+  },
+  {
+    query: "semantically search the conversation files for pricing terms",
+    expected: "conversation_files.semantic_search",
+  },
+  {
+    query: "search across the attached files by meaning",
+    expected: "conversation_files.semantic_search",
+  },
+
   // --- google_drive ---
   {
     query: "search google drive for the Q3 report",
