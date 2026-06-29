@@ -439,14 +439,10 @@ const actionsColumn: ColumnDef<RowData, string> = {
 
 function buildColumns(showGroupsColumn: boolean): ColumnDef<RowData, string>[] {
   return [
-    showGroupsColumn
-      ? { ...nameColumn, meta: { className: "w-72" } }
-      : nameColumn,
+    nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
     seatTypeColumn,
-    showGroupsColumn
-      ? consumedAwuCreditsColumn
-      : { ...consumedAwuCreditsColumn, meta: { className: "w-64" } },
+    { ...consumedAwuCreditsColumn, meta: { className: "w-64" } },
     actionsColumn,
   ];
 }
