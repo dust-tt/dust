@@ -52,6 +52,7 @@ import {
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
+import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -132,6 +133,7 @@ import {
 } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
+import { mutate } from "swr";
 
 const RUN_AGENT_TOOL_NAME = "run_agent";
 
@@ -447,6 +449,14 @@ export function AgentMessage({
             ) {
               void mutateSandboxFiles();
             }
+            if (action.internalMCPServerName === "plan_mode") {
+              // The conversation-channel `plan_updated` event can be lost (flaky SSE + small replay
+              // buffer), leaving the plan card/panel stale until turn end. The tool action rides the
+              // reliable per-message stream, so revalidate the plan here for a timely update.
+              void mutate(
+                planFileKey({ workspaceId: owner.sId, conversationId })
+              );
+            }
             break;
           }
           case "end-of-stream":
@@ -465,6 +475,7 @@ export function AgentMessage({
         sId,
         removeAllBlockedActionsForMessage,
         conversationId,
+        owner,
         mutateConversationAttachments,
         mutateSandboxStatus,
         mutateSandboxFiles,
