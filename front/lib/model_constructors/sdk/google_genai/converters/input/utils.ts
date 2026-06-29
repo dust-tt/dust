@@ -282,13 +282,16 @@ export async function conversationToContents(
 export function systemMessagesToSystemInstruction(
   system: SystemTextMessage[],
   converters: ContentBlockConverters
-): Content | undefined {
+): Part | undefined {
   if (system.length === 0) {
     return undefined;
   }
+  // Single `{ text }` part, matching legacy (not a `{ role, parts }` Content).
   return {
-    role: "user",
-    parts: system.map((message) => converters.systemMessageToPart(message)),
+    text: system
+      .map((message) => converters.systemMessageToPart(message).text ?? "")
+      .filter(Boolean)
+      .join("\n"),
   };
 }
 

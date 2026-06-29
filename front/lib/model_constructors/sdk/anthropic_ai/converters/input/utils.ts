@@ -1,5 +1,6 @@
 import type {
   CacheControlEphemeral,
+  ContentBlockParam,
   ImageBlockParam,
   MessageParam,
   OutputConfig,
@@ -279,11 +280,19 @@ export function assistantMessageToContentBlocks(
   }
 }
 
-export function conversationToMessages(
+function contentToBlocks(
+  content: MessageParam["content"]
+): ContentBlockParam[] {
+  return typeof content === "string"
+    ? [{ type: "text", text: content }]
+    : content;
+}
+
+export async function conversationToMessages(
   conversation: BaseConversation,
   converters: MessageBlockConverters
 ): Promise<MessageParam[]> {
-  return concurrentExecutor(
+  const messages = await concurrentExecutor(
     conversation.messages,
     async (message): Promise<MessageParam> => {
       switch (message.role) {
@@ -303,6 +312,26 @@ export function conversationToMessages(
     },
     { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
   );
+
+  // Anthropic rejects consecutive same-role messages, so merge them: one
+  // logical turn arrives split into a message per content block (e.g. text +
+  // image).
+  return messages.reduce<MessageParam[]>((merged, message) => {
+    const previous = merged[merged.length - 1];
+    if (previous && previous.role === message.role) {
+      return [
+        ...merged.slice(0, -1),
+        {
+          ...previous,
+          content: [
+            ...contentToBlocks(previous.content),
+            ...contentToBlocks(message.content),
+          ],
+        },
+      ];
+    }
+    return [...merged, message];
+  }, []);
 }
 
 export function systemMessagesToSystemParam(
@@ -406,7 +435,7 @@ export const reasoningToThinkingConfig: ReasoningToThinkingConfig = (
 
   return {
     output_config: { effort: effortToAnthropicEffort(reasoning.effort) },
-    thinking: { type: "adaptive" },
+    thinking: { type: "adaptive", display: "summarized" },
   };
 };
 

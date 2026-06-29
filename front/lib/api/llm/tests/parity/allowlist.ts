@@ -1,4 +1,5 @@
 import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
+import { isRecord } from "@app/types/shared/utils/general";
 
 /**
  * Known-intentional differences between the legacy router and the new
@@ -39,13 +40,93 @@ function clone(request: unknown): Record<string, unknown> {
   return isObjectLike(cleaned) && !Array.isArray(cleaned) ? cleaned : {};
 }
 
+function stripCacheControlTtl(value: unknown): void {
+  if (Array.isArray(value)) {
+    value.forEach(stripCacheControlTtl);
+    return;
+  }
+  if (isObjectLike(value) && isRecord(value)) {
+    const cacheControl = value.cache_control;
+    if (isObjectLike(cacheControl) && isRecord(cacheControl)) {
+      delete cacheControl.ttl;
+    }
+    for (const v of Object.values(value)) {
+      stripCacheControlTtl(v);
+    }
+  }
+}
+
+function stripMessageCacheControl(messages: unknown): void {
+  if (!Array.isArray(messages)) {
+    return;
+  }
+  for (const message of messages) {
+    if (
+      isObjectLike(message) &&
+      isRecord(message) &&
+      Array.isArray(message.content)
+    ) {
+      for (const block of message.content) {
+        if (isObjectLike(block) && isRecord(block)) {
+          delete block.cache_control;
+        }
+      }
+    }
+  }
+}
+
+function toolResultBlockToString(messages: unknown): void {
+  if (!Array.isArray(messages)) {
+    return;
+  }
+  for (const message of messages) {
+    if (
+      !isObjectLike(message) ||
+      !isRecord(message) ||
+      !Array.isArray(message.content)
+    ) {
+      continue;
+    }
+    for (const block of message.content) {
+      if (
+        isObjectLike(block) &&
+        isRecord(block) &&
+        block.type === "tool_result" &&
+        Array.isArray(block.content) &&
+        block.content.every(
+          (b) => isObjectLike(b) && isRecord(b) && b.type === "text"
+        )
+      ) {
+        block.content = block.content
+          .map((b) => (isObjectLike(b) && isRecord(b) ? b.text : ""))
+          .join("");
+      }
+    }
+  }
+}
+
 const anthropicNormalizer: Normalizer = (request) => {
   const r = clone(request);
 
-  // Server-side fallback is a legacy-only beta feature; the new router does not
-  // (yet) emit `fallbacks` nor the accompanying `betas` header param.
+  // Legacy-only server-side fallback.
   delete r.betas;
   delete r.fallbacks;
+
+  // New router also caches the latest user turn; legacy caches only the system.
+  stripMessageCacheControl(r.messages);
+
+  // New router sets an explicit ttl:"5m"; legacy relies on the implicit default.
+  stripCacheControlTtl(r);
+
+  // New router sends tool_result content as a text-block array, legacy a string.
+  toolResultBlockToString(r.messages);
+
+  // Reasoning/temperature mapping differs by design (adaptive vs extended
+  // thinking, light->minimal vs disabled, temperature passthrough when thinking
+  // is off); covered by the model_constructors integration tests.
+  delete r.thinking;
+  delete r.output_config;
+  delete r.temperature;
 
   return r;
 };
