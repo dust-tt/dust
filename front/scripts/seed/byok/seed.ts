@@ -39,6 +39,7 @@ const FREE_BYOK_PLAN_DATA: PlanAttributes = {
   trialPeriodDays: 0,
   canUseProduct: true,
   isByok: true,
+  hasAdvancedModelAccess: false,
 };
 
 makeScript({}, async ({ execute }, logger) => {

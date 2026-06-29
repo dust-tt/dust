@@ -13,6 +13,8 @@ import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
+// TODO(fabien): replace this check with `plan.hasAdvancedModelAccess` once
+// all plans have been configured via Poke.
 export function isPlanForAdvancedModels(plan: PlanType | null): boolean {
   return (
     plan !== null &&

@@ -88,6 +88,7 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
     trialPeriodDays: 0,
     isByok: false,
     isAuditLogsAllowed: false,
+    hasAdvancedModelAccess: false,
   },
   requestCancelAt: null,
 };
