@@ -459,6 +459,7 @@ function buildColumns({
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
+  isRefreshing?: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
@@ -481,6 +482,7 @@ interface MembersUsageTableProps {
 export function MembersUsageTable({
   members,
   isLoading,
+  isRefreshing = false,
   totalAllowedUsagePendingMemberIds,
   seatChangePendingMemberIds,
   isSeatBased,
@@ -600,19 +602,34 @@ export function MembersUsageTable({
   }
 
   return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      pagination={pagination}
-      setPagination={setPagination}
-      totalRowCount={totalRowCount}
-      sorting={sorting}
-      setSorting={setSorting}
-      isServerSideSorting
-      enableRowSelection={enableSelection}
-      rowSelection={rowSelection}
-      setRowSelection={onRowSelectionChange}
-      getRowId={(row) => row.sId}
-    />
+    <div className="relative">
+      <div
+        className={
+          isRefreshing
+            ? "pointer-events-none opacity-50 transition-opacity"
+            : "transition-opacity"
+        }
+      >
+        <DataTable
+          data={rows}
+          columns={columns}
+          pagination={pagination}
+          setPagination={setPagination}
+          totalRowCount={totalRowCount}
+          sorting={sorting}
+          setSorting={setSorting}
+          isServerSideSorting
+          enableRowSelection={enableSelection}
+          rowSelection={rowSelection}
+          setRowSelection={onRowSelectionChange}
+          getRowId={(row) => row.sId}
+        />
+      </div>
+      {isRefreshing && (
+        <div className="absolute inset-x-0 top-16 flex justify-center">
+          <Spinner size="sm" />
+        </div>
+      )}
+    </div>
   );
 }

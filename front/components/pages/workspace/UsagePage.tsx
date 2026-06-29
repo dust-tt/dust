@@ -420,17 +420,21 @@ export function UsagePage() {
     [awuUsageData]
   );
 
-  const { membersUsage, isMembersUsageLoading, totalMembersUsage } =
-    useMembersUsage({
-      workspaceId: owner.sId,
-      searchTerm,
-      pageIndex: pagination.pageIndex,
-      pageSize: pagination.pageSize,
-      orderColumn: membersOrderColumn,
-      orderDirection: membersOrderDirection,
-      seatType: seatTypeFilter ?? undefined,
-      groupId: groupFilter ?? undefined,
-    });
+  const {
+    membersUsage,
+    isMembersUsageLoading,
+    isMembersUsageRefreshing,
+    totalMembersUsage,
+  } = useMembersUsage({
+    workspaceId: owner.sId,
+    searchTerm,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+    orderColumn: membersOrderColumn,
+    orderDirection: membersOrderDirection,
+    seatType: seatTypeFilter ?? undefined,
+    groupId: groupFilter ?? undefined,
+  });
 
   const { groups } = useGroups({
     owner,
@@ -451,16 +455,15 @@ export function UsagePage() {
     totalCount: totalMembersUsage,
     resetKey: `${searchTerm}|${seatTypeFilter ?? ""}|${groupFilter ?? ""}`,
   });
+  const { clearSelection, selectedCount } = selection;
 
   const handleBatchEditSpendLimit = useCallback(() => {
-    // TODO(bulk-spend-limit): open the bulk EditSpendLimitModal (PR 6) wired to
-    // the bulk endpoint (PR 4) using selection.descriptor().
     sendNotification({
       type: "info",
       title: "Coming soon",
-      description: `Batch spend-limit editing for ${selection.selectedCount} members is not wired up yet.`,
+      description: `Batch spend-limit editing for ${selectedCount} members is not wired up yet.`,
     });
-  }, [sendNotification, selection]);
+  }, [sendNotification, selectedCount]);
 
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
@@ -490,22 +493,22 @@ export function UsagePage() {
           hasSeatPool: false,
         });
         if (ok) {
-          selection.clearSelection();
+          clearSelection();
         }
       } finally {
         handleSeatChangePendingChange(member.sId, false);
       }
     },
-    [confirm, doUpdateSeatType, handleSeatChangePendingChange, selection]
+    [confirm, doUpdateSeatType, handleSeatChangePendingChange, clearSelection]
   );
 
   const handleSeatMutationSaved = useCallback(() => {
     // Seat mutations can move a member in or out of the currently filtered set
     // (for example with the seat filter), which makes the cross-page selection
     // stale.
-    selection.clearSelection();
+    clearSelection();
     handleApproveOnModalSaved();
-  }, [handleApproveOnModalSaved, selection]);
+  }, [handleApproveOnModalSaved, clearSelection]);
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
@@ -678,6 +681,7 @@ export function UsagePage() {
     <MembersUsageTable
       members={membersUsage}
       isLoading={isMembersUsageLoading}
+      isRefreshing={isMembersUsageRefreshing}
       readOnly={isReadOnly}
       showSpendLimit={!isFreePlanWorkspace}
       totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
