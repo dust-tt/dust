@@ -1,7 +1,6 @@
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runAgentLoopWorker } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
-import { runBulkSpendLimitWorker } from "@app/temporal/bulk_spend_limit/worker";
 import { runConversationForkQueueWorker } from "@app/temporal/conversation_fork_queue/worker";
 import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
@@ -34,7 +33,6 @@ export type WorkerName =
   | "analytics_queue"
   | "conversation_fork_queue"
   | "project_task"
-  | "bulk_spend_limit"
   | "credit_alerts"
   | "data_retention"
   | "es_indexation_queue"
@@ -63,7 +61,6 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_trigger_webhook: runAgentTriggerWebhookWorker,
   analytics_queue: runAnalyticsWorker,
   conversation_fork_queue: runConversationForkQueueWorker,
-  bulk_spend_limit: runBulkSpendLimitWorker,
   credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
   hard_delete: runHardDeleteWorker,

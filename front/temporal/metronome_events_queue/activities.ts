@@ -6,6 +6,10 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
+// Bulk per-user spend-limit activity runs on this (Metronome) worker; re-export
+// so it is registered in this worker's `activities`.
+export { setSpendLimitForUsersActivity } from "@app/temporal/bulk_spend_limit/activities";
+
 /**
  * Temporal wrapper around `processMetronomeWebhook`. The handler has already
  * verified the workspace exists, but we re-fetch it here by sId so the

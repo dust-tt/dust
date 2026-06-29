@@ -44,8 +44,6 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/conversation_fork_queue");
     case "project_task":
       return path.join(baseDir, "temporal/project_task");
-    case "bulk_spend_limit":
-      return path.join(baseDir, "temporal/bulk_spend_limit");
     case "credit_alerts":
       return path.join(baseDir, "temporal/credit_alerts");
     case "data_retention":
