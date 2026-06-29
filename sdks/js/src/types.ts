@@ -735,7 +735,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "http_client_tool"
   | "index_private_slack_channel"
   | "models_picker"
-  | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "netsuite_mcp"
