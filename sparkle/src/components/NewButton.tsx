@@ -108,14 +108,14 @@ const newButtonVariants = cva(
         ghost: cn(
           "s-text-foreground dark:s-text-foreground-night",
           "hover:s-bg-black/[0.02] active:s-bg-black/[0.02]",
-          "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.04]",
+          "dark:hover:s-bg-white/[0.08] dark:active:s-bg-white/[0.08]",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
         "ghost-secondary": cn(
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
           "hover:s-bg-black/[0.02] active:s-bg-black/[0.02]",
-          "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.04]",
+          "dark:hover:s-bg-white/[0.08] dark:active:s-bg-white/[0.08]",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
