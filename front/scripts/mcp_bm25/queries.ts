@@ -457,6 +457,32 @@ export const QUERIES: LabeledQuery[] = [
     expected: "microsoft_teams.list_messages",
   },
 
+  // --- wakeups ---
+  {
+    query: "remind me tomorrow morning to check the launch",
+    expected: "wakeups.schedule_wakeup",
+  },
+  {
+    query: "check back in 2 hours to see if the import finished",
+    expected: "wakeups.schedule_wakeup",
+  },
+  {
+    query: "what wake-ups are scheduled in this conversation",
+    expected: "wakeups.list_wakeups",
+  },
+  {
+    query: "show my pending reminders",
+    expected: "wakeups.list_wakeups",
+  },
+  {
+    query: "cancel the scheduled wake-up",
+    expected: "wakeups.cancel_wakeup",
+  },
+  {
+    query: "stop the reminder I set earlier",
+    expected: "wakeups.cancel_wakeup",
+  },
+
   // --- confluence ---
   {
     query: "search confluence for pages about onboarding",
