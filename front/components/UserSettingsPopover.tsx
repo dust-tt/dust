@@ -1,6 +1,8 @@
 import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
-import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
-import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
+import {
+  NotificationPreferences,
+  useNotificationPreferencesForm,
+} from "@app/components/me/NotificationPreferences";
 import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
 import {
   SoundNotificationPreferences,
@@ -32,6 +34,7 @@ import {
   BarChart01,
   Bell01,
   Button,
+  ContentMessageInline,
   cn,
   Dialog,
   DialogClose,
@@ -43,12 +46,14 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   Edit04,
+  InfoCircle,
   Input,
   Label,
   Mail01,
   Moon01,
   NavigationList,
   NavigationListItem,
+  Page,
   Separator,
   Settings01,
   ShapesPlus,
@@ -577,22 +582,27 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const { user } = useUser();
   const { hasFeature } = useFeatureFlags();
   const sendNotification = useSendNotification();
-  const notificationPreferencesRef =
-    useRef<NotificationPreferencesRefProps>(null);
   const sound = useSoundNotificationPreferencesForm();
-  const [notifDirty, setNotifDirty] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isDirty = sound.isDirty || notifDirty;
+
+  const showNotificationPreferences = Boolean(user?.subscriberHash);
+  const notif = useNotificationPreferencesForm({
+    owner,
+    disabled: !showNotificationPreferences,
+  });
+
+  const isDirty = sound.isDirty || notif.isDirty;
+  const isLoading =
+    sound.isLoading || (showNotificationPreferences && notif.isLoading);
 
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
-      const [soundSaved, notifResult] = await Promise.all([
+      const [soundSaved, notifSaved] = await Promise.all([
         sound.save(),
-        notificationPreferencesRef.current?.savePreferences(),
+        notif.save(),
       ]);
-      setNotifDirty(notificationPreferencesRef.current?.isDirty() ?? false);
-      if (soundSaved && notifResult !== false) {
+      if (soundSaved && notifSaved) {
         sendNotification({
           type: "success",
           title: "Notification preferences saved",
@@ -603,54 +613,60 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
     }
   };
 
-  const handleNotifChanged = () => {
-    setNotifDirty(notificationPreferencesRef.current?.isDirty() ?? false);
-  };
-
-  const saveButton = (
-    <Button
-      label="Save"
-      variant="primary"
-      type="button"
-      onClick={handleSave}
-      disabled={!isDirty || isSubmitting}
-    />
-  );
-
-  if (!user?.subscriberHash) {
-    return (
-      <SectionContent
-        title="Notifications"
-        description="Manage the notifications of your Dust workspace"
-        footer={saveButton}
-      >
-        {hasFeature("sound_notification") && (
-          <SoundNotificationPreferences
-            control={sound.control}
-            disabled={sound.isLoading}
-          />
-        )}
-      </SectionContent>
-    );
-  }
-
   return (
     <SectionContent
       title="Notifications"
-      description="Manage the notifications of your Dust workspace"
-      footer={saveButton}
-    >
-      {hasFeature("sound_notification") && (
-        <SoundNotificationPreferences
-          control={sound.control}
-          disabled={sound.isLoading}
+      description="Control how and when Dust notifies you"
+      footer={
+        <Button
+          label="Save"
+          variant="primary"
+          type="button"
+          onClick={handleSave}
+          disabled={!isDirty || isSubmitting}
         />
+      }
+    >
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          {hasFeature("sound_notification") && (
+            <div className="flex flex-col gap-4">
+              <Page.SectionHeader
+                title="Inbox notifications"
+                description="Sound alerts for items that need your attention"
+              />
+              <SoundNotificationPreferences
+                control={sound.control}
+                disabled={sound.isLoading}
+              />
+            </div>
+          )}
+          {showNotificationPreferences && (
+            <div className="flex flex-col gap-4">
+              <Page.SectionHeader
+                title="Other channels"
+                description="Choose where else to receive notifications"
+              />
+              {notif.status === "error" ? (
+                <ContentMessageInline variant="warning" icon={InfoCircle}>
+                  We couldn't load your notification settings. Please try again
+                  later.
+                </ContentMessageInline>
+              ) : (
+                <NotificationPreferences
+                  control={notif.control}
+                  displaySlackOption={notif.displaySlackOption}
+                  workflowEnabled={notif.workflowEnabled}
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
-      <NotificationPreferences
-        ref={notificationPreferencesRef}
-        onChanged={handleNotifChanged}
-        owner={owner}
-      />
     </SectionContent>
   );
 }

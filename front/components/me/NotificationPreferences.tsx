@@ -1,530 +1,319 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useNovuClient } from "@app/hooks/useNovuClient";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useConversationNotificationPreferences } from "@app/lib/swr/notifications";
 import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import datadogLogger from "@app/logger/datadogLogger";
 import type {
   NotificationCondition,
   NotificationPreferencesDelay,
 } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
-  CONVERSATION_UNREAD_TRIGGER_ID,
   DEFAULT_NOTIFICATION_CONDITION,
   DEFAULT_NOTIFICATION_DELAY,
   isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
+  NOTIFICATION_CONDITION_OPTIONS,
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
-import type { WorkspaceType } from "@app/types/user";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuTrigger,
-  Spinner,
+  SettingsList,
+  SliderToggle,
 } from "@dust-tt/sparkle";
-import type { ChannelPreference, Preference } from "@novu/js";
+import { zodResolver } from "@hookform/resolvers/zod";
 import cloneDeep from "lodash/cloneDeep";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+import { useEffect } from "react";
+import type { Control } from "react-hook-form";
+import { useController, useForm } from "react-hook-form";
+import { z } from "zod";
 
 const NOTIFICATION_PREFERENCES_DELAY_LABELS: Record<
   NotificationPreferencesDelay,
   string
 > = {
-  "5_minutes": "every 5 minutes",
-  "15_minutes": "every 15 minutes",
-  "30_minutes": "every 30 minutes",
-  "1_hour": "every hour",
-  daily: "a day",
-  weekly: "a week",
+  "5_minutes": "Every 5 minutes",
+  "15_minutes": "Every 15 minutes",
+  "30_minutes": "Every 30 minutes",
+  "1_hour": "Every hour",
+  daily: "Once a day",
+  weekly: "Once a week",
 };
 
 const NOTIFICATION_CONDITION_LABELS: Record<NotificationCondition, string> = {
-  all_messages: "Notify me for all activity",
-  only_mentions: "Notify me when mentioned",
-  never: "Never notify me",
+  all_messages: "All activity",
+  only_mentions: "Mentions only",
+  never: "Nothing",
 };
 
-const NOTIFICATION_CONDITION_DESCRIPTIONS: Record<
-  NotificationCondition,
-  string
-> = {
-  all_messages: "New messages in Pods and conversations",
-  only_mentions: "New messages when directly mentioned",
-  never: "No notifications",
-};
+const NotificationPreferencesFormSchema = z.object({
+  notifyCondition: z.enum(NOTIFICATION_CONDITION_OPTIONS),
+  emailDelay: z.enum(NOTIFICATION_DELAY_OPTIONS),
+  inApp: z.boolean(),
+  slack: z.boolean(),
+  email: z.boolean(),
+});
 
-const NOVU_SESSION_ERROR_CODE = "novu_session_initialization_failed";
-const NOVU_REQUEST_ERROR_CODE = "novu_preferences_request_failed";
-const MISSING_WORKFLOW_ERROR_CODE = "missing_conversation_unread_workflow";
+type NotificationPreferencesFormValues = z.infer<
+  typeof NotificationPreferencesFormSchema
+>;
 
-export interface NotificationPreferencesRefProps {
-  savePreferences: () => Promise<boolean>;
-  isDirty: () => boolean;
-  reset: () => void;
-}
-
-interface NotificationPreferencesProps {
-  onChanged: () => void;
-  owner: WorkspaceType;
-}
-
-export const NotificationPreferences = forwardRef<
-  NotificationPreferencesRefProps,
-  NotificationPreferencesProps
->(({ onChanged, owner }, ref) => {
+export function useNotificationPreferencesForm({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled: boolean;
+}) {
   const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
 
   const hasSlackNotificationsFeature = hasFeature(
     "conversations_slack_notifications"
   );
-
-  const { isSlackSetupLoading, canConfigureSlack } = useSlackNotifications(
+  const { canConfigureSlack, isSlackSetupLoading } = useSlackNotifications(
     owner.sId,
-    {
-      disabled: !hasSlackNotificationsFeature,
-    }
+    { disabled: disabled || !hasSlackNotificationsFeature }
   );
-
   const displaySlackOption = hasSlackNotificationsFeature && canConfigureSlack;
 
-  // Novu workflow-specific channel preferences for conversation-unread
-  const [conversationPreferences, setConversationPreferences] = useState<
-    Preference | undefined
-  >();
-  const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
+  const { conversationPreferences, status, saveConversationPreferences } =
+    useConversationNotificationPreferences({ owner, disabled });
 
-  // Email digest delay (for unread conversation email notifications)
-  const [conversationEmailDelay, setConversationEmailDelay] =
-    useState<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
-
-  // Conversation notification condition
-  const [notifyCondition, setNotifyCondition] = useState<NotificationCondition>(
-    DEFAULT_NOTIFICATION_CONDITION
-  );
-
-  const { novuClient } = useNovuClient();
-
-  // User metadata hooks
   const {
     metadata: conversationEmailMetadata,
     mutateMetadata: mutateConversationEmailDelay,
   } = useUserMetadata(makeNotificationPreferencesUserMetadata("email"));
-
   const {
     metadata: notifyConditionMetadata,
     mutateMetadata: mutateNotifyCondition,
   } = useUserMetadata(CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition);
 
-  // Store original values for reset/dirty checking
-  const originalConversationPreferencesRef = useRef<Preference | undefined>();
-  const originalConversationEmailDelayRef =
-    useRef<NotificationPreferencesDelay>(DEFAULT_NOTIFICATION_DELAY);
-  const originalNotifyConditionRef = useRef<NotificationCondition>(
-    DEFAULT_NOTIFICATION_CONDITION
-  );
+  const form = useForm<NotificationPreferencesFormValues>({
+    resolver: zodResolver(NotificationPreferencesFormSchema),
+    defaultValues: {
+      notifyCondition: DEFAULT_NOTIFICATION_CONDITION,
+      emailDelay: DEFAULT_NOTIFICATION_DELAY,
+      inApp: false,
+      slack: false,
+      email: false,
+    },
+  });
 
-  // Load email delay from user metadata
   useEffect(() => {
-    if (conversationEmailMetadata?.value) {
-      const delay = conversationEmailMetadata.value;
-      if (isNotificationPreferencesDelay(delay)) {
-        setConversationEmailDelay(delay);
-        originalConversationEmailDelayRef.current = delay;
-      }
-    }
-  }, [conversationEmailMetadata]);
-
-  // Load notify condition from user metadata
-  useEffect(() => {
-    if (notifyConditionMetadata?.value) {
-      const condition = notifyConditionMetadata.value as NotificationCondition;
-      if (isNotificationCondition(condition)) {
-        setNotifyCondition(condition);
-        originalNotifyConditionRef.current = condition;
-      }
-    }
-  }, [notifyConditionMetadata]);
-
-  // Load workflow-specific preferences from Novu
-  useEffect(() => {
-    if (!novuClient) {
+    if (form.formState.isDirty || !conversationPreferences) {
       return;
     }
-    setIsLoadingPreferences(true);
-
-    void novuClient.preferences
-      .list()
-      .then((preferences) => {
-        if (preferences.error) {
-          datadogLogger.error(
-            {
-              code: NOVU_SESSION_ERROR_CODE,
-              ownerId: owner.sId,
-              message: preferences.error.message,
-            },
-            "Failed to load notification preferences from Novu (session error)."
-          );
-          setConversationPreferences(undefined);
-          originalConversationPreferencesRef.current = undefined;
-          return;
-        }
-
-        const preferenceList = preferences.data ?? [];
-        const conversationPref = preferenceList.find(
-          (preference) =>
-            preference.workflow?.identifier === CONVERSATION_UNREAD_TRIGGER_ID
-        );
-        setConversationPreferences(conversationPref);
-        originalConversationPreferencesRef.current = conversationPref;
-
-        if (!conversationPref) {
-          const availableWorkflowIdentifiers = preferenceList
-            .map((preference) => preference.workflow?.identifier)
-            .filter((identifier): identifier is string => Boolean(identifier));
-
-          datadogLogger.error(
-            {
-              code: MISSING_WORKFLOW_ERROR_CODE,
-              ownerId: owner.sId,
-              missingWorkflowIdentifier: CONVERSATION_UNREAD_TRIGGER_ID,
-              availableWorkflowIdentifiers,
-            },
-            "Failed to load notification preferences from Novu (workflow missing)."
-          );
-        }
-      })
-      .catch((error) => {
-        datadogLogger.error(
-          {
-            code: NOVU_REQUEST_ERROR_CODE,
-            ownerId: owner.sId,
-            error,
-          },
-          "Failed to load notification preferences from Novu (request error)."
-        );
-        setConversationPreferences(undefined);
-        originalConversationPreferencesRef.current = undefined;
-      })
-      .finally(() => {
-        setIsLoadingPreferences(false);
-      });
-  }, [novuClient, owner.sId]);
-
-  // Expose methods to parent component
-  useImperativeHandle(
-    ref,
-    () => ({
-      savePreferences: async () => {
-        if (!conversationPreferences || !novuClient) {
-          return false;
-        }
-
-        try {
-          // Save conversation workflow preferences in Novu
-          const conversationResult = await novuClient.preferences.update({
-            preference: conversationPreferences,
-            channels: conversationPreferences.channels,
-          });
-
-          if (conversationResult.error) {
-            sendNotification({
-              type: "error",
-              title: "Error updating notification preferences",
-              description: conversationResult.error.message,
-            });
-            return false;
-          }
-
-          // Save email delay if changed
-          if (
-            conversationEmailDelay !== originalConversationEmailDelayRef.current
-          ) {
-            await setUserMetadataFromClient({
-              key: makeNotificationPreferencesUserMetadata("email"),
-              value: conversationEmailDelay,
-            });
-            await mutateConversationEmailDelay((current) =>
-              current ? { ...current, value: conversationEmailDelay } : current
-            );
-          }
-
-          // Save notify condition if changed
-          if (notifyCondition !== originalNotifyConditionRef.current) {
-            await setUserMetadataFromClient({
-              key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-              value: notifyCondition,
-            });
-            await mutateNotifyCondition((current) =>
-              current ? { ...current, value: notifyCondition } : current
-            );
-          }
-
-          // Update original references on successful save
-          originalConversationPreferencesRef.current = conversationPreferences;
-          originalConversationEmailDelayRef.current = conversationEmailDelay;
-          originalNotifyConditionRef.current = notifyCondition;
-          return true;
-        } catch (error) {
-          sendNotification({
-            type: "error",
-            title: "Error updating notification preferences",
-            description: error instanceof Error ? error.message : String(error),
-          });
-          return false;
-        }
-      },
-      isDirty: () => {
-        if (
-          !originalConversationPreferencesRef.current ||
-          !conversationPreferences
-        ) {
-          return false;
-        }
-
-        // Compare conversation channel preferences
-        const originalConv = originalConversationPreferencesRef.current;
-        const currentConv = conversationPreferences;
-        for (const channel of Object.keys(originalConv.channels) as Array<
-          keyof typeof originalConv.channels
-        >) {
-          if (
-            originalConv.channels[channel] !== currentConv.channels[channel]
-          ) {
-            return true;
-          }
-        }
-
-        // Compare other preferences
-        if (
-          conversationEmailDelay !== originalConversationEmailDelayRef.current
-        ) {
-          return true;
-        }
-        if (notifyCondition !== originalNotifyConditionRef.current) {
-          return true;
-        }
-
-        return false;
-      },
-      reset: () => {
-        if (originalConversationPreferencesRef.current) {
-          setConversationPreferences(
-            cloneDeep(originalConversationPreferencesRef.current)
-          );
-        }
-        setConversationEmailDelay(originalConversationEmailDelayRef.current);
-        setNotifyCondition(originalNotifyConditionRef.current);
-      },
-    }),
-    [
-      conversationPreferences,
-      conversationEmailDelay,
-      notifyCondition,
-      mutateConversationEmailDelay,
-      mutateNotifyCondition,
-      novuClient,
-      sendNotification,
-    ]
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
-    onChanged();
+    form.reset({
+      notifyCondition: isNotificationCondition(notifyConditionMetadata?.value)
+        ? notifyConditionMetadata.value
+        : DEFAULT_NOTIFICATION_CONDITION,
+      emailDelay: isNotificationPreferencesDelay(
+        conversationEmailMetadata?.value
+      )
+        ? conversationEmailMetadata.value
+        : DEFAULT_NOTIFICATION_DELAY,
+      inApp: Boolean(conversationPreferences.channels.in_app),
+      slack: Boolean(conversationPreferences.channels.chat),
+      email: Boolean(conversationPreferences.channels.email),
+    });
   }, [
     conversationPreferences,
-    conversationEmailDelay,
-    notifyCondition,
-    onChanged,
+    conversationEmailMetadata,
+    notifyConditionMetadata,
+    form,
   ]);
 
-  const updateConversationChannelPreference = (
-    channel: keyof ChannelPreference,
-    enabled: boolean
-  ) => {
-    setConversationPreferences((prev) => {
-      if (!prev) {
-        return undefined;
+  const save = async (): Promise<boolean> => {
+    let succeeded = false;
+    await form.handleSubmit(async (data) => {
+      try {
+        const { dirtyFields } = form.formState;
+        if (
+          conversationPreferences &&
+          (dirtyFields.inApp || dirtyFields.slack || dirtyFields.email)
+        ) {
+          const updatedPreference = cloneDeep(conversationPreferences);
+          updatedPreference.channels.in_app = data.inApp;
+          updatedPreference.channels.chat = data.slack;
+          updatedPreference.channels.email = data.email;
+          await saveConversationPreferences(updatedPreference);
+        }
+        if (dirtyFields.emailDelay) {
+          await setUserMetadataFromClient({
+            key: makeNotificationPreferencesUserMetadata("email"),
+            value: data.emailDelay,
+          });
+          await mutateConversationEmailDelay();
+        }
+        if (dirtyFields.notifyCondition) {
+          await setUserMetadataFromClient({
+            key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+            value: data.notifyCondition,
+          });
+          await mutateNotifyCondition();
+        }
+        form.reset(data);
+        succeeded = true;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Error updating notification preferences",
+          description: normalizeError(error).message,
+        });
       }
-      const newPreferences = cloneDeep(prev);
-      newPreferences.channels[channel] = enabled;
-      return newPreferences;
-    });
+    })();
+    return succeeded;
   };
 
-  const getSelectedChannelLabel = (
-    preference: Preference,
-    displaySlackOption: boolean
-  ) => {
-    const displayedChannels: string[] = [];
-    if (preference.channels.in_app) {
-      displayedChannels.push("in-app popup");
-    }
-    if (preference.channels.chat && displaySlackOption) {
-      displayedChannels.push("Slack");
-    }
-    if (preference.channels.email) {
-      displayedChannels.push("email");
-    }
-    return displayedChannels.length > 0 ? displayedChannels.join(", ") : "none";
+  return {
+    control: form.control,
+    displaySlackOption,
+    isDirty: form.formState.isDirty,
+    isLoading: status === "loading" || isSlackSetupLoading,
+    save,
+    status,
+    workflowEnabled: Boolean(conversationPreferences?.enabled),
   };
+}
 
-  if (isLoadingPreferences || isSlackSetupLoading) {
-    return <Spinner />;
-  }
+interface NotificationPreferencesProps {
+  control: Control<NotificationPreferencesFormValues>;
+  displaySlackOption: boolean;
+  workflowEnabled: boolean;
+}
 
-  if (!conversationPreferences) {
-    return (
-      <div className="text-sm text-muted-foreground">
-        Unable to load notification preferences. Please contact support.
-      </div>
-    );
-  }
+export function NotificationPreferences({
+  control,
+  displaySlackOption,
+  workflowEnabled,
+}: NotificationPreferencesProps) {
+  const { field: notifyConditionField } = useController({
+    name: "notifyCondition",
+    control,
+  });
+  const { field: emailDelayField } = useController({
+    name: "emailDelay",
+    control,
+  });
+  const { field: inAppField } = useController({ name: "inApp", control });
+  const { field: slackField } = useController({ name: "slack", control });
+  const { field: emailField } = useController({ name: "email", control });
 
-  const isConversationInAppEnabled =
-    conversationPreferences.channels.in_app && conversationPreferences.enabled;
-  const isConversationSlackEnabled =
-    conversationPreferences.channels.chat && conversationPreferences.enabled;
-  const isConversationEmailEnabled =
-    conversationPreferences.channels.email && conversationPreferences.enabled;
+  const notificationsDisabled = notifyConditionField.value === "never";
+  const isInAppEnabled = inAppField.value && workflowEnabled;
+  const isSlackEnabled = slackField.value && workflowEnabled;
+  const isEmailEnabled = emailField.value && workflowEnabled;
+  const isEmailFrequencyEnabled = isEmailEnabled && !notificationsDisabled;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        {/* Conversation notifications */}
-        <div className="flex flex-wrap items-center">
+    <SettingsList>
+      <SettingsList.Row
+        title="Notify me about"
+        description="Choose which activity sends you a notification"
+        action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
                 isSelect
-                label={NOTIFICATION_CONDITION_LABELS[notifyCondition]}
+                label={
+                  NOTIFICATION_CONDITION_LABELS[notifyConditionField.value]
+                }
               />
             </DropdownMenuTrigger>
             <DropdownMenuPortal>
               <DropdownMenuContent>
-                <DropdownMenuItem
-                  label={NOTIFICATION_CONDITION_LABELS["all_messages"]}
-                  description={
-                    NOTIFICATION_CONDITION_DESCRIPTIONS["all_messages"]
-                  }
-                  onClick={() => setNotifyCondition("all_messages")}
-                />
-                <DropdownMenuItem
-                  label={NOTIFICATION_CONDITION_LABELS["only_mentions"]}
-                  description={
-                    NOTIFICATION_CONDITION_DESCRIPTIONS["only_mentions"]
-                  }
-                  onClick={() => setNotifyCondition("only_mentions")}
-                />
-                <DropdownMenuItem
-                  label={NOTIFICATION_CONDITION_LABELS["never"]}
-                  description={NOTIFICATION_CONDITION_DESCRIPTIONS["never"]}
-                  onClick={() => setNotifyCondition("never")}
-                />
+                {NOTIFICATION_CONDITION_OPTIONS.map((condition) => (
+                  <DropdownMenuItem
+                    key={condition}
+                    label={NOTIFICATION_CONDITION_LABELS[condition]}
+                    onClick={() => notifyConditionField.onChange(condition)}
+                  />
+                ))}
               </DropdownMenuContent>
             </DropdownMenuPortal>
           </DropdownMenu>
-          {notifyCondition !== "never" && (
-            <>
-              <span className="text-foreground ml-0.5">, by&nbsp;</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    isSelect
-                    label={getSelectedChannelLabel(
-                      conversationPreferences,
-                      displaySlackOption
-                    )}
+        }
+      />
+
+      <SettingsList.Row
+        title="In-app popup"
+        description="Show a popup inside Dust"
+        action={
+          <SliderToggle
+            selected={isInAppEnabled}
+            disabled={notificationsDisabled}
+            onClick={() => inAppField.onChange(!isInAppEnabled)}
+          />
+        }
+      />
+
+      {displaySlackOption && (
+        <SettingsList.Row
+          title="Slack"
+          description="A direct message in Slack"
+          action={
+            <SliderToggle
+              selected={isSlackEnabled}
+              disabled={notificationsDisabled}
+              onClick={() => slackField.onChange(!isSlackEnabled)}
+            />
+          }
+        />
+      )}
+
+      <SettingsList.Row
+        title="Email"
+        description="Receive a summary by email"
+        action={
+          <SliderToggle
+            selected={isEmailEnabled}
+            disabled={notificationsDisabled}
+            onClick={() => emailField.onChange(!isEmailEnabled)}
+          />
+        }
+      />
+
+      <SettingsList.Row
+        title="Email frequency"
+        description="We'll never email you more often than this"
+        action={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                isSelect
+                disabled={!isEmailFrequencyEnabled}
+                label={
+                  NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelayField.value]
+                }
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent>
+                {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                  <DropdownMenuItem
+                    key={delay}
+                    label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                    onClick={() => emailDelayField.onChange(delay)}
                   />
-                </DropdownMenuTrigger>
-
-                <DropdownMenuPortal>
-                  <DropdownMenuContent>
-                    {conversationPreferences.channels.in_app !== undefined && (
-                      <DropdownMenuCheckboxItem
-                        label="in-app popup"
-                        checked={isConversationInAppEnabled}
-                        onCheckedChange={(checked) =>
-                          updateConversationChannelPreference("in_app", checked)
-                        }
-                      />
-                    )}
-                    {conversationPreferences.channels.chat !== undefined &&
-                      displaySlackOption && (
-                        <DropdownMenuCheckboxItem
-                          label="Slack"
-                          checked={isConversationSlackEnabled}
-                          onCheckedChange={(checked) =>
-                            updateConversationChannelPreference("chat", checked)
-                          }
-                        />
-                      )}
-                    {conversationPreferences.channels.email !== undefined && (
-                      <DropdownMenuCheckboxItem
-                        label="email"
-                        checked={isConversationEmailEnabled}
-                        onCheckedChange={(checked) =>
-                          updateConversationChannelPreference("email", checked)
-                        }
-                      />
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenuPortal>
-              </DropdownMenu>
-              {isConversationEmailEnabled && (
-                <>
-                  <span className="text-foreground ml-0.5">
-                    . Email me max once&nbsp;
-                  </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        isSelect
-                        label={
-                          NOTIFICATION_PREFERENCES_DELAY_LABELS[
-                            conversationEmailDelay
-                          ]
-                        }
-                      />
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuPortal>
-                      <DropdownMenuContent>
-                        {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                          <DropdownMenuItem
-                            key={delay}
-                            label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                            onClick={() => setConversationEmailDelay(delay)}
-                          />
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenu>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenu>
+        }
+      />
+    </SettingsList>
   );
-});
+}
