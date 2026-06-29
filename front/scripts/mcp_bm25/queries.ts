@@ -732,6 +732,20 @@ export const QUERIES: LabeledQuery[] = [
     expected: "snowflake.query",
   },
 
+  // --- run_agent (sample dynamic child agents) ---
+  {
+    query: "delegate competitive pricing research to another agent",
+    expected: "run_agent.run_Research Analyst",
+  },
+  {
+    query: "ask an agent to investigate a customer refund ticket",
+    expected: "run_agent.run_Support Triage",
+  },
+  {
+    query: "have a specialist review this pull request for regressions",
+    expected: "run_agent.run_Code Reviewer",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
