@@ -9,13 +9,23 @@ use tempfile::{TempDir, TempPath};
 use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 
+mod build;
 mod get;
 mod run;
 
+pub use build::cmd_function_build;
 pub use get::cmd_function_get;
 pub use run::cmd_function_run;
 
 const FUNCTIONS_DIR_ENV: &str = "DUST_FUNCTIONS_DIR";
+
+/// The image's global npm modules (NPM_CONFIG_PREFIX=/opt/npm-global), holding the external
+/// packages (zod and the curated `npm install -g` set) that function bundles leave as imports
+/// rather than inlining. We point the runner's `bun` child at it via NODE_PATH so those imports
+/// resolve wherever the bundle lives. This is the same global node_modules both the conversation
+/// and pod sandboxes use for typescript/tsx, so functions share one toolchain.
+/// TODO(SANDBOX FUNCTION) Consider adding a dedicated node_modules dedicated to sandbox functions.
+const FUNCTIONS_GLOBAL_NODE_MODULES: &str = "/opt/npm-global/lib/node_modules";
 
 /// The function bundle runner, pre-bundled (Zod inlined) at dev time and
 /// committed. Embedded so `dsbx` is a single binary; cross-compilation does
@@ -39,6 +49,15 @@ pub enum FunctionCommand {
     Get {
         /// Function name (resolved to ${DUST_FUNCTIONS_DIR}/<name>.ts)
         name: String,
+    },
+    /// Bundle a function source and extract its JSON-Schema contract to files
+    Build {
+        /// Path to the function source file (its relative imports are bundled)
+        src: String,
+        /// Output path for the bundle
+        out_bundle: String,
+        /// Output path for the extracted JSON-Schema contract
+        out_schema: String,
     },
 }
 
@@ -160,6 +179,75 @@ pub(crate) async fn spawn_function(
         dir.close().ok();
     }
     Ok((status.code().unwrap_or(1), captured))
+}
+
+/// Bundle the function source at `src` and extract its schema, writing the
+/// bundle to `out_bundle` and the schema to `out_schema`. Returns the runner
+/// exit code.
+///
+/// Like [`spawn_function`], the `bun` child (runner harness plus the untrusted
+/// module it imports to read the schema) is dropped to `agent-proxied` via
+/// `runuser` whenever `dsbx` runs privileged, so its egress is forced through
+/// the proxy. The source is read in place (its relative imports must resolve
+/// next to it, so it is not staged): the agent user reaches it through the same
+/// group-based `/files` access agent code has, and writes the outputs into the
+/// caller-owned scratch dir. stdout is inherited so the runner's `{ok}` envelope
+/// reaches the caller.
+pub(crate) async fn spawn_build(src: &Path, out_bundle: &Path, out_schema: &Path) -> Result<i32> {
+    let runner = ensure_runner()?;
+    let as_agent = running_as_root();
+    if as_agent {
+        // The dropped child must read the runner dsbx wrote as root.
+        set_mode(&runner, 0o644)
+            .map_err(|e| emit_error(anyhow!("failed to prepare runner: {e}")))?;
+    }
+
+    let mut cmd = if as_agent {
+        let mut c = Command::new("runuser");
+        c.arg("-u")
+            .arg(AGENT_USER)
+            .arg("--")
+            .arg("bun")
+            .arg(&*runner)
+            .arg("build")
+            .arg(src)
+            .arg(out_bundle)
+            .arg(out_schema);
+        c
+    } else {
+        let mut c = Command::new("bun");
+        c.arg(&*runner)
+            .arg("build")
+            .arg(src)
+            .arg(out_bundle)
+            .arg(out_schema);
+        c
+    };
+    cmd.env("NODE_PATH", harness_node_path())
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+
+    let status = cmd
+        .status()
+        .await
+        .map_err(|e| emit_error(anyhow!("failed to run bun: {e}")))?;
+
+    runner.close().ok();
+
+    Ok(status.code().unwrap_or(1))
+}
+
+/// NODE_PATH for the runner child: the global npm modules first, then any
+/// inherited entries. NODE_PATH is additive, so a missing dir (local dev) falls
+/// back to normal node_modules resolution.
+fn harness_node_path() -> String {
+    match std::env::var("NODE_PATH") {
+        Ok(existing) if !existing.is_empty() => {
+            format!("{FUNCTIONS_GLOBAL_NODE_MODULES}:{existing}")
+        }
+        _ => FUNCTIONS_GLOBAL_NODE_MODULES.to_string(),
+    }
 }
 
 /// Copy a function bundle into a fresh temp dir as `<name>.ts`, world-readable,
