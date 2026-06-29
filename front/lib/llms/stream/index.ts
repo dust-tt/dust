@@ -4,6 +4,7 @@ import { DustAgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/ll
 import { DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
 import { DustAgentPlatformEuropeGeminiThreeDotOneProStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_gemini_3_1_pro";
 import { DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/llms/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
+import { DustAnthropicGlobalClaudeHaikuFourDotFiveStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_haiku_four_dot_five";
 import { DustAnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
 import { DustAnthropicGlobalClaudeOpusFourDotSevenStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_opus_four_dot_seven";
 import { DustAnthropicGlobalClaudeOpusFourDotSixStream } from "@app/lib/llms/stream/endpoints/anthropic_global_claude_opus_four_dot_six";
@@ -39,6 +40,8 @@ import type { StreamEndpointId } from "@app/lib/model_constructors/stream";
 export const DUST_STREAM_ENDPOINTS = {
   [DustAnthropicGlobalClaudeSonnetFourDotSixStream.id]:
     DustAnthropicGlobalClaudeSonnetFourDotSixStream,
+  [DustAnthropicGlobalClaudeHaikuFourDotFiveStream.id]:
+    DustAnthropicGlobalClaudeHaikuFourDotFiveStream,
   [DustAnthropicGlobalClaudeOpusFourDotEightStream.id]:
     DustAnthropicGlobalClaudeOpusFourDotEightStream,
   [DustAnthropicGlobalClaudeOpusFourDotSevenStream.id]:
