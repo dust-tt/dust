@@ -6,7 +6,10 @@ import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinf
 import { SKILL_INSTRUCTION_HTML_EDIT_PROMPT } from "@app/lib/reinforcement/skill_instruction_edit_prompt";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import {
+  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+  type SkillType,
+} from "@app/types/assistant/skill_configuration";
 
 const ASSEMBLY_ORDER = [
   "primary_goal",
@@ -121,6 +124,7 @@ Suggest editing it only when the conversation surfaces clear evidence of a routi
 
 When suggesting a description edit:
 - Provide the FULL replacement text in \`agentFacingDescriptionEdit.content\` — it overwrites the existing description.
+- Max description size is ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.
 - Preserve the skill's actual purpose. Sharpen the trigger conditions; do not redefine the skill.
 - Keep it focused on routing signals (when to use, what scenarios). Do not duplicate the instructions.
 - Use the same language as the existing description.`,

@@ -16,7 +16,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import {
+  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+  type SkillType,
+} from "@app/types/assistant/skill_configuration";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { UserType } from "@app/types/user";
@@ -53,7 +56,7 @@ It is ok to simply call no tool if all suggestions are minor.
 Start by grouping suggestions by skill, then within each skill group by topic:
 - For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
 - For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits, so NEVER output separate tool edits.
-- For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement.
+- For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement. Max description size is ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.
 NEVER create more than one suggestion per (skill, topic) pair.
 
 Rank the groups based on impact to the skill. Use these heuristics in priority order to determine highest impact:
