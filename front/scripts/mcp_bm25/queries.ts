@@ -735,15 +735,15 @@ export const QUERIES: LabeledQuery[] = [
   // --- run_agent (sample dynamic child agents) ---
   {
     query: "delegate competitive pricing research to another agent",
-    expected: "run_agent.run_Research Analyst",
+    expected: "run_agent.run_ResearchAnalyst",
   },
   {
     query: "ask an agent to investigate a customer refund ticket",
-    expected: "run_agent.run_Support Triage",
+    expected: "run_agent.run_SupportTriage",
   },
   {
     query: "have a specialist review this pull request for regressions",
-    expected: "run_agent.run_Code Reviewer",
+    expected: "run_agent.run_CodeReviewer",
   },
 
   // --- cross-server (no platform named) ---

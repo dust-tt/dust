@@ -53,30 +53,30 @@ const RUN_AGENT_SAMPLE_TOOL_SCHEMA = zodToJsonSchema(
 // few representative child-agent tools to sanity-check retrieval.
 const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
   {
-    name: "run_Research Analyst",
+    name: "run_ResearchAnalyst",
     description: getRunAgentToolDescription({
       executionMode: "run-agent",
-      childAgentName: "Research Analyst",
+      childAgentName: "ResearchAnalyst",
       childAgentDescription:
         "Competitive market and customer research specialist for pricing, positioning, and source gathering.",
     }),
     inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
   },
   {
-    name: "run_Support Triage",
+    name: "run_SupportTriage",
     description: getRunAgentToolDescription({
       executionMode: "run-agent",
-      childAgentName: "Support Triage",
+      childAgentName: "SupportTriage",
       childAgentDescription:
         "Customer support specialist that investigates tickets, refunds, escalations, and account issues.",
     }),
     inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
   },
   {
-    name: "run_Code Reviewer",
+    name: "run_CodeReviewer",
     description: getRunAgentToolDescription({
       executionMode: "run-agent",
-      childAgentName: "Code Reviewer",
+      childAgentName: "CodeReviewer",
       childAgentDescription:
         "Engineering reviewer for pull requests, regressions, implementation risks, and test coverage.",
     }),
