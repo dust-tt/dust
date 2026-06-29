@@ -118,8 +118,10 @@ function getCustomHex(variant: string): string | null {
     return null;
   }
   const [, colorName, shade] = match;
-  const palette = customColors[colorName as keyof typeof customColors];
-  return palette?.[shade as keyof typeof palette] ?? null;
+  const palette = (customColors as Record<string, Record<string, string>>)[
+    colorName
+  ];
+  return palette?.[shade] ?? null;
 }
 
 const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
