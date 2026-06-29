@@ -107,9 +107,13 @@ function SpinnerSVG({
 }
 
 const SCHEME = {
-  // dark: near-black arc (from original spinnerDark lottie), for use on light backgrounds
+  // mono on a light background: faint track (gray-400) + muted-foreground arc (gray-600)
+  monoOnLight: { trackColor: "#9ca3af", arcColor: "#4b5563", trackOpacity: 1 },
+  // mono on a dark background: faint-night track (gray-600) + muted-foreground-night arc (gray-400)
+  monoOnDark: { trackColor: "#4b5563", arcColor: "#9ca3af", trackOpacity: 1 },
+  // forced dark arc regardless of theme (for 'dark' variant)
   dark: { trackColor: "#E7E5E4", arcColor: "#020617", trackOpacity: 1 },
-  // light: white arc on semi-transparent track, for use on dark/colored backgrounds
+  // forced white arc for dark/colored backgrounds (for 'light' variant)
   light: { trackColor: "#FFFFFF", arcColor: "#FFFFFF", trackOpacity: 0.25 },
 } as const;
 
@@ -167,10 +171,12 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     );
   }
 
-  // mono — dark arc in light mode, light arc in dark mode
-  // revert — the inverse
-  const lightScheme = variant === "mono" ? SCHEME.dark : SCHEME.light;
-  const darkScheme = variant === "mono" ? SCHEME.light : SCHEME.dark;
+  // mono — faint track + muted-foreground arc, adapts to theme
+  // revert — swapped light/dark assignment
+  const lightScheme =
+    variant === "mono" ? SCHEME.monoOnLight : SCHEME.monoOnDark;
+  const darkScheme =
+    variant === "mono" ? SCHEME.monoOnDark : SCHEME.monoOnLight;
 
   return (
     <>
