@@ -40,7 +40,7 @@ import {
   wrapCommandWithCapture,
 } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
-import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -320,7 +320,7 @@ export async function runSandboxBashTool(
     : null;
   const isResumeMode = resumeExecId !== null;
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
@@ -500,7 +500,7 @@ export async function addEgressDomainTool(
     return new Err(new MCPError("No conversation context available."));
   }
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }

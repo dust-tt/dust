@@ -129,6 +129,10 @@ describe("sandbox egress helpers", () => {
   const auth = {
     getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
   } as never;
+  const runtimeOwner = {
+    kind: "conversation" as const,
+    conversationId: "conversation-id",
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -145,11 +149,14 @@ describe("sandbox egress helpers", () => {
   });
 
   function setup(sandbox: unknown) {
-    return setupEgressForwarder(auth, sandbox as never);
+    return setupEgressForwarder(auth, sandbox as never, { runtimeOwner });
   }
 
   function ensure(sandbox: unknown, opts: { wokeFromSleep: boolean }) {
-    return ensureSandboxEgressOnExec(auth, sandbox as never, opts);
+    return ensureSandboxEgressOnExec(auth, sandbox as never, {
+      ...opts,
+      runtimeOwner,
+    });
   }
 
   it("mints a proxy JWT bound to the provider sandbox id", () => {
@@ -213,7 +220,11 @@ describe("sandbox egress helpers", () => {
     );
     expect(tokenCall).toContain("/etc/dust/egress-token");
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
-    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      runtimeOwner
+    );
     const spawnCall = getRootCommandCall(sandbox.execRoot, 1);
     expect(spawnCall).toContain("--proxy-addr 203.0.113.10:4443");
     expect(spawnCall).toContain("--proxy-tls-name eu.sandbox-egress.dust.tt");
@@ -500,7 +511,11 @@ describe("sandbox egress helpers", () => {
 
     expect(result).toEqual(new Ok(undefined));
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
-    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      runtimeOwner
+    );
     expect(getRootCommandCall(sandbox.execRoot, 1)).toContain("dsbx forward");
     expect(getRootCommandCall(sandbox.execRoot, 2)).toContain(
       "/opt/bin/dsbx forward"

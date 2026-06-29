@@ -97,7 +97,7 @@ vi.mock("@app/lib/api/sandbox/instrumentation", () => ({
 }));
 
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
-  ensureSandboxReady: mockEnsureSandboxReady,
+  ensureConversationSandboxReady: mockEnsureSandboxReady,
 }));
 
 vi.mock("@app/lib/resources/workspace_sandbox_env_var_resource", () => ({

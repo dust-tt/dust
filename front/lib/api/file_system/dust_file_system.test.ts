@@ -199,6 +199,9 @@ describe("DustFileSystem.forPod", () => {
     expect(mounts[0].kind).toBe("pod");
     expect(mounts[0].id).toBe(projectSpace.sId);
     expect(mounts[0].scopedPrefix).toBe(`pod-${projectSpace.sId}`);
+    expect(mounts[0].sandboxMountPoint).toBe(`/files/pod-${projectSpace.sId}`);
+    expect(mounts[0].legacyPrefix).toBeNull();
+    expect(mounts[0].legacySandboxMountPoint).toBeNull();
     expect(mounts[0].permissions.canRead).toBe(true);
   });
 });
