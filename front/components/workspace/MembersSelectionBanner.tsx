@@ -2,9 +2,7 @@ import { Button } from "@dust-tt/sparkle";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
-  // Number of rows on the current page.
   pageCount: number;
-  // Total rows matching the current filter (across all pages).
   totalCount: number;
   isAllAcrossPagesSelected: boolean;
   hasMorePagesToSelect: boolean;

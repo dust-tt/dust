@@ -1,16 +1,10 @@
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-// Cross-page selection model for a server-paginated table. Either an explicit
-// set of selected ids (states "some selected" / "all on this page"), or
-// "everything matching the current filter" with an exclude set (state "select
-// all across pages, minus a few").
 type MembersSelection =
   | { mode: "ids"; ids: Set<string> }
   | { mode: "all"; excludedIds: Set<string> };
 
-// Shape handed to the (future) bulk endpoint: explicit ids, or the active
-// filter with per-row exclusions resolved server-side.
 export type MembersSelectionDescriptor =
   | { mode: "ids"; userIds: string[] }
   | { mode: "all"; excludeUserIds: string[] };
@@ -22,12 +16,8 @@ export function useMembersSelection({
   totalCount,
   resetKey,
 }: {
-  // sIds of the rows on the current page.
   pageItemIds: string[];
-  // Total number of rows matching the current filter (across all pages).
   totalCount: number;
-  // Changes whenever the matching set changes (search / filters). The selection
-  // resets when it changes, since the "all matching" set is no longer the same.
   resetKey: string;
 }) {
   const [selection, setSelection] = useState<MembersSelection>(EMPTY_SELECTION);
@@ -45,8 +35,6 @@ export function useMembersSelection({
       ? selection.ids.size
       : Math.max(0, totalCount - selection.excludedIds.size);
 
-  // Per-page selection state DataTable consumes (keyed by the current page's
-  // sIds), derived from the cross-page model.
   const rowSelection: RowSelectionState = useMemo(() => {
     const state: RowSelectionState = {};
     for (const id of pageItemIds) {
@@ -63,15 +51,11 @@ export function useMembersSelection({
 
   const isAllAcrossPagesSelected = selection.mode === "all";
 
-  // There are more rows than the current page, so "select all across pages" is
-  // a meaningful next step once the whole page is selected.
   const hasMorePagesToSelect =
     isAllOnPageSelected &&
     !isAllAcrossPagesSelected &&
     totalCount > pageItemIds.length;
 
-  // DataTable reports the new selection state for the current page; fold it back
-  // into the cross-page model.
   const onRowSelectionChange = useCallback(
     (next: RowSelectionState) => {
       setSelection((prev) => {

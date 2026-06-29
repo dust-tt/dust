@@ -232,39 +232,6 @@ export function UsagePage() {
       }),
     []
   );
-  const onRemoveSeat = useCallback(
-    async (member: MemberUsageType) => {
-      // Free seats carry no renewing allowance to preserve, so removing one is
-      // immediate; paid seats keep access until the end of the current billing
-      // period.
-      const message =
-        member.seatType === "free"
-          ? `Are you sure you want to remove ${member.name}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
-          : `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
-      const confirmed = await confirm({
-        title: "Remove seat",
-        message,
-        validateLabel: "Remove seat",
-        validateVariant: "warning",
-      });
-      if (!confirmed) {
-        return;
-      }
-      handleSeatChangePendingChange(member.sId, true);
-      try {
-        await doUpdateSeatType({
-          memberId: member.sId,
-          memberName: member.name,
-          seatType: "none",
-          isCancellingScheduledChange: false,
-          hasSeatPool: false,
-        });
-      } finally {
-        handleSeatChangePendingChange(member.sId, false);
-      }
-    },
-    [confirm, doUpdateSeatType, handleSeatChangePendingChange]
-  );
   const [editSpendLimitMember, setEditSpendLimitMember] =
     useState<MemberUsageType | null>(null);
   const [
@@ -494,6 +461,51 @@ export function UsagePage() {
       description: `Batch spend-limit editing for ${selection.selectedCount} members is not wired up yet.`,
     });
   }, [sendNotification, selection]);
+
+  const onRemoveSeat = useCallback(
+    async (member: MemberUsageType) => {
+      // Free seats carry no renewing allowance to preserve, so removing one is
+      // immediate; paid seats keep access until the end of the current billing
+      // period.
+      const message =
+        member.seatType === "free"
+          ? `Are you sure you want to remove ${member.name}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
+          : `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
+      const confirmed = await confirm({
+        title: "Remove seat",
+        message,
+        validateLabel: "Remove seat",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
+      handleSeatChangePendingChange(member.sId, true);
+      try {
+        const ok = await doUpdateSeatType({
+          memberId: member.sId,
+          memberName: member.name,
+          seatType: "none",
+          isCancellingScheduledChange: false,
+          hasSeatPool: false,
+        });
+        if (ok) {
+          selection.clearSelection();
+        }
+      } finally {
+        handleSeatChangePendingChange(member.sId, false);
+      }
+    },
+    [confirm, doUpdateSeatType, handleSeatChangePendingChange, selection]
+  );
+
+  const handleSeatMutationSaved = useCallback(() => {
+    // Seat mutations can move a member in or out of the currently filtered set
+    // (for example with the seat filter), which makes the cross-page selection
+    // stale.
+    selection.clearSelection();
+    handleApproveOnModalSaved();
+  }, [handleApproveOnModalSaved, selection]);
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
@@ -929,7 +941,7 @@ export function UsagePage() {
         owner={owner}
         seatPlans={seatPlans}
         onSavingChange={handleSeatChangePendingChange}
-        onSaved={handleApproveOnModalSaved}
+        onSaved={handleSeatMutationSaved}
       />
 
       <EditSpendLimitModal
