@@ -78,6 +78,7 @@ function SpinnerSVG({
       fill="none"
       role="status"
       aria-label="Loading"
+      shapeRendering="geometricPrecision"
       className={className}
     >
       <style>{SPINNER_CSS}</style>
