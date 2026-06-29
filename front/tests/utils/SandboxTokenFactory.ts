@@ -1,5 +1,8 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import {
+  generateSandboxExecToken,
+  generateSandboxFunctionInvocationToken,
+} from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -106,6 +109,33 @@ export async function createSandboxTokenTestContext({
     conversation,
     sandbox,
     agentMessage,
+    token,
+  };
+}
+
+export async function createSandboxFunctionInvocationTokenTestContext({
+  enableSandboxTools = false,
+  disableComputerFeature = false,
+}: {
+  enableSandboxTools?: boolean;
+  disableComputerFeature?: boolean;
+} = {}) {
+  const context = await createSandboxTokenTestContext({
+    enableSandboxTools,
+    disableComputerFeature,
+  });
+  const token = await generateSandboxFunctionInvocationToken(context.auth, {
+    sandbox: context.sandbox,
+    sandboxFunction: {
+      sId: "sfn_test",
+      space: { sId: context.globalSpace.sId },
+    },
+    invocationId: `test-invocation-${context.sandbox.sId}`,
+    execId: `test-function-exec-${context.sandbox.sId}`,
+  });
+
+  return {
+    ...context,
     token,
   };
 }

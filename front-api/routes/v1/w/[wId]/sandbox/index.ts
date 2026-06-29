@@ -1,16 +1,13 @@
 import { sandboxApp } from "@front-api/middlewares/ctx";
-import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
 
 import actions from "./actions";
 import sandboxFunctions from "./sandbox-functions";
 
 // Mounted at /api/v1/w/:wId/sandbox. This sub-tree is mounted before
 // `publicWorkspaceApp` in `routes/v1/index.ts` so it does not inherit
-// `publicApiAuth`. Every route below authenticates via `sandboxAuth`, which
-// accepts only sandbox tokens and exposes the verified token claims on `ctx`.
+// `publicApiAuth`. Every route below mounts `sandboxAuth` with an explicit
+// token kind.
 const app = sandboxApp();
-
-app.use("*", sandboxAuth);
 
 app.route("/actions", actions);
 app.route("/sandbox-functions", sandboxFunctions);
