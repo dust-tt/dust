@@ -13,6 +13,28 @@ export interface LabeledQuery {
 }
 
 export const QUERIES: LabeledQuery[] = [
+  // --- agent_memory ---
+  {
+    query: "what do you remember about me",
+    expected: "agent_memory.retrieve",
+  },
+  {
+    query: "remember that I prefer concise answers",
+    expected: "agent_memory.record_entries",
+  },
+  {
+    query: "forget that I prefer concise answers",
+    expected: "agent_memory.erase_entries",
+  },
+  {
+    query: "change memory 3 to say I work in Paris",
+    expected: "agent_memory.edit_entries",
+  },
+  {
+    query: "deduplicate and summarize my memory",
+    expected: "agent_memory.compact_memory",
+  },
+
   // --- google_drive ---
   {
     query: "search google drive for the Q3 report",

@@ -13,7 +13,8 @@ export const AGENT_MEMORY_COMPACT_TOOL_NAME = "compact_memory";
 
 export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
   [AGENT_MEMORY_RETRIEVE_TOOL_NAME]: {
-    description: "Retrieve all agent memories for the current user",
+    description:
+      "Read and recall the current user's saved agent memory: what the agent remembers about them, including preferences, facts, notes, and prior context.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -22,11 +23,14 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     },
   },
   [AGENT_MEMORY_RECORD_TOOL_NAME]: {
-    description: "Record new memory entries for the current user",
+    description:
+      "Save or remember new user memory entries, such as preferences, facts, instructions, or notes to use later.",
     schema: {
       entries: z
         .array(z.string())
-        .describe("The array of new memory entries to record."),
+        .describe(
+          "New memory entries to save for the user. Use one concise string per preference, fact, instruction, or note."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -35,11 +39,14 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     },
   },
   [AGENT_MEMORY_ERASE_TOOL_NAME]: {
-    description: "Erase memory entries by indexes for the current user",
+    description:
+      "Forget, delete, or remove existing memory entries, obsolete facts, preferences, or outdated memories.",
     schema: {
       indexes: z
         .array(z.number())
-        .describe("The indexes of the memory entries to erase."),
+        .describe(
+          "The displayed indexes of the memory entries to forget or delete."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -49,20 +56,20 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
   },
   [AGENT_MEMORY_EDIT_TOOL_NAME]: {
     description:
-      "Edit (overwrite) memory entries by indexes for the current user",
+      "Change, update, correct, or rewrite existing memory entries by displayed index. Use when a saved memory should say something different.",
     schema: {
       edits: z
         .array(
           z.object({
             index: z
               .number()
-              .describe("The index of the memory entry to overwrite."),
+              .describe("The displayed index of the memory entry to change."),
             content: z
               .string()
-              .describe("The new content for the memory entry."),
+              .describe("The replacement content the memory entry should say."),
           })
         )
-        .describe("The array of memory entries to edit."),
+        .describe("The memory entry edits to apply."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -72,20 +79,24 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
   },
   [AGENT_MEMORY_COMPACT_TOOL_NAME]: {
     description:
-      "Compact the memory by removing duplicate entries and summarizing long entries for the current user",
+      "Compact, deduplicate, and summarize memory by merging duplicate memories or shortening long memory entries.",
     schema: {
       edits: z
         .array(
           z.object({
             index: z
               .number()
-              .describe("The index of the memory entry to overwrite."),
+              .describe(
+                "The displayed index of the memory entry to compact or replace."
+              ),
             content: z
               .string()
-              .describe("The new compacted content for the memory entry."),
+              .describe(
+                "The compacted replacement content after deduplicating or summarizing memory."
+              ),
           })
         )
-        .describe("The array of memory entries to compact/edit."),
+        .describe("The compaction edits to apply."),
     },
     stake: "never_ask",
     displayLabels: {

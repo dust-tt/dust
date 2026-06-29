@@ -11,6 +11,7 @@
 //
 // Usage: npx tsx scripts/mcp_bm25/run.ts   (from the front/ directory)
 
+import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
@@ -29,6 +30,7 @@ import { buildDocs } from "@app/scripts/mcp_bm25/corpus";
 import { QUERIES } from "@app/scripts/mcp_bm25/queries";
 
 const SERVERS: ServerEntry[] = [
+  { name: "agent_memory", tools: AGENT_MEMORY_SERVER.tools },
   { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
   { name: "microsoft_drive", tools: MICROSOFT_DRIVE_SERVER.tools },
   { name: "jira", tools: JIRA_SERVER.tools },
