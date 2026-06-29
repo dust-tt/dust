@@ -34,12 +34,14 @@ import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type {
   EndpointConfig,
+  LogicalFilters,
   ValueFilter,
   Where,
   WorkspaceConfig,
 } from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
 import { isModelId } from "@app/lib/model_constructors/types/model_ids";
+import { GOOGLE_AI_STUDIO_API } from "@app/lib/model_constructors/types/provider_apis";
 import {
   isProviderId,
   type ProviderId,
@@ -305,12 +307,21 @@ function getProviderIdFilter(auth: Authenticator): ValueFilter<ProviderId> {
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = byok
     ? intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS)
-    : whitelistedProviderIds.filter(
-        // We route all non-byok gemini requests to agent platform
-        (providerId) => providerId !== "google_ai_studio"
-      );
+    : whitelistedProviderIds;
 
   return { in: providerIds };
+}
+
+// Non-BYOK routes Gemini through the agent platform (Vertex), never the direct
+// AI-Studio API with Dust's managed key. Excluded by `api` rather than provider
+// id because the Vertex endpoints share the `google_ai_studio` provider id.
+function getDirectAiStudioExclusion(
+  auth: Authenticator
+): Pick<LogicalFilters<EndpointConfig>, "not"> | undefined {
+  if (auth.getNonNullablePlan().isByok) {
+    return undefined;
+  }
+  return { not: { api: { eq: GOOGLE_AI_STUDIO_API } } };
 }
 
 // Temporary helper while we have both systems
@@ -318,6 +329,7 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   return {
     providerId: getProviderIdFilter(auth),
     region: getRegionFilter(auth),
+    ...getDirectAiStudioExclusion(auth),
   };
 }
 
