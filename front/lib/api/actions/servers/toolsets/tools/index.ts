@@ -162,7 +162,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
     const text =
       toolNames.length > 0
         ? `Successfully enabled toolset "${toolsetName}". The following tools are now available:\n` +
-        `${toolNames.map((name) => `- \`${name}\``).join("\n")}`
+          `${toolNames.map((name) => `- \`${name}\``).join("\n")}`
         : `Successfully enabled toolset "${toolsetName}", but it does not expose any tool.`;
 
     return new Ok([
