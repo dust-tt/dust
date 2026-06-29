@@ -32,6 +32,7 @@ import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metad
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
+import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import { buildIndex, rank } from "@app/scripts/mcp_bm25/bm25";
 import type { ServerEntry } from "@app/scripts/mcp_bm25/corpus";
@@ -96,6 +97,7 @@ const SERVERS: ServerEntry[] = [
   { name: "slack", tools: SLACK_PERSONAL_SERVER.tools },
   { name: "slack_bot", tools: SLACK_BOT_SERVER.tools },
   { name: "microsoft_teams", tools: MICROSOFT_TEAMS_SERVER.tools },
+  { name: "wakeups", tools: WAKEUPS_SERVER.tools },
   { name: "confluence", tools: CONFLUENCE_SERVER.tools },
   { name: "hubspot", tools: HUBSPOT_SERVER.tools },
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
