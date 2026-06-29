@@ -27,6 +27,10 @@ import type {
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import {
+  logToolSearchQuery,
+  logToolSearchResult,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/tool_search_logging";
 import logger from "@app/logger/logger";
 import {
   assertNever,
@@ -250,13 +254,33 @@ function* handleContentBlockStart(
     case "redacted_thinking":
       // "Redacted thinking" provides no actionable information, as everything is encrypted
       return;
+
     case "server_tool_use":
+      // Server-side tool use (the only one we enable is Anthropic's tool search
+      // tool). The search query streams in as input_json_delta chunks, so we
+      // track a tool_search state to accumulate them and log the query at stop.
+      stateContainer.state = {
+        currentBlockIndex: event.index,
+        accumulator: "",
+        accumulatorType: "tool_search",
+        toolName: event.content_block.name,
+      };
+      return;
+
+    case "tool_search_tool_result":
+      // The discovered tool references arrive inline in this block (no deltas),
+      // so log them here. State stays null and the matching stop is a no-op.
+      logToolSearchResult({
+        content: event.content_block.content,
+        logFields: metadata,
+      });
+      return;
+
     case "web_search_tool_result":
     case "web_fetch_tool_result":
     case "code_execution_tool_result":
     case "bash_code_execution_tool_result":
     case "text_editor_code_execution_tool_result":
-    case "tool_search_tool_result":
     case "mcp_tool_use":
     case "mcp_tool_result":
     case "container_upload":
@@ -383,8 +407,26 @@ function* handleContentBlockStop(
       });
       break;
     }
+
+    case "tool_search":
+      logToolSearchQuery({
+        rawInput: stateContainer.state.accumulator,
+        toolName: stateContainer.state.toolName,
+        tags: toolSearchTags(metadata),
+        logFields: metadata,
+      });
+      break;
   }
   stateContainer.state = null;
+}
+
+// StatsD tags for the tool search counter, derived from this client's metadata.
+function toolSearchTags(metadata: LLMClientMetadata): string[] {
+  return [
+    `client_id:${metadata.clientId}`,
+    `inference_provider:${metadata.inferenceProvider}`,
+    `model_id:${metadata.modelId}`,
+  ];
 }
 
 function* handleMessageDelta(

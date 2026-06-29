@@ -5,6 +5,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 // snippet + file reference.
 export const FILE_OFFLOAD_TEXT_SIZE_BYTES = 20 * 1024; // 20KB.
 export const FILE_OFFLOAD_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
+export const FILE_OFFLOAD_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB for non-image file uploads.
 
 export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 

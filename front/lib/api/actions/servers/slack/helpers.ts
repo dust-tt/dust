@@ -1,6 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  formatSlackMessageForLLM,
+  renderFormattedMessage,
+} from "@app/lib/api/actions/servers/slack/message_formatter";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
@@ -1661,15 +1665,19 @@ export async function executeReadThreadMessages({
 
   const formattedOutput = {
     parent_message: {
-      text: parentMessage?.text ?? "",
-      blocks: parentMessage?.blocks,
+      // Rendered text reconstructs content from blocks/attachments when the top-level
+      // `text` is empty (common for app/bot alerts). `raw_text` keeps the original.
+      text: parentMessage
+        ? renderFormattedMessage(formatSlackMessageForLLM(parentMessage))
+        : "",
+      raw_text: parentMessage?.text ?? "",
       user: parentMessage?.user ?? "",
       ts: parentMessage?.ts ?? "",
       reply_count: parentMessage?.reply_count ?? 0,
     },
     thread_replies: threadReplies.map((msg) => ({
-      text: msg.text ?? "",
-      blocks: msg.blocks,
+      text: renderFormattedMessage(formatSlackMessageForLLM(msg)),
+      raw_text: msg.text ?? "",
       user: msg.user ?? "",
       ts: msg.ts ?? "",
     })),

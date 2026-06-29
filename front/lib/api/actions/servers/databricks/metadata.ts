@@ -28,7 +28,6 @@ export const DATABRICKS_SERVER = {
     },
     icon: "ActionTableIcon",
     documentationUrl: "https://docs.dust.tt/docs/databricks",
-    instructions: null,
   },
   tools: Object.values(DATABRICKS_TOOLS_METADATA).map((t) => ({
     name: t.name,

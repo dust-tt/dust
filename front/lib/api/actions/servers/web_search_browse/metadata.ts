@@ -45,7 +45,6 @@ export const WEB_SEARCH_BROWSE_SERVER = {
     authorization: null,
     icon: "ActionGlobeAltIcon" as const,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(WEB_SEARCH_BROWSE_TOOLS_METADATA).map((t) => ({
     name: t.name,

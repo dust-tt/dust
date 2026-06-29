@@ -21,7 +21,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   // Ticket operations
   list_tickets: {
     description:
-      "Lists tickets with optional filtering and pagination. By default returns minimal fields (id, subject, status) for performance.",
+      "Lists or shows Freshservice tickets, with optional filtering (e.g. by status, requester, or update time) and pagination. Returns minimal fields (id, subject, status) by default for performance.",
     schema: {
       filter: z
         .object({
@@ -57,21 +57,17 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   get_ticket: {
     description:
-      "Gets detailed information about a specific ticket. By default returns essential fields for performance, but you can specify specific fields.",
+      "Gets a specific Freshservice ticket by its ID. By default returns essential fields for performance. Pass the fields parameter to request others.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       fields: z
         .array(FreshserviceTicketSchema.keyof())
         .optional()
-        .describe(
-          "Optional list of fields to include. Defaults to essential fields (id, subject, description_text, priority, status, requester_id, responder_id, department_id, group_id, type, created_at, updated_at, due_by) for performance."
-        ),
+        .describe("Optional fields to include. Defaults to essential fields."),
       include: z
         .array(z.enum(ALLOWED_TICKET_INCLUDES))
         .optional()
-        .describe(
-          "Additional information to include (e.g., conversations, requester, stats, problem, assets, changes, related_tickets, onboarding_context, offboarding_context)."
-        ),
+        .describe("Additional related data to include."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -81,7 +77,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   get_ticket_read_fields: {
     description:
-      "Lists available Freshservice ticket field ids for use in the get_ticket.fields parameter (read-time).",
+      "Lists the field ids available when reading a Freshservice ticket. Use only to discover field names.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -91,7 +87,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   get_ticket_write_fields: {
     description:
-      "Lists all available ticket fields including standard and custom fields. Use this to discover what fields are available for use in create_ticket, update_ticket, and other operations.",
+      "Lists all Freshservice ticket fields (standard and custom) available when creating or updating a ticket. Use only to discover field names.",
     schema: {
       search: z
         .string()
@@ -106,7 +102,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   create_ticket: {
     description:
-      "Creates a new ticket in Freshservice. You MUST call get_ticket_write_fields first to get required fields, then provide all required field values in the custom_fields parameter.",
+      "Creates a new Freshservice ticket. For example to log an incident, submit an IT support request, or report a problem. Required fields vary by ticket type. Pass them in custom_fields.",
     schema: {
       email: z.string().describe("Requester email address"),
       subject: z.string().describe("Ticket subject"),
@@ -133,7 +129,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
   },
   update_ticket: {
-    description: "Updates an existing ticket in Freshservice",
+    description: "Updates an existing Freshservice ticket.",
     schema: {
       ticket_id: z.string().describe("Ticket ID to update"),
       subject: z.string().optional().describe("Updated ticket subject"),
@@ -159,7 +155,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
   },
   add_ticket_note: {
-    description: "Adds a note to an existing ticket",
+    description:
+      "Adds a private or public note to an existing Freshservice ticket.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       body: z.string().describe("Content of the note in HTML format"),
@@ -176,7 +173,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
   },
   add_ticket_reply: {
-    description: "Adds a reply to a ticket conversation",
+    description: "Adds a reply to a Freshservice ticket conversation.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       body: z.string().describe("Content of the note in HTML format"),
@@ -228,7 +225,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   create_ticket_task: {
     description:
-      "Creates a new task on a ticket. Tasks help break down complex tickets into manageable subtasks.",
+      "Adds a new task or subtask to a Freshservice ticket, to break the ticket into smaller pieces of work.",
     schema: {
       ticket_id: z.number().describe("The ID of the ticket"),
       title: z.string().describe("Task title"),
@@ -236,20 +233,14 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       status: z
         .enum(["1", "2", "3"])
         .optional()
-        .describe("Status: 1=Open, 2=In Progress, 3=Completed"),
-      due_date: z.string().optional().describe("Due date in ISO 8601 format"),
+        .describe("1=Open, 2=In Progress, 3=Completed"),
+      due_date: z.string().optional().describe("Due date (ISO 8601)."),
       notify_before: z
         .number()
         .optional()
-        .describe("Number of hours before due date to send notification"),
-      agent_id: z
-        .number()
-        .optional()
-        .describe("Agent ID to assign the task to"),
-      group_id: z
-        .number()
-        .optional()
-        .describe("Group ID to assign the task to"),
+        .describe("Hours before the due date to notify."),
+      agent_id: z.number().optional().describe("Agent to assign the task to."),
+      group_id: z.number().optional().describe("Group to assign the task to."),
     },
     stake: "low",
     displayLabels: {
@@ -546,7 +537,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   list_solution_articles: {
     description:
-      "Lists solution articles within a specific folder (returns metadata only, use get_solution_article for full content). To get folder_id: 1) Use list_solution_categories to get category IDs, 2) Use list_solution_folders with category_id to get folder IDs, 3) Use the folder_id here.",
+      "Lists the Freshservice knowledge base articles (solution articles) in a folder. Returns metadata only. Fetch an article by id for its full content.",
     schema: {
       folder_id: z
         .number()
@@ -568,7 +559,7 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
   },
   get_solution_article: {
     description:
-      "Gets detailed information about a specific solution article including its full content",
+      "Gets a Freshservice knowledge base article (also called a solution article), including its full content.",
     schema: {
       article_id: z.number().describe("The ID of the solution article"),
     },
@@ -604,7 +595,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
 
   // Requesters
   list_requesters: {
-    description: "Lists requesters",
+    description:
+      "Lists Freshservice requesters: the person or people who submitted a ticket (the end users who report issues). Filter by email, phone, or mobile.",
     schema: {
       email: z.string().optional().describe("Filter by email"),
       mobile: z.string().optional().describe("Filter by mobile"),
@@ -703,7 +695,6 @@ export const FRESHSERVICE_SERVER = {
     },
     icon: "FreshserviceLogo",
     documentationUrl: "https://docs.dust.tt/docs/freshservice",
-    instructions: null,
   },
   tools: Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => ({
     name: t.name,

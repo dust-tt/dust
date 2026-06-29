@@ -41,6 +41,10 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  includesToolSearchTool,
+  TOOL_SEARCH_INSTRUCTION,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
@@ -95,12 +99,32 @@ type AnthropicStreamPayload = BetaMessageStreamParams & {
  *
  * /!\ Do not add breakpoints here without auditing total usage across the request.
  */
-function buildSystemBlocks(
+export function buildSystemBlocks(
   { instructions, sharedContext, ephemeralContext }: StructuredSystemPrompt,
-  { hasConditionalJITTools }: { hasConditionalJITTools?: boolean }
+  {
+    hasConditionalJITTools,
+    includeToolSearchInstruction,
+  }: {
+    hasConditionalJITTools?: boolean;
+    includeToolSearchInstruction?: boolean;
+  }
 ) {
   const instructionsText = instructions.map((s) => s.content).join("\n");
-  const sharedText = sharedContext.map((s) => s.content).join("\n");
+  // The tool search instruction is a constant string that renders on every turn
+  // tool search is on, so it could live in the long-lived 1h instructions tier.
+  // It stays in the shared 5min tier for now because conditional JIT tools
+  // (attachment-driven: files, query, search) are auto-internal and hot, not
+  // deferred, so they still force the instructions tier to downgrade.
+  //
+  // TODO(tool-search): once the hot tool set is reduced to a minimal curated set
+  // so those conditional additions are deferred too, move this instruction to the
+  // instructions tier to get the 1h TTL.
+  const sharedText = [
+    sharedContext.map((s) => s.content).join("\n"),
+    ...(includeToolSearchInstruction ? [TOOL_SEARCH_INSTRUCTION] : []),
+  ]
+    .filter(Boolean)
+    .join("\n");
   const ephemeralText = ephemeralContext.map((s) => s.content).join("\n");
 
   const system: Anthropic.Beta.Messages.BetaTextBlockParam[] = [];
@@ -219,8 +243,14 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
             this.modelConfig.useNativeLightReasoning
           );
 
+    // Build the tools once so the system prompt can be derived from what is
+    // actually sent: the tool search instruction is added only when the search
+    // tool is present in this request.
+    const tools = toToolsParam(specifications, forceToolCall);
+
     const system = buildSystemBlocks(normalizePrompt(prompt), {
       hasConditionalJITTools,
+      includeToolSearchInstruction: includesToolSearchTool(tools),
     });
 
     return {
@@ -229,7 +259,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       system,
       messages,
       temperature: this.temperature ?? undefined,
-      tools: toToolsParam(specifications, forceToolCall),
+      tools,
       max_tokens: this.modelConfig.generationTokensCount,
       tool_choice: toToolChoiceParam(specifications, forceToolCall),
     };

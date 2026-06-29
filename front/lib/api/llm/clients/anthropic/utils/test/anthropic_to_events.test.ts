@@ -165,6 +165,69 @@ describe("streamLLMEvents", () => {
       emptyToolCallLLMEvents.map((e) => ({ ...e, metadata }))
     );
   });
+
+  // The model's BM25 tool search streams the query as input_json_delta chunks on
+  // a server_tool_use block, followed by a tool_search_tool_result block. The
+  // query block must be tracked so its deltas don't trip the null-state
+  // assertion, and the search must not surface as a client-visible tool_call.
+  it("should consume server-side tool search without emitting a tool call", async () => {
+    const toolSearchEvents: BetaRawMessageStreamEvent[] = [
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: {
+          type: "server_tool_use",
+          id: "srvtoolu_01ABC",
+          name: "tool_search_tool_bm25",
+          input: {},
+        },
+      },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "input_json_delta", partial_json: '{"query":"send a ' },
+      },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "input_json_delta", partial_json: 'slack message"}' },
+      },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "content_block_start",
+        index: 1,
+        content_block: {
+          type: "tool_search_tool_result",
+          tool_use_id: "srvtoolu_01ABC",
+          content: {
+            type: "tool_search_tool_search_result",
+            tool_references: [
+              { type: "tool_reference", tool_name: "slack__post_message" },
+            ],
+          },
+        },
+      },
+      { type: "content_block_stop", index: 1 },
+    ];
+
+    const result = [];
+    for await (const event of streamLLMEvents(
+      createAsyncGenerator(toolSearchEvents),
+      metadata
+    )) {
+      result.push(event);
+    }
+
+    // The search itself yields no tool_call; only the heartbeat deltas, then the
+    // usual end-of-turn events.
+    expect(result.map((e) => e.type)).toEqual([
+      "tool_call_delta",
+      "tool_call_delta",
+      "token_usage",
+      "success",
+    ]);
+    expect(result.some((e) => e.type === "tool_call")).toBe(false);
+  });
 });
 
 describe("batchResultToLLMEvents", () => {

@@ -306,11 +306,15 @@ const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 const FrameSlideshowContentTypeSchema = z.literal(
   "application/vnd.dust.frame.slideshow"
 );
+const SandboxFunctionContentTypeSchema = z.literal(
+  "application/vnd.dust.sandbox.function"
+);
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
   FrameSlideshowContentTypeSchema,
+  SandboxFunctionContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -752,6 +756,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
+  | "sandbox_functions"
   | "sandbox_dsbx_tools"
   | "sandbox_tools"
   | "sandbox_workspace_admin"
@@ -785,6 +790,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workspace_default_agent"
   | "sound_notification"
   | "whitelabel_frames"
+  | "frame_publish"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

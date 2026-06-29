@@ -64,7 +64,11 @@ import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadat
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
-import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
+import {
+  SANDBOX_MCP_REQUEST_TIMEOUT_MS,
+  SANDBOX_SERVER,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
@@ -93,6 +97,7 @@ import type {
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
 import {
@@ -216,6 +221,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "pod_tasks",
   "poke",
   "sandbox",
+  "sandbox_functions",
   "ask_user_question",
   "wakeups",
   "plan_mode",
@@ -1038,7 +1044,22 @@ export const INTERNAL_MCP_SERVERS = {
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
-    timeoutMs: 120000, // 2 minutes for command execution
+    // Derived from the max command timeout plus a buffer so the in-container
+    // timeout returns captured output before this MCP deadline aborts the call.
+    timeoutMs: SANDBOX_MCP_REQUEST_TIMEOUT_MS,
+  },
+  sandbox_functions: {
+    id: 1037,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_functions");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SANDBOX_FUNCTIONS_SERVER,
   },
   user_mentions: {
     id: 1026,
@@ -1079,6 +1100,17 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
+    runtimeToolStakeLevelCallback: ({
+      toolName,
+      plan,
+      configuredStakeLevel,
+    }) => {
+      if (toolName !== "schedule_wakeup") {
+        return configuredStakeLevel;
+      }
+
+      return plan && isCreditPricedPlanPrefix(plan.code) ? "low" : "high";
+    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,

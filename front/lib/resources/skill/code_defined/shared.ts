@@ -23,6 +23,11 @@ interface BaseSkillDefinition {
   readonly icon: string;
   readonly mcpServers?: MCPServerDefinition[];
   readonly inheritAgentConfigurationDataSources?: boolean;
+  // When true, the skill's instructions are exposed to the front-end so builders
+  // can read them in the skill details panel and build on top of the skill.
+  // Defaults to false: code-defined skill instructions are hidden by default and
+  // opted in per skill (e.g. docs/pptx/xlsx). System skills stay hidden.
+  readonly exposeInstructions?: boolean;
   readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
   // Optional callback to auto-equip a code-defined skill for an agent loop (subject to
   // isRestricted), without enabling it. Return true to make the skill available through

@@ -3,9 +3,7 @@ import {
   PaidPlanCards,
   type PaidPlanTier,
 } from "@app/components/pages/onboarding/SubscriptionPlans";
-import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
-import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
@@ -197,7 +195,6 @@ function CancelFreeTrialDialog({
 export function SubscriptionPage() {
   const owner = useWorkspace();
   const { subscription, user: authUser } = useAuth();
-  const useMetronomePanel = isSubscriptionMetronomeBilled(subscription);
   const isMetronomeCheckout = useIsMetronomeCheckout();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
@@ -222,6 +219,13 @@ export function SubscriptionPage() {
 
   const isLoading =
     isTrialInfoLoading || isSeatsCountLoading || isPerSeatPricingLoading;
+
+  const isMetronome = isSubscriptionMetronomeBilled(subscription);
+  useEffect(() => {
+    if (isMetronome) {
+      void router.replace(`/w/${owner.sId}/billing`);
+    }
+  }, [isMetronome, owner.sId, router]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
@@ -372,6 +376,10 @@ export function SubscriptionPage() {
       }
     });
 
+  if (isMetronome) {
+    return null;
+  }
+
   const plan = subscription.plan;
   const isWorkspaceOnProPlan = isProPlan(plan);
   const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
@@ -512,194 +520,186 @@ export function SubscriptionPage() {
               Stripe billing portal below.
             </ContentMessage>
           )}
-          {useMetronomePanel ? (
-            <SubscriptionProvider owner={owner} subscription={subscription}>
-              <MetronomeSubscriptionPanel />
-            </SubscriptionProvider>
-          ) : (
-            <>
-              <div>
-                {isWebhookProcessing ? (
-                  <Spinner />
-                ) : (
-                  <>
-                    <Page.Horizontal gap="sm">
-                      <Chip size="sm" color={chipColor} label={planLabel} />
-                      {!subscription.trialing &&
-                        subscription.stripeSubscriptionId && (
-                          <Button
-                            label="Manage my subscription"
-                            onClick={withTracking(
-                              TRACKING_AREAS.AUTH,
-                              "subscription_manage",
-                              () => {
-                                void handleGoToStripePortal();
-                              }
-                            )}
-                            variant="outline"
-                          />
-                        )}
-                    </Page.Horizontal>
-                  </>
-                )}
-              </div>
-              {perSeatPricing && subscription.trialing && (
-                <Page.Vertical>
+          <>
+            <div>
+              {isWebhookProcessing ? (
+                <Spinner />
+              ) : (
+                <>
                   <Page.Horizontal gap="sm">
-                    <Button
-                      onClick={withTracking(
-                        TRACKING_AREAS.AUTH,
-                        "subscription_skip_trial",
-                        () => {
-                          setShowSkipFreeTrialDialog(true);
-                        }
+                    <Chip size="sm" color={chipColor} label={planLabel} />
+                    {!subscription.trialing &&
+                      subscription.stripeSubscriptionId && (
+                        <Button
+                          label="Manage my subscription"
+                          onClick={withTracking(
+                            TRACKING_AREAS.AUTH,
+                            "subscription_manage",
+                            () => {
+                              void handleGoToStripePortal();
+                            }
+                          )}
+                          variant="outline"
+                        />
                       )}
-                      label="End trial & get full access"
-                    />
-                    <Button
-                      label="Cancel subscription"
-                      variant="ghost"
-                      onClick={withTracking(
-                        TRACKING_AREAS.AUTH,
-                        "subscription_cancel_trial",
-                        () => {
-                          setShowCancelFreeTrialDialog(true);
-                        }
-                      )}
-                    />
                   </Page.Horizontal>
-                </Page.Vertical>
+                </>
               )}
-              {subscription.stripeSubscriptionId && (
-                <Page.Vertical gap="sm">
-                  <Page.H variant="h5">Billing</Page.H>
-                  {perSeatPricing !== null && (
-                    <>
-                      <Page.P>
-                        Estimated {perSeatPricing.billingPeriod} billing:{" "}
-                        <span className="font-bold">
+            </div>
+            {perSeatPricing && subscription.trialing && (
+              <Page.Vertical>
+                <Page.Horizontal gap="sm">
+                  <Button
+                    onClick={withTracking(
+                      TRACKING_AREAS.AUTH,
+                      "subscription_skip_trial",
+                      () => {
+                        setShowSkipFreeTrialDialog(true);
+                      }
+                    )}
+                    label="End trial & get full access"
+                  />
+                  <Button
+                    label="Cancel subscription"
+                    variant="ghost"
+                    onClick={withTracking(
+                      TRACKING_AREAS.AUTH,
+                      "subscription_cancel_trial",
+                      () => {
+                        setShowCancelFreeTrialDialog(true);
+                      }
+                    )}
+                  />
+                </Page.Horizontal>
+              </Page.Vertical>
+            )}
+            {subscription.stripeSubscriptionId && (
+              <Page.Vertical gap="sm">
+                <Page.H variant="h5">Billing</Page.H>
+                {perSeatPricing !== null && (
+                  <>
+                    <Page.P>
+                      Estimated {perSeatPricing.billingPeriod} billing:{" "}
+                      <span className="font-bold">
+                        {getPriceAsString({
+                          currency: perSeatPricing.seatCurrency,
+                          priceInCents:
+                            perSeatPricing.seatPrice * workspaceSeats,
+                        })}
+                      </span>{" "}
+                      (excluding taxes).
+                    </Page.P>
+                    <Page.P>
+                      {workspaceSeats === 1 ? (
+                        <>
+                          {workspaceSeats} member,{" "}
                           {getPriceAsString({
                             currency: perSeatPricing.seatCurrency,
-                            priceInCents:
-                              perSeatPricing.seatPrice * workspaceSeats,
-                          })}
-                        </span>{" "}
-                        (excluding taxes).
-                      </Page.P>
-                      <Page.P>
-                        {workspaceSeats === 1 ? (
-                          <>
-                            {workspaceSeats} member,{" "}
-                            {getPriceAsString({
-                              currency: perSeatPricing.seatCurrency,
-                              priceInCents: perSeatPricing.seatPrice,
-                            })}{" "}
-                            per member.
-                          </>
-                        ) : (
-                          <>
-                            {workspaceSeats} members,{" "}
-                            {getPriceAsString({
-                              currency: perSeatPricing.seatCurrency,
-                              priceInCents: perSeatPricing.seatPrice,
-                            })}{" "}
-                            per member.
-                          </>
-                        )}
-                      </Page.P>
-                    </>
-                  )}
-                  <div className="my-5">
-                    <Button
-                      icon={CreditCard01}
-                      label="Your billing dashboard on Stripe"
-                      variant="ghost"
-                      onClick={withTracking(
-                        TRACKING_AREAS.AUTH,
-                        "subscription_stripe_portal",
-                        () => {
-                          void handleGoToStripePortal();
-                        }
+                            priceInCents: perSeatPricing.seatPrice,
+                          })}{" "}
+                          per member.
+                        </>
+                      ) : (
+                        <>
+                          {workspaceSeats} members,{" "}
+                          {getPriceAsString({
+                            currency: perSeatPricing.seatCurrency,
+                            priceInCents: perSeatPricing.seatPrice,
+                          })}{" "}
+                          per member.
+                        </>
                       )}
-                    />
-                  </div>
-                </Page.Vertical>
-              )}
-              {canUpsellToBusinessPlan && (
-                <Page.Vertical gap="sm">
-                  <Page.H variant="h5">Upgrade your plan</Page.H>
-                  <Page.P>
-                    You are eligible to upgrade to the Enteprise seat-based plan
-                    with additional features.
-                  </Page.P>
-                  <div>
-                    <Button
-                      label="Upgrade to Enterprise seat-based plan"
-                      variant="primary"
-                      disabled={isProcessing}
-                      onClick={withTracking(
-                        TRACKING_AREAS.AUTH,
-                        "subscription_upgrade_to_business",
-                        () => {
-                          void handleUpgradeToBusiness();
+                    </Page.P>
+                  </>
+                )}
+                <div className="my-5">
+                  <Button
+                    icon={CreditCard01}
+                    label="Your billing dashboard on Stripe"
+                    variant="ghost"
+                    onClick={withTracking(
+                      TRACKING_AREAS.AUTH,
+                      "subscription_stripe_portal",
+                      () => {
+                        void handleGoToStripePortal();
+                      }
+                    )}
+                  />
+                </div>
+              </Page.Vertical>
+            )}
+            {canUpsellToBusinessPlan && (
+              <Page.Vertical gap="sm">
+                <Page.H variant="h5">Upgrade your plan</Page.H>
+                <Page.P>
+                  You are eligible to upgrade to the Enteprise seat-based plan
+                  with additional features.
+                </Page.P>
+                <div>
+                  <Button
+                    label="Upgrade to Enterprise seat-based plan"
+                    variant="primary"
+                    disabled={isProcessing}
+                    onClick={withTracking(
+                      TRACKING_AREAS.AUTH,
+                      "subscription_upgrade_to_business",
+                      () => {
+                        void handleUpgradeToBusiness();
+                      }
+                    )}
+                  />
+                </div>
+              </Page.Vertical>
+            )}
+            {displayPricingTable && (
+              <div className="pt-2">
+                {isMetronomeCheckout ? (
+                  <>
+                    <div className="flex items-start justify-between gap-4">
+                      <Page.H variant="h5">Choose a plan</Page.H>
+                      <BillingPeriodSwitch
+                        defaultValue={billingPeriod}
+                        size="xs"
+                        onValueChange={setBillingPeriod}
+                      />
+                    </div>
+                    <div className="flex w-full flex-col gap-4 pt-4 sm:flex-row">
+                      <PaidPlanCards
+                        billingPeriod={billingPeriod}
+                        onSubscribe={(seatType) =>
+                          void handleSubscribeMetronome(seatType)
                         }
-                      )}
-                    />
-                  </div>
-                </Page.Vertical>
-              )}
-              {displayPricingTable && (
-                <div className="pt-2">
-                  {isMetronomeCheckout ? (
-                    <>
-                      <div className="flex items-start justify-between gap-4">
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
                         <Page.H variant="h5">Choose a plan</Page.H>
+                        <Page.P>Pick a plan that best suits your team.</Page.P>
+                      </div>
+                      {!isWorkspaceWhitelistedBusinessPlan && (
                         <BillingPeriodSwitch
                           defaultValue={billingPeriod}
                           size="xs"
                           onValueChange={setBillingPeriod}
                         />
-                      </div>
-                      <div className="flex w-full flex-col gap-4 pt-4 sm:flex-row">
-                        <PaidPlanCards
-                          billingPeriod={billingPeriod}
-                          onSubscribe={(seatType) =>
-                            void handleSubscribeMetronome(seatType)
-                          }
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <Page.H variant="h5">Choose a plan</Page.H>
-                          <Page.P>
-                            Pick a plan that best suits your team.
-                          </Page.P>
-                        </div>
-                        {!isWorkspaceWhitelistedBusinessPlan && (
-                          <BillingPeriodSwitch
-                            defaultValue={billingPeriod}
-                            size="xs"
-                            onValueChange={setBillingPeriod}
-                          />
-                        )}
-                      </div>
-                      <div className="pt-4">
-                        <SubscriptionPlanCards
-                          billingPeriod={billingPeriod}
-                          onSubscribe={handleSubscribePlan}
-                          isProcessing={isProcessing}
-                          owner={owner}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+                      )}
+                    </div>
+                    <div className="pt-4">
+                      <SubscriptionPlanCards
+                        billingPeriod={billingPeriod}
+                        onSubscribe={handleSubscribePlan}
+                        isProcessing={isProcessing}
+                        owner={owner}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </>
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />

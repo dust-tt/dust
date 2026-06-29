@@ -23,9 +23,17 @@ import {
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
+import {
+  type EnsureSandboxResult,
+  type SandboxCreateBlob,
+  type SandboxDeleteOwner,
+  type SandboxLifecycleOwner,
+  SandboxResource,
+} from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -83,6 +91,11 @@ import type {
 } from "sequelize";
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
+type ConversationSandboxOwner = Pick<
+  ConversationWithoutContentType,
+  "id" | "sId"
+>;
+
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
@@ -92,6 +105,8 @@ export type FetchConversationOptions = {
 };
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
+
+const SANDBOX_OWNER_LOOKUP_CONCURRENCY = 4;
 
 interface UserParticipation {
   actionRequired: boolean;
@@ -347,6 +362,241 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return conversations.map((c) => this.fromModel(c, null));
+  }
+
+  private static async fetchSandboxByConversation(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner
+  ): Promise<SandboxResource | null> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const link = await SandboxOwnerModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspaceModelId,
+      },
+    });
+
+    if (!link) {
+      return null;
+    }
+
+    return SandboxResource.fetchByModelIdForWorkspace(auth, link.sandboxId);
+  }
+
+  private static async dangerouslyFetchSandboxByConversation(
+    conversation: Pick<ConversationResource, "id" | "workspaceId">
+  ): Promise<SandboxResource | null> {
+    const link = await SandboxOwnerModel.findOne({
+      where: {
+        workspaceId: conversation.workspaceId,
+        conversationId: conversation.id,
+      },
+    });
+
+    if (!link) {
+      return null;
+    }
+
+    return SandboxResource.dangerouslyFetchByModelIdForWorkspace({
+      sandboxModelId: link.sandboxId,
+      workspaceModelId: conversation.workspaceId,
+    });
+  }
+
+  private static async createSandboxRecordForConversation(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner,
+    blob: SandboxCreateBlob
+  ): Promise<SandboxResource> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+
+    return withTransaction(async (transaction) => {
+      const sandbox = await SandboxResource.makeNew(auth, blob, {
+        transaction,
+      });
+
+      await SandboxOwnerModel.create(
+        {
+          workspaceId: workspaceModelId,
+          conversationId: conversation.id,
+          sandboxId: sandbox.id,
+        },
+        { transaction }
+      );
+
+      return sandbox;
+    });
+  }
+
+  private static toSandboxLifecycleOwner(
+    conversation: ConversationResource
+  ): SandboxLifecycleOwner {
+    return {
+      lockKey: conversation.sId,
+      fetchSandbox: () =>
+        this.dangerouslyFetchSandboxByConversation(conversation),
+    };
+  }
+
+  private static toSandboxDeleteOwner(
+    auth: Authenticator,
+    conversation: ConversationResource
+  ): SandboxDeleteOwner {
+    return {
+      lockKey: conversation.sId,
+      fetchSandbox: () => this.fetchSandboxByConversation(auth, conversation),
+      deleteSandbox: async (sandbox, transaction) => {
+        await SandboxOwnerModel.destroy({
+          where: {
+            conversationId: conversation.id,
+            sandboxId: sandbox.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          },
+          transaction,
+        });
+      },
+    };
+  }
+
+  static async fetchSandbox(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner
+  ): Promise<SandboxResource | null> {
+    return this.fetchSandboxByConversation(auth, conversation);
+  }
+
+  async fetchSandbox(auth: Authenticator): Promise<SandboxResource | null> {
+    return ConversationResource.fetchSandbox(auth, this);
+  }
+
+  static async ensureSandboxActive(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner
+  ): Promise<Result<EnsureSandboxResult, Error>> {
+    return SandboxResource.ensureActive(auth, {
+      lockKey: conversation.sId,
+      envVars: { CONVERSATION_ID: conversation.sId },
+      logLabel: "conversation",
+      fetchSandbox: () => this.fetchSandbox(auth, conversation),
+      createSandbox: (blob) =>
+        this.createSandboxRecordForConversation(auth, conversation, blob),
+    });
+  }
+
+  async ensureSandboxActive(
+    auth: Authenticator
+  ): Promise<Result<EnsureSandboxResult, Error>> {
+    return ConversationResource.ensureSandboxActive(auth, this);
+  }
+
+  static async pauseSandboxForApproval(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.pauseForApproval(auth, {
+      lockKey: conversation.sId,
+      fetchSandbox: () => this.fetchSandboxByConversation(auth, conversation),
+    });
+  }
+
+  async pauseSandboxForApproval(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return ConversationResource.pauseSandboxForApproval(auth, this);
+  }
+
+  async deleteSandbox(auth: Authenticator): Promise<Result<void, Error>> {
+    return SandboxResource.deleteByOwner(
+      auth,
+      ConversationResource.toSandboxDeleteOwner(auth, this)
+    );
+  }
+
+  async dangerouslySleepSandboxIfRunning(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.dangerouslySleepIfRunning(
+      auth,
+      ConversationResource.toSandboxLifecycleOwner(this)
+    );
+  }
+
+  async dangerouslySleepSandboxIfPendingApproval(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.dangerouslySleepIfPendingApproval(
+      auth,
+      ConversationResource.toSandboxLifecycleOwner(this)
+    );
+  }
+
+  async dangerouslyDestroySandboxIfSleeping(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.dangerouslyDestroyIfSleeping(
+      auth,
+      ConversationResource.toSandboxLifecycleOwner(this)
+    );
+  }
+
+  async dangerouslyDestroySandboxIfKillRequested(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    return SandboxResource.dangerouslyDestroyIfKillRequested(
+      auth,
+      ConversationResource.toSandboxLifecycleOwner(this)
+    );
+  }
+
+  static async dangerouslyFetchConversationModelIdsBySandboxes(
+    sandboxes: Pick<SandboxResource, "id" | "workspaceId">[]
+  ): Promise<Map<ModelId, ModelId>> {
+    if (sandboxes.length === 0) {
+      return new Map();
+    }
+
+    const sandboxModelIdsByWorkspaceModelId = new Map<ModelId, ModelId[]>();
+    for (const sandbox of sandboxes) {
+      const sandboxModelIds =
+        sandboxModelIdsByWorkspaceModelId.get(sandbox.workspaceId) ?? [];
+      sandboxModelIds.push(sandbox.id);
+      sandboxModelIdsByWorkspaceModelId.set(
+        sandbox.workspaceId,
+        sandboxModelIds
+      );
+    }
+
+    const rows = (
+      await concurrentExecutor(
+        [...sandboxModelIdsByWorkspaceModelId.entries()],
+        async ([workspaceModelId, sandboxModelIds]) =>
+          SandboxOwnerModel.findAll({
+            where: {
+              workspaceId: workspaceModelId,
+              conversationId: {
+                [Op.ne]: null,
+              },
+              sandboxId: {
+                [Op.in]: sandboxModelIds,
+              },
+            },
+            attributes: ["sandboxId", "conversationId"],
+          }),
+        { concurrency: SANDBOX_OWNER_LOOKUP_CONCURRENCY }
+      )
+    ).flat();
+
+    const conversationModelIdsBySandboxModelId = new Map<ModelId, ModelId>();
+    for (const row of rows) {
+      if (row.conversationId !== null) {
+        conversationModelIdsBySandboxModelId.set(
+          row.sandboxId,
+          row.conversationId
+        );
+      }
+    }
+
+    return conversationModelIdsBySandboxModelId;
   }
 
   get forkingData(): ConversationForkingDataType | undefined {

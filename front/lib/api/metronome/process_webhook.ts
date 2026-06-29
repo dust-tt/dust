@@ -1374,6 +1374,17 @@ export async function processMetronomeWebhook({
         );
       }
 
+      // The contract was archived (cancelled) after the start webhook was
+      // enqueued but before it was delivered — skip to avoid swapping the
+      // active subscription onto a dead contract.
+      if (contractResult.value.archived_at) {
+        logger.info(
+          { contractId, workspaceId: workspace.sId },
+          "[Metronome Webhook] contract.start: contract is archived, skipping"
+        );
+        break;
+      }
+
       const renewalTransition = contractResult.value.transitions?.find(
         (t) => t.to_contract_id === contractId
       );
@@ -1421,7 +1432,7 @@ export async function processMetronomeWebhook({
 
       // Reconcile per-user credit states against the new contract's live
       // per-seat balances. Seats were synced to this contract at provision
-      // time (`syncContractQuantities` → `syncSeatCount`), but that path does
+      // time (`syncSeatCount`), but that path does
       // not touch per-user credit states; now that the contract is active the
       // balances are live, so this lands each user in the right seat↔pool
       // state. Without it, a switch that changes seat allocations (e.g. moving

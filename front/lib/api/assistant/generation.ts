@@ -164,38 +164,6 @@ function constructToolsSection({
 
   toolsSection += toolUseDirectives;
 
-  // The following section provides the model with a high-level overview of available external servers
-  // (groups of tools) and their general purpose (if server instructions are provided).
-  // It lists the names of tools available under each server to give context about tool groupings.
-  // Note: Actual tool callability, including detailed descriptions and parameters for each tool,
-  // is determined by the comprehensive tool specifications provided to the model separately.
-  // All discovered tools from all servers are made available for the agent to call, regardless of
-  // whether their server has explicit instructions or is detailed in this specific prompt overview.
-  let toolServersPrompt = "";
-
-  if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
-    toolServersPrompt = "\n## AVAILABLE TOOL SERVERS\n";
-    toolServersPrompt +=
-      "Each server provides a list of tools made available to the agent.\n";
-    for (const serverData of serverToolsAndInstructions) {
-      toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
-      if (serverData.instructions) {
-        toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
-      }
-      if (serverData.tools && serverData.tools.length > 0) {
-        toolServersPrompt += `Tools available on this server (names only):\n`;
-        for (const tool of serverData.tools) {
-          toolServersPrompt += `  - ${tool.name}\n`;
-        }
-      } else {
-        toolServersPrompt += `  (No tools reported by this server or tool listing failed.)\n`;
-      }
-    }
-    toolServersPrompt += "\n";
-  }
-
-  toolsSection += toolServersPrompt;
-
   return toolsSection;
 }
 

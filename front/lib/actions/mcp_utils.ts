@@ -1,6 +1,9 @@
 // All mime types are okay to use from the public API.
 
-import { FILE_OFFLOAD_IMAGE_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
+import {
+  FILE_OFFLOAD_FILE_SIZE_BYTES,
+  FILE_OFFLOAD_IMAGE_SIZE_BYTES,
+} from "@app/lib/actions/action_output_limits";
 import type {
   ToolGeneratedFilePathType,
   ToolGeneratedFileType,
@@ -190,7 +193,12 @@ export async function handleBase64Upload(
     };
   }
 
-  if (base64Data.length > FILE_OFFLOAD_IMAGE_SIZE_BYTES) {
+  const maxUploadSizeBytes =
+    resourceInfo.type === "image"
+      ? FILE_OFFLOAD_IMAGE_SIZE_BYTES
+      : FILE_OFFLOAD_FILE_SIZE_BYTES;
+
+  if (base64Data.length > maxUploadSizeBytes) {
     return {
       content: {
         type: "text",

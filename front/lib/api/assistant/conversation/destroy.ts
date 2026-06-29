@@ -22,7 +22,6 @@ import { ConversationForkResource } from "@app/lib/resources/conversation_fork_r
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   ProjectTaskConversationModel,
   ProjectTaskSourceModel,
@@ -312,7 +311,7 @@ export async function destroyConversation(
     where: { workspaceId: owner.id, sourceId: conversation.sId },
   });
 
-  await SandboxResource.deleteByConversation(auth, conversation);
+  await conversation.deleteSandbox(auth);
 
   // TODO(2026-03-09 SANDBOX): Implement proper file deletion.
   // FileResource records associated with this conversation (via

@@ -188,6 +188,12 @@ AgentMessageSkillModel.init(
         name: "idx_agent_message_skills_agent_message_id",
         concurrently: true,
       },
+      {
+        fields: ["customSkillId"],
+        where: { customSkillId: { [Op.ne]: null } },
+        name: "idx_agent_message_skills_custom_skill",
+        concurrently: true,
+      },
     ],
     validate: {
       eitherGlobalOrCustomSkill: eitherGlobalOrCustomSkillValidation,

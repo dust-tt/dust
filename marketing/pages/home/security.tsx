@@ -125,7 +125,7 @@ export default function Security() {
                 />
               </div>
               <Button
-                href="https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto"
+                href="https://trust.dust.com"
                 variant="highlight"
                 size="md"
                 icon={ArrowRight}
@@ -240,7 +240,7 @@ export default function Security() {
               label="Contact us"
             />
             <Button
-              href="https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto"
+              href="https://trust.dust.com"
               variant="highlight"
               size="md"
               icon={ArrowRight}

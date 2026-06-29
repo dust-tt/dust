@@ -150,8 +150,6 @@ type InternalMCPServerType = MCPServerType & {
   name: InternalMCPServerNameType;
   // We enforce that we pass an icon here.
   icon: InternalAllowedIconType;
-  // Instructions that are appended to the overall prompt.
-  instructions: string | null;
   // Whether the server's actions are framed as the agent acting (e.g. "Allow
   // @agent to schedule a wake-up?") or as the server acting (default, e.g.
   // "Allow Linear to create an issue?"). Use "agent" for self-contained agent

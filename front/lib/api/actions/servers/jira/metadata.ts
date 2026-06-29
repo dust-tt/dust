@@ -16,7 +16,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   // Read operations
   get_issue_read_fields: {
     description:
-      "Lists available Jira field keys/ids and names for use in the get_issue.fields parameter (read-time).",
+      "Lists the field keys, ids, and names that can be requested when reading an issue.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -26,9 +26,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issue: {
     description:
-      "Retrieves a single JIRA issue by its key (e.g., 'PROJ-123'). " +
-      "By default it returns a minimal set of fields for performance: summary, issuetype, priority, assignee, reporter, labels, duedate, parent, project, status. " +
-      "To request others, pass them in the fields parameter using the key for built-in fields (e.g. summary) and the id for custom fields (e.g. customfield_10020), which you can discover with get_issue_read_fields.",
+      "Looks up and retrieves a single Jira issue (ticket) by its key (e.g., 'PROJ-123'). Returns a minimal set of fields by default. Pass the fields parameter to request others.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       fields: z
@@ -45,7 +43,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_projects: {
-    description: "Retrieves a list of JIRA projects.",
+    description: "Retrieves all Jira projects (the full list).",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -54,7 +52,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_project: {
-    description: "Retrieves a single JIRA project by its key (e.g., 'PROJ').",
+    description: "Retrieves a single Jira project by its key (e.g., 'PROJ').",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
@@ -78,7 +76,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_transitions: {
     description:
-      "Gets available transitions for a JIRA issue based on its current status and workflow.",
+      "Lists which status changes a Jira issue is currently allowed to make.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
     },
@@ -90,7 +88,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issues: {
     description:
-      "Search issues using one or more filters (e.g., status, priority, labels, assignee, fixVersion, customField, dueDate, created, resolved). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter. For date fields (dueDate, created, resolved), use operator parameter with '<', '>', '=', etc. and date format '2023-07-03' or relative '-25d', '7d', '2w', '1M', etc. Results can be sorted using the sortBy parameter with field and direction (ASC/DESC). When referring to the user, use the get_connection_info tool. When referring to unknown create/update fields, use get_issue_create_fields or get_issue_types to discover the field names.",
+      "Search or list Jira issues (tickets, bugs) by filters: status (open, in progress, done), priority, labels, who they are assigned to, fixVersion, or dates. Supports fuzzy matching and sorting. Use it to browse the backlog or find issues by criteria.",
     schema: {
       filters: z
         .array(JiraSearchFilterSchema)
@@ -112,7 +110,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issues_using_jql: {
     description:
-      "Search JIRA issues using a custom JQL (Jira Query Language) query. This tool allows for advanced search capabilities beyond the filtered search. Examples: 'project = PROJ AND status = Open', 'assignee = currentUser() AND priority = High', 'created >= -30d AND labels = bug'.",
+      "Search Jira issues using a raw JQL (Jira Query Language) query string. Use only when you already have a JQL expression.",
     schema: {
       jql: z.string().describe("The JQL (Jira Query Language) query string"),
       maxResults: z
@@ -153,7 +151,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issue_create_fields: {
     description:
-      "Create/update-time field metadata for a specific project and issue type. Returns only fields available on the Create/Update screens (subset). Use get_issue_types to get the issue type ID.",
+      "Lists the field metadata (names and ids) on the screens used to create or update an issue, for a given project and issue type. Use it to discover valid field names beforehand.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       issueTypeId: z
@@ -187,21 +185,16 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_users: {
-    description:
-      "Search for JIRA users. Provide emailAddress for exact email match, or name for display name contains. If neither is provided, returns the first maxResults users. Use startAt for pagination (pass the previous result's nextStartAt).",
+    description: "Search for Jira users by email address or display name.",
     schema: {
       emailAddress: z
         .string()
         .optional()
-        .describe(
-          "Exact email address (e.g., 'john.doe@company.com'). If provided, only exact matches are returned."
-        ),
+        .describe("Exact email address to match."),
       name: z
         .string()
         .optional()
-        .describe(
-          "Display name filter (e.g., 'John Doe'). Case-insensitive contains match."
-        ),
+        .describe("Display name to match (case-insensitive contains)."),
       maxResults: z
         .number()
         .min(1)
@@ -209,16 +202,14 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
         .optional()
         .default(SEARCH_USERS_MAX_RESULTS)
         .describe(
-          `Maximum number of users to return when searching by name (default: ${SEARCH_USERS_MAX_RESULTS}, max: ${SEARCH_USERS_MAX_RESULTS})`
+          `Maximum number of users to return (default and max: ${SEARCH_USERS_MAX_RESULTS}).`
         ),
       startAt: z
         .number()
         .int()
         .min(0)
         .optional()
-        .describe(
-          "Pagination offset. Pass the previous response's nextStartAt to fetch the next page."
-        ),
+        .describe("Pagination offset (use the previous nextStartAt)."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -240,7 +231,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   read_attachment: {
     description:
-      "Read content from any attachment on a Jira issue. For text-based files (PDF, Word, Excel, CSV, plain text), extracts and returns the text content. For other files (images, documents), returns the file for upload. Supports text extraction with OCR for scanned documents.",
+      "Read the content of an attachment on a Jira issue. Extracts text from PDF, Word, Excel, CSV, and plain-text files (with OCR for scans). Other files are returned as-is.",
     schema: {
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
       attachmentId: z.string().describe("The ID of the attachment to read"),
@@ -255,7 +246,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   // Write operations
   create_comment: {
     description:
-      "Adds a comment to an existing JIRA issue. Accepts either plain text string or rich Atlassian Document Format (ADF).",
+      "Adds a comment or note to an existing Jira issue. Accepts plain text or rich ADF formatting.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       comment: z
@@ -280,7 +271,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   transition_issue: {
     description:
-      "Transitions a JIRA issue to a different status/workflow state.",
+      "Moves or changes a Jira issue (ticket) to a different status (e.g. to In Progress or Done). Performs a workflow transition.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
@@ -293,7 +284,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   create_issue: {
     description:
-      "Creates a new JIRA issue with the specified details. For textarea fields (like description), you can use either plain text or rich ADF format. Note: Available fields vary by project and issue type. Use get_issue_create_fields to check which fields are required and available.",
+      "Creates a new Jira issue, or ticket, in a project. Use it to log a bug, raise a request, or open a task or story. Description fields accept plain text or rich ADF. Required fields vary by project and issue type.",
     schema: {
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"
@@ -307,7 +298,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   update_issue: {
     description:
-      "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). For textarea fields (like description), you can use either plain text or rich ADF format. Use get_issue_create_fields to discover which fields are available for the project and issue type, including which ones are textarea fields. Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
+      "Updates or changes field values on an existing Jira issue, such as its summary, description, priority, or assignee. Description accepts plain text or rich ADF. Issue links and attachments are not changed here.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       updateData: JiraCreateIssueRequestSchema.partial().describe(
@@ -322,7 +313,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   create_issue_link: {
     description:
-      "Creates a link between two JIRA issues with a specified relationship type (e.g., 'Blocks', 'Relates', 'Duplicates').",
+      "Links or marks two Jira issues as related, with a relationship type such as blocks, relates to, or duplicates.",
     schema: {
       linkData: JiraCreateIssueLinkRequestSchema.describe(
         "Link configuration including type and issues to link"
@@ -347,7 +338,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   upload_attachment: {
     description:
-      "Upload a file attachment to a Jira issue. Supports two types of file sources: conversation files (from current Dust conversation) and external files (base64 encoded). The attachment must specify its type and corresponding fields. IMPORTANT: The 'type' field must be exactly 'conversation_file' or 'external_file', not a MIME type like 'image/png'.",
+      "Attach a file to a Jira issue (upload). The file can come from the current Dust conversation or be provided as base64 data.",
     schema: {
       issueKey: z.string().describe("The Jira issue key (e.g., 'PROJ-123')"),
       attachment: z.union([
@@ -398,7 +389,6 @@ export const JIRA_SERVER = {
     },
     icon: "JiraLogo",
     documentationUrl: "https://docs.dust.tt/docs/jira",
-    instructions: null,
   },
   tools: Object.values(JIRA_TOOLS_METADATA).map((t) => ({
     name: t.name,

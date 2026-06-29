@@ -16,6 +16,7 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import type {
   OutputFormat,
   ToolSpecification,
@@ -337,13 +338,6 @@ export function toolSpecToAnthropicAITool(tool: ToolSpecification): Tool {
     ...(tool.deferLoading ? { defer_loading: true } : {}),
   };
 }
-
-// Search tool that lets the model discover deferred tools on demand. Prepended
-// to the tools array whenever at least one tool is deferred.
-const TOOL_SEARCH_TOOL = {
-  type: "tool_search_tool_bm25_20251119",
-  name: "tool_search_tool_bm25",
-} as const;
 
 export function toolSpecsToAnthropicAITools(
   tools: ToolSpecification[],

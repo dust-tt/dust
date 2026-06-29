@@ -220,6 +220,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
     stage: "on_demand",
   },
+  sandbox_functions: {
+    description: "Enable Sandbox Function invocation endpoints",
+    stage: "dust_only",
+  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
@@ -350,6 +354,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
     stage: "on_demand",
+  },
+  frame_publish: {
+    description:
+      "Publish a Frame's edited source tree into a built bundle so model and live edits become the rendered, shareable Frame.",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

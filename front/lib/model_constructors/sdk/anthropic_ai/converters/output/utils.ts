@@ -16,6 +16,10 @@ import type {
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import { parseToolArguments } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
+import {
+  logToolSearchQuery,
+  logToolSearchResult,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/tool_search_logging";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,
@@ -108,6 +112,15 @@ export type BlockState =
       accumulator: string;
       type: "tool_use";
       toolId: string;
+      toolName: string;
+    }
+  // Server-side tool search (e.g. tool_search_tool_bm25). The query streams in
+  // as input_json_delta chunks on a server_tool_use block, accumulating here
+  // like a regular tool call's arguments.
+  | {
+      index: number;
+      accumulator: string;
+      type: "tool_search";
       toolName: string;
     };
 
@@ -507,17 +520,38 @@ export function contentBlockStartToEvents(
           toolName: block.name,
         },
       ];
-    // Block types we don't surface: redacted thinking, server tools, and their
-    // result / container blocks. Listed explicitly so the default stays
+
+    case "server_tool_use":
+      // The only server tool we enable is tool search. Track its state so the
+      // query deltas accumulate, then log the query at content_block_stop.
+      return [
+        [],
+        {
+          index: event.index,
+          accumulator: "",
+          type: "tool_search",
+          toolName: block.name,
+        },
+      ];
+
+    case "tool_search_tool_result":
+      // The discovered tool references arrive inline here (no deltas), so log
+      // them now. State stays null and the matching stop is a no-op.
+      logToolSearchResult({
+        content: block.content,
+        logFields: toolSearchLogFields(metadata),
+      });
+      return [[], null];
+
+    // Block types we don't surface: redacted thinking, other server tools, and
+    // their result / container blocks. Listed explicitly so the default stays
     // exhaustive.
     case "redacted_thinking":
-    case "server_tool_use":
     case "web_search_tool_result":
     case "web_fetch_tool_result":
     case "code_execution_tool_result":
     case "bash_code_execution_tool_result":
     case "text_editor_code_execution_tool_result":
-    case "tool_search_tool_result":
     case "container_upload":
       return [[], state];
     default:
@@ -643,9 +677,33 @@ export function contentBlockStopToEvents(
         null,
       ];
     }
+
+    case "tool_search":
+      logToolSearchQuery({
+        rawInput: block.accumulator,
+        toolName: block.toolName,
+        tags: [
+          `provider_id:${metadata.providerId}`,
+          `api:${metadata.api}`,
+          `model_id:${metadata.modelId}`,
+        ],
+        logFields: toolSearchLogFields(metadata),
+      });
+      return [[], null];
+
     default:
       assertNever(block);
   }
+}
+
+// Maps endpoint metadata into the structured log fields shared by both tool
+// search log lines.
+function toolSearchLogFields(metadata: EndpointMetadata) {
+  return {
+    providerId: metadata.providerId,
+    api: metadata.api,
+    modelId: metadata.modelId,
+  };
 }
 
 // Returns the events to emit alongside the latest usage snapshot, so the caller

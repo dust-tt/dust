@@ -66,7 +66,6 @@ export const INCLUDE_DATA_SERVER = {
     icon: "ActionTimeIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(INCLUDE_DATA_BASE_TOOLS_METADATA).map((t) => ({
     name: t.name,

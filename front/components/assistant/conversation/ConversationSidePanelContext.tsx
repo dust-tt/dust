@@ -1,3 +1,4 @@
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -44,6 +45,7 @@ const isSupportedPanelType = (
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
   openPanel: (params: OpenPanelParams) => void;
+  togglePanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
@@ -125,8 +127,9 @@ export function ConversationSidePanelProvider({
     }
   }, [panelRef, onPanelClosed]);
 
-  const openPanel = useCallback(
-    (params: OpenPanelParams) => {
+  // Shared selection; `toggle` decides whether re-selecting the shown panel closes it.
+  const applyPanel = useCallback(
+    (params: OpenPanelParams, { toggle }: { toggle: boolean }) => {
       setCurrentPanel(params.type);
 
       switch (params.type) {
@@ -135,11 +138,8 @@ export function ConversationSidePanelProvider({
             ? `${params.messageId}@${params.actionId}`
             : params.messageId;
 
-          /**
-           * If the panel is already open for the same data,
-           * we close it.
-           */
-          if (newData === data) {
+          // A different message/action switches content; only the same data toggles closed.
+          if (toggle && newData === data) {
             closePanel();
             return;
           }
@@ -156,8 +156,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case FILES_SIDE_PANEL_TYPE:
-          // Toggle: if already open, close it.
-          if (currentPanel === FILES_SIDE_PANEL_TYPE) {
+          if (toggle && currentPanel === FILES_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
@@ -165,8 +164,7 @@ export function ConversationSidePanelProvider({
           break;
 
         case PLAN_SIDE_PANEL_TYPE:
-          // Toggle: if already open, close it.
-          if (currentPanel === PLAN_SIDE_PANEL_TYPE) {
+          if (toggle && currentPanel === PLAN_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
@@ -176,8 +174,25 @@ export function ConversationSidePanelProvider({
         default:
           assertNever(params);
       }
+
+      // Re-expand imperatively: the container's expand effect only fires when `currentPanel`
+      // changes, so a close→reopen race (same value) wouldn't re-run it. No-op on mobile.
+      panelRef.current?.expand(DEFAULT_RIGHT_PANEL_SIZE);
     },
     [setCurrentPanel, setData, data, closePanel, currentPanel]
+  );
+
+  // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
+  // transition where `currentPanel` still reads the old value.
+  const openPanel = useCallback(
+    (params: OpenPanelParams) => applyPanel(params, { toggle: false }),
+    [applyPanel]
+  );
+
+  // Toggle for user-controlled buttons: re-selecting the shown panel closes it.
+  const togglePanel = useCallback(
+    (params: OpenPanelParams) => applyPanel(params, { toggle: true }),
+    [applyPanel]
   );
 
   // Close the panel when switching conversations: the provider stays mounted
@@ -213,6 +228,7 @@ export function ConversationSidePanelProvider({
         ? currentPanel
         : undefined,
       openPanel,
+      togglePanel,
       closePanel,
       onPanelClosed,
       setPanelRef,
@@ -224,6 +240,7 @@ export function ConversationSidePanelProvider({
     [
       currentPanel,
       openPanel,
+      togglePanel,
       closePanel,
       onPanelClosed,
       setPanelRef,

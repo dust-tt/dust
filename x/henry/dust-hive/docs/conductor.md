@@ -9,11 +9,13 @@ The same pattern works for any external workspace manager:
 2. Run `dust-hive adopt --path <worktree> --name <env>` after the tool creates a
    worktree.
 3. Run `dust-hive start <env>` to keep the cold environment ready.
-4. Run `dust-hive unregister <env>` when the external workspace is archived.
+4. Install a local Git hook that copies repo-local Claude skills into each
+   worktree and points `.codex` at `.claude`.
+5. Run `dust-hive unregister <env>` when the external workspace is archived.
 
-Do not warm environments from hooks. A cold environment with `sdk` and `sparkle`
-running is enough for normal agent work. Run `dust-hive warm <env>` manually
-only when you need the full app stack.
+Do not warm environments automatically from setup scripts. A cold environment
+with `sdk` and `sparkle` running is enough for normal agent work. Run
+`dust-hive warm <env>` manually only when you need the full app stack.
 
 ## 0. Pick your Dust checkout path
 
@@ -84,7 +86,70 @@ paste the full path.
 The root must be under the main Dust checkout. DustHive relies on this for the
 shared repo layout and `node_modules` behavior.
 
-## 3. Add Conductor scripts
+## 3. Install the worktree hook
+
+Git worktrees do not copy ignored local files. Install a local `post-checkout`
+hook so skills are present as soon as `git worktree add` finishes, before
+Conductor starts its first agent process.
+
+Run this once from the main Dust checkout:
+
+```bash
+cd "$DUST_REPO"
+mkdir -p .husky
+grep -qxF '.husky/' .git/info/exclude || echo '.husky/' >> .git/info/exclude
+
+cat > .husky/post-checkout <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+worktree="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+common_git_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+
+if [ -z "$worktree" ] || [ -z "$common_git_dir" ]; then
+  exit 0
+fi
+
+case "$common_git_dir" in
+  /*) ;;
+  *) common_git_dir="$(cd "$worktree" && cd "$common_git_dir" && pwd -P)" ;;
+esac
+
+main_checkout="${common_git_dir%/.git}"
+
+if [ "$worktree" = "$main_checkout" ]; then
+  exit 0
+fi
+
+if [ ! -d "$main_checkout/.claude/skills" ]; then
+  exit 0
+fi
+
+mkdir -p "$worktree/.claude"
+rm -rf "$worktree/.claude/skills"
+cp -R "$main_checkout/.claude/skills" "$worktree/.claude/skills"
+
+if [ -f "$main_checkout/.claude/config.toml" ]; then
+  cp "$main_checkout/.claude/config.toml" "$worktree/.claude/config.toml"
+fi
+
+rm -rf "$worktree/.codex"
+ln -s .claude "$worktree/.codex"
+EOF
+
+chmod +x .husky/post-checkout
+git config core.hooksPath "$DUST_REPO/.husky"
+```
+
+Keep your main checkout in the same layout:
+
+```bash
+if [ ! -e .codex ]; then
+  ln -s .claude .codex
+fi
+```
+
+## 4. Add Conductor scripts
 
 Create a machine-local Conductor config in the main Dust checkout:
 
@@ -116,13 +181,7 @@ else
   dust-hive adopt \
     --path "$CONDUCTOR_WORKSPACE_PATH" \
     --name "$CONDUCTOR_WORKSPACE_NAME" \
-    --base-branch "$CONDUCTOR_DEFAULT_BRANCH" \
-    --wait
-fi
-
-mkdir -p .codex/skills
-if [ -d .claude/skills ]; then
-  cp -R .claude/skills/. .codex/skills/
+    --base-branch "$CONDUCTOR_DEFAULT_BRANCH"
 fi
 '''
 
@@ -149,7 +208,7 @@ npx -y @taplo/cli lint \
   .conductor/settings.local.toml
 ```
 
-## 4. Create a Conductor workspace
+## 5. Create a Conductor workspace
 
 Create a new Conductor workspace for Dust.
 
@@ -157,6 +216,13 @@ Conductor will create a city-named worktree such as:
 
 ```text
 <your Dust checkout>/.hives/external/conductor/workspaces/dust/kyoto
+```
+
+The Git hook creates:
+
+```text
+<worktree>/.claude/skills
+<worktree>/.codex -> .claude
 ```
 
 The setup script registers that worktree with DustHive as env `kyoto`.
@@ -178,7 +244,7 @@ Services:
 Docker: Stopped
 ```
 
-## 5. Make Conductor terminals load the env
+## 6. Make Conductor terminals load the env
 
 Conductor terminals can enter the worktree after zsh startup. When that happens,
 the normal `eval "$(direnv hook zsh)"` line has already run and the DustHive env
@@ -225,7 +291,7 @@ Then allow direnv once from inside the Conductor workspace:
 direnv allow
 ```
 
-For a new Conductor workspace, the setup script in step 3 creates both
+For a new Conductor workspace, the setup script in step 4 creates both
 `<worktree>/.envrc` and `~/.dust-hive/envs/<env-name>/env.sh`.
 
 For an existing Conductor workspace created before the setup script was added,
@@ -234,7 +300,8 @@ run this once from inside that workspace:
 ```bash
 workspace="$(git rev-parse --show-toplevel)"
 env_name="$(basename "$workspace")"
-dust-hive adopt --path "$workspace" --name "$env_name" --base-branch main --wait
+"$DUST_REPO/.husky/post-checkout"
+dust-hive adopt --path "$workspace" --name "$env_name" --base-branch main
 dust-hive start "$env_name"
 direnv allow
 ```
@@ -243,7 +310,7 @@ Do not add `source ~/.dust-hive/envs/<env-name>/env.sh` to `~/.zshrc`. That
 loads one env globally. The hook above lets direnv load and unload the right env
 based on the current directory.
 
-## 6. Optional `cn` CLI for nicer names
+## 7. Optional `cn` CLI for nicer names
 
 Conductor creates city-named workspaces. The city directory and DustHive env
 name should stay stable, but you can rename the Git branch and Conductor display
@@ -464,7 +531,7 @@ dust-hive unregister <env-name>
 
 ### Conductor terminal env is still missing
 
-Make sure the zsh fallback from step 5 is in `~/.zshrc`, restart the Conductor
+Make sure the zsh fallback from step 6 is in `~/.zshrc`, restart the Conductor
 terminal, then run:
 
 ```bash
@@ -472,7 +539,7 @@ direnv allow
 ```
 
 If this workspace existed before you added the Conductor setup script, adopt it
-once with the command in step 5.
+once with the command in step 6.
 
 ### The workspace is warm after creation
 
