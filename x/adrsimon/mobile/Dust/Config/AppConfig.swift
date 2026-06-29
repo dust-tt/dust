@@ -56,8 +56,8 @@ enum AppConfig {
             "/api/v1/w/\(workspaceId)/assistant/agent_configurations"
         }
 
-        static func transcribe(workspaceId: String) -> String {
-            "/api/w/\(workspaceId)/services/transcribe"
+        static func transcribeToken(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/services/transcribe/get-token"
         }
 
         static func files(workspaceId: String) -> String {
