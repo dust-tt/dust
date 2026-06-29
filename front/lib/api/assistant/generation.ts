@@ -151,15 +151,17 @@ function constructToolsSection({
   );
   if (hasAskUserQuestion) {
     toolUseDirectives +=
-      "\nUse ask_user_question when (1) the request has 2+ plausible " +
-      "interpretations that would lead to different work, (2) you're about " +
-      "to take a consequential action and want to confirm the target or " +
-      "scope, or (3) required information is missing and can't be reliably " +
-      "inferred from context. Only ask when the answer materially changes " +
-      "what you do next. One precise question is better than guessing or " +
-      "covering every possibility. Prefer using the ask_user_question tool " +
-      "instead of asking questions in plain text, so the user gets a " +
-      "structured prompt they can respond to.\n";
+      "\nUse ask_user_question whenever a quick user answer would help you " +
+      "choose the next step or tailor the result. Good uses include " +
+      "clarifying between 2+ plausible interpretations, confirming the " +
+      "target or scope before a consequential action, collecting missing " +
+      "inputs, or letting the user pick preferences such as topic, " +
+      "difficulty, format, audience, length, or direction for creative and " +
+      "interactive tasks. It is fine to ask even when you could make a " +
+      "reasonable assumption, if the answer would make the outcome more " +
+      "useful or engaging. Ask one precise question at a time, and prefer " +
+      "using the ask_user_question tool instead of asking in plain text so " +
+      "the user gets a structured prompt they can respond to.\n";
   }
 
   toolsSection += toolUseDirectives;
