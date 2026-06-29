@@ -10,7 +10,6 @@ import {
 } from "@app/lib/metronome/constants";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
@@ -79,12 +78,7 @@ export const grantUserFreeCreditsPlugin = createPlugin({
     }
     const { userId, amountCredits } = validationResult.data;
 
-    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
-    if (!workspaceResource) {
-      return new Err(new Error(`Workspace not found: wId='${workspace.sId}'`));
-    }
-
-    const { metronomeCustomerId } = workspaceResource;
+    const { metronomeCustomerId } = workspace;
     if (!metronomeCustomerId) {
       return new Err(
         new Error(
