@@ -1,6 +1,7 @@
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
 const PostSandboxFunctionResultRequestBodySchema = z
@@ -9,14 +10,9 @@ const PostSandboxFunctionResultRequestBodySchema = z
   })
   .strict();
 
-type PostSandboxFunctionResultResponse = {
-  success: true;
-};
-
-// Mounted at /api/v1/sandbox/sandbox-functions/result and
-// /api/v1/w/:wId/sandbox/sandbox-functions/result. sandboxAuth is applied by
-// the parent sandbox sub-app, so ctx.get("auth") and ctx.get("sandboxClaims")
-// are always available here.
+// Mounted at /api/v1/w/:wId/sandbox/sandbox-functions/result. sandboxAuth is
+// applied by the parent sandbox sub-app, so ctx.get("auth") and
+// ctx.get("sandboxClaims") are always available here.
 const app = sandboxApp();
 
 /**
@@ -26,7 +22,7 @@ const app = sandboxApp();
 app.post(
   "/",
   validate("json", PostSandboxFunctionResultRequestBodySchema),
-  async (ctx): HandlerResult<PostSandboxFunctionResultResponse> => {
+  async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const sandboxClaims = ctx.get("sandboxClaims");
     const { result } = ctx.req.valid("json");
