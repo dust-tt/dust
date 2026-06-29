@@ -9,6 +9,7 @@ import {
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
 import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
@@ -141,9 +142,12 @@ function ordinalDay(day: number): string {
 interface UsageSectionProps {
   owner: WorkspaceType;
   onClose: () => void;
+  // The popover stays mounted while closed (animated exit), so gate fetches on
+  // visibility to avoid polling the analytics endpoint from a hidden dialog.
+  visible: boolean;
 }
 
-function UsageSection({ owner, onClose }: UsageSectionProps) {
+function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
   const { isAdmin, subscription } = useAuth();
 
   const isCreditBased = isCreditPricedPlan(subscription.plan);
@@ -240,6 +244,13 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
             </div>
           )}
         </section>
+      )}
+
+      {isCreditBased && (
+        <MyAwuUsageFromAnalyticsChart
+          workspaceId={owner.sId}
+          disabled={!visible}
+        />
       )}
 
       {isAdmin && (
@@ -810,7 +821,11 @@ export function UserSettingsPopover({
               <PersonalInfoSection owner={owner} />
             )}
             {activeSection === "usage" && (
-              <UsageSection owner={owner} onClose={() => onOpenChange(false)} />
+              <UsageSection
+                owner={owner}
+                onClose={() => onOpenChange(false)}
+                visible={open}
+              />
             )}
             {activeSection === "customization" && <CustomizationSection />}
             {activeSection === "notifications" && (
