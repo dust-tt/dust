@@ -234,4 +234,32 @@ impl DustApiClient {
 
         self.poll_action_result(&action_id).await
     }
+
+    /// Deliver a completed function's response to the sandbox-functions result
+    /// endpoint (`/api/v1/sandbox/sandbox-functions/result`, relative to
+    /// `DUST_API_URL`). The body carries the function name and the runner's
+    /// response JSON. Returns `Ok` on a 2xx; the response body is ignored, so an
+    /// empty/ack response is fine.
+    pub async fn post_function_result(
+        &self,
+        function: &str,
+        result: &serde_json::Value,
+    ) -> anyhow::Result<()> {
+        let url = self.url("sandbox/sandbox-functions/result");
+        let body = serde_json::json!({ "function": function, "result": result });
+        let resp = self
+            .client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .context(format!("POST {url}"))?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            bail!("POST {url} returned {status}: {text}");
+        }
+        Ok(())
+    }
 }
