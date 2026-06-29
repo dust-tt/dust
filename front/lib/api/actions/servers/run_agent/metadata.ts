@@ -111,7 +111,6 @@ export const RUN_AGENT_SERVER = {
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
-    instructions: null,
   },
   // The actual tool name is dynamic, but we need a placeholder tool
   // with the configurable properties schema so that the UI can detect that this server

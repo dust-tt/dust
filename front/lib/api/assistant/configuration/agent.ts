@@ -6,6 +6,7 @@ import {
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   enrichAgentConfigurations,
+  getModelForAgentConfiguration,
   isSelfHostedImageWithValidContentType,
 } from "@app/lib/api/assistant/configuration/helpers";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
@@ -252,6 +253,43 @@ export async function listsAgentConfigurationVersions<
     : LightAgentConfigurationType[];
 }
 
+async function fetchLatestWorkspaceAgentModels(
+  auth: Authenticator,
+  workspaceAgentIds: string[]
+): Promise<AgentConfigurationModel[]> {
+  if (workspaceAgentIds.length === 0) {
+    return [];
+  }
+  // Use window function for optimal performance - single query, single pass
+  const query = `
+    SELECT *
+    FROM (
+      SELECT *,
+              ROW_NUMBER() OVER (
+                PARTITION BY "sId"
+                ORDER BY version DESC
+              ) as rn
+      FROM agent_configurations
+      WHERE "workspaceId" = :workspaceId
+        AND "sId" IN (:agentIds)
+    ) ranked_agents
+    WHERE rn = 1
+    ORDER BY version DESC
+  `;
+
+  return (
+    (await AgentConfigurationModel.sequelize?.query(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentIds: workspaceAgentIds,
+      },
+      model: AgentConfigurationModel,
+      mapToModel: true,
+    })) ?? []
+  );
+}
+
 /**
  * Get the latest versions of multiple agents.
  */
@@ -291,33 +329,10 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let workspaceAgents: AgentConfigurationType[] = [];
     if (workspaceAgentIds.length > 0) {
-      // Use window function for optimal performance - single query, single pass
-      const query = `
-        SELECT *
-        FROM (
-          SELECT *,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY "sId"
-                    ORDER BY version DESC
-                  ) as rn
-          FROM agent_configurations
-          WHERE "workspaceId" = :workspaceId
-            AND "sId" IN (:agentIds)
-        ) ranked_agents
-        WHERE rn = 1
-        ORDER BY version DESC
-      `;
-
-      const agentModels =
-        (await AgentConfigurationModel.sequelize?.query(query, {
-          type: QueryTypes.SELECT,
-          replacements: {
-            workspaceId: owner.id,
-            agentIds: workspaceAgentIds,
-          },
-          model: AgentConfigurationModel,
-          mapToModel: true,
-        })) ?? [];
+      const agentModels = await fetchLatestWorkspaceAgentModels(
+        auth,
+        workspaceAgentIds
+      );
 
       const allowedAgentModels = await filterAgentsByRequestedSpaces(
         auth,
@@ -326,7 +341,9 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
       workspaceAgents = await enrichAgentConfigurations(
         auth,
         allowedAgentModels,
-        { variant }
+        {
+          variant,
+        }
       );
     }
 
@@ -384,6 +401,35 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
         : AgentConfigurationType) || null
     );
   });
+}
+
+export type AgentLabel = {
+  sId: string;
+  name: string;
+  pictureUrl: string | null;
+  model: AgentModelConfigurationType;
+};
+
+export async function getAgentLabelsByIds(
+  auth: Authenticator,
+  agentIds: string[]
+): Promise<AgentLabel[]> {
+  if (!auth.hasPermission("workspace:view_analytics")) {
+    return [];
+  }
+
+  const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
+  const agentModels = await fetchLatestWorkspaceAgentModels(
+    auth,
+    workspaceAgentIds
+  );
+
+  return agentModels.map((agent) => ({
+    sId: agent.sId,
+    name: agent.name,
+    pictureUrl: agent.pictureUrl,
+    model: getModelForAgentConfiguration(agent),
+  }));
 }
 
 /**

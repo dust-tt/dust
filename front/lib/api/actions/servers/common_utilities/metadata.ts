@@ -113,7 +113,6 @@ export const COMMON_UTILITIES_SERVER = {
     icon: "ActionAtomIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => ({
     name: t.name,

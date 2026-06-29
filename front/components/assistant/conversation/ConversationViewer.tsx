@@ -17,6 +17,7 @@ import {
   createPlaceholderUserMessage,
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
+import { handlePlanUpdatedEvent } from "@app/components/assistant/conversation/plan_mode/handle_plan_updated";
 import type {
   ConversationForkNotice,
   VirtuosoMessage,
@@ -64,6 +65,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
+import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
 import {
   type ConversationForkedChildType,
   type ConversationListItemType,
@@ -1056,20 +1058,26 @@ export const ConversationViewer = ({
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
           case "plan_updated": {
-            if (event.isClosed) {
-              if (currentPanelRef.current === "plan") {
-                closePanel();
-              }
-            } else if (!planAutoOpenedRef.current && !isMobileRef.current) {
-              planAutoOpenedRef.current = true;
-              openPanel({ type: "plan" });
-            }
-            void mutate(
-              planFileKey({
-                workspaceId: owner.sId,
-                conversationId: event.conversationId,
-              })
-            );
+            const planKey = planFileKey({
+              workspaceId: owner.sId,
+              conversationId: event.conversationId,
+            });
+            void handlePlanUpdatedEvent(event, {
+              isMobile: isMobileRef.current,
+              isPlanPanelOpen: currentPanelRef.current === "plan",
+              autoOpenedRef: planAutoOpenedRef,
+              // Cache-only write (revalidate: false): resolves without a fetch, cannot reject.
+              writeClosedToCache: () =>
+                void mutate<GetConversationPlanModeResponseBody>(
+                  planKey,
+                  { content: null },
+                  { revalidate: false }
+                ),
+              revalidate: () =>
+                mutate<GetConversationPlanModeResponseBody>(planKey),
+              openPlanPanel: () => openPanel({ type: "plan" }),
+              closePanel,
+            });
             break;
           }
           case "wake_up_updated": {

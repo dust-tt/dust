@@ -23,12 +23,6 @@ const { emitMetronomeUsageEventsActivity } = proxyActivities<typeof activities>(
   }
 );
 
-const { syncMauCountToMetronomeForAllWorkspacesActivity } = proxyActivities<
-  typeof activities
->({
-  startToCloseTimeout: "30 minutes",
-});
-
 const { syncMetronomeSeatCountActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
@@ -67,10 +61,6 @@ export async function trackProgrammaticUsageWorkflow(
   await trackProgrammaticUsageActivity(authType, {
     agentLoopArgs,
   });
-}
-
-export async function syncMauCountToMetronomeWorkflow(): Promise<void> {
-  await syncMauCountToMetronomeForAllWorkspacesActivity();
 }
 
 export async function emitMetronomeUsageEventsWorkflow(

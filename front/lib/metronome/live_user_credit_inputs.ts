@@ -22,7 +22,10 @@ import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { MetronomeSeatBalance } from "@app/lib/metronome/types";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
+import {
+  isSeatBased,
+  normalizeToPoolLimitSeatType,
+} from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -111,10 +114,11 @@ export async function fetchLiveUserCreditInputs({
       seatBalanceAwu = credit.balanceAwu;
       seatStartingBalanceAwu = credit.startingBalanceAwu;
     }
-  } else if (metronomeContractId) {
+  } else if (isSeatBased(seatType) && metronomeContractId) {
     const seatBalancesResult = await listMetronomeSeatBalances({
       metronomeCustomerId,
       metronomeContractId,
+      seatId: userId,
     });
     if (seatBalancesResult.isErr()) {
       return new Err(

@@ -441,7 +441,6 @@ export const POD_MANAGER_SERVER = {
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(POD_MANAGER_TOOLS_METADATA).map((t) => ({
     name: t.name,

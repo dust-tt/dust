@@ -25,7 +25,7 @@ export function useEditors({
     AgentEditorsResponseBody | AgentEditorsLightResponseBody
   > = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
     agentConfigurationId
       ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/editors`
       : null,
@@ -40,6 +40,7 @@ export function useEditors({
     editors: data?.editors ?? emptyArray(),
     isEditorsLoading: !error && !data && !disabled,
     isEditorsError: !!error,
+    isEditorsValidating: isValidating,
     mutateEditors: mutate,
   };
 }

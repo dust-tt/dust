@@ -20,7 +20,7 @@ module.exports = {
       },
       backgroundImage: {
         "rainbow-gradient":
-          "linear-gradient(90deg, #7AC6FF, #1C91FF, #a855f7, #4BABFF, #0A6CC6)",
+          "linear-gradient(90deg, oklch(79.91% 0.111 242.35), oklch(65.39% 0.1893 252.74), oklch(62.68% 0.2325 303.9), oklch(72.15% 0.1521 248.14), oklch(53.19% 0.1614 253.34))",
       },
       keyframes: {
         pulse: {
@@ -28,8 +28,12 @@ module.exports = {
           "50%": { boxShadow: "0 0 0 4px var(--pulse-color)" },
         },
         "ring-pulse": {
-          "0%, 100%": { boxShadow: "0 0 0 0 #1C91FF50" },
-          "50%": { boxShadow: "0 0 0 3px #1C91FF50" },
+          "0%, 100%": {
+            boxShadow: "0 0 0 0 oklch(65.39% 0.1893 252.74 / 0.3137)",
+          },
+          "50%": {
+            boxShadow: "0 0 0 3px oklch(65.39% 0.1893 252.74 / 0.3137)",
+          },
         },
         "opacity-pulse": {
           "0%, 100%": { opacity: "1" },

@@ -53,7 +53,6 @@ export const USER_MENTIONS_SERVER = {
     icon: "ActionMegaphoneIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(USER_MENTIONS_TOOLS_METADATA).map((t) => ({
     name: t.name,

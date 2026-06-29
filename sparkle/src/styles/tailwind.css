@@ -45,6 +45,12 @@
 @source inline("s:grid-rows-2 s:grid-rows-3 s:grid-rows-4 s:grid-rows-5 s:label-xs s:label-sm s:label-base s:copy-xs s:copy-sm s:copy-base s:copy-lg s:copy-xl s:heading-base s:heading-lg s:heading-xl s:heading-2xl s:heading-3xl s:heading-4xl s:heading-5xl s:heading-6xl s:heading-7xl s:heading-8xl s:heading-9xl s:heading-mono-lg s:heading-mono-xl s:heading-mono-2xl s:heading-mono-3xl s:heading-mono-4xl s:heading-mono-5xl s:heading-mono-6xl s:heading-mono-7xl s:heading-mono-8xl s:heading-mono-9xl");
 
 @layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
   /* v4 Preflight no longer sets cursor: pointer on buttons (matches the
      native browser default). Restore the v3 behavior so interactive
      buttons keep the pointer cursor. */

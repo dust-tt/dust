@@ -1293,6 +1293,10 @@ export async function syncSeatCount({
       resolvedContract = fetched.value;
     }
 
+    if (!(await hasContractSeatSubscription(resolvedContract))) {
+      return new Ok(undefined);
+    }
+
     const productSeatTypes = await getProductSeatTypes();
     // Only entitled seat subscriptions are billable. Every seat product exists
     // on every (non-legacy) contract, but setting a quantity on a non-entitled

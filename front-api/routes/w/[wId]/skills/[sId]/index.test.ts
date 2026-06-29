@@ -6,6 +6,7 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -139,6 +140,40 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data).toHaveProperty("skill");
     expect(data.skill.sId).toBe(skill.sId);
     expect(data.skill.name).toBe("Test Skill");
+  });
+
+  it("should hide instructions for a code-defined skill that has not opted in", async () => {
+    // Code-defined skills hide their prompt from the front-end by default; only
+    // skills that set exposeInstructions (e.g. docs/pptx/xlsx) surface it. Frames
+    // is intentionally kept opaque.
+    const { workspace } = await setupTest({ requestUserRole: "admin" });
+
+    const response = await getSkill(workspace, "frames");
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.sId).toBe("frames");
+    expect(data.skill.instructions).toBeNull();
+    expect(data.skill.instructionsHtml).toBeNull();
+  });
+
+  it("should expose instructions for an opted-in code-defined skill", async () => {
+    // pptx sets exposeInstructions: true, so its prompt is surfaced on the detail
+    // fetch as plain markdown (instructionsHtml stays null). The skill is gated
+    // behind the computer feature, so enable it first.
+    const { workspace, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+    await FeatureFlagFactory.basic(requestUserAuth, "sandbox_tools");
+
+    const response = await getSkill(workspace, "pptx");
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.sId).toBe("pptx");
+    expect(typeof data.skill.instructions).toBe("string");
+    expect(data.skill.instructions.length).toBeGreaterThan(0);
+    expect(data.skill.instructionsHtml).toBeNull();
   });
 
   it("should return child skills", async () => {

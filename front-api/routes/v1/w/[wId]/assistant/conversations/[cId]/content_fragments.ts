@@ -5,7 +5,10 @@ import {
   isContentFragmentInput,
   isContentFragmentInputWithInlinedContent,
 } from "@app/types/api/assistant";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isSandboxFunctionContentType,
+} from "@app/types/files";
 import {
   type PostContentFragmentResponseType,
   PublicPostContentFragmentRequestBodySchema,
@@ -154,7 +157,8 @@ app.post(
 
     const publicContentFragment =
       !contentFragmentRes.value ||
-      isInteractiveContentType(contentFragmentRes.value.contentType)
+      isInteractiveContentType(contentFragmentRes.value.contentType) ||
+      isSandboxFunctionContentType(contentFragmentRes.value.contentType)
         ? undefined
         : {
             ...contentFragmentRes.value,

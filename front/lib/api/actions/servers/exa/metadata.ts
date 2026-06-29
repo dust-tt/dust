@@ -88,7 +88,6 @@ export const EXA_SERVER = {
     authorization: null,
     icon: "ActionMagnifyingGlassIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(EXA_TOOLS_METADATA).map((t) => ({
     name: t.name,

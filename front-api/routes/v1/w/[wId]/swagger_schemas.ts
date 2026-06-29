@@ -676,18 +676,9 @@
  *         canWrite:
  *           type: boolean
  *           description: Whether the authenticated actor can edit the skill
- *         isExtendable:
- *           type: boolean
- *           deprecated: true
- *           description: Deprecated compatibility field. Always false.
  *         isDefault:
  *           type: boolean
  *           description: Whether this skill is enabled by default
- *         extendedSkillId:
- *           type: string
- *           nullable: true
- *           deprecated: true
- *           description: Deprecated compatibility field. Always null.
  *         instructions:
  *           type: string
  *           nullable: true

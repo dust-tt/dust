@@ -1,6 +1,5 @@
 import type { GetConversationSandboxResponseBody } from "@app/lib/api/assistant/conversation/sandbox";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -33,10 +32,7 @@ app.get(
       });
     }
 
-    const sandbox = await SandboxResource.fetchByConversation(
-      auth,
-      conversation.toJSON()
-    );
+    const sandbox = await ConversationResource.fetchSandbox(auth, conversation);
 
     return ctx.json({
       sandboxStatus: sandbox?.status ?? null,

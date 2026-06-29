@@ -7,9 +7,8 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import {
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
   GEMINI_3_1_PRO_MODEL_CONFIG,
-  GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import {
   MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
@@ -131,7 +130,7 @@ export function selectEnabledModel(
 
 const ORDERED_FAST_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_SMALL_MODEL_CONFIG,
-  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
 ];
 
 export function getFastestWhitelistedModel(
@@ -168,7 +167,7 @@ export function getLargeWhitelistedModel(
 const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_5_MINI_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
 ];

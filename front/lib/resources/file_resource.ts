@@ -239,9 +239,10 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
+    // Serve what renders: a published frame's bundle (processed), else the source.
     const content = await r.value.file.getFileContent(
       r.value.workspace,
-      "original"
+      r.value.file.getRenderableVersion()
     );
     if (!content) {
       return null;
@@ -650,6 +651,24 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
+   * The version the viz engine should render for a frame. A published frame's bundle is stored
+   * as the processed version. Until a frame is published (no bundle) the source ("original")
+   * renders. Non-frame files always render their original, so this is safe to call generically.
+   */
+  getRenderableVersion(): FileVersion {
+    // Frame-specific signal, deliberately kept in useCaseMetadata rather than a FileResource field
+    // to avoid growing frame concerns on this generic resource. A dedicated Frame data model will
+    // likely own this soon.
+    if (
+      this.isInteractiveContent &&
+      this.useCaseMetadata?.frameBundleRootPath
+    ) {
+      return "processed";
+    }
+    return "original";
+  }
+
+  /**
    * Read stream for the best available content.
    */
   getContentReadStream(auth: Authenticator): Readable {
@@ -1016,6 +1035,20 @@ export class FileResource extends BaseResource<FileModel> {
     // Increment version after successful upload and mark as ready
     await this.incrementVersion();
     await this.markAsReady(auth);
+  }
+
+  /**
+   * Store derived content as the file's processed version. Unlike {@link uploadContent} it does
+   * not touch the mount path (the processed version is a derived artifact, not a mounted source)
+   * and does not bump the version (which tracks source edits). Frames use it for their built
+   * bundle, the artifact {@link getRenderableVersion} renders.
+   */
+  async uploadProcessed(auth: Authenticator, content: string): Promise<void> {
+    await this.getBucketForVersion("processed").uploadRawContentToBucket({
+      content,
+      contentType: this.contentType,
+      filePath: this.getCloudStoragePath(auth, "processed"),
+    });
   }
 
   async setUseCaseMetadata(auth: Authenticator, metadata: FileUseCaseMetadata) {
@@ -1579,8 +1612,9 @@ export class FileResource extends BaseResource<FileModel> {
           const workspace = renderLightWorkspaceType({
             workspace: auth.getNonNullableWorkspace(),
           });
+          // Recurse into what the nested frame actually renders (its bundle if published).
           const bufferResult = await streamToBuffer(
-            file.getSharedReadStream(workspace, "original")
+            file.getSharedReadStream(workspace, file.getRenderableVersion())
           );
           if (bufferResult.isOk()) {
             nestedContent = bufferResult.value.toString("utf-8") || undefined;

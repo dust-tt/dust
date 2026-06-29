@@ -3,7 +3,6 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/usage_queue/activities";
-import { launchMetronomeGaugeSchedule } from "@app/temporal/usage_queue/client";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
@@ -45,9 +44,6 @@ export async function runUpdateWorkspaceUsageWorker() {
       },
     },
   });
-
-  // Start the Metronome gauge events schedule.
-  await launchMetronomeGaugeSchedule();
 
   await worker.run();
 }

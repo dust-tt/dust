@@ -2,7 +2,7 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockEnsureActive,
+  mockEnsureSandboxActive,
   mockEnsureSandboxEgressOnExec,
   mockGetSandboxImage,
   mockLoggerError,
@@ -17,7 +17,7 @@ const {
   const mockSetupSandboxMount = vi.fn();
   const mockRefreshSandboxMount = vi.fn();
   return {
-    mockEnsureActive: vi.fn(),
+    mockEnsureSandboxActive: vi.fn(),
     mockEnsureSandboxEgressOnExec: vi.fn(),
     mockGetSandboxImage: vi.fn(),
     mockLoggerError: vi.fn(),
@@ -50,9 +50,9 @@ vi.mock("@app/lib/api/sandbox/telemetry", () => ({
   startTelemetry: mockStartTelemetry,
 }));
 
-vi.mock("@app/lib/resources/sandbox_resource", () => ({
-  SandboxResource: {
-    ensureActive: mockEnsureActive,
+vi.mock("@app/lib/resources/conversation_resource", () => ({
+  ConversationResource: {
+    ensureSandboxActive: mockEnsureSandboxActive,
   },
 }));
 
@@ -92,7 +92,7 @@ describe("ensureSandboxReady", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: false })
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Ok(undefined));
@@ -105,7 +105,7 @@ describe("ensureSandboxReady", () => {
   });
 
   it("preps egress, mounts files, and ensures egress on exec for freshly-created sandboxes", async () => {
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
 
@@ -135,7 +135,7 @@ describe("ensureSandboxReady", () => {
   it("starts GCS mount before initial egress prep resolves", async () => {
     const prepStarted = createDeferred<void>();
     const prepResult = createDeferred<Result<void, Error>>();
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
     mockPrepareSandboxEgressBeforeMount.mockImplementation(() => {
@@ -164,7 +164,7 @@ describe("ensureSandboxReady", () => {
   });
 
   it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: true })
     );
 
@@ -220,7 +220,9 @@ describe("ensureSandboxReady", () => {
   });
 
   it("short-circuits when ensureActive fails", async () => {
-    mockEnsureActive.mockResolvedValue(new Err(new Error("ensure failed")));
+    mockEnsureSandboxActive.mockResolvedValue(
+      new Err(new Error("ensure failed"))
+    );
 
     const result = await ensureSandboxReady(
       auth as never,
@@ -234,7 +236,7 @@ describe("ensureSandboxReady", () => {
 
   it("returns the initial egress prep error after also running the GCS mount", async () => {
     const setupError = new Error("setup failed");
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
@@ -254,7 +256,7 @@ describe("ensureSandboxReady", () => {
 
   it("returns the initial egress prep error when both initial phases fail", async () => {
     const setupError = new Error("setup failed");
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
@@ -274,7 +276,7 @@ describe("ensureSandboxReady", () => {
   });
 
   it("short-circuits when mounting conversation files fails", async () => {
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
     mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
@@ -289,7 +291,7 @@ describe("ensureSandboxReady", () => {
   });
 
   it("short-circuits when DustFileSystem.forConversation fails", async () => {
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
     mockForConversation.mockResolvedValue(

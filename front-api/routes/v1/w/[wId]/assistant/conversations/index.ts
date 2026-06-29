@@ -27,6 +27,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithContentNode,
@@ -40,7 +41,10 @@ import type {
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isSandboxFunctionContentType,
+} from "@app/types/files";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
@@ -53,7 +57,6 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-
 import conversation from "./[cId]";
 
 // Mounted at /api/v1/w/:wId/assistant/conversations.
@@ -140,6 +143,18 @@ app.post(
       blocking,
       spaceId,
     } = ctx.req.valid("json");
+
+    // Extremely temporary debug.
+    if (auth.getNonNullableWorkspace().sId === "ba367d3014") {
+      logger.info(
+        {
+          message: "conversations/index",
+          body: ctx.req.valid("json"),
+          rawBody: await ctx.req.text(),
+        },
+        "conversations/index"
+      );
+    }
 
     const origin = message?.context.origin ?? "api";
 
@@ -518,7 +533,8 @@ app.post(
       message: newMessage ?? undefined,
       contentFragment:
         !newContentFragment ||
-        isInteractiveContentType(newContentFragment.contentType)
+        isInteractiveContentType(newContentFragment.contentType) ||
+        isSandboxFunctionContentType(newContentFragment.contentType)
           ? undefined
           : {
               ...newContentFragment,

@@ -10,6 +10,7 @@ import type {
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentFunctionCallContentType,
@@ -276,14 +277,6 @@ export function toTool(tool: AgentActionSpecification): Tool {
     ...(tool.deferLoading ? { defer_loading: true } : {}),
   };
 }
-
-// Tool search lets the model discover deferred (cold) tools on demand without
-// loading their schemas into the cached prefix. bm25 uses natural-language
-// queries, which match well across diverse MCP tool names and descriptions.
-const TOOL_SEARCH_TOOL = {
-  type: "tool_search_tool_bm25_20251119",
-  name: "tool_search_tool_bm25",
-} as const;
 
 // Builds the Anthropic `tools` array from the agent's tool specifications.
 // Cold specs carry `deferLoading`, which toTool maps to `defer_loading`. When

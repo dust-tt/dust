@@ -14,11 +14,6 @@ import {
   getUsageType,
 } from "@app/lib/metronome/events";
 import {
-  hasMauSubscriptionInContract,
-  syncMauCount,
-} from "@app/lib/metronome/mau_sync";
-import { getActiveContract } from "@app/lib/metronome/plan_type";
-import {
   AgentMessageModel,
   MessageModel,
   UserMessageModel,
@@ -32,10 +27,8 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
@@ -433,73 +426,6 @@ export async function emitMetronomeUsageEventsActivity(
   });
 
   await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
-}
-
-/**
- * Daily sync of the MAU count to Metronome for all workspaces.
- */
-export async function syncMauCountToMetronomeForAllWorkspacesActivity(): Promise<void> {
-  // Only workspaces with a metronomeCustomerId.
-  const allWorkspaces = await WorkspaceResource.listAll();
-  const workspaces = allWorkspaces.filter(
-    (w) => w.metronomeCustomerId !== null
-  );
-
-  // Batch-fetch subscriptions for the filtered workspaces to get contract IDs.
-  const subscriptionsByWorkspaceId =
-    await SubscriptionResource.fetchActiveByWorkspacesModelId(
-      workspaces.map((w) => w.id)
-    );
-
-  logger.info(
-    {
-      workspaceCount: workspaces.length,
-    },
-    "[Metronome] Syncing MAU counts for all workspaces"
-  );
-
-  await concurrentExecutor(
-    workspaces,
-    async (workspace) => {
-      const subscription = subscriptionsByWorkspaceId[workspace.id];
-      if (
-        !workspace.metronomeCustomerId ||
-        !subscription?.metronomeContractId
-      ) {
-        return;
-      }
-
-      try {
-        const contract = await getActiveContract(workspace.sId);
-        if (!contract) {
-          return;
-        }
-        if (!hasMauSubscriptionInContract(contract)) {
-          return;
-        }
-
-        const result = await syncMauCount({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          contractId: subscription.metronomeContractId,
-          workspace: renderLightWorkspaceType({ workspace }),
-          contract,
-        });
-        if (result.isErr()) {
-          logger.error(
-            { workspaceId: workspace.sId, error: result.error },
-            "[Metronome] Failed to sync MAU count for workspace"
-          );
-          return;
-        }
-      } catch (err) {
-        logger.error(
-          { workspaceId: workspace.sId, error: err },
-          "[Metronome] Failed to sync MAU count for workspace"
-        );
-      }
-    },
-    { concurrency: 10 }
-  );
 }
 
 /**

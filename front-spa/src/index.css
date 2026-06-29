@@ -5,6 +5,19 @@
 
 @config "../tailwind.config.cjs";
 
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+}
+
 /* Container query variants must be inlined — @tailwindcss/postcss does not
    resolve @custom-variant from @import'ed files. Keep in sync with
    front/styles/container-queries.css (which is still used by CLI builds). */

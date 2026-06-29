@@ -72,7 +72,7 @@ export function InlineActivitySteps({
   const actions = isAgentMessageWithActions ? agentMessage.actions : [];
   const chainOfThought = agentMessage.chainOfThought ?? "";
 
-  const { openPanel } = useConversationSidePanelContext();
+  const { togglePanel } = useConversationSidePanelContext();
 
   const isDone =
     lastAgentStateClassification === "done" ||
@@ -84,7 +84,7 @@ export function InlineActivitySteps({
       onOpenDetails(agentMessage.sId);
       return;
     }
-    openPanel({
+    togglePanel({
       type: "actions",
       messageId: agentMessage.sId,
       actionId,

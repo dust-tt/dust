@@ -132,6 +132,7 @@ export const xlsxSkill = {
     "(sheets, formulas, cached values, formatting) so templates can be " +
     "adapted in place rather than rewritten.",
   instructions: XLSX_SKILL_INSTRUCTIONS,
+  exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
   version: 2,
   icon: "ActionTableIcon",

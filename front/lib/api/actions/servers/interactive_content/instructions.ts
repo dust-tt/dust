@@ -11,12 +11,61 @@ import {
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 
-const INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING = `\
+const UPDATING_SECTION_LEGACY = `\
+### Updating Existing Files:
+- To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
+- Then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
+- The edit tool requires exact text matching, include surrounding context for unique identification
+- Never attempt to edit without first retrieving the current file content
+
+Example:
+
+**Step 1: Retrieve the current file content first**
+\`\`\`
+${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123"
+})
+// This returns the current file content. Examine it carefully to identify the exact text to replace.
+\`\`\`
+
+**Step 2: Make targeted edits using the retrieved content**
+\`\`\`
+${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  expected_replacements: 1,
+})
+\`\`\`
+
+The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
+`;
+
+// Computer-first variant, used when frame_publish is enabled. The Frame's source is mounted in the
+// Computer, so the model edits the file in place and republishes instead of round-tripping through
+// the retrieve and edit tools.
+const UPDATING_SECTION_COMPUTER_FIRST = `\
+### Updating Existing Files (preferred: edit in the Computer):
+
+After a Frame is created, its source file is already mounted in the Computer at \`/files/conversation-<conversationId>/<FrameName>.tsx\`. To update the Frame:
+1. Edit that file in place with your file tools.
+2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` using \`path: conversation-<conversationId>\` (the directory holding the file, not a subdirectory).
+
+Publishing rebuilds the Frame from its source so viewers and shares see the new version. Multi-file Frames work the same way: edit any source file under that directory, keep every source file under it, then publish. A TypeScript or JSX syntax error blocks publishing and is reported back so you can fix it.
+
+### Updating Existing Files (fallback, when the Computer is not available):
+- Use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content, then \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
+- The edit tool requires exact text matching, include surrounding context for unique identification
+- Never attempt to edit without first retrieving the current file content
+`;
+
+const interactiveContentProseBeforeAuthoring = (updatingSection: string) => `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
 
 You have access to an Interactive Content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
@@ -72,34 +121,7 @@ Common pattern: Create from template, then use \`${EDIT_INTERACTIVE_CONTENT_FILE
 This approach works well when adapting existing templates (preserves structure/style, no token cost for base content).
 Typical use cases: Suitable template exists, adapting existing code, saving tokens on large files.
 
-### Updating Existing Files:
-- To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
-- Then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
-- The edit tool requires exact text matching - include surrounding context for unique identification
-- Never attempt to edit without first retrieving the current file content
-
-Example:
-
-**Step 1: Retrieve the current file content first**
-\`\`\`
-${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123"
-})
-// This returns the current file content. Examine it carefully to identify the exact text to replace.
-\`\`\`
-
-**Step 2: Make targeted edits using the retrieved content**
-\`\`\`
-${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123",
-  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
-  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
-  expected_replacements: 1,
-})
-\`\`\`
-
-The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
-
+${updatingSection}
 
 ### Validation
 
@@ -235,4 +257,14 @@ Examples:
 ${INTERACTIVE_CONTENT_CHART_EXAMPLES_V2}
 `;
 
-export const INTERACTIVE_CONTENT_INSTRUCTIONS = `${INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING}\n${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
+const buildInstructions = (updatingSection: string) =>
+  `${interactiveContentProseBeforeAuthoring(updatingSection)}\n${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
+
+// Default (no frame_publish): the model updates Frames through the retrieve and edit tools.
+export const INTERACTIVE_CONTENT_INSTRUCTIONS = buildInstructions(
+  UPDATING_SECTION_LEGACY
+);
+
+// frame_publish enabled: the model edits the mounted source in the Computer and republishes.
+export const INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST =
+  buildInstructions(UPDATING_SECTION_COMPUTER_FIRST);

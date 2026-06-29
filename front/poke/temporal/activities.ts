@@ -50,6 +50,7 @@ import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -158,6 +159,14 @@ export async function scrubSpaceActivity({
   }
 
   assert(space.isDeletable(), "Space cannot be deleted.");
+
+  if (space.isProject()) {
+    const deleteSandboxFunctionsResult =
+      await SandboxFunctionResource.deleteAllForSpace(auth, space);
+    if (deleteSandboxFunctionsResult.isErr()) {
+      throw deleteSandboxFunctionsResult.error;
+    }
+  }
 
   // Delete all the data sources of the spaces.
   const dataSources = await DataSourceResource.listBySpace(auth, space, {
