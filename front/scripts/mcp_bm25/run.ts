@@ -23,6 +23,7 @@ import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interac
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
+import { QUERY_TABLES_V2_SERVER } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import {
   getRunAgentToolDescription,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
@@ -106,6 +107,7 @@ const SERVERS: ServerEntry[] = [
     tools: RUN_AGENT_SAMPLE_TOOLS,
   },
   { name: "data_warehouses", tools: DATA_WAREHOUSES_SERVER.tools },
+  { name: "query_tables_v2", tools: QUERY_TABLES_V2_SERVER.tools },
 ];
 
 function out(line: string): void {

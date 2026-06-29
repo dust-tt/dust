@@ -764,6 +764,20 @@ export const QUERIES: LabeledQuery[] = [
     expected: "data_warehouses.query",
   },
 
+  // --- query_tables_v2 ---
+  {
+    query: "list agent configured table uris",
+    expected: "query_tables_v2.list_tables",
+  },
+  {
+    query: "get the schema for an agent configured table before writing sql",
+    expected: "query_tables_v2.get_database_schema",
+  },
+  {
+    query: "run sql against this agent configured table",
+    expected: "query_tables_v2.execute_database_query",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
