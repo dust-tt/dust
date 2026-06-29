@@ -1,22 +1,30 @@
+import {
+  BillingPeriodSwitch,
+  PaidPlanCards,
+  type PaidPlanTier,
+} from "@app/components/pages/onboarding/SubscriptionPlans";
 import { DontLoseSection } from "@app/components/paywall/DontLoseSection";
-import { TrialPricingCard } from "@app/components/paywall/TrialPricingCard";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAppRouter } from "@app/lib/platform";
 import type { BillingPeriod } from "@app/types/plan";
 import { Card, ContentMessage, DustLogo } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useState } from "react";
+import { useState } from "react";
 
 export function TrialEndedPage() {
-  const { workspace } = useAuth();
+  const { workspace, user: authUser } = useAuth();
   const router = useAppRouter();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
-  const { submit: handleSubscribePlan, isSubmitting } = useSubmitFunction(
-    async (period: BillingPeriod) => {
+  const { submit: handleSubscribe } = useSubmitFunction(
+    async (seatType: PaidPlanTier) => {
+      const query = new URLSearchParams({
+        seatType,
+        billingPeriod,
+        targetUserId: authUser.sId,
+      });
       await router.push(
-        `/w/${workspace.sId}/subscription/checkout?billingPeriod=${period}`
+        `/w/${workspace.sId}/subscription/checkout?${query.toString()}`
       );
     }
   );
@@ -32,25 +40,35 @@ export function TrialEndedPage() {
       </div>
 
       {/* Main content: two columns */}
-      <div className="flex w-full max-w-4xl flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
+      <div className="flex w-full max-w-5xl flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
         {/* Left column: Don't lose section */}
         <div className="flex-1">
           <DontLoseSection owner={workspace} />
         </div>
 
-        {/* Right column: Pricing card */}
-        <Card variant="secondary" size="md" className="flex-1">
-          <TrialPricingCard
-            billingPeriod={billingPeriod}
-            onBillingPeriodChange={setBillingPeriod}
-            onSubscribe={() => handleSubscribePlan(billingPeriod)}
-            isSubmitting={isSubmitting}
-          />
+        {/* Right column: billing toggle + Pro / Max plan cards */}
+        <Card
+          variant="secondary"
+          size="md"
+          className="flex flex-[1.5] flex-col gap-4"
+        >
+          <div className="flex justify-center">
+            <BillingPeriodSwitch
+              defaultValue={billingPeriod}
+              onValueChange={setBillingPeriod}
+            />
+          </div>
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <PaidPlanCards
+              billingPeriod={billingPeriod}
+              onSubscribe={(seatType) => void handleSubscribe(seatType)}
+            />
+          </div>
         </Card>
       </div>
 
       {/* Footer banner */}
-      <div className="mt-12 w-full max-w-4xl">
+      <div className="mt-12 w-full max-w-5xl">
         <ContentMessage
           variant="primary"
           size="lg"
