@@ -52,6 +52,7 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import type {
   AgentFunctionCallContentType,
+  AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
@@ -131,6 +132,7 @@ function toBaseMessages(
             | AgentTextContentType
             | AgentReasoningContentType
             | AgentFunctionCallContentType
+            | AgentProviderPassthroughContentType
         ): BaseMessage[] => {
           switch (c.type) {
             case "text_content":
@@ -168,6 +170,9 @@ function toBaseMessages(
                   signature: c.value.metadata?.thoughtSignature,
                 },
               ];
+            case "provider_passthrough":
+              // Opaque provider block, not yet round-tripped through this router.
+              return [];
             default:
               assertNever(c);
           }

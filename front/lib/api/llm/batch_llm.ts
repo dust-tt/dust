@@ -499,6 +499,7 @@ function eventToStoredStepContent(
     case "token_usage":
     case "tool_call_started":
     case "tool_call_delta":
+    case "provider_passthrough":
       return null;
     default:
       assertNever(event);

@@ -1,19 +1,24 @@
 import type {
   ImageBlockParam,
   MessageParam,
+  ServerToolUseBlockParam,
   TextBlockParam,
   ThinkingBlockParam,
   Tool,
   ToolResultBlockParam,
+  ToolSearchToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
+import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentFunctionCallContentType,
+  AgentProviderPassthroughContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
@@ -103,13 +108,16 @@ function assistantContentToParam(
   content:
     | AgentTextContentType
     | AgentReasoningContentType
-    | AgentFunctionCallContentType,
+    | AgentFunctionCallContentType
+    | AgentProviderPassthroughContentType,
   omittedThinking: boolean
 ):
   | TextBlockParam
   | ImageBlockParam
   | ThinkingBlockParam
   | ToolUseBlockParam
+  | ServerToolUseBlockParam
+  | ToolSearchToolResultBlockParam
   | undefined {
   switch (content.type) {
     case "text_content":
@@ -137,6 +145,15 @@ function assistantContentToParam(
         name: content.value.name,
         input: parseToolArguments(content.value.arguments, content.value.name),
       };
+    }
+    case "provider_passthrough": {
+      // Replay the provider's own tool-search blocks verbatim so interleaved
+      // thinking signatures stay valid. Skip blocks tagged for another provider
+      // or that fail to parse.
+      if (content.value.provider !== ANTHROPIC_PROVIDER_ID) {
+        return undefined;
+      }
+      return parseAnthropicToolSearchBlock(content.value.block) ?? undefined;
     }
   }
 }

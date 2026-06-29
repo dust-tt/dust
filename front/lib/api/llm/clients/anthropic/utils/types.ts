@@ -26,6 +26,8 @@ export type ToolUseState = BaseState & {
 export type ToolSearchState = BaseState & {
   accumulatorType: "tool_search";
   toolName: string;
+  // The server_tool_use block id, needed to replay the block verbatim.
+  toolId: string;
 };
 
 export type StreamState =
