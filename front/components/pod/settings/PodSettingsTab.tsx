@@ -13,12 +13,14 @@ import {
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "@app/lib/api/projects/constants";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
   usePodMetadata,
   useUpdatePodMetadata,
 } from "@app/lib/swr/pods";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
@@ -39,12 +41,19 @@ import {
   ChevronDown,
   ContentMessage,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Globe01,
   Icon,
   InfoCircle,
   Input,
   ScrollArea,
   SearchInput,
+  ShapesPlus,
   SliderToggle,
   TextArea,
   Tooltip,
@@ -53,7 +62,7 @@ import {
   XCircle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 interface PodSettingsTabProps {
@@ -64,6 +73,11 @@ interface PodSettingsTabProps {
 
 const OPEN_POD_DISABLED_TOOLTIP =
   "Open Pods are disabled by your workspace admin.";
+
+const DEFAULT_PILL_BASE_CLASSNAME =
+  "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200";
+const DEFAULT_PILL_INTERACTIVE_CLASSNAME =
+  "cursor-pointer hover:bg-primary-100 hover:border-primary-150 dark:hover:bg-primary-900 dark:hover:border-border-night";
 
 export function PodSettingsTab({
   owner,
@@ -84,6 +98,7 @@ export function PodSettingsTab({
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   const isDefaultAgentEnabled =
     hasFeature("pod_default_agent") || hasWorkspaceDefaultAgentFeature;
+  const isDefaultSkillsEnabled = hasFeature("pod_default_skills");
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -152,6 +167,79 @@ export function PodSettingsTab({
     [confirm, doUpdateMetadata]
   );
 
+  // Default skills for new conversations started in this pod. Stored on pod
+  // metadata and pre-inserted into the input bar of every new conversation
+  // by `useHandleMentions`, as if manually added.
+  const { skills } = useSkills({
+    owner,
+    status: "active",
+    globalSpaceOnly: true,
+    disabled: !isDefaultSkillsEnabled,
+  });
+  const [skillSearchText, setSkillSearchText] = useState("");
+  const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false);
+
+  const defaultSkillIds = useMemo(
+    () => podMetadata?.defaultSkillIds ?? [],
+    [podMetadata]
+  );
+  const selectedDefaultSkillIdSet = new Set(defaultSkillIds);
+  // Resolve the stored ids to skills the current user can see. Ids that no longer resolve
+  // (archived / out of scope) are not rendered; saving the current
+  // selection then drops them.
+  const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+  const selectedDefaultSkills = defaultSkillIds.flatMap((skillId) => {
+    const skill = skillBySId.get(skillId);
+    return skill ? [skill] : [];
+  });
+  const normalizedSkillSearch = skillSearchText.trim().toLowerCase();
+  const addableSkills = skills
+    .filter(
+      (skill) =>
+        !selectedDefaultSkillIdSet.has(skill.sId) &&
+        (normalizedSkillSearch.length === 0 ||
+          skill.name.toLowerCase().includes(normalizedSkillSearch) ||
+          (skill.userFacingDescription ?? "")
+            .toLowerCase()
+            .includes(normalizedSkillSearch))
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const addDefaultSkill = useCallback(
+    async (skillId: string) => {
+      await doUpdateMetadata({
+        defaultSkillIds: [...defaultSkillIds, skillId],
+      });
+    },
+    [doUpdateMetadata, defaultSkillIds]
+  );
+
+  const removeDefaultSkill = useCallback(
+    async (skillId: string) => {
+      await doUpdateMetadata({
+        defaultSkillIds: defaultSkillIds.filter((id) => id !== skillId),
+      });
+    },
+    [doUpdateMetadata, defaultSkillIds]
+  );
+
+  // Memoized so the (memoized) DropdownMenuContent doesn't re-render on every
+  // parent render from a fresh JSX prop. Only changes when the search text does.
+  const skillPickerDropdownHeaders = useMemo(
+    () => (
+      <>
+        <DropdownMenuSearchbar
+          name="search-default-skills"
+          placeholder="Search skills"
+          value={skillSearchText}
+          onChange={setSkillSearchText}
+        />
+        <DropdownMenuSeparator />
+      </>
+    ),
+    [skillSearchText]
+  );
+
   // Trigger pill for the default agent, mirroring the conversations input bar:
   const renderDefaultAgentPill = (interactive: boolean) => (
     <div
@@ -164,9 +252,9 @@ export function PodSettingsTab({
       }
       aria-disabled={!interactive}
       className={cn(
-        "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200",
+        DEFAULT_PILL_BASE_CLASSNAME,
         interactive
-          ? "cursor-pointer hover:bg-primary-100 hover:border-primary-150 dark:hover:bg-primary-900 dark:hover:border-border-night"
+          ? DEFAULT_PILL_INTERACTIVE_CLASSNAME
           : "opacity-50 pointer-events-none"
       )}
     >
@@ -494,6 +582,106 @@ export function PodSettingsTab({
                 </>
               ) : (
                 renderDefaultAgentPill(false)
+              )}
+            </div>
+          </div>
+        )}
+
+        {isDefaultSkillsEnabled && (
+          <div className="flex w-full flex-col gap-2">
+            <div className="heading-lg">Default Skills</div>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              The skills pre-selected when anyone starts a new conversation in
+              this Pod. Members can still edit the skills in each conversation.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Selected skills, each rendered as a pill matching conversation styling.
+               Editors get an inline remove control. */}
+              {selectedDefaultSkills.map((skill) => (
+                <div
+                  key={skill.sId}
+                  aria-label={`Default skill: ${skill.name}`}
+                  className={cn(
+                    DEFAULT_PILL_BASE_CLASSNAME,
+                    !isPodEditor && "opacity-50"
+                  )}
+                >
+                  <Avatar size="xs" icon={getSkillAvatarIcon(skill)} />
+                  <span className="grow truncate notranslate">
+                    {skill.name}
+                  </span>
+                  {isPodEditor && (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${skill.name}`}
+                      className="-mr-1 flex items-center text-faint hover:text-primary dark:text-faint-night dark:hover:text-primary-night"
+                      onClick={() => void removeDefaultSkill(skill.sId)}
+                    >
+                      <Icon visual={XCircle} size="xs" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {isPodEditor && (
+                <DropdownMenu
+                  open={isSkillPickerOpen}
+                  onOpenChange={(open) => {
+                    setIsSkillPickerOpen(open);
+                    if (open) {
+                      setSkillSearchText("");
+                    }
+                  }}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Add a default skill"
+                      className={cn(
+                        DEFAULT_PILL_BASE_CLASSNAME,
+                        DEFAULT_PILL_INTERACTIVE_CLASSNAME
+                      )}
+                    >
+                      <Icon visual={ShapesPlus} size="xs" />
+                      <span className="grow truncate">Add skill</span>
+                      <Icon
+                        visual={ChevronDown}
+                        size="xs"
+                        className="-mr-1 text-faint dark:text-faint-night"
+                      />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-80"
+                    align="start"
+                    dropdownHeaders={skillPickerDropdownHeaders}
+                  >
+                    {addableSkills.length === 0 ? (
+                      <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        {normalizedSkillSearch.length > 0
+                          ? "No skills found"
+                          : "No more skills to add"}
+                      </div>
+                    ) : (
+                      addableSkills.map((skill) => (
+                        <DropdownMenuItem
+                          key={skill.sId}
+                          icon={getSkillAvatarIcon(skill)}
+                          label={skill.name}
+                          description={skill.userFacingDescription ?? undefined}
+                          truncateText
+                          onClick={() => {
+                            void addDefaultSkill(skill.sId);
+                          }}
+                        />
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {!isPodEditor && selectedDefaultSkills.length === 0 && (
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  No default skills configured.
+                </p>
               )}
             </div>
           </div>

@@ -2,6 +2,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   launchOrSignalProjectTodoWorkflow,
   startImmediateProjectTodoWorkflowOnce,
@@ -79,6 +80,7 @@ app.patch(
 
     const featureFlags = await getFeatureFlags(auth);
     const defaultAgentEnabled = featureFlags.includes("pod_default_agent");
+    const defaultSkillsEnabled = featureFlags.includes("pod_default_skills");
 
     if (body.pinnedFramePath !== undefined) {
       const validation = await validatePinnedFramePath(
@@ -116,6 +118,34 @@ app.patch(
       }
     }
 
+    // Validate the requested default skills exist and are active. Both global and
+    // custom (workspace) skills are supported — the mapping table stores each via
+    // its skillReference ({ globalSkillId } or { customSkillId }). Full
+    // replacement: an empty array clears all default skills. Gated behind the
+    // pod_default_skills feature flag.
+    let resolvedDefaultSkills: SkillResource[] | null = null;
+    if (defaultSkillsEnabled && body.defaultSkillIds !== undefined) {
+      const requestedSkillIds = [...new Set(body.defaultSkillIds)];
+      const skills = await SkillResource.fetchByIds(auth, requestedSkillIds);
+      const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+
+      const validatedSkills: SkillResource[] = [];
+      for (const skillId of requestedSkillIds) {
+        const skill = skillBySId.get(skillId);
+        if (!skill || skill.status !== "active") {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Skill "${skillId}" was not found, is not active, or is not usable as a default skill.`,
+            },
+          });
+        }
+        validatedSkills.push(skill);
+      }
+      resolvedDefaultSkills = validatedSkills;
+    }
+
     let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
     const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
@@ -137,6 +167,9 @@ app.patch(
           ? (body.defaultAgentId ?? null)
           : null,
       });
+      if (resolvedDefaultSkills) {
+        await metadata.setDefaultSkills(resolvedDefaultSkills);
+      }
       if (!body.archive) {
         void launchOrSignalProjectTodoWorkflow({
           workspaceId: auth.getNonNullableWorkspace().sId,
@@ -185,6 +218,9 @@ app.patch(
       if (defaultAgentEnabled && body.defaultAgentId !== undefined) {
         await metadata.updateDefaultAgentId(body.defaultAgentId);
       }
+      if (resolvedDefaultSkills) {
+        await metadata.setDefaultSkills(resolvedDefaultSkills);
+      }
       if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
         void launchOrSignalProjectTodoWorkflow({
           workspaceId: auth.getNonNullableWorkspace().sId,
@@ -196,6 +232,16 @@ app.patch(
           workspaceId: auth.getNonNullableWorkspace().sId,
           spaceId: space.sId,
         });
+      }
+    }
+
+    // The default skills live in a separate mapping table, so the in-memory
+    // resource still holds the pre-update set. Re-fetch to reflect the new set
+    // in the response.
+    if (resolvedDefaultSkills) {
+      const refreshed = await ProjectMetadataResource.fetchBySpace(auth, space);
+      if (refreshed) {
+        metadata = refreshed;
       }
     }
 

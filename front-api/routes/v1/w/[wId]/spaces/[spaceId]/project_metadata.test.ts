@@ -115,6 +115,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       archivedAt: null,
       createdAt: expect.anything(),
       defaultAgentId: null,
+      defaultSkillIds: [],
       description: "Test project description",
       lastTodoAnalysisAt: null,
       pinnedFramePath: null,

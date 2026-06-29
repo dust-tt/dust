@@ -96,7 +96,7 @@ import {
   Type01,
   VoicePicker,
 } from "@dust-tt/sparkle";
-import type { Editor } from "@tiptap/react";
+import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import React, {
@@ -143,6 +143,60 @@ export const INPUT_BAR_ACTIONS = [
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
+export interface DefaultSkillReference {
+  sId: string;
+  name: string;
+  icon: string | null;
+}
+
+// Walks the input-bar editor JSON to classify its contents for default-skill
+// syncing. Used to decide whether the pod's default skills can be
+// re-seeded without clobbering what the member has started composing.
+function inspectDefaultSkillEditorState(node: JSONContent | undefined): {
+  skillIds: string[];
+  hasUserContent: boolean;
+} {
+  if (!node) {
+    return { skillIds: [], hasUserContent: false };
+  }
+
+  switch (node.type) {
+    case "skill": {
+      const skillId = node.attrs?.skillId;
+      return {
+        skillIds: typeof skillId === "string" ? [skillId] : [],
+        hasUserContent: false,
+      };
+    }
+    case "text":
+      return {
+        skillIds: [],
+        hasUserContent: (node.text ?? "").trim().length > 0,
+      };
+    case undefined:
+    case "doc":
+    case "paragraph":
+    case "hardBreak":
+      break;
+    default:
+      // Any other node kind (mention, pasted attachment, ...) is user content.
+      return { skillIds: [], hasUserContent: true };
+  }
+
+  let skillIds: string[] = [];
+  let hasUserContent = false;
+  for (const child of node.content ?? []) {
+    const result = inspectDefaultSkillEditorState(child);
+    skillIds = skillIds.concat(result.skillIds);
+    hasUserContent = hasUserContent || result.hasUserContent;
+  }
+  return { skillIds, hasUserContent };
+}
+
+function sameSkillIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
 export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
@@ -168,6 +222,9 @@ export interface InputBarContainerProps {
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  // Skills pre-inserted into a new conversation's editor, as if manually added.
+  defaultSkills?: DefaultSkillReference[];
+  isDefaultSkillsLoading?: boolean;
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
@@ -207,6 +264,8 @@ const InputBarContainer = ({
   getDraft,
   defaultAgentId,
   isDefaultAgentLoading,
+  defaultSkills,
+  isDefaultSkillsLoading,
   isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
@@ -1283,6 +1342,80 @@ const InputBarContainer = ({
     selectedAgent,
     stickyMentions,
   });
+
+  // Keep a new conversation's editor in sync with the pod's default skills,
+  // including right after switching back from the Settings tab.
+  useEffect(() => {
+    if (defaultSkills === undefined) {
+      return;
+    }
+    if (conversation || isAgentBuilder) {
+      return;
+    }
+    // Hold off until the defaults have loaded so we don't reconcile to a empty
+    // set first.
+    if (isDefaultSkillsLoading) {
+      return;
+    }
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    const desiredSkillIds = defaultSkills.map((skill) => skill.sId);
+
+    // Reconcile in a microtask so we run after the draft-restore effect's own
+    // microtask (it is declared above this one).
+    queueMicrotask(() => {
+      if (
+        !editor ||
+        editor.isDestroyed ||
+        !editor.isEditable ||
+        !editor.isInitialized
+      ) {
+        return;
+      }
+
+      const { skillIds: editorSkillIds, hasUserContent } =
+        inspectDefaultSkillEditorState(editor.getJSON());
+
+      // The member has started writing: leave their draft — skills included — untouched.
+      if (hasUserContent) {
+        return;
+      }
+      // Already reflects the current pod defaults.
+      if (sameSkillIds(editorSkillIds, desiredSkillIds)) {
+        return;
+      }
+
+      // The editor holds only default skills and/or whitespace:
+      // replace them with the current defaults.
+      let chain = editor.chain();
+      if (editorSkillIds.length > 0) {
+        chain = chain.clearContent();
+      }
+      for (const skill of defaultSkills) {
+        chain = chain.insertSkillNode({
+          skillId: skill.sId,
+          skillName: skill.name,
+          skillIcon: skill.icon,
+        });
+      }
+      chain.run();
+    });
+  }, [
+    conversation,
+    defaultSkills,
+    isDefaultSkillsLoading,
+    isAgentBuilder,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+  ]);
 
   const buttonSize = useMemo(() => {
     return isMobile ? "sm" : "xs";
