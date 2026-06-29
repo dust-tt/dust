@@ -48,6 +48,8 @@ async function setupSandboxFunction({
   const sandboxFunction = await SandboxFunctionResource.makeNew(adminAuth, {
     space,
     file,
+    slug: "run-function",
+    description: "Run the function.",
     inputSchema,
     outputSchema,
   });

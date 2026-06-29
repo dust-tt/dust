@@ -15,7 +15,7 @@ export function formatSandboxFunctionsList(
 
   const lines = sandboxFunctions.map((fn) =>
     [
-      `- ${fn.file.fileName} (${fn.sId})`,
+      `- ${fn.slug}: ${fn.description}`,
       `  input: ${JSON.stringify(fn.inputSchema)}`,
       `  output: ${JSON.stringify(fn.outputSchema)}`,
     ].join("\n")
