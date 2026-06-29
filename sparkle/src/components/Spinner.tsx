@@ -1,248 +1,189 @@
 import { customColors } from "@sparkle/lib/colors";
-import animColor from "@sparkle/lottie/spinnerColor";
-import animColorLG from "@sparkle/lottie/spinnerColorLG";
-import animColorXS from "@sparkle/lottie/spinnerColorXS";
-import animDark from "@sparkle/lottie/spinnerDark";
-import animDarkLG from "@sparkle/lottie/spinnerDarkLG";
-import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
-import animLight from "@sparkle/lottie/spinnerLight";
-import animLightLG from "@sparkle/lottie/spinnerLightLG";
-import animLightXS from "@sparkle/lottie/spinnerLightXS";
-import Lottie from "lottie-react";
 import React from "react";
 
-type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
 const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
+type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
 
-type SpinnerVariant =
-  | "mono"
-  | "revert"
-  | "light"
-  | "dark"
-  | "color"
-  | SpinnerVariantType;
+const colorVariants = Object.entries(customColors).flatMap(([color, shades]) =>
+  Object.keys(shades).map((shade) => `${color}${shade}` as const)
+);
+
+const SPINNER_VARIANTS = [...colorVariants] as const;
+type SpinnerVariantType = (typeof SPINNER_VARIANTS)[number];
+
+type SpinnerVariant = "mono" | "revert" | "light" | "dark" | SpinnerVariantType;
 
 export interface SpinnerProps {
   size?: SpinnerSizeType;
   variant?: SpinnerVariant;
 }
 
-// Generate all possible color-shade combinations
-const colorVariants = Object.entries(customColors).flatMap(([color, shades]) =>
-  Object.keys(shades).map((shade) => `${color}${shade}` as const)
-);
-
-const SPINNER_VARIANTS = ["color", ...colorVariants] as const;
-
-type SpinnerVariantType = (typeof SPINNER_VARIANTS)[number];
-
-const pxSizeClasses: Record<SpinnerSizeType, string> = {
-  xs: "16",
-  sm: "20",
-  md: "24",
-  lg: "32",
-  xl: "128",
-  "2xl": "192",
+const pxSizeMap: Record<SpinnerSizeType, number> = {
+  xs: 16,
+  sm: 20,
+  md: 24,
+  lg: 32,
+  xl: 128,
+  "2xl": 192,
 };
 
-type LottieColorType = [number, number, number, number];
-
-// Convert hex to RGB array [r, g, b, a]
-const hexToRgba = (hex: string): [number, number, number, number] => {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  return [r, g, b, 1];
+// All sizes target 2px physical stroke (strokeWidth = 2 * 24 / renderedPx).
+// xl and 2xl use strokeWidth=1 so the stroke grows naturally with the SVG scale
+// (1 viewBox unit = 5.3px at 128px, 8px at 192px) — appropriate for display spinners.
+const strokeWidthMap: Record<SpinnerSizeType, number> = {
+  xs: 3, // 2px physical @ 16px
+  sm: 2.4, // 2px physical @ 20px
+  md: 2, // 2px physical @ 24px
+  lg: 1.5, // 2px physical @ 32px
+  xl: 1, // 5.3px physical @ 128px
+  "2xl": 1, // 8px physical @ 192px
 };
 
-const colors: Record<Exclude<SpinnerVariantType, "color">, LottieColorType> = {
-  ...Object.fromEntries(
-    colorVariants.map((variant) => {
-      const color = variant.match(/[a-z]+/)?.[0] as keyof typeof customColors;
-      const shade = variant.match(
-        /\d+/
-      )?.[0] as unknown as keyof (typeof customColors)[typeof color];
-      return [variant, hexToRgba(customColors[color][shade])];
-    })
-  ),
-};
-
-const isColorArray = (arr: unknown): arr is LottieColorType => {
-  return (
-    Array.isArray(arr) &&
-    arr.length === 4 &&
-    arr.every((n) => typeof n === "number")
-  );
-};
-
-// Due to the dynamic nature of Lottie, we use 'any' for the input object.
-// This function recursively replaces color arrays within the Lottie animation object.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const replaceColors = (obj: any, newColor: LottieColorType): any => {
-  if (Array.isArray(obj)) {
-    return obj.map((item) => replaceColors(item, newColor));
-  } else if (obj !== null && typeof obj === "object") {
-    for (const key in obj) {
-      if (isColorArray(obj[key])) {
-        obj[key] = newColor;
-      } else {
-        obj[key] = replaceColors(obj[key], newColor);
-      }
-    }
+const SPINNER_CSS = `
+  @keyframes ssp-spin { to { transform: rotate(360deg); } }
+  @keyframes ssp-dash {
+    0%   { stroke-dasharray:  2 98; stroke-dashoffset:   0; }
+    50%  { stroke-dasharray: 70 30; stroke-dashoffset: -48; }
+    100% { stroke-dasharray:  2 98; stroke-dashoffset: -100; }
   }
-  return obj;
-};
+  .ssp-g   { animation: ssp-spin 1.9s linear     infinite; transform-origin: 12px 12px; }
+  .ssp-arc { animation: ssp-dash 1.9s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .ssp-g, .ssp-arc { animation: none; }
+  }
+`;
+
+interface SpinnerSVGProps {
+  size: SpinnerSizeType;
+  trackColor: string;
+  arcColor: string;
+  trackOpacity?: number;
+  className?: string;
+}
+
+function SpinnerSVG({
+  size,
+  trackColor,
+  arcColor,
+  trackOpacity = 1,
+  className,
+}: SpinnerSVGProps) {
+  const px = pxSizeMap[size];
+  const sw = strokeWidthMap[size];
+  return (
+    <svg
+      width={px}
+      height={px}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="status"
+      aria-label="Loading"
+      className={className}
+    >
+      <style>{SPINNER_CSS}</style>
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        stroke={trackColor}
+        strokeWidth={sw}
+        strokeOpacity={trackOpacity}
+      />
+      <g className="ssp-g">
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          stroke={arcColor}
+          strokeWidth={sw}
+          strokeLinecap="round"
+          pathLength="100"
+          className="ssp-arc"
+        />
+      </g>
+    </svg>
+  );
+}
+
+const SCHEME = {
+  // dark: near-black arc (from original spinnerDark lottie), for use on light backgrounds
+  dark: { trackColor: "#E7E5E4", arcColor: "#020617", trackOpacity: 1 },
+  // light: white arc on semi-transparent track, for use on dark/colored backgrounds
+  light: { trackColor: "#FFFFFF", arcColor: "#FFFFFF", trackOpacity: 0.25 },
+} as const;
+
+function getCustomHex(variant: string): string | null {
+  const match = variant.match(/^([a-zA-Z]+)(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  const [, colorName, shade] = match;
+  const palette = customColors[colorName as keyof typeof customColors];
+  return palette?.[shade as keyof typeof palette] ?? null;
+}
 
 const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
-  const fullSize = parseInt(pxSizeClasses[size], 10);
-
-  // Handle custom color variants
+  // Custom colour variant e.g. "rose300"
   if (
-    variant !== "revert" &&
     variant !== "mono" &&
-    variant !== "color" &&
+    variant !== "revert" &&
     variant !== "light" &&
     variant !== "dark"
   ) {
-    let anim;
-    switch (size) {
-      case "xs":
-      case "sm":
-      case "md":
-        anim = animLightXS;
-        break;
-      case "xl":
-      case "2xl":
-        anim = animLightLG;
-        break;
-      default:
-        anim = animLight;
+    const hex = getCustomHex(variant);
+    if (hex) {
+      return (
+        <SpinnerSVG
+          size={size}
+          trackColor={hex}
+          arcColor={hex}
+          trackOpacity={0.2}
+        />
+      );
     }
-    const animationData = replaceColors(
-      JSON.parse(JSON.stringify(anim)),
-      colors[variant]
-    );
-    return (
-      <Lottie
-        animationData={animationData}
-        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
-        loop
-        autoplay
-      />
-    );
-  }
-
-  // Handle color variant
-  if (variant === "color") {
-    let anim;
-    switch (size) {
-      case "xs":
-      case "sm":
-      case "md":
-        anim = animColorXS;
-        break;
-      case "xl":
-      case "2xl":
-        anim = animColorLG;
-        break;
-      default:
-        anim = animColor;
-    }
-    return (
-      <Lottie
-        animationData={anim}
-        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
-        loop
-        autoplay
-      />
-    );
   }
 
   if (variant === "light") {
-    let anim;
-    switch (size) {
-      case "xs":
-      case "sm":
-      case "md":
-        anim = animLightXS;
-        break;
-      case "xl":
-      case "2xl":
-        anim = animLightLG;
-        break;
-      default:
-        anim = animLight;
-    }
     return (
-      <Lottie
-        animationData={anim}
-        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
-        loop
-        autoplay
+      <SpinnerSVG
+        size={size}
+        trackColor={SCHEME.light.trackColor}
+        arcColor={SCHEME.light.arcColor}
+        trackOpacity={SCHEME.light.trackOpacity}
       />
     );
   }
 
   if (variant === "dark") {
-    let anim;
-    switch (size) {
-      case "xs":
-      case "sm":
-      case "md":
-        anim = animDarkXS;
-        break;
-      case "xl":
-      case "2xl":
-        anim = animDarkLG;
-        break;
-      default:
-        anim = animDark;
-    }
     return (
-      <Lottie
-        animationData={anim}
-        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
-        loop
-        autoplay
+      <SpinnerSVG
+        size={size}
+        trackColor={SCHEME.dark.trackColor}
+        arcColor={SCHEME.dark.arcColor}
       />
     );
   }
 
-  // Handle mono variant (default)
-  let lightAnim;
-  let darkAnim;
-  switch (size) {
-    case "xs":
-    case "sm":
-    case "md":
-      lightAnim = animLightXS;
-      darkAnim = animDarkXS;
-      break;
-    case "xl":
-    case "2xl":
-      lightAnim = animLightLG;
-      darkAnim = animDarkLG;
-      break;
-    default:
-      lightAnim = animLight;
-      darkAnim = animDark;
-  }
+  // mono — dark arc in light mode, light arc in dark mode
+  // revert — the inverse
+  const lightScheme = variant === "mono" ? SCHEME.dark : SCHEME.light;
+  const darkScheme = variant === "mono" ? SCHEME.light : SCHEME.dark;
 
   return (
     <>
-      <Lottie
-        animationData={variant && variant === "mono" ? darkAnim : lightAnim}
+      <SpinnerSVG
+        size={size}
+        trackColor={lightScheme.trackColor}
+        arcColor={lightScheme.arcColor}
+        trackOpacity={lightScheme.trackOpacity}
         className="s-block dark:s-hidden"
-        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
-        loop
-        autoplay
       />
-      <Lottie
-        animationData={variant && variant === "mono" ? lightAnim : darkAnim}
+      <SpinnerSVG
+        size={size}
+        trackColor={darkScheme.trackColor}
+        arcColor={darkScheme.arcColor}
+        trackOpacity={darkScheme.trackOpacity}
         className="s-hidden dark:s-block"
-        style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
-        loop
-        autoplay
       />
     </>
   );
