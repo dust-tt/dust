@@ -1,4 +1,8 @@
-import { Button } from "@dust-tt/sparkle";
+import {
+  ContentMessageAction,
+  ContentMessageInline,
+  Hoverable,
+} from "@dust-tt/sparkle";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
@@ -32,8 +36,8 @@ export function MembersSelectionBanner({
   }
 
   return (
-    <div className="flex flex-row items-center justify-between gap-3 rounded-xl bg-info-50 px-4 py-3 dark:bg-info-950">
-      <div className="flex flex-row flex-wrap items-center gap-x-2 gap-y-1 text-sm text-foreground dark:text-foreground-night">
+    <ContentMessageInline variant="info">
+      <div className="flex flex-row flex-wrap items-center gap-x-2 gap-y-1">
         {isAllAcrossPagesSelected ? (
           <span>
             {selectedCount} {membersLabel(selectedCount)} are selected.
@@ -44,13 +48,9 @@ export function MembersSelectionBanner({
               All {pageCount} {membersLabel(pageCount)} on this page are
               selected.
             </span>
-            <button
-              type="button"
-              className="font-medium text-highlight hover:underline"
-              onClick={onSelectAllAcrossPages}
-            >
+            <Hoverable variant="highlight" onClick={onSelectAllAcrossPages}>
               Select all {totalCount} {membersLabel(totalCount)}
-            </button>
+            </Hoverable>
           </>
         ) : (
           <span>
@@ -58,22 +58,18 @@ export function MembersSelectionBanner({
           </span>
         )}
       </div>
-      <div className="flex flex-shrink-0 flex-row items-center gap-2">
-        <Button
-          size="sm"
-          variant="ghost"
-          label="Clear"
-          onClick={onClear}
-          disabled={disabled}
-        />
-        <Button
-          size="sm"
-          variant="primary"
-          label="Batch edit spend limit"
-          onClick={onBatchEditSpendLimit}
-          disabled={disabled}
-        />
-      </div>
-    </div>
+      <ContentMessageAction
+        variant="ghost"
+        label="Clear"
+        onClick={onClear}
+        disabled={disabled}
+      />
+      <ContentMessageAction
+        variant="primary"
+        label="Batch edit spend limit"
+        onClick={onBatchEditSpendLimit}
+        disabled={disabled}
+      />
+    </ContentMessageInline>
   );
 }
