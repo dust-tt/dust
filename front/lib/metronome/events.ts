@@ -71,16 +71,18 @@ export function isToolCategory(value: string): value is ToolCategory {
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
 const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
+  // Set as basic but overriden as free
+  agent_memory: "basic",
+  agent_router: "basic",
+  common_utilities: "basic",
+  toolsets: "basic",
+
   // Basic (1 AWU) — web search, orchestration, platform utilities.
   "web_search_&_browse": "basic",
   run_agent: "basic",
-  agent_router: "basic",
   agent_sidekick_agent_state: "basic",
   agent_sidekick_context: "basic",
-  agent_memory: "basic",
   run_dust_app: "basic",
-  common_utilities: "basic",
-  toolsets: "basic",
   user_mentions: "basic",
   missing_action_catcher: "basic",
   primitive_types_debugger: "basic",
@@ -176,10 +178,10 @@ export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
 // Internal MCP servers whose tool invocations are always free regardless of
 // the message-level usage type (platform plumbing, not user output).
 const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
+  "agent_memory",
   "agent_router",
   "common_utilities",
   "toolsets",
-  "agent_memory",
 ]);
 
 function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
