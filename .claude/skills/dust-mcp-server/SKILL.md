@@ -37,6 +37,8 @@ front/lib/api/actions/servers/{provider}/
 - Do not forget to add the server to `AVAILABLE_INTERNAL_MCP_SERVER_NAMES` array
 - Server IDs must be stable and unique; never change them once deployed
 - Tool stakes must be configured appropriately (`never_ask`, `low`, `medium`, `high`)
+- Tool descriptions should start with a bare infinitive/base verb like `List`, `Get`, `Search`,
+  `Create`, or `Update`
 - Always implement proper error handling with `Result` types
 - Handle OAuth token refresh automatically through the `withAuth` pattern
 
@@ -163,6 +165,9 @@ Key points:
 
 - `createToolsRecord` automatically adds the `name` property from the object key
 - tool keys become the source of truth
+- tool descriptions start with a bare infinitive/base verb such as `List`, `Get`, `Search`,
+  `Create`, `Update`, or `Retrieve`; avoid noun phrases, articles, gerunds, and third-person
+  verbs because descriptions are part of the BM25 tool-search corpus
 - `stake` values map to review/approval expectations
 
 ### 2. Create `tools/index.ts`
@@ -436,6 +441,7 @@ Validate every external response to catch API drift and unexpected payloads earl
 Before marking implementation complete:
 
 - `metadata.ts` exists and uses `createToolsRecord`
+- tool descriptions start with a bare infinitive/base verb
 - `tools/index.ts` exists and uses `ToolHandlers<typeof METADATA>`
 - `index.ts` default-exports the server factory
 - the server is in `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
