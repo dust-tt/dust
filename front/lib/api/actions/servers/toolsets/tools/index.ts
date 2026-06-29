@@ -129,7 +129,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
 
     const prefixHint = enabledView
       ? ` Their names share the \`${getToolNamePrefix(
-          enabledView?.toJSON().name ?? enabledView?.toJSON().server.name
+          enabledView.toJSON().name ?? enabledView.toJSON().server.name
         )}${TOOL_NAME_SEPARATOR}\` prefix.`
       : "";
 
