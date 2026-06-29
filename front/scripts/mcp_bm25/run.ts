@@ -25,7 +25,6 @@ import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_t
 import {
   getRunAgentToolDescription,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
-  RUN_AGENT_SERVER,
   RUN_AGENT_TOOL_SCHEMA,
 } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
@@ -49,8 +48,8 @@ const RUN_AGENT_SAMPLE_TOOL_SCHEMA = zodToJsonSchema(
 ) as JSONSchema;
 
 // run_agent tools are dynamic: one tool per configured child agent. The static
-// server metadata only contains the builder placeholder, so the harness adds a
-// few representative child-agent tools to sanity-check retrieval.
+// server metadata only contains the builder placeholder, which is never exposed
+// to an agent, so the harness adds representative child-agent tools instead.
 const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
   {
     name: "run_ResearchAnalyst",
@@ -103,7 +102,7 @@ const SERVERS: ServerEntry[] = [
   { name: "snowflake", tools: SNOWFLAKE_SERVER.tools },
   {
     name: "run_agent",
-    tools: [...RUN_AGENT_SERVER.tools, ...RUN_AGENT_SAMPLE_TOOLS],
+    tools: RUN_AGENT_SAMPLE_TOOLS,
   },
 ];
 
