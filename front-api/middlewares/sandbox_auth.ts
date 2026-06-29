@@ -29,17 +29,6 @@ function readHeaders(ctx: Context): Record<string, string> {
  * Mirrors `withSandboxAuthentication` in `front/lib/api/auth_wrappers.ts`.
  */
 export const sandboxAuth = createMiddleware<SandboxCtx>(async (ctx, next) => {
-  const wId = ctx.req.param("wId");
-  if (!wId) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
   const token = ctx.req.header("authorization")?.replace("Bearer ", "");
   if (!token) {
     return apiError(ctx, {
@@ -71,6 +60,7 @@ export const sandboxAuth = createMiddleware<SandboxCtx>(async (ctx, next) => {
     });
   }
 
+  const wId = ctx.req.param("wId") ?? claims.wId;
   const authRes = await Authenticator.fromSandboxToken(claims, wId);
   if (authRes.isErr()) {
     return apiError(ctx, authRes.error);
