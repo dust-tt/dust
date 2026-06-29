@@ -1,3 +1,4 @@
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
@@ -6,7 +7,7 @@ import {
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
-import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import { getToolNamePrefix } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
 import apiConfig from "@app/lib/api/config";
@@ -124,51 +125,23 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       );
     }
 
-    // List the tools that just became available so the model can clearly tell which functions
-    // it can now call (the bare success message made this ambiguous).
-    const enabledViewResource = await MCPServerViewResource.fetchById(
-      auth,
-      toolsetId
-    );
-    if (!enabledViewResource) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `Successfully enabled toolset ${toolsetId}.`,
-        },
-      ]);
-    }
-    const enabledView = enabledViewResource.toJSON();
+    const enabledView = await MCPServerViewResource.fetchById(auth, toolsetId);
 
-    const toolsetName = getMcpServerViewDisplayName(enabledView);
+    const prefixHint = enabledView
+      ? ` Their names share the \`${getToolNamePrefix(
+          enabledView?.toJSON().name ?? enabledView?.toJSON().server.name
+        )}${TOOL_NAME_SEPARATOR}\` prefix.`
+      : "";
 
-    // If there is no toolsMetadata (= undefined or empty array), every tool is enabled.
-    const disabledToolNames =
-      enabledView.toolsMetadata
-        ?.filter((tool) => tool.enabled === false)
-        .map((tool) => tool.toolName) ?? [];
-    const enabledTools = enabledView.server.tools.filter(
-      (tool) => !disabledToolNames.includes(tool.name)
-    );
-
-    // Prefix the tool names the same way the agent loop does, so the names listed here match the
-    // ones the model will actually call.
-    const serverName = enabledView.name ?? enabledView.server.name;
-    const toolNames = enabledTools.flatMap((tool) => {
-      const prefixedNameRes = tryGetPrefixedToolName(serverName, tool.name);
-      return prefixedNameRes.isOk() ? [prefixedNameRes.value] : [];
-    });
-
-    const text =
-      toolNames.length > 0
-        ? `Successfully enabled toolset "${toolsetName}". The following tools are now available:\n` +
-          `${toolNames.map((name) => `- \`${name}\``).join("\n")}`
-        : `Successfully enabled toolset "${toolsetName}", but it does not expose any tool.`;
-
+    // The newly enabled tools are not necessarily surfaced directly in the model's context (can
+    // be deferred behind tool search), so nudge it to look them up instead of guessing which
+    // tools exist.
     return new Ok([
       {
         type: "text" as const,
-        text,
+        text:
+          `Successfully enabled toolset ${toolsetId}. Its tools are now available.${prefixHint} ` +
+          "Do not assume which tools exist; look them up before calling them.",
       },
     ]);
   },
