@@ -4,6 +4,9 @@ import React from "react";
 const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
 type SpinnerSizeType = (typeof SPINNER_SIZES)[number];
 
+const SPINNER_TYPES = ["worm", "shapes"] as const;
+type SpinnerTypeType = (typeof SPINNER_TYPES)[number];
+
 const colorVariants = Object.entries(customColors).flatMap(([color, shades]) =>
   Object.keys(shades).map((shade) => `${color}${shade}` as const)
 );
@@ -16,6 +19,7 @@ type SpinnerVariant = "mono" | "revert" | "light" | "dark" | SpinnerVariantType;
 export interface SpinnerProps {
   size?: SpinnerSizeType;
   variant?: SpinnerVariant;
+  type?: SpinnerTypeType;
 }
 
 const pxSizeMap: Record<SpinnerSizeType, number> = {
@@ -39,7 +43,9 @@ const strokeWidthMap: Record<SpinnerSizeType, number> = {
   "2xl": 1, // 8px physical @ 192px
 };
 
-const SPINNER_CSS = `
+// ─── Worm spinner ─────────────────────────────────────────────────────────────
+
+const WORM_CSS = `
   @keyframes ssp-spin { to { transform: rotate(360deg); } }
   @keyframes ssp-dash {
     0%   { stroke-dasharray:  2 98; stroke-dashoffset:   0; }
@@ -53,7 +59,7 @@ const SPINNER_CSS = `
   }
 `;
 
-interface SpinnerSVGProps {
+interface WormSpinnerSVGProps {
   size: SpinnerSizeType;
   trackColor: string;
   arcColor: string;
@@ -61,13 +67,13 @@ interface SpinnerSVGProps {
   className?: string;
 }
 
-function SpinnerSVG({
+function WormSpinnerSVG({
   size,
   trackColor,
   arcColor,
   trackOpacity = 1,
   className,
-}: SpinnerSVGProps) {
+}: WormSpinnerSVGProps) {
   const px = pxSizeMap[size];
   const sw = strokeWidthMap[size];
   return (
@@ -81,7 +87,7 @@ function SpinnerSVG({
       shapeRendering="geometricPrecision"
       className={className}
     >
-      <style>{SPINNER_CSS}</style>
+      <style>{WORM_CSS}</style>
       <circle
         cx="12"
         cy="12"
@@ -106,6 +112,76 @@ function SpinnerSVG({
   );
 }
 
+// ─── Shapes spinner ───────────────────────────────────────────────────────────
+// Single path that morphs sequentially: square → circle → triangle → square.
+// All three shapes are described with the same command structure (M + 4×C + Z)
+// so CSS can interpolate the coordinates smoothly.
+//
+// Paths (viewBox 0 0 24 24, bounding circle r=9, center 12,12):
+//   Square:   sharp-corner cubic beziers
+//   Circle:   standard 4-bezier approximation (k = 0.5523 × 9 ≈ 4.97)
+//   Triangle: equilateral (circumradius 9), top vertex at (12,3),
+//             split into 4 segments with tangent-aligned control points
+
+const SQ =
+  "M 12,3 C 21,3 21,3 21,12 C 21,21 21,21 12,21 C 3,21 3,21 3,12 C 3,3 3,3 12,3 Z";
+const CI =
+  "M 12,3 C 16.97,3 21,7.03 21,12 C 21,16.97 16.97,21 12,21 C 7.03,21 3,16.97 3,12 C 3,7.03 7.03,3 12,3 Z";
+// Triangle: 4 straight-line cubic beziers using the 1/3–2/3 rule.
+// Vertices: top (12,3), bottom-right (19.79,16.5), bottom-left (4.21,16.5).
+// Bottom edge is split at mid (12,16.5); the two segments are collinear so
+// the join is invisible — the bottom reads as a single straight line.
+const TR =
+  "M 12,3 C 14.6,7.5 17.19,12 19.79,16.5 C 17.2,16.5 14.6,16.5 12,16.5 C 9.4,16.5 6.6,16.5 4.21,16.5 C 6.8,12 9.4,7.5 12,3 Z";
+
+const SHAPES_CSS = `
+  @keyframes sss-morph {
+    0%,  15% { d: path('${SQ}'); animation-timing-function: ease-in-out; }
+    33%, 48% { d: path('${CI}'); animation-timing-function: ease-in-out; }
+    67%, 82% { d: path('${TR}'); animation-timing-function: ease-in-out; }
+    100%     { d: path('${SQ}'); }
+  }
+  .sss-p { animation: sss-morph 2.6s linear infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .sss-p { animation: none; }
+  }
+`;
+
+interface ShapesSpinnerSVGProps {
+  size: SpinnerSizeType;
+  color: string;
+  className?: string;
+}
+
+function ShapesSpinnerSVG({ size, color, className }: ShapesSpinnerSVGProps) {
+  const px = pxSizeMap[size];
+  const sw = strokeWidthMap[size];
+  return (
+    <svg
+      width={px}
+      height={px}
+      viewBox="0 0 24 24"
+      fill="none"
+      role="status"
+      aria-label="Loading"
+      shapeRendering="geometricPrecision"
+      className={className}
+    >
+      <style>{SHAPES_CSS}</style>
+      <path
+        d={SQ}
+        stroke={color}
+        strokeWidth={sw}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        className="sss-p"
+      />
+    </svg>
+  );
+}
+
+// ─── Shared color scheme ──────────────────────────────────────────────────────
+
 const SCHEME = {
   // mono on a light background: border-dark track (#DFE0E2) + primary-muted arc (#7B818D)
   monoOnLight: { trackColor: "#DFE0E2", arcColor: "#7B818D", trackOpacity: 1 },
@@ -129,8 +205,56 @@ function getCustomHex(variant: string): string | null {
   return palette?.[shade] ?? null;
 }
 
-const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
-  // Custom colour variant e.g. "rose300"
+// ─── Spinner ──────────────────────────────────────────────────────────────────
+
+const Spinner: React.FC<SpinnerProps> = ({
+  size = "md",
+  variant = "mono",
+  type = "worm",
+}) => {
+  if (type === "shapes") {
+    if (
+      variant !== "mono" &&
+      variant !== "revert" &&
+      variant !== "light" &&
+      variant !== "dark"
+    ) {
+      const hex = getCustomHex(variant);
+      if (hex) {
+        return <ShapesSpinnerSVG size={size} color={hex} />;
+      }
+    }
+    if (variant === "light") {
+      return <ShapesSpinnerSVG size={size} color={SCHEME.light.arcColor} />;
+    }
+    if (variant === "dark") {
+      return <ShapesSpinnerSVG size={size} color={SCHEME.dark.arcColor} />;
+    }
+    const lightColor =
+      variant === "mono"
+        ? SCHEME.monoOnLight.arcColor
+        : SCHEME.monoOnDark.arcColor;
+    const darkColor =
+      variant === "mono"
+        ? SCHEME.monoOnDark.arcColor
+        : SCHEME.monoOnLight.arcColor;
+    return (
+      <>
+        <ShapesSpinnerSVG
+          size={size}
+          color={lightColor}
+          className="s-block dark:s-hidden"
+        />
+        <ShapesSpinnerSVG
+          size={size}
+          color={darkColor}
+          className="s-hidden dark:s-block"
+        />
+      </>
+    );
+  }
+
+  // type === "worm" (default)
   if (
     variant !== "mono" &&
     variant !== "revert" &&
@@ -140,7 +264,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     const hex = getCustomHex(variant);
     if (hex) {
       return (
-        <SpinnerSVG
+        <WormSpinnerSVG
           size={size}
           trackColor={hex}
           arcColor={hex}
@@ -152,7 +276,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
 
   if (variant === "light") {
     return (
-      <SpinnerSVG
+      <WormSpinnerSVG
         size={size}
         trackColor={SCHEME.light.trackColor}
         arcColor={SCHEME.light.arcColor}
@@ -163,7 +287,7 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
 
   if (variant === "dark") {
     return (
-      <SpinnerSVG
+      <WormSpinnerSVG
         size={size}
         trackColor={SCHEME.dark.trackColor}
         arcColor={SCHEME.dark.arcColor}
@@ -171,8 +295,6 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     );
   }
 
-  // mono — faint track + muted-foreground arc, adapts to theme
-  // revert — swapped light/dark assignment
   const lightScheme =
     variant === "mono" ? SCHEME.monoOnLight : SCHEME.monoOnDark;
   const darkScheme =
@@ -180,14 +302,14 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
 
   return (
     <>
-      <SpinnerSVG
+      <WormSpinnerSVG
         size={size}
         trackColor={lightScheme.trackColor}
         arcColor={lightScheme.arcColor}
         trackOpacity={lightScheme.trackOpacity}
         className="s-block dark:s-hidden"
       />
-      <SpinnerSVG
+      <WormSpinnerSVG
         size={size}
         trackColor={darkScheme.trackColor}
         arcColor={darkScheme.arcColor}

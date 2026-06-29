@@ -4,6 +4,7 @@ import React from "react";
 import { Spinner } from "../index_with_tw_base";
 
 const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
+const SPINNER_TYPES = ["worm", "shapes"] as const;
 const SPINNER_VARIANTS = [
   "mono",
   "revert",
@@ -40,11 +41,17 @@ const meta = {
       control: { type: "select" },
       description: "Size of the spinner",
     },
+    type: {
+      options: SPINNER_TYPES,
+      control: { type: "select" },
+      description:
+        "Animation style — worm is the arc/dash spinner, shapes is a single path that morphs sequentially: square → circle → triangle",
+    },
     variant: {
       options: SPINNER_VARIANTS,
       control: { type: "select" },
       description:
-        "Visual variant — mono adapts to the current theme, light/dark force a specific appearance, custom colors (e.g. rose300) tint the spinner",
+        "Color variant — mono adapts to the current theme, light/dark force a specific appearance, custom colors (e.g. rose300) tint the spinner",
     },
   },
 } satisfies Meta<typeof Spinner>;
@@ -56,6 +63,7 @@ export const Playground: Story = {
   args: {
     size: "md",
     variant: "mono",
+    type: "worm",
   },
 };
 
@@ -88,7 +96,33 @@ export const Display: Story = {
 // ─── Variant stories ──────────────────────────────────────────────────────────
 
 export const MonoVariant: Story = {
-  args: { size: "md", variant: "mono" },
+  args: { size: "md", variant: "mono", type: "worm" },
+};
+
+export const ShapesVariant: Story = {
+  name: "Shapes type (morphing)",
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-6">
+      <div className="s-flex s-items-end s-gap-6">
+        {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
+          <div key={size} className="s-flex s-flex-col s-items-center s-gap-2">
+            <Spinner size={size} type="shapes" variant="mono" />
+            <span className="s-text-xs s-text-muted-foreground">{size}</span>
+          </div>
+        ))}
+      </div>
+      <div className="s-flex s-items-center s-gap-6 s-rounded-xl s-bg-slate-900 s-p-6">
+        <div className="s-flex s-flex-col s-items-center s-gap-2">
+          <Spinner size="lg" type="shapes" variant="light" />
+          <span className="s-text-xs s-text-slate-400">light</span>
+        </div>
+        <div className="s-flex s-flex-col s-items-center s-gap-2">
+          <Spinner size="lg" type="shapes" variant="rose300" />
+          <span className="s-text-xs s-text-slate-400">rose300</span>
+        </div>
+      </div>
+    </div>
+  ),
 };
 
 export const OnDark: Story = {
@@ -185,7 +219,14 @@ export const ModalLoading: Story = {
 export const SpinnerExample: Story = {
   render: () => {
     const sizes = SPINNER_SIZES;
-    const variants = ["mono", "dark", "rose300"] as const;
+    const combos = [
+      { type: "worm", variant: "mono" },
+      { type: "worm", variant: "dark" },
+      { type: "worm", variant: "rose300" },
+      { type: "shapes", variant: "mono" },
+      { type: "shapes", variant: "dark" },
+      { type: "shapes", variant: "rose300" },
+    ] as const;
     return (
       <div className="s-flex s-flex-col s-gap-8">
         {sizes.map((size) => (
@@ -194,16 +235,16 @@ export const SpinnerExample: Story = {
               Size = {size.toUpperCase()}
             </div>
             <div className="s-flex s-flex-wrap s-items-center s-gap-8">
-              {variants.map((variant) => (
+              {combos.map(({ type, variant }) => (
                 <div
-                  key={variant}
+                  key={`${type}-${variant}`}
                   className="s-flex s-flex-col s-items-center s-gap-2"
                 >
                   <div className="s-flex s-items-center s-justify-center s-p-4">
-                    <Spinner size={size} variant={variant} />
+                    <Spinner size={size} type={type} variant={variant} />
                   </div>
                   <span className="s-text-xs s-text-muted-foreground">
-                    {variant}
+                    {type}/{variant}
                   </span>
                 </div>
               ))}
