@@ -5,7 +5,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 
-const SET_SPEND_LIMIT_CONCURRENCY = 2;
+const SET_SPEND_LIMIT_CONCURRENCY = 1;
 
 export type SetSpendLimitChunkResult = {
   succeeded: number;
