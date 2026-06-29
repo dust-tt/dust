@@ -360,6 +360,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Publish a Frame's edited source tree into a built bundle so model and live edits become the rendered, shareable Frame.",
     stage: "dust_only",
   },
+  input_bar_model_picker: {
+    description:
+      "Model picker in the conversation input bar: pick a model tier (Fast, Balanced, Powerful, Frontier) or a specific model.",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
