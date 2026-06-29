@@ -81,10 +81,6 @@ const meta = {
       description: "Whether the button should display a dropdown chevron",
       control: "boolean",
     },
-    isPulsing: {
-      description: "Whether the button should have a pulsing ring animation",
-      control: "boolean",
-    },
     isCounter: {
       description: "Whether the button should display an inline counter",
       control: "boolean",
@@ -208,7 +204,6 @@ export const Playground: Story = {
     size: "md",
     isLoading: false,
     isSelect: false,
-    isPulsing: false,
     disabled: false,
     isCounter: false,
     counterValue: "1",
@@ -265,7 +260,7 @@ export const IconButtons: Story = {
   ),
 };
 
-/** Dropdown affordance (isSelect), inline counter, and pulsing. */
+/** Dropdown affordance (isSelect) and inline counter. */
 export const SpecialStates: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
@@ -283,7 +278,6 @@ export const SpecialStates: Story = {
           isCounter
           counterValue="8"
         />
-        <NewButton variant="primary" label="Live" isPulsing />
       </div>
     </div>
   ),

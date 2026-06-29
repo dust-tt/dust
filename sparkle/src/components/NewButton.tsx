@@ -57,11 +57,12 @@ const newButtonVariants = cva(
   cn(
     "s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
     // `transform` stays in the transition list for the `press` scale.
-    "s-transition-[color,background-color,border-color,transform] s-duration-150 s-ease-out",
+    "s-transition-[color,background-color,border-color,transform] s-duration-100 s-ease-out",
     "motion-reduce:s-transition-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
-    // Disabled styling is per-variant (below), not a blanket opacity.
-    "disabled:s-cursor-not-allowed"
+    // Disabled styling is per-variant (below), not a blanket opacity. Disabled
+    // buttons must not show a focus ring.
+    "disabled:s-cursor-not-allowed disabled:focus-visible:s-ring-0"
   ),
   {
     variants: {
@@ -71,12 +72,11 @@ const newButtonVariants = cva(
           "s-bg-gradient-to-b s-from-stone-700 s-to-stone-800",
           "s-text-white",
           SOLID_SHADOW("#364153"),
-          "active:after:s-bg-black/10",
           "disabled:s-from-stone-300 disabled:s-to-stone-400 disabled:s-shadow-none",
           "dark:s-border dark:s-border-border-dark",
           "dark:s-from-white dark:s-to-stone-50 dark:s-text-muted-foreground",
           DARK_OUTLINE_SHADOW,
-          "dark:hover:after:s-bg-gray-950/[0.02] dark:active:after:s-bg-gray-950/[0.04]",
+          "dark:hover:after:s-bg-gray-950/[0.02] dark:active:after:s-bg-gray-950/[0.02]",
           "dark:disabled:s-from-white dark:disabled:s-to-stone-50 dark:disabled:s-shadow-none dark:disabled:s-text-faint"
         ),
         highlight: cn(
@@ -84,7 +84,6 @@ const newButtonVariants = cva(
           "s-bg-gradient-to-b s-from-highlight-400 s-to-highlight-500",
           "s-text-white",
           SOLID_SHADOW("#4BABFF"),
-          "active:after:s-bg-black/10",
           "disabled:s-from-highlight-200 disabled:s-to-highlight-300 disabled:s-shadow-none"
         ),
         warning: cn(
@@ -92,7 +91,6 @@ const newButtonVariants = cva(
           "s-bg-gradient-to-b s-from-red-400 s-to-red-500",
           "s-text-white",
           SOLID_SHADOW("#E76449"),
-          "active:after:s-bg-black/10",
           "disabled:s-from-red-200 disabled:s-to-red-300 disabled:s-shadow-none"
         ),
         outline: cn(
@@ -101,44 +99,43 @@ const newButtonVariants = cva(
           "s-bg-gradient-to-b s-from-white s-to-stone-50",
           "s-text-muted-foreground",
           SOLID_SHADOW("#DFE0E2"),
-          "hover:after:s-bg-gray-950/[0.02] active:after:s-bg-gray-950/[0.04]",
+          "hover:after:s-bg-gray-950/[0.02] active:after:s-bg-gray-950/[0.02]",
           "disabled:s-shadow-none disabled:s-text-faint",
           "dark:s-border-0 dark:s-from-stone-700 dark:s-to-stone-800 dark:s-text-white",
           DARK_SOLID_SHADOW,
-          "dark:active:after:s-bg-black/10",
           "dark:disabled:s-from-stone-300 dark:disabled:s-to-stone-400 dark:disabled:s-text-white dark:disabled:s-shadow-none"
         ),
         ghost: cn(
           "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-bg-black/[0.02] active:s-bg-black/[0.04]",
-          "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.08]",
+          "hover:s-bg-black/[0.02] active:s-bg-black/[0.02]",
+          "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.04]",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
         "ghost-secondary": cn(
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
-          "hover:s-bg-black/[0.02] active:s-bg-black/[0.04]",
-          "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.08]",
+          "hover:s-bg-black/[0.02] active:s-bg-black/[0.02]",
+          "dark:hover:s-bg-white/[0.04] dark:active:s-bg-white/[0.04]",
           "disabled:s-text-faint dark:disabled:s-text-faint-night",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
         "highlight-ghost": cn(
           "s-text-highlight-500 dark:s-text-highlight-500-night",
-          "hover:s-bg-highlight-50 active:s-bg-highlight-100",
-          "dark:hover:s-bg-highlight-50-night dark:active:s-bg-highlight-100-night",
+          "hover:s-bg-highlight-50 active:s-bg-highlight-50",
+          "dark:hover:s-bg-highlight-50-night dark:active:s-bg-highlight-50-night",
           "disabled:s-text-highlight-muted",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
         "warning-ghost": cn(
           "s-text-red-500",
-          "hover:s-bg-red-50 active:s-bg-red-100",
-          "dark:hover:s-bg-warning-50-night dark:active:s-bg-warning-100-night",
+          "hover:s-bg-red-50 active:s-bg-red-50",
+          "dark:hover:s-bg-warning-50-night dark:active:s-bg-warning-50-night",
           "disabled:s-text-warning-muted",
           "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
         ),
       },
       size: {
-        xs: "s-h-6 s-gap-1.5 s-px-2 s-text-sm s-font-medium s-tracking-[-0.28px] s-rounded-[9px]",
+        xs: "s-h-6 s-gap-1.5 s-px-2 s-text-sm s-font-medium s-leading-4 s-tracking-[-0.28px] s-rounded-[9px]",
         sm: "s-h-8 s-gap-1.5 s-px-3 s-text-sm s-font-medium s-tracking-[-0.28px] s-rounded-xl",
         md: "s-h-10 s-gap-1.5 s-px-4 s-text-base s-font-medium s-tracking-[-0.32px] s-rounded-[15px]",
       },
@@ -147,7 +144,7 @@ const newButtonVariants = cva(
         false: "",
       },
       press: {
-        true: "active:s-scale-[0.97] motion-reduce:active:s-scale-100",
+        true: "active:s-scale-[0.985] motion-reduce:active:s-scale-100",
         false: "",
       },
     },
@@ -155,29 +152,32 @@ const newButtonVariants = cva(
       { size: "xs", isIconOnly: true, className: "s-w-6 s-px-0" },
       { size: "sm", isIconOnly: true, className: "s-w-8 s-px-0" },
       { size: "md", isIconOnly: true, className: "s-w-10 s-px-0" },
-      // White hover overlay on solid variants: large buttons get a stronger
-      // tint (Figma uses white/0.2 at Large, white/0.1 at Small/Medium).
+      // White overlay on solid variants: large buttons get a stronger tint
+      // (Figma uses white/0.2 at Large, white/0.1 at Small/Medium). Hover and
+      // active share the same value — only the press scale differentiates them.
       {
         variant: ["primary", "highlight", "warning"],
         size: ["xs", "sm"],
-        className: "hover:after:s-bg-white/10",
+        className: "hover:after:s-bg-white/10 active:after:s-bg-white/10",
       },
       {
         variant: ["primary", "highlight", "warning"],
         size: "md",
-        className: "hover:after:s-bg-white/20",
+        className: "hover:after:s-bg-white/20 active:after:s-bg-white/20",
       },
       // Outline renders as a dark solid in dark mode, so it follows the same
-      // size rule for its (dark-only) white hover overlay.
+      // size rule for its (dark-only) white overlay.
       {
         variant: "outline",
         size: ["xs", "sm"],
-        className: "dark:hover:after:s-bg-white/10",
+        className:
+          "dark:hover:after:s-bg-white/10 dark:active:after:s-bg-white/10",
       },
       {
         variant: "outline",
         size: "md",
-        className: "dark:hover:after:s-bg-white/20",
+        className:
+          "dark:hover:after:s-bg-white/20 dark:active:after:s-bg-white/20",
       },
     ],
     defaultVariants: {
@@ -222,6 +222,23 @@ const chevronVariantMap: Record<NewButtonVariantType, string> = {
   "warning-ghost": "s-text-warning-400",
 };
 
+// Loading spinner color, matched to each variant's text color (including the
+// dark-mode swap: `revert` = light spinner on light theme, `mono` = the
+// inverse). Keeps the spinner the same color as the label.
+const spinnerVariantMap: Record<
+  NewButtonVariantType,
+  React.ComponentProps<typeof Spinner>["variant"]
+> = {
+  primary: "revert",
+  highlight: "light",
+  warning: "light",
+  outline: "mono",
+  ghost: "mono",
+  "ghost-secondary": "mono",
+  "highlight-ghost": "blue500",
+  "warning-ghost": "red500",
+};
+
 export type NewButtonIconType = React.ComponentType | React.ReactElement;
 
 function isReactElement(
@@ -242,7 +259,6 @@ export interface NewButtonProps
   isLoading?: boolean;
   isCounter?: boolean;
   counterValue?: string;
-  isPulsing?: boolean;
   tooltip?: string;
   tooltipShortcut?: string;
 }
@@ -260,7 +276,6 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
       isLoading = false,
       isCounter = false,
       counterValue,
-      isPulsing = false,
       tooltip,
       tooltipShortcut,
       href,
@@ -293,7 +308,10 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
     const content = (
       <>
         {isLoading ? (
-          <Spinner size="xs" variant="mono" />
+          <Spinner
+            size="xs"
+            variant={spinnerVariantMap[variant ?? "primary"]}
+          />
         ) : (
           icon && renderIcon(icon, iconShadow)
         )}
@@ -347,7 +365,6 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
             isIconOnly,
             press: !isMenuTrigger,
           }),
-          isPulsing && "s-animate-ring-pulse",
           className
         )}
         disabled={isLoading || props.disabled}
