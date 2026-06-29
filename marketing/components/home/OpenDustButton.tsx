@@ -3,7 +3,7 @@ import { DUST_HAS_SESSION, hasSessionIndicator } from "@marketing/lib/cookies";
 import { useLandingAuthContext } from "@marketing/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
-import { ArrowRight, Button } from "@dust-tt/sparkle";
+import { ArrowRight, DeprecatedButton as Button } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 

@@ -2,7 +2,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
   BarHeader,
-  Button,
+  DeprecatedButton as Button,
   cn,
   DustLogo,
   Page,

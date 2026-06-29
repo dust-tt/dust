@@ -4,6 +4,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ButtonSizeType } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -27,7 +28,7 @@ interface AgentPickerProps {
   showDropdownArrow?: boolean;
   showFooterButtons?: boolean;
   side?: "top" | "bottom";
-  size?: "xs" | "sm" | "md";
+  size?: ButtonSizeType;
   isLoading?: boolean;
   disabled?: boolean;
   mountPortal?: boolean;
@@ -123,7 +124,7 @@ export function AgentPicker({
                   <Button
                     icon={DotsHorizontal}
                     variant="outline"
-                    size="mini"
+                    size="xs"
                     className="opacity-0 group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();

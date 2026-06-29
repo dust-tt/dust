@@ -519,7 +519,7 @@ export const DocumentUploadOrEditModal = ({
                               <div className="flex flex-1 flex-row gap-2">
                                 <div className="flex flex-1 flex-col">
                                   <Input
-                                    className="w-full"
+                                    fieldClassName="w-full"
                                     placeholder="Label"
                                     name="label"
                                     value={tag}

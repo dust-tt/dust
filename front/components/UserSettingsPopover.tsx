@@ -769,7 +769,7 @@ export function UserSettingsPopover({
             <DialogClose asChild>
               <Button
                 variant="ghost"
-                size="xmini"
+                size="xs"
                 icon={XClose}
                 className="flex-shrink-0 px-2"
               />
@@ -800,7 +800,7 @@ export function UserSettingsPopover({
           <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-muted-background sm:flex dark:border-border-night dark:bg-muted-background-night">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
-                <Button variant="ghost" size="mini" icon={XClose} />
+                <Button variant="ghost" size="xs" icon={XClose} />
               </DialogClose>
             </div>
             <NavigationList className="flex-1 px-2 pb-3">

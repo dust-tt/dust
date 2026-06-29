@@ -3,7 +3,7 @@ import React from "react";
 
 import {
   BUTTON_VARIANTS,
-  type RegularButtonSize,
+  type ButtonSizeType,
   type ButtonVariantType,
 } from "@sparkle/components/Button";
 
@@ -22,10 +22,10 @@ import {
 
 const DefaultButtons = ({
   variant = "outline",
-  size = "sm",
+  size = "md",
 }: {
   variant?: ButtonVariantType;
-  size?: RegularButtonSize;
+  size?: ButtonSizeType;
 }) => (
   <>
     <Button label="First" variant={variant} size={size} />
@@ -49,8 +49,7 @@ const meta = {
 
 **Guidelines**
 - Keep all child **Button**s on the same \`variant\` and \`size\` for visual consistency.
-- Use \`removeGaps\` for a segmented look; keep gaps when the actions are independent.
-- For a single button with an attached chevron menu, prefer **SplitButton** (\`FlexSplitButton\`) instead.`,
+- Use \`removeGaps\` for a segmented look; keep gaps when the actions are independent.`,
       },
     },
   },

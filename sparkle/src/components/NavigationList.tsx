@@ -237,7 +237,7 @@ const NavigationListItemAction = React.forwardRef<
       {...props}
     >
       <Button
-        size="xmini"
+        size="xs"
         icon={DotsHorizontal}
         variant="ghost"
         className="hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"

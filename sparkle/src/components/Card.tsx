@@ -1,4 +1,4 @@
-import type { IconOnlyButtonProps } from "@sparkle/components/Button";
+import type { ButtonProps } from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
 import type { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import {
@@ -275,7 +275,7 @@ CardActions.displayName = "CardActions";
 
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
-  IconOnlyButtonProps
+  ButtonProps
 >(({ className, variant = "outline", icon = XClose, ...props }, ref) => {
   return (
     <Button

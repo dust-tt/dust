@@ -15,7 +15,7 @@ import { classNames } from "@marketing/lib/utils";
 import type { BillingPeriod, PlanType } from "@marketing/types/plan";
 import type { WorkspaceType } from "@marketing/types/user";
 import {
-  Button,
+  DeprecatedButton as Button,
   Hoverable,
   PriceTable,
   Rocket02,

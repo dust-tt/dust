@@ -1037,7 +1037,7 @@ DataTable.MoreButton = function MoreButton({
       >
         <Button
           icon={DotsHorizontal}
-          size="icon"
+          size="xs"
           variant="ghost-secondary"
           disabled={disabled}
           className={cn(

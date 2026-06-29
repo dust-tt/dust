@@ -13,7 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 
 interface ContextUsageIndicatorProps {
-  buttonSize: "xs" | "sm";
+  buttonSize: "sm" | "md";
   owner: LightWorkspaceType;
   conversationId?: string | null;
 }

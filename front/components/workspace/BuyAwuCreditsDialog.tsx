@@ -317,7 +317,8 @@ export function BuyAwuCreditsDialog({
                       min="0"
                       step="1"
                       isError={amountExceedsMax && !!maxAmountFormatted}
-                      className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      fieldClassName="w-32"
+                      className="pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                   </div>
                   {isValidAmount && (

@@ -63,7 +63,7 @@ function SuggestedSkillCard({
         onClick={onMoreInfoClick}
         action={
           <CardActionButton
-            size="icon"
+            size="xs"
             icon={XClose}
             onClick={(e) => {
               e.stopPropagation();

@@ -1285,7 +1285,7 @@ const InputBarContainer = ({
   });
 
   const buttonSize = useMemo(() => {
-    return isMobile ? "sm" : "xs";
+    return isMobile ? "md" : "sm";
   }, [isMobile]);
 
   const isSubmitDisabled =

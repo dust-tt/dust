@@ -341,7 +341,7 @@ function SearchResults({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="xmini"
+                    size="xs"
                     icon={DotsHorizontal}
                     variant="ghost"
                     aria-label="Conversations options"
@@ -973,6 +973,7 @@ export function AgentSidebarMenu({
                 <div className="flex gap-2">
                   <Button
                     label="New"
+                    variant="highlight"
                     href={getConversationRoute(owner.sId)}
                     icon={MessagePlusCircle}
                     className="shrink-0"
@@ -1252,12 +1253,12 @@ function UnreadConversationsSection({
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
-            size="xmini"
+            size="xs"
             variant="ghost-secondary"
             label="Mark as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
-            hasLighterFont
+            // TODO(button-migration): hasLighterFont dropped
             className="hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
           />
         ) : null
@@ -1631,7 +1632,7 @@ function NavigationListWithInbox({
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      size="xmini"
+                      size="xs"
                       icon={DotsHorizontal}
                       variant="ghost"
                       aria-label="Conversations options"

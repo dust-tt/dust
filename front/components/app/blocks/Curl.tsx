@@ -165,7 +165,7 @@ export default function Curl({
                   label={`${block.spec.scheme}://`}
                 />
                 <Input
-                  className="h-full flex-1 rounded-l-none"
+                  fieldClassName="h-full flex-1 rounded-l-none"
                   readOnly={readOnly}
                   value={block.spec.url}
                   onChange={(e) => handleUrlChange(e.target.value)}

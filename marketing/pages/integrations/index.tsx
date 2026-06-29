@@ -17,7 +17,7 @@ import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
 import { fetchPublicIntegrations } from "@marketing/lib/api/integrations";
 import {
-  Button,
+  DeprecatedButton as Button,
   getPlatformLogo,
   PuzzlePiece01,
   SearchInput,

@@ -328,14 +328,14 @@ export function UserAnswerRequired({
               ref={customResponseInputRef}
               id={`custom-response-${blockedAction.actionId}`}
               containerClassName="flex-1"
-              className={cn(
+              fieldClassName={cn(
                 "h-auto w-full rounded-none border-transparent bg-transparent",
-                "px-0 py-0 text-sm shadow-none",
+                "px-0 py-0 shadow-none",
                 "dark:border-transparent dark:bg-transparent",
                 "focus-visible:border-transparent focus-visible:ring-0",
-                "dark:focus-visible:border-transparent dark:focus-visible:ring-0",
-                isKeyboardNavigating && "cursor-none"
+                "dark:focus-visible:border-transparent dark:focus-visible:ring-0"
               )}
+              className={cn("text-sm", isKeyboardNavigating && "cursor-none")}
               placeholder="Type something else"
               value={answerDraft.customResponse}
               onFocus={() => {

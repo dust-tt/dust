@@ -1,9 +1,9 @@
 import {
-  Button,
-  type ButtonVariantType,
-  ICON_SIZE_MAP,
-  type RegularButtonSize,
-} from "@sparkle/components/Button";
+  DeprecatedButton as Button,
+  type DeprecatedButtonVariantType as ButtonVariantType,
+  DEPRECATED_ICON_SIZE_MAP as ICON_SIZE_MAP,
+  type DeprecatedRegularButtonSize as RegularButtonSize,
+} from "@sparkle/components/DeprecatedButton";
 import {
   DropdownMenu,
   DropdownMenuContent,

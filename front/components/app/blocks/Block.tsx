@@ -121,7 +121,7 @@ export default function Block({
                     : "Results are computed at each run"
                 }
                 variant="ghost-secondary"
-                size="icon"
+                size="xs"
                 icon={
                   block.config && block.config.use_cache
                     ? LayersThree01
@@ -143,19 +143,19 @@ export default function Block({
                   variant="ghost-secondary"
                   icon={ChevronUp}
                   onClick={onBlockUp}
-                  size="icon"
+                  size="xs"
                 />
                 <Button
                   variant="ghost-secondary"
                   icon={ChevronDown}
                   onClick={onBlockDown}
-                  size="icon"
+                  size="xs"
                 />
                 <Button
                   variant="ghost-secondary"
                   icon={Trash01}
                   onClick={onBlockDelete}
-                  size="icon"
+                  size="xs"
                 />
               </>
             )}

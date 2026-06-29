@@ -13,7 +13,7 @@ import type {
 import { LinkWrapper } from "@marketing/lib/platform";
 import {
   ArrowLeft,
-  Button,
+  DeprecatedButton as Button,
   cn,
   Menu01,
   Sheet,

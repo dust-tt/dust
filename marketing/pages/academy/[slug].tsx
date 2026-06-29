@@ -34,7 +34,7 @@ import {
 import logger from "@marketing/logger/logger";
 import { isString } from "@marketing/types/shared/utils/general";
 import {
-  Button,
+  DeprecatedButton as Button,
   Clipboard,
   ClipboardCheck,
   cn,

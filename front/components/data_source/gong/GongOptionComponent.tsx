@@ -391,7 +391,7 @@ export function GongOptionComponent({
                 value={excludeKeywords}
                 onChange={(e) => setExcludeKeywords(e.target.value)}
                 disabled={readOnly || !isAdmin || loading}
-                className="w-64"
+                fieldClassName="w-64"
               />
               <Button
                 variant="primary"
@@ -439,7 +439,7 @@ export function GongOptionComponent({
                   }
                 }}
                 disabled={readOnly || !isAdmin || loading}
-                className="w-32"
+                fieldClassName="w-32"
               />
               <Button
                 variant="primary"

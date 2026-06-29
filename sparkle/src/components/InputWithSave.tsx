@@ -1,4 +1,5 @@
 import { Button } from "@sparkle/components/Button";
+import { Input } from "@sparkle/components/Input";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   forwardRef,
@@ -10,17 +11,15 @@ import React, {
 export interface InputWithSaveProps
   extends Omit<
     React.InputHTMLAttributes<HTMLInputElement>,
-    "value" | "onChange"
+    "value" | "onChange" | "size"
   > {
   value?: string | null;
   unit?: string;
   onSave: (value: string) => Promise<void> | void;
-  // Applied to the draft value on each keystroke (e.g. to strip non-digit
-  // characters for numeric inputs). The cleaned result is what gets passed to
-  // onSave.
+  // Cleans each keystroke before it's passed to onSave (e.g. strip non-digits).
   normalizeValue?: (value: string) => string;
-  // Applied to the normalized draft value for display during editing (e.g. to
-  // insert thousand-separator commas). Does not affect what onSave receives.
+  // Formats the draft for display only (e.g. thousands separators); onSave still
+  // receives the normalized value.
   formatValue?: (value: string) => string;
   className?: string;
 }
@@ -94,40 +93,16 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
       onKeyDown?.(e);
     };
 
+    // Composes <Input> for the field and overlays the unit + Save button on the
+    // right (like SearchInput), so it can't drift from the Input design. The
+    // input reserves right padding so its value stays clear of the overlay.
+    const hasOverlay = Boolean(unit) || showSaveButton;
+
     return (
-      <div
-        className={cn(
-          "s-flex s-h-9 s-w-full s-items-center s-gap-1.5 s-rounded-xl s-border s-py-1.5 s-pl-3 s-text-sm",
-          showSaveButton ? "s-pr-1.5" : "s-pr-3",
-          "s-bg-background dark:s-bg-background-night",
-          "s-border-border dark:s-border-border-night",
-          "s-ring-inset s-ring-highlight/0 dark:s-ring-highlight-night/0",
-          disabled
-            ? "s-cursor-not-allowed"
-            : cn(
-                "s-cursor-text",
-                "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
-                "focus-within:s-ring-2",
-                "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50"
-              ),
-          className
-        )}
-        onClick={() => inputRef.current?.focus()}
-      >
-        <input
+      <div className={cn("s-relative s-w-full", className)}>
+        <Input
           ref={inputRef}
-          className={cn(
-            "s-h-full s-w-full s-min-w-0 s-flex-1 s-border-0 s-bg-transparent s-p-0 s-text-right",
-            // The container carries the focus styles (via focus-within); the
-            // inner input must not render its own outline or ring.
-            "s-outline-none focus:s-outline-none focus-visible:s-outline-none",
-            "s-ring-0 focus:s-ring-0 focus-visible:s-ring-0 s-shadow-none",
-            "dark:s-text-primary-50",
-            "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
-            disabled &&
-              "s-cursor-not-allowed s-text-muted-foreground dark:s-text-muted-foreground-night"
-          )}
-          data-1p-ignore
+          size="sm"
           value={
             showSaveButton
               ? formatValue
@@ -145,27 +120,35 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
           onKeyDown={handleKeyDown}
           disabled={disabled}
           readOnly={isSaving}
+          className={cn(showSaveButton ? "s-pr-20" : unit ? "s-pr-12" : null)}
           {...props}
         />
-        {unit && (
-          <span className="s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {unit}
-          </span>
-        )}
-        {showSaveButton && (
-          <Button
-            label="Save"
-            variant="highlight"
-            size="xs"
-            isLoading={isSaving}
-            // Prevent the input from blurring (which would revert the edit)
-            // before the click registers.
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => {
-              e.stopPropagation();
-              void handleSave();
-            }}
-          />
+        {hasOverlay && (
+          // pointer-events-none lets clicks fall through to the input (to
+          // focus it); the Save button re-enables them for itself.
+          <div className="s-pointer-events-none s-absolute s-inset-y-0 s-right-1 s-flex s-items-center s-gap-1.5">
+            {unit && (
+              <span className="s-shrink-0 s-text-sm s-text-faint dark:s-text-faint-night">
+                {unit}
+              </span>
+            )}
+            {showSaveButton && (
+              <Button
+                label="Save"
+                variant="highlight"
+                size="xs"
+                isLoading={isSaving}
+                className="s-pointer-events-auto"
+                // Prevent the input from blurring (which would revert the edit)
+                // before the click registers.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleSave();
+                }}
+              />
+            )}
+          </div>
         )}
       </div>
     );

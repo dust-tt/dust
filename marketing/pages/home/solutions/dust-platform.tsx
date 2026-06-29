@@ -12,7 +12,12 @@ import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
-import { Button, Div3D, Hover3D, Rocket02 } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  Div3D,
+  Hover3D,
+  Rocket02,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";

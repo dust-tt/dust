@@ -13,7 +13,13 @@ import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import TrustedBy from "@marketing/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
-import { Button, CheckCircle, Icon, Lock01, Planet } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  CheckCircle,
+  Icon,
+  Lock01,
+  Planet,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 

@@ -13,7 +13,7 @@ import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { classNames } from "@marketing/lib/utils";
 import {
   ArrowRight,
-  Button,
+  DeprecatedButton as Button,
   Div3D,
   GithubMonoLogo,
   Hover3D,

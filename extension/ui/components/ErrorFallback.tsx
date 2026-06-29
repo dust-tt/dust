@@ -1,4 +1,8 @@
-import { AlertCircle, Button, Icon } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  DeprecatedButton as Button,
+  Icon,
+} from "@dust-tt/sparkle";
 
 export function ErrorFallback() {
   return (

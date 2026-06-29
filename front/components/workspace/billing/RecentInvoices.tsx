@@ -3,6 +3,7 @@ import { useRecentBillingInvoices } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { BillingInvoice } from "@app/types/api/billing/invoices";
 import { Button, Spinner } from "@dust-tt/sparkle";
+
 import { useSubscriptionContext } from "./SubscriptionContext";
 
 function getInvoiceLabel(invoice: BillingInvoice): string {

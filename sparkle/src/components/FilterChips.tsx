@@ -33,7 +33,7 @@ export function FilterChips<T extends string>({
       {filters.map((filterName) => (
         <Button
           label={filterName}
-          variant={selectedFilter === filterName ? "primary" : "ghost"}
+          variant={selectedFilter === filterName ? "primary" : "outline"}
           key={filterName}
           size="xs"
           onClick={() => handleFilterClick(filterName)}

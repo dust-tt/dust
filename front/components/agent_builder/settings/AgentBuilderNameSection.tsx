@@ -146,7 +146,7 @@ export function AgentBuilderNameSection({
           <Input
             ref={registerRef}
             placeholder="Enter agent name"
-            className="pr-10"
+            fieldClassName="pr-10"
             onChange={(e) => {
               userSetNameRef.current = true;
               onChange(e);

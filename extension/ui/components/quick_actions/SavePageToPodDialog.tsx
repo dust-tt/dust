@@ -6,7 +6,7 @@ import { isManualPodFilesManagementAllowed } from "@app/lib/workspace_policies";
 import { isProjectType, type PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
+  DeprecatedButton as Button,
   Dialog,
   DialogContainer,
   DialogContent,

@@ -605,7 +605,7 @@ export function PodSettingsTab({
                 </p>
                 <Button
                   icon={Archive}
-                  variant="warning-secondary"
+                  variant="warning-ghost"
                   label="Archive"
                   onClick={handleArchiveToggle}
                   className="w-fit"

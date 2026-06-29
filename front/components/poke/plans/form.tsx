@@ -438,7 +438,7 @@ export const Field: React.FC<FieldProps> = ({
       case "number":
         return isEditing && !disabled ? (
           <Input
-            className="px-2"
+            fieldClassName="px-2"
             value={editingPlan && editingPlan[fieldName].toString()}
             onChange={(x) => {
               if (!editingPlan) {

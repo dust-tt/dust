@@ -84,7 +84,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
               placeholder="Search plugins..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn(
+              fieldClassName={cn(
                 "w-full bg-white dark:bg-gray-800",
                 showRuns && "invisible"
               )}

@@ -1,4 +1,9 @@
-import { Button, Clock, User01, XClose } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  Clock,
+  User01,
+  XClose,
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 // =============================================================================

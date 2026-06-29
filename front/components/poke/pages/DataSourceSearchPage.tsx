@@ -156,7 +156,8 @@ export function DataSourceSearchPage() {
               autoComplete="off"
               name="search_query"
               id="search_query"
-              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-highlight-500 focus:ring-highlight-500"
+              className="text-sm"
+              fieldClassName="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-highlight-500 focus:ring-highlight-500"
               onKeyDown={(e) => {
                 if (e.key == "Enter") {
                   setSearchQuery(e.currentTarget.value);
@@ -173,7 +174,8 @@ export function DataSourceSearchPage() {
               autoComplete="off"
               name="tags_in"
               id="tags_in"
-              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-highlight-500 focus:ring-highlight-500"
+              className="text-sm"
+              fieldClassName="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-highlight-500 focus:ring-highlight-500"
               onKeyDown={(e) => {
                 if (e.key == "Enter") {
                   setTagsIn(e.currentTarget.value);
@@ -190,7 +192,8 @@ export function DataSourceSearchPage() {
               autoComplete="off"
               name="tags_not_in"
               id="tags_not_in"
-              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-highlight-500 focus:ring-highlight-500"
+              className="text-sm"
+              fieldClassName="block w-full min-w-0 flex-1 rounded-md border-gray-300 focus:border-highlight-500 focus:ring-highlight-500"
               onKeyDown={(e) => {
                 if (e.key == "Enter") {
                   setTagsNotIn(e.currentTarget.value);

@@ -119,7 +119,7 @@ function TaskRowAssigneeMenu({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
+          size="xs"
           isRounded
           disabled={disabled}
           tooltip={tooltip}

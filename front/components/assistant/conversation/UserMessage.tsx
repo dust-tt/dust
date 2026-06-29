@@ -683,7 +683,7 @@ function ActionMenu({
               <DropdownMenuTrigger asChild>
                 <Button
                   icon={DotsHorizontal}
-                  size="icon-xs"
+                  size="xs"
                   variant="outline"
                   aria-label="Message actions"
                 />

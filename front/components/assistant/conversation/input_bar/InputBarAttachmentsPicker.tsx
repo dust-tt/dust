@@ -32,6 +32,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ButtonVariantType } from "@dust-tt/sparkle";
 import {
   Attachment01,
   Button,
@@ -49,13 +50,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Icon,
-  Input,
   LoadingBlock,
   SearchMd,
   Spinner,
   UploadCloud02,
 } from "@dust-tt/sparkle";
-import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const SEARCH_RESULTS_PLACEHOLDER_COUNT = 5;
@@ -615,8 +614,11 @@ export const InputBarAttachmentsPicker = ({
             })}
         dropdownHeaders={
           <>
-            <Input
+            {/* Hidden native file input (triggered by the button below); a
+                styled sparkle Input would render visible wrapper boxes. */}
+            <input
               type="file"
+              aria-label="Upload File"
               ref={fileInputRef}
               style={{ display: "none" }}
               onChange={async (e) => {

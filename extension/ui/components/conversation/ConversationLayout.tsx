@@ -6,7 +6,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   ArrowLeft,
   BarHeader,
-  Button,
+  DeprecatedButton as Button,
   Menu01,
   Sheet,
   SheetContent,

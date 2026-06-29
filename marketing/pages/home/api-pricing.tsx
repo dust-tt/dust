@@ -13,7 +13,7 @@ import {
   MODEL_PROVIDER_IDS,
 } from "@marketing/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@marketing/types/assistant/models/types";
-import { Button, SearchInput } from "@dust-tt/sparkle";
+import { DeprecatedButton as Button, SearchInput } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`

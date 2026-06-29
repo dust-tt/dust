@@ -36,7 +36,7 @@ import type {
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
+import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
   Button,
   InfoCircle,
@@ -490,8 +490,8 @@ function WebhookSourceSheetContent({
   ]);
 
   const footerButtons: {
-    leftButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
-    rightButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+    leftButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
+    rightButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
   } = useMemo(() => {
     if (currentPageId === "create") {
       return {

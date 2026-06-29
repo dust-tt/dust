@@ -116,7 +116,7 @@ export function PodTaskUserSection({
                 <Button
                   label="Accept all"
                   size="sm"
-                  variant="highlight-secondary"
+                  variant="highlight-ghost"
                   isLoading={bulkAction === "approve"}
                   disabled={bulkAction !== null}
                   onClick={(e) => {

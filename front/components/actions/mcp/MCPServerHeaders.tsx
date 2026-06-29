@@ -39,7 +39,7 @@ export function MCPServerHeaders() {
                     {...register(`customHeaders.${index}.key`)}
                     placeholder="Header Name"
                     disabled={isRedacted || isPredefined}
-                    className="w-full"
+                    fieldClassName="w-full"
                   />
                 </div>
                 <div className="col-span-2">
@@ -47,7 +47,7 @@ export function MCPServerHeaders() {
                     {...register(`customHeaders.${index}.value`)}
                     placeholder="Header Value"
                     disabled={isRedacted}
-                    className="w-full"
+                    fieldClassName="w-full"
                   />
                 </div>
               </div>

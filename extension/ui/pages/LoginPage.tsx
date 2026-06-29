@@ -1,4 +1,11 @@
-import { Button, cn, DustLogo, LogIn01, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  cn,
+  DustLogo,
+  LogIn01,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";

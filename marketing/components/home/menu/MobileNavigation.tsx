@@ -2,7 +2,7 @@
 import { menuConfig } from "@marketing/components/home/menu/config";
 import { classNames } from "@marketing/lib/utils";
 import {
-  Button,
+  DeprecatedButton as Button,
   ChevronRight,
   DustLogo,
   IconButton,

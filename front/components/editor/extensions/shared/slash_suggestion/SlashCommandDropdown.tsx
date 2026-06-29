@@ -356,7 +356,7 @@ export const SlashCommandDropdown = forwardRef<
                             <Button
                               icon={DotsHorizontal}
                               variant="outline"
-                              size="mini"
+                              size="xs"
                               className={cn(
                                 "opacity-0 group-focus-within:opacity-100",
                                 index === selectedIndex && "opacity-100"
@@ -448,7 +448,7 @@ export const SlashCommandDropdown = forwardRef<
                           <Button
                             icon={DotsHorizontal}
                             variant="outline"
-                            size="mini"
+                            size="xs"
                             className={cn(
                               "opacity-0 group-focus-within:opacity-100",
                               entryIndex === selectedIndex && "opacity-100"

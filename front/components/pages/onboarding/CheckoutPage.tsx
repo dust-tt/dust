@@ -505,7 +505,7 @@ export function CheckoutPage() {
                         placeholder="Enter promotion code"
                         {...registerCoupon("couponCode")}
                         disabled={isApplyingCoupon}
-                        className="flex-1"
+                        fieldClassName="flex-1"
                       />
                       <Button
                         label={isApplyingCoupon ? "Applying…" : "Apply"}

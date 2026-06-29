@@ -94,7 +94,7 @@ function Toolbar({
     variant: closeVariant = "outline",
     ...restCloseButtonProps
   } = closeButtonProps ?? {};
-  const closeButtonSize: ToolbarButtonSize = closeButtonSizeProp ?? "mini";
+  const closeButtonSize: ToolbarButtonSize = closeButtonSizeProp ?? "sm";
 
   const rootClassName = toolbarRootVariants({ variant, className });
   const contentBaseClassName = toolbarContentVariants({
@@ -118,10 +118,6 @@ function Toolbar({
       onClick: onClose,
       ...restCloseButtonProps,
     };
-
-    if (closeButtonSize === "mini") {
-      return <Button size="icon" {...buttonProps} />;
-    }
 
     return <Button size={closeButtonSize} {...buttonProps} />;
   }
@@ -196,18 +192,6 @@ function ToolbarIcon({
     event.preventDefault();
     event.stopPropagation();
     onClick();
-  }
-
-  if (size === "mini") {
-    return (
-      <Button
-        tooltip={tooltip}
-        icon={icon}
-        onClick={handleClick}
-        size="icon"
-        variant={active ? "ghost" : "ghost-secondary"}
-      />
-    );
   }
 
   return (

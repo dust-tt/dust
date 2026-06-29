@@ -63,7 +63,7 @@ export const Interactive: Story = {
     elapsedSeconds: 0,
     onRecordStart: async () => {},
     onRecordStop: async () => {},
-    size: "xs",
+    size: "sm",
     disabled: false,
     showStopLabel: true,
     pressDelayMs: 150,

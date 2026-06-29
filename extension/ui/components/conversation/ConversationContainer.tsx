@@ -5,7 +5,7 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Button, cn, Menu01 } from "@dust-tt/sparkle";
+import { DeprecatedButton as Button, cn, Menu01 } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { sendGetSessionInfoMessage } from "@extension/shared/messages";
 import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";

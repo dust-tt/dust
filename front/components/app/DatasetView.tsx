@@ -568,7 +568,7 @@ export default function DatasetView({
                 type="text"
                 name="description"
                 id="datasetDescription"
-                className="w-full"
+                fieldClassName="w-full"
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={datasetDescription || ""}
                 onChange={(e) => setDatasetDescription(e.target.value)}
@@ -606,7 +606,7 @@ export default function DatasetView({
                             onChange={(e) => {
                               handleKeyUpdate(j, e.target.value);
                             }}
-                            className="border-0 bg-transparent focus:border-0 focus:ring-0 dark:bg-transparent"
+                            fieldClassName="border-0 bg-transparent focus:border-0 focus:ring-0 dark:bg-transparent"
                           />
                         </div>
                         {!readOnly ? (
@@ -614,7 +614,7 @@ export default function DatasetView({
                             {datasetKeys.length > 1 ? (
                               <>
                                 <Button
-                                  size="icon"
+                                  size="xs"
                                   variant="ghost"
                                   className="text-muted-foreground dark:text-muted-foreground-night"
                                   icon={XCircle}
@@ -625,7 +625,7 @@ export default function DatasetView({
                                 />
 
                                 <Button
-                                  size="icon"
+                                  size="xs"
                                   variant="ghost"
                                   className="text-muted-foreground dark:text-muted-foreground-night"
                                   icon={PlusCircle}
@@ -725,7 +725,7 @@ export default function DatasetView({
                             <Input
                               readOnly={true}
                               value={k}
-                              className={classNames(
+                              fieldClassName={classNames(
                                 "border-0 dark:border-0",
                                 "bg-transparent dark:bg-transparent",
                                 "focus:border-0 dark:focus:border-0",
@@ -794,7 +794,7 @@ export default function DatasetView({
                         {datasetData.length > 1 ? (
                           <Button
                             icon={XCircle}
-                            size="icon"
+                            size="xs"
                             variant="ghost"
                             onClick={() => {
                               handleDeleteEntry(i);
@@ -803,7 +803,7 @@ export default function DatasetView({
                         ) : null}
                         <Button
                           icon={PlusCircle}
-                          size="icon"
+                          size="xs"
                           variant="ghost"
                           onClick={() => {
                             handleNewEntry(i);
@@ -855,7 +855,7 @@ export default function DatasetView({
                 </div>
                 <div className="ml-2 flex-initial">
                   <Input
-                    className="hidden"
+                    fieldClassName="hidden"
                     type="file"
                     accept=".jsonl"
                     ref={fileInputRef}

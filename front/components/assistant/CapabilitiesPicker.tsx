@@ -30,7 +30,7 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import type { ButtonSizeType, DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -123,7 +123,7 @@ function CapabilitiesPickerItemsList({
             <Button
               icon={DotsHorizontal}
               variant="outline"
-              size="mini"
+              size="xs"
               className="opacity-0 group-data-[highlighted]:opacity-100 group-focus-within:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
@@ -164,7 +164,7 @@ interface CapabilitiesPickerProps {
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   isLoading?: boolean;
   disabled?: boolean;
-  buttonSize?: "xs" | "sm" | "md";
+  buttonSize?: ButtonSizeType;
   onOpenChange?: (open: boolean) => void;
 }
 
@@ -176,7 +176,7 @@ export function CapabilitiesPicker({
   onSkillSelect,
   isLoading = false,
   disabled = false,
-  buttonSize = "xs",
+  buttonSize = "sm",
   onOpenChange,
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();

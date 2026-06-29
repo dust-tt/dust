@@ -42,7 +42,7 @@ import {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
-import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
+import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
   Avatar,
   MultiPageSheet,
@@ -340,8 +340,8 @@ function KnowledgeConfigurationSheetContent({
   );
 
   const footerButtons: {
-    leftButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
-    rightButton?: RegularButtonProps & React.RefAttributes<HTMLButtonElement>;
+    leftButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
+    rightButton?: ButtonProps & React.RefAttributes<HTMLButtonElement>;
   } = useMemo(() => {
     const isDataSourcePage =
       currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;

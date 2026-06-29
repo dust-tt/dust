@@ -60,7 +60,7 @@ export function AdvancedSettingsSection({
                         updateHeaderField(index, "key", e.target.value)
                       }
                       disabled={header.value === WebCrawlerHeaderRedactedValue}
-                      className="grow"
+                      fieldClassName="grow"
                     />
                     <Input
                       name="headerValue"
@@ -70,7 +70,7 @@ export function AdvancedSettingsSection({
                         updateHeaderField(index, "value", e.target.value)
                       }
                       disabled={header.value === WebCrawlerHeaderRedactedValue}
-                      className="flex-1"
+                      fieldClassName="flex-1"
                     />
                   </div>
                   <Button

@@ -20,6 +20,7 @@ import {
   type LightWorkspaceType,
   resolveDefaultAgentId,
 } from "@app/types/user";
+import type { ButtonSizeType } from "@dust-tt/sparkle";
 import {
   AttachmentChip,
   Avatar,
@@ -82,7 +83,7 @@ function TaskMarkdownPopoverStartChrome({
   activeAgents,
   agentsLoading,
   onStarted,
-  triggerSize = "xs",
+  triggerSize = "sm",
 }: {
   owner: LightWorkspaceType;
   taskId: string;
@@ -91,7 +92,7 @@ function TaskMarkdownPopoverStartChrome({
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
   onStarted?: () => void;
-  triggerSize?: "xs" | "icon-xs";
+  triggerSize?: ButtonSizeType;
 }) {
   const router = useAppRouter();
   const doStart = useStartPodTaskConversation({ owner, podId: podId });
@@ -263,7 +264,6 @@ function TaskDirectivePopoverBodyLoaded({
               activeAgents={activeAgents}
               agentsLoading={agentsLoading}
               onStarted={onTaskUpdated}
-              triggerSize="icon-xs"
             />
           ) : null}
         </dd>

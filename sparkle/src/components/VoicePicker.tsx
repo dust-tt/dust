@@ -1,7 +1,4 @@
-import type {
-  ButtonProps,
-  RegularButtonSize,
-} from "@sparkle/components/Button";
+import type { ButtonProps, ButtonSizeType } from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
 import { useTranscribingProgress } from "@sparkle/hooks/useTranscribingProgress";
 import { Microphone01, Square } from "@sparkle/icons/v2-stroke";
@@ -27,7 +24,7 @@ export interface VoicePickerProps {
   elapsedSeconds: number;
   onRecordStart: () => void | Promise<void>;
   onRecordStop: () => void | Promise<void>;
-  size?: Exclude<RegularButtonSize, "xmini" | "mini">;
+  size?: ButtonSizeType;
   disabled?: boolean;
   showStopLabel?: boolean;
   compact?: boolean;
@@ -44,7 +41,7 @@ export function VoicePicker({
   elapsedSeconds,
   onRecordStart,
   onRecordStop,
-  size = "xs",
+  size = "sm",
   disabled = false,
   showStopLabel = false,
   compact = false,

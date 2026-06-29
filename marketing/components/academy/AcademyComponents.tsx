@@ -14,7 +14,13 @@ import {
   ACADEMY_LOCALES,
 } from "@marketing/lib/contentful/types";
 import { LinkWrapper, useAppRouter } from "@marketing/lib/platform";
-import { Button, cn, Eye, SearchInput, Tooltip } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  cn,
+  Eye,
+  SearchInput,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

@@ -124,7 +124,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
         action={
           onRemove ? (
             <CardActionButton
-              size="icon"
+              size="xs"
               icon={XClose}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 onRemove();

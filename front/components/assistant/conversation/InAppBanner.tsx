@@ -51,7 +51,7 @@ function PodBanner({
         <Button
           variant="outline"
           icon={XClose}
-          size="icon-xs"
+          size="xs"
           className="absolute right-1 top-1"
           onClick={onDismiss}
         />

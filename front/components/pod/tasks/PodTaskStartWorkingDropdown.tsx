@@ -3,6 +3,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ButtonSizeType } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -76,8 +77,8 @@ export function PodTaskStartWorkingDropdown({
   onOpenChange,
   onStart,
   triggerClassName,
-  /** Default `xs`. Use `icon-xs` for a compact icon-only trigger (e.g. inline in metadata). */
-  triggerSize = "xs",
+  /** Default `sm`. */
+  triggerSize = "sm",
 }: {
   owner: LightWorkspaceType;
   taskId: string;
@@ -93,7 +94,7 @@ export function PodTaskStartWorkingDropdown({
   onOpenChange?: (open: boolean) => void;
   onStart: (options: ProjectTaskStartWorkingOptions) => Promise<void>;
   triggerClassName?: string;
-  triggerSize?: "xs" | "icon-xs";
+  triggerSize?: ButtonSizeType;
 }) {
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [startCustomMessage, setStartCustomMessage] = useState("");

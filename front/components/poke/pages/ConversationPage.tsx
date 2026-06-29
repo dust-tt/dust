@@ -672,7 +672,7 @@ export function ConversationPage() {
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setContextSizeOverride(e.target.value)
                   }
-                  className="h-7 w-44"
+                  fieldClassName="h-7 w-44"
                 />
               </div>
             )}

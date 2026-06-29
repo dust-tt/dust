@@ -1,17 +1,14 @@
-import { Button } from "@sparkle/components/Button";
+import { Button, type ButtonSizeType } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-type ButtonSize = Extract<
-  React.ComponentProps<typeof Button>["size"],
-  "xs" | "sm" | "md"
->;
-
+// Sizes match the Button scale (xs/sm/md) and also drive the track
+// padding/rounding below.
 type ButtonsSwitchContextType = {
   value?: string;
   onValueChange?: (value: string) => void;
-  size: ButtonSize;
+  size: ButtonSizeType;
   disabled?: boolean;
 };
 
@@ -55,7 +52,7 @@ const listStyles = cva(
 export interface ButtonsSwitchListProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof listStyles> {
-  size?: ButtonSize;
+  size?: ButtonSizeType;
   disabled?: boolean;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
