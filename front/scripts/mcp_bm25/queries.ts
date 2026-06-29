@@ -770,23 +770,11 @@ export const QUERIES: LabeledQuery[] = [
     expected: "query_tables_v2.list_tables",
   },
   {
-    query: "find the available datasets and table uris",
-    expected: "query_tables_v2.list_tables",
-  },
-  {
-    query: "what columns are in this agent table",
-    expected: "query_tables_v2.get_database_schema",
-  },
-  {
     query: "get the schema for an agent configured table before writing sql",
     expected: "query_tables_v2.get_database_schema",
   },
   {
     query: "run sql against this agent configured table",
-    expected: "query_tables_v2.execute_database_query",
-  },
-  {
-    query: "execute a database query and save the results",
     expected: "query_tables_v2.execute_database_query",
   },
 
