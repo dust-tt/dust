@@ -656,6 +656,7 @@ export function useAwuUsageFromAnalytics({
   granularity,
   days,
   disabled,
+  urlPrefix,
 }: {
   workspaceId: string;
   groupBy?: "usage_type" | "agent" | "user" | "origin";
@@ -663,6 +664,7 @@ export function useAwuUsageFromAnalytics({
   granularity?: "day" | "week" | "month";
   days?: number;
   disabled?: boolean;
+  urlPrefix?: string;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<AwuUsageAnalyticsResponse> = fetcher;
@@ -681,7 +683,9 @@ export function useAwuUsageFromAnalytics({
     queryParams.set("days", days.toString());
   }
   const queryString = queryParams.toString();
-  const key = `/api/w/${workspaceId}/analytics/awu-usage-analytics?${queryString}`;
+  const prefix =
+    urlPrefix ?? `/api/w/${workspaceId}/analytics/awu-usage-analytics`;
+  const key = `${prefix}?${queryString}`;
 
   const { data, error, isValidating } = useSWRWithDefaults(
     disabled ? null : key,

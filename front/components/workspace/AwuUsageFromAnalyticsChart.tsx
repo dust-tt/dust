@@ -36,16 +36,23 @@ interface AwuUsageFromAnalyticsChartProps {
 export type Granularity = "day" | "week" | "month";
 export type AnalyticsGroupBy = "usage_type" | "agent" | "user" | "origin";
 
-const GROUP_BY_OPTIONS: {
-  value: AnalyticsGroupBy | undefined;
-  label: string;
-}[] = [
+type GroupByOption = { value: AnalyticsGroupBy | undefined; label: string };
+
+const GROUP_BY_OPTIONS: GroupByOption[] = [
   { value: undefined, label: "Total" },
   { value: "usage_type", label: "By Usage Type" },
   { value: "agent", label: "By Agent" },
   { value: "user", label: "By User" },
   { value: "origin", label: "By Source" },
 ];
+
+// "By User" is redundant when the chart is already scoped to a single user.
+const PERSONAL_GROUP_BY_OPTIONS: GroupByOption[] = GROUP_BY_OPTIONS.filter(
+  (o) => o.value !== "user"
+);
+
+// Personal usage chart covers a fixed trailing window (no period selector).
+const PERSONAL_USAGE_DAYS = 30;
 
 const GRANULARITY_OPTIONS: { value: Granularity; label: string }[] = [
   { value: "day", label: "Daily" },
@@ -95,6 +102,8 @@ export interface BaseAwuUsageFromAnalyticsChartProps {
   days: number;
   // Base URL for the CSV export endpoint (without query params).
   exportUrlPrefix: string;
+  // Available group-by options; defaults to the full workspace-wide list.
+  groupByOptions?: GroupByOption[];
 }
 
 export function BaseAwuUsageFromAnalyticsChart({
@@ -109,6 +118,7 @@ export function BaseAwuUsageFromAnalyticsChart({
   setGroupByCount,
   days,
   exportUrlPrefix,
+  groupByOptions = GROUP_BY_OPTIONS,
 }: BaseAwuUsageFromAnalyticsChartProps) {
   // Legend-driven drilldown: when non-null, only these series are shown.
   const [enabledKeys, setEnabledKeys] = useState<string[] | null>(null);
@@ -250,7 +260,7 @@ export function BaseAwuUsageFromAnalyticsChart({
             <DropdownMenuTrigger asChild>
               <Button
                 label={
-                  GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label ??
+                  groupByOptions.find((o) => o.value === groupBy)?.label ??
                   "Total"
                 }
                 size="xs"
@@ -259,7 +269,7 @@ export function BaseAwuUsageFromAnalyticsChart({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {GROUP_BY_OPTIONS.map((o) => (
+              {groupByOptions.map((o) => (
                 <DropdownMenuItem
                   key={o.value ?? "total"}
                   label={o.label}
@@ -385,6 +395,55 @@ export function AwuUsageFromAnalyticsChart({
       setGroupByCount={setGroupByCount}
       days={period}
       exportUrlPrefix={`/api/w/${workspaceId}/analytics/awu-usage-analytics`}
+    />
+  );
+}
+
+interface MyAwuUsageFromAnalyticsChartProps {
+  workspaceId: string;
+  disabled?: boolean;
+}
+
+// Personal credit usage chart scoped to the authenticated user. Same chart as
+// the workspace-wide analytics one, but fetches from the user-scoped endpoint so
+// any member can track their own usage.
+export function MyAwuUsageFromAnalyticsChart({
+  workspaceId,
+  disabled,
+}: MyAwuUsageFromAnalyticsChartProps) {
+  const [granularity, setGranularity] = useState<Granularity>("day");
+  const [groupBy, setGroupBy] = useState<AnalyticsGroupBy | undefined>(
+    undefined
+  );
+  const [groupByCount, setGroupByCount] = useState<number>(5);
+
+  const exportUrlPrefix = `/api/w/${workspaceId}/credits/my-usage-analytics`;
+
+  const { awuUsageData, isAwuUsageLoading, isAwuUsageError } =
+    useAwuUsageFromAnalytics({
+      workspaceId,
+      groupBy,
+      groupByCount,
+      granularity,
+      days: PERSONAL_USAGE_DAYS,
+      disabled,
+      urlPrefix: exportUrlPrefix,
+    });
+
+  return (
+    <BaseAwuUsageFromAnalyticsChart
+      awuUsageData={awuUsageData}
+      isAwuUsageLoading={isAwuUsageLoading}
+      isAwuUsageError={!!isAwuUsageError}
+      granularity={granularity}
+      setGranularity={setGranularity}
+      groupBy={groupBy}
+      setGroupBy={setGroupBy}
+      groupByCount={groupByCount}
+      setGroupByCount={setGroupByCount}
+      days={PERSONAL_USAGE_DAYS}
+      exportUrlPrefix={exportUrlPrefix}
+      groupByOptions={PERSONAL_GROUP_BY_OPTIONS}
     />
   );
 }

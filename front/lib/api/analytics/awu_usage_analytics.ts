@@ -59,9 +59,11 @@ function toError(error: ElasticsearchError): AwuUsageAnalyticsError {
 
 export async function getAwuUsageFromAnalytics(
   auth: Authenticator,
-  query: AwuUsageAnalyticsQuery
+  query: AwuUsageAnalyticsQuery,
+  options: { userIds?: string[] } = {}
 ): Promise<Result<AwuUsageAnalyticsResponse, AwuUsageAnalyticsError>> {
   const { groupBy, groupByCount, granularity, days } = query;
+  const { userIds } = options;
   const { startDate, endDate } = daysToInstantRange(days, "UTC");
 
   if (!groupBy) {
@@ -70,6 +72,7 @@ export async function getAwuUsageFromAnalytics(
       endDate,
       granularity,
       timezone: "UTC",
+      userIds,
       fillWindow: true,
     });
     if (result.isErr()) {
@@ -94,6 +97,7 @@ export async function getAwuUsageFromAnalytics(
       endDate,
       granularity,
       timezone: "UTC",
+      userIds,
       fillWindow: true,
     });
     if (result.isErr()) {
@@ -125,6 +129,7 @@ export async function getAwuUsageFromAnalytics(
     timezone: "UTC",
     breakdownBy: groupBy,
     limit: groupByCount,
+    userIds,
     fillWindow: true,
   });
   if (result.isErr()) {
@@ -155,4 +160,34 @@ export async function getAwuUsageFromAnalytics(
   }
 
   return new Ok({ granularity, groups: mappedGroups, points: mappedPoints });
+}
+
+export type AwuUsageCsvRow = {
+  date: string;
+  granularity: "day" | "week" | "month";
+  series: string;
+  credits: number;
+};
+
+// Flattens the timeseries response into one CSV row per (bucket, series).
+// `seriesFilter` is a comma-separated list of group keys mirroring the chart's
+// legend drilldown; when absent, every returned series is included.
+export function awuUsageToCsvRows(
+  response: AwuUsageAnalyticsResponse,
+  seriesFilter: string | undefined
+): AwuUsageCsvRow[] {
+  const { granularity, groups, points } = response;
+  const filter = seriesFilter ? new Set(seriesFilter.split(",")) : null;
+  const visibleGroups = filter
+    ? groups.filter((group) => filter.has(group.groupKey))
+    : groups;
+  return points.flatMap((point) => {
+    const date = new Date(point.timestamp).toISOString().slice(0, 10);
+    return visibleGroups.map((group) => ({
+      date,
+      granularity,
+      series: group.name,
+      credits: point.values[group.groupKey] ?? 0,
+    }));
+  });
 }
