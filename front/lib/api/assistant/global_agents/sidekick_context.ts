@@ -27,7 +27,6 @@ interface SidekickUserMetadata {
 export interface SidekickContext {
   mcpServerViews: {
     context: MCPServerViewResource;
-    askUserQuestion: MCPServerViewResource | null;
   } | null;
 }
 
@@ -267,13 +266,7 @@ export async function buildSidekickContext(
       auth,
       AGENT_SIDEKICK_CONTEXT_TOOL_NAME
     );
-  const askUserQuestion =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "ask_user_question"
-    );
-
   return {
-    mcpServerViews: context ? { context, askUserQuestion } : null,
+    mcpServerViews: context ? { context } : null,
   };
 }

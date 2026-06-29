@@ -72,6 +72,22 @@ describe("getJITServers", () => {
       expect(commonUtilitiesServer?.mcpServerViewId).toBeDefined();
     });
 
+    it("should always return the ask_user_question MCP server", async () => {
+      const { servers: jitServers } = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments: [],
+      });
+
+      const askUserQuestionServer = jitServers.find(
+        (server) => server.name === "ask_user_question"
+      );
+
+      expect(askUserQuestionServer).toBeDefined();
+      expect(askUserQuestionServer?.type).toBe("mcp_server_configuration");
+      expect(askUserQuestionServer?.mcpServerViewId).toBeDefined();
+    });
+
     it("should include conversation_files server when attachments exist", async () => {
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(auth, user, {
