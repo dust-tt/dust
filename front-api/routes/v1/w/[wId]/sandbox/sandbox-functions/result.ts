@@ -6,6 +6,7 @@ import { z } from "zod";
 
 const PostSandboxFunctionResultRequestBodySchema = z
   .object({
+    function: z.string().optional(),
     result: z.unknown(),
   })
   .strict();
@@ -25,10 +26,11 @@ app.post(
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
     const sandboxClaims = ctx.get("sandboxClaims");
-    const { result } = ctx.req.valid("json");
+    const { function: functionName, result } = ctx.req.valid("json");
 
     void auth;
     void sandboxClaims;
+    void functionName;
     void result;
 
     // TODO(spolu): Post the result event to the sandbox function invocation stream.

@@ -1,4 +1,7 @@
-import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import {
+  createSandboxFunctionInvocationTokenTestContext,
+  createSandboxTokenTestContext,
+} from "@app/tests/utils/SandboxTokenFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -55,5 +58,22 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     for (const serverView of body.serverViews) {
       expect(serverView.server.availability).not.toBe("manual");
     }
+  });
+
+  it("rejects sandbox function invocation tokens", async () => {
+    const { token, workspace } =
+      await createSandboxFunctionInvocationTokenTestContext({
+        enableSandboxTools: true,
+      });
+
+    const response = await getSandboxActions(workspace, token);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "This sandbox token cannot access sandbox actions.",
+      },
+    });
   });
 });
