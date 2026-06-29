@@ -8,10 +8,16 @@ import {
   recordSandboxStartupTotal,
   traceSandboxStartupPhase,
 } from "@app/lib/api/sandbox/instrumentation";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
-import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
+import type {
+  EnsureSandboxResult,
+  SandboxResource,
+} from "@app/lib/resources/sandbox_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok, type Result } from "@app/types/shared/result";
@@ -21,12 +27,18 @@ export interface EnsureSandboxReadyResult {
   freshlyCreated: boolean;
 }
 
-// /!\ All sandbox-touching tools must use this helper rather than calling
-// ConversationSandboxAdapter.ensureSandboxActive directly, otherwise the GCS FUSE mount and
-// egress forwarder bring-up will be skipped.
-export async function ensureSandboxReady(
+type SandboxReadyConfig = {
+  ensureActive: () => Promise<Result<EnsureSandboxResult, Error>>;
+  getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
+  runtimeOwner: SandboxRuntimeOwner;
+};
+
+// /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
+// the owner adapter directly, otherwise the GCS FUSE mount and egress forwarder bring-up will be
+// skipped.
+async function ensureOwnerSandboxReady(
   auth: Authenticator,
-  conversation: ConversationType
+  { ensureActive, getFileSystem, runtimeOwner }: SandboxReadyConfig
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   const startMs = performance.now();
   // cold is unknown until ensureActive returns; if it errors first (rare) we
@@ -38,7 +50,7 @@ export async function ensureSandboxReady(
     return await traceSandboxStartupPhase("total", async () => {
       const ensureResult = await traceSandboxStartupPhase(
         "provider_ensure",
-        () => ConversationSandboxAdapter.ensureSandboxActive(auth, conversation)
+        ensureActive
       );
       if (ensureResult.isErr()) {
         status = "error";
@@ -60,7 +72,7 @@ export async function ensureSandboxReady(
       }
       const image = imageResult.value;
 
-      void startTelemetry(auth, sandbox, conversation).catch((err) =>
+      void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
         logger.error({ err }, "Telemetry start failed (fire-and-forget)")
       );
 
@@ -79,13 +91,10 @@ export async function ensureSandboxReady(
         // errors still taking precedence.
         const [prepResult, mountResult] = await Promise.all([
           traceSandboxStartupPhase("egress_prep", () =>
-            prepareSandboxEgressBeforeMount(auth, sandbox)
+            prepareSandboxEgressBeforeMount(auth, sandbox, { runtimeOwner })
           ),
           traceSandboxStartupPhase("gcs_mount", async () => {
-            const fsResult = await DustFileSystem.forConversation(
-              auth,
-              conversation
-            );
+            const fsResult = await getFileSystem();
             if (fsResult.isErr()) {
               return fsResult;
             }
@@ -104,10 +113,7 @@ export async function ensureSandboxReady(
         const refreshResult = await traceSandboxStartupPhase(
           "gcs_refresh",
           async () => {
-            const fsResult = await DustFileSystem.forConversation(
-              auth,
-              conversation
-            );
+            const fsResult = await getFileSystem();
             if (fsResult.isErr()) {
               return fsResult;
             }
@@ -122,7 +128,11 @@ export async function ensureSandboxReady(
 
       const ensureEgressResult = await traceSandboxStartupPhase(
         "egress_on_exec",
-        () => ensureSandboxEgressOnExec(auth, sandbox, { wokeFromSleep })
+        () =>
+          ensureSandboxEgressOnExec(auth, sandbox, {
+            runtimeOwner,
+            wokeFromSleep,
+          })
       );
       if (ensureEgressResult.isErr()) {
         status = "error";
@@ -134,4 +144,33 @@ export async function ensureSandboxReady(
   } finally {
     recordSandboxStartupTotal(performance.now() - startMs, { cold }, status);
   }
+}
+
+export async function ensureConversationSandboxReady(
+  auth: Authenticator,
+  conversation: ConversationType
+): Promise<Result<EnsureSandboxReadyResult, Error>> {
+  return ensureOwnerSandboxReady(auth, {
+    ensureActive: () =>
+      ConversationSandboxAdapter.ensureSandboxActive(auth, conversation),
+    getFileSystem: () => DustFileSystem.forConversation(auth, conversation),
+    runtimeOwner: {
+      kind: "conversation",
+      conversationId: conversation.sId,
+    },
+  });
+}
+
+export async function ensurePodSandboxReady(
+  auth: Authenticator,
+  pod: SpaceResource
+): Promise<Result<EnsureSandboxReadyResult, Error>> {
+  return ensureOwnerSandboxReady(auth, {
+    ensureActive: () => PodSandboxAdapter.ensureSandboxActive(auth, pod),
+    getFileSystem: () => DustFileSystem.forPod(auth, pod),
+    runtimeOwner: {
+      kind: "pod",
+      spaceId: pod.sId,
+    },
+  });
 }
