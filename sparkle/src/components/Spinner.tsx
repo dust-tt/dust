@@ -46,8 +46,8 @@ const SPINNER_CSS = `
     50%  { stroke-dasharray: 70 30; stroke-dashoffset: -48; }
     100% { stroke-dasharray:  2 98; stroke-dashoffset: -100; }
   }
-  .ssp-g   { animation: ssp-spin 1.9s linear     infinite; transform-origin: 12px 12px; }
-  .ssp-arc { animation: ssp-dash 1.9s ease-in-out infinite; }
+  .ssp-g   { animation: ssp-spin 2.2s linear     infinite; transform-origin: 12px 12px; }
+  .ssp-arc { animation: ssp-dash 2.2s ease-in-out infinite; }
   @media (prefers-reduced-motion: reduce) {
     .ssp-g, .ssp-arc { animation: none; }
   }
