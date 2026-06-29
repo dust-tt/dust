@@ -1016,6 +1016,40 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
+   * Read a file from the sandbox filesystem.
+   */
+  async readFile(
+    auth: Authenticator,
+    path: string
+  ): Promise<Result<Buffer, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+
+    try {
+      const data = await provider.readFile(this.providerId, path, {
+        workspaceId,
+      });
+
+      return new Ok(data);
+    } catch (err) {
+      if (err instanceof SandboxNotFoundError) {
+        logger.error(
+          { sandbox: this.toLogJSON() },
+          "Sandbox not found at provider during readFile — marking as deleted"
+        );
+
+        await this.updateStatus("deleted");
+      }
+
+      return new Err(normalizeError(err));
+    }
+  }
+
+  /**
    * Write a file to the sandbox filesystem.
    */
   async writeFile(

@@ -14,6 +14,7 @@ import {
   getConversationFilePath,
   getConversationFilesBasePath,
   getPodFilesBasePath,
+  getPodSandboxFunctionsBasePath,
   isLegacyScopedPath,
   makeProcessedMountFileName,
   resolveCanonicalScopedPath,
@@ -84,6 +85,7 @@ import {
   frameSlideshowContentType,
   isConversationFileUseCase,
   isInteractiveContentType,
+  isSandboxFunctionContentType,
 } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -1157,10 +1159,17 @@ export class FileResource extends BaseResource<FileModel> {
     { podId }: { podId: string }
   ): Promise<{ path: string; fallbackPath: string }> {
     const owner = auth.getNonNullableWorkspace();
-    const basePath = getPodFilesBasePath({
-      workspaceId: owner.sId,
-      podId,
-    });
+    // Sandbox function bundles route to their own front-owned prefix (see
+    // getPodSandboxFunctionsBasePath). Regular project files keep the R/W pod files prefix.
+    const basePath = isSandboxFunctionContentType(this.contentType)
+      ? getPodSandboxFunctionsBasePath({
+          workspaceId: owner.sId,
+          podId,
+        })
+      : getPodFilesBasePath({
+          workspaceId: owner.sId,
+          podId,
+        });
 
     const desiredPath = `${basePath}${this.fileName}`;
     const fallbackPath = `${basePath}${disambiguateFileName(this)}`;
