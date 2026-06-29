@@ -36,6 +36,7 @@ import {
   useMyUsage,
   useSeatPlan,
 } from "@app/lib/swr/credits";
+import { useGroups } from "@app/lib/swr/groups";
 import {
   useMembersUsage,
   useUpdateMemberSeatType,
@@ -160,6 +161,7 @@ export function UsagePage() {
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
   >(null);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -184,6 +186,11 @@ export function UsagePage() {
     },
     []
   );
+
+  const handleSetGroupFilter = useCallback((next: string | null) => {
+    setGroupFilter(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
 
   // Name/email search is also applied server-side before pagination, so reset
   // to the first page whenever the search term changes.
@@ -451,7 +458,16 @@ export function UsagePage() {
       orderColumn: membersOrderColumn,
       orderDirection: membersOrderDirection,
       seatType: seatTypeFilter ?? undefined,
+      groupId: groupFilter ?? undefined,
     });
+
+  const { groups } = useGroups({
+    owner,
+    kinds: ["regular", "provisioned"],
+    disabled: !isWorkspaceAdmin || !pricingGroupsEnabled,
+  });
+  const selectedGroupName =
+    groups.find((g) => g.sId === groupFilter)?.name ?? null;
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
@@ -588,6 +604,32 @@ export function UsagePage() {
               />
             }
             onClick={() => handleSetSeatTypeFilter(seatType)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const groupsFilterDropdown = pricingGroupsEnabled && groups.length > 0 && (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          label={selectedGroupName ?? "Groups"}
+          size="sm"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          label="All groups"
+          onClick={() => handleSetGroupFilter(null)}
+        />
+        {groups.map((group) => (
+          <DropdownMenuItem
+            key={group.sId}
+            label={group.name}
+            onClick={() => handleSetGroupFilter(group.sId)}
           />
         ))}
       </DropdownMenuContent>
@@ -759,7 +801,12 @@ export function UsagePage() {
                         }
                       />
                     </ButtonsSwitchList>
-                    {membersTab === "members" && seatFilterDropdown}
+                    {membersTab === "members" && (
+                      <div className="flex flex-row items-center gap-2">
+                        {groupsFilterDropdown}
+                        {seatFilterDropdown}
+                      </div>
+                    )}
                   </div>
                   <div className="pt-2">
                     {membersTab === "members" ? (

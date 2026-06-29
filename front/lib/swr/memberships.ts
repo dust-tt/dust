@@ -240,6 +240,7 @@ export function useMembersUsage({
   orderColumn,
   orderDirection,
   seatType,
+  groupId,
   disabled,
 }: {
   workspaceId: string;
@@ -249,6 +250,7 @@ export function useMembersUsage({
   orderColumn?: "name" | "email" | "consumedAwuCredits";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType | "none";
+  groupId?: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -275,6 +277,9 @@ export function useMembersUsage({
   }
   if (seatType) {
     searchParams.set("seatType", seatType);
+  }
+  if (groupId) {
+    searchParams.set("groupId", groupId);
   }
 
   const { data, error } = useSWRWithDefaults(
