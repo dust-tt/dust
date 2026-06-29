@@ -139,6 +139,26 @@ async function runWithStdin(
     });
     return await handle.wait();
   } catch (err) {
+    // Capture whatever the backgrounded command produced before it
+    // died, to understand why sendStdin/closeStdin fail with a missing pid.
+    // wait() throws on non-zero exit / missing process — we only call it to
+    // force the event stream to drain so handle.stdout/stderr are populated.
+    try {
+      await handle.wait();
+    } catch {
+      // Ignore: we just want the buffered output below.
+    }
+    logger.info(
+      {
+        command,
+        pid: handle.pid,
+        exitCode: handle.exitCode,
+        stdout: handle.stdout,
+        stderr: handle.stderr,
+        error: handle.error,
+      },
+      "[sandbox] runWithStdin failed; command output"
+    );
     try {
       await handle.kill();
     } catch {
