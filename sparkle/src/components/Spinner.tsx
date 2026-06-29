@@ -107,10 +107,10 @@ function SpinnerSVG({
 }
 
 const SCHEME = {
-  // mono on a light background: faint track (gray-400) + muted-foreground arc (gray-600)
-  monoOnLight: { trackColor: "#9ca3af", arcColor: "#4b5563", trackOpacity: 1 },
-  // mono on a dark background: faint-night track (gray-600) + muted-foreground-night arc (gray-400)
-  monoOnDark: { trackColor: "#4b5563", arcColor: "#9ca3af", trackOpacity: 1 },
+  // mono on a light background: border-dark track (#DFE0E2) + primary-muted arc (#7B818D)
+  monoOnLight: { trackColor: "#DFE0E2", arcColor: "#7B818D", trackOpacity: 1 },
+  // mono on a dark background: border-dark-night track (#364153) + primary-muted arc (#7B818D)
+  monoOnDark: { trackColor: "#364153", arcColor: "#7B818D", trackOpacity: 1 },
   // forced dark arc regardless of theme (for 'dark' variant)
   dark: { trackColor: "#E7E5E4", arcColor: "#020617", trackOpacity: 1 },
   // forced white arc for dark/colored backgrounds (for 'light' variant)
