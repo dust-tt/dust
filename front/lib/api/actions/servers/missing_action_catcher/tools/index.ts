@@ -36,7 +36,7 @@ export function createMissingActionCatcherTools(
                 "available (case sensitivity, word separators, ...).\n" +
                 "  2. If the function comes from a skill, the skill needs to be enabled first.\n" +
                 "  3. Search for the exact tool name instead of guessing, then retry with the " +
-                "precise name it returns.\n" +
+                "correct name.\n" +
                 "This action can safely be retried with another name or with the same name after " +
                 "enabling a skill.",
               { tracked: false }
