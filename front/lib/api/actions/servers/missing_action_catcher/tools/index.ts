@@ -1,14 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 
 // This server has dynamically created tools based on the agentLoopContext.
 // The tool name comes from the context at runtime.
 export function createMissingActionCatcherTools(
-  auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   if (agentLoopContext) {
@@ -31,17 +28,6 @@ export function createMissingActionCatcherTools(
           done: "Process action",
         },
         handler: async () => {
-          const toolSearchEnabled = await hasFeatureFlag(
-            auth,
-            "anthropic_tool_search"
-          );
-
-          const toolSearchHint = toolSearchEnabled
-            ? "  3. Search for the exact tool name with the tool search (a BM25 " +
-              "keyword search over available tools) instead of guessing, then retry " +
-              "with the precise name it returns.\n"
-            : "";
-
           return new Err(
             new MCPError(
               `Tool "${actionName}" not found. ` +
@@ -49,7 +35,8 @@ export function createMissingActionCatcherTools(
                 "  1. The function name needs to be checked to ensure it matches one of the tools " +
                 "available (case sensitivity, word separators, ...).\n" +
                 "  2. If the function comes from a skill, the skill needs to be enabled first.\n" +
-                toolSearchHint +
+                "  3. Search for the exact tool name instead of guessing, then retry with the " +
+                "precise name it returns.\n" +
                 "This action can safely be retried with another name or with the same name after " +
                 "enabling a skill.",
               { tracked: false }
