@@ -19,6 +19,11 @@
     border-color: var(--color-border);
   }
 
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
   * {
     scrollbar-width: thin;
   }

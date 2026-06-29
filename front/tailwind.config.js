@@ -110,7 +110,7 @@ module.exports = {
         },
         "saved-pulse": {
           "0%, 100%": { color: "inherit" },
-          "15%": { color: "#86efac" },
+          "15%": { color: "oklch(87.12% 0.1363 154.45)" },
         },
       },
       animation: {

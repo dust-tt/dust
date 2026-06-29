@@ -7,6 +7,17 @@
 @config "../../tailwind.config.js";
 
 @layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
   html {
     touch-action: manipulation;
     font-feature-settings:

@@ -6,6 +6,19 @@
 
 @config "../../tailwind.config.js";
 
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+}
+
 @keyframes collapse-down {
   from {
     height: 0;

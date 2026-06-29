@@ -13,6 +13,11 @@
     border-color: var(--color-border);
   }
 
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
   html {
     touch-action: manipulation;
     font-feature-settings:
@@ -118,7 +123,12 @@ body {
 }
 
 .loading-text {
-  background: linear-gradient(90deg, #999999 0%, #000000 50%, #999999 100%);
+  background: linear-gradient(
+    90deg,
+    oklch(68.3% 0 0) 0%,
+    oklch(0% 0 0) 50%,
+    oklch(68.3% 0 0) 100%
+  );
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
