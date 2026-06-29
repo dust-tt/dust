@@ -233,7 +233,10 @@ export async function storeAgentAnalytics(
   let apiKeyName: string | undefined;
   const storedKeyId = userMessageModel.userContextApiKeyId;
   if (storedKeyId) {
-    const keyResource = await KeyResource.fetchByModelId(storedKeyId);
+    const keyResource = await KeyResource.fetchByWorkspaceAndId({
+      workspace: auth.getNonNullableWorkspace(),
+      id: storedKeyId,
+    });
     if (keyResource) {
       apiKeyName = keyResource.name;
     }
