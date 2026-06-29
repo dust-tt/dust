@@ -1,10 +1,7 @@
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import type * as activities from "@app/temporal/metronome_events_queue/activities";
-import { proxyActivities } from "@temporalio/workflow";
-
-// Bulk per-user spend-limit work runs on this (Metronome) worker rather than a
-// dedicated one. Re-exported here so it is included in this worker's bundle.
-export { bulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/workflows";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
+import { log, proxyActivities } from "@temporalio/workflow";
 
 const {
   processMetronomeWebhookActivity,
@@ -12,6 +9,18 @@ const {
   reconcileWorkspaceUserCreditStatesActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
+});
+
+// Bulk per-user spend-limit runs on this (Metronome) worker. Its activity makes
+// Metronome calls, so it gets a tighter timeout and a retry policy of its own.
+const { setSpendLimitForUsersActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 3,
+    initialInterval: "2s",
+    backoffCoefficient: 2,
+    maximumInterval: "1m",
+  },
 });
 
 export async function metronomeEventsWorkflow({
@@ -52,4 +61,40 @@ export async function reconcileWorkspaceUserCreditStatesWorkflow({
   workspaceId: string;
 }): Promise<void> {
   await reconcileWorkspaceUserCreditStatesActivity({ workspaceId });
+}
+
+const BULK_SPEND_LIMIT_CHUNK_SIZE = 25;
+
+export async function bulkSetUserSpendLimitWorkflow({
+  workspaceId,
+  actorUserId,
+  userIds,
+  limit,
+}: {
+  workspaceId: string;
+  actorUserId: string;
+  userIds: string[];
+  limit: UserSpendLimit;
+}): Promise<void> {
+  let succeeded = 0;
+  let failed = 0;
+
+  for (let i = 0; i < userIds.length; i += BULK_SPEND_LIMIT_CHUNK_SIZE) {
+    const chunk = userIds.slice(i, i + BULK_SPEND_LIMIT_CHUNK_SIZE);
+    const result = await setSpendLimitForUsersActivity({
+      workspaceId,
+      actorUserId,
+      userIds: chunk,
+      limit,
+    });
+    succeeded += result.succeeded;
+    failed += result.failures.length;
+  }
+
+  log.info("[BulkSpendLimit] Completed bulk spend-limit update", {
+    workspaceId,
+    total: userIds.length,
+    succeeded,
+    failed,
+  });
 }
