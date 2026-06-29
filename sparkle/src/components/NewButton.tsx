@@ -259,6 +259,7 @@ export interface NewButtonProps
   isLoading?: boolean;
   isCounter?: boolean;
   counterValue?: string;
+  isPulsing?: boolean;
   tooltip?: string;
   tooltipShortcut?: string;
 }
@@ -276,6 +277,7 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
       isLoading = false,
       isCounter = false,
       counterValue,
+      isPulsing = false,
       tooltip,
       tooltipShortcut,
       href,
@@ -365,6 +367,7 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
             isIconOnly,
             press: !isMenuTrigger,
           }),
+          isPulsing && "s-animate-ring-pulse-soft",
           className
         )}
         disabled={isLoading || props.disabled}
