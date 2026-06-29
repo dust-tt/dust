@@ -18,6 +18,7 @@ import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
+import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
@@ -97,6 +98,7 @@ const SERVERS: ServerEntry[] = [
   { name: "microsoft_teams", tools: MICROSOFT_TEAMS_SERVER.tools },
   { name: "confluence", tools: CONFLUENCE_SERVER.tools },
   { name: "hubspot", tools: HUBSPOT_SERVER.tools },
+  { name: "include_data", tools: INCLUDE_DATA_SERVER.tools },
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
   { name: "interactive_content", tools: INTERACTIVE_CONTENT_SERVER.tools },
   { name: "snowflake", tools: SNOWFLAKE_SERVER.tools },
