@@ -1,3 +1,12 @@
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import config from "@app/lib/api/config";
+import {
+  generateExecId,
+  generateSandboxFunctionInvocationToken,
+} from "@app/lib/api/sandbox/access_tokens";
+import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -14,13 +23,54 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type {
+  PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionInvocationType,
+} from "@app/types/api/sandbox/functions";
 import { sandboxFunctionContentType } from "@app/types/files";
+import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
+
+const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
+const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
+const SANDBOX_FUNCTION_STAGING_ROOT = "/tmp/dust-sandbox-functions";
+const DSBX_BIN_PATH = "/opt/bin/dsbx";
+
+function dustAPIBaseUrlForSandbox(): string {
+  return isDevelopment() && config.getSandboxDevFrontHostName()
+    ? `https://${config.getSandboxDevFrontHostName()}`
+    : config.getApiBaseUrl();
+}
+
+function buildSandboxFunctionCommand({
+  stagedFunctionsDir,
+  slug,
+}: {
+  stagedFunctionsDir: string;
+  slug: string;
+}): string {
+  // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`.
+  const functionPath = path.posix.join(stagedFunctionsDir, `${slug}.ts`);
+
+  return [
+    "set -euo pipefail",
+    `rm -rf -- ${shellEscape(stagedFunctionsDir)}`,
+    `mkdir -p -- ${shellEscape(stagedFunctionsDir)}`,
+    `cat > ${shellEscape(functionPath)} <<'DUST_SANDBOX_FUNCTION_EOF'`,
+    "export default {",
+    "  async fetch(_req: Request): Promise<Response> {",
+    "    return Response.json({ ok: true });",
+    "  },",
+    "};",
+    "DUST_SANDBOX_FUNCTION_EOF",
+    `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`,
+  ].join("\n");
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
@@ -240,6 +290,90 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
 
     return new Ok(sandboxFunctions.length);
+  }
+
+  async invoke(
+    auth: Authenticator,
+    body: PostSandboxFunctionInvocationRequestBody
+  ): Promise<Result<SandboxFunctionInvocationType, Error>> {
+    try {
+      if (!this.space.canReadOrAdministrate(auth)) {
+        return new Err(new Error("Sandbox function space is not accessible."));
+      }
+
+      const ensureResult = await ensurePodSandboxReady(auth, this.space);
+      if (ensureResult.isErr()) {
+        return ensureResult;
+      }
+
+      const invocationId = randomUUID();
+      const execId = generateExecId();
+      const token = await generateSandboxFunctionInvocationToken(auth, {
+        sandbox: ensureResult.value.sandbox,
+        sandboxFunction: this,
+        invocationId,
+        execId,
+      });
+
+      const stagedFunctionsDir = path.posix.join(
+        SANDBOX_FUNCTION_STAGING_ROOT,
+        invocationId
+      );
+      const command = buildSandboxFunctionCommand({
+        stagedFunctionsDir,
+        slug: this.slug,
+      });
+      const inputEnvelope = {
+        method: "POST",
+        url: `https://dust.local/sandbox-functions/${this.sId}/invocations/${invocationId}`,
+        headers: {
+          "content-type": "application/json",
+          "x-dust-sandbox-function-id": this.sId,
+          "x-dust-sandbox-function-invocation-id": invocationId,
+          ...(body.context?.frameFileId
+            ? { "x-dust-frame-file-id": body.context.frameFileId }
+            : {}),
+        },
+        ...(body.input === undefined
+          ? {}
+          : { body: JSON.stringify(body.input) }),
+        encoding: "utf8",
+      };
+
+      const execResult = await ensureResult.value.sandbox.exec(auth, command, {
+        workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
+        envVars: {
+          DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
+          DUST_FUNCTIONS_DIR: stagedFunctionsDir,
+          DUST_SANDBOX_TOKEN: token,
+        },
+        stdin: JSON.stringify(inputEnvelope),
+        timeoutMs: SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
+        user: "agent-proxied",
+      });
+      if (execResult.isErr()) {
+        return execResult;
+      }
+      if (execResult.value.exitCode !== 0) {
+        return new Err(
+          new Error(
+            `Sandbox function invocation failed with exit code ${execResult.value.exitCode}.`
+          )
+        );
+      }
+
+      // Keep the invocation token valid for its short TTL. The durable version
+      // of this flow will let dsbx post invocation results back to Dust with
+      // the same token, then revoke it once results are accepted.
+      return new Ok({
+        id: invocationId,
+        functionId: this.sId,
+        status: "created",
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {

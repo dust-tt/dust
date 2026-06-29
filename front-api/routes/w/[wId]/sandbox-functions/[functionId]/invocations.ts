@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
@@ -54,17 +53,24 @@ app.post(
       });
     }
 
-    // TODO(spolu): implement sandbox function invocation
-    void body;
+    const invocationResult = await sandboxFunction.invoke(auth, body);
+    if (invocationResult.isErr()) {
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Sandbox function invocation failed.",
+          },
+        },
+        invocationResult.error
+      );
+    }
 
     return ctx.json(
       {
-        invocation: {
-          id: randomUUID(),
-          functionId: sandboxFunction.sId,
-          status: "created",
-          createdAt: new Date().toISOString(),
-        },
+        invocation: invocationResult.value,
       },
       201
     );
