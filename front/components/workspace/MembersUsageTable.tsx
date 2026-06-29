@@ -332,12 +332,7 @@ export function AwuUsageBar({
   );
 }
 
-const nameColumn: ColumnDef<RowData, string> = {
-  ...buildMemberNameColumn<RowData>(),
-  meta: {
-    className: "w-72",
-  },
-};
+const nameColumn = buildMemberNameColumn<RowData>();
 
 const groupsColumn: ColumnDef<RowData, string> = {
   id: "groups" as const,
@@ -444,10 +439,14 @@ const actionsColumn: ColumnDef<RowData, string> = {
 
 function buildColumns(showGroupsColumn: boolean): ColumnDef<RowData, string>[] {
   return [
-    nameColumn,
+    showGroupsColumn
+      ? { ...nameColumn, meta: { className: "w-72" } }
+      : nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
     seatTypeColumn,
-    consumedAwuCreditsColumn,
+    showGroupsColumn
+      ? consumedAwuCreditsColumn
+      : { ...consumedAwuCreditsColumn, meta: { className: "w-64" } },
     actionsColumn,
   ];
 }
