@@ -34,7 +34,6 @@ import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tool
 import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
 import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
-import { WorkdayOAuthProvider } from "@app/lib/api/oauth/providers/workday";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -93,7 +92,6 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   ukg_ready: new UkgReadyOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
   vanta: new VantaOAuthProvider(),
-  workday: new WorkdayOAuthProvider(),
 };
 
 export function getProviderStrategy(

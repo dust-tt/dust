@@ -34,7 +34,6 @@ pub enum CredentialProvider {
     Databricks,
     UkgReady,
     Vanta,
-    Workday,
     // BYOK model providers
     Openai,
     Anthropic,
@@ -57,7 +56,6 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::Snowflake => CredentialProvider::Snowflake,
             ConnectionProvider::UkgReady => CredentialProvider::UkgReady,
             ConnectionProvider::Vanta => CredentialProvider::Vanta,
-            ConnectionProvider::Workday => CredentialProvider::Workday,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
     }
@@ -264,9 +262,6 @@ impl Credential {
                 vec!["client_id"]
             }
             CredentialProvider::Vanta => {
-                vec!["client_id", "client_secret"]
-            }
-            CredentialProvider::Workday => {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Openai => {

@@ -170,7 +170,6 @@ pub mod oauth {
         pub mod ukg_ready;
         pub mod utils;
         pub mod vanta;
-        pub mod workday;
         pub mod zendesk;
     }
 

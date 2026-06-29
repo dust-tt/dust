@@ -33,7 +33,6 @@ export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
   "databricks",
-  "workday",
   "discord",
   "fathom",
   "freshservice",
@@ -65,7 +64,6 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
   databricks: "Databricks",
-  workday: "Workday",
   discord: "Discord",
   fathom: "Fathom",
   freshservice: "Freshservice",
@@ -114,7 +112,6 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "ukg_ready_company_id",
   "jira_cloud_url",
   "confluence_cloud_url",
-  "workday_tenant_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -278,34 +275,6 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "OAuth Client Secret",
             value: undefined,
             helpMessage: "The client secret from your Databricks OAuth app.",
-            validator: isValidClientIdOrSecret,
-          },
-        };
-        return result;
-      }
-      return null;
-    case "workday":
-      if (useCase === "platform_actions") {
-        const result: OAuthCredentialInputs = {
-          workday_tenant_url: {
-            label: "Workday Tenant URL",
-            value: undefined,
-            helpMessage:
-              "Your Workday OAuth tenant URL, including the /ccx/oauth2/{tenant} path " +
-              "(e.g., https://wd2.myworkday.com/ccx/oauth2/your-tenant). " +
-              "Dust appends /authorize and /token to this URL.",
-            validator: isValidUrl,
-          },
-          client_id: {
-            label: "OAuth Client ID",
-            value: undefined,
-            helpMessage: "The client ID from your Workday OAuth app.",
-            validator: isValidClientIdOrSecret,
-          },
-          client_secret: {
-            label: "OAuth Client Secret",
-            value: undefined,
-            helpMessage: "The client secret from your Workday OAuth app.",
             validator: isValidClientIdOrSecret,
           },
         };
