@@ -63,8 +63,66 @@ const LINKEDIN_MCP_DESCRIPTION: MockMcpDescription = {
   ],
 };
 
+const JIRA_MCP_DESCRIPTION: MockMcpDescription = {
+  sId: "mcp_jira",
+  description: "Search and manage JIRA issues and projects",
+  tools: [
+    {
+      name: "jira-create-issue",
+      description: "Create a new JIRA ticket",
+      inputs: [
+        {
+          name: "project",
+          type: "string",
+          description: "The JIRA project key the ticket belongs to",
+        },
+        {
+          name: "summary",
+          type: "string",
+          description: "Short summary of the ticket",
+        },
+        {
+          name: "description",
+          type: "string",
+          description: "Detailed description of the ticket",
+        },
+        {
+          name: "issueType",
+          type: "string",
+          description:
+            'The issue type (e.g. "Task", "Bug"). Defaults to "Task"',
+          required: false,
+        },
+      ],
+    },
+    {
+      name: "jira-search-issues",
+      description: "Search for issues using a JQL query",
+      inputs: [
+        {
+          name: "jql",
+          type: "string",
+          description: "The JQL query used to filter issues",
+        },
+      ],
+    },
+    {
+      name: "jira-get-sprint-status",
+      description:
+        "Retrieve the current sprint's progress, including ticket counts by status",
+      inputs: [
+        {
+          name: "board",
+          type: "string",
+          description: 'The board to read the sprint from (e.g. "Engineering")',
+        },
+      ],
+    },
+  ],
+};
+
 const WORKSPACE_CONTEXT: WorkspaceContext = {
-  mcpDescriptions: [LINKEDIN_MCP_DESCRIPTION],
+  mcpDescriptions: [LINKEDIN_MCP_DESCRIPTION, JIRA_MCP_DESCRIPTION],
   tools: [
     mockTool("Slack", "Read and send Slack messages"),
     mockTool("Notion", "Search Notion workspace"),
