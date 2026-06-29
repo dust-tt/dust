@@ -126,76 +126,236 @@ export interface BaseAwuUsageFromAnalyticsChartProps {
   onAgentFilterChange?: (filter: AnalyticsEntityFilter | null) => void;
 }
 
-export function BaseAwuUsageFromAnalyticsChart({
-  awuUsageData,
-  isAwuUsageLoading,
-  isAwuUsageError,
+interface UsageChartControlsProps {
+  granularity: Granularity;
+  setGranularity: (v: Granularity) => void;
+  groupBy: AnalyticsGroupBy | undefined;
+  onGroupByChange: (v: AnalyticsGroupBy | undefined) => void;
+  groupByCount: number;
+  onGroupByCountChange: (v: number) => void;
+  groupByOptions: GroupByOption[];
+  userFilter?: AnalyticsEntityFilter | null;
+  agentFilter?: AnalyticsEntityFilter | null;
+  onUserFilterChange?: (filter: AnalyticsEntityFilter | null) => void;
+  onAgentFilterChange?: (filter: AnalyticsEntityFilter | null) => void;
+  hasDrilldown: boolean;
+  onClearDrilldown: () => void;
+  csvDownload: ReturnType<typeof useDownloadCsv>;
+}
+
+function UsageChartControls({
   granularity,
   setGranularity,
   groupBy,
-  setGroupBy,
+  onGroupByChange,
   groupByCount,
-  setGroupByCount,
-  days,
-  exportUrlPrefix,
-  groupByOptions = GROUP_BY_OPTIONS,
+  onGroupByCountChange,
+  groupByOptions,
   userFilter,
   agentFilter,
   onUserFilterChange,
   onAgentFilterChange,
-}: BaseAwuUsageFromAnalyticsChartProps) {
-  // Legend-driven drilldown: when non-null, only these series are shown.
-  const [enabledKeys, setEnabledKeys] = useState<string[] | null>(null);
-
-  const handleGroupByChange = (value: AnalyticsGroupBy | undefined) => {
-    setGroupBy(value);
-    setEnabledKeys(null);
-  };
-
-  const handleGroupByCountChange = (value: number) => {
-    setGroupByCount(value);
-    setEnabledKeys(null);
-  };
-
-  const toggleGroup = useCallback((key: string) => {
-    setEnabledKeys((prev) => {
-      const current = prev ?? [];
-      if (current.includes(key)) {
-        const next = current.filter((k) => k !== key);
-        return next.length === 0 ? null : next;
-      }
-      return [...current, key];
-    });
-  }, []);
-
-  const groups = useMemo(() => awuUsageData?.groups ?? [], [awuUsageData]);
-  const points = useMemo(() => awuUsageData?.points ?? [], [awuUsageData]);
-  const allKeys = useMemo(() => groups.map((g) => g.groupKey), [groups]);
-
-  // Intersect the drilldown selection with the keys actually returned: a series
-  // that drops out of the top-N (e.g. after a period change) must not blank the
-  // chart, so an empty intersection falls back to showing everything.
-  const effectiveEnabledKeys = useMemo(() => {
-    if (!enabledKeys) {
-      return null;
-    }
-    const available = enabledKeys.filter((key) => allKeys.includes(key));
-    return available.length > 0 ? available : null;
-  }, [enabledKeys, allKeys]);
-
-  const chartData = useMemo(
-    () =>
-      points.map((point) => ({ timestamp: point.timestamp, ...point.values })),
-    [points]
+  hasDrilldown,
+  onClearDrilldown,
+  csvDownload,
+}: UsageChartControlsProps) {
+  return (
+    <div className="flex items-center gap-2">
+      {userFilter && (
+        <Chip
+          size="xs"
+          label={`User: ${userFilter.name}`}
+          onRemove={() => onUserFilterChange?.(null)}
+        />
+      )}
+      {agentFilter && (
+        <Chip
+          size="xs"
+          label={`Agent: ${agentFilter.name}`}
+          onRemove={() => onAgentFilterChange?.(null)}
+        />
+      )}
+      {hasDrilldown && (
+        <Button
+          label="Clear filters"
+          size="xs"
+          variant="ghost"
+          onClick={onClearDrilldown}
+        />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={
+              GRANULARITY_OPTIONS.find((o) => o.value === granularity)?.label ??
+              "Daily"
+            }
+            size="xs"
+            variant="outline"
+            isSelect
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {GRANULARITY_OPTIONS.map((o) => (
+            <DropdownMenuItem
+              key={o.value}
+              label={o.label}
+              onClick={() => setGranularity(o.value)}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={
+              groupByOptions.find((o) => o.value === groupBy)?.label ?? "Total"
+            }
+            size="xs"
+            variant="outline"
+            isSelect
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {groupByOptions.map((o) => (
+            <DropdownMenuItem
+              key={o.value ?? "total"}
+              label={o.label}
+              onClick={() => onGroupByChange(o.value)}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {groupBy && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={`Top ${groupByCount}`}
+              size="xs"
+              variant="outline"
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {TOP_K_OPTIONS.map((value) => (
+              <DropdownMenuItem
+                key={value}
+                label={`Top ${value}`}
+                onClick={() => onGroupByCountChange(value)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      <CsvDownloadButton {...csvDownload} />
+    </div>
   );
+}
 
+interface UsageChartBarsProps {
+  chartData: { timestamp: number; [key: string]: number }[];
+  visibleKeys: string[];
+  allKeys: string[];
+  groupBy: AnalyticsGroupBy | undefined;
+  groups: { groupKey: string; name: string }[];
+  granularity: Granularity;
+}
+
+function UsageChartBars({
+  chartData,
+  visibleKeys,
+  allKeys,
+  groupBy,
+  groups,
+  granularity,
+}: UsageChartBarsProps) {
+  return (
+    <BarChart
+      data={chartData}
+      margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+    >
+      <CartesianGrid
+        vertical={false}
+        className="stroke-border dark:stroke-border-night"
+      />
+      <XAxis
+        dataKey="timestamp"
+        type="category"
+        className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+        tickLine={true}
+        axisLine={false}
+        tickMargin={8}
+        minTickGap={16}
+        tickFormatter={(value) => formatTimestamp(value, granularity)}
+      />
+      <YAxis
+        className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+        tickLine={false}
+        axisLine={false}
+        tickMargin={8}
+        tickFormatter={(value) => formatCreditsCompact(value)}
+      />
+      <Tooltip
+        content={(props: TooltipContentProps<number, string>) => (
+          <CreditTooltip
+            {...props}
+            groupBy={groupBy}
+            groups={groups}
+            granularity={granularity}
+          />
+        )}
+        cursor={false}
+        wrapperStyle={{ outline: "none" }}
+        contentStyle={{
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          boxShadow: "none",
+        }}
+      />
+      {visibleKeys.map((groupKey) => (
+        <Bar
+          key={groupKey}
+          dataKey={groupKey}
+          stackId="usage"
+          fill="currentColor"
+          className={getColorClassName(groupBy, groupKey, allKeys)}
+        />
+      ))}
+    </BarChart>
+  );
+}
+
+interface UseUsageLegendItemsParams {
+  groups: { groupKey: string; name: string }[];
+  groupBy: AnalyticsGroupBy | undefined;
+  allKeys: string[];
+  effectiveEnabledKeys: string[] | null;
+  toggleGroup: (key: string) => void;
+  userFilter?: AnalyticsEntityFilter | null;
+  agentFilter?: AnalyticsEntityFilter | null;
+  onUserFilterChange?: (filter: AnalyticsEntityFilter | null) => void;
+  onAgentFilterChange?: (filter: AnalyticsEntityFilter | null) => void;
+}
+
+function useUsageLegendItems({
+  groups,
+  groupBy,
+  allKeys,
+  effectiveEnabledKeys,
+  toggleGroup,
+  userFilter,
+  agentFilter,
+  onUserFilterChange,
+  onAgentFilterChange,
+}: UseUsageLegendItemsParams): LegendItem[] {
   // In "user"/"agent" mode, legend clicks set the sticky scope filter (a server
   // refetch) rather than toggling client-side series visibility, so the choice
   // survives groupBy changes.
   const userScopeMode = groupBy === "user" && !!onUserFilterChange;
   const agentScopeMode = groupBy === "agent" && !!onAgentFilterChange;
 
-  const legendItems: LegendItem[] = useMemo(
+  return useMemo(
     () =>
       groups.map((group) => {
         let label = group.name;
@@ -264,15 +424,29 @@ export function BaseAwuUsageFromAnalyticsChart({
       onAgentFilterChange,
     ]
   );
+}
 
-  const visibleKeys = useMemo(
-    () =>
-      allKeys.filter(
-        (key) => !effectiveEnabledKeys || effectiveEnabledKeys.includes(key)
-      ),
-    [allKeys, effectiveEnabledKeys]
-  );
+interface BuildExportUrlParams {
+  exportUrlPrefix: string;
+  days: number;
+  granularity: Granularity;
+  groupBy: AnalyticsGroupBy | undefined;
+  groupByCount: number;
+  userFilter?: AnalyticsEntityFilter | null;
+  agentFilter?: AnalyticsEntityFilter | null;
+  effectiveEnabledKeys: string[] | null;
+}
 
+function buildExportUrl({
+  exportUrlPrefix,
+  days,
+  granularity,
+  groupBy,
+  groupByCount,
+  userFilter,
+  agentFilter,
+  effectiveEnabledKeys,
+}: BuildExportUrlParams): string {
   const exportParams = new URLSearchParams({
     days: days.toString(),
     granularity,
@@ -293,8 +467,103 @@ export function BaseAwuUsageFromAnalyticsChart({
   if (effectiveEnabledKeys) {
     exportParams.set("series", effectiveEnabledKeys.join(","));
   }
+  return `${exportUrlPrefix}?${exportParams.toString()}`;
+}
+
+export function BaseAwuUsageFromAnalyticsChart({
+  awuUsageData,
+  isAwuUsageLoading,
+  isAwuUsageError,
+  granularity,
+  setGranularity,
+  groupBy,
+  setGroupBy,
+  groupByCount,
+  setGroupByCount,
+  days,
+  exportUrlPrefix,
+  groupByOptions = GROUP_BY_OPTIONS,
+  userFilter,
+  agentFilter,
+  onUserFilterChange,
+  onAgentFilterChange,
+}: BaseAwuUsageFromAnalyticsChartProps) {
+  // Legend-driven drilldown: when non-null, only these series are shown.
+  const [enabledKeys, setEnabledKeys] = useState<string[] | null>(null);
+
+  const handleGroupByChange = (value: AnalyticsGroupBy | undefined) => {
+    setGroupBy(value);
+    setEnabledKeys(null);
+  };
+
+  const handleGroupByCountChange = (value: number) => {
+    setGroupByCount(value);
+    setEnabledKeys(null);
+  };
+
+  const toggleGroup = useCallback((key: string) => {
+    setEnabledKeys((prev) => {
+      const current = prev ?? [];
+      if (current.includes(key)) {
+        const next = current.filter((k) => k !== key);
+        return next.length === 0 ? null : next;
+      }
+      return [...current, key];
+    });
+  }, []);
+
+  const groups = useMemo(() => awuUsageData?.groups ?? [], [awuUsageData]);
+  const points = useMemo(() => awuUsageData?.points ?? [], [awuUsageData]);
+  const allKeys = useMemo(() => groups.map((g) => g.groupKey), [groups]);
+
+  // Intersect the drilldown selection with the keys actually returned: a series
+  // that drops out of the top-N (e.g. after a period change) must not blank the
+  // chart, so an empty intersection falls back to showing everything.
+  const effectiveEnabledKeys = useMemo(() => {
+    if (!enabledKeys) {
+      return null;
+    }
+    const available = enabledKeys.filter((key) => allKeys.includes(key));
+    return available.length > 0 ? available : null;
+  }, [enabledKeys, allKeys]);
+
+  const chartData = useMemo(
+    () =>
+      points.map((point) => ({ timestamp: point.timestamp, ...point.values })),
+    [points]
+  );
+
+  const legendItems = useUsageLegendItems({
+    groups,
+    groupBy,
+    allKeys,
+    effectiveEnabledKeys,
+    toggleGroup,
+    userFilter,
+    agentFilter,
+    onUserFilterChange,
+    onAgentFilterChange,
+  });
+
+  const visibleKeys = useMemo(
+    () =>
+      allKeys.filter(
+        (key) => !effectiveEnabledKeys || effectiveEnabledKeys.includes(key)
+      ),
+    [allKeys, effectiveEnabledKeys]
+  );
+
   const csvDownload = useDownloadCsv({
-    url: `${exportUrlPrefix}?${exportParams.toString()}`,
+    url: buildExportUrl({
+      exportUrlPrefix,
+      days,
+      granularity,
+      groupBy,
+      groupByCount,
+      userFilter,
+      agentFilter,
+      effectiveEnabledKeys,
+    }),
     filename: `dust_credit_usage_last_${days}_days.csv`,
     disabled: isAwuUsageLoading || !!isAwuUsageError || chartData.length === 0,
   });
@@ -308,154 +577,35 @@ export function BaseAwuUsageFromAnalyticsChart({
         chartData.length === 0 ? "No usage data for this period." : undefined
       }
       additionalControls={
-        <div className="flex items-center gap-2">
-          {userFilter && (
-            <Chip
-              size="xs"
-              label={`User: ${userFilter.name}`}
-              onRemove={() => onUserFilterChange?.(null)}
-            />
-          )}
-          {agentFilter && (
-            <Chip
-              size="xs"
-              label={`Agent: ${agentFilter.name}`}
-              onRemove={() => onAgentFilterChange?.(null)}
-            />
-          )}
-          {effectiveEnabledKeys && (
-            <Button
-              label="Clear filters"
-              size="xs"
-              variant="ghost"
-              onClick={() => setEnabledKeys(null)}
-            />
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={
-                  GRANULARITY_OPTIONS.find((o) => o.value === granularity)
-                    ?.label ?? "Daily"
-                }
-                size="xs"
-                variant="outline"
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {GRANULARITY_OPTIONS.map((o) => (
-                <DropdownMenuItem
-                  key={o.value}
-                  label={o.label}
-                  onClick={() => setGranularity(o.value)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={
-                  groupByOptions.find((o) => o.value === groupBy)?.label ??
-                  "Total"
-                }
-                size="xs"
-                variant="outline"
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {groupByOptions.map((o) => (
-                <DropdownMenuItem
-                  key={o.value ?? "total"}
-                  label={o.label}
-                  onClick={() => handleGroupByChange(o.value)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {groupBy && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  label={`Top ${groupByCount}`}
-                  size="xs"
-                  variant="outline"
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {TOP_K_OPTIONS.map((value) => (
-                  <DropdownMenuItem
-                    key={value}
-                    label={`Top ${value}`}
-                    onClick={() => handleGroupByCountChange(value)}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <CsvDownloadButton {...csvDownload} />
-        </div>
+        <UsageChartControls
+          granularity={granularity}
+          setGranularity={setGranularity}
+          groupBy={groupBy}
+          onGroupByChange={handleGroupByChange}
+          groupByCount={groupByCount}
+          onGroupByCountChange={handleGroupByCountChange}
+          groupByOptions={groupByOptions}
+          userFilter={userFilter}
+          agentFilter={agentFilter}
+          onUserFilterChange={onUserFilterChange}
+          onAgentFilterChange={onAgentFilterChange}
+          hasDrilldown={!!effectiveEnabledKeys}
+          onClearDrilldown={() => setEnabledKeys(null)}
+          csvDownload={csvDownload}
+        />
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
       isAllowFullScreen
     >
-      <BarChart
-        data={chartData}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
-        <CartesianGrid
-          vertical={false}
-          className="stroke-border dark:stroke-border-night"
-        />
-        <XAxis
-          dataKey="timestamp"
-          type="category"
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={true}
-          axisLine={false}
-          tickMargin={8}
-          minTickGap={16}
-          tickFormatter={(value) => formatTimestamp(value, granularity)}
-        />
-        <YAxis
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          tickFormatter={(value) => formatCreditsCompact(value)}
-        />
-        <Tooltip
-          content={(props: TooltipContentProps<number, string>) => (
-            <CreditTooltip
-              {...props}
-              groupBy={groupBy}
-              groups={groups}
-              granularity={granularity}
-            />
-          )}
-          cursor={false}
-          wrapperStyle={{ outline: "none" }}
-          contentStyle={{
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            boxShadow: "none",
-          }}
-        />
-        {visibleKeys.map((groupKey) => (
-          <Bar
-            key={groupKey}
-            dataKey={groupKey}
-            stackId="usage"
-            fill="currentColor"
-            className={getColorClassName(groupBy, groupKey, allKeys)}
-          />
-        ))}
-      </BarChart>
+      <UsageChartBars
+        chartData={chartData}
+        visibleKeys={visibleKeys}
+        allKeys={allKeys}
+        groupBy={groupBy}
+        groups={groups}
+        granularity={granularity}
+      />
     </ChartContainer>
   );
 }
