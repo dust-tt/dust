@@ -141,8 +141,7 @@ export const RUN_AGENT_SERVER = {
   serverInfo: {
     name: "run_agent",
     version: "1.0.0",
-    description:
-      "Delegate work to a configured child agent/sub-agent or hand off the conversation to a specialist agent.",
+    description: "Run a child agent (agent as tool).",
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
@@ -153,8 +152,7 @@ export const RUN_AGENT_SERVER = {
   tools: [
     {
       name: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
-      description:
-        "Delegate work to a configured child agent/sub-agent, either by running it in the background and using its results or by handing off the conversation.",
+      description: "Run a child agent (agent as tool).",
       inputSchema: zodToJsonSchema(
         z.object({
           ...RUN_AGENT_TOOL_SCHEMA,
