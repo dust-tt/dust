@@ -54,6 +54,24 @@ Functions are self-contained Bun bundles in `$DUST_FUNCTIONS_DIR`, named
 - `dsbx function get <name>` — prints `{name, description, input_schema,
   output_schema}` (JSON Schema).
 
+### Unprivileged execution
+
+Function code is untrusted, so the `bun` child (runner harness + bundle) runs as
+the sandbox's unprivileged, egress-proxied `agent-proxied` user (uid `1003` —
+the `skuid` enforced by `dsbx healthcheck`), not as whoever launched `dsbx`.
+This is automatic and needs no flags: when `dsbx` is invoked as root (e.g. by
+the sandbox resource), it downgrades the child to that user before exec — its
+primary group and supplementary groups are looked up at runtime (the user's
+group is `agent`, not `1003`), so the function gets the same network containment
+(egress proxy: domain allowlisting + DSEC secret substitution) and group-based
+file access (`/files` etc.) as agent code.
+
+`dsbx` itself may stay root: it chowns the runner and stages the bundle into a
+temp dir owned by the agent user, so the dropped child can read both even when
+the originals are root-only. When `dsbx` runs unprivileged (local dev), there is
+nothing to contain and no privilege to `setuid`, so the child runs as the
+current user.
+
 The runner is bundled (Zod inlined) into `functions-runner/runner.js`, a
 generated artifact that is **not committed** (it is `.gitignore`d). `dsbx`
 embeds it via `include_str!`, so it must be built with `bun run build` before
