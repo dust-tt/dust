@@ -3,7 +3,6 @@ import publicAuthActionApp from "./auth/[action]";
 import publicMeApp from "./me";
 import publicBrandingApp from "./public/branding";
 import publicFramesTokenApp from "./public/frames/[token]";
-import publicSandboxApp from "./sandbox";
 import publicWorkspaceApp from "./w/[wId]";
 import publicWorkspaceSandboxApp from "./w/[wId]/sandbox";
 import publicWorkspaceTriggersApp from "./w/[wId]/triggers";
@@ -14,8 +13,6 @@ app.route("/auth/:action", publicAuthActionApp);
 app.route("/me", publicMeApp);
 app.route("/public/branding", publicBrandingApp);
 app.route("/public/frames/:token", publicFramesTokenApp);
-// Sandbox callbacks can derive workspace context from their sandbox token.
-app.route("/sandbox", publicSandboxApp);
 // Triggers is mounted before the workspace app so it does not inherit
 // publicApiAuth (it uses its own URL secret-based authentication).
 app.route("/w/:wId/triggers", publicWorkspaceTriggersApp);
