@@ -9,6 +9,7 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
+import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
@@ -16,6 +17,8 @@ import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
+import { useMembersSelection } from "@app/hooks/useMembersSelection";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
   useAuth,
@@ -150,6 +153,7 @@ export function UsagePage() {
   const { subscription } = useAuth();
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags();
+  const sendNotification = useSendNotification();
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Legacy-contract workspaces can view this page in read-only mode behind a
   // flag: analytics and member spend render as usual, but every action (top up,
@@ -227,39 +231,6 @@ export function UsagePage() {
         return next;
       }),
     []
-  );
-  const onRemoveSeat = useCallback(
-    async (member: MemberUsageType) => {
-      // Free seats carry no renewing allowance to preserve, so removing one is
-      // immediate; paid seats keep access until the end of the current billing
-      // period.
-      const message =
-        member.seatType === "free"
-          ? `Are you sure you want to remove ${member.name}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
-          : `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
-      const confirmed = await confirm({
-        title: "Remove seat",
-        message,
-        validateLabel: "Remove seat",
-        validateVariant: "warning",
-      });
-      if (!confirmed) {
-        return;
-      }
-      handleSeatChangePendingChange(member.sId, true);
-      try {
-        await doUpdateSeatType({
-          memberId: member.sId,
-          memberName: member.name,
-          seatType: "none",
-          isCancellingScheduledChange: false,
-          hasSeatPool: false,
-        });
-      } finally {
-        handleSeatChangePendingChange(member.sId, false);
-      }
-    },
-    [confirm, doUpdateSeatType, handleSeatChangePendingChange]
   );
   const [editSpendLimitMember, setEditSpendLimitMember] =
     useState<MemberUsageType | null>(null);
@@ -449,17 +420,21 @@ export function UsagePage() {
     [awuUsageData]
   );
 
-  const { membersUsage, isMembersUsageLoading, totalMembersUsage } =
-    useMembersUsage({
-      workspaceId: owner.sId,
-      searchTerm,
-      pageIndex: pagination.pageIndex,
-      pageSize: pagination.pageSize,
-      orderColumn: membersOrderColumn,
-      orderDirection: membersOrderDirection,
-      seatType: seatTypeFilter ?? undefined,
-      groupId: groupFilter ?? undefined,
-    });
+  const {
+    membersUsage,
+    isMembersUsageLoading,
+    isMembersUsageRefreshing,
+    totalMembersUsage,
+  } = useMembersUsage({
+    workspaceId: owner.sId,
+    searchTerm,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+    orderColumn: membersOrderColumn,
+    orderDirection: membersOrderDirection,
+    seatType: seatTypeFilter ?? undefined,
+    groupId: groupFilter ?? undefined,
+  });
 
   const { groups } = useGroups({
     owner,
@@ -468,6 +443,72 @@ export function UsagePage() {
   });
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
+
+  // Cross-page selection for batch actions on the members table. Resets when the
+  // filter identity changes (the "all matching" set is no longer the same).
+  const pageItemIds = useMemo(
+    () => membersUsage.map((m) => m.sId),
+    [membersUsage]
+  );
+  const selection = useMembersSelection({
+    pageItemIds,
+    totalCount: totalMembersUsage,
+    resetKey: `${searchTerm}|${seatTypeFilter ?? ""}|${groupFilter ?? ""}`,
+  });
+  const { clearSelection, selectedCount } = selection;
+
+  const handleBatchEditSpendLimit = useCallback(() => {
+    sendNotification({
+      type: "info",
+      title: "Coming soon",
+      description: `Batch spend-limit editing for ${selectedCount} members is not wired up yet.`,
+    });
+  }, [sendNotification, selectedCount]);
+
+  const onRemoveSeat = useCallback(
+    async (member: MemberUsageType) => {
+      // Free seats carry no renewing allowance to preserve, so removing one is
+      // immediate; paid seats keep access until the end of the current billing
+      // period.
+      const message =
+        member.seatType === "free"
+          ? `Are you sure you want to remove ${member.name}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted.`
+          : `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`;
+      const confirmed = await confirm({
+        title: "Remove seat",
+        message,
+        validateLabel: "Remove seat",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
+      handleSeatChangePendingChange(member.sId, true);
+      try {
+        const ok = await doUpdateSeatType({
+          memberId: member.sId,
+          memberName: member.name,
+          seatType: "none",
+          isCancellingScheduledChange: false,
+          hasSeatPool: false,
+        });
+        if (ok) {
+          clearSelection();
+        }
+      } finally {
+        handleSeatChangePendingChange(member.sId, false);
+      }
+    },
+    [confirm, doUpdateSeatType, handleSeatChangePendingChange, clearSelection]
+  );
+
+  const handleSeatMutationSaved = useCallback(() => {
+    // Seat mutations can move a member in or out of the currently filtered set
+    // (for example with the seat filter), which makes the cross-page selection
+    // stale.
+    clearSelection();
+    handleApproveOnModalSaved();
+  }, [handleApproveOnModalSaved, clearSelection]);
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
@@ -615,7 +656,7 @@ export function UsagePage() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          label={selectedGroupName ?? "Groups"}
+          label={selectedGroupName ?? "All groups"}
           size="sm"
           isSelect
         />
@@ -640,6 +681,7 @@ export function UsagePage() {
     <MembersUsageTable
       members={membersUsage}
       isLoading={isMembersUsageLoading}
+      isRefreshing={isMembersUsageRefreshing}
       readOnly={isReadOnly}
       showSpendLimit={!isFreePlanWorkspace}
       totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
@@ -653,7 +695,24 @@ export function UsagePage() {
       totalRowCount={totalMembersUsage}
       sorting={sorting}
       setSorting={handleSetSorting}
-      showGroupsColumn={pricingGroupsEnabled}
+      showGroupsColumn={pricingGroupsEnabled && groups.length > 0}
+      enableSelection={pricingGroupsEnabled && isWorkspaceAdmin && !isReadOnly}
+      rowSelection={selection.rowSelection}
+      onRowSelectionChange={selection.onRowSelectionChange}
+    />
+  );
+
+  const selectionBanner = (
+    <MembersSelectionBanner
+      selectedCount={selection.selectedCount}
+      pageCount={membersUsage.length}
+      totalCount={totalMembersUsage}
+      isAllAcrossPagesSelected={selection.isAllAcrossPagesSelected}
+      hasMorePagesToSelect={selection.hasMorePagesToSelect}
+      onSelectAllAcrossPages={selection.selectAllAcrossPages}
+      onClear={selection.clearSelection}
+      onBatchEditSpendLimit={handleBatchEditSpendLimit}
+      disabled={isReadOnly}
     />
   );
 
@@ -808,9 +867,12 @@ export function UsagePage() {
                       </div>
                     )}
                   </div>
-                  <div className="pt-2">
+                  <div className="flex flex-col gap-2 pt-2">
                     {membersTab === "members" ? (
-                      membersTable
+                      <>
+                        {selectionBanner}
+                        {membersTable}
+                      </>
                     ) : (
                       <UpgradeRequestsTable
                         requests={filteredUpgradeRequests}
@@ -883,7 +945,7 @@ export function UsagePage() {
         owner={owner}
         seatPlans={seatPlans}
         onSavingChange={handleSeatChangePendingChange}
-        onSaved={handleApproveOnModalSaved}
+        onSaved={handleSeatMutationSaved}
       />
 
       <EditSpendLimitModal

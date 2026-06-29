@@ -282,13 +282,14 @@ export function useMembersUsage({
     searchParams.set("groupId", groupId);
   }
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, isLoading } = useSWRWithDefaults(
     `${membersUsageUrl(workspaceId)}?${searchParams.toString()}`,
     membersUsageFetcher,
     {
       keepPreviousData: true,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      dedupingInterval: 60_000,
       disabled,
     }
   );
@@ -296,6 +297,7 @@ export function useMembersUsage({
   return {
     membersUsage: data?.members ?? emptyArray(),
     isMembersUsageLoading: !error && !data && !disabled,
+    isMembersUsageRefreshing: isLoading && !!data && !disabled,
     isMembersUsageError: !!error,
     totalMembersUsage: data?.total ?? 0,
   };
