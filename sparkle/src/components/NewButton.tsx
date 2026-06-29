@@ -138,17 +138,9 @@ const newButtonVariants = cva(
         ),
       },
       size: {
-        xs: "s-h-6 s-gap-1.5 s-px-2 s-text-sm s-font-medium s-tracking-[-0.28px]",
-        sm: "s-h-8 s-gap-1.5 s-px-3 s-text-sm s-font-medium s-tracking-[-0.28px]",
-        md: "s-h-10 s-gap-1.5 s-px-4 s-text-base s-font-medium s-tracking-[-0.32px]",
-      },
-      // Separate from size: twMerge isn't configured for the s- prefix, so a
-      // size radius + rounded-full would both emit and let CSS order decide.
-      rounded: {
-        xs: "s-rounded-[9px]",
-        sm: "s-rounded-xl",
-        md: "s-rounded-[15px]",
-        full: "s-rounded-full",
+        xs: "s-h-6 s-gap-1.5 s-px-2 s-text-sm s-font-medium s-tracking-[-0.28px] s-rounded-[9px]",
+        sm: "s-h-8 s-gap-1.5 s-px-3 s-text-sm s-font-medium s-tracking-[-0.28px] s-rounded-xl",
+        md: "s-h-10 s-gap-1.5 s-px-4 s-text-base s-font-medium s-tracking-[-0.32px] s-rounded-[15px]",
       },
       isIconOnly: {
         true: "",
@@ -191,7 +183,6 @@ const newButtonVariants = cva(
     defaultVariants: {
       variant: "primary",
       size: "sm",
-      rounded: "md",
       isIconOnly: false,
       press: true,
     },
@@ -249,7 +240,6 @@ export interface NewButtonProps
   iconRight?: NewButtonIconType;
   isSelect?: boolean;
   isLoading?: boolean;
-  isRounded?: boolean;
   isCounter?: boolean;
   counterValue?: string;
   isPulsing?: boolean;
@@ -268,7 +258,6 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
       size = "sm",
       isSelect = false,
       isLoading = false,
-      isRounded = false,
       isCounter = false,
       counterValue,
       isPulsing = false,
@@ -355,7 +344,6 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
           newButtonVariants({
             variant,
             size,
-            rounded: isRounded ? "full" : size,
             isIconOnly,
             press: !isMenuTrigger,
           }),

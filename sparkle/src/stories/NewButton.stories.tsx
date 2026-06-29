@@ -29,7 +29,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `Buttons let users trigger an action or event — submitting a form, opening a dialog, or confirming a choice. The button comes in several visual **variants** and three **sizes** (sm / md / lg), and supports a leading and/or trailing icon, loading and disabled states, an inline counter, a dropdown-chevron affordance (**isSelect**), and a fully-rounded shape (**isRounded**).
+        component: `Buttons let users trigger an action or event — submitting a form, opening a dialog, or confirming a choice. The button comes in several visual **variants** and three **sizes** (xs / sm / md), and supports a leading and/or trailing icon, loading and disabled states, an inline counter, and a dropdown-chevron affordance (**isSelect**).
 
 **For design review:** the **Overview** story shows every variant in light and dark side by side; **Sizes** shows the S/M/L scale; **States** shows default / icon / loading / disabled. Press a button to see the 0.97 press animation (it's automatically suppressed on dropdown triggers).
 
@@ -79,10 +79,6 @@ const meta = {
     },
     isSelect: {
       description: "Whether the button should display a dropdown chevron",
-      control: "boolean",
-    },
-    isRounded: {
-      description: "Whether the button is fully rounded (pill / circular)",
       control: "boolean",
     },
     isPulsing: {
@@ -212,7 +208,6 @@ export const Playground: Story = {
     size: "md",
     isLoading: false,
     isSelect: false,
-    isRounded: false,
     isPulsing: false,
     disabled: false,
     isCounter: false,
@@ -264,19 +259,13 @@ export const IconButtons: Story = {
       <NewButton size="xs" variant="outline" icon={Plus} tooltip="Add" />
       <NewButton size="sm" variant="outline" icon={Plus} tooltip="Add" />
       <NewButton size="md" variant="outline" icon={Plus} tooltip="Add" />
-      <NewButton
-        size="md"
-        variant="highlight"
-        icon={Plus}
-        isRounded
-        tooltip="Add"
-      />
+      <NewButton size="md" variant="highlight" icon={Plus} tooltip="Add" />
       <NewButton size="md" variant="primary" icon={Robot} tooltip="Agent" />
     </div>
   ),
 };
 
-/** Dropdown affordance (isSelect), inline counter, rounded, and pulsing. */
+/** Dropdown affordance (isSelect), inline counter, and pulsing. */
 export const SpecialStates: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
@@ -294,7 +283,6 @@ export const SpecialStates: Story = {
           isCounter
           counterValue="8"
         />
-        <NewButton variant="highlight" label="New" icon={Plus} isRounded />
         <NewButton variant="primary" label="Live" isPulsing />
       </div>
     </div>
