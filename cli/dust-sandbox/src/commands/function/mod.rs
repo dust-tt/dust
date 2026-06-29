@@ -123,6 +123,9 @@ fn resolve_drop_target() -> Result<Option<DropTarget>> {
 /// child can read both even when the originals are root-only.
 pub(crate) async fn run_bun(subcommand: &str, name: &str, inherit_stdin: bool) -> Result<()> {
     let path = resolve_existing(name)?;
+    // The function runs with $DUST_FUNCTIONS_DIR as its working directory (the
+    // parent of the resolved <name>.ts), not wherever dsbx was invoked from.
+    let functions_dir = path.parent().map(Path::to_path_buf);
     let runner = ensure_runner()?;
     let drop = resolve_drop_target()?;
 
@@ -154,6 +157,11 @@ pub(crate) async fn run_bun(subcommand: &str, name: &str, inherit_stdin: bool) -
         })
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
+    if let Some(dir) = &functions_dir {
+        // chdir happens before the pre_exec privilege drop, i.e. while still
+        // root, so it works even when the dir is root-only.
+        cmd.current_dir(dir);
+    }
 
     if let Some(t) = drop {
         // Drop privileges in the forked child before exec, in order, while still
