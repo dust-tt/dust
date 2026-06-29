@@ -1,4 +1,4 @@
-import { formatSandboxFunctionsList } from "@app/lib/api/actions/servers/sandbox_functions/tools/list";
+import { formatSandboxFunction } from "@app/lib/api/actions/servers/sandbox_functions/tools/get";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -45,14 +45,8 @@ async function makeFunction(
   });
 }
 
-describe("formatSandboxFunctionsList", () => {
-  it("returns an explicit empty message when there are none", () => {
-    expect(formatSandboxFunctionsList([])).toBe(
-      "No sandbox functions published in this pod."
-    );
-  });
-
-  it("renders slug and description without schemas", async () => {
+describe("formatSandboxFunction", () => {
+  it("renders slug, description and the full schemas", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -62,37 +56,35 @@ describe("formatSandboxFunctionsList", () => {
       description: "Greet a user by name.",
     });
 
-    const out = formatSandboxFunctionsList([fn]);
+    const out = formatSandboxFunction(fn);
 
-    expect(out).toContain("Sandbox functions:");
-    expect(out).toContain("- greet: Greet a user by name.");
-    expect(out).toContain("Use the get tool");
-    // The verbose schemas live behind the get tool, not the list.
-    expect(out).not.toContain("input:");
-    expect(out).not.toContain("output:");
-    // Neither the bundle filename nor the internal sId is surfaced.
-    expect(out).not.toContain("greet.ts");
-    expect(out).not.toContain(fn.sId);
+    expect(out).toContain("greet: Greet a user by name.");
+    expect(out).toContain(`input: ${JSON.stringify(fn.inputSchema)}`);
+    expect(out).toContain(`output: ${JSON.stringify(fn.outputSchema)}`);
   });
 
-  it("lists every function", async () => {
+  it("resolves a function by its slug within the pod", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
     const space = await SpaceFactory.project(workspace);
-    await makeFunction(authenticator, space, {
+    const fn = await makeFunction(authenticator, space, {
       slug: "greet",
-      description: "Greet a user.",
-    });
-    await makeFunction(authenticator, space, {
-      slug: "translate-text",
-      description: "Translate text.",
+      description: "Greet a user by name.",
     });
 
-    const fns = await SandboxFunctionResource.listBySpace(authenticator, space);
-    const out = formatSandboxFunctionsList(fns);
+    const found = await SandboxFunctionResource.fetchBySpaceAndSlug(
+      authenticator,
+      space,
+      "greet"
+    );
+    expect(found?.id).toBe(fn.id);
 
-    expect(out).toContain("greet");
-    expect(out).toContain("translate-text");
+    const missing = await SandboxFunctionResource.fetchBySpaceAndSlug(
+      authenticator,
+      space,
+      "does-not-exist"
+    );
+    expect(missing).toBeNull();
   });
 });

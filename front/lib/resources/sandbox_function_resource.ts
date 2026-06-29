@@ -207,6 +207,22 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return this.baseFetch(auth, { where: { spaceId: space.id } });
   }
 
+  static async fetchBySpaceAndSlug(
+    auth: Authenticator,
+    space: SpaceResource,
+    slug: string
+  ): Promise<SandboxFunctionResource | null> {
+    if (!space.isProject()) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { spaceId: space.id, slug },
+    });
+
+    return sandboxFunction ?? null;
+  }
+
   static async deleteAllForSpace(
     auth: Authenticator,
     space: SpaceResource

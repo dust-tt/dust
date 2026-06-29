@@ -10,12 +10,30 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
   list: {
     description:
       "List the sandbox functions published in the current pod, with their " +
-      "name and input/output schemas.",
+      "slug and description. Use the get tool to retrieve a function's input " +
+      "and output schemas.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
       running: "Listing sandbox functions...",
       done: "Listed sandbox functions",
+    },
+  },
+  get: {
+    description:
+      "Get a sandbox function's input and output JSON schemas by its slug.",
+    schema: {
+      slug: z
+        .string()
+        .min(1)
+        .describe(
+          "The slug of the sandbox function, as shown by the list tool."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting sandbox function...",
+      done: "Got sandbox function",
     },
   },
   // TODO(SANDBOX_FUNCTION) Add publish tool once we have pod's sandboxes.

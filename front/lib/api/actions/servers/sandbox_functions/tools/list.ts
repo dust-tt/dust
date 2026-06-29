@@ -13,15 +13,12 @@ export function formatSandboxFunctionsList(
     return "No sandbox functions published in this pod.";
   }
 
-  const lines = sandboxFunctions.map((fn) =>
-    [
-      `- ${fn.slug}: ${fn.description}`,
-      `  input: ${JSON.stringify(fn.inputSchema)}`,
-      `  output: ${JSON.stringify(fn.outputSchema)}`,
-    ].join("\n")
-  );
+  const lines = sandboxFunctions.map((fn) => `- ${fn.slug}: ${fn.description}`);
 
-  return `Sandbox functions:\n${lines.join("\n")}`;
+  return (
+    `Sandbox functions:\n${lines.join("\n")}\n\n` +
+    "Use the get tool with a function's slug to see its input and output schemas."
+  );
 }
 
 export async function listHandler(
