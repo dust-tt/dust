@@ -112,4 +112,10 @@ describe("isHotMCPServerName", () => {
     expect(isHotMCPServerName("not_a_real_server")).toBe(false);
     expect(isHotMCPServerName("")).toBe(false);
   });
+
+  it("keeps ask_user_question hidden from the builder", () => {
+    expect(INTERNAL_MCP_SERVERS.ask_user_question.availability).toBe(
+      "auto_hidden_builder"
+    );
+  });
 });

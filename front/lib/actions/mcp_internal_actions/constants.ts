@@ -1070,7 +1070,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   ask_user_question: {
     id: 1028,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
