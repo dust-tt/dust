@@ -90,6 +90,10 @@ const meta = {
       control: "text",
       if: { arg: "isCounter", eq: true },
     },
+    isPulsing: {
+      description: "Whether the button should have a pulsing ring animation",
+      control: "boolean",
+    },
     tooltip: {
       description: "Optional tooltip text to display on hover",
       control: "text",
@@ -204,6 +208,7 @@ export const Playground: Story = {
     size: "md",
     isLoading: false,
     isSelect: false,
+    isPulsing: false,
     disabled: false,
     isCounter: false,
     counterValue: "1",
@@ -260,7 +265,7 @@ export const IconButtons: Story = {
   ),
 };
 
-/** Dropdown affordance (isSelect) and inline counter. */
+/** Dropdown affordance (isSelect), inline counter, and pulsing. */
 export const SpecialStates: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
@@ -278,6 +283,7 @@ export const SpecialStates: Story = {
           isCounter
           counterValue="8"
         />
+        <NewButton variant="primary" label="Live" isPulsing />
       </div>
     </div>
   ),
