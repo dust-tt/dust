@@ -119,7 +119,7 @@ export type LLMParameterOverwrites = Partial<
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;
   // Holds the inference provider for legacy clients (e.g. "google_vertex_ai")
-  // and the new router's `providerApi` value (e.g. "agent-platform").
+  // and the new router's `api` value (e.g. "agent-platform").
   inferenceProvider: string;
   inferenceRegion: InferenceRegionType;
   region?: Region;

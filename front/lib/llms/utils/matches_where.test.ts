@@ -221,7 +221,7 @@ describe("matchesWhere", () => {
       region: ["eu", "global"],
       providerId: ["anthropic"],
       modelId: ["claude-sonnet-4-6"],
-      providerApi: ["anthropic", "agent-platform"],
+      api: ["anthropic", "agent-platform"],
     };
 
     it("matches provider and region membership", () => {
@@ -240,14 +240,14 @@ describe("matchesWhere", () => {
       expect(
         matchesWhere(description, {
           providerId: { contains: "anthropic" },
-          providerApi: { containsAll: ["anthropic", "agent-platform"] },
+          api: { containsAll: ["anthropic", "agent-platform"] },
           region: { containsAny: ["eu"] },
         })
       ).toBe(true);
       expect(
         matchesWhere(description, {
           providerId: { contains: "anthropic" },
-          providerApi: { contains: "openai-responses" },
+          api: { contains: "openai-responses" },
         })
       ).toBe(false);
     });
@@ -346,6 +346,27 @@ describe("matchesWhere", () => {
           or: [{ featureFlags: { contains: "anthropic_vertex_fallback" } }],
         })
       ).toBe(false);
+    });
+
+    it("excludes the direct AI-Studio endpoint via a sibling `not` (non-BYOK Gemini routing)", () => {
+      // The shape `getWorkspaceFilter` produces for non-BYOK Gemini: a top-level
+      // `not` on `api` must AND with the field filters so Vertex stays reachable
+      // while the direct AI-Studio endpoint (same providerId) is excluded.
+      const where: Where<EndpointConfig> = {
+        providerId: { eq: "google_ai_studio" },
+        region: { eq: "global" },
+        not: { api: { eq: "google-ai-studio" } },
+      };
+      const vertexEndpoint = {
+        providerId: "google_ai_studio",
+        api: "agent-platform",
+        modelId: "gemini-3.1-pro",
+        region: "global",
+      };
+      const directEndpoint = { ...vertexEndpoint, api: "google-ai-studio" };
+
+      expect(matchesWhere(vertexEndpoint, where)).toBe(true);
+      expect(matchesWhere(directEndpoint, where)).toBe(false);
     });
   });
 
