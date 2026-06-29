@@ -710,6 +710,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "webbrowser": "never_ask",
     "websearch": "never_ask",
   },
+  "workday": {
+    "get_workers": "never_ask",
+  },
   "workspace_analytics": {
     "get_agent_details": "never_ask",
     "get_credit_timeseries": "never_ask",
