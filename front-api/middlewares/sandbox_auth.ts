@@ -1,4 +1,7 @@
-import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import {
+  isSandboxExecTokenPayload,
+  verifySandboxExecToken,
+} from "@app/lib/api/sandbox/access_tokens";
 import {
   Authenticator,
   getAuthTokenKind,
@@ -67,6 +70,15 @@ export const sandboxAuth = createMiddleware<SandboxCtx>(async (ctx, next) => {
       api_error: {
         type: "invalid_sandbox_token_error",
         message: "The sandbox token is invalid or expired.",
+      },
+    });
+  }
+  if (!isSandboxExecTokenPayload(claims)) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "This sandbox token cannot access sandbox actions.",
       },
     });
   }
