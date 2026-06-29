@@ -27,11 +27,7 @@ export function isValidLabsTranscriptsConfigurationStatus(
   ).includes(status);
 }
 
-export const labsFeatures = [
-  "transcripts",
-  "mcp_actions",
-  "transcription",
-] as const;
+export const labsFeatures = ["transcripts", "transcription"] as const;
 export type LabsFeatureType = (typeof labsFeatures)[number];
 
 // Types
