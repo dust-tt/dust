@@ -24,12 +24,15 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import sanitizeHtml from "sanitize-html";
 
 const MAX_NUMBER_OF_MESSAGES = 200;
-// Safety bound on the number of pages we follow in a single list_messages call.
-// The channel endpoint supports no server-side date filtering, so a range whose
-// upper bound (toDate) is in the past forces us to walk newest-first through
-// history until we reach the window — this caps that walk. 50 pages * 50
-// messages/page = up to 2500 messages scanned before we bail out.
-const MAX_PAGES_TO_FETCH = 50;
+// Operational backstop on how many messages we'll scan in a single
+// list_messages call. The channel endpoint supports no server-side date
+// filtering, so a range whose upper bound (toDate) is in the past forces a
+// newest-first walk through history until we reach the window. This is NOT a
+// results limit (that's MAX_NUMBER_OF_MESSAGES) — it only guards against a
+// runaway loop / Graph throttling on very large channels, and is surfaced to
+// the caller when hit so they can narrow the range. Set high so it does not
+// truncate legitimate deep-history retrieval.
+const MAX_MESSAGES_TO_SCAN = 10000;
 
 const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
   search_messages_content: async ({ query }, { authInfo }) => {
@@ -339,41 +342,62 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
 
       // First page
       let response = await request.get();
+      let scannedCount = response.value?.length ?? 0;
 
       let shouldContinue = processMessages(response.value);
 
       // Follow pagination links until no more pages, the date threshold is
-      // reached, or we hit the page-count safety bound.
-      let pageCount = 1;
+      // reached, or we hit the scan backstop.
       nextLink = response["@odata.nextLink"];
-      while (nextLink && shouldContinue && pageCount < MAX_PAGES_TO_FETCH) {
+      while (
+        nextLink &&
+        shouldContinue &&
+        scannedCount < MAX_MESSAGES_TO_SCAN
+      ) {
         response = await client.api(nextLink).get();
+        scannedCount += response.value?.length ?? 0;
         shouldContinue = processMessages(response.value);
         nextLink = response["@odata.nextLink"];
-        pageCount++;
       }
 
-      // We stopped with more pages still available and still in range: the
-      // result set is truncated by the safety bound, not by the data.
-      if (nextLink && shouldContinue) {
+      // We stopped scanning while more in-range pages were still available: the
+      // result is truncated by the backstop, not by the data. (shouldContinue
+      // is false when we instead reached fromDate or filled MAX_NUMBER_OF_
+      // MESSAGES — neither of which is a backstop truncation.)
+      const truncatedByScanLimit =
+        !!nextLink && shouldContinue && scannedCount >= MAX_MESSAGES_TO_SCAN;
+      if (truncatedByScanLimit) {
         logger.warn(
           {
             endpoint: baseEndpoint,
-            pageCount,
+            scannedCount,
             collected: allMessages.length,
           },
-          "[microsoft_teams.list_messages] Hit MAX_PAGES_TO_FETCH; results may be truncated."
+          "[microsoft_teams.list_messages] Hit MAX_MESSAGES_TO_SCAN; results may be truncated."
         );
       }
 
       const limitedMessages = allMessages.slice(0, MAX_NUMBER_OF_MESSAGES);
 
-      return new Ok([
+      const content = [
         {
           type: "text" as const,
           text: JSON.stringify(limitedMessages, null, 2),
         },
-      ]);
+      ];
+      // Tell the caller when the backstop cut the walk short, so an agent can
+      // recover by narrowing the range instead of treating partial history as
+      // complete.
+      if (truncatedByScanLimit) {
+        content.push({
+          type: "text" as const,
+          text:
+            `Note: stopped after scanning ${scannedCount} messages before reaching the start of the requested date range, so older messages in the range may be missing. ` +
+            `Narrow the date range (a smaller fromDate–toDate window) to retrieve the rest.`,
+        });
+      }
+
+      return new Ok(content);
     } catch (err) {
       return new Err(
         new MCPError(normalizeError(err).message || "Failed to list threads")
