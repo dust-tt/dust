@@ -36,13 +36,13 @@ export function getRunAgentToolDescription(
     case "run-agent":
       return (
         `Delegate to ${args.childAgentName} (${args.childAgentDescription}) as a child agent/sub-agent in the background. ` +
-        "Use this specialist agent for research, analysis, drafting, or follow-up work that should run in its own conversation, then use its results in the main conversation."
+        "Use this configured child agent when the request should run in its own conversation, then use its results in the main conversation."
       );
 
     case "handoff":
       return (
         `Handoff completely to ${args.childAgentName} (${args.childAgentDescription}). ` +
-        `Inform the user that you are handing off to ${args.childAgentMention} before calling the tool since this specialist agent will respond directly in the conversation.`
+        `Inform the user that you are handing off to ${args.childAgentMention} before calling the tool since this child agent will respond directly in the conversation.`
       );
 
     default:
