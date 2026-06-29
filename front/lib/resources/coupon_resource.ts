@@ -167,6 +167,35 @@ export class CouponResource extends BaseResource<CouponModel> {
     };
   }
 
+  static async upsertBySId(
+    coupon: CouponType
+  ): Promise<Result<CouponResource, Error>> {
+    try {
+      const id = getResourceIdFromSId(coupon.sId);
+      if (!id) {
+        return new Err(new Error(`Invalid coupon sId: ${coupon.sId}`));
+      }
+
+      const [row] = await CouponModel.upsert({
+        id,
+        code: coupon.code,
+        description: coupon.description,
+        discountType: coupon.discountType,
+        amount: coupon.amount,
+        durationMonths: coupon.durationMonths,
+        maxRedemptions: coupon.maxRedemptions,
+        redemptionCount: coupon.redemptionCount,
+        expirationDate: coupon.expirationDate ?? null,
+        archivedAt: coupon.archivedAt ?? null,
+        createdByUserId: null,
+      });
+
+      return new Ok(new this(this.model, row.get()));
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
