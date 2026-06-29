@@ -2,6 +2,10 @@ import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import type * as activities from "@app/temporal/metronome_events_queue/activities";
 import { proxyActivities } from "@temporalio/workflow";
 
+// Bulk per-user spend-limit work runs on this (Metronome) worker rather than a
+// dedicated one. Re-exported here so it is included in this worker's bundle.
+export { bulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/workflows";
+
 const {
   processMetronomeWebhookActivity,
   cleanMetronomeInvoiceActivity,

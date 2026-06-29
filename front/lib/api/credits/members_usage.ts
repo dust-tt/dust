@@ -1024,6 +1024,66 @@ async function resolveGroupFilterUserIds({
   return members.map((u) => u.sId);
 }
 
+async function resolveSeatAndGroupRestriction({
+  auth,
+  workspace,
+  seatType,
+  groupId,
+}: {
+  auth: Authenticator;
+  workspace: LightWorkspaceType;
+  seatType?: MembershipSeatType;
+  groupId?: string;
+}): Promise<string[] | undefined> {
+  const restrictionSets: string[][] = [];
+  if (seatType) {
+    restrictionSets.push(
+      await resolveSeatTypeFilterUserIds({ workspace, seatType })
+    );
+  }
+  if (groupId) {
+    restrictionSets.push(await resolveGroupFilterUserIds({ auth, groupId }));
+  }
+  if (restrictionSets.length === 0) {
+    return undefined;
+  }
+  const [firstSet, ...otherSets] = restrictionSets;
+  return otherSets.reduce((acc, set) => {
+    const allowed = new Set(set);
+    return acc.filter((sId) => allowed.has(sId));
+  }, firstSet);
+}
+
+export async function resolveMatchingMemberUserIds({
+  auth,
+  filter,
+}: {
+  auth: Authenticator;
+  filter: { seatType?: MembershipSeatType; groupId?: string; search?: string };
+}): Promise<Result<string[], Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const restrictToUserIds = await resolveSeatAndGroupRestriction({
+    auth,
+    workspace,
+    seatType: filter.seatType,
+    groupId: filter.groupId,
+  });
+  if (restrictToUserIds !== undefined && restrictToUserIds.length === 0) {
+    return new Ok([]);
+  }
+  // Propagate search failures (e.g. an Elasticsearch outage) instead of masking
+  // them as an empty result. This is a write path, so the caller must be able
+  // to tell "no match" from "lookup failed".
+  const result = await UserResource.searchAllUsers(auth, {
+    searchTerm: filter.search ?? "",
+    restrictToUserIds,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(result.value.users.map((u) => u.sId));
+}
+
 // "name"/"email" live in the user search index, which owns sort + pagination
 // for those columns. "consumedAwuCredits" is not indexed, so to sort by it we
 // fetch the full matching set with Elasticsearch `search_after`, rank it by
@@ -1133,34 +1193,14 @@ export async function getMembersUsage({
   // sIds up front and restrict the search to their intersection, so pagination
   // and the returned `total` reflect the filtered set. No match (in any active
   // filter) means an empty page.
-  const restrictionSets: string[][] = [];
-  if (paginationParams.seatType) {
-    restrictionSets.push(
-      await resolveSeatTypeFilterUserIds({
-        workspace,
-        seatType: paginationParams.seatType,
-      })
-    );
-  }
-  if (paginationParams.groupId) {
-    restrictionSets.push(
-      await resolveGroupFilterUserIds({
-        auth,
-        groupId: paginationParams.groupId,
-      })
-    );
-  }
-
-  let restrictToUserIds: string[] | undefined;
-  if (restrictionSets.length > 0) {
-    const [firstSet, ...otherSets] = restrictionSets;
-    restrictToUserIds = otherSets.reduce((acc, set) => {
-      const allowed = new Set(set);
-      return acc.filter((sId) => allowed.has(sId));
-    }, firstSet);
-    if (restrictToUserIds.length === 0) {
-      return { members: [], total: 0 };
-    }
+  const restrictToUserIds = await resolveSeatAndGroupRestriction({
+    auth,
+    workspace,
+    seatType: paginationParams.seatType,
+    groupId: paginationParams.groupId,
+  });
+  if (restrictToUserIds !== undefined && restrictToUserIds.length === 0) {
+    return { members: [], total: 0 };
   }
 
   const usersResult = await resolveMembersUsagePageUsers({
