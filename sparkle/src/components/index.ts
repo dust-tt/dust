@@ -261,6 +261,8 @@ export { Spinner } from "./Spinner";
 export type { SpinnerBrandProps } from "./SpinnerBrand";
 export { SpinnerBrand } from "./SpinnerBrand";
 export { FlexSplitButton } from "./SplitButton";
+export type { NewFlexSplitButtonProps } from "./NewSplitButton";
+export { NewFlexSplitButton } from "./NewSplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export { Timeline, TimelineItem } from "./Timeline";
