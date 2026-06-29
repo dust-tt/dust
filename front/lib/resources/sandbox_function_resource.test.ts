@@ -47,6 +47,8 @@ describe("SandboxFunctionResource", () => {
       {
         space,
         file,
+        slug: "add-comment",
+        description: "Add a comment.",
         inputSchema,
         outputSchema,
       }
@@ -55,6 +57,8 @@ describe("SandboxFunctionResource", () => {
     expect(sandboxFunction.sId).toMatch(/^sfn_/);
     expect(sandboxFunction.spaceId).toBe(space.id);
     expect(sandboxFunction.fileId).toBe(file.id);
+    expect(sandboxFunction.slug).toBe("add-comment");
+    expect(sandboxFunction.description).toBe("Add a comment.");
     expect(sandboxFunction.inputSchema).toEqual(inputSchema);
     expect(sandboxFunction.outputSchema).toEqual(outputSchema);
     expect(sandboxFunction.file.id).toBe(file.id);
@@ -64,6 +68,8 @@ describe("SandboxFunctionResource", () => {
       sandboxFunction.sId
     );
     expect(fetched?.id).toBe(sandboxFunction.id);
+    expect(fetched?.slug).toBe("add-comment");
+    expect(fetched?.description).toBe("Add a comment.");
     expect(fetched?.space.id).toBe(space.id);
     expect(fetched?.file.id).toBe(file.id);
 
@@ -103,6 +109,8 @@ describe("SandboxFunctionResource", () => {
       {
         space: accessibleSpace,
         file: accessibleFile,
+        slug: "fetch-accessible",
+        description: "Fetch accessible data.",
         inputSchema,
         outputSchema,
       }
@@ -112,6 +120,8 @@ describe("SandboxFunctionResource", () => {
       {
         space: restrictedSpace,
         file: restrictedFile,
+        slug: "fetch-restricted",
+        description: "Fetch restricted data.",
         inputSchema,
         outputSchema,
       }
@@ -193,10 +203,74 @@ describe("SandboxFunctionResource", () => {
       SandboxFunctionResource.makeNew(authenticator, {
         space: regularSpace,
         file,
+        slug: "add-comment",
+        description: "Add a comment.",
         inputSchema,
         outputSchema,
       })
     ).rejects.toThrow("Sandbox functions can only belong to pods.");
+  });
+
+  it("rejects a malformed slug", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const file = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "comments.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+
+    await expect(
+      SandboxFunctionResource.makeNew(authenticator, {
+        space,
+        file,
+        slug: "Not A Slug",
+        description: "Add a comment.",
+        inputSchema,
+        outputSchema,
+      })
+    ).rejects.toThrow("The slug must be lowercase");
+  });
+
+  it("rejects a duplicate slug in the same pod", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const makeFile = (fileName: string) =>
+      FileFactory.create(authenticator, null, {
+        contentType: sandboxFunctionContentType,
+        fileName,
+        fileSize: 100,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+
+    await SandboxFunctionResource.makeNew(authenticator, {
+      space,
+      file: await makeFile("first.ts"),
+      slug: "greet",
+      description: "First greet.",
+      inputSchema,
+      outputSchema,
+    });
+
+    await expect(
+      SandboxFunctionResource.makeNew(authenticator, {
+        space,
+        file: await makeFile("second.ts"),
+        slug: "greet",
+        description: "Second greet.",
+        inputSchema,
+        outputSchema,
+      })
+    ).rejects.toThrow();
   });
 
   it("rejects a file outside project context", async () => {
@@ -216,6 +290,8 @@ describe("SandboxFunctionResource", () => {
       SandboxFunctionResource.makeNew(authenticator, {
         space,
         file,
+        slug: "add-comment",
+        description: "Add a comment.",
         inputSchema,
         outputSchema,
       })
@@ -240,17 +316,23 @@ describe("SandboxFunctionResource", () => {
       SandboxFunctionResource.makeNew(authenticator, {
         space,
         file,
+        slug: "add-comment",
+        description: "Add a comment.",
         inputSchema: { type: "number", multipleOf: 0 },
         outputSchema,
       })
     ).rejects.toThrow("Invalid JSON schema");
   });
 
-  it("declares a unique file index", () => {
+  it("declares unique file and slug indexes", () => {
     expect(SandboxFunctionModel.options.indexes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           fields: ["fileId"],
+          unique: true,
+        }),
+        expect.objectContaining({
+          fields: ["workspaceId", "spaceId", "slug"],
           unique: true,
         }),
       ])
@@ -275,6 +357,8 @@ describe("SandboxFunctionResource", () => {
       {
         space,
         file,
+        slug: "add-comment",
+        description: "Add a comment.",
         inputSchema,
         outputSchema,
       }
@@ -312,6 +396,8 @@ describe("SandboxFunctionResource", () => {
     const sandboxFunction = await SandboxFunctionResource.makeNew(adminAuth, {
       space,
       file,
+      slug: "add-comment",
+      description: "Add a comment.",
       inputSchema,
       outputSchema,
     });

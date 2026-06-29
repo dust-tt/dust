@@ -2,7 +2,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  isValidSandboxFunctionSlug,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -63,17 +66,25 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     {
       space,
       file,
+      slug,
+      description,
       inputSchema,
       outputSchema,
     }: {
       space: SpaceResource;
       file: FileResource;
+      slug: string;
+      description: string;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionResource> {
     assert(space.isProject(), "Sandbox functions can only belong to pods.");
+    assert(
+      isValidSandboxFunctionSlug(slug),
+      "The slug must be lowercase alphanumeric with single hyphen separators."
+    );
     assert(
       space.workspaceId === auth.getNonNullableWorkspace().id,
       "The space must belong to the authenticated workspace."
@@ -100,6 +111,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         workspaceId: auth.getNonNullableWorkspace().id,
         spaceId: space.id,
         fileId: file.id,
+        slug,
+        description,
         inputSchema,
         outputSchema,
       },

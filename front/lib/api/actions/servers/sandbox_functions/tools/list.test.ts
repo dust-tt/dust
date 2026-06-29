@@ -24,11 +24,11 @@ const outputSchema: JSONSchema = {
 async function makeFunction(
   auth: Authenticator,
   space: SpaceResource,
-  fileName: string
+  { slug, description }: { slug: string; description: string }
 ): Promise<SandboxFunctionResource> {
   const file = await FileFactory.create(auth, null, {
     contentType: sandboxFunctionContentType,
-    fileName,
+    fileName: `${slug}.ts`,
     fileSize: 100,
     status: "created",
     useCase: "project_context",
@@ -38,6 +38,8 @@ async function makeFunction(
   return SandboxFunctionResource.makeNew(auth, {
     space,
     file,
+    slug,
+    description,
     inputSchema,
     outputSchema,
   });
@@ -50,20 +52,25 @@ describe("formatSandboxFunctionsList", () => {
     );
   });
 
-  it("renders name, sId and schemas for a function", async () => {
+  it("renders slug, description and schemas", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
     const space = await SpaceFactory.project(workspace);
-    const fn = await makeFunction(authenticator, space, "greet.ts");
+    const fn = await makeFunction(authenticator, space, {
+      slug: "greet",
+      description: "Greet a user by name.",
+    });
 
     const out = formatSandboxFunctionsList([fn]);
 
     expect(out).toContain("Sandbox functions:");
-    expect(out).toContain(`- greet.ts (${fn.sId})`);
-    expect(fn.sId).toMatch(/^sfn_/);
+    expect(out).toContain("- greet: Greet a user by name.");
     expect(out).toContain(`input: ${JSON.stringify(fn.inputSchema)}`);
     expect(out).toContain(`output: ${JSON.stringify(fn.outputSchema)}`);
+    // Neither the bundle filename nor the internal sId is surfaced.
+    expect(out).not.toContain("greet.ts");
+    expect(out).not.toContain(fn.sId);
   });
 
   it("lists every function", async () => {
@@ -71,13 +78,19 @@ describe("formatSandboxFunctionsList", () => {
       role: "admin",
     });
     const space = await SpaceFactory.project(workspace);
-    await makeFunction(authenticator, space, "greet.ts");
-    await makeFunction(authenticator, space, "farewell.ts");
+    await makeFunction(authenticator, space, {
+      slug: "greet",
+      description: "Greet a user.",
+    });
+    await makeFunction(authenticator, space, {
+      slug: "translate-text",
+      description: "Translate text.",
+    });
 
     const fns = await SandboxFunctionResource.listBySpace(authenticator, space);
     const out = formatSandboxFunctionsList(fns);
 
-    expect(out).toContain("greet.ts");
-    expect(out).toContain("farewell.ts");
+    expect(out).toContain("greet");
+    expect(out).toContain("translate-text");
   });
 });

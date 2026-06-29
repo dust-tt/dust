@@ -18,12 +18,29 @@ function validateSandboxFunctionJsonSchema(value: unknown): void {
   }
 }
 
+// Lowercase alphanumeric with single hyphen separators (e.g. `greet`, `send-slack-message`).
+export const SANDBOX_FUNCTION_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function isValidSandboxFunctionSlug(value: unknown): value is string {
+  return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);
+}
+
+function validateSandboxFunctionSlug(value: unknown): void {
+  if (!isValidSandboxFunctionSlug(value)) {
+    throw new Error(
+      "Slug must be lowercase alphanumeric with single hyphen separators."
+    );
+  }
+}
+
 export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare spaceId: ForeignKey<SpaceModel["id"]>;
   declare fileId: ForeignKey<FileModel["id"]>;
+  declare slug: string;
+  declare description: string;
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
@@ -51,6 +68,17 @@ SandboxFunctionModel.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
+    slug: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      validate: {
+        isValidSlug: validateSandboxFunctionSlug,
+      },
+    },
+    description: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
     inputSchema: {
       type: DataTypes.JSONB,
       allowNull: false,
@@ -72,6 +100,11 @@ SandboxFunctionModel.init(
     indexes: [
       {
         fields: ["workspaceId", "spaceId", "fileId"],
+        unique: true,
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "spaceId", "slug"],
         unique: true,
         concurrently: true,
       },
