@@ -1,6 +1,9 @@
+import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
+import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -8,8 +11,23 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
+  ensurePodSandboxReady: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/sandbox/access_tokens", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/sandbox/access_tokens")>();
+
+  return {
+    ...actual,
+    generateSandboxFunctionInvocationToken: vi.fn(),
+  };
+});
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -26,6 +44,10 @@ const outputSchema: JSONSchema = {
   },
   required: ["commentId"],
 };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("SandboxFunctionResource", () => {
   it("creates and fetches a sandbox function for a space", async () => {
@@ -337,6 +359,113 @@ describe("SandboxFunctionResource", () => {
         }),
       ])
     );
+  });
+
+  it("invokes the function on the pod sandbox", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const file = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "comments.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    const sandboxFunction = await SandboxFunctionResource.makeNew(
+      authenticator,
+      {
+        space,
+        file,
+        slug: "add-comment",
+        description: "Add a comment.",
+        inputSchema,
+        outputSchema,
+      }
+    );
+    const sandbox = await SandboxResource.makeNew(authenticator, {
+      providerId: "test-provider-id",
+      status: "running",
+      baseImage: "dust-base",
+      version: "0.0.0-test",
+    });
+    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: "hello world\n",
+        stderr: "",
+      })
+    );
+    vi.mocked(ensurePodSandboxReady).mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
+    vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
+      "sbt-function-token"
+    );
+    const result = await sandboxFunction.invoke(authenticator, {
+      input: { message: "hello" },
+      context: { frameFileId: file.sId },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value).toMatchObject({
+      functionId: sandboxFunction.sId,
+      status: "created",
+    });
+    expect(Date.parse(result.value.createdAt)).not.toBeNaN();
+    expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space);
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      authenticator,
+      {
+        sandbox,
+        sandboxFunction,
+        invocationId: result.value.id,
+        execId: expect.any(String),
+      }
+    );
+    expect(execSpy).toHaveBeenCalledTimes(1);
+
+    const execCall = execSpy.mock.calls[0];
+    expect(execCall).toBeDefined();
+    if (!execCall) {
+      return;
+    }
+    const [, command, opts] = execCall;
+    const stagedFunctionsDir = `/tmp/dust-sandbox-functions/${result.value.id}`;
+    expect(command).toContain(
+      `cat > '${stagedFunctionsDir}/add-comment.ts' <<'DUST_SANDBOX_FUNCTION_EOF'`
+    );
+    expect(command).toContain("async fetch(_req: Request): Promise<Response>");
+    expect(command).toContain("return Response.json({ ok: true });");
+    expect(command).toContain("/opt/bin/dsbx function run 'add-comment'");
+    expect(opts?.envVars).toMatchObject({
+      DUST_FUNCTIONS_DIR: stagedFunctionsDir,
+      DUST_SANDBOX_TOKEN: "sbt-function-token",
+    });
+    expect(opts?.user).toBe("agent-proxied");
+    expect(opts?.workingDirectory).toBe("/home/agent");
+    expect(typeof opts?.stdin).toBe("string");
+    if (typeof opts?.stdin !== "string") {
+      return;
+    }
+    const inputEnvelope = JSON.parse(opts.stdin);
+    expect(inputEnvelope).toMatchObject({
+      method: "POST",
+      url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${result.value.id}`,
+      headers: {
+        "content-type": "application/json",
+        "x-dust-frame-file-id": file.sId,
+        "x-dust-sandbox-function-id": sandboxFunction.sId,
+        "x-dust-sandbox-function-invocation-id": result.value.id,
+      },
+      body: JSON.stringify({ message: "hello" }),
+      encoding: "utf8",
+    });
   });
 
   it("deletes all sandbox functions for a space", async () => {
