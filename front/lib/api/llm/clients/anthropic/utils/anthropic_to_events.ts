@@ -232,7 +232,8 @@ function* handleContentBlockStart(
         accumulatorType: blockType === "text" ? "text" : "reasoning",
       };
       return;
-    case "tool_use": {
+
+    case "tool_use":
       stateContainer.state = {
         currentBlockIndex: event.index,
         accumulator: "",
@@ -252,7 +253,7 @@ function* handleContentBlockStart(
         metadata,
       };
       return;
-    }
+
     case "redacted_thinking":
       // "Redacted thinking" provides no actionable information, as everything is encrypted
       return;
@@ -300,6 +301,7 @@ function* handleContentBlockStart(
     case "fallback":
       // We don't use these Anthropic tools
       return;
+
     default:
       // New content block types may appear (e.g. via a new beta) before the
       // SDK types and this client are updated. Ignore rather than crash.
