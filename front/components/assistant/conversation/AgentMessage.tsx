@@ -1309,23 +1309,6 @@ function AgentMessageContent({
     );
   }
 
-  if (agentMessage.status === "failed") {
-    return (
-      <ErrorMessage
-        error={
-          agentMessage.error ?? {
-            message: "Unexpected Error",
-            code: "unexpected_error",
-            metadata: {},
-          }
-        }
-        retryHandler={async () =>
-          retryHandler({ conversationId, messageId: agentMessage.sId })
-        }
-      />
-    );
-  }
-
   // Extract file IDs already referenced inline (to avoid duplicate rendering).
   // Match file IDs only in markdown IMAGE syntax: ![...](url containing fil_XXX)
   // NOT plain text mentions or links, to avoid filtering out images from the grid.
@@ -1486,6 +1469,20 @@ function AgentMessageContent({
               />
             </div>
           </div>
+        )}
+        {agentMessage.status === "failed" && (
+          <ErrorMessage
+            error={
+              agentMessage.error ?? {
+                message: "Unexpected Error",
+                code: "unexpected_error",
+                metadata: {},
+              }
+            }
+            retryHandler={async () =>
+              retryHandler({ conversationId, messageId: agentMessage.sId })
+            }
+          />
         )}
       </div>
     </CitationsContext.Provider>
