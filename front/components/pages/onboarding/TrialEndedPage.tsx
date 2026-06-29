@@ -40,7 +40,7 @@ export function TrialEndedPage() {
       </div>
 
       {/* Main content: two columns */}
-      <div className="flex w-full max-w-5xl flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
+      <div className="flex w-full max-w-5xl flex-col gap-8 lg:flex-row lg:items-center lg:gap-12">
         {/* Left column: Don't lose section */}
         <div className="flex-1">
           <DontLoseSection owner={workspace} />
