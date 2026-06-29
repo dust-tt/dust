@@ -1,5 +1,8 @@
 import {
   generateSandboxExecToken,
+  generateSandboxFunctionInvocationToken,
+  isSandboxExecTokenPayload,
+  isSandboxFunctionInvocationTokenPayload,
   SANDBOX_TOKEN_PREFIX,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -83,7 +86,16 @@ async function setupTest() {
     displayLabels: null,
   };
 
-  return { auth, agentConfig, agentMessage, conversation, sandbox, mockAction };
+  return {
+    auth,
+    agentConfig,
+    agentMessage,
+    conversation,
+    mockAction,
+    sandbox,
+    user,
+    workspace,
+  };
 }
 
 describe("sandbox access tokens", () => {
@@ -111,12 +123,48 @@ describe("sandbox access tokens", () => {
     const payload = await verifySandboxExecToken(token);
 
     expect(payload).not.toBeNull();
+    if (!payload || !isSandboxExecTokenPayload(payload)) {
+      return;
+    }
     expect(payload!.wId).toBe(auth.getNonNullableWorkspace().sId);
     expect(payload!.cId).toBe(conversation.sId);
     expect(payload!.uId).toBe(auth.getNonNullableUser().sId);
     expect(payload!.aId).toBe(agentConfig.sId);
     expect(payload!.mId).toBe(agentMessage.sId);
     expect(payload!.sbId).toBe(sandbox.sId);
+  });
+
+  it("round-trip: generate function invocation token → verify → check claims", async () => {
+    const { auth, sandbox } = await setupTest();
+    const pod = await SpaceFactory.project(auth.getNonNullableWorkspace());
+
+    const token = await generateSandboxFunctionInvocationToken(auth, {
+      sandbox,
+      sandboxFunction: {
+        sId: "sfn_test",
+        space: { sId: pod.sId },
+      },
+      conversationId: "conv_test",
+      invocationId: "test-invocation-id",
+      execId: "test-exec-id",
+    });
+
+    expect(token.startsWith(SANDBOX_TOKEN_PREFIX)).toBe(true);
+
+    const payload = await verifySandboxExecToken(token);
+
+    expect(payload).not.toBeNull();
+    if (!payload || !isSandboxFunctionInvocationTokenPayload(payload)) {
+      return;
+    }
+    expect(payload.wId).toBe(auth.getNonNullableWorkspace().sId);
+    expect(payload.cId).toBe("conv_test");
+    expect(payload.uId).toBe(auth.getNonNullableUser().sId);
+    expect(payload.sbId).toBe(sandbox.sId);
+    expect(payload.execId).toBe("test-exec-id");
+    expect(payload.spaceId).toBe(pod.sId);
+    expect(payload.sandboxFunctionId).toBe("sfn_test");
+    expect(payload.invocationId).toBe("test-invocation-id");
   });
 
   it("tampered token is rejected", async () => {
