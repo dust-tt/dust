@@ -51,7 +51,7 @@ const MAX_CHANNEL_SEARCH_RESULTS = 20;
 export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
   search_messages: {
     description:
-      "Keyword search for Slack messages across public channels, private channels, DMs, and group DMs where the current user is a member",
+      "Search Slack messages by keyword across public channels, private channels, DMs, and group DMs where the current user is a member",
     schema: {
       keywords: z
         .string()

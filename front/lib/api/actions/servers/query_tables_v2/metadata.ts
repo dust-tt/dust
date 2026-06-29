@@ -47,7 +47,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
   },
   [GET_DATABASE_SCHEMA_TOOL_NAME]: {
     description:
-      "Retrieves the database schema for a subset of tables. You MUST call list_tables first to discover " +
+      "Retrieve the database schema for a subset of tables. You MUST call list_tables first to discover " +
       "available tables, then call this tool with the URIs of the tables you need before attempting to query. " +
       "This tool provides essential information about table columns, types, and relationships needed to write accurate SQL queries.",
     schema: {
@@ -62,7 +62,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
   },
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: {
     description:
-      "Executes a query on the database. You MUST call get_database_schema for the tables involved in your query " +
+      "Execute a query on the database. You MUST call get_database_schema for the tables involved in your query " +
       "at least once before attempting to execute a query. The query must respect the guidelines and schema " +
       "provided by the get_database_schema tool.",
     schema: {

@@ -470,6 +470,27 @@ processing the tool output, a type guard that checks the output against the sche
 can be used to identify this output type. In the code of the internal server the type inferred
 from the `zod` schema should be used to type the tool output.
 
+### [MCP3] Tool descriptions start with a bare infinitive verb
+
+Internal MCP tool descriptions must start with a bare infinitive/base verb such as `List`, `Get`,
+`Search`, `Create`, `Update`, or `Retrieve`. Avoid noun phrases, articles, gerunds, and
+third-person verbs at the start of the description. Prefer verbs and wording that match how users
+search for the tool, because these descriptions are part of the BM25 tool-search corpus.
+
+Examples:
+
+```
+// BAD
+Lists available Jira projects.
+The tool retrieves a Zendesk ticket.
+Searching Slack messages by keyword.
+
+// GOOD
+List available Jira projects.
+Retrieve a Zendesk ticket.
+Search Slack messages by keyword.
+```
+
 ## TESTING
 
 ### [TEST1] Functionally test endpoints

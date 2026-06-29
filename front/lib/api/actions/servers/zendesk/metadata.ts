@@ -65,7 +65,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   },
   list_ticket_fields: {
     description:
-      "Lists Zendesk ticket field definitions. Both built-in fields (Subject, Priority, Status) and custom fields. With their id, title, type, and active state.",
+      "List Zendesk ticket field definitions. Both built-in fields (Subject, Priority, Status) and custom fields. With their id, title, type, and active state.",
     schema: {
       includeInactive: z
         .boolean()

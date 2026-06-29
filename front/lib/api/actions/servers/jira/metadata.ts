@@ -16,7 +16,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   // Read operations
   get_issue_read_fields: {
     description:
-      "Lists the field keys, ids, and names that can be requested when reading an issue.",
+      "List the field keys, ids, and names that can be requested when reading an issue.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -26,7 +26,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issue: {
     description:
-      "Looks up and retrieves a single Jira issue (ticket) by its key (e.g., 'PROJ-123'). Returns a minimal set of fields by default. Pass the fields parameter to request others.",
+      "Look up and retrieve a single Jira issue (ticket) by its key (e.g., 'PROJ-123'). Returns a minimal set of fields by default. Pass the fields parameter to request others.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       fields: z
@@ -43,7 +43,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_projects: {
-    description: "Retrieves all Jira projects (the full list).",
+    description: "List Jira projects available in the workspace.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -52,7 +52,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_project: {
-    description: "Retrieves a single Jira project by its key (e.g., 'PROJ').",
+    description: "Retrieve one Jira project by project key (e.g., 'PROJ').",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
@@ -64,7 +64,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_project_versions: {
     description:
-      "Retrieves all versions (releases) for a JIRA project. Useful for getting release reports and understanding which versions are available for filtering issues.",
+      "Retrieve all versions (releases) for a JIRA project. Useful for getting release reports and understanding which versions are available for filtering issues.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
@@ -76,7 +76,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_transitions: {
     description:
-      "Lists which status changes a Jira issue is currently allowed to make.",
+      "List which status changes a Jira issue is currently allowed to make.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
     },
@@ -139,7 +139,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_issue_types: {
-    description: "Retrieves available issue types for a JIRA project.",
+    description: "Retrieve available issue types for a JIRA project.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
     },
@@ -151,7 +151,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issue_create_fields: {
     description:
-      "Lists the field metadata (names and ids) on the screens used to create or update an issue, for a given project and issue type. Use it to discover valid field names beforehand.",
+      "List field metadata (names and ids) for a given Jira project and issue type. Use it to discover valid field names before creating or updating issues.",
     schema: {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       issueTypeId: z
@@ -166,7 +166,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_connection_info: {
     description:
-      "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves. Also use it to authenticate when another tool reports that no access token was found.",
+      "Get comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance. This tool is used when the user is referring about themselves. Also use it to authenticate when another tool reports that no access token was found.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -176,7 +176,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   get_issue_link_types: {
     description:
-      "Retrieves all available issue link types that can be used when creating issue links.",
+      "Retrieve all available issue link types that can be used when creating issue links.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -185,7 +185,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_users: {
-    description: "Search for Jira users by email address or display name.",
+    description: "Find or search Jira users by email address or display name.",
     schema: {
       emailAddress: z
         .string()
@@ -246,7 +246,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   // Write operations
   create_comment: {
     description:
-      "Adds a comment or note to an existing Jira issue. Accepts plain text or rich ADF formatting.",
+      "Leave a comment or note on an existing Jira issue. Accepts plain text or rich ADF formatting.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       comment: z
@@ -271,7 +271,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   transition_issue: {
     description:
-      "Moves or changes a Jira issue (ticket) to a different status (e.g. to In Progress or Done). Performs a workflow transition.",
+      "Move or change a Jira issue (ticket) to a different status (e.g. to In Progress or Done). Performs a workflow transition.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
@@ -284,7 +284,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   create_issue: {
     description:
-      "Creates a new Jira issue, or ticket, in a project. Use it to log a bug, raise a request, or open a task or story. Description fields accept plain text or rich ADF. Required fields vary by project and issue type.",
+      "Create a new Jira issue, or ticket, in a project. Use it to log a bug, raise a request, or open a task or story. Description fields accept plain text or rich ADF. Required fields vary by project and issue type.",
     schema: {
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"
@@ -298,7 +298,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   update_issue: {
     description:
-      "Updates or changes field values on an existing Jira issue, such as its summary, description, priority, or assignee. Description accepts plain text or rich ADF. Issue links and attachments are not changed here.",
+      "Update or change field values on an existing Jira issue, such as its summary, description, priority, or assignee. Description accepts plain text or rich ADF. Issue links and attachments are not changed here.",
     schema: {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       updateData: JiraCreateIssueRequestSchema.partial().describe(
@@ -313,7 +313,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
   },
   create_issue_link: {
     description:
-      "Links or marks two Jira issues as related, with a relationship type such as blocks, relates to, or duplicates.",
+      "Link or mark two Jira issues as related, with a relationship type such as blocks, relates to, or duplicates.",
     schema: {
       linkData: JiraCreateIssueLinkRequestSchema.describe(
         "Link configuration including type and issues to link"
@@ -326,7 +326,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     },
   },
   delete_issue_link: {
-    description: "Deletes an existing link between JIRA issues.",
+    description: "Delete an existing link between JIRA issues.",
     schema: {
       linkId: z.string().describe("The ID of the issue link to delete"),
     },

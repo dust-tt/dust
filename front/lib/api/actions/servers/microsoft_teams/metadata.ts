@@ -9,7 +9,7 @@ export const MICROSOFT_TEAMS_SERVER_NAME = "microsoft_teams" as const;
 export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   search_messages_content: {
     description:
-      "Full-text keyword search across Microsoft Teams messages. Returns matching messages ranked by relevance. Use this to find a message by its words, not to browse or enumerate a conversation.",
+      "Search Microsoft Teams messages by full-text keyword. Returns matching messages ranked by relevance. Use this to find a message by its words, not to browse or enumerate a conversation.",
     schema: {
       query: z
         .string()
