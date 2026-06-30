@@ -308,12 +308,16 @@ export async function runModel(
     );
   }
 
-  // Filter out ask_user_question for origins that don't support interactive questions.
-  const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
-    userMessage.context.origin
-  )
-    ? mcpActions.filter((s) => s.serverName !== "ask_user_question")
-    : mcpActions;
+  // Filter out ask_user_question when no human is available to answer: origins that don't
+  // support interactive questions, or sub-agent runs (conversation depth > 0) where the
+  // "user" is the parent agent rather than a human.
+  const supportsInteractiveQuestions =
+    ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(userMessage.context.origin) &&
+    conversation.depth === 0;
+
+  const filteredMcpActions = supportsInteractiveQuestions
+    ? mcpActions
+    : mcpActions.filter((s) => s.serverName !== "ask_user_question");
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
