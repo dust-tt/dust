@@ -2,6 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePlanUpgradeSection";
 import {
@@ -19,7 +20,6 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import { useMembersSelection } from "@app/hooks/useMembersSelection";
-import { useSendNotification } from "@app/hooks/useNotification";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
   useAuth,
@@ -43,6 +43,7 @@ import {
 } from "@app/lib/swr/credits";
 import { useGroups } from "@app/lib/swr/groups";
 import {
+  useBulkSetUserSpendLimit,
   useMembersUsage,
   useUpdateMemberSeatType,
 } from "@app/lib/swr/memberships";
@@ -130,7 +131,6 @@ export function UsagePage() {
   const { subscription } = useAuth();
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags();
-  const sendNotification = useSendNotification();
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Legacy-contract workspaces can view this page in read-only mode behind a
   // flag: analytics and member spend render as usual, but every action (top up,
@@ -432,15 +432,16 @@ export function UsagePage() {
     totalCount: totalMembersUsage,
     resetKey: `${searchTerm}|${seatTypeFilter ?? ""}|${groupFilter ?? ""}`,
   });
-  const { clearSelection, selectedCount } = selection;
+  const { clearSelection } = selection;
+
+  const { doBulkSetSpendLimit } = useBulkSetUserSpendLimit({
+    workspaceId: owner.sId,
+  });
+  const [isBulkSpendLimitOpen, setIsBulkSpendLimitOpen] = useState(false);
 
   const handleBatchEditSpendLimit = useCallback(() => {
-    sendNotification({
-      type: "info",
-      title: "Coming soon",
-      description: `Batch spend-limit editing for ${selectedCount} members is not wired up yet.`,
-    });
-  }, [sendNotification, selectedCount]);
+    setIsBulkSpendLimitOpen(true);
+  }, []);
 
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
@@ -486,6 +487,38 @@ export function UsagePage() {
     clearSelection();
     handleApproveOnModalSaved();
   }, [handleApproveOnModalSaved, clearSelection]);
+
+  const handleBulkSpendLimitValidate = useCallback(
+    async (
+      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
+    ): Promise<boolean> => {
+      const descriptor = selection.descriptor();
+      const selectionBody =
+        descriptor.mode === "ids"
+          ? descriptor
+          : {
+              mode: "all" as const,
+              filter: {
+                seatType: seatTypeFilter ?? undefined,
+                groupId: groupFilter ?? undefined,
+                search: searchTerm.trim() || undefined,
+              },
+              excludeUserIds: descriptor.excludeUserIds,
+            };
+
+      const body = await doBulkSetSpendLimit({
+        selection: selectionBody,
+        limit,
+      });
+      if (!body) {
+        return false;
+      }
+
+      selection.clearSelection();
+      return true;
+    },
+    [selection, seatTypeFilter, groupFilter, searchTerm, doBulkSetSpendLimit]
+  );
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
@@ -929,6 +962,13 @@ export function UsagePage() {
         owner={owner}
         onSavingChange={handleUsagePendingChange}
         onSaved={handleApproveOnModalSaved}
+      />
+
+      <BulkEditSpendLimitModal
+        isOpen={isBulkSpendLimitOpen}
+        onClose={() => setIsBulkSpendLimitOpen(false)}
+        memberCount={selection.selectedCount}
+        onValidate={handleBulkSpendLimitValidate}
       />
     </>
   );
