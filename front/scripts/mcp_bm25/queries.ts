@@ -1132,6 +1132,20 @@ export const QUERIES: LabeledQuery[] = [
     expected: "image_generation.generate_image",
   },
 
+  // --- file_generation ---
+  {
+    query: "turn this conversation file into a PDF",
+    expected: "file_generation.convert_file_format",
+  },
+  {
+    query: "write my report text out as a Word document",
+    expected: "file_generation.generate_file",
+  },
+  {
+    query: "which input formats can I turn into an xlsx spreadsheet",
+    expected: "file_generation.get_supported_source_formats_for_output_format",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
