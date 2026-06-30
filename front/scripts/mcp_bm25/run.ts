@@ -22,6 +22,7 @@ import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
+import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
@@ -171,6 +172,7 @@ const SERVERS: ServerEntry[] = [
   { name: "fathom", tools: FATHOM_SERVER.tools },
   { name: "luma", tools: LUMA_SERVER.tools },
   { name: "extract_data", tools: EXTRACT_DATA_SERVER.tools },
+  { name: "gong", tools: GONG_SERVER.tools },
 ];
 
 function out(line: string): void {
