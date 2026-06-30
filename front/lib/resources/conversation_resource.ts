@@ -1840,29 +1840,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       orderDirection?: "asc" | "desc";
     }
   ): Promise<{
-    conversations: ConversationResource[];
-    hasMore: boolean;
-    lastValue: string | null;
-  }> {
-    return this.fetchPrivateConversationsPaginated(auth, { pagination });
-  }
-
-  static async listPrivateConversationsForUserPaginatedFromDB(
-    auth: Authenticator,
-    pagination: {
-      limit: number;
-      lastValue?: string;
-      orderDirection?: "asc" | "desc";
-    }
-  ): Promise<{
     conversations: ConversationListItemType[];
     hasMore: boolean;
     lastValue: string | null;
   }> {
-    const result = await this.listPrivateConversationsForUserPaginated(
-      auth,
-      pagination
-    );
+    const result = await this.fetchPrivateConversationsPaginated(auth, {
+      pagination,
+    });
     const nextWakeupAtByConversationId =
       await this.fetchNextWakeupAtByConversationId(
         auth,
