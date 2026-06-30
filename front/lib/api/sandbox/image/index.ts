@@ -46,7 +46,7 @@ export function getToolsForProvider(
 }
 
 // Hacky temporary filtering: strip the `dsbx` tool entry from the manifest by
-// name when Computer is unavailable so it is not advertised to the model.
+// name when sandbox tools are off so it is not advertised to the model.
 export function filterDsbxToolEntries(
   tools: readonly ToolEntry[],
   { includeDsbxTools }: { includeDsbxTools: boolean }
