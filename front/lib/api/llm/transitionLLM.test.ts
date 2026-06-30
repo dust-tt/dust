@@ -4,6 +4,7 @@ import {
   toBaseMessages,
 } from "@app/lib/api/llm/transitionLLM";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import { assistantReasoningMessageToInputItems } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ProviderPassthroughEvent } from "@app/lib/model_constructors/types/output/events";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
@@ -132,6 +133,31 @@ describe("toBaseMessages — reasoning signatures", () => {
         content: { value: "let me think" },
         signature: "rs_123",
         encryptedContent: "gAAAA-encrypted-blob",
+      },
+    ]);
+  });
+});
+
+describe("OpenAI reasoning round-trip — persisted metadata to Responses input", () => {
+  it("resends the original reasoning item id and its encrypted content", () => {
+    const [baseMessage] = toBaseMessages(
+      reasoningMessage({
+        provider: "openai",
+        metadata: JSON.stringify({
+          id: "rs_123",
+          encrypted_content: "gAAAA-encrypted-blob",
+        }),
+      })
+    );
+    if (baseMessage.type !== "reasoning") {
+      throw new Error("Expected a reasoning BaseMessage.");
+    }
+    expect(assistantReasoningMessageToInputItems(baseMessage)).toEqual([
+      {
+        id: "rs_123",
+        type: "reasoning",
+        summary: [{ type: "summary_text", text: "let me think" }],
+        encrypted_content: "gAAAA-encrypted-blob",
       },
     ]);
   });
