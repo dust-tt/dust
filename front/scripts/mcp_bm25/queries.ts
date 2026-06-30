@@ -1269,6 +1269,44 @@ export const QUERIES: LabeledQuery[] = [
     expected: "files.move",
   },
 
+  // --- gmail ---
+  {
+    query: "show my saved gmail drafts",
+    expected: "gmail.get_drafts",
+  },
+  {
+    query: "draft a reply email in gmail to send later",
+    expected: "gmail.create_draft",
+  },
+  {
+    query: "delete a draft email from gmail",
+    expected: "gmail.delete_draft",
+  },
+  {
+    query: "search my gmail inbox for emails from a coworker",
+    expected: "gmail.get_messages",
+  },
+  {
+    query: "download the file attached to a gmail email",
+    expected: "gmail.get_attachment",
+  },
+  {
+    query: "list all my gmail labels and folders",
+    expected: "gmail.get_labels",
+  },
+  {
+    query: "mark a gmail message as read and move it out of the inbox",
+    expected: "gmail.set_message_labels",
+  },
+  {
+    query: "send an email right now through gmail",
+    expected: "gmail.send_mail",
+  },
+  {
+    query: "read the whole gmail conversation thread",
+    expected: "gmail.get_thread",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",

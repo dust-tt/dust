@@ -23,6 +23,7 @@ import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_genera
 import { FILES_SERVER } from "@app/lib/api/actions/servers/files/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
+import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
 import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
@@ -175,6 +176,7 @@ const SERVERS: ServerEntry[] = [
   { name: "extract_data", tools: EXTRACT_DATA_SERVER.tools },
   { name: "gong", tools: GONG_SERVER.tools },
   { name: "files", tools: FILES_SERVER.tools },
+  { name: "gmail", tools: GMAIL_SERVER.tools },
 ];
 
 function out(line: string): void {

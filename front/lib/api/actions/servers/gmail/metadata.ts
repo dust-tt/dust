@@ -8,7 +8,8 @@ export const GMAIL_TOOL_NAME = "gmail" as const;
 
 export const GMAIL_TOOLS_METADATA = createToolsRecord({
   get_drafts: {
-    description: "Get all drafts from Gmail.",
+    description:
+      "Get and list saved, unsent email drafts from Gmail. Returns existing drafts only.",
     schema: {
       q: z
         .string()
@@ -137,7 +138,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
   },
   get_attachment: {
     description:
-      "Get the content of a specific attachment from a Gmail message. The attachment will be uploaded and made available in the conversation.",
+      "Download an attached file from a Gmail email message. Fetches the content of a specific attachment, which is then uploaded and made available in the conversation.",
     schema: {
       messageId: z
         .string()
@@ -183,7 +184,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
   },
   set_message_labels: {
-    description: `Modify the labels of a message. System label IDs can be used directly (INBOX, SPAM, TRASH, UNREAD, STARRED, IMPORTANT, ...). User labels should be retrieved first via get_labels to get their IDs.`,
+    description: `Modify the labels on a Gmail message to mark it read or unread, star it, archive it, or move it into or out of the inbox. Adds and removes label IDs on the message. System label IDs can be used directly (INBOX, SPAM, TRASH, UNREAD, STARRED, IMPORTANT, ...). User labels should be retrieved first via get_labels to get their IDs.`,
     schema: {
       messageId: z.string().describe("The ID of the message to modify."),
       addLabelIds: z.array(z.string()).optional().describe("Label IDs to add."),
