@@ -17,7 +17,12 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). Do NOT use Slack-specific markup like <url|text> for links. The system converts Markdown to Slack format automatically. To mention a user, use <@USER_ID>. To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
+          "The message to post, using standard Markdown formatting " +
+            "(e.g., [text](url) for links, **bold**, *italic*). Do NOT " +
+            "use Slack-specific markup like <url|text> for links. The " +
+            "system converts Markdown to Slack format automatically. To " +
+            "mention a user, use <@USER_ID>. To reference a channel, use " +
+            "#CHANNEL or <#CHANNEL_ID>."
         ),
       threadTs: z
         .string()
@@ -63,7 +68,12 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The new message content, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). Do NOT use Slack-specific markup like <url|text> for links. The system converts Markdown to Slack format automatically. To mention a user, use <@USER_ID>. To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
+          "The new message content, using standard Markdown formatting " +
+            "(e.g., [text](url) for links, **bold**, *italic*). Do NOT " +
+            "use Slack-specific markup like <url|text> for links. The " +
+            "system converts Markdown to Slack format automatically. To " +
+            "mention a user, use <@USER_ID>. To reference a channel, use " +
+            "#CHANNEL or <#CHANNEL_ID>."
         ),
     },
     stake: "low",
