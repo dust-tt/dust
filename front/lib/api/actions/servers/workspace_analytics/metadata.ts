@@ -117,11 +117,11 @@ const getUsageTimeseriesSchema = {
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_top_agents: {
     description:
-      "Return the workspace's agents over a time window (defaults to the " +
-      "current calendar month), ranked by number of messages, with the number " +
-      "of unique users for each. Each row includes the agent's id. Optionally " +
-      "filter by source (context_origin), agent, or user. Use this to answer " +
-      "which agents are used most. Admin-only.",
+      "Return the workspace's most-used and most active agents over a time " +
+      "window (defaults to the current calendar month), ranked by message " +
+      "count, with unique user count for each. Each row includes the agent's " +
+      "id. Use this to answer which agents are most popular, most used, or " +
+      "most active. Admin-only.",
     schema: getTopAgentsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -131,11 +131,11 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   },
   get_top_users: {
     description:
-      "Return the workspace's most active users over a time window (defaults " +
-      "to the current calendar month), ranked by number of messages sent, " +
-      "with the count of distinct agents each used. Each row includes the " +
-      "user's id. Optionally filter by source (context_origin), agent, or " +
-      "user. Use this to answer who the most active users are. Admin-only.",
+      "Return the workspace's most active users and members over a time " +
+      "window (defaults to the current calendar month), ranked by number of " +
+      "messages sent, with the count of distinct agents each used. Each row " +
+      "includes the user's id. Use this to answer who the most active users " +
+      "are, rank members by usage, or find your top contributors. Admin-only.",
     schema: getTopUsersSchema,
     stake: "never_ask",
     displayLabels: {
@@ -146,10 +146,9 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_agent_details: {
     description:
       "Return an agent's full configuration: name, description, scope, model, " +
-      "equipped skills and tools, and its complete instructions (system " +
-      "prompt). Use this after a usage tool to explain what a heavily-used " +
-      "agent actually does. Takes the agent id returned by other tools. " +
-      "Admin-only.",
+      "equipped skills and capabilities, and its complete system prompt and " +
+      "instructions. Use this to inspect what a heavily-used agent actually " +
+      "does. Admin-only.",
     schema: getAgentDetailsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -172,10 +171,11 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   },
   get_top_tools: {
     description:
-      "Return the workspace's most-used tools (by MCP server) over a time " +
-      "window (defaults to the current calendar month), ranked by execution " +
-      "count. Optionally filter by source (context_origin), agent, or user. " +
-      "Use this to answer which tools are used most. Admin-only.",
+      "Return the workspace's most-used MCP tools and integrations over a " +
+      "time window (defaults to the current calendar month), ranked by " +
+      "execution count. Shows which MCP server tools are called most. Use " +
+      "this to answer which tools are used most or which integrations agents " +
+      "rely on. Admin-only.",
     schema: getTopToolsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -241,11 +241,10 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_usage_timeseries: {
     description:
       "Return a usage time series over a window (defaults to the last 30 " +
-      "days). The metric parameter selects what is plotted: messages " +
-      "(messages/conversations/active users, default), skills, or tools " +
-      "(executions/unique users). Use this for any trend over time — it is a " +
-      "single call, do not call other tools once per day. Combine with the " +
-      "source/agent/user filters to narrow. Chart the result. Admin-only.",
+      "days). Plot message volume (messages, conversations, active users), " +
+      "skill executions, or tool calls over time. Use this for any activity " +
+      "or usage trend — it is a single call, do not call other tools once per " +
+      "day. Combine with filters to narrow. Chart the result. Admin-only.",
     schema: getUsageTimeseriesSchema,
     stake: "never_ask",
     displayLabels: {
