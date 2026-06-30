@@ -15,38 +15,38 @@ const iconButtonVariants = cva(
         primary: cn(
           "text-highlight-500",
           "hover:text-highlight-400",
-          "active:text-highlight-600",
-          "text-primary-500"
+          "active:text-highlight-dark",
+          "text-muted-foreground"
         ),
         warning: cn(
           "text-warning-500",
           "hover:text-warning-400",
           "active:text-warning-600",
-          "text-primary-500"
+          "text-muted-foreground"
         ),
         "warning-secondary": cn(
           "text-warning-500",
           "hover:text-warning-400",
           "active:text-warning-600",
-          "text-primary-500"
+          "text-muted-foreground"
         ),
         highlight: cn(
           "text-foreground",
           "hover:text-highlight-400",
-          "active:text-highlight-600",
-          "text-primary-500"
+          "active:text-highlight-dark",
+          "text-muted-foreground"
         ),
         "highlight-secondary": cn(
           "text-foreground",
           "hover:text-highlight-400",
-          "active:text-highlight-600",
-          "text-primary-500"
+          "active:text-highlight-dark",
+          "text-muted-foreground"
         ),
         outline: cn(
           "text-primary-700",
-          "hover:text-primary-400",
-          "active:text-highlight-600",
-          "text-primary-500"
+          "hover:text-faint",
+          "active:text-highlight-dark",
+          "text-muted-foreground"
         ),
         ghost: cn(
           "text-background",

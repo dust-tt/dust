@@ -138,10 +138,10 @@ const buttonVariants = cva(
           "hover:text-primary-900",
           "hover:border-transparent",
           "active:bg-primary-300",
-          "disabled:text-primary-400",
+          "disabled:text-faint",
           "disabled:hover:bg-transparent",
           "disabled:hover:border-transparent",
-          "disabled:hover:text-primary-400"
+          "disabled:hover:text-faint"
         ),
         "ghost-secondary": cn(
           "border",
@@ -151,10 +151,10 @@ const buttonVariants = cva(
           "hover:text-primary-900",
           "hover:border-transparent",
           "active:bg-primary-300",
-          "disabled:text-primary-400",
+          "disabled:text-faint",
           "disabled:hover:bg-transparent",
           "disabled:hover:border-transparent",
-          "disabled:hover:text-primary-400"
+          "disabled:hover:text-faint"
         ),
       },
       size: {
