@@ -777,8 +777,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_dust_keys"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
-  | "conversation_search_indexing"
-  | "conversation_search_read"
   | "new_file_explorer"
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"

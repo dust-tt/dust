@@ -745,8 +745,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     }
 
     try {
-      await ConversationResource.triggerEsIndexing(auth, conversation.sId);
-
       await publishConversationEvent(
         {
           type: "wake_up_updated",
