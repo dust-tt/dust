@@ -249,7 +249,17 @@ describe("ensureConversationSandboxReady", () => {
     expect(result.isOk()).toBe(true);
     expect(mockEnsurePodSandboxActive).toHaveBeenCalledWith(auth, pod);
     expect(mockEnsureSandboxActive).not.toHaveBeenCalled();
-    expect(mockForPod).toHaveBeenCalledWith(auth, pod);
+    // The pod's published bundles are mounted read-only under a pod-scoped path.
+    expect(mockForPod).toHaveBeenCalledWith(auth, pod, {
+      sandboxOnlyMounts: [
+        {
+          kind: "pod_sandbox_functions",
+          id: pod.sId,
+          sandboxMountPoint: `/sandbox_functions/pods/${pod.sId}`,
+          readOnly: true,
+        },
+      ],
+    });
     expect(mockForConversation).not.toHaveBeenCalled();
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,

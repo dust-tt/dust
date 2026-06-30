@@ -88,6 +88,15 @@ export function getPodSandboxFunctionsBasePath({
 }
 
 /**
+ * Absolute in-sandbox path the pod's published bundles are mounted at. Pod-scoped like the
+ * `/files/pod-<id>` files mount, so one sandbox could carry several pods' functions without
+ * collision.
+ */
+export function getPodSandboxFunctionsMountPoint(podId: string): string {
+  return `/sandbox_functions/pods/${podId}`;
+}
+
+/**
  * Given a mount file path like "w/.../files/report.pdf",
  * returns "w/.../files/report.processed.pdf".
  * For files without extension: "w/.../files/Makefile" -> "w/.../files/Makefile.processed".

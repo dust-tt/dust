@@ -449,15 +449,10 @@ describe("SandboxFunctionResource", () => {
       return;
     }
     const [, command, opts] = execCall;
-    const stagedFunctionsDir = `/tmp/dust-sandbox-functions/${result.value.sId}`;
-    expect(command).toContain(
-      `cat > '${stagedFunctionsDir}/add-comment.ts' <<'DUST_SANDBOX_FUNCTION_EOF'`
-    );
-    expect(command).toContain("async fetch(_req: Request): Promise<Response>");
-    expect(command).toContain("return Response.json({ ok: true });");
-    expect(command).toContain("/opt/bin/dsbx function run 'add-comment'");
+    // The bundle is read from the read-only mount, so the command is just the run, no staging write.
+    expect(command).toBe("/opt/bin/dsbx function run 'add-comment'");
     expect(opts?.envVars).toMatchObject({
-      DUST_FUNCTIONS_DIR: stagedFunctionsDir,
+      DUST_FUNCTIONS_DIR: `/sandbox_functions/pods/${space.sId}`,
       DUST_SANDBOX_TOKEN: "sbt-function-token",
     });
     expect(opts?.user).toBe("agent-proxied");

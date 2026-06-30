@@ -1,5 +1,5 @@
-import path from "node:path";
 import config from "@app/lib/api/config";
+import { getPodSandboxFunctionsMountPoint } from "@app/lib/api/files/mount_path";
 import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
@@ -36,7 +36,6 @@ import type { Attributes, Transaction } from "sequelize";
 
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
-const SANDBOX_FUNCTION_STAGING_ROOT = "/tmp/dust-sandbox-functions";
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 
 function dustAPIBaseUrlForSandbox(): string {
@@ -45,29 +44,10 @@ function dustAPIBaseUrlForSandbox(): string {
     : config.getApiBaseUrl();
 }
 
-function buildSandboxFunctionCommand({
-  stagedFunctionsDir,
-  slug,
-}: {
-  stagedFunctionsDir: string;
-  slug: string;
-}): string {
-  // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`.
-  const functionPath = path.posix.join(stagedFunctionsDir, `${slug}.ts`);
-
-  return [
-    "set -euo pipefail",
-    `rm -rf -- ${shellEscape(stagedFunctionsDir)}`,
-    `mkdir -p -- ${shellEscape(stagedFunctionsDir)}`,
-    `cat > ${shellEscape(functionPath)} <<'DUST_SANDBOX_FUNCTION_EOF'`,
-    "export default {",
-    "  async fetch(_req: Request): Promise<Response> {",
-    "    return Response.json({ ok: true });",
-    "  },",
-    "};",
-    "DUST_SANDBOX_FUNCTION_EOF",
-    `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`,
-  ].join("\n");
+function buildSandboxFunctionRunCommand(slug: string): string {
+  // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
+  // read-only mount of the pod's published bundles.
+  return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -346,14 +326,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         execId,
       });
 
-      const stagedFunctionsDir = path.posix.join(
-        SANDBOX_FUNCTION_STAGING_ROOT,
-        invocation.sId
-      );
-      const command = buildSandboxFunctionCommand({
-        stagedFunctionsDir,
-        slug: this.slug,
-      });
+      const command = buildSandboxFunctionRunCommand(this.slug);
       const inputEnvelope = {
         method: "POST",
         url: `https://dust.local/sandbox-functions/${this.sId}/invocations/${invocation.sId}`,
@@ -375,7 +348,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
         envVars: {
           DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
-          DUST_FUNCTIONS_DIR: stagedFunctionsDir,
+          DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(this.space.sId),
           DUST_SANDBOX_TOKEN: token,
         },
         stdin: JSON.stringify(inputEnvelope),
