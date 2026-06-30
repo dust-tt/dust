@@ -151,7 +151,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
     });
   });
 
-  it("does not require the broader sandbox tools feature flag", async () => {
+  it("does not require Computer access", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
     vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValue(
       new Ok({

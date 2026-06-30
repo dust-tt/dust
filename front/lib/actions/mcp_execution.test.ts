@@ -19,7 +19,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -354,7 +353,6 @@ describe("processToolResults", () => {
 
   it(`should persist DATA_SOURCE_NODE_CONTENT block to ${TOOL_OUTPUTS_FOLDER_NAME}/`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     fileStorageMock.reset();
 
@@ -402,7 +400,6 @@ describe("processToolResults", () => {
 
   it(`should persist large plain text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .txt`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     fileStorageMock.reset();
 
@@ -428,7 +425,6 @@ describe("processToolResults", () => {
 
   it(`should persist large JSON text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .json`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     fileStorageMock.reset();
 

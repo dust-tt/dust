@@ -220,11 +220,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Workday MCP tool",
     stage: "on_demand",
   },
-  sandbox_tools: {
-    description:
-      "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
-    stage: "on_demand",
-  },
   sandbox_functions: {
     description: "Enable Sandbox Function invocation endpoints",
     stage: "dust_only",
@@ -392,10 +387,7 @@ export const DISABLE_COMPUTER_FEATURE =
 export function isComputerFeatureEnabled(
   featureFlags: WhitelistableFeature[]
 ): boolean {
-  return (
-    featureFlags.includes("sandbox_tools") &&
-    !featureFlags.includes(DISABLE_COMPUTER_FEATURE)
-  );
+  return !featureFlags.includes(DISABLE_COMPUTER_FEATURE);
 }
 
 export function isWhitelistableFeature(

@@ -119,7 +119,7 @@ export function sandboxAuth({
           status_code: 403,
           api_error: {
             type: "invalid_request_error",
-            message: "Sandbox tools are not enabled for this workspace.",
+            message: "Computer is disabled for this workspace.",
           },
         });
       }

@@ -607,7 +607,7 @@ app.post(
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message: "Sandbox tools are not enabled for this workspace.",
+            message: "Computer is disabled for this workspace.",
           },
         });
       }

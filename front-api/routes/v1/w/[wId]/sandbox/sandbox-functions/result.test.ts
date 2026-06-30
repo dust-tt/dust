@@ -50,9 +50,7 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
   });
 
   it("rejects sandbox action tokens", async () => {
-    const { token, workspace } = await createSandboxTokenTestContext({
-      enableSandboxTools: true,
-    });
+    const { token, workspace } = await createSandboxTokenTestContext();
 
     const response = await postSandboxFunctionResult(workspace, token, {
       function: "test_function",
