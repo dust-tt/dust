@@ -31,6 +31,7 @@ jobs:
           MONITORED_PATHS=(
             'front/lib/'
             'front/types/assistant/models/'
+            'front/temporal/'
             'front-api/'
             'connectors/src/lib/models/'
             'connectors/src/resources/storage/models/'
