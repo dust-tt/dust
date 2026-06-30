@@ -102,7 +102,7 @@ export const NewInputWithSave = forwardRef<
     const hasOverlay = Boolean(unit) || showSaveButton;
 
     return (
-      <div className={cn("s-relative s-w-full", className)}>
+      <div className={cn("relative w-full", className)}>
         <NewInput
           ref={inputRef}
           size="sm"
@@ -123,17 +123,15 @@ export const NewInputWithSave = forwardRef<
           onKeyDown={handleKeyDown}
           disabled={disabled}
           readOnly={isSaving}
-          className={cn(showSaveButton ? "s-pr-20" : unit ? "s-pr-12" : null)}
+          className={cn(showSaveButton ? "pr-20" : unit ? "pr-12" : null)}
           {...props}
         />
         {hasOverlay && (
           // pointer-events-none lets clicks fall through to the input (to
           // focus it); the Save button re-enables them for itself.
-          <div className="s-pointer-events-none s-absolute s-inset-y-0 s-right-1 s-flex s-items-center s-gap-1.5">
+          <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center gap-1.5">
             {unit && (
-              <span className="s-shrink-0 s-text-sm s-text-faint dark:s-text-faint-night">
-                {unit}
-              </span>
+              <span className="shrink-0 text-sm text-faint">{unit}</span>
             )}
             {showSaveButton && (
               <NewButton
@@ -141,7 +139,7 @@ export const NewInputWithSave = forwardRef<
                 variant="highlight"
                 size="xs"
                 isLoading={isSaving}
-                className="s-pointer-events-auto"
+                className="pointer-events-auto"
                 // Prevent the input from blurring (which would revert the edit)
                 // before the click registers.
                 onMouseDown={(e) => e.preventDefault()}

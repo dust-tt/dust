@@ -40,7 +40,7 @@ const VARIANTS = [
 
 export const Variants: Story = {
   render: () => (
-    <div className="s-flex s-flex-wrap s-gap-3">
+    <div className="flex flex-wrap gap-3">
       {VARIANTS.map((variant) => (
         <NewFlexSplitButton
           key={variant}
@@ -58,7 +58,7 @@ export const Variants: Story = {
 
 export const Loading: Story = {
   render: () => (
-    <div className="s-flex s-flex-wrap s-gap-3">
+    <div className="flex flex-wrap gap-3">
       {(["highlight", "primary", "outline"] as const).map((variant) => (
         <NewFlexSplitButton
           key={variant}
