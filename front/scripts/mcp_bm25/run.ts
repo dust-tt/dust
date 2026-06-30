@@ -37,6 +37,7 @@ import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadat
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
+import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import { buildIndex, rank } from "@app/scripts/mcp_bm25/bm25";
 import type { ServerEntry } from "@app/scripts/mcp_bm25/corpus";
@@ -116,6 +117,10 @@ const SERVERS: ServerEntry[] = [
   { name: "data_warehouses", tools: DATA_WAREHOUSES_SERVER.tools },
   { name: "query_tables_v2", tools: QUERY_TABLES_V2_SERVER.tools },
   { name: "pod_manager", tools: POD_MANAGER_SERVER.tools },
+  {
+    name: "workspace_analytics",
+    tools: WORKSPACE_ANALYTICS_SERVER.tools,
+  },
 ];
 
 function out(line: string): void {
