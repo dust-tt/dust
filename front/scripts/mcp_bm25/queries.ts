@@ -1206,6 +1206,12 @@ export const QUERIES: LabeledQuery[] = [
     expected: "luma.get_event_insights",
   },
 
+  // --- extract_data ---
+  {
+    query: "extract structured data from documents into a json schema",
+    expected: "extract_data.extract_information_from_documents",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
