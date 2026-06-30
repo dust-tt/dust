@@ -2,11 +2,11 @@ import { cn } from "@dust-tt/sparkle";
 
 /** Matches the expanded input bar surface (see InputBar.tsx). */
 export const INPUT_BAR_SURFACE_CLASSES =
-  "border border-border-dark bg-muted-background dark:border-border-dark/10 dark:bg-muted-background-night";
+  "border border-border-dark bg-muted-background";
 
 /** Same hue as expanded, slightly translucent for compact overlay on scroll. */
 export const INPUT_BAR_COMPACT_SURFACE_CLASSES =
-  "border border-border-dark bg-muted-background/90 shadow-sm backdrop-blur-sm dark:border-border-dark/10 dark:bg-muted-background-night/90";
+  "border border-border-dark bg-muted-background/90 shadow-sm backdrop-blur-sm";
 
 export const INPUT_BAR_COMPACT_PILL_CLASSES = cn(
   "min-w-0 w-full rounded-full px-2",
