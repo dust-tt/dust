@@ -1,0 +1,747 @@
+/*
+ * Shared Tailwind v4 theme for every Dust app (sparkle, front, marketing,
+ * extension, front-spa, playground).
+ *
+ * This is the CSS-first replacement for the legacy `tailwind-preset.js` +
+ * per-app `tailwind.config.js` + `@config` bridge. Consumers `@import` this
+ * file from their CSS entry point instead of pointing `@config` at a JS file.
+ *
+ * Notes:
+ * - Every consumer builds unprefixed (the old sparkle `s` prefix was dropped),
+ *   so `@theme`/`@utility` here emit plain, unprefixed utilities like
+ *   `heading-base` across all apps.
+ * - Color *values* live in `tokens.css` (raw `:root` / `.dark` custom
+ *   properties) and are compiled once into `dist/sparkle.css`, which every app
+ *   loads. Here we only MAP Tailwind color names onto those properties via
+ *   `@theme inline`, so utilities are generated without redefining the
+ *   variables (no duplication, and light/dark switching flows through
+ *   `tokens.css`). This file therefore does NOT import `tokens.css`.
+ * - Container-query `@custom-variant`s are intentionally left inlined in each
+ *   entry point (canonical copy in sparkle's `tailwind.css`); only `dark` lives
+ *   here.
+ */
+
+/* Class-based dark mode for every consumer (was `darkMode: "class"`). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Breakpoints (was preset.theme.screens). */
+  --breakpoint-xxs: 384px;
+  --breakpoint-xs: 512px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* Font families. */
+  --font-sans: Geist, sans-serif;
+  --font-mono: "Geist Mono", monospace;
+
+  /* Font weight overrides (shared by sparkle/front/marketing). */
+  --font-weight-medium: 450;
+  --font-weight-semibold: 550;
+
+  /* Font sizes — px scale with line-height + letter-spacing. */
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-xs--letter-spacing: normal;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-sm--letter-spacing: -0.28px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-base--letter-spacing: -0.32px;
+  --text-lg: 18px;
+  --text-lg--line-height: 26px;
+  --text-lg--letter-spacing: -0.36px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-xl--letter-spacing: -0.4px;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 30px;
+  --text-2xl--letter-spacing: -0.96px;
+  --text-3xl: 32px;
+  --text-3xl--line-height: 36px;
+  --text-3xl--letter-spacing: -1.28px;
+  --text-4xl: 40px;
+  --text-4xl--line-height: 42px;
+  --text-4xl--letter-spacing: -2.4px;
+  --text-5xl: 48px;
+  --text-5xl--line-height: 52px;
+  --text-5xl--letter-spacing: -2.88px;
+  --text-6xl: 56px;
+  --text-6xl--line-height: 60px;
+  --text-6xl--letter-spacing: -3.36px;
+  --text-7xl: 64px;
+  --text-7xl--line-height: 68px;
+  --text-7xl--letter-spacing: -3.84px;
+  --text-8xl: 72px;
+  --text-8xl--line-height: 76px;
+  --text-8xl--letter-spacing: -4.32px;
+  --text-9xl: 80px;
+  --text-9xl--line-height: 84px;
+  --text-9xl--letter-spacing: -4.8px;
+
+  /* Spacing additions. Numeric keys (100/125/150) feed the width, height,
+     min and max size utilities — they were the preset's sizeScale. */
+  --spacing-sidebar-side-spacing: 0.75rem;
+  --spacing-100: 400px;
+  --spacing-125: 500px;
+  --spacing-150: 600px;
+
+  /* Named max-width (max-w-conversation). v4 maps `max-w-*` onto `--container-*`. */
+  --container-conversation: 48rem;
+
+  /* Transition timing functions (was theme.extend.transitionTimingFunction). */
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --ease-in-out-quint: cubic-bezier(0.86, 0, 0.07, 1);
+  --ease-enter: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-emphasized: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-move: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  --ease-in-quad: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+  --ease-in-cubic: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  --ease-in-quart: cubic-bezier(0.895, 0.03, 0.685, 0.22);
+  --ease-in-quint: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+  --ease-in-expo: cubic-bezier(0.95, 0.05, 0.795, 0.035);
+  --ease-in-circ: cubic-bezier(0.6, 0.04, 0.98, 0.335);
+
+  /* Transition durations (was theme.extend.transitionDuration). */
+  --transition-duration-enter: 200ms;
+  --transition-duration-exit: 160ms;
+  --transition-duration-modal-enter: 300ms;
+  --transition-duration-modal-exit: 240ms;
+
+  /* Border radius. */
+  --radius-4xl: 2rem;
+
+  /* Box shadows. */
+  --shadow: 0 2px 6px 0 oklch(18.98% 0.0094 255.63 / 0.102);
+  --shadow-md: 0 4px 12px oklch(18.98% 0.0094 255.63 / 0.1216);
+  --shadow-lg: 0 10px 20px oklch(18.98% 0.0094 255.63 / 0.1216);
+  --shadow-xl: 0 20px 25px oklch(18.98% 0.0094 255.63 / 0.1216);
+  --shadow-2xl: 0 25px 50px oklch(18.98% 0.0094 255.63 / 0.1216);
+
+  /* Drop shadows. */
+  --drop-shadow: 0 2px 4px oklch(18.98% 0.0094 255.63 / 0.0627);
+  --drop-shadow-sm: 0 1px 2px oklch(18.98% 0.0094 255.63 / 0.051);
+  --drop-shadow-md: 0 4px 6px oklch(18.98% 0.0094 255.63 / 0.1216);
+  --drop-shadow-lg: 0 10px 15px oklch(18.98% 0.0094 255.63 / 0.1216);
+  --drop-shadow-xl: 0 20px 20px oklch(18.98% 0.0094 255.63 / 0.1216);
+  --drop-shadow-2xl: 0 25px 35px oklch(18.98% 0.0094 255.63 / 0.1216);
+
+  /* Animations (shared). Front/marketing override move-square/breathing
+     timings in their own entry points. */
+  --animate-move-square: move-square 3s ease-out infinite;
+  --animate-breathing: breathing 3s infinite ease-in-out;
+  --animate-breathing-scale: breathing-scale 3s infinite ease-in-out;
+}
+
+/*
+ * Color name -> token variable mapping. `inline` means the generated utilities
+ * reference `var(--color-*)` directly and the variables are NOT redefined here
+ * (they come from tokens.css / sparkle.css), so light/dark switching is
+ * preserved with zero duplication.
+ */
+@theme inline {
+  /* Palette. */
+  --color-gray-50: var(--color-gray-50);
+  --color-gray-100: var(--color-gray-100);
+  --color-gray-150: var(--color-gray-150);
+  --color-gray-200: var(--color-gray-200);
+  --color-gray-300: var(--color-gray-300);
+  --color-gray-400: var(--color-gray-400);
+  --color-gray-500: var(--color-gray-500);
+  --color-gray-600: var(--color-gray-600);
+  --color-gray-700: var(--color-gray-700);
+  --color-gray-800: var(--color-gray-800);
+  --color-gray-850: var(--color-gray-850);
+  --color-gray-900: var(--color-gray-900);
+  --color-gray-950: var(--color-gray-950);
+
+  --color-stone-25: var(--color-stone-25);
+  --color-stone-50: var(--color-stone-50);
+  --color-stone-100: var(--color-stone-100);
+  --color-stone-150: var(--color-stone-150);
+  --color-stone-200: var(--color-stone-200);
+  --color-stone-300: var(--color-stone-300);
+  --color-stone-400: var(--color-stone-400);
+  --color-stone-500: var(--color-stone-500);
+  --color-stone-600: var(--color-stone-600);
+  --color-stone-700: var(--color-stone-700);
+  --color-stone-800: var(--color-stone-800);
+  --color-stone-900: var(--color-stone-900);
+  --color-stone-950: var(--color-stone-950);
+
+  --color-golden-50: var(--color-golden-50);
+  --color-golden-100: var(--color-golden-100);
+  --color-golden-200: var(--color-golden-200);
+  --color-golden-300: var(--color-golden-300);
+  --color-golden-400: var(--color-golden-400);
+  --color-golden-500: var(--color-golden-500);
+  --color-golden-600: var(--color-golden-600);
+  --color-golden-700: var(--color-golden-700);
+  --color-golden-800: var(--color-golden-800);
+  --color-golden-900: var(--color-golden-900);
+  --color-golden-950: var(--color-golden-950);
+
+  --color-blue-50: var(--color-blue-50);
+  --color-blue-100: var(--color-blue-100);
+  --color-blue-200: var(--color-blue-200);
+  --color-blue-300: var(--color-blue-300);
+  --color-blue-400: var(--color-blue-400);
+  --color-blue-500: var(--color-blue-500);
+  --color-blue-600: var(--color-blue-600);
+  --color-blue-700: var(--color-blue-700);
+  --color-blue-800: var(--color-blue-800);
+  --color-blue-900: var(--color-blue-900);
+  --color-blue-950: var(--color-blue-950);
+
+  --color-green-50: var(--color-green-50);
+  --color-green-100: var(--color-green-100);
+  --color-green-200: var(--color-green-200);
+  --color-green-300: var(--color-green-300);
+  --color-green-400: var(--color-green-400);
+  --color-green-500: var(--color-green-500);
+  --color-green-600: var(--color-green-600);
+  --color-green-700: var(--color-green-700);
+  --color-green-800: var(--color-green-800);
+  --color-green-900: var(--color-green-900);
+  --color-green-950: var(--color-green-950);
+
+  --color-rose-50: var(--color-rose-50);
+  --color-rose-100: var(--color-rose-100);
+  --color-rose-200: var(--color-rose-200);
+  --color-rose-300: var(--color-rose-300);
+  --color-rose-400: var(--color-rose-400);
+  --color-rose-500: var(--color-rose-500);
+  --color-rose-600: var(--color-rose-600);
+  --color-rose-700: var(--color-rose-700);
+  --color-rose-800: var(--color-rose-800);
+  --color-rose-900: var(--color-rose-900);
+  --color-rose-950: var(--color-rose-950);
+
+  --color-violet-50: var(--color-violet-50);
+  --color-violet-100: var(--color-violet-100);
+  --color-violet-200: var(--color-violet-200);
+  --color-violet-300: var(--color-violet-300);
+  --color-violet-400: var(--color-violet-400);
+  --color-violet-500: var(--color-violet-500);
+  --color-violet-600: var(--color-violet-600);
+  --color-violet-700: var(--color-violet-700);
+  --color-violet-800: var(--color-violet-800);
+  --color-violet-900: var(--color-violet-900);
+  --color-violet-950: var(--color-violet-950);
+
+  --color-red-50: var(--color-red-50);
+  --color-red-100: var(--color-red-100);
+  --color-red-200: var(--color-red-200);
+  --color-red-300: var(--color-red-300);
+  --color-red-400: var(--color-red-400);
+  --color-red-500: var(--color-red-500);
+  --color-red-600: var(--color-red-600);
+  --color-red-700: var(--color-red-700);
+  --color-red-800: var(--color-red-800);
+  --color-red-900: var(--color-red-900);
+  --color-red-950: var(--color-red-950);
+
+  --color-orange-50: var(--color-orange-50);
+  --color-orange-100: var(--color-orange-100);
+  --color-orange-200: var(--color-orange-200);
+  --color-orange-300: var(--color-orange-300);
+  --color-orange-400: var(--color-orange-400);
+  --color-orange-500: var(--color-orange-500);
+  --color-orange-600: var(--color-orange-600);
+  --color-orange-700: var(--color-orange-700);
+  --color-orange-800: var(--color-orange-800);
+  --color-orange-900: var(--color-orange-900);
+  --color-orange-950: var(--color-orange-950);
+
+  --color-lime-50: var(--color-lime-50);
+  --color-lime-100: var(--color-lime-100);
+  --color-lime-200: var(--color-lime-200);
+  --color-lime-300: var(--color-lime-300);
+  --color-lime-400: var(--color-lime-400);
+  --color-lime-500: var(--color-lime-500);
+  --color-lime-600: var(--color-lime-600);
+  --color-lime-700: var(--color-lime-700);
+  --color-lime-800: var(--color-lime-800);
+  --color-lime-900: var(--color-lime-900);
+  --color-lime-950: var(--color-lime-950);
+
+  --color-emerald-50: var(--color-emerald-50);
+  --color-emerald-100: var(--color-emerald-100);
+  --color-emerald-200: var(--color-emerald-200);
+  --color-emerald-300: var(--color-emerald-300);
+  --color-emerald-400: var(--color-emerald-400);
+  --color-emerald-500: var(--color-emerald-500);
+  --color-emerald-600: var(--color-emerald-600);
+  --color-emerald-700: var(--color-emerald-700);
+  --color-emerald-800: var(--color-emerald-800);
+  --color-emerald-900: var(--color-emerald-900);
+  --color-emerald-950: var(--color-emerald-950);
+
+  --color-pink-50: var(--color-pink-50);
+  --color-pink-100: var(--color-pink-100);
+  --color-pink-200: var(--color-pink-200);
+  --color-pink-300: var(--color-pink-300);
+  --color-pink-400: var(--color-pink-400);
+  --color-pink-500: var(--color-pink-500);
+  --color-pink-600: var(--color-pink-600);
+  --color-pink-700: var(--color-pink-700);
+  --color-pink-800: var(--color-pink-800);
+  --color-pink-900: var(--color-pink-900);
+  --color-pink-950: var(--color-pink-950);
+
+  /* Compatibility aliases — migrate to golden/blue then remove. */
+  --color-amber-50: var(--color-golden-50);
+  --color-amber-100: var(--color-golden-100);
+  --color-amber-200: var(--color-golden-200);
+  --color-amber-300: var(--color-golden-300);
+  --color-amber-400: var(--color-golden-400);
+  --color-amber-500: var(--color-golden-500);
+  --color-amber-600: var(--color-golden-600);
+  --color-amber-700: var(--color-golden-700);
+  --color-amber-800: var(--color-golden-800);
+  --color-amber-900: var(--color-golden-900);
+  --color-amber-950: var(--color-golden-950);
+
+  --color-sky-50: var(--color-blue-50);
+  --color-sky-100: var(--color-blue-100);
+  --color-sky-200: var(--color-blue-200);
+  --color-sky-300: var(--color-blue-300);
+  --color-sky-400: var(--color-blue-400);
+  --color-sky-500: var(--color-blue-500);
+  --color-sky-600: var(--color-blue-600);
+  --color-sky-700: var(--color-blue-700);
+  --color-sky-800: var(--color-blue-800);
+  --color-sky-900: var(--color-blue-900);
+  --color-sky-950: var(--color-blue-950);
+
+  /* Brand colors. */
+  --color-brand: var(--color-brand);
+  --color-brand-hunter-green: var(--color-brand-hunter-green);
+  --color-brand-tea-green: var(--color-brand-tea-green);
+  --color-brand-support-green: var(--color-brand-support-green);
+  --color-brand-electric-blue: var(--color-brand-electric-blue);
+  --color-brand-sky-blue: var(--color-brand-sky-blue);
+  --color-brand-support-blue: var(--color-brand-support-blue);
+  --color-brand-red-rose: var(--color-brand-red-rose);
+  --color-brand-pink-rose: var(--color-brand-pink-rose);
+  --color-brand-support-rose: var(--color-brand-support-rose);
+  --color-brand-orange-golden: var(--color-brand-orange-golden);
+  --color-brand-sunshine-golden: var(--color-brand-sunshine-golden);
+  --color-brand-support-golden: var(--color-brand-support-golden);
+  --color-brand-dark-gray: var(--color-brand-dark-gray);
+  --color-brand-light-gray: var(--color-brand-light-gray);
+  --color-brand-support-gray: var(--color-brand-support-gray);
+
+  /* Semantic tokens. */
+  --color-border: var(--color-border);
+  --color-border-dark: var(--color-border-dark);
+  --color-border-focus: var(--color-border-focus);
+  --color-border-warning: var(--color-border-warning);
+
+  --color-separator: var(--color-separator);
+
+  --color-ring: var(--color-ring);
+  --color-ring-warning: var(--color-ring-warning);
+
+  --color-background: var(--color-background);
+  --color-app-background: var(--color-app-background);
+  --color-panel-background: var(--color-panel-background);
+
+  --color-foreground: var(--color-foreground);
+  --color-foreground-warning: var(--color-foreground-warning);
+
+  --color-hover: var(--color-hover);
+
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-muted-background: var(--color-muted-background);
+
+  --color-faint: var(--color-faint);
+
+  --color-primary: var(--color-primary);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-primary-muted: var(--color-primary-muted);
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-150: var(--color-primary-150);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
+  --color-primary-950: var(--color-primary-950);
+
+  --color-highlight: var(--color-highlight);
+  --color-highlight-light: var(--color-highlight-light);
+  --color-highlight-dark: var(--color-highlight-dark);
+  --color-highlight-muted: var(--color-highlight-muted);
+  --color-highlight-on: var(--color-highlight-on);
+  --color-highlight-50: var(--color-highlight-50);
+  --color-highlight-100: var(--color-highlight-100);
+  --color-highlight-200: var(--color-highlight-200);
+  --color-highlight-300: var(--color-highlight-300);
+  --color-highlight-400: var(--color-highlight-400);
+  --color-highlight-500: var(--color-highlight-500);
+  --color-highlight-600: var(--color-highlight-600);
+  --color-highlight-700: var(--color-highlight-700);
+  --color-highlight-800: var(--color-highlight-800);
+  --color-highlight-900: var(--color-highlight-900);
+  --color-highlight-950: var(--color-highlight-950);
+
+  --color-warning: var(--color-warning);
+  --color-warning-light: var(--color-warning-light);
+  --color-warning-dark: var(--color-warning-dark);
+  --color-warning-muted: var(--color-warning-muted);
+  --color-warning-on: var(--color-warning-on);
+  --color-warning-50: var(--color-warning-50);
+  --color-warning-100: var(--color-warning-100);
+  --color-warning-200: var(--color-warning-200);
+  --color-warning-300: var(--color-warning-300);
+  --color-warning-400: var(--color-warning-400);
+  --color-warning-500: var(--color-warning-500);
+  --color-warning-600: var(--color-warning-600);
+  --color-warning-700: var(--color-warning-700);
+  --color-warning-800: var(--color-warning-800);
+  --color-warning-900: var(--color-warning-900);
+  --color-warning-950: var(--color-warning-950);
+
+  --color-success: var(--color-success);
+  --color-success-light: var(--color-success-light);
+  --color-success-dark: var(--color-success-dark);
+  --color-success-muted: var(--color-success-muted);
+  --color-success-50: var(--color-success-50);
+  --color-success-100: var(--color-success-100);
+  --color-success-200: var(--color-success-200);
+  --color-success-300: var(--color-success-300);
+  --color-success-400: var(--color-success-400);
+  --color-success-500: var(--color-success-500);
+  --color-success-600: var(--color-success-600);
+  --color-success-700: var(--color-success-700);
+  --color-success-800: var(--color-success-800);
+  --color-success-900: var(--color-success-900);
+  --color-success-950: var(--color-success-950);
+
+  --color-sidebar-primary: var(--color-sidebar-primary);
+  --color-sidebar-foreground: var(--color-sidebar-foreground);
+
+  --color-info: var(--color-info);
+  --color-info-light: var(--color-info-light);
+  --color-info-dark: var(--color-info-dark);
+  --color-info-muted: var(--color-info-muted);
+  --color-info-50: var(--color-info-50);
+  --color-info-100: var(--color-info-100);
+  --color-info-200: var(--color-info-200);
+  --color-info-300: var(--color-info-300);
+  --color-info-400: var(--color-info-400);
+  --color-info-500: var(--color-info-500);
+  --color-info-600: var(--color-info-600);
+  --color-info-700: var(--color-info-700);
+  --color-info-800: var(--color-info-800);
+  --color-info-900: var(--color-info-900);
+  --color-info-950: var(--color-info-950);
+}
+
+/* Shared keyframes (was preset.theme.extend.keyframes). */
+@keyframes move-square {
+  0% {
+    padding-left: 0;
+    padding-top: 0;
+    padding-right: 50%;
+    padding-bottom: 50%;
+  }
+  12.5% {
+    padding-left: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 50%;
+  }
+  25% {
+    padding-left: 50%;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 50%;
+  }
+  37.5% {
+    padding-left: 50%;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+  50% {
+    padding-left: 50%;
+    padding-top: 50%;
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+  62.5% {
+    padding-left: 0;
+    padding-top: 50%;
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+  75% {
+    padding-left: 0;
+    padding-top: 50%;
+    padding-right: 50%;
+    padding-bottom: 0;
+  }
+  87.5% {
+    padding-left: 0;
+    padding-top: 0;
+    padding-right: 50%;
+    padding-bottom: 0;
+  }
+  100% {
+    padding-left: 0;
+    padding-top: 0;
+    padding-right: 50%;
+    padding-bottom: 50%;
+  }
+}
+
+@keyframes breathing {
+  0%,
+  100% {
+    filter: brightness(105%);
+  }
+  50% {
+    filter: brightness(80%);
+  }
+}
+
+@keyframes breathing-scale {
+  0%,
+  100% {
+    filter: brightness(105%);
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(97%);
+    transform: scale(0.95);
+  }
+}
+
+/*
+ * Typography component classes (was the `addComponents` typography plugin).
+ * `@utility` picks up each consumer's prefix automatically: sparkle emits
+ * `s:heading-base`, front emits `heading-base`.
+ */
+@utility label-xs {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: var(--text-xs--letter-spacing);
+  font-weight: 500;
+}
+@utility label-sm {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  letter-spacing: var(--text-sm--letter-spacing);
+  font-weight: 500;
+}
+@utility label-base {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  letter-spacing: var(--text-base--letter-spacing);
+  font-weight: 500;
+}
+
+@utility heading-xs {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: var(--text-xs--letter-spacing);
+  font-weight: 550;
+}
+@utility heading-sm {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  letter-spacing: var(--text-sm--letter-spacing);
+  font-weight: 550;
+}
+@utility heading-base {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  letter-spacing: var(--text-base--letter-spacing);
+  font-weight: 550;
+}
+@utility heading-lg {
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+  letter-spacing: var(--text-lg--letter-spacing);
+  font-weight: 550;
+}
+@utility heading-xl {
+  font-size: var(--text-xl);
+  line-height: var(--text-xl--line-height);
+  letter-spacing: var(--text-xl--letter-spacing);
+  font-weight: 550;
+}
+@utility heading-2xl {
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
+  letter-spacing: var(--text-2xl--letter-spacing);
+  font-weight: 550;
+}
+@utility heading-3xl {
+  font-size: var(--text-3xl);
+  line-height: var(--text-3xl--line-height);
+  letter-spacing: var(--text-3xl--letter-spacing);
+  font-weight: 550;
+}
+@utility heading-4xl {
+  font-size: var(--text-4xl);
+  line-height: var(--text-4xl--line-height);
+  letter-spacing: var(--text-4xl--letter-spacing);
+  font-weight: 450;
+}
+@utility heading-5xl {
+  font-size: var(--text-5xl);
+  line-height: var(--text-5xl--line-height);
+  letter-spacing: var(--text-5xl--letter-spacing);
+  font-weight: 450;
+}
+@utility heading-6xl {
+  font-size: var(--text-6xl);
+  line-height: var(--text-6xl--line-height);
+  letter-spacing: var(--text-6xl--letter-spacing);
+  font-weight: 450;
+}
+@utility heading-7xl {
+  font-size: var(--text-7xl);
+  line-height: var(--text-7xl--line-height);
+  letter-spacing: var(--text-7xl--letter-spacing);
+  font-weight: 450;
+}
+@utility heading-8xl {
+  font-size: var(--text-8xl);
+  line-height: var(--text-8xl--line-height);
+  letter-spacing: var(--text-8xl--letter-spacing);
+  font-weight: 450;
+}
+@utility heading-9xl {
+  font-size: var(--text-9xl);
+  line-height: var(--text-9xl--line-height);
+  letter-spacing: var(--text-9xl--letter-spacing);
+  font-weight: 450;
+}
+
+@utility heading-mono-lg {
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+  letter-spacing: var(--text-lg--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-xl {
+  font-size: var(--text-xl);
+  line-height: var(--text-xl--line-height);
+  letter-spacing: var(--text-xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-2xl {
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
+  letter-spacing: var(--text-2xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-3xl {
+  font-size: var(--text-3xl);
+  line-height: var(--text-3xl--line-height);
+  letter-spacing: var(--text-3xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-4xl {
+  font-size: var(--text-4xl);
+  line-height: var(--text-4xl--line-height);
+  letter-spacing: var(--text-4xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-5xl {
+  font-size: var(--text-5xl);
+  line-height: var(--text-5xl--line-height);
+  letter-spacing: var(--text-5xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-6xl {
+  font-size: var(--text-6xl);
+  line-height: var(--text-6xl--line-height);
+  letter-spacing: var(--text-6xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-7xl {
+  font-size: var(--text-7xl);
+  line-height: var(--text-7xl--line-height);
+  letter-spacing: var(--text-7xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-8xl {
+  font-size: var(--text-8xl);
+  line-height: var(--text-8xl--line-height);
+  letter-spacing: var(--text-8xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+@utility heading-mono-9xl {
+  font-size: var(--text-9xl);
+  line-height: var(--text-9xl--line-height);
+  letter-spacing: var(--text-9xl--letter-spacing);
+  font-weight: 400;
+  font-family: var(--font-mono);
+}
+
+@utility copy-xs {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  letter-spacing: var(--text-xs--letter-spacing);
+  font-weight: 400;
+}
+@utility copy-sm {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+  letter-spacing: var(--text-sm--letter-spacing);
+  font-weight: 400;
+}
+@utility copy-base {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
+  letter-spacing: var(--text-base--letter-spacing);
+  font-weight: 400;
+}
+@utility copy-lg {
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+  letter-spacing: var(--text-lg--letter-spacing);
+  font-weight: 400;
+}
+@utility copy-xl {
+  font-size: var(--text-xl);
+  line-height: var(--text-xl--line-height);
+  letter-spacing: var(--text-xl--letter-spacing);
+  font-weight: 400;
+}
+@utility copy-2xl {
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
+  letter-spacing: var(--text-2xl--letter-spacing);
+  font-weight: 400;
+}
