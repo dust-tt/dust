@@ -22,6 +22,7 @@ import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
+import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
@@ -157,6 +158,7 @@ const SERVERS: ServerEntry[] = [
     tools: WEB_SEARCH_BROWSE_SERVER.tools,
   },
   { name: "clari_copilot", tools: CLARI_COPILOT_SERVER.tools },
+  { name: "image_generation", tools: IMAGE_GENERATION_SERVER.tools },
 ];
 
 function out(line: string): void {
