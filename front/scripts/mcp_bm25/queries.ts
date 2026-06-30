@@ -1027,6 +1027,32 @@ export const QUERIES: LabeledQuery[] = [
     maxRank: 4,
   },
 
+  // --- speech_generator ---
+  {
+    query: "transcribe an audio file to text",
+    expected: "speech_generator.speech_to_text",
+  },
+  {
+    query: "convert a video recording to text",
+    expected: "speech_generator.speech_to_text",
+  },
+  {
+    query: "generate speech audio from a text prompt",
+    expected: "speech_generator.text_to_speech",
+  },
+  {
+    query: "convert text to spoken audio with a voice",
+    expected: "speech_generator.text_to_speech",
+  },
+  {
+    query: "generate a multi-speaker dialogue audio",
+    expected: "speech_generator.text_to_dialogue",
+  },
+  {
+    query: "create audio from a script with multiple speakers",
+    expected: "speech_generator.text_to_dialogue",
+  },
+
   // --- statuspage ---
   {
     query: "list available status pages",
