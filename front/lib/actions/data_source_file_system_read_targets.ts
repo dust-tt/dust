@@ -91,6 +91,13 @@ function getDataSourceFileSystemNodeReadTarget(nodeId: string): string | null {
     return `Zendesk ticket #${zendeskTicketId}`;
   }
 
+  const zendeskArticleId = getFirstRegexCapture(
+    nodeId.match(/^zendesk-article-\d+-\d+-(\d+)$/)
+  );
+  if (zendeskArticleId) {
+    return `Zendesk article #${zendeskArticleId}`;
+  }
+
   if (/^salesforce-synced-query-document-\d+-\d+-.+$/.test(nodeId)) {
     return "Salesforce record";
   }

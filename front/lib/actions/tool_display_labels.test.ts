@@ -91,6 +91,19 @@ describe("getToolDisplayLabels", () => {
       running: "Searching for “timeout” in Zendesk ticket #567",
       done: "Search for “timeout” in Zendesk ticket #567",
     });
+
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "zendesk-article-12-34-987654321",
+        },
+      })
+    ).toEqual({
+      running: "Reading Zendesk article #987654321",
+      done: "Read Zendesk article #987654321",
+    });
   });
 
   it.each([
