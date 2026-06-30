@@ -489,7 +489,19 @@ export const QUERIES: LabeledQuery[] = [
     expected: "wakeups.schedule_wakeup",
   },
   {
-    query: "check back in 2 hours to see if the import finished",
+    query: "check back in 2 hours to see if the job finished",
+    expected: "wakeups.schedule_wakeup",
+  },
+  {
+    query: "set a reminder to follow up on this in 3 days",
+    expected: "wakeups.schedule_wakeup",
+  },
+  {
+    query: "ping me every Monday morning to review the metrics",
+    expected: "wakeups.schedule_wakeup",
+  },
+  {
+    query: "poll this until it succeeds, retry in 10 minutes",
     expected: "wakeups.schedule_wakeup",
   },
   {
@@ -501,11 +513,19 @@ export const QUERIES: LabeledQuery[] = [
     expected: "wakeups.list_wakeups",
   },
   {
+    query: "list all my upcoming scheduled follow-ups",
+    expected: "wakeups.list_wakeups",
+  },
+  {
     query: "cancel the scheduled wake-up",
     expected: "wakeups.cancel_wakeup",
   },
   {
     query: "stop the reminder I set earlier",
+    expected: "wakeups.cancel_wakeup",
+  },
+  {
+    query: "delete the recurring ping I created",
     expected: "wakeups.cancel_wakeup",
   },
 
