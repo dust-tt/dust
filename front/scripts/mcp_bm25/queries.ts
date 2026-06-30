@@ -1113,6 +1113,25 @@ export const QUERIES: LabeledQuery[] = [
     expected: "clari_copilot.get_call_details",
   },
 
+  // --- image_generation ---
+  {
+    query: "generate an image of a watercolor mountain landscape at sunset",
+    expected: "image_generation.generate_image",
+  },
+  {
+    query: "create a picture of a minimalist tech company logo",
+    expected: "image_generation.generate_image",
+  },
+  {
+    query: "draw an illustration of a friendly robot mascot",
+    expected: "image_generation.generate_image",
+  },
+  {
+    query:
+      "edit this photo to remove the background and replace it with a beach",
+    expected: "image_generation.generate_image",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
