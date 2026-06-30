@@ -195,7 +195,7 @@ function useVisualizationDataHandler({
   vizIframeRef,
 }: {
   createSandboxFunctionInvocation: (
-    functionId: string,
+    functionIdOrSlug: string,
     input?: unknown
   ) => Promise<Result<SandboxFunctionInvocationType, Error>>;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
@@ -264,7 +264,7 @@ function useVisualizationDataHandler({
       switch (data.command) {
         case "callFunction": {
           const invocationRes = await createSandboxFunctionInvocation(
-            data.params.functionId,
+            data.params.functionIdOrSlug,
             data.params.input
           );
 
@@ -283,7 +283,7 @@ function useVisualizationDataHandler({
 
           const result = await waitForSandboxFunctionInvocationResult({
             workspaceId,
-            functionId: data.params.functionId,
+            functionId: invocationRes.value.functionId,
             invocationId: invocationRes.value.sId,
           });
 
@@ -498,7 +498,7 @@ export const VisualizationActionIframe = forwardRef<
 
   const createSandboxFunctionInvocation = useCallback(
     async (
-      functionId: string,
+      functionIdOrSlug: string,
       input?: unknown
     ): Promise<Result<SandboxFunctionInvocationType, Error>> => {
       try {
@@ -513,8 +513,9 @@ export const VisualizationActionIframe = forwardRef<
           context: frameFileId ? { frameFileId } : undefined,
         };
 
+        const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
         const response = await clientFetch(
-          `/api/w/${workspaceId}/sandbox-functions/${functionId}/invocations`,
+          `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
           {
             method: "POST",
             headers: {

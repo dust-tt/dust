@@ -282,6 +282,31 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return sandboxFunction ?? null;
   }
 
+  static async fetchByIdOrSlug(
+    auth: Authenticator,
+    functionIdOrSlug: string
+  ): Promise<SandboxFunctionResource | null> {
+    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug);
+    if (sandboxFunction) {
+      return sandboxFunction;
+    }
+
+    const [podId, slug, ...rest] = functionIdOrSlug.split("/");
+    if (!podId || !slug || rest.length > 0) {
+      return null;
+    }
+    if (!isResourceSId("space", podId) || !isValidSandboxFunctionSlug(slug)) {
+      return null;
+    }
+
+    const space = await SpaceResource.fetchById(auth, podId);
+    if (!space) {
+      return null;
+    }
+
+    return this.fetchBySpaceAndSlug(auth, space, slug);
+  }
+
   static async deleteAllForSpace(
     auth: Authenticator,
     space: SpaceResource

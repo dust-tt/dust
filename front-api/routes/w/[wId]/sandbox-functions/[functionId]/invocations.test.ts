@@ -95,15 +95,17 @@ async function setupSandboxFunction({
 
 function postInvocation({
   workspaceId,
-  functionId,
+  functionIdOrSlug,
   body = {},
 }: {
   workspaceId: string;
-  functionId: string;
+  functionIdOrSlug: string;
   body?: unknown;
 }) {
+  const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
+
   return honoApp.request(
-    `/api/w/${workspaceId}/sandbox-functions/${functionId}/invocations`,
+    `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -112,7 +114,7 @@ function postInvocation({
   );
 }
 
-describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
+describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () => {
   it("creates an invocation through the sandbox function resource", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
     const createdAt = new Date().toISOString();
@@ -129,7 +131,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
       body: {
         input: { message: "hello" },
         context: { frameFileId: sandboxFunction.file.sId },
@@ -165,6 +167,34 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
     );
   });
 
+  it("creates an invocation by pod id and function slug", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
+    const createdAt = new Date().toISOString();
+    const invokeSpy = vi
+      .spyOn(SandboxFunctionResource.prototype, "invoke")
+      .mockResolvedValue(
+        new Ok({
+          sId: "test-invocation-id",
+          functionId: sandboxFunction.sId,
+          status: "created",
+          createdAt,
+        })
+      );
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${sandboxFunction.space.sId}/${sandboxFunction.slug}`,
+      body: {
+        input: { message: "hello" },
+      },
+    });
+
+    expect(response.status).toBe(201);
+    expect(invokeSpy).toHaveBeenCalledWith(expect.anything(), {
+      input: { message: "hello" },
+    });
+  });
+
   it("returns 404 when the user cannot access the function space", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction({
       addCallerToSpace: false,
@@ -172,7 +202,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
     });
 
     expect(response.status).toBe(404);
@@ -194,7 +224,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
     });
 
     expect(response.status).toBe(201);
@@ -208,7 +238,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
     });
 
     expect(response.status).toBe(500);
@@ -227,7 +257,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
+      functionIdOrSlug: sandboxFunction.sId,
     });
 
     expect(response.status).toBe(403);
