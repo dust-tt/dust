@@ -17,6 +17,7 @@ import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
+import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
@@ -165,6 +166,7 @@ const SERVERS: ServerEntry[] = [
   { name: "clari_copilot", tools: CLARI_COPILOT_SERVER.tools },
   { name: "image_generation", tools: IMAGE_GENERATION_SERVER.tools },
   { name: "file_generation", tools: FILE_GENERATION_SERVER.tools },
+  { name: "fathom", tools: FATHOM_SERVER.tools },
 ];
 
 function out(line: string): void {
