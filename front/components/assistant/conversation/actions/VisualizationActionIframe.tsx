@@ -17,7 +17,10 @@ import type {
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
 import { Err, Ok, type Result } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   AlertCircle,
@@ -150,8 +153,12 @@ async function waitForSandboxFunctionInvocationResult({
           data: SandboxFunctionInvocationEvent;
         } = JSON.parse(event.data);
 
-        if (eventPayload.data.type === "sandbox_function_invocation_result") {
-          finish({ result: eventPayload.data.result });
+        switch (eventPayload.data.type) {
+          case "sandbox_function_invocation_result":
+            finish({ result: eventPayload.data.result });
+            break;
+          default:
+            assertNeverAndIgnore(eventPayload.data);
         }
       } catch (error) {
         finish({
