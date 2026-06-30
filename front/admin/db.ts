@@ -107,7 +107,6 @@ import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
-import { ProjectDefaultSkillModel } from "@app/lib/resources/storage/models/project_default_skills";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   ProjectTaskConversationModel,
@@ -249,7 +248,6 @@ export function loadAllModels() {
     GroupSkillModel,
     SkillReferenceModel,
     AgentSkillModel,
-    ProjectDefaultSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
     SkillMCPServerConfigurationModel,
