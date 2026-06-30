@@ -669,7 +669,8 @@ const runAgent = async (
       } else if (
         event.type === "tool_approve_execution" ||
         event.type === "tool_personal_auth_required" ||
-        event.type === "tool_file_auth_required"
+        event.type === "tool_file_auth_required" ||
+        event.type === "tool_ask_user_question"
       ) {
         // Collect blocking events until the child marks one as the last blocking event for this
         // step, then stop the parent run_agent call and return a blocked response upstream.
