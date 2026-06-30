@@ -124,7 +124,7 @@ import {
   SandboxModel,
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import { SandboxFunctionInvocationModel, SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -171,6 +171,7 @@ export function loadAllModels() {
     KeyModel,
     FileModel,
     SandboxFunctionModel,
+    SandboxFunctionInvocationModel,
     ShareableFileModel,
     AuthorizedFileAccessModel,
     SharingGrantModel,
