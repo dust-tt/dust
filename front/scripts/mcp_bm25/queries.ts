@@ -1227,6 +1227,48 @@ export const QUERIES: LabeledQuery[] = [
     expected: "gong.get_call_transcript",
   },
 
+  // --- files ---
+  {
+    query: "list the files in the conversation and pod file system",
+    expected: "files.list",
+  },
+  {
+    query: "resolve a fil_ file id to its scoped file system path",
+    expected: "files.resolve",
+  },
+  {
+    query: "read the contents of a file at a scoped path line by line",
+    expected: "files.cat",
+  },
+  {
+    query: "grep a file for lines matching a regular expression",
+    expected: "files.grep",
+  },
+  {
+    query: "create a new text file in the conversation file system",
+    expected: "files.create",
+  },
+  {
+    query: "download a file from a public https url into the file system",
+    expected: "files.upload_from_url",
+  },
+  {
+    query: "delete a file from the conversation or pod file system",
+    expected: "files.delete",
+  },
+  {
+    query: "extract text from a pdf or docx binary document",
+    expected: "files.extract_text",
+  },
+  {
+    query: "copy a file from one scoped path to another keeping the source",
+    expected: "files.copy",
+  },
+  {
+    query: "move a file to a different scoped path and remove the source",
+    expected: "files.move",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
