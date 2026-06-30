@@ -105,6 +105,24 @@ export function shouldSyncFileBasedOnSensitivityLabels({
   return !labelGuid || allowedLabels.includes(labelGuid);
 }
 
+/**
+ * The tenant labels that are not in the allowed set. Empty when filtering is
+ * disabled (no allowed labels) — we never exclude anything in that case.
+ */
+export function computeDisallowedLabels({
+  tenantLabels,
+  allowedLabels,
+}: {
+  tenantLabels: string[];
+  allowedLabels: string[];
+}): string[] {
+  if (allowedLabels.length === 0) {
+    return [];
+  }
+  const allowedSet = new Set(allowedLabels);
+  return tenantLabels.filter((label) => !allowedSet.has(label));
+}
+
 export async function removeFileBasedOnSensitivityLabel({
   connectorId,
   dataSourceConfig,

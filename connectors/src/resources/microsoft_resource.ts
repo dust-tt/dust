@@ -1,6 +1,7 @@
-import type {
-  MicrosoftNode,
-  MicrosoftNodeType,
+import {
+  MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
+  type MicrosoftNode,
+  type MicrosoftNodeType,
 } from "@connectors/connectors/microsoft/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
@@ -468,6 +469,51 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     });
 
     return blobs.map((blob) => new this(this.model, blob.get()));
+  }
+
+  static async fetchSensitivityLabelSkippedByPaginatedIds({
+    connectorId,
+    pageSize,
+    idCursor,
+  }: {
+    connectorId: ModelId;
+    pageSize: number;
+    idCursor: ModelId;
+  }): Promise<MicrosoftNodeResource[]> {
+    const blobs = await this.model.findAll({
+      where: {
+        connectorId,
+        skipReason: MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
+        id: {
+          [Op.gte]: idCursor,
+        },
+      },
+      limit: pageSize,
+      order: [["id", "ASC"]],
+    });
+
+    return blobs.map((blob) => new this(this.model, blob.get()));
+  }
+
+  static async bulkMarkAsSensitivityLabelSkipped(
+    connectorId: ModelId,
+    internalIds: string[]
+  ): Promise<void> {
+    if (internalIds.length === 0) {
+      return;
+    }
+    await this.model.update(
+      { skipReason: MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED },
+      {
+        where: {
+          connectorId,
+          internalId: { [Op.in]: internalIds },
+          skipReason: {
+            [Op.not]: MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
+          },
+        },
+      }
+    );
   }
 
   /** String representation of this node and its descendants in treeLike fashion */
