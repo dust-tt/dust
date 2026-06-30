@@ -204,7 +204,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
   },
   list_framework_controls: {
     description:
-      "Retrieve the controls associated with a compliance framework, including descriptions and implementation guidance",
+      "Retrieve the controls required by and associated with a compliance framework, including descriptions and implementation guidance",
     schema: {
       frameworkId: z
         .string()
@@ -235,7 +235,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
   },
   list_risks: {
     description:
-      "List risk scenarios in your risk register or retrieve a specific scenario to review status, scoring, and treatment",
+      "List security risk scenarios in your risk register or retrieve a specific scenario to review status, scoring, and treatment",
     schema: {
       riskId: z
         .string()
