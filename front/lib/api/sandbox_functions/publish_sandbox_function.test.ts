@@ -1,10 +1,8 @@
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -16,10 +14,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
-  ensurePodSandboxReady: vi.fn(),
-}));
 
 vi.mock(
   "@app/lib/api/sandbox_functions/build_on_sandbox",
@@ -63,20 +57,6 @@ async function setupPod(): Promise<{
   return { workspace, space, auth };
 }
 
-async function mockReadySandbox(auth: Authenticator): Promise<SandboxResource> {
-  const sandbox = await SandboxResource.makeNew(auth, {
-    providerId: "test-provider-id",
-    status: "running",
-    baseImage: "dust-base",
-    version: "0.0.0-test",
-  });
-  vi.mocked(ensurePodSandboxReady).mockResolvedValue(
-    new Ok({ sandbox, freshlyCreated: false })
-  );
-
-  return sandbox;
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
   fileStorageMock.reset();
@@ -85,7 +65,6 @@ beforeEach(() => {
 describe("publishSandboxFunction", () => {
   it("publishes a new function with one bundle file under the dedicated prefix", async () => {
     const { workspace, space, auth } = await setupPod();
-    const sandbox = await mockReadySandbox(auth);
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
       new Ok({ bundleCode: "export default {};", inputSchema, outputSchema })
     );
@@ -108,7 +87,7 @@ describe("publishSandboxFunction", () => {
     expect(fn.outputSchema).toEqual(outputSchema);
 
     expect(buildSandboxFunctionOnSandbox).toHaveBeenCalledWith(auth, {
-      sandbox,
+      space,
       srcSandboxPath: `/files/pod-${space.sId}/greet.ts`,
     });
 
@@ -133,7 +112,6 @@ describe("publishSandboxFunction", () => {
 
   it("overwrites the bundle in place on re-publish, keeping one row and the same file", async () => {
     const { workspace, space, auth } = await setupPod();
-    await mockReadySandbox(auth);
 
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
       new Ok({ bundleCode: "v1", inputSchema, outputSchema })
@@ -207,14 +185,13 @@ describe("publishSandboxFunction", () => {
       return;
     }
     expect(result.error.code).toBe("invalid_path");
-    expect(ensurePodSandboxReady).not.toHaveBeenCalled();
     expect(buildSandboxFunctionOnSandbox).not.toHaveBeenCalled();
   });
 
-  it("maps a sandbox failure to sandbox_unavailable", async () => {
-    const { space, auth } = await setupPod();
-    vi.mocked(ensurePodSandboxReady).mockResolvedValue(
-      new Err(new Error("sandbox down"))
+  it("surfaces a sandbox_unavailable build failure", async () => {
+    const { workspace, space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Err(new SandboxFunctionError("sandbox_unavailable", "sandbox down"))
     );
 
     const result = await publishSandboxFunction(auth, {
@@ -229,12 +206,16 @@ describe("publishSandboxFunction", () => {
       return;
     }
     expect(result.error.code).toBe("sandbox_unavailable");
-    expect(buildSandboxFunctionOnSandbox).not.toHaveBeenCalled();
+
+    // No file is created when the build never succeeds.
+    const files = await FileModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    expect(files).toHaveLength(0);
   });
 
   it("passes a build failure through and creates no file", async () => {
     const { workspace, space, auth } = await setupPod();
-    await mockReadySandbox(auth);
     vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
       new Err(new SandboxFunctionError("build_failed", "boom"))
     );

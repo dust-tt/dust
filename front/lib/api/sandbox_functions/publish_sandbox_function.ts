@@ -1,5 +1,4 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
@@ -49,18 +48,8 @@ export async function publishSandboxFunction(
     );
   }
 
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-
   const buildResult = await buildSandboxFunctionOnSandbox(auth, {
-    sandbox: ensureResult.value.sandbox,
+    space,
     srcSandboxPath: srcResult.value,
   });
   if (buildResult.isErr()) {

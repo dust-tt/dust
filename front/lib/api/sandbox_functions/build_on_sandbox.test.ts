@@ -1,8 +1,15 @@
+import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
+  ensurePodSandboxReady: vi.fn(),
+}));
 
 const SRC = "/files/pod-spc123/greet.ts";
 
@@ -18,16 +25,28 @@ const validSchemaFile = JSON.stringify({
   },
 });
 
-async function setup() {
-  const { authenticator } = await createResourceTest({ role: "admin" });
+async function setup(): Promise<{
+  authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+  sandbox: SandboxResource;
+  space: SpaceResource;
+}> {
+  const { authenticator, workspace } = await createResourceTest({
+    role: "admin",
+  });
+  const space = await SpaceFactory.project(workspace);
   const sandbox = await SandboxResource.makeNew(authenticator, {
     providerId: "test-provider-id",
     status: "running",
     baseImage: "dust-base",
     version: "0.0.0-test",
   });
+  vi.mocked(ensurePodSandboxReady).mockResolvedValue(
+    new Ok({ sandbox, freshlyCreated: false })
+  );
 
-  return { authenticator, sandbox };
+  return { authenticator, sandbox, space };
 }
 
 beforeEach(() => {
@@ -36,7 +55,7 @@ beforeEach(() => {
 
 describe("buildSandboxFunctionOnSandbox", () => {
   it("builds the bundle and returns the extracted contract", async () => {
-    const { authenticator, sandbox } = await setup();
+    const { authenticator, sandbox, space } = await setup();
     const execSpy = vi
       .spyOn(sandbox, "exec")
       .mockResolvedValue(
@@ -50,7 +69,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
       .mockResolvedValueOnce(new Ok(Buffer.from(validSchemaFile)));
 
     const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      sandbox,
+      space,
       srcSandboxPath: SRC,
     });
 
@@ -98,7 +117,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("surfaces a build failure from the envelope without reading files", async () => {
-    const { authenticator, sandbox } = await setup();
+    const { authenticator, sandbox, space } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 1,
@@ -112,7 +131,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
     const readSpy = vi.spyOn(sandbox, "readFile");
 
     const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      sandbox,
+      space,
       srcSandboxPath: SRC,
     });
 
@@ -126,7 +145,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("maps an unknown error kind to internal", async () => {
-    const { authenticator, sandbox } = await setup();
+    const { authenticator, sandbox, space } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 2,
@@ -139,7 +158,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
     );
 
     const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      sandbox,
+      space,
       srcSandboxPath: SRC,
     });
 
@@ -151,7 +170,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("rejects a function missing an input or output schema", async () => {
-    const { authenticator, sandbox } = await setup();
+    const { authenticator, sandbox, space } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
     );
@@ -171,7 +190,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
       );
 
     const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      sandbox,
+      space,
       srcSandboxPath: SRC,
     });
 
@@ -183,13 +202,13 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("returns an internal error when the exec itself fails", async () => {
-    const { authenticator, sandbox } = await setup();
+    const { authenticator, sandbox, space } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Err(new Error("provider unavailable"))
     );
 
     const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      sandbox,
+      space,
       srcSandboxPath: SRC,
     });
 
@@ -202,13 +221,13 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("returns an internal error when dsbx produces no output", async () => {
-    const { authenticator, sandbox } = await setup();
+    const { authenticator, sandbox, space } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({ exitCode: 0, stdout: "", stderr: "" })
     );
 
     const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      sandbox,
+      space,
       srcSandboxPath: SRC,
     });
 
@@ -217,5 +236,23 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.error.code).toBe("internal");
+  });
+
+  it("maps a sandbox failure to sandbox_unavailable", async () => {
+    const { authenticator, space } = await setup();
+    vi.mocked(ensurePodSandboxReady).mockResolvedValue(
+      new Err(new Error("sandbox down"))
+    );
+
+    const result = await buildSandboxFunctionOnSandbox(authenticator, {
+      space,
+      srcSandboxPath: SRC,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("sandbox_unavailable");
   });
 });

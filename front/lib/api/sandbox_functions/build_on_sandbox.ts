@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
-import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -58,9 +59,9 @@ function mapBuildErrorKind(kind: string): SandboxFunctionErrorCode {
 }
 
 /**
- * Build a sandbox function on a ready pod sandbox: bundle the source at `srcSandboxPath` (absolute,
- * under the pod mount) via `dsbx function build`, then read back the bundle and its extracted I/O
- * contract from a non-mounted scratch dir.
+ * Build a sandbox function on the pod sandbox: ensure the pod's sandbox is up, bundle the source at
+ * `srcSandboxPath` (absolute, under the pod mount) via `dsbx function build`, then read back the
+ * bundle and its extracted I/O contract from a non-mounted scratch dir.
  *
  * Runs as `agent-proxied` (the egress-controlled invocation user) because extracting the schema
  * imports the module and runs its untrusted top-level code.
@@ -68,13 +69,24 @@ function mapBuildErrorKind(kind: string): SandboxFunctionErrorCode {
 export async function buildSandboxFunctionOnSandbox(
   auth: Authenticator,
   {
-    sandbox,
+    space,
     srcSandboxPath,
   }: {
-    sandbox: SandboxResource;
+    space: SpaceResource;
     srcSandboxPath: string;
   }
 ): Promise<Result<SandboxFunctionBuildResult, SandboxFunctionError>> {
+  const ensureResult = await ensurePodSandboxReady(auth, space);
+  if (ensureResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError(
+        "sandbox_unavailable",
+        ensureResult.error.message
+      )
+    );
+  }
+  const { sandbox } = ensureResult.value;
+
   const buildDir = path.posix.join(BUILD_STAGING_ROOT, randomUUID());
   const bundlePath = path.posix.join(buildDir, "bundle.js");
   const schemaPath = path.posix.join(buildDir, "schema.json");
