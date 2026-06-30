@@ -5,15 +5,20 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
+// Slugify a server name into the prefix prepended to every one of its tool names. Each part is
+// slugified separately to preserve separators (used for space disambiguation notably).
+export function getToolNamePrefix(serverName: string): string {
+  return serverName
+    .split(TOOL_NAME_SEPARATOR)
+    .map(slugify)
+    .join(TOOL_NAME_SEPARATOR);
+}
+
 export function tryGetPrefixedToolName(
   serverName: string,
   originalName: string
 ): Result<string, Error> {
-  // Slugify each part separately to preserve separators (used for space disambiguation notably).
-  const slugifiedConfigName = serverName
-    .split(TOOL_NAME_SEPARATOR)
-    .map(slugify)
-    .join(TOOL_NAME_SEPARATOR);
+  const slugifiedConfigName = getToolNamePrefix(serverName);
   const slugifiedOriginalName = slugify(originalName).replaceAll(
     // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
     /[^a-zA-Z0-9_.-]/g,

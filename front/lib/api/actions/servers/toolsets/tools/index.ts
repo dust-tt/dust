@@ -1,3 +1,4 @@
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
@@ -6,10 +7,12 @@ import {
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
+import { getToolNamePrefix } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
 import apiConfig from "@app/lib/api/config";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
@@ -122,10 +125,23 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       );
     }
 
+    const enabledView = await MCPServerViewResource.fetchById(auth, toolsetId);
+
+    const prefixHint = enabledView
+      ? ` Their names share the \`${getToolNamePrefix(
+          enabledView.toJSON().name ?? enabledView.toJSON().server.name
+        )}${TOOL_NAME_SEPARATOR}\` prefix.`
+      : "";
+
+    // The newly enabled tools are not necessarily surfaced directly in the model's context (can
+    // be deferred behind tool search), so nudge it to look them up instead of guessing which
+    // tools exist.
     return new Ok([
       {
         type: "text" as const,
-        text: `Successfully enabled toolset ${toolsetId}`,
+        text:
+          `Successfully enabled toolset ${toolsetId}. Its tools are now available.${prefixHint} ` +
+          "Do not assume which tools exist; look them up before calling them.",
       },
     ]);
   },
