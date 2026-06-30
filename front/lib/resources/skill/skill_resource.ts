@@ -1508,7 +1508,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     );
 
-    // POC: pod default skills are injected with the same algorithm as
+    // Pod default skills are injected with the same algorithm as
     // manually-added conversation skills — they join the conversation-enabled
     // pool and flow through the enabled/equipped logic below unchanged.
     const podDefaultSkills = await this.listPodDefaultSkillsForConversation(

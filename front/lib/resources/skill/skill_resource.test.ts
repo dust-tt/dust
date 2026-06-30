@@ -5,6 +5,7 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -1634,6 +1635,115 @@ describe("SkillResource", () => {
       );
 
       expect(skills).toEqual([]);
+    });
+  });
+
+  describe("listForAgentLoop — pod default skill injection", () => {
+    it("injects a pod's default skills into enabledSkills", async () => {
+      const { authenticator, workspace, user } = testContext;
+
+      const space = await SpaceFactory.project(workspace, user.id);
+      const defaultSkill = await SkillFactory.create(authenticator, {
+        name: "Pod Default Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills([defaultSkill]);
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pod Agent" }
+      );
+      // The conversation's spaceId is what makes isPodConversation() true and
+      // drives the pod-default resolution.
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+        spaceId: space.id,
+      });
+
+      const { enabledSkills } = await SkillResource.listForAgentLoop(
+        authenticator,
+        { agentConfiguration: agent, conversation }
+      );
+
+      expect(enabledSkills.map((s) => s.sId)).toContain(defaultSkill.sId);
+    });
+
+    it("does not inject pod defaults into a non-pod conversation", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const space = await SpaceFactory.project(workspace);
+      const defaultSkill = await SkillFactory.create(authenticator, {
+        name: "Pod Default Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills([defaultSkill]);
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Non-pod Agent" }
+      );
+      // No spaceId => isPodConversation() is false => no injection.
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const { enabledSkills } = await SkillResource.listForAgentLoop(
+        authenticator,
+        { agentConfiguration: agent, conversation }
+      );
+
+      expect(enabledSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
+    });
+
+    it("dedups a skill that is both a pod default and conversation-enabled", async () => {
+      const { authenticator, workspace, user } = testContext;
+
+      const space = await SpaceFactory.project(workspace, user.id);
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Shared Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills([skill]);
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pod Agent" }
+      );
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+        spaceId: space.id,
+      });
+
+      // Enable the same skill on the conversation (mirrors the input-bar adding
+      // a pod default as a conversation skill), so it is both a pod default and
+      // conversation-enabled.
+      const upsertResult = await skill.upsertToConversation(authenticator, {
+        conversationId: conversation.id,
+        enabled: true,
+      });
+      expect(upsertResult.isOk()).toBe(true);
+
+      const { enabledSkills } = await SkillResource.listForAgentLoop(
+        authenticator,
+        { agentConfiguration: agent, conversation }
+      );
+
+      expect(enabledSkills.filter((s) => s.sId === skill.sId)).toHaveLength(1);
     });
   });
 
