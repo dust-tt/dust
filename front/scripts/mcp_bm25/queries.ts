@@ -1033,7 +1033,7 @@ export const QUERIES: LabeledQuery[] = [
     expected: "workday.get_workers",
   },
   {
-    query: "get employees in Workday",
+    query: "list workers in Workday",
     expected: "workday.get_workers",
   },
 
@@ -1071,6 +1071,16 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "create audio from a script with multiple speakers",
     expected: "speech_generator.text_to_dialogue",
+  },
+
+  // --- ukg_ready ---
+  {
+    query: "request time off from available types in UKG",
+    expected: "ukg_ready.create_pto_request",
+  },
+  {
+    query: "check my accrual balance",
+    expected: "ukg_ready.get_accrual_balances",
   },
 
   // --- slab ---
