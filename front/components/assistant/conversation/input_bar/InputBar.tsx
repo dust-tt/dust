@@ -63,6 +63,8 @@ interface InputBarProps {
   stickyMentions?: RichMention[];
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  defaultSkills?: InputBarContainerProps["defaultSkills"];
+  isDefaultSkillsLoading?: boolean;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
@@ -90,6 +92,8 @@ export const InputBar = React.memo(function InputBar({
   stickyMentions,
   defaultAgentId,
   isDefaultAgentLoading,
+  defaultSkills,
+  isDefaultSkillsLoading,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   disableUserMentions,
@@ -499,6 +503,8 @@ export const InputBar = React.memo(function InputBar({
             stickyMentions={stickyMentions}
             defaultAgentId={defaultAgentId}
             isDefaultAgentLoading={isDefaultAgentLoading}
+            defaultSkills={defaultSkills}
+            isDefaultSkillsLoading={isDefaultSkillsLoading}
             fileUploaderService={fileUploaderService}
             isSubmitting={
               isLocalSubmitting ||

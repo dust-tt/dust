@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -40,6 +41,10 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       model.get(),
       spaceId
     );
+  }
+
+  get defaultSkillIds(): string[] {
+    return this.defaultSkillsIds ?? [];
   }
 
   get sId(): string {
@@ -85,6 +90,8 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       },
     });
 
+    // Default skills ride along on each row (`defaultSkillsIds`), so no extra
+    // query is needed.
     return models.map((model) =>
       ProjectMetadataResource.fromModel(model, model.spaceId)
     );
@@ -182,14 +189,38 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ defaultAgentId }, transaction);
   }
 
+  async setDefaultSkills(
+    auth: Authenticator,
+    skills: SkillResource[],
+    transaction?: Transaction
+  ): Promise<void> {
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const globalSpaceSkills = skills.filter((skill) =>
+      skill.requestedSpaceIds.every((id) => id === globalSpace.id)
+    );
+
+    const defaultSkillsIds = [
+      ...new Map(globalSpaceSkills.map((s) => [s.sId, s])).keys(),
+    ];
+
+    await this.update(
+      {
+        defaultSkillsIds: defaultSkillsIds.length > 0 ? defaultSkillsIds : null,
+      },
+      transaction
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     await ProjectMetadataModel.destroy({
       where: {
         id: this.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId,
       },
       transaction,
     });
@@ -211,6 +242,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
       pinnedFramePath: this.pinnedFramePath ?? null,
       defaultAgentId: this.defaultAgentId ?? null,
+      defaultSkillIds: this.defaultSkillIds,
     };
   }
 }

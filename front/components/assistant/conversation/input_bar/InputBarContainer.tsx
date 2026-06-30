@@ -17,6 +17,7 @@ import {
   getAvailableInputBarSlashCommands,
   type InputBarSlashCommand,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import {
   isRunCommandSlashCommand,
   isSkillSlashCommand,
@@ -143,6 +144,41 @@ export const INPUT_BAR_ACTIONS = [
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
+export interface DefaultSkillReference {
+  sId: string;
+  name: string;
+  icon: string | null;
+}
+
+function readDefaultSkillEditorState(editor: Editor): {
+  skillIds: string[];
+  hasUserContent: boolean;
+} {
+  const skillIds: string[] = [];
+  let hasUserContent = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === SKILL_NODE_TYPE) {
+      if (typeof node.attrs.skillId === "string") {
+        skillIds.push(node.attrs.skillId);
+      }
+      return false;
+    }
+    if (node.isText) {
+      if ((node.text ?? "").trim().length > 0) {
+        hasUserContent = true;
+      }
+    } else if (node.isInline && node.type.name !== "hardBreak") {
+      hasUserContent = true;
+    }
+    return true;
+  });
+  return { skillIds, hasUserContent };
+}
+
+function sameSkillIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
 export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
@@ -168,6 +204,9 @@ export interface InputBarContainerProps {
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  // Skills pre-inserted into a new conversation's editor, as if manually added.
+  defaultSkills?: DefaultSkillReference[];
+  isDefaultSkillsLoading?: boolean;
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
@@ -207,6 +246,8 @@ const InputBarContainer = ({
   getDraft,
   defaultAgentId,
   isDefaultAgentLoading,
+  defaultSkills,
+  isDefaultSkillsLoading,
   isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
@@ -1284,6 +1325,71 @@ const InputBarContainer = ({
     stickyMentions,
   });
 
+  useEffect(() => {
+    if (defaultSkills === undefined) {
+      return;
+    }
+    if (conversation || isAgentBuilder) {
+      return;
+    }
+
+    if (isDefaultSkillsLoading) {
+      return;
+    }
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    const desiredSkillIds = defaultSkills.map((skill) => skill.sId);
+
+    queueMicrotask(() => {
+      if (
+        !editor ||
+        editor.isDestroyed ||
+        !editor.isEditable ||
+        !editor.isInitialized
+      ) {
+        return;
+      }
+
+      const { skillIds, hasUserContent } = readDefaultSkillEditorState(editor);
+
+      if (hasUserContent) {
+        return;
+      }
+
+      if (sameSkillIds(skillIds, desiredSkillIds)) {
+        return;
+      }
+
+      let chain = editor.chain();
+      if (skillIds.length > 0) {
+        chain = chain.clearContent();
+      }
+      for (const skill of defaultSkills) {
+        chain = chain.insertSkillNode({
+          skillId: skill.sId,
+          skillName: skill.name,
+          skillIcon: skill.icon,
+        });
+      }
+      chain.run();
+    });
+  }, [
+    conversation,
+    defaultSkills,
+    isDefaultSkillsLoading,
+    isAgentBuilder,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+  ]);
+
   const buttonSize = useMemo(() => {
     return isMobile ? "sm" : "xs";
   }, [isMobile]);
@@ -1296,13 +1402,6 @@ const InputBarContainer = ({
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
-  // A pod can pre-select a default agent that the current member can't access
-  // (e.g. an unpublished agent). `allAgents` only contains agents the member
-  // can read, so when the configured default is missing from it, the
-  // resolution in `useHandleMentions` silently falls back to @dust. Surface a
-  // notice on the agent pill so the member understands why the pod's default
-  // isn't the one shown. (We can't distinguish "no access" from "deleted"
-  // client-side, so the copy stays neutral.)
   const isDefaultAgentUnavailable =
     !conversation &&
     !isAgentBuilder &&

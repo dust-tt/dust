@@ -325,6 +325,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
     stage: "dust_only",
   },
+  pod_default_skills: {
+    description:
+      "Per-pod default skills: pre-insert skills into new conversations started in a pod.",
+    stage: "dust_only",
+  },
   workspace_default_agent: {
     description:
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",

@@ -14,7 +14,7 @@ import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations"
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
-import { usePodMetadata } from "@app/lib/swr/pods";
+import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type {
@@ -120,6 +120,11 @@ export function PodConversationsTab({
     hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
 
+  const { defaultSkills, isDefaultSkillsLoading } = usePodDefaultSkills({
+    owner,
+    podId: podInfo.sId,
+  });
+
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
   const noConversationsForFilterMessage = useMemo(() => {
@@ -222,6 +227,8 @@ export function PodConversationsTab({
                 placeholder={`Get work done in ${podInfo.name}`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
+                defaultSkills={defaultSkills}
+                isDefaultSkillsLoading={isDefaultSkillsLoading}
               />
             ) : (
               <PodJoinCTA
