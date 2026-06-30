@@ -5,6 +5,15 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
+// Some providers (e.g. Gemini) require function/tool names to start with a letter or an
+// underscore, while slugify can yield a leading digit (e.g. "1Password" -> "1password"). Prefix an
+// underscore in that case so the name is valid everywhere.
+function ensureValidLeadingChar(name: string): string {
+  return /^[a-zA-Z_]/.test(name)
+    ? name
+    : `_${name}`.slice(0, MAX_TOOL_NAME_LENGTH);
+}
+
 // Slugify a server name into the prefix prepended to every one of its tool names. Each part is
 // slugified separately to preserve separators (used for space disambiguation notably).
 export function getToolNamePrefix(serverName: string): string {
@@ -42,7 +51,7 @@ export function tryGetPrefixedToolName(
 
   // If we don't have enough room for a meaningful prefix, just return the original name
   if (availableSpace < minPrefixLength) {
-    return new Ok(slugifiedOriginalName);
+    return new Ok(ensureValidLeadingChar(slugifiedOriginalName));
   }
 
   // Calculate the maximum allowed length for the config name portion
@@ -50,7 +59,7 @@ export function tryGetPrefixedToolName(
   const truncatedConfigName = slugifiedConfigName.slice(0, maxConfigNameLength);
   const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
 
-  return new Ok(prefixedName);
+  return new Ok(ensureValidLeadingChar(prefixedName));
 }
 
 // Throwing variant for call sites passing compile-time constant names (e.g.
