@@ -256,11 +256,10 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         );
       }
 
-      // Filter on createdDateTime, not lastModifiedDateTime: a message sent in
-      // the range but edited/reacted-to later (which bumps lastModifiedDateTime)
-      // must still count as in-range, and a message sent outside the range must
-      // not be pulled in by a later edit. "Messages between April and May" means
-      // sent then.
+      // Range on createdDateTime, not lastModifiedDateTime: a message sent
+      // in-range but edited/reacted-to later (which bumps lastModifiedDateTime)
+      // must still count, and one sent outside the range must not be pulled in
+      // by a later edit.
       const isMessageInDateRange = (message: TeamsMessage): boolean => {
         const messageDate = new Date(message.createdDateTime);
         const afterFromDate = !fromDateTime || messageDate >= fromDateTime;
@@ -275,14 +274,11 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
 
       let request = client.api(baseEndpoint).top(MESSAGES_PAGE_SIZE);
 
-      // The chat messages listing supports $orderby/$filter; the channel
-      // endpoint does not, and is always ordered by lastModifiedDateTime of the
-      // reply chain. We also don't push filters on the per-message replies
-      // endpoint (conservative — its filterability isn't documented). For chat
-      // listings we order by createdDateTime so the page order matches the field
-      // we range on; everywhere else we walk Graph's default lastModifiedDateTime
-      // order. The stop condition must compare whichever field actually orders
-      // the pages — see shouldContinuePagination.
+      // Only the chat messages listing supports $orderby/$filter; order it by
+      // createdDateTime so the page order matches the field we range on.
+      // Channels and the replies endpoint keep Graph's default
+      // lastModifiedDateTime order. The stop condition keys off whichever it is
+      // — see shouldContinuePagination.
       const isChatListing = Boolean(chatId) && !messageId;
       const orderingField = isChatListing
         ? "createdDateTime"
@@ -291,13 +287,11 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       if (isChatListing) {
         request = request.orderby(`${orderingField} desc`);
 
-        // Push the upper bound server-side so the server skips messages newer
-        // than toDate instead of us paging through and discarding them. Graph
-        // only supports the `lt` operator on createdDateTime (no `gt`), so the
-        // lower bound stays a client-side concern (handled by the walk + stop).
-        // Nudge +1ms so the exclusive server filter is a strict superset of the
-        // inclusive (<=) client-side filter and can never drop a boundary
-        // message. $filter only applies when $orderby targets the same property.
+        // Push the upper bound server-side so Graph skips messages newer than
+        // toDate instead of us fetching and discarding them. createdDateTime
+        // only supports `lt` (no `gt`), so the lower bound stays client-side.
+        // +1ms keeps the exclusive server filter a superset of the inclusive
+        // client filter; $filter needs $orderby on the same property (above).
         if (toDate) {
           const toBound = new Date(toDateTime.getTime() + 1);
           request = request.filter(
@@ -306,8 +300,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         }
       }
 
-      // Accumulate the in-range messages from a page, then defer the
-      // keep-paging decision to the pure (testable) helper.
+      // Accumulate in-range messages, then defer the keep-paging decision.
       const processMessages = (
         messages: TeamsMessage[] | undefined
       ): boolean => {
@@ -322,14 +315,11 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         });
       };
 
-      // First page
       let response = await request.get();
       let scannedCount = response.value?.length ?? 0;
 
       let shouldContinue = processMessages(response.value);
 
-      // Follow pagination links until no more pages, the date threshold is
-      // reached, or we hit the scan backstop.
       nextLink = response["@odata.nextLink"];
       while (
         nextLink &&
@@ -342,10 +332,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         nextLink = response["@odata.nextLink"];
       }
 
-      // We stopped scanning while more in-range pages were still available: the
-      // result is truncated by the backstop, not by the data. (shouldContinue
-      // is false when we instead reached fromDate or filled MAX_NUMBER_OF_
-      // MESSAGES — neither of which is a backstop truncation.)
+      // More pages were available and still in range when we stopped: truncated
+      // by the backstop, not the data. (Reaching fromDate or the message limit
+      // clears shouldContinue, so neither trips this.)
       const truncatedByScanLimit =
         !!nextLink && shouldContinue && scannedCount >= MAX_MESSAGES_TO_SCAN;
       if (truncatedByScanLimit) {
@@ -368,10 +357,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
           text: JSON.stringify(limitedMessages, null, 2),
         },
       ];
-      // Tell the caller when results are incomplete, so an agent can recover by
-      // narrowing the range instead of treating partial history as complete.
-      // The two cases are mutually exclusive: hitting the result limit sets
-      // shouldContinue false, which clears truncatedByScanLimit.
+      // Tell the caller when results are incomplete so an agent can narrow the
+      // range rather than treat partial history as complete.
       if (truncatedByScanLimit) {
         content.push({
           type: "text" as const,
