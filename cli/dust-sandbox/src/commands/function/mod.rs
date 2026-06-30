@@ -127,17 +127,18 @@ pub(crate) async fn spawn_function(
         c.arg(&*runner).arg(subcommand).arg(&handler);
         c
     };
-    cmd.stdin(if inherit_stdin {
-        Stdio::inherit()
-    } else {
-        Stdio::null()
-    })
-    .stdout(if capture_stdout {
-        Stdio::piped()
-    } else {
-        Stdio::inherit()
-    })
-    .stderr(Stdio::inherit());
+    cmd.env("NODE_PATH", harness_node_path())
+        .stdin(if inherit_stdin {
+            Stdio::inherit()
+        } else {
+            Stdio::null()
+        })
+        .stdout(if capture_stdout {
+            Stdio::piped()
+        } else {
+            Stdio::inherit()
+        })
+        .stderr(Stdio::inherit());
     if let Some(dir) = &functions_dir {
         cmd.current_dir(dir);
     }
