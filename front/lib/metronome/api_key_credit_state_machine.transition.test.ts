@@ -29,7 +29,7 @@ describe("transitionApiKeyCreditState", () => {
     const result = await transitionApiKeyCreditState(
       key,
       { type: "api_key_cap_reached" },
-      { workspaceId: workspace.sId, keyId: key.id }
+      { workspaceId: workspace.sId, keyModelId: key.id }
     );
 
     expect(result.isOk()).toBe(true);
@@ -54,7 +54,7 @@ describe("transitionApiKeyCreditState", () => {
     const result = await transitionApiKeyCreditState(
       key,
       { type: "api_key_cap_resolved" },
-      { workspaceId: workspace.sId, keyId: key.id }
+      { workspaceId: workspace.sId, keyModelId: key.id }
     );
 
     expect(result.isOk()).toBe(true);
@@ -68,7 +68,7 @@ describe("transitionApiKeyCreditState", () => {
     const result = await transitionApiKeyCreditState(
       key,
       { type: "admin_cap_cleared" },
-      { workspaceId: workspace.sId, keyId: key.id }
+      { workspaceId: workspace.sId, keyModelId: key.id }
     );
 
     expect(result.isOk()).toBe(true);
