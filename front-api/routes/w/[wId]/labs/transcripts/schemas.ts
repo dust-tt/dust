@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-export const acceptableTranscriptProvidersCodec = z.enum([
-  "google_drive",
-  "modjo",
-]);
+export const acceptableTranscriptProvidersCodec = z.enum(["google_drive"]);
 
 export const acceptableTranscriptsWithConnectorProvidersCodec =
   z.literal("gong");

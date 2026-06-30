@@ -7,10 +7,7 @@ import { toFileContentFragment } from "@app/lib/api/assistant/conversation/conte
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
-import {
-  sendEmailWithTemplate,
-  sendModjoDisconnectionEmail,
-} from "@app/lib/api/email";
+import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -28,11 +25,6 @@ import {
   retrieveGoogleTranscriptContent,
   retrieveGoogleTranscripts,
 } from "@app/temporal/labs/transcripts/utils/google";
-import {
-  ModjoAuthenticationError,
-  retrieveModjoTranscriptContent,
-  retrieveModjoTranscripts,
-} from "@app/temporal/labs/transcripts/utils/modjo";
 import type {
   AgentMessageType,
   UserMessageContext,
@@ -50,14 +42,10 @@ class TranscriptNonRetryableError extends Error {}
 
 export interface RetrieveTranscriptsResult {
   fileIds: string[];
-  nextCursor: number | null;
-  isFirstSync: boolean;
 }
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string,
-  modjoCursor: number | null = null,
-  modjoIsFirstSync: boolean | null = null,
   workspaceId: string
 ): Promise<RetrieveTranscriptsResult> {
   const workspaceAuth =
@@ -75,7 +63,7 @@ export async function retrieveNewTranscriptsActivity(
       },
       "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
     );
-    return { fileIds: [], nextCursor: null, isFirstSync: false };
+    return { fileIds: [] };
   }
 
   const localLogger = mainLogger.child({
@@ -127,11 +115,7 @@ export async function retrieveNewTranscriptsActivity(
           `Error retrieving Google transcripts: ${googleTranscriptsRes.error.message}`
         );
       }
-      return {
-        fileIds: googleTranscriptsRes.value,
-        nextCursor: null,
-        isFirstSync: false,
-      };
+      return { fileIds: googleTranscriptsRes.value };
     }
 
     case "gong": {
@@ -140,43 +124,7 @@ export async function retrieveNewTranscriptsActivity(
         transcriptsConfiguration,
         localLogger
       );
-      return {
-        fileIds: gongTranscriptsIds,
-        nextCursor: null,
-        isFirstSync: false,
-      };
-    }
-
-    case "modjo": {
-      try {
-        const modjoResult = await retrieveModjoTranscripts(
-          auth,
-          transcriptsConfiguration,
-          localLogger,
-          modjoCursor,
-          modjoIsFirstSync
-        );
-        return {
-          fileIds: modjoResult.fileIds,
-          nextCursor: modjoResult.nextCursor,
-          isFirstSync: modjoResult.isFirstSync,
-        };
-      } catch (error) {
-        if (error instanceof ModjoAuthenticationError) {
-          localLogger.error(
-            { error: error.message },
-            "[retrieveNewTranscripts] Modjo authentication failed - disconnecting and notifying user"
-          );
-          await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-
-          if (user) {
-            await sendModjoDisconnectionEmail(user.email, workspace.name);
-          }
-
-          return { fileIds: [], nextCursor: null, isFirstSync: false };
-        }
-        throw error;
-      }
+      return { fileIds: gongTranscriptsIds };
     }
 
     default:
@@ -365,28 +313,6 @@ export async function processTranscriptActivity(
       transcriptTitle = gongResult.transcriptTitle || "";
       transcriptContent = gongResult.transcriptContent || "";
       userParticipated = gongResult.userParticipated;
-      break;
-
-    case "modjo":
-      const modjoResult = await retrieveModjoTranscriptContent(
-        auth,
-        transcriptsConfiguration,
-        fileId,
-        localLogger
-      );
-      if (!modjoResult) {
-        localLogger.info(
-          {
-            fileId,
-          },
-          "[processTranscriptActivity] No Modjo result found. Stopping."
-        );
-        return;
-      }
-      transcriptTitle = modjoResult.transcriptTitle || "";
-      transcriptContent = modjoResult.transcriptContent || "";
-      userParticipated = modjoResult.userParticipated;
-      additionalTags = modjoResult.tags || [];
       break;
 
     default:

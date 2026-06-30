@@ -3,11 +3,7 @@ import type { ModelId } from "./shared/model_id";
 
 // Constants
 
-export const labsTranscriptsProviders = [
-  "google_drive",
-  "gong",
-  "modjo",
-] as const;
+export const labsTranscriptsProviders = ["google_drive", "gong"] as const;
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
