@@ -29,6 +29,10 @@ import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
+import {
+  HTTP_CLIENT_SERVER,
+  HTTP_CLIENT_TOOL_NAME,
+} from "@app/lib/api/actions/servers/http_client/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
@@ -181,6 +185,13 @@ const SERVERS: ServerEntry[] = [
   { name: "gmail", tools: GMAIL_SERVER.tools },
   { name: "google_calendar", tools: GOOGLE_CALENDAR_SERVER.tools },
   { name: "github", tools: GITHUB_SERVER.tools },
+  {
+    // http_client re-exports the web_search_&_browse tools, which are already
+    // indexed under their own server above; only index its own send_request
+    // tool here to avoid duplicate documents.
+    name: HTTP_CLIENT_TOOL_NAME,
+    tools: HTTP_CLIENT_SERVER.tools.filter((t) => t.name === "send_request"),
+  },
 ];
 
 function out(line: string): void {
