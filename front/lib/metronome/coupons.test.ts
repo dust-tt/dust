@@ -9,6 +9,7 @@ import {
   getCreditTypeFromContract,
   getCreditTypeFromPackage,
   redeemCoupon,
+  redeemCreditsCoupon,
   revokeCouponRedemption,
 } from "@app/lib/metronome/coupons";
 import { SEAT_TAG } from "@app/lib/metronome/setup_common";
@@ -765,5 +766,114 @@ describe("revokeCouponRedemption", () => {
 
     expect(revokeResult.isErr()).toBe(true);
     expect(redemption.status).toBe("active");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// redeemCreditsCoupon
+// ---------------------------------------------------------------------------
+
+describe("redeemCreditsCoupon", () => {
+  it("happy path: grants AWU free credit, active redemption, count incremented, audit emitted", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+      amount: 5000,
+    });
+    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "awu-credit-1" }));
+
+    const result = await redeemCreditsCoupon(auth, { coupon });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.status).toBe("active");
+    expect(result.value.metronomeCreditIds).toEqual(["awu-credit-1"]);
+
+    // Granted directly as AWU credits (no currency conversion).
+    expect(mockCreateMetronomeCredit).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 5000 })
+    );
+    // Does not resolve a contract — granted at the customer level.
+    expect(mockGetActiveContract).not.toHaveBeenCalled();
+
+    const updated = await CouponResourceClass.fetchByCouponId(coupon.sId);
+    expect(updated?.redemptionCount).toBe(1);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "coupon.redeemed" })
+    );
+  });
+
+  it("rejects a seat coupon with wrong_coupon_type, no credit created", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({ discountType: "seat" });
+
+    const result = await redeemCreditsCoupon(auth, { coupon });
+
+    expect(result.isErr()).toBe(true);
+    if (!result.isErr()) {
+      return;
+    }
+    expect(result.error).toMatchObject({
+      code: "coupon_validation_failed",
+      reason: expect.objectContaining({ code: "wrong_coupon_type" }),
+    });
+    expect(mockCreateMetronomeCredit).not.toHaveBeenCalled();
+  });
+
+  it("workspace without metronomeCustomerId → workspace_not_on_metronome", async () => {
+    const { auth } = await makeWorkspaceWithUserAuthNoMetronome();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+    });
+
+    const result = await redeemCreditsCoupon(auth, { coupon });
+
+    expect(result.isErr()).toBe(true);
+    if (!result.isErr()) {
+      return;
+    }
+    expect(result.error).toMatchObject({ code: "workspace_not_on_metronome" });
+  });
+
+  it("Metronome failure → redemption rolled back to failed, count decremented", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+    });
+    mockCreateMetronomeCredit.mockResolvedValue(
+      new Err(new Error("metronome down"))
+    );
+
+    const result = await redeemCreditsCoupon(auth, { coupon });
+    expect(result.isErr()).toBe(true);
+
+    const redemptions = await CouponRedemptionResource.listAllByCoupon(coupon);
+    expect(redemptions).toHaveLength(1);
+    expect(redemptions[0].status).toBe("failed");
+    const updated = await CouponResourceClass.fetchByCouponId(coupon.sId);
+    expect(updated?.redemptionCount).toBe(0);
+  });
+
+  it("re-redeeming an active credits coupon for the same workspace → Err", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+    });
+    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "awu-credit-2" }));
+
+    const first = await redeemCreditsCoupon(auth, { coupon });
+    expect(first.isOk()).toBe(true);
+
+    const second = await redeemCreditsCoupon(auth, { coupon });
+    expect(second.isErr()).toBe(true);
+    if (!second.isErr()) {
+      return;
+    }
+    expect(second.error).toMatchObject({
+      code: "coupon_validation_failed",
+      reason: expect.objectContaining({ code: "already_redeemed" }),
+    });
   });
 });

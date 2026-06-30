@@ -7,7 +7,11 @@ import {
   getResourceIdFromSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import type { CouponType, CreateCouponBody } from "@app/types/coupon";
+import type {
+  CouponRedemptionContext,
+  CouponType,
+  CreateCouponBody,
+} from "@app/types/coupon";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -23,7 +27,17 @@ export type CouponValidationError =
   | { code: "expired"; expirationDate: Date }
   | { code: "exhausted"; maxRedemptions: number }
   | { code: "archived" }
-  | { code: "already_redeemed" };
+  | { code: "already_redeemed" }
+  | { code: "wrong_coupon_type"; expected: CouponRedemptionContext };
+
+// A coupon's `discountType` only applies in a single redemption context.
+const DISCOUNT_TYPE_TO_CONTEXT: Record<
+  CouponType["discountType"],
+  CouponRedemptionContext
+> = {
+  seat: "subscription",
+  credit_pool_top_up: "credits",
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CouponResource extends ReadonlyAttributesType<CouponModel> {}
@@ -56,7 +70,6 @@ export class CouponResource extends BaseResource<CouponModel> {
       const coupon = await CouponModel.create(
         {
           ...body,
-          discountType: "seat",
           createdByUserId: user.id,
         },
         { transaction }
@@ -126,6 +139,19 @@ export class CouponResource extends BaseResource<CouponModel> {
     }
 
     return new Ok(undefined);
+  }
+
+  // Same as `validateRedemption`, plus a check that the coupon's discount type
+  // is usable in the given redemption context (subscription checkout vs. credit
+  // Top-Up). Subscription coupons cannot be redeemed in the Top-Up flow and
+  // vice-versa.
+  validateRedemptionForContext(
+    context: CouponRedemptionContext
+  ): Result<void, CouponValidationError> {
+    if (DISCOUNT_TYPE_TO_CONTEXT[this.discountType] !== context) {
+      return new Err({ code: "wrong_coupon_type", expected: context });
+    }
+    return this.validateRedemption();
   }
 
   async incrementRedemptionCount({
