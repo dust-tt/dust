@@ -322,11 +322,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
-  dust_desktop: {
-    description:
-      "Auto-attach the Dust Desktop client-side MCP server to agent runs when registered for the user.",
-    stage: "dust_only",
-  },
   admin_governance: {
     description:
       "Access to admin governance features, including assigning the business_admin role from the UI",
