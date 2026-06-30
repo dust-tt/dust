@@ -1,7 +1,4 @@
-import {
-  activateCreditPricedFreePlan,
-  isMetronomeBillingEnabled,
-} from "@app/lib/api/subscription";
+import { activateCreditPricedFreePlanForWorkspace } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -103,11 +100,8 @@ export async function createWorkspaceInternal({
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   if (planCode) {
-    if (
-      isCreditPricedFreePlan(planCode) &&
-      (await isMetronomeBillingEnabled(auth))
-    ) {
-      await activateCreditPricedFreePlan(auth);
+    if (isCreditPricedFreePlan(planCode)) {
+      await activateCreditPricedFreePlanForWorkspace(auth);
     } else {
       const newSubscription =
         await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
