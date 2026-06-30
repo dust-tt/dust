@@ -25,6 +25,7 @@ procs:
     shell: |
       docker compose up -d db redis qdrant_primary qdrant_secondary elasticsearch
       docker compose logs -f db redis qdrant_primary qdrant_secondary elasticsearch
+    autostart: false
 
   temporal-infra:
     cwd: "<CONFIG_DIR>/../temporal"
@@ -36,6 +37,7 @@ procs:
         --name conversationId --type Text \
         --name workspaceId --type Text 2>/dev/null || true
       docker compose logs -f
+    autostart: false
 
   core:
     cwd: "<CONFIG_DIR>/../core"
