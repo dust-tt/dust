@@ -852,11 +852,23 @@ export const QUERIES: LabeledQuery[] = [
     expected: "query_tables_v2.list_tables",
   },
   {
+    query: "discover the structured data tables available to this agent",
+    expected: "query_tables_v2.list_tables",
+  },
+  {
     query: "get the schema for an agent configured table before writing sql",
     expected: "query_tables_v2.get_database_schema",
   },
   {
+    query: "inspect the columns and structure of an agent configured table",
+    expected: "query_tables_v2.get_database_schema",
+  },
+  {
     query: "run sql against this agent configured table",
+    expected: "query_tables_v2.execute_database_query",
+  },
+  {
+    query: "execute a SQL query on the agent structured data tables",
     expected: "query_tables_v2.execute_database_query",
   },
 
