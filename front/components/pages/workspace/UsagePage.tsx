@@ -43,7 +43,6 @@ import {
 } from "@app/lib/swr/credits";
 import { useGroups } from "@app/lib/swr/groups";
 import {
-  invalidateMembersUsage,
   useBulkSetUserSpendLimit,
   useMembersUsage,
   useUpdateMemberSeatType,
@@ -515,27 +514,10 @@ export function UsagePage() {
         return false;
       }
 
-      // The change is applied asynchronously by the workflow, and the effective
-      // cap (pool cap + the per-seat allowance) is resolved server-side, which
-      // the client can't reproduce. So we don't optimistically fabricate it.
-      // Clear the selection and revalidate a few times so the table reflects the
-      // true server values once the workflow lands.
       selection.clearSelection();
-      for (const delayMs of [8000, 16000]) {
-        window.setTimeout(() => {
-          void invalidateMembersUsage(owner.sId);
-        }, delayMs);
-      }
       return true;
     },
-    [
-      selection,
-      seatTypeFilter,
-      groupFilter,
-      searchTerm,
-      doBulkSetSpendLimit,
-      owner.sId,
-    ]
+    [selection, seatTypeFilter, groupFilter, searchTerm, doBulkSetSpendLimit]
   );
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
