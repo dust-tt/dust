@@ -3,14 +3,10 @@ import {
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import { API_KEY_NAME_GROUP_KEY } from "@app/lib/metronome/per_api_key_usage";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-// Metronome billable-metric group key carried on every usage event. Spend
-// alerts can filter on it directly (it is a metric group key on the AWU
-// products), so per-key caps need no product/presentation-group-key change.
-const API_KEY_NAME_GROUP_KEY = "api_key_name";
 
 // The key name is the stable, workspace-unique join key between a key, this
 // alert, and the webhook that transitions `keys.creditState` (the name is
