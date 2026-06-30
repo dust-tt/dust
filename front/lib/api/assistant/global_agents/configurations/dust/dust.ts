@@ -845,7 +845,7 @@ export function _getDustGoogLiteGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_LITE,
     name: "dust-goog-lite",
     preferredModelConfiguration: GEMINI_3_1_FLASH_LITE_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "medium",
   });
 }
 
