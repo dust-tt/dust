@@ -43,6 +43,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
@@ -57,12 +58,16 @@ import {
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
 import {
+  GEMINI_3_1_FLASH_LITE_MODEL_CONFIG,
   GEMINI_3_1_PRO_MODEL_CONFIG,
   GEMINI_3_5_FLASH_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
-import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_4_NANO_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -568,6 +573,18 @@ export function _getDustAntHighGlobalAgent(
   });
 }
 
+export function _getDustHaikuGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_HAIKU,
+    name: "dust-haiku",
+    preferredModelConfiguration: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
 export function _getDustLionelGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -820,6 +837,18 @@ export function _getDustGoogHighGlobalAgent(
   });
 }
 
+export function _getDustGoogLiteGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG_LITE,
+    name: "dust-goog-lite",
+    preferredModelConfiguration: GEMINI_3_1_FLASH_LITE_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
 export function _getDustGoogProGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -888,6 +917,18 @@ export function _getDustOaiHighGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
     name: "dust-oai-high",
     preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustOaiNanoHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH,
+    name: "dust-oai-nano-high",
+    preferredModelConfiguration: GPT_5_4_NANO_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
