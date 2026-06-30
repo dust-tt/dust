@@ -18,6 +18,7 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 
 /**
@@ -289,6 +290,62 @@ export function _getClaude3_7GlobalAgent({
     ],
     skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}
+
+export function _getClaude5SonnetGlobalAgent({
+  auth,
+  settings,
+  mcpServerViews,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettingsModel | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_5_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
+
+  return {
+    id: -1,
+    sId,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    instructionsHtml: null,
+    pictureUrl: metadata.pictureUrl,
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    },
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        mcpServerViews,
+      }),
+    ],
+    skills: ["frames"],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
     requestedSpaceIds: [],

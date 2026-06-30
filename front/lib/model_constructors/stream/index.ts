@@ -7,6 +7,7 @@ import { AnthropicGlobalClaudeHaikuFourDotFiveStream } from "@app/lib/model_cons
 import { AnthropicGlobalClaudeOpusFourDotEightStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_eight";
 import { AnthropicGlobalClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_seven";
 import { AnthropicGlobalClaudeOpusFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_six";
+import { AnthropicGlobalClaudeSonnetFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_sonnet_five";
 import { AnthropicGlobalClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_sonnet_four_dot_six";
 import { FireworksGlobalDeepSeekV4ProStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_deepseek_v4_pro";
 import { FireworksGlobalGlmFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/fireworks_global_glm_five_dot_two";
@@ -28,6 +29,8 @@ import { OpenAIResponsesGlobalGptFiveNanoStream } from "@app/lib/model_construct
 import { TogetheraiGlobalLlama3370BInstructTurboStream } from "@app/lib/model_constructors/stream/endpoints/togetherai_global_llama_3_3_70b_instruct_turbo";
 
 export const STREAM_ENDPOINTS = {
+  [AnthropicGlobalClaudeSonnetFiveStream.id]:
+    AnthropicGlobalClaudeSonnetFiveStream,
   [AnthropicGlobalClaudeSonnetFourDotSixStream.id]:
     AnthropicGlobalClaudeSonnetFourDotSixStream,
   [AnthropicGlobalClaudeHaikuFourDotFiveStream.id]:
