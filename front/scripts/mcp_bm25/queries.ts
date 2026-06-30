@@ -1456,6 +1456,28 @@ export const QUERIES: LabeledQuery[] = [
     expected: "common_utilities.set_conversation_title",
   },
 
+  // --- exa_people_and_company ---
+  {
+    query: "find the LinkedIn profile of the CTO of Mistral AI",
+    expected: "exa_people_and_company.search_people",
+  },
+  {
+    query: "look up the professional background of a person by name and role",
+    expected: "exa_people_and_company.search_people",
+  },
+  {
+    query: "identify who runs sales at French SaaS startups",
+    expected: "exa_people_and_company.search_people",
+  },
+  {
+    query: "research French AI startups and their company profiles",
+    expected: "exa_people_and_company.search_companies",
+  },
+  {
+    query: "find competitors of Notion for market research",
+    expected: "exa_people_and_company.search_companies",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",

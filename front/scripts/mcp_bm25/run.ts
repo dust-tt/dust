@@ -18,6 +18,7 @@ import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_uti
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
+import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
@@ -194,6 +195,7 @@ const SERVERS: ServerEntry[] = [
     tools: HTTP_CLIENT_SERVER.tools.filter((t) => t.name === "send_request"),
   },
   { name: "common_utilities", tools: COMMON_UTILITIES_SERVER.tools },
+  { name: "exa_people_and_company", tools: EXA_SERVER.tools },
 ];
 
 function out(line: string): void {
