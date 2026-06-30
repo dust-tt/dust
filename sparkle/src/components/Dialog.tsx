@@ -67,7 +67,7 @@ const variantClasses: Record<DialogVariantType, string> = {
 const dialogVariants = cva(
   cn(
     "fixed left-[50%] z-50 overflow-hidden translate-x-[-50%]",
-    "rounded-2xl flex flex-col w-full max-w-[calc(100vw-2rem)] border border shadow-lg sm:rounded-lg",
+    "rounded-2xl flex flex-col w-full max-w-[calc(100vw-2rem)] border border shadow-lg",
     "bg-background",
     "border-border",
     "max-h-[90vh]"
