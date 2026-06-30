@@ -154,6 +154,9 @@ async function waitForSandboxFunctionInvocationResult({
         } = JSON.parse(event.data);
 
         switch (eventPayload.data.type) {
+          case "sandbox_function_invocation_created":
+            // NO-OP
+            break;
           case "sandbox_function_invocation_result":
             finish({ result: eventPayload.data.result });
             break;
