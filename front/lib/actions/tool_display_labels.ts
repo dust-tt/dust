@@ -1,4 +1,5 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import { getDataSourceFileSystemCatReadTarget } from "@app/lib/actions/data_source_file_system_read_targets";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getInternalMCPServerToolDisplayLabels,
@@ -153,11 +154,13 @@ function getDynamicToolDisplayLabels({
         };
       }
       if (toolName === "cat") {
+        const target = getDataSourceFileSystemCatReadTarget(inputs);
+
         if (isString(inputs.grep)) {
           const g = truncateQuery(inputs.grep);
           return {
-            running: `Searching for “${g}” in file`,
-            done: `Search for “${g}” in file`,
+            running: `Searching for “${g}” in ${target}`,
+            done: `Search for “${g}” in ${target}`,
           };
         }
         const offset = isNumber(inputs.offset)
@@ -169,23 +172,23 @@ function getDynamicToolDisplayLabels({
 
         if (offset && limit) {
           return {
-            running: `Reading file (next ~${limit} characters)`,
-            done: `Read file (next ~${limit} characters)`,
+            running: `Reading ${target} (next ~${limit} characters)`,
+            done: `Read ${target} (next ~${limit} characters)`,
           };
         } else if (limit) {
           return {
-            running: `Reading file (first ~${limit} characters)`,
-            done: `Read file (first ~${limit} characters)`,
+            running: `Reading ${target} (first ~${limit} characters)`,
+            done: `Read ${target} (first ~${limit} characters)`,
           };
         } else if (offset) {
           return {
-            running: `Reading file (from character ${offset})`,
-            done: `Read file (from character ${offset})`,
+            running: `Reading ${target} (from character ${offset})`,
+            done: `Read ${target} (from character ${offset})`,
           };
         }
         return {
-          running: `Reading file`,
-          done: `Read file`,
+          running: `Reading ${target}`,
+          done: `Read ${target}`,
         };
       }
       return null;

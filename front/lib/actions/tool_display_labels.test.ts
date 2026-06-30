@@ -45,6 +45,111 @@ describe("getToolDisplayLabels", () => {
       done: "List issues on Linear",
     });
   });
+
+  it("infers data source file reads from GitHub issue node IDs", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "github-issue-693580871-9196",
+        },
+      })
+    ).toEqual({
+      running: "Reading GitHub issue #9196",
+      done: "Read GitHub issue #9196",
+    });
+  });
+
+  it("keeps pagination details when the data source file target is inferred", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "github-issue-693580871-9196",
+          limit: 100,
+        },
+      })
+    ).toEqual({
+      running: "Reading GitHub issue #9196 (first ~100 characters)",
+      done: "Read GitHub issue #9196 (first ~100 characters)",
+    });
+  });
+
+  it("uses inferred data source file targets for grep labels", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "zendesk-ticket-12-34-567",
+          grep: "timeout",
+        },
+      })
+    ).toEqual({
+      running: "Searching for “timeout” in Zendesk ticket #567",
+      done: "Search for “timeout” in Zendesk ticket #567",
+    });
+  });
+
+  it("uses provider labels when data source file node IDs are opaque", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "gdrive-abc123",
+        },
+      })
+    ).toEqual({
+      running: "Reading Google Drive file",
+      done: "Read Google Drive file",
+    });
+  });
+
+  it("does not show opaque IDs in data source file labels", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "slack-channel-C05V0P20A72",
+        },
+      })
+    ).toEqual({
+      running: "Reading Slack channel",
+      done: "Read Slack channel",
+    });
+
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "salesforce-synced-query-document-12-34-001ABC",
+        },
+      })
+    ).toEqual({
+      running: "Reading Salesforce record",
+      done: "Read Salesforce record",
+    });
+  });
+
+  it("keeps generic data source file labels for unrecognized node IDs", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: "unknown-node",
+        },
+      })
+    ).toEqual({
+      running: "Reading file",
+      done: "Read file",
+    });
+  });
 });
 
 describe("getStaticToolDisplayLabelsFromFunctionCallName", () => {
