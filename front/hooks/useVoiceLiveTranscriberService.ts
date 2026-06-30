@@ -246,7 +246,7 @@ export function useVoiceLiveTranscriberService({
       const workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
       workletNode.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
         const b64 = arrayBufferToBase64(event.data);
-        if (!isShuttingDownRef.current || scribeRef.current.isConnected) {
+        if (!isShuttingDownRef.current && scribeRef.current.isConnected) {
           scribeRef.current.sendAudio(b64, { sampleRate: SAMPLE_RATE_HZ });
         }
       };
