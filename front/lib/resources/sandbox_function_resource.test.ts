@@ -11,6 +11,7 @@ import {
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
@@ -50,6 +51,7 @@ const outputSchema: JSONSchema = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fileStorageMock.reset();
 });
 
 describe("SandboxFunctionResource", () => {
@@ -479,22 +481,22 @@ describe("SandboxFunctionResource", () => {
     });
   });
 
-  it("replaces the bundle and contract on re-publish", async () => {
+  it("overwrites the bundle and contract in place on re-publish", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
     const space = await SpaceFactory.project(workspace);
-    const makeBundle = (fileName: string) =>
-      FileFactory.create(authenticator, null, {
-        contentType: sandboxFunctionContentType,
-        fileName,
-        fileSize: 100,
-        status: "created",
-        useCase: "project_context",
-        useCaseMetadata: { spaceId: space.sId },
-      });
 
-    const firstFile = await makeBundle("greet.ts");
+    const firstFile = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "greet.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    await firstFile.uploadContent(authenticator, "v1");
+
     const sandboxFunction = await SandboxFunctionResource.makeNew(
       authenticator,
       {
@@ -506,6 +508,7 @@ describe("SandboxFunctionResource", () => {
         outputSchema,
       }
     );
+    const firstVersion = firstFile.version;
 
     const newInputSchema: JSONSchema = {
       type: "object",
@@ -517,24 +520,25 @@ describe("SandboxFunctionResource", () => {
       properties: { text: { type: "string" } },
       required: ["text"],
     };
-    const secondFile = await makeBundle("greet.ts");
 
     const result = await sandboxFunction.updateContent(authenticator, {
-      file: secondFile,
+      bundleCode: "v2",
       description: "Second.",
       inputSchema: newInputSchema,
       outputSchema: newOutputSchema,
     });
     expect(result.isOk()).toBe(true);
 
-    // The same row now points at the new bundle and contract.
-    expect(sandboxFunction.fileId).toBe(secondFile.id);
+    // The row keeps the same bundle file and gets the refreshed contract.
+    expect(sandboxFunction.fileId).toBe(firstFile.id);
     expect(sandboxFunction.description).toBe("Second.");
     expect(sandboxFunction.inputSchema).toEqual(newInputSchema);
     expect(sandboxFunction.outputSchema).toEqual(newOutputSchema);
-    expect(sandboxFunction.file.id).toBe(secondFile.id);
+    expect(sandboxFunction.file.id).toBe(firstFile.id);
+    // Re-upload bumped the bundle's version rather than creating a new file.
+    expect(sandboxFunction.file.version).toBeGreaterThan(firstVersion);
 
-    // Exactly one row remains, and the superseded bundle was deleted.
+    // Exactly one row and one (reused) bundle file remain.
     const listed = await SandboxFunctionResource.listBySpace(
       authenticator,
       space
@@ -542,16 +546,13 @@ describe("SandboxFunctionResource", () => {
     expect(listed.map(({ id }) => id)).toEqual([sandboxFunction.id]);
     await expect(
       FileResource.fetchById(authenticator, firstFile.sId)
-    ).resolves.toBeNull();
-    await expect(
-      FileResource.fetchById(authenticator, secondFile.sId)
     ).resolves.not.toBeNull();
 
     const fetched = await SandboxFunctionResource.fetchById(
       authenticator,
       sandboxFunction.sId
     );
-    expect(fetched?.fileId).toBe(secondFile.id);
+    expect(fetched?.fileId).toBe(firstFile.id);
     expect(fetched?.description).toBe("Second.");
     expect(fetched?.outputSchema).toEqual(newOutputSchema);
   });

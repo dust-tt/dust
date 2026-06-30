@@ -68,12 +68,8 @@ export async function publishSandboxFunction(
   }
   const { bundleCode, inputSchema, outputSchema } = buildResult.value;
 
-  const fileResult = await createBundleFile(auth, { space, slug, bundleCode });
-  if (fileResult.isErr()) {
-    return fileResult;
-  }
-  const file = fileResult.value;
-
+  // Re-publish overwrites the existing bundle in place so its mount path (<prefix>/<slug>.ts) stays
+  // stable; only a first publish creates the backing file.
   const existing = await SandboxFunctionResource.fetchBySpaceAndSlug(
     auth,
     space,
@@ -81,7 +77,7 @@ export async function publishSandboxFunction(
   );
   if (existing) {
     const updateResult = await existing.updateContent(auth, {
-      file,
+      bundleCode,
       description,
       inputSchema,
       outputSchema,
@@ -95,9 +91,14 @@ export async function publishSandboxFunction(
     return new Ok(existing);
   }
 
+  const fileResult = await createBundleFile(auth, { space, slug, bundleCode });
+  if (fileResult.isErr()) {
+    return fileResult;
+  }
+
   const created = await SandboxFunctionResource.makeNew(auth, {
     space,
-    file,
+    file: fileResult.value,
     slug,
     description,
     inputSchema,

@@ -20,7 +20,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import logger from "@app/logger/logger";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationType,
@@ -173,70 +172,30 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * Replace this function's bundle and contract on re-publish: point the row at the new file, refresh
-   * the schemas and description, then delete the superseded bundle. Enforces the same file invariants
-   * as makeNew. The caller checks write permission.
+   * Re-publish: overwrite this function's bundle in place and refresh its contract. uploadContent
+   * rewrites the same file (canonical original plus its mount path <prefix>/<slug>.ts) and bumps the
+   * version, so the function's storage path stays stable across re-publishes rather than drifting to
+   * a disambiguated name. The caller checks write permission.
    */
   async updateContent(
     auth: Authenticator,
     {
-      file,
+      bundleCode,
       description,
       inputSchema,
       outputSchema,
     }: {
-      file: FileResource;
+      bundleCode: string;
       description: string;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
   ): Promise<Result<undefined, Error>> {
-    assert(
-      file.workspaceId === auth.getNonNullableWorkspace().id,
-      "The file must belong to the authenticated workspace."
-    );
-    assert(
-      file.contentType === sandboxFunctionContentType,
-      `The file must use the ${sandboxFunctionContentType} content type.`
-    );
-    assert(
-      file.useCase === "project_context",
-      "The file must use the project_context use case."
-    );
-    assert(
-      file.useCaseMetadata?.spaceId === this.space.sId,
-      "The file must belong to the same pod as the sandbox function."
-    );
-
-    const previousFile = this.file;
-
     try {
-      await this.update({
-        fileId: file.id,
-        description,
-        inputSchema,
-        outputSchema,
-      });
+      await this.file.uploadContent(auth, bundleCode);
+      await this.update({ description, inputSchema, outputSchema });
     } catch (error) {
       return new Err(normalizeError(error));
-    }
-
-    this.file = file;
-
-    // The row already points at the new bundle, so a failed cleanup of the old one only orphans a
-    // file in the front-only prefix. Log it rather than failing an otherwise successful publish.
-    if (previousFile.id !== file.id) {
-      const deleteResult = await previousFile.delete(auth);
-      if (deleteResult.isErr()) {
-        logger.error(
-          {
-            err: deleteResult.error,
-            sandboxFunctionId: this.sId,
-            previousFileId: previousFile.sId,
-          },
-          "Failed to delete superseded sandbox function bundle"
-        );
-      }
     }
 
     return new Ok(undefined);

@@ -131,7 +131,7 @@ describe("publishSandboxFunction", () => {
     expect(listed.map(({ id }) => id)).toEqual([fn.id]);
   });
 
-  it("replaces the bundle on re-publish, keeping one row and one file", async () => {
+  it("overwrites the bundle in place on re-publish, keeping one row and the same file", async () => {
     const { workspace, space, auth } = await setupPod();
     await mockReadySandbox(auth);
 
@@ -149,6 +149,10 @@ describe("publishSandboxFunction", () => {
       return;
     }
     const firstFileId = first.value.fileId;
+    const [firstBundle] = await FileModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+    const firstVersion = firstBundle.version;
 
     const newOutputSchema: JSONSchema = {
       type: "object",
@@ -172,14 +176,20 @@ describe("publishSandboxFunction", () => {
     expect(second.value.id).toBe(first.value.id);
     expect(second.value.description).toBe("v2");
     expect(second.value.outputSchema).toEqual(newOutputSchema);
-    expect(second.value.fileId).not.toBe(firstFileId);
+    // The bundle file is reused in place, not replaced: same row, canonical mount path retained, and
+    // its version bumped by the re-upload.
+    expect(second.value.fileId).toBe(firstFileId);
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed).toHaveLength(1);
     const files = await FileModel.findAll({
       where: { workspaceId: workspace.id },
     });
-    expect(files.map((file) => file.id)).toEqual([second.value.fileId]);
+    expect(files.map((file) => file.id)).toEqual([firstFileId]);
+    expect(files[0].mountFilePath).toBe(
+      `w/${workspace.sId}/pods/${space.sId}/sandbox_functions/greet.ts`
+    );
+    expect(files[0].version).toBeGreaterThan(firstVersion ?? 0);
   });
 
   it("rejects a path that escapes the pod mount", async () => {
