@@ -163,7 +163,7 @@ app.patch(
           : null,
       });
       if (resolvedDefaultSkills) {
-        await metadata.setDefaultSkills(resolvedDefaultSkills);
+        await metadata.setDefaultSkills(auth, resolvedDefaultSkills);
       }
       if (!body.archive) {
         void launchOrSignalProjectTodoWorkflow({
@@ -214,7 +214,7 @@ app.patch(
         await metadata.updateDefaultAgentId(body.defaultAgentId);
       }
       if (resolvedDefaultSkills) {
-        await metadata.setDefaultSkills(resolvedDefaultSkills);
+        await metadata.setDefaultSkills(auth, resolvedDefaultSkills);
       }
       if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
         void launchOrSignalProjectTodoWorkflow({

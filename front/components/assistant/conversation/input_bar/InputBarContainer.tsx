@@ -17,6 +17,7 @@ import {
   getAvailableInputBarSlashCommands,
   type InputBarSlashCommand,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import {
   isRunCommandSlashCommand,
   isSkillSlashCommand,
@@ -147,6 +148,35 @@ export interface DefaultSkillReference {
   sId: string;
   name: string;
   icon: string | null;
+}
+
+function readDefaultSkillEditorState(editor: Editor): {
+  skillIds: string[];
+  hasUserContent: boolean;
+} {
+  const skillIds: string[] = [];
+  let hasUserContent = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === SKILL_NODE_TYPE) {
+      if (typeof node.attrs.skillId === "string") {
+        skillIds.push(node.attrs.skillId);
+      }
+      return false;
+    }
+    if (node.isText) {
+      if ((node.text ?? "").trim().length > 0) {
+        hasUserContent = true;
+      }
+    } else if (node.isInline && node.type.name !== "hardBreak") {
+      hasUserContent = true;
+    }
+    return true;
+  });
+  return { skillIds, hasUserContent };
+}
+
+function sameSkillIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
 export interface InputBarContainerProps {
@@ -1296,12 +1326,13 @@ const InputBarContainer = ({
   });
 
   useEffect(() => {
-    if (defaultSkills === undefined || defaultSkills.length === 0) {
+    if (defaultSkills === undefined) {
       return;
     }
     if (conversation || isAgentBuilder) {
       return;
     }
+
     if (isDefaultSkillsLoading) {
       return;
     }
@@ -1314,6 +1345,8 @@ const InputBarContainer = ({
       return;
     }
 
+    const desiredSkillIds = defaultSkills.map((skill) => skill.sId);
+
     queueMicrotask(() => {
       if (
         !editor ||
@@ -1323,11 +1356,21 @@ const InputBarContainer = ({
       ) {
         return;
       }
-      if (!editorService.isEmpty()) {
+
+      const { skillIds, hasUserContent } = readDefaultSkillEditorState(editor);
+
+      if (hasUserContent) {
+        return;
+      }
+
+      if (sameSkillIds(skillIds, desiredSkillIds)) {
         return;
       }
 
       let chain = editor.chain();
+      if (skillIds.length > 0) {
+        chain = chain.clearContent();
+      }
       for (const skill of defaultSkills) {
         chain = chain.insertSkillNode({
           skillId: skill.sId,
@@ -1345,7 +1388,6 @@ const InputBarContainer = ({
     editor,
     editor?.isInitialized,
     editor?.isEditable,
-    editorService,
   ]);
 
   const buttonSize = useMemo(() => {

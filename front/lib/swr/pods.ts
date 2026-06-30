@@ -1126,12 +1126,9 @@ export function usePodDefaultSkills({
     });
   }, [hasPodDefaultSkillsFeature, skills, podMetadata?.defaultSkillIds]);
 
-  const defaultSkillsKey = (podMetadata?.defaultSkillIds ?? []).join(",");
-
   return {
     defaultSkills,
     isDefaultSkillsLoading: isPodMetadataLoading || isSkillsLoading,
-    defaultSkillsKey,
   };
 }
 

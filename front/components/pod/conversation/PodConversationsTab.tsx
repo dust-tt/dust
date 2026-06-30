@@ -120,8 +120,10 @@ export function PodConversationsTab({
     hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
 
-  const { defaultSkills, isDefaultSkillsLoading, defaultSkillsKey } =
-    usePodDefaultSkills({ owner, podId: podInfo.sId });
+  const { defaultSkills, isDefaultSkillsLoading } = usePodDefaultSkills({
+    owner,
+    podId: podInfo.sId,
+  });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
@@ -216,7 +218,6 @@ export function PodConversationsTab({
               </div>
             ) : podInfo.isMember ? (
               <InputBar
-                key={defaultSkillsKey}
                 owner={owner}
                 user={user}
                 onSubmit={onSubmit}
