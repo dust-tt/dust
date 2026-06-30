@@ -1073,6 +1073,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "speech_generator.text_to_dialogue",
   },
 
+  // --- slab ---
+  {
+    query: "search Slab posts by keyword",
+    expected: "slab.search_posts",
+  },
+  {
+    query: "list all topics in Slab",
+    expected: "slab.get_topics",
+  },
+
   // --- salesloft ---
   {
     query: "get my due sales cadence actions in Salesloft",
