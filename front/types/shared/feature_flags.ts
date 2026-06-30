@@ -85,8 +85,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   disable_computer_feature: {
-    description:
-      "Disable all Computer (sandbox) features for this workspace, overriding sandbox opt-in flags",
+    description: "Disable all Computer sandbox features for this workspace",
     stage: "on_demand",
   },
   disallow_agent_creation_to_users: {

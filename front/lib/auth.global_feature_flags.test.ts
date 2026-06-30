@@ -5,6 +5,7 @@ import {
   invalidateFeatureFlagsCache,
   invalidateGlobalFeatureFlagsCache,
 } from "@app/lib/auth";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
@@ -155,6 +156,33 @@ describe("getFeatureFlags with global flags", () => {
     invalidateAllCaches(auth);
 
     const disabledFlags = await getFeatureFlags(auth);
+    expect(disabledFlags).toContain("disable_computer_feature");
+    expect(isComputerFeatureEnabled(disabledFlags)).toBe(false);
+  });
+
+  it("ignores legacy sandbox_tools rows while keeping Computer controlled by the disable flag", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await FeatureFlagModel.create({
+      workspaceId: workspace.id,
+      name: "sandbox_tools" as never,
+    });
+    await GlobalFeatureFlagModel.create({
+      name: "sandbox_tools" as never,
+      rolloutPercentage: 100,
+    });
+    invalidateAllCaches(auth);
+
+    const flags = await getFeatureFlags(auth);
+    expect(flags).not.toContain("sandbox_tools");
+    expect(isComputerFeatureEnabled(flags)).toBe(true);
+
+    await FeatureFlagResource.enable(workspace, "disable_computer_feature");
+    invalidateAllCaches(auth);
+
+    const disabledFlags = await getFeatureFlags(auth);
+    expect(disabledFlags).not.toContain("sandbox_tools");
     expect(disabledFlags).toContain("disable_computer_feature");
     expect(isComputerFeatureEnabled(disabledFlags)).toBe(false);
   });
