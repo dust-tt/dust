@@ -449,6 +449,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "slack_bot.read_channel_history",
   },
 
+  // --- notion ---
+  {
+    query: "find a Notion page by keyword",
+    expected: "notion.search",
+  },
+  {
+    query: "insert a new row into a Notion database",
+    expected: "notion.insert_row_into_database",
+  },
+
   // --- outlook ---
   {
     query: "get emails from my Outlook inbox",
