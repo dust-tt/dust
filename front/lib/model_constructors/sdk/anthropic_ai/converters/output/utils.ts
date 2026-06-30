@@ -512,7 +512,8 @@ export function contentBlockStartToEvents(
   event: RawContentBlockStartEvent,
   state: BlockState | null,
   metadata: EndpointMetadata,
-  converters: OutputEventConverters
+  converters: OutputEventConverters,
+  toolSearchQuery?: string
 ): [ModelResponseEvent[], BlockState | null] {
   const block = event.content_block;
   switch (block.type) {
@@ -558,6 +559,7 @@ export function contentBlockStartToEvents(
       // verbatim replay and log them. State stays null, so the stop is a no-op.
       logToolSearchResult({
         content: block.content,
+        query: toolSearchQuery,
         logFields: toolSearchLogFields(metadata),
       });
       return [
@@ -707,16 +709,6 @@ export function contentBlockStopToEvents(
     }
 
     case "tool_search": {
-      logToolSearchQuery({
-        rawInput: block.accumulator,
-        toolName: block.toolName,
-        tags: [
-          `provider_id:${metadata.providerId}`,
-          `api:${metadata.api}`,
-          `model_id:${metadata.modelId}`,
-        ],
-        logFields: toolSearchLogFields(metadata),
-      });
       // Replay the server_tool_use block verbatim so interleaved thinking
       // signatures stay valid, falling back to an empty input if the query
       // failed to parse.
@@ -776,6 +768,7 @@ export async function* rawOutputToEvents(
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let blockState: BlockState | null = null;
   let tokenUsage: MessageDeltaUsage | null = null;
+  const toolSearchQueriesByToolUseId = new Map<string, string | undefined>();
   // The per-TTL cache-creation breakdown is only emitted on `message_start`;
   // capture it so the trailing `message_delta` usage can be split by TTL.
   let cacheCreation: CacheCreation | null = null;
@@ -832,12 +825,20 @@ export async function* rawOutputToEvents(
         outputEvents = [];
         break;
       case "content_block_start": {
+        const toolSearchQuery =
+          event.content_block.type === "tool_search_tool_result"
+            ? toolSearchQueriesByToolUseId.get(event.content_block.tool_use_id)
+            : undefined;
         const [events, nextState] = contentBlockStartToEvents(
           event,
           blockState,
           metadata,
-          converters
+          converters,
+          toolSearchQuery
         );
+        if (event.content_block.type === "tool_search_tool_result") {
+          toolSearchQueriesByToolUseId.delete(event.content_block.tool_use_id);
+        }
         outputEvents = events;
         blockState = nextState;
         break;
@@ -854,6 +855,19 @@ export async function* rawOutputToEvents(
         break;
       }
       case "content_block_stop": {
+        if (blockState?.type === "tool_search") {
+          const query = logToolSearchQuery({
+            rawInput: blockState.accumulator,
+            toolName: blockState.toolName,
+            tags: [
+              `provider_id:${metadata.providerId}`,
+              `api:${metadata.api}`,
+              `model_id:${metadata.modelId}`,
+            ],
+            logFields: toolSearchLogFields(metadata),
+          });
+          toolSearchQueriesByToolUseId.set(blockState.toolId, query);
+        }
         const [events, nextState] = contentBlockStopToEvents(
           event,
           blockState,
