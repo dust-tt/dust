@@ -5,7 +5,7 @@ use std::process::Stdio;
 
 use anyhow::{anyhow, Result};
 use clap::Subcommand;
-use tempfile::{TempDir, TempPath};
+use tempfile::TempPath;
 use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 
@@ -42,12 +42,12 @@ const AGENT_USER: &str = "agent-proxied";
 pub enum FunctionCommand {
     /// Execute a function: request envelope JSON on stdin, response JSON on stdout
     Run {
-        /// Function name (resolved to ${DUST_FUNCTIONS_DIR}/<name>.ts)
+        /// Function name (resolved to a <name>.<ext> bundle in ${DUST_FUNCTIONS_DIR})
         name: String,
     },
     /// Print a function's JSON-Schema I/O contract
     Get {
-        /// Function name (resolved to ${DUST_FUNCTIONS_DIR}/<name>.ts)
+        /// Function name (resolved to a <name>.<ext> bundle in ${DUST_FUNCTIONS_DIR})
         name: String,
     },
     /// Bundle a function source and extract its JSON-Schema contract to files
@@ -83,40 +83,30 @@ fn running_as_root() -> bool {
 /// downgraded to the `agent-proxied` user whenever `dsbx` runs privileged: the
 /// child is launched via `runuser`, which resolves that user's uid/gid/
 /// supplementary groups and drops privileges before exec — so `dsbx` needs no
-/// unsafe privilege-dropping syscalls. `dsbx` may stay root to read bundles: it
-/// stages the bundle into a temp dir (named `<name>.ts` so `get`'s schema name
-/// is preserved) and makes both it and the runner world-readable, so the dropped
-/// child can read them even when the originals are root-only. The contents are
-/// not secret (the runner is embedded in the binary; the bundle is the function
-/// being executed) and the temp names are random.
+/// unsafe privilege-dropping syscalls. The bundle is run in place from
+/// `$DUST_FUNCTIONS_DIR` (an agent-readable mount), so there is no staging; the
+/// only thing the dropped child can't otherwise read is the embedded-runner temp
+/// file (created by root, 0600), which is made readable for it.
 pub(crate) async fn spawn_function(
     subcommand: &str,
     name: &str,
     inherit_stdin: bool,
     capture_stdout: bool,
 ) -> Result<(i32, Option<String>)> {
-    let path = resolve_existing(name)?;
+    let handler = resolve_existing(name)?;
     // The function runs with $DUST_FUNCTIONS_DIR as its working directory (the
-    // parent of the resolved <name>.ts), not wherever dsbx was invoked from.
-    let functions_dir = path.parent().map(Path::to_path_buf);
+    // parent of the resolved bundle), not wherever dsbx was invoked from.
+    let functions_dir = handler.parent().map(Path::to_path_buf);
     let runner = ensure_runner()?;
     let as_agent = running_as_root();
 
-    // Hold the staged temp dir alive until after the child exits.
-    let mut staged: Option<TempDir> = None;
-    let handler: PathBuf = if as_agent {
-        // The dropped child must read the runner and the bundle, which dsbx (as
-        // root) created — make them world-readable rather than chowning, so no
-        // uid lookup is needed.
+    if as_agent {
+        // The bundle is read in place from the agent-readable mount; no staging.
+        // Only the embedded-runner temp file (created by root, 0600) must be made
+        // readable by the dropped agent-proxied child.
         set_mode(&runner, 0o644)
             .map_err(|e| emit_error(anyhow!("failed to prepare runner: {e}")))?;
-        let dir = stage_bundle(&path, name)?;
-        let handler = dir.path().join(format!("{name}.ts"));
-        staged = Some(dir);
-        handler
-    } else {
-        path
-    };
+    }
 
     // When privileged, run the function as `agent-proxied` via `runuser`
     // (util-linux), which drops to that user (uid + primary gid + supplementary
@@ -175,9 +165,6 @@ pub(crate) async fn spawn_function(
         .await
         .map_err(|e| emit_error(anyhow!("failed to run function: {e}")))?;
     runner.close().ok();
-    if let Some(dir) = staged {
-        dir.close().ok();
-    }
     Ok((status.code().unwrap_or(1), captured))
 }
 
@@ -250,28 +237,8 @@ fn harness_node_path() -> String {
     }
 }
 
-/// Copy a function bundle into a fresh temp dir as `<name>.ts`, world-readable,
-/// so a privileged dsbx can hand a (possibly root-only) bundle to the
-/// unprivileged `agent-proxied` child. Returns the temp dir (kept alive by the
-/// caller). Making the copy world-readable avoids needing the agent uid/gid.
-fn stage_bundle(path: &Path, name: &str) -> Result<TempDir> {
-    let stage_err = |e: std::io::Error| emit_error(anyhow!("failed to stage function {name}: {e}"));
-    let bytes = std::fs::read(path)
-        .map_err(|e| emit_error(anyhow!("failed to read function {name}: {e}")))?;
-    let dir = tempfile::Builder::new()
-        .prefix("dsbx-fn-")
-        .tempdir()
-        .map_err(stage_err)?;
-    // The dropped child must traverse the dir and read the bundle.
-    set_mode(dir.path(), 0o755).map_err(stage_err)?;
-    let staged = dir.path().join(format!("{name}.ts"));
-    std::fs::write(&staged, &bytes).map_err(stage_err)?;
-    set_mode(&staged, 0o644).map_err(stage_err)?;
-    Ok(dir)
-}
-
-/// Set a path's permission bits (used to make temp runner/bundle files readable
-/// by the dropped child without a uid lookup).
+/// Set a path's permission bits (used to make the runner temp file readable by
+/// the dropped child without a uid lookup).
 fn set_mode(path: impl AsRef<Path>, mode: u32) -> std::io::Result<()> {
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
 }
@@ -290,14 +257,48 @@ pub(crate) fn ensure_runner() -> Result<TempPath> {
     Ok(file.into_temp_path())
 }
 
-/// Resolve a function, erroring with a JSON `{error}` on stdout (and a non-zero
-/// exit) for the user-facing failure modes (bad env/name/missing file).
+/// Resolve a function name to its bundle file in `$DUST_FUNCTIONS_DIR`,
+/// extension-agnostically: the bundle is `<name>.<ext>` for whatever extension
+/// `bun` can run (`.ts`, `.js`, `.mjs`, `.cjs`, ...), so the extension is not
+/// assumed — the directory is scanned for a file whose stem is `<name>`.
+///
+/// Errors (as a JSON `{error}` on stdout + non-zero exit) for the user-facing
+/// failure modes: bad name, unset dir, missing file, or an ambiguous match.
 pub(crate) fn resolve_existing(name: &str) -> Result<PathBuf> {
-    let path = resolve_function_path(name).map_err(emit_error)?;
-    if !path.is_file() {
-        return Err(emit_error(anyhow!("function not found: {name}")));
+    if !is_valid_name(name) {
+        return Err(emit_error(anyhow!(
+            "invalid function name {name:?}: must match [A-Za-z0-9_-]+"
+        )));
     }
-    Ok(path)
+    let dir = functions_dir().map_err(emit_error)?;
+
+    let entries = std::fs::read_dir(&dir)
+        .map_err(|e| emit_error(anyhow!("cannot read {}: {e}", dir.display())))?;
+    let mut matches: Vec<PathBuf> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file() && path.file_stem().and_then(|s| s.to_str()) == Some(name))
+        .collect();
+
+    match matches.len() {
+        0 => Err(emit_error(anyhow!("function not found: {name}"))),
+        1 => Ok(matches.pop().expect("len == 1")),
+        _ => {
+            matches.sort();
+            Err(emit_error(anyhow!(
+                "multiple files match function {name}: {matches:?}"
+            )))
+        }
+    }
+}
+
+/// The configured functions directory (`$DUST_FUNCTIONS_DIR`), required.
+fn functions_dir() -> Result<PathBuf> {
+    std::env::var(FUNCTIONS_DIR_ENV)
+        .ok()
+        .filter(|d| !d.is_empty())
+        .map(PathBuf::from)
+        .ok_or_else(|| anyhow!("{FUNCTIONS_DIR_ENV} is not set"))
 }
 
 /// Print `{ "error": msg }` to stdout and return an error that exits non-zero
@@ -314,20 +315,6 @@ pub(crate) fn is_valid_name(name: &str) -> bool {
         && name
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-}
-
-/// Resolve a function name to `${DUST_FUNCTIONS_DIR}/<name>.ts`.
-pub(crate) fn resolve_function_path(name: &str) -> Result<PathBuf> {
-    if !is_valid_name(name) {
-        return Err(anyhow!(
-            "invalid function name {name:?}: must match [A-Za-z0-9_-]+"
-        ));
-    }
-    let dir = std::env::var(FUNCTIONS_DIR_ENV)
-        .ok()
-        .filter(|d| !d.is_empty())
-        .ok_or_else(|| anyhow!("{FUNCTIONS_DIR_ENV} is not set"))?;
-    Ok(PathBuf::from(dir).join(format!("{name}.ts")))
 }
 
 #[cfg(test)]
@@ -354,27 +341,56 @@ mod tests {
         assert!(!is_valid_name("a.b"));
     }
 
-    #[test]
-    fn resolve_uses_env_dir_and_appends_ts() {
+    // Run `f` with DUST_FUNCTIONS_DIR pointing at a fresh temp dir (serialized,
+    // since the env var is process-global).
+    fn with_functions_dir<R>(f: impl FnOnce(&std::path::Path) -> R) -> R {
         let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("DUST_FUNCTIONS_DIR", "/files/functions");
-        let path = resolve_function_path("greet").expect("resolves");
-        assert_eq!(path, std::path::PathBuf::from("/files/functions/greet.ts"));
-        std::env::remove_var("DUST_FUNCTIONS_DIR");
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::env::set_var(FUNCTIONS_DIR_ENV, dir.path());
+        let result = f(dir.path());
+        std::env::remove_var(FUNCTIONS_DIR_ENV);
+        result
     }
 
     #[test]
-    fn resolve_errors_when_env_missing() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        std::env::remove_var("DUST_FUNCTIONS_DIR");
-        assert!(resolve_function_path("greet").is_err());
+    fn resolves_bundle_regardless_of_extension() {
+        for ext in ["ts", "js", "mjs", "cjs"] {
+            with_functions_dir(|dir| {
+                let bundle = dir.join(format!("greet.{ext}"));
+                std::fs::write(&bundle, b"export default {}").unwrap();
+                assert_eq!(resolve_existing("greet").unwrap(), bundle);
+            });
+        }
     }
 
     #[test]
-    fn resolve_errors_on_bad_name() {
+    fn errors_when_function_missing() {
+        with_functions_dir(|_dir| {
+            assert!(resolve_existing("greet").is_err());
+        });
+    }
+
+    #[test]
+    fn errors_when_multiple_extensions_match() {
+        with_functions_dir(|dir| {
+            std::fs::write(dir.join("greet.ts"), b"x").unwrap();
+            std::fs::write(dir.join("greet.js"), b"x").unwrap();
+            assert!(resolve_existing("greet").is_err());
+        });
+    }
+
+    #[test]
+    fn errors_when_env_missing() {
         let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("DUST_FUNCTIONS_DIR", "/files/functions");
-        assert!(resolve_function_path("../escape").is_err());
-        std::env::remove_var("DUST_FUNCTIONS_DIR");
+        std::env::remove_var(FUNCTIONS_DIR_ENV);
+        assert!(resolve_existing("greet").is_err());
+    }
+
+    #[test]
+    fn errors_on_bad_name() {
+        // A bad name is rejected before the directory is even read.
+        let _guard = ENV_LOCK.lock().unwrap();
+        std::env::remove_var(FUNCTIONS_DIR_ENV);
+        assert!(resolve_existing("../escape").is_err());
     }
 }
