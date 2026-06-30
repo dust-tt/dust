@@ -1109,7 +1109,8 @@ export const QUERIES: LabeledQuery[] = [
     expected: "clari_copilot.get_call_details",
   },
   {
-    query: "show the transcript and competitor mentions of a clari copilot call",
+    query:
+      "show the transcript and competitor mentions of a clari copilot call",
     expected: "clari_copilot.get_call_details",
   },
 
@@ -1210,6 +1211,20 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "extract structured data from documents into a json schema",
     expected: "extract_data.extract_information_from_documents",
+  },
+
+  // --- gong ---
+  {
+    query: "list my recent Gong calls from last week",
+    expected: "gong.list_calls",
+  },
+  {
+    query: "get the details and summary of this Gong call",
+    expected: "gong.get_call",
+  },
+  {
+    query: "show me the transcript of this Gong call",
+    expected: "gong.get_call_transcript",
   },
 
   // --- cross-server (no platform named) ---
