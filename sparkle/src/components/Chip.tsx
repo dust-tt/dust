@@ -44,10 +44,26 @@ const chipVariants = cva("inline-flex box-border items-center", {
       success: cn("bg-success-100 border-success-200", "text-success-900"),
       info: cn("bg-info-100 border-info-200", "text-info-900"),
       warning: cn("bg-warning-100 border-warning-200", "text-warning-900"),
-      green: cn("bg-green-100 border-green-200", "text-green-900"),
-      blue: cn("bg-blue-100 border-blue-200", "text-blue-900"),
-      rose: cn("bg-rose-100 border-rose-200", "text-rose-900"),
-      golden: cn("bg-golden-100 border-golden-200", "text-golden-900"),
+      // The raw palette scales (green/blue/rose/golden) are not redefined in
+      // the `.dark` block (unlike the semantic scales above), so they need
+      // explicit dark variants to flip. The dark shades mirror the inverted
+      // mapping the v3 `-night` shades used (e.g. green-100 -> green-900).
+      green: cn(
+        "bg-green-100 border-green-200 text-green-900",
+        "dark:bg-green-900 dark:border-green-800 dark:text-green-100"
+      ),
+      blue: cn(
+        "bg-blue-100 border-blue-200 text-blue-900",
+        "dark:bg-blue-900 dark:border-blue-800 dark:text-blue-100"
+      ),
+      rose: cn(
+        "bg-rose-100 border-rose-200 text-rose-900",
+        "dark:bg-rose-900 dark:border-rose-800 dark:text-rose-100"
+      ),
+      golden: cn(
+        "bg-golden-100 border-golden-200 text-golden-900",
+        "dark:bg-golden-900 dark:border-golden-800 dark:text-golden-100"
+      ),
       white: cn("border bg-background border-border", "text-primary-900"),
     },
   },
@@ -71,10 +87,22 @@ const closeIconVariants: Record<ChipColorType, string> = {
     "text-warning-900 hover:text-warning-700 active:text-warning-950"
   ),
   info: cn("text-info-900 hover:text-info-700 active:text-info-950"),
-  green: cn("text-green-900 hover:text-green-700 active:text-green-950"),
-  blue: cn("text-blue-900 hover:text-blue-700 active:text-blue-950"),
-  rose: cn("text-rose-900 hover:text-rose-700 active:text-rose-950"),
-  golden: cn("text-golden-900 hover:text-golden-700 active:text-golden-950"),
+  green: cn(
+    "text-green-900 hover:text-green-700 active:text-green-950",
+    "dark:text-green-100 dark:hover:text-green-300 dark:active:text-green-50"
+  ),
+  blue: cn(
+    "text-blue-900 hover:text-blue-700 active:text-blue-950",
+    "dark:text-blue-100 dark:hover:text-blue-300 dark:active:text-blue-50"
+  ),
+  rose: cn(
+    "text-rose-900 hover:text-rose-700 active:text-rose-950",
+    "dark:text-rose-100 dark:hover:text-rose-300 dark:active:text-rose-50"
+  ),
+  golden: cn(
+    "text-golden-900 hover:text-golden-700 active:text-golden-950",
+    "dark:text-golden-100 dark:hover:text-golden-300 dark:active:text-golden-50"
+  ),
   white: cn("text-primary-700 hover:text-primary-500 active:text-primary-950"),
 };
 
