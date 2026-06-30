@@ -322,6 +322,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-oai but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH,
+        name: "dust-oai-nano-high",
+        description:
+          "Same as dust but running GPT-5.4 Nano with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_NEXT:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_NEXT,
@@ -500,6 +508,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
         name: "dust-goog-high",
         description: "Same as dust-goog but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GOOG_LITE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG_LITE,
+        name: "dust-goog-lite",
+        description: "Same as dust but running Gemini 3.1 Flash Lite.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO:
