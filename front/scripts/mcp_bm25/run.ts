@@ -20,6 +20,7 @@ import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_wareho
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
+import { FILES_SERVER } from "@app/lib/api/actions/servers/files/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
@@ -173,6 +174,7 @@ const SERVERS: ServerEntry[] = [
   { name: "luma", tools: LUMA_SERVER.tools },
   { name: "extract_data", tools: EXTRACT_DATA_SERVER.tools },
   { name: "gong", tools: GONG_SERVER.tools },
+  { name: "files", tools: FILES_SERVER.tools },
 ];
 
 function out(line: string): void {
