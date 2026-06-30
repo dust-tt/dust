@@ -448,7 +448,7 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "medium",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
-  supportsBatchProcessing: true,
+  supportsBatchProcessing: false,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],

@@ -6,8 +6,9 @@ import {
   _getClaude3HaikuGlobalAgent,
   _getClaude3OpusGlobalAgent,
   _getClaude4_5HaikuGlobalAgent,
+  _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
-  _getClaudeSonnetLatestGlobalAgent,
+  _getClaude5SonnetGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import {
   _getArchivedBrowserSummaryAgent,
@@ -642,7 +643,13 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
-  [GLOBAL_AGENTS_SID.CLAUDE_SONNET_LATEST]: {
+  [GLOBAL_AGENTS_SID.CLAUDE_5_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
@@ -847,8 +854,15 @@ function getGlobalAgent({
         mcpServerViews,
       });
       break;
-    case GLOBAL_AGENTS_SID.CLAUDE_SONNET_LATEST:
-      agentConfiguration = _getClaudeSonnetLatestGlobalAgent({
+    case GLOBAL_AGENTS_SID.CLAUDE_5_SONNET:
+      agentConfiguration = _getClaude5SonnetGlobalAgent({
+        auth,
+        settings,
+        mcpServerViews,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
+      agentConfiguration = _getClaude4_5SonnetGlobalAgent({
         auth,
         settings,
         mcpServerViews,
@@ -1471,6 +1485,7 @@ function getGlobalAgent({
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
 const RETIRED_GLOBAL_AGENTS_SID = [
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,

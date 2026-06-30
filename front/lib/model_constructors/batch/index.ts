@@ -1,5 +1,4 @@
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
-import { AnthropicGlobalClaudeSonnetFiveBatch } from "@app/lib/model_constructors/batch/endpoints/anthropic_global_claude_sonnet_five";
 import { AnthropicGlobalClaudeSonnetFourDotSixBatch } from "@app/lib/model_constructors/batch/endpoints/anthropic_global_claude_sonnet_four_dot_six";
 import { GoogleAiStudioGlobalGeminiThreeDotOneFlashLiteBatch } from "@app/lib/model_constructors/batch/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
 import { GoogleAiStudioGlobalGeminiThreeDotOneProBatch } from "@app/lib/model_constructors/batch/endpoints/google_ai_studio_global_gemini_3_1_pro";
@@ -8,8 +7,6 @@ import { MistralEuropeMistralMedium35Batch } from "@app/lib/model_constructors/b
 import { OpenAIResponsesGlobalGptFiveDotFiveBatch } from "@app/lib/model_constructors/batch/endpoints/openai_responses_global_gpt_five_dot_five";
 
 export const BATCH_ENDPOINTS = {
-  [AnthropicGlobalClaudeSonnetFiveBatch.id]:
-    AnthropicGlobalClaudeSonnetFiveBatch,
   [AnthropicGlobalClaudeSonnetFourDotSixBatch.id]:
     AnthropicGlobalClaudeSonnetFourDotSixBatch,
   [GoogleAiStudioGlobalGeminiThreeDotOneProBatch.id]:
