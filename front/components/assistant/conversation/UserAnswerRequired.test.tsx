@@ -48,6 +48,7 @@ vi.mock("@dust-tt/sparkle", () => {
       .join(" ");
 
   const OptionCard = ({
+    type = "option",
     label,
     description,
     selected,
@@ -57,8 +58,18 @@ vi.mock("@dust-tt/sparkle", () => {
     disabled,
     onFocusCapture,
     onMouseEnter,
+    value,
+    onChange,
+    placeholder,
+    name,
+    id,
+    inputRef,
+    onFocus,
+    onBlur,
+    onKeyDown,
   }: {
-    label: string;
+    type?: "option" | "input";
+    label?: string;
     description?: string | null;
     selected?: boolean;
     disableHover?: boolean;
@@ -67,26 +78,51 @@ vi.mock("@dust-tt/sparkle", () => {
     disabled?: boolean;
     onFocusCapture?: React.FocusEventHandler<HTMLButtonElement>;
     onMouseEnter?: React.MouseEventHandler<HTMLButtonElement>;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      onFocusCapture={onFocusCapture}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick?.();
-        }
-      }}
-      onMouseEnter={onMouseEnter}
-      disabled={disabled}
-      className={cn(!disableHover && "hover-enabled", className)}
-      data-selected={selected ? "true" : "false"}
-    >
-      <span>{label}</span>
-      {description ? <span>{description}</span> : null}
-    </button>
-  );
+    value?: string;
+    onChange?: (value: string) => void;
+    placeholder?: string;
+    name?: string;
+    id?: string;
+    inputRef?: React.Ref<HTMLInputElement>;
+    onFocus?: React.FocusEventHandler<HTMLInputElement>;
+    onBlur?: React.FocusEventHandler<HTMLInputElement>;
+    onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  }) =>
+    type === "input" ? (
+      <div className={className}>
+        <input
+          ref={inputRef}
+          id={id}
+          name={name}
+          placeholder={placeholder}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange?.(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          onKeyDown={onKeyDown}
+        />
+      </div>
+    ) : (
+      <button
+        type="button"
+        onClick={onClick}
+        onFocusCapture={onFocusCapture}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick?.();
+          }
+        }}
+        onMouseEnter={onMouseEnter}
+        disabled={disabled}
+        className={cn(!disableHover && "hover-enabled", className)}
+        data-selected={selected ? "true" : "false"}
+      >
+        <span>{label}</span>
+        {description ? <span>{description}</span> : null}
+      </button>
+    );
 
   const Card = ({
     children,

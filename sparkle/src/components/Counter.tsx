@@ -4,14 +4,19 @@ import * as React from "react";
 
 export const COUNTER_SIZES = ["xs", "sm", "md"] as const;
 
+const pillShadow =
+  "drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)] [text-shadow:0px_1px_1.5px_rgba(0,0,0,0.08)]";
+
 const counterVariants = cva(
   "inline-flex items-center justify-center rounded-full",
   {
     variants: {
+      // Fixed height == min-width keeps single digits circular; box-border
+      // absorbs the outline variant's 1px border so it stays a circle.
       size: {
-        xs: "h-4 min-w-[16px] px-0.5 text-xs",
-        sm: "h-5 min-w-[20px] px-1 heading-xs",
-        md: "h-6 min-w-[24px] px-1.5 heading-sm",
+        xs: "h-5 min-w-5 px-1 heading-xs",
+        sm: "h-6 min-w-6 px-1 heading-sm",
+        md: "h-7 min-w-7 px-1.5 heading-base",
       },
       variant: {
         primary: "",
@@ -19,6 +24,7 @@ const counterVariants = cva(
         "highlight-secondary": "",
         warning: "",
         "warning-secondary": "",
+        info: "",
         outline: "",
         ghost: "",
         "ghost-secondary": "",
@@ -32,27 +38,50 @@ const counterVariants = cva(
       {
         isInButton: false,
         variant: "primary",
-        className: "bg-primary text-primary-50",
+        className: cn(
+          "bg-gradient-to-b from-primary-700 to-primary-950 text-primary-50",
+          pillShadow
+        ),
       },
+      // Non-greyscale variants use the semantic colored tokens (aliases of the
+      // blue/rose/golden palette), shared with Chip and dark-mode aware.
       {
         isInButton: false,
         variant: ["highlight", "highlight-secondary"],
-        className: "bg-highlight text-white",
+        className: cn(
+          "bg-gradient-to-b from-highlight-400 to-highlight-500 text-white",
+          pillShadow
+        ),
       },
       {
         isInButton: false,
         variant: ["warning", "warning-secondary"],
-        className: "bg-warning text-white",
+        className: cn(
+          "bg-gradient-to-b from-warning-400 to-warning-500 text-white",
+          pillShadow
+        ),
+      },
+      {
+        isInButton: false,
+        variant: "info",
+        className: cn(
+          "bg-gradient-to-b from-info-400 to-info-500 text-white",
+          pillShadow
+        ),
       },
       {
         isInButton: false,
         variant: "outline",
-        className: "bg-primary-150 text-primary-900",
+        className: cn(
+          "bg-gradient-to-b from-background to-muted-background border border-border text-muted-foreground",
+          pillShadow
+        ),
       },
       {
         isInButton: false,
         variant: ["ghost", "ghost-secondary"],
-        className: "text-primary",
+        className:
+          "text-muted-foreground [text-shadow:0px_1px_1.5px_rgba(0,0,0,0.08)]",
       },
       {
         isInButton: true,
@@ -68,6 +97,11 @@ const counterVariants = cva(
         isInButton: true,
         variant: ["warning", "warning-secondary"],
         className: "bg-warning-400 text-white",
+      },
+      {
+        isInButton: true,
+        variant: "info",
+        className: "bg-info-400 text-white",
       },
       {
         isInButton: true,
