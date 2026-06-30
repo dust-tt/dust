@@ -1454,7 +1454,7 @@ describe("FileResource", () => {
         where: { id: bundleFile.id, workspaceId: workspace.id },
       });
       expect(row?.mountFilePath).toBe(
-        `w/${workspace.sId}/pods/${space.sId}/sandbox_functions/greet.ts`
+        `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
       );
     });
 

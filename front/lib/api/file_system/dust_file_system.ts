@@ -17,7 +17,10 @@
 import config from "@app/lib/api/config";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
-import type { FileSystemMount } from "@app/lib/api/file_system/types";
+import type {
+  FileSystemMount,
+  SandboxOnlyMount,
+} from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   LEGACY_PREFIX_CONVERSATION,
@@ -181,7 +184,8 @@ export class DustFileSystem {
   private constructor(
     private readonly auth: Authenticator,
     private readonly mounts: ReadonlyArray<FileSystemMount>,
-    private readonly backend: FileSystemBackend
+    private readonly backend: FileSystemBackend,
+    private readonly sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
   ) {}
 
   // --------------------------------------------------------------------------
@@ -256,7 +260,9 @@ export class DustFileSystem {
    */
   static async forPod(
     auth: Authenticator,
-    space: SpaceResource
+    space: SpaceResource,
+    // Decided by the caller that owns that concern (the file system only passes them to setup).
+    { sandboxOnlyMounts = [] }: { sandboxOnlyMounts?: SandboxOnlyMount[] } = {}
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
     if (!space.canRead(auth)) {
       return new Err(
@@ -275,7 +281,9 @@ export class DustFileSystem {
       fileStorageConfig.getGcsPrivateUploadsBucket()
     );
 
-    return new Ok(new DustFileSystem(auth, [mount], backend));
+    return new Ok(
+      new DustFileSystem(auth, [mount], backend, sandboxOnlyMounts)
+    );
   }
 
   /**
@@ -985,7 +993,10 @@ export class DustFileSystem {
     sandbox: SandboxResource,
     image: SandboxImage
   ): Promise<Result<void, Error>> {
-    const adapter = this.backend.createSandboxAdapter(this.mounts);
+    const adapter = this.backend.createSandboxAdapter(
+      this.mounts,
+      this.sandboxOnlyMounts
+    );
     return adapter.setup(this.auth, sandbox, image);
   }
 
@@ -994,7 +1005,10 @@ export class DustFileSystem {
     sandbox: SandboxResource,
     image: SandboxImage
   ): Promise<Result<void, Error>> {
-    const adapter = this.backend.createSandboxAdapter(this.mounts);
+    const adapter = this.backend.createSandboxAdapter(
+      this.mounts,
+      this.sandboxOnlyMounts
+    );
     return adapter.refreshCredential(this.auth, sandbox, image);
   }
 }

@@ -1,7 +1,10 @@
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
-import type { FileSystemMount } from "@app/lib/api/file_system/types";
+import type {
+  FileSystemMount,
+  SandboxOnlyMount,
+} from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
@@ -585,15 +588,35 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   }
 
   createSandboxAdapter(
-    mounts: ReadonlyArray<FileSystemMount>
+    mounts: ReadonlyArray<FileSystemMount>,
+    sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
   ): SandboxMountAdapter {
     const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
-    const targets: GCSMountTarget[] = mounts.map((mount) => ({
-      gcsPrefix: this.mountRootGCSPrefix(mount),
-      sandboxMountPoint: mount.sandboxMountPoint,
-      legacySandboxMountPoint: mount.legacySandboxMountPoint,
-    }));
+    const targets: GCSMountTarget[] = [
+      ...mounts.map((mount) => ({
+        gcsPrefix: this.mountRootGCSPrefix(mount),
+        sandboxMountPoint: mount.sandboxMountPoint,
+        legacySandboxMountPoint: mount.legacySandboxMountPoint,
+        readOnly: false,
+      })),
+      ...sandboxOnlyMounts.map((mount) => ({
+        gcsPrefix: this.sandboxOnlyMountGCSPrefix(mount),
+        sandboxMountPoint: mount.sandboxMountPoint,
+        legacySandboxMountPoint: null,
+        readOnly: mount.readOnly,
+      })),
+    ];
 
     return new GCSSandboxMountAdapter(bucket, targets);
+  }
+
+  private sandboxOnlyMountGCSPrefix(mount: SandboxOnlyMount): string {
+    switch (mount.kind) {
+      case "pod_sandbox_functions":
+        return `w/${this.workspaceId}/pods/${mount.id}/sandbox-functions`;
+
+      default:
+        assertNever(mount.kind);
+    }
   }
 }

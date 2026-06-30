@@ -50,6 +50,24 @@ export type FileSystemMount = {
   };
 };
 
+/**
+ * A mount that exists only inside the sandbox filesystem and is never exposed through the
+ * scoped-path API (the agent's file tools never see it). Used for prefixes the sandbox must read
+ * but that are not an agent-visible namespace, e.g. published sandbox-function bundles.
+ */
+export type SandboxOnlyMountKind = "pod_sandbox_functions";
+
+export type SandboxOnlyMount = {
+  kind: SandboxOnlyMountKind;
+
+  /** sId of the pod this mount belongs to. */
+  id: string;
+
+  sandboxMountPoint: string;
+
+  readOnly: boolean;
+};
+
 export type DustFileSystemErrorCode =
   | "unauthorized"
   | "not_found"
