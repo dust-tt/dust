@@ -6,7 +6,14 @@ import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
-export type SyncCouponResponseBody = { coupon: CouponType };
+// `expirationDate` and `archivedAt` are `Date | null` in CouponType but
+// JSON-serialize to ISO strings on the wire.
+type CouponWireShape = Omit<CouponType, "expirationDate" | "archivedAt"> & {
+  expirationDate: string | null;
+  archivedAt: string | null;
+};
+
+export type SyncCouponResponseBody = { coupon: CouponWireShape };
 
 // Mounted at /api/lookup/coupons. Uses the REGION_RESOLVER_SECRET Bearer-token
 // auth — same as all other /api/lookup/* endpoints. No session required

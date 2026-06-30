@@ -1,22 +1,17 @@
-import { pushCouponToOtherRegion } from "@app/lib/api/poke/coupons";
-import { config } from "@app/lib/api/regions/config";
-import { CouponResource } from "@app/lib/resources/coupon_resource";
+import {
+  canCreateCoupon,
+  createCouponAndPushToOtherRegion,
+  type pushCouponToOtherRegion,
+} from "@app/lib/api/poke/coupons";
 import { CouponFactory } from "@app/tests/utils/CouponFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/regions/config", async (importActual) => {
-  const mod =
-    await importActual<typeof import("@app/lib/api/regions/config")>();
-  return {
-    ...mod,
-    config: { ...mod.config, isMainRegion: vi.fn() },
-  };
-});
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/poke/coupons", () => ({
+  canCreateCoupon: vi.fn(),
+  createCouponAndPushToOtherRegion: vi.fn(),
   pushCouponToOtherRegion: vi.fn(),
 }));
 
@@ -30,6 +25,19 @@ const VALID_BODY = {
   expirationDate: null,
 };
 
+const mockCouponJSON = {
+  sId: "cou_fake",
+  code: "TESTCODE",
+  description: null,
+  discountType: "seat",
+  amount: 10,
+  durationMonths: null,
+  maxRedemptions: null,
+  redemptionCount: 0,
+  expirationDate: null,
+  archivedAt: null,
+};
+
 function postCoupon(body: object) {
   return honoApp.request("/api/poke/coupons", {
     method: "POST",
@@ -41,8 +49,10 @@ function postCoupon(body: object) {
 describe("POST /api/poke/coupons", { sequential: true }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(config.isMainRegion).mockReturnValue(true);
-    vi.mocked(pushCouponToOtherRegion).mockResolvedValue(new Ok(undefined));
+    vi.mocked(canCreateCoupon).mockReturnValue(true);
+    vi.mocked(createCouponAndPushToOtherRegion).mockResolvedValue(
+      new Ok({ toJSON: () => ({ ...mockCouponJSON }) } as any)
+    );
   });
 
   it("returns 401 when the user is not a super user", async () => {
@@ -54,7 +64,7 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
   });
 
   it("returns 400 when called from a non-main region (EU)", async () => {
-    vi.mocked(config.isMainRegion).mockReturnValue(false);
+    vi.mocked(canCreateCoupon).mockReturnValue(false);
     await createPrivateApiMockRequest({ isSuperUser: true });
 
     const response = await postCoupon(VALID_BODY);
@@ -63,11 +73,13 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
     expect(await response.json()).toMatchObject({
       error: { type: "invalid_request_error" },
     });
-    expect(pushCouponToOtherRegion).not.toHaveBeenCalled();
+    expect(createCouponAndPushToOtherRegion).not.toHaveBeenCalled();
   });
 
   it("returns 400 when a coupon with the same code already exists", async () => {
-    await CouponFactory.create({ code: VALID_BODY.code });
+    vi.mocked(createCouponAndPushToOtherRegion).mockResolvedValue(
+      new Err({ type: "coupon_already_exists" })
+    );
     await createPrivateApiMockRequest({ isSuperUser: true });
 
     const response = await postCoupon(VALID_BODY);
@@ -81,7 +93,10 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
     });
   });
 
-  it("creates coupon, pushes to other region, and returns 201", async () => {
+  it("calls createCouponAndPushToOtherRegion and returns 201", async () => {
+    vi.mocked(createCouponAndPushToOtherRegion).mockResolvedValue(
+      new Ok({ toJSON: () => ({ ...mockCouponJSON, code: "NEWCODE" }) } as any)
+    );
     await createPrivateApiMockRequest({ isSuperUser: true });
 
     const response = await postCoupon({ ...VALID_BODY, code: "NEWCODE" });
@@ -89,15 +104,16 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
     expect(response.status).toBe(201);
     const { coupon } = await response.json();
     expect(coupon.code).toBe("NEWCODE");
-    expect(pushCouponToOtherRegion).toHaveBeenCalledOnce();
-    expect(pushCouponToOtherRegion).toHaveBeenCalledWith(
+    expect(createCouponAndPushToOtherRegion).toHaveBeenCalledOnce();
+    expect(createCouponAndPushToOtherRegion).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({ code: "NEWCODE" })
     );
   });
 
-  it("deletes the coupon and returns 500 when the push to other region fails", async () => {
-    vi.mocked(pushCouponToOtherRegion).mockResolvedValue(
-      new Err("other_region_push_failed")
+  it("returns 500 when sync to other region fails", async () => {
+    vi.mocked(createCouponAndPushToOtherRegion).mockResolvedValue(
+      new Err({ type: "sync_failed" })
     );
     await createPrivateApiMockRequest({ isSuperUser: true });
 
@@ -107,8 +123,6 @@ describe("POST /api/poke/coupons", { sequential: true }, () => {
     expect(await response.json()).toMatchObject({
       error: { type: "internal_server_error" },
     });
-    const coupon = await CouponResource.findByCode("FAILCODE");
-    expect(coupon).toBeNull();
   });
 });
 
