@@ -36,12 +36,17 @@ export type NewButtonVariantType = (typeof NEW_BUTTON_VARIANTS)[number];
 export const NEW_BUTTON_SIZES = ["xs", "sm", "md"] as const;
 export type NewButtonSizeType = (typeof NEW_BUTTON_SIZES)[number];
 
-// The shadow shared by every raised button: a 0.5px hairline outline, a drop,
-// and a faint inset highlight. The hairline uses the `border-dark` token via
-// `var()` so it flips with the theme — light gray in light mode, dark slate in
-// dark — which is exactly the per-mode tint the primary/outline swap needs.
+// The shadow shared by every raised button: a 0.5px hairline outline, an
+// ambient drop, and a faint inset top-highlight. Both tinted layers reference
+// flipping tokens so the whole shadow inverts in dark mode with no `dark:`:
+//   - hairline -> `border-dark` (light gray in light, dark slate in dark), the
+//     exact per-mode tint the primary/outline swap needs.
+//   - ambient drop -> `foreground` (dark in light => a normal drop shadow;
+//     light in dark => a soft glow), which is how elevation reads on a dark
+//     canvas (Emil: alpha-white edges glow, dark drop shadows go muddy).
+// The inset highlight stays white: a top catch-light that works in both modes.
 const RAISED_SHADOW =
-  "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.10)]";
+  "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_color-mix(in_oklch,var(--color-foreground)_10%,transparent)]";
 
 // Hover/active overlay for the raised variants. Per-variant (not in the base)
 // so ghost variants leave the ::after pseudo free for consumers (e.g. Tabs).
@@ -72,7 +77,7 @@ const newButtonVariants = cva(
           "bg-linear-to-b from-primary-700 to-primary-800",
           "text-primary-50",
           RAISED_SHADOW,
-          "disabled:from-primary-300 disabled:to-primary-400 disabled:shadow-none",
+          "data-[disabled]:from-primary-300 data-[disabled]:to-primary-400 data-[disabled]:shadow-none",
           // Light: dark button -> white overlay (size-based, below). Dark: light
           // button -> a faint dark overlay instead.
           "dark:hover:after:bg-black/[0.04] dark:active:after:bg-black/[0.04]"
@@ -82,14 +87,14 @@ const newButtonVariants = cva(
           "bg-linear-to-b from-highlight-400 to-highlight-500",
           "text-white",
           RAISED_SHADOW,
-          "disabled:from-highlight-200 disabled:to-highlight-300 disabled:shadow-none"
+          "data-[disabled]:from-highlight-200 data-[disabled]:to-highlight-300 data-[disabled]:shadow-none"
         ),
         warning: cn(
           OVERLAY,
           "bg-linear-to-b from-red-400 to-red-500",
           "text-white",
           RAISED_SHADOW,
-          "disabled:from-red-200 disabled:to-red-300 disabled:shadow-none"
+          "data-[disabled]:from-red-200 data-[disabled]:to-red-300 data-[disabled]:shadow-none"
         ),
         // The mirror of primary: light gradient + muted text in light mode,
         // dark gradient + light text in dark mode, via the same flipping ramp.
@@ -102,32 +107,32 @@ const newButtonVariants = cva(
           // Light: light button -> faint dark overlay. Dark: dark button ->
           // white overlay (size-based, below).
           "hover:after:bg-black/[0.02] active:after:bg-black/[0.02]",
-          "disabled:shadow-none disabled:text-faint"
+          "data-[disabled]:shadow-none data-[disabled]:text-faint"
         ),
         ghost: cn(
           "text-foreground",
           "hover:bg-black/[0.02] active:bg-black/[0.02]",
           "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
-          "disabled:text-faint",
+          "data-[disabled]:text-faint",
           "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
         ),
         "ghost-secondary": cn(
           "text-muted-foreground",
           "hover:bg-black/[0.02] active:bg-black/[0.02]",
           "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
-          "disabled:text-faint",
+          "data-[disabled]:text-faint",
           "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
         ),
         "highlight-ghost": cn(
           "text-highlight-500",
           "hover:bg-highlight-50 active:bg-highlight-50",
-          "disabled:text-highlight-muted",
+          "data-[disabled]:text-highlight-muted",
           "disabled:hover:bg-transparent"
         ),
         "warning-ghost": cn(
           "text-warning-500",
           "hover:bg-warning-50 active:bg-warning-50",
-          "disabled:text-warning-muted",
+          "data-[disabled]:text-warning-muted",
           "disabled:hover:bg-transparent"
         ),
       },
@@ -369,9 +374,16 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
           isPulsing && "animate-ring-pulse-soft",
           className
         )}
-        disabled={isLoading || props.disabled}
         aria-label={ariaLabel || tooltip || label}
         {...props}
+        // Loading blocks interaction (disabled attr) but keeps the active look:
+        // the muted `data-[disabled]:` styles are gated on this attribute, which
+        // is set only when truly disabled — so a loading button stays full-color
+        // and its spinner matches the label. Set after {...props} so a
+        // consumer-passed `disabled` can't clobber the computed value.
+        disabled={isLoading || props.disabled}
+        data-disabled={props.disabled && !isLoading ? "" : undefined}
+        aria-busy={isLoading || undefined}
         {...pointerEventProps}
       >
         {shouldUseSlot ? <span>{content}</span> : content}
