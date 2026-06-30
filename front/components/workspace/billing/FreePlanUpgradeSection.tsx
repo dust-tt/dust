@@ -1,5 +1,5 @@
-import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Check, Icon } from "@dust-tt/sparkle";
+import { Check, Icon } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 const UPGRADE_FEATURES = [
   "Invite members beyond the 5-seat cap",
@@ -8,10 +8,12 @@ const UPGRADE_FEATURES = [
 ] as const;
 
 interface FreePlanUpgradeSectionProps {
-  owner: LightWorkspaceType;
+  action: ReactNode;
 }
 
-export function FreePlanUpgradeSection({ owner }: FreePlanUpgradeSectionProps) {
+export function FreePlanUpgradeSection({
+  action,
+}: FreePlanUpgradeSectionProps) {
   return (
     <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
       <div className="flex items-center justify-between gap-4">
@@ -23,12 +25,7 @@ export function FreePlanUpgradeSection({ owner }: FreePlanUpgradeSectionProps) {
             One paid seat opens up the whole workspace
           </span>
         </div>
-        <Button
-          label="Upgrade a member"
-          size="sm"
-          variant="highlight"
-          href={`/w/${owner.sId}/usage`}
-        />
+        {action}
       </div>
 
       <div className="flex flex-col gap-2">

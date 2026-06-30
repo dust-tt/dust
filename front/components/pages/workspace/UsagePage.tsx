@@ -3,6 +3,7 @@ import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
+import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePlanUpgradeSection";
 import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
@@ -27,6 +28,7 @@ import {
 } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import {
+  isCreditPricedFreePlan,
   isEnterprisePlanPrefix,
   isFreePlan,
   isUpgraded,
@@ -64,7 +66,6 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isAdmin } from "@app/types/user";
 import {
   AlertCircle,
@@ -123,30 +124,6 @@ function memberFromUpgradeRequest(
 }
 
 const DEFAULT_PAGE_SIZE = 25;
-
-function noOrFreeSeatTitle(seatType: "none" | "free"): string {
-  switch (seatType) {
-    case "none":
-      return "You don't have a seat";
-    case "free":
-      return "You're on the Free seat";
-    default:
-      assertNeverAndIgnore(seatType);
-      return "";
-  }
-}
-
-function noOrFreeSeatBody(seatType: "none" | "free"): string {
-  switch (seatType) {
-    case "none":
-      return "Assign yourself a seat to send messages.";
-    case "free":
-      return "The Free seat has limited usage. Upgrade your seat to get more credits.";
-    default:
-      assertNeverAndIgnore(seatType);
-      return "";
-  }
-}
 
 export function UsagePage() {
   const owner = useWorkspace();
@@ -742,24 +719,18 @@ export function UsagePage() {
           )}
         </div>
 
-        {!isReadOnly &&
-          (myUsage?.seatType === "free" || myUsage?.seatType === "none") && (
-            <ContentMessage
-              title={noOrFreeSeatTitle(myUsage.seatType)}
-              icon={AlertCircle}
-              variant="blue"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <span>{noOrFreeSeatBody(myUsage.seatType)}</span>
-                <Button
-                  label="Change my seat"
-                  variant="primary"
-                  size="xs"
-                  onClick={() => setChangeSeatMember(myUsage)}
-                />
-              </div>
-            </ContentMessage>
-          )}
+        {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
+          <FreePlanUpgradeSection
+            action={
+              <Button
+                label="Change my seat"
+                variant="highlight"
+                size="sm"
+                onClick={() => setChangeSeatMember(myUsage)}
+              />
+            }
+          />
+        )}
 
         {showPoolSection && (
           <Page.Vertical gap="xs" align="stretch">
