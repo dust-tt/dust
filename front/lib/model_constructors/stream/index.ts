@@ -1,6 +1,5 @@
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { AgentPlatformEuropeClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_haiku_four_dot_five";
-import { AgentPlatformEuropeClaudeSonnetFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_five";
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
 import { AgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
@@ -42,8 +41,6 @@ export const STREAM_ENDPOINTS = {
     AnthropicGlobalClaudeOpusFourDotSevenStream,
   [AnthropicGlobalClaudeOpusFourDotSixStream.id]:
     AnthropicGlobalClaudeOpusFourDotSixStream,
-  [AgentPlatformEuropeClaudeSonnetFiveStream.id]:
-    AgentPlatformEuropeClaudeSonnetFiveStream,
   [AgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
     AgentPlatformEuropeClaudeSonnetFourDotSixStream,
   [AgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:

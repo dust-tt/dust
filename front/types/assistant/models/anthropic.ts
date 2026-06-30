@@ -455,7 +455,8 @@ export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": true,
+    // TODO: enable once we have Vertex EU quota for Sonnet 5.
+    "europe-west1": false,
   },
 };
 export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
