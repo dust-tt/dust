@@ -23,6 +23,7 @@ import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_genera
 import { FILES_SERVER } from "@app/lib/api/actions/servers/files/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
+import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
 import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
@@ -179,6 +180,7 @@ const SERVERS: ServerEntry[] = [
   { name: "files", tools: FILES_SERVER.tools },
   { name: "gmail", tools: GMAIL_SERVER.tools },
   { name: "google_calendar", tools: GOOGLE_CALENDAR_SERVER.tools },
+  { name: "github", tools: GITHUB_SERVER.tools },
 ];
 
 function out(line: string): void {
