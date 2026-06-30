@@ -242,7 +242,7 @@ export default function CoursePage({
                   sizes="100vw"
                   priority
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-50% to-white" />
+                <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent via-transparent via-50% to-white" />
               </>
             )}
             <Grid className="relative px-6 lg:px-0">

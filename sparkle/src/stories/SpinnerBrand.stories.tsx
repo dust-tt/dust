@@ -86,20 +86,15 @@ export const ColoredGray: Story = {
 export const Gallery: Story = {
   render: () => {
     return (
-      <div className="s-flex s-flex-col s-gap-8">
+      <div className="flex flex-col gap-8">
         {SPINNER_DUST_VARIANTS.map((variant) => (
-          <div key={variant} className="s-flex s-flex-col s-gap-3">
-            <div className="s-heading-sm s-text-foreground">{variant}</div>
-            <div className="s-flex s-items-end s-gap-6">
+          <div key={variant} className="flex flex-col gap-3">
+            <div className="heading-sm text-foreground">{variant}</div>
+            <div className="flex items-end gap-6">
               {SPINNER_DUST_SIZES.map((size) => (
-                <div
-                  key={size}
-                  className="s-flex s-flex-col s-items-center s-gap-2"
-                >
+                <div key={size} className="flex flex-col items-center gap-2">
                   <SpinnerBrand size={size} variant={variant} />
-                  <div className="s-label-xs s-text-muted-foreground">
-                    {size}
-                  </div>
+                  <div className="label-xs text-muted-foreground">{size}</div>
                 </div>
               ))}
             </div>

@@ -29,7 +29,7 @@ export const DropzoneOverlayExample = () => {
 
   return (
     <div
-      className="s-flex s-min-h-full s-flex-col s-gap-4"
+      className="flex min-h-full flex-col gap-4"
       onMouseEnter={() => {
         setIsDragActive(true);
       }}
@@ -42,7 +42,7 @@ export const DropzoneOverlayExample = () => {
         description={"Drag and drop your files here"}
         title={"Drag and drop"}
       />
-      <div className="s-flex s-min-h-96 s-items-center s-justify-center">
+      <div className="flex min-h-96 items-center justify-center">
         This is some placeholder content.
       </div>
     </div>

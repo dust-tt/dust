@@ -260,9 +260,7 @@ export function AssistantKnowledgeSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="heading-lg text-foreground dark:text-foreground-night">
-        Knowledge
-      </div>
+      <div className="heading-lg text-foreground">Knowledge</div>
       {hasDocuments && hasTables ? (
         <Tree isBoxed className="max-h-[400px] overflow-y-auto">
           <Tree.Item label="Documents" visual={Folder}>

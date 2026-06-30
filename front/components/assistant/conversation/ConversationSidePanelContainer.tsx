@@ -54,7 +54,7 @@ export default function ConversationSidePanelContainer({
     }
 
     return (
-      <div className="fixed inset-0 z-50 flex flex-col overflow-hidden overscroll-none bg-panel-background dark:bg-panel-background-night">
+      <div className="fixed inset-0 z-50 flex flex-col overflow-hidden overscroll-none bg-panel-background">
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
           <ConversationSidePanelContent
             conversation={conversation}
@@ -94,7 +94,7 @@ export default function ConversationSidePanelContainer({
           // On mobile: overlay full screen with absolute positioning.
           "md:relative",
           currentPanel &&
-            "absolute inset-0 bg-panel-background dark:bg-panel-background-night md:relative md:inset-auto"
+            "absolute inset-0 bg-panel-background md:relative md:inset-auto"
         )}
       >
         {currentPanel && conversation && (

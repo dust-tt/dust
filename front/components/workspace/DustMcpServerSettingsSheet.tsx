@@ -233,12 +233,12 @@ export function DustMcpServerSettingsSheet({
                     Add at least one redirect URI before saving.
                   </ContentMessage>
                 ) : (
-                  <div className="flex w-full flex-col divide-y divide-separator dark:divide-separator-night">
+                  <div className="flex w-full flex-col divide-y divide-separator">
                     {draftSettings.allowedRedirectUris.map((uri) => (
                       <div key={uri} className="flex items-center gap-3 py-3">
                         <pre
                           title={uri}
-                          className="min-w-0 grow overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
+                          className="min-w-0 grow overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
                         >
                           {uri}
                         </pre>

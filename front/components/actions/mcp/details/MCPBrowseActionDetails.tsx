@@ -38,7 +38,7 @@ function BrowseResultItem({ result }: BrowseResultItemProps) {
           <span className="truncate text-sm font-medium">{title}</span>
           {subtitle && (
             // Only show at most 2 lines, with an ellipsis if too big.
-            <p className="line-clamp-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="line-clamp-2 text-sm text-muted-foreground">
               {subtitle}
             </p>
           )}
@@ -81,9 +81,7 @@ export function MCPBrowseActionDetails({
                   websiteUrl={url}
                   className="grayscale transition-all duration-150 group-hover:grayscale-0"
                 />
-                <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {url}
-                </span>
+                <span className="text-sm text-muted-foreground">{url}</span>
               </div>
             ))}
           </div>
@@ -97,9 +95,7 @@ export function MCPBrowseActionDetails({
 
         {generatedFiles.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-              Files
-            </span>
+            <span className="text-sm font-semibold text-foreground">Files</span>
             {generatedFiles.map((file) => (
               <ToolGeneratedFileDetails key={file.fileId} resource={file} />
             ))}

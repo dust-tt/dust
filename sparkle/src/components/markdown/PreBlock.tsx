@@ -6,14 +6,11 @@ import { cva } from "class-variance-authority";
 import React, { memo } from "react";
 
 export const preBlockVariants = cva(
-  [
-    "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
-    "s-border-border dark:s-border-border-night",
-  ],
+  ["my-2 w-full break-all rounded-2xl border", "border-border"],
   {
     variants: {
       variant: {
-        surface: "s-bg-muted-background dark:s-bg-muted-background-night",
+        surface: "bg-muted-background",
       },
     },
   }

@@ -60,7 +60,7 @@ export const APIKeysList = ({
   showCreditMonthlyCap,
 }: APIKeysListProps) => {
   return (
-    <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
+    <div className="space-y-4 divide-y divide-primary-200">
       <ul role="list" className="pt-4">
         {sortBy(keys, (key) => key.status[0] + key.name).map((key) => (
           <li key={key.secret} className="px-2 py-4">
@@ -89,7 +89,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Name: <strong>{key.name ?? "Unnamed"}</strong>
@@ -97,7 +97,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Domain: <strong>{config.getApiBaseUrl()}</strong>
@@ -105,7 +105,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Spaces:{" "}
@@ -116,7 +116,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Scope: <strong>{formatKeyScope(key.role)}</strong>
@@ -125,7 +125,7 @@ export const APIKeysList = ({
                         <p
                           className={cn(
                             "truncate font-mono text-sm",
-                            "text-muted-foreground dark:text-muted-foreground-night"
+                            "text-muted-foreground"
                           )}
                         >
                           Monthly cap:{" "}
@@ -155,7 +155,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "front-normal text-xs",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Created {key.creator ? `by ${key.creator} ` : ""}
@@ -167,7 +167,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "front-normal text-xs",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         {key.lastUsedAt ? (

@@ -114,8 +114,8 @@ export function ZendeskRateLimitConfig({
       }
     >
       <ContextItem.Description>
-        <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground dark:text-muted-foreground-night">
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             Set a transaction-per-second limit to manage Zendesk rate
             restrictions. Leave empty to disable.
           </div>
@@ -132,7 +132,7 @@ export function ZendeskRateLimitConfig({
               }
               className="w-24"
             />
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground">
               transactions per second
             </span>
             <Button

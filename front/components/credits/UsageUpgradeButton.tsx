@@ -94,9 +94,7 @@ export function UsageUpgradeButton({
 
     if (alreadyRequested) {
       return (
-        <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-          Request sent
-        </span>
+        <span className="copy-sm text-muted-foreground">Request sent</span>
       );
     }
 
@@ -123,7 +121,7 @@ export function UsageUpgradeButton({
             <DialogTitle>Request a usage limit upgrade</DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Your workspace admins will be notified that you'd like your usage
               limit increased. They'll review your request and get back to you.
             </p>

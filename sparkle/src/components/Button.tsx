@@ -55,129 +55,128 @@ function isSmallButtonSize(
 // Define button styling with cva
 const buttonVariants = cva(
   cn(
-    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
-    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
-    "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
+    "inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors ring-inset select-none",
+    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
   ),
   {
     variants: {
       variant: {
         primary: cn(
-          "s-border s-border-transparent",
-          "s-bg-primary-800 dark:s-bg-primary-800-night",
-          "s-text-primary-50 dark:s-text-primary-50-night",
-          "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
-          "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
-          "disabled:s-bg-primary-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
+          "border border-transparent",
+          "bg-primary-800",
+          "text-primary-50",
+          "hover:bg-primary-light",
+          "active:bg-primary-dark",
+          "disabled:bg-primary-muted disabled:text-highlight-on/60"
         ),
         highlight: cn(
-          "s-border s-border-transparent",
-          "s-bg-highlight",
-          "s-text-highlight-50",
-          "hover:s-bg-highlight-light",
-          "active:s-bg-highlight-dark",
-          "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
+          "border border-transparent",
+          "bg-highlight",
+          "text-highlight-on",
+          "hover:bg-highlight-light",
+          "active:bg-highlight-dark",
+          "disabled:bg-highlight-muted disabled:text-highlight-on/60"
         ),
         "highlight-secondary": cn(
-          "s-border",
-          "s-border-border dark:s-border-border-night",
-          "s-text-highlight-500 dark:s-text-highlight-500-night",
-          "s-bg-background dark:s-bg-background-night",
-          "hover:s-text-highlight-500 dark:hover:s-text-highlight-500-night",
-          "hover:s-bg-highlight-50 dark:hover:s-bg-highlight-900",
-          "hover:s-border-primary-150 dark:hover:s-border-border-night",
-          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
-          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
-          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
-          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
+          "border",
+          "border-border",
+          "text-highlight-500",
+          "bg-background",
+          "hover:text-highlight-500",
+          "hover:bg-highlight-50",
+          "hover:border-primary-150",
+          "active:bg-primary-300",
+          "disabled:text-primary-muted",
+          "disabled:border-primary-100",
+          "disabled:hover:bg-background",
+          "disabled:hover:border-primary-100",
+          "disabled:hover:text-primary-muted"
         ),
         warning: cn(
-          "s-border s-border-transparent",
-          "s-bg-warning",
-          "s-text-warning-50",
-          "hover:s-bg-warning-light",
-          "active:s-bg-warning-dark",
-          "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
+          "border border-transparent",
+          "bg-warning",
+          "text-warning-on",
+          "hover:bg-warning-light",
+          "active:bg-warning-dark",
+          "disabled:bg-warning-muted disabled:text-highlight-on/60"
         ),
         "warning-secondary": cn(
-          "s-border",
-          "s-border-border dark:s-border-border-night",
-          "s-text-warning-500 dark:s-text-warning-500-night",
-          "s-bg-background dark:s-bg-background-night",
-          "hover:s-text-warning-500 dark:hover:s-text-warning-500-night",
-          "hover:s-bg-warning-50 dark:hover:s-bg-warning-900",
-          "hover:s-border-primary-150 dark:hover:s-border-border-night",
-          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
-          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
-          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
-          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
+          "border",
+          "border-border",
+          "text-warning-500",
+          "bg-background",
+          "hover:text-warning-500",
+          "hover:bg-warning-50",
+          "hover:border-primary-150",
+          "active:bg-primary-300",
+          "disabled:text-primary-muted",
+          "disabled:border-primary-100",
+          "disabled:hover:bg-background",
+          "disabled:hover:border-primary-100",
+          "disabled:hover:text-primary-muted"
         ),
         outline: cn(
-          "s-border",
-          "s-border-border dark:s-border-border-night",
-          "s-text-primary dark:s-text-primary-night",
-          "s-bg-background dark:s-bg-background-night",
-          "hover:s-text-primary dark:hover:s-text-primary-night",
-          "hover:s-bg-primary-100 dark:hover:s-bg-primary-900",
-          "hover:s-border-primary-150 dark:hover:s-border-border-night",
-          "active:s-bg-primary-300 dark:active:s-bg-primary-900",
-          "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-          "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night",
-          "disabled:hover:s-bg-background dark:disabled:hover:s-bg-background-night",
-          "disabled:hover:s-border-primary-100 dark:disabled:hover:s-border-primary-100-night",
-          "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
+          "border",
+          "border-border",
+          "text-primary",
+          "bg-background",
+          "hover:text-primary",
+          "hover:bg-primary-100",
+          "hover:border-primary-150",
+          "active:bg-primary-300",
+          "disabled:text-primary-muted",
+          "disabled:border-primary-100",
+          "disabled:hover:bg-background",
+          "disabled:hover:border-primary-100",
+          "disabled:hover:text-primary-muted"
         ),
         ghost: cn(
-          "s-border",
-          "s-border-border/0 dark:s-border-border-night/0",
-          "s-text-foreground dark:s-text-white",
-          "hover:s-bg-hover dark:hover:s-bg-hover-night",
-          "hover:s-text-primary-900 dark:hover:s-text-white",
-          "hover:s-border-border/0 dark:hover:s-border-border-night/0",
-          "active:s-bg-primary-300 dark:active:s-bg-hover-night",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
-          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
-          "disabled:hover:s-border-border/0 dark:disabled:hover:s-border-border-night/0",
-          "disabled:hover:s-text-primary-400 dark:disabled:hover:s-text-primary-400-night"
+          "border",
+          "border-transparent",
+          "text-foreground",
+          "hover:bg-hover",
+          "hover:text-primary-900",
+          "hover:border-transparent",
+          "active:bg-primary-300",
+          "disabled:text-faint",
+          "disabled:hover:bg-transparent",
+          "disabled:hover:border-transparent",
+          "disabled:hover:text-faint"
         ),
         "ghost-secondary": cn(
-          "s-border",
-          "s-border-border/0 dark:s-border-border-night/0",
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
-          "hover:s-bg-hover dark:hover:s-bg-hover-night",
-          "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
-          "hover:s-border-border/0 dark:hover:s-border-border-night/0",
-          "active:s-bg-primary-300 dark:active:s-bg-hover-night",
-          "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night",
-          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent",
-          "disabled:hover:s-border-border/0 dark:disabled:hover:s-border-border-night/0",
-          "disabled:hover:s-text-primary-400 dark:disabled:hover:s-text-primary-400-night"
+          "border",
+          "border-transparent",
+          "text-muted-foreground",
+          "hover:bg-hover",
+          "hover:text-primary-900",
+          "hover:border-transparent",
+          "active:bg-primary-300",
+          "disabled:text-faint",
+          "disabled:hover:bg-transparent",
+          "disabled:hover:border-transparent",
+          "disabled:hover:text-faint"
         ),
       },
       size: {
-        "icon-xs": "s-h-6 s-w-6 s-gap-1 s-shrink-0",
-        icon: "s-h-7 s-w-7 s-gap-1.5 s-shrink-0",
-        "icon-sm": "s-h-9 s-w-9 s-gap-2 s-shrink-0",
-        xmini: "s-h-6 s-px-1.5 s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-px-2 s-gap-1.5 s-shrink-0",
-        xs: "s-h-7 s-px-2.5 s-gap-1.5 s-shrink-0",
-        sm: "s-h-9 s-px-3 s-gap-2 s-shrink-0",
-        md: "s-h-12 s-px-4 s-py-2 s-gap-2.5 s-shrink-0",
+        "icon-xs": "h-6 w-6 gap-1 shrink-0",
+        icon: "h-7 w-7 gap-1.5 shrink-0",
+        "icon-sm": "h-9 w-9 gap-2 shrink-0",
+        xmini: "h-6 px-1.5 gap-1 shrink-0",
+        mini: "h-7 px-2 gap-1.5 shrink-0",
+        xs: "h-7 px-2.5 gap-1.5 shrink-0",
+        sm: "h-9 px-3 gap-2 shrink-0",
+        md: "h-12 px-4 py-2 gap-2.5 shrink-0",
       },
       rounded: {
-        "icon-xs": "s-rounded-lg",
-        icon: "s-rounded-lg",
-        "icon-sm": "s-rounded-xl",
-        xmini: "s-rounded-lg",
-        mini: "s-rounded-lg",
-        xs: "s-rounded-lg",
-        sm: "s-rounded-xl",
-        md: "s-rounded-2xl",
-        full: "s-rounded-full",
+        "icon-xs": "rounded-lg",
+        icon: "rounded-lg",
+        "icon-sm": "rounded-xl",
+        xmini: "rounded-lg",
+        mini: "rounded-lg",
+        xs: "rounded-lg",
+        sm: "rounded-xl",
+        md: "rounded-2xl",
+        full: "rounded-full",
       },
     },
     defaultVariants: {
@@ -191,9 +190,9 @@ const buttonVariants = cva(
 const labelVariants = cva("", {
   variants: {
     size: {
-      "icon-xs": "s-hidden",
-      icon: "s-hidden",
-      "icon-sm": "s-hidden",
+      "icon-xs": "hidden",
+      icon: "hidden",
+      "icon-sm": "hidden",
       xmini: "",
       mini: "",
       xs: "",
@@ -206,27 +205,27 @@ const labelVariants = cva("", {
     },
   },
   compoundVariants: [
-    { size: "xmini", hasLighterFont: false, className: "s-label-xs" },
-    { size: "mini", hasLighterFont: false, className: "s-label-xs" },
-    { size: "xs", hasLighterFont: false, className: "s-label-xs" },
-    { size: "sm", hasLighterFont: false, className: "s-label-sm" },
-    { size: "md", hasLighterFont: false, className: "s-label-base" },
+    { size: "xmini", hasLighterFont: false, className: "label-xs" },
+    { size: "mini", hasLighterFont: false, className: "label-xs" },
+    { size: "xs", hasLighterFont: false, className: "label-xs" },
+    { size: "sm", hasLighterFont: false, className: "label-sm" },
+    { size: "md", hasLighterFont: false, className: "label-base" },
     {
       size: "xmini",
       hasLighterFont: true,
-      className: "s-text-xs s-font-normal",
+      className: "text-xs font-normal",
     },
     {
       size: "mini",
       hasLighterFont: true,
-      className: "s-text-xs s-font-normal",
+      className: "text-xs font-normal",
     },
-    { size: "xs", hasLighterFont: true, className: "s-text-xs s-font-normal" },
-    { size: "sm", hasLighterFont: true, className: "s-text-sm s-font-normal" },
+    { size: "xs", hasLighterFont: true, className: "text-xs font-normal" },
+    { size: "sm", hasLighterFont: true, className: "text-sm font-normal" },
     {
       size: "md",
       hasLighterFont: true,
-      className: "s-text-base s-font-normal",
+      className: "text-base font-normal",
     },
   ],
   defaultVariants: {
@@ -248,14 +247,14 @@ const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
 };
 
 const chevronVariantMap = {
-  primary: "s-text-muted-foreground-night dark:s-text-muted-foreground",
-  outline: "s-text-faint",
-  ghost: "s-text-faint",
-  "ghost-secondary": "s-text-faint",
-  highlight: "s-text-white/60",
-  "highlight-secondary": "s-text-highlight-500 dark:s-text-highlight-500-night",
-  warning: "s-text-white/60",
-  "warning-secondary": "s-text-warning-500 dark:s-text-warning-500-night",
+  primary: "text-faint",
+  outline: "text-faint",
+  ghost: "text-faint",
+  "ghost-secondary": "text-faint",
+  highlight: "text-white/60",
+  "highlight-secondary": "text-highlight-500",
+  warning: "text-white/60",
+  "warning-secondary": "text-warning-500",
 } as const;
 
 export interface MetaButtonProps
@@ -321,15 +320,15 @@ const COUNTER_SIZE_MAP: Record<ButtonSize, CounterSizeType> = {
   md: "md",
 };
 
-const loadingContainerVariants = cva("-s-mx-0.5", {
+const loadingContainerVariants = cva("-mx-0.5", {
   variants: {
     size: {
-      "icon-xs": "s-w-5 s-px-0.5",
-      icon: "s-w-5 s-px-0.5",
+      "icon-xs": "w-5 px-0.5",
+      icon: "w-5 px-0.5",
       "icon-sm": "",
-      xmini: "s-w-5 s-px-0.5",
-      mini: "s-w-5 s-px-0.5",
-      xs: "s-w-5 s-px-0.5",
+      xmini: "w-5 px-0.5",
+      mini: "w-5 px-0.5",
+      xs: "w-5 px-0.5",
       sm: "",
       md: "",
     },
@@ -342,10 +341,10 @@ const loadingContainerVariants = cva("-s-mx-0.5", {
 const selectButtonSizeVariants = cva("", {
   variants: {
     size: {
-      "icon-xs": "s-w-auto s-px-1.5",
-      xmini: "s-w-auto s-px-1.5",
-      mini: "s-w-auto s-px-2",
-      icon: "s-w-auto s-px-2",
+      "icon-xs": "w-auto px-1.5",
+      xmini: "w-auto px-1.5",
+      mini: "w-auto px-2",
+      icon: "w-auto px-2",
       "icon-sm": "",
       xs: "",
       sm: "",
@@ -440,7 +439,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const renderIcon = (visual: ButtonIconType, extraClass = "") => {
       if (isReactElement(visual)) {
-        return <span className={cn(extraClass, "s-shrink-0")}>{visual}</span>;
+        return <span className={cn(extraClass, "shrink-0")}>{visual}</span>;
       }
 
       return (
@@ -468,13 +467,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </div>
         ) : (
-          icon && renderIcon(icon, "-s-mx-0.5")
+          icon && renderIcon(icon, "-mx-0.5")
         )}
 
         {showContainer && (
           <div
             className={cn(
-              "s-flex s-items-center s-gap-2",
+              "flex items-center gap-2",
               labelVariants({ size, hasLighterFont })
             )}
           >
@@ -489,7 +488,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           </div>
         )}
-        {isSelect && renderChevron(ChevronDown, isLoading ? "" : "-s-mr-1")}
+        {isSelect && renderChevron(ChevronDown, isLoading ? "" : "-mr-1")}
       </>
     );
 
@@ -520,7 +519,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         isRounded={isRounded}
         disabled={isLoading || props.disabled}
         className={cn(
-          (isPulsing || isPulsingBriefly) && "s-animate-ring-pulse",
+          (isPulsing || isPulsingBriefly) && "animate-ring-pulse",
           isSelect && selectButtonSizeVariants({ size }),
           className
         )}

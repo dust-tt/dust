@@ -21,7 +21,7 @@ export function SimilarSkillsDisplay({
 
   if (similarSkills.length === 0 && isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Spinner size="xs" />
         <span>Checking for similar skills...</span>
       </div>
@@ -31,9 +31,7 @@ export function SimilarSkillsDisplay({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="heading-sm text-foreground dark:text-foreground-night">
-          Similar skills found
-        </span>
+        <span className="heading-sm text-foreground">Similar skills found</span>
         {isLoading && <Spinner size="xs" />}
       </div>
       <div className="space-y-3">
@@ -45,18 +43,18 @@ export function SimilarSkillsDisplay({
               <SkillAvatar name={skill.name} size="sm" />
               <div className="flex flex-col">
                 <div className="flex items-center gap-1">
-                  <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                  <span className="text-sm font-medium text-foreground">
                     {skill.name}
                   </span>
                   <LinkWrapper
                     href={`/w/${owner.sId}/builder/skills#?skillId=${skill.sId}`}
                     target="_blank"
-                    className="text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <Icon visual={LinkExternal01} size="xs" />
                   </LinkWrapper>
                 </div>
-                <span className="line-clamp-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                <span className="line-clamp-1 text-xs text-muted-foreground">
                   {skill.agentFacingDescription}
                 </span>
               </div>

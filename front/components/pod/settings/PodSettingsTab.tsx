@@ -75,9 +75,9 @@ const OPEN_POD_DISABLED_TOOLTIP =
   "Open Pods are disabled by your workspace admin.";
 
 const DEFAULT_PILL_BASE_CLASSNAME =
-  "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200";
+  "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border bg-background text-sm text-primary transition-colors duration-200";
 const DEFAULT_PILL_INTERACTIVE_CLASSNAME =
-  "cursor-pointer hover:bg-primary-100 hover:border-primary-150 dark:hover:bg-primary-900 dark:hover:border-border-night";
+  "cursor-pointer hover:bg-primary-100 hover:border-primary-150";
 
 export function PodSettingsTab({
   owner,
@@ -262,7 +262,7 @@ export function PodSettingsTab({
       <span className="grow truncate notranslate">
         {displayedDefaultAgent?.name ?? "Dust"}
         {isInheritingWorkspaceDefault && (
-          <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
+          <span className="ml-1 text-muted-foreground">
             · Workspace default
           </span>
         )}
@@ -272,7 +272,7 @@ export function PodSettingsTab({
           tooltipTriggerAsChild
           trigger={
             <span
-              className="flex items-center text-warning dark:text-warning-night"
+              className="flex items-center text-warning"
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -289,11 +289,7 @@ export function PodSettingsTab({
         />
       )}
       {interactive && (
-        <Icon
-          visual={ChevronDown}
-          size="xs"
-          className="-mr-1 text-faint dark:text-faint-night"
-        />
+        <Icon visual={ChevronDown} size="xs" className="-mr-1 text-faint" />
       )}
     </div>
   );
@@ -530,7 +526,7 @@ export function PodSettingsTab({
 
         <div className="flex w-full flex-col gap-2">
           <div className="heading-lg">Instructions for Agents</div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm text-muted-foreground">
             Seen by all agents in this Pod, stored as{" "}
             <span className="font-medium">{POD_AGENTS_MD_FILENAME}</span> in the
             Pod's files.
@@ -550,7 +546,7 @@ export function PodSettingsTab({
         {isDefaultAgentEnabled && (
           <div className="flex w-full flex-col gap-2">
             <div className="heading-lg">Default agent</div>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               The agent pre-selected when anyone starts a new conversation in
               this Pod.{" "}
               {hasWorkspaceDefaultAgentFeature &&
@@ -590,7 +586,7 @@ export function PodSettingsTab({
         {isDefaultSkillsEnabled && (
           <div className="flex w-full flex-col gap-2">
             <div className="heading-lg">Default Skills</div>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foregroundt">
               The skills pre-selected when anyone starts a new conversation in
               this Pod. Members can still edit the skills in each conversation.
             </p>
@@ -614,7 +610,7 @@ export function PodSettingsTab({
                     <button
                       type="button"
                       aria-label={`Remove ${skill.name}`}
-                      className="-mr-1 flex items-center text-faint hover:text-primary dark:text-faint-night dark:hover:text-primary-night"
+                      className="-mr-1 flex items-center text-faint hover:text-primary"
                       onClick={() => void removeDefaultSkill(skill.sId)}
                     >
                       <Icon visual={XCircle} size="xs" />
@@ -646,7 +642,7 @@ export function PodSettingsTab({
                       <Icon
                         visual={ChevronDown}
                         size="xs"
-                        className="-mr-1 text-faint dark:text-faint-night"
+                        className="-mr-1 text-faint"
                       />
                     </button>
                   </DropdownMenuTrigger>
@@ -656,7 +652,7 @@ export function PodSettingsTab({
                     dropdownHeaders={skillPickerDropdownHeaders}
                   >
                     {addableSkills.length === 0 ? (
-                      <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                         {normalizedSkillSearch.length > 0
                           ? "No skills found"
                           : "No more skills to add"}
@@ -679,7 +675,7 @@ export function PodSettingsTab({
                 </DropdownMenu>
               )}
               {!isPodEditor && selectedDefaultSkills.length === 0 && (
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-sm text-muted-foreground">
                   No default skills configured.
                 </p>
               )}
@@ -762,12 +758,12 @@ export function PodSettingsTab({
         </div>
 
         {isPodEditor && (
-          <div className="flex w-full flex-col gap-3 border-t border-border pt-8 dark:border-border-night">
+          <div className="flex w-full flex-col gap-3 border-t border-border pt-8">
             <h3 className="heading-lg">Danger Zone</h3>
             <h4 className="heading-base">Archive</h4>
             {podMetadata?.archivedAt ? (
               <div className="flex flex-col gap-3">
-                <p className="text-sm text-foreground dark:text-foreground-night">
+                <p className="text-sm text-foreground">
                   Archived on{" "}
                   <span className="font-medium">
                     {formatTimestampToFriendlyDate(
@@ -787,7 +783,7 @@ export function PodSettingsTab({
               </div>
             ) : (
               <>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-sm text-muted-foreground">
                   This Pod will be removed from the sidebar. Its data stays
                   intact and can still be used as a data source.
                 </p>
@@ -801,7 +797,7 @@ export function PodSettingsTab({
               </>
             )}
             <h4 className="heading-base">Delete</h4>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               This permanently removes all content—conversations, folders,
               websites, and data sources. Agents using this Pod's tools will be
               impacted. This cannot be undone.

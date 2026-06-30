@@ -1,5 +1,5 @@
 import "../src/styles/fonts.css";
-import "../src/styles/global.css";
+import "../src/styles/tailwind.css";
 
 import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react";
@@ -48,7 +48,7 @@ const preview: Preview = {
       default: "light",
       list: [
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "s-dark", color: "#000000" },
+        { name: "dark", class: "dark", color: "#000000" },
       ],
     },
     backgrounds: {
@@ -90,7 +90,7 @@ const preview: Preview = {
     withThemeByClassName({
       themes: {
         light: "",
-        dark: "s-dark",
+        dark: "dark",
       },
       defaultTheme: "light",
     }),

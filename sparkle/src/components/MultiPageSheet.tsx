@@ -72,7 +72,7 @@ const MultiPageSheetFooter = ({
 }: MultiPageSheetFooterProps) => {
   const content = (
     <div
-      className={cn("s-flex s-flex-none s-flex-col s-gap-3 s-p-4", className)}
+      className={cn("flex flex-none flex-col gap-3 p-4", className)}
       {...props}
     >
       {children && (
@@ -81,9 +81,9 @@ const MultiPageSheetFooter = ({
           <Separator />
         </>
       )}
-      <div className="s-flex s-flex-row s-justify-between">
+      <div className="flex flex-row justify-between">
         <div>{leftButton && <Button {...leftButton} />}</div>
-        <div className="s-flex s-gap-2">
+        <div className="flex gap-2">
           {centerButton && <Button {...centerButton} />}
           {rightButton && <Button data-sheet-save="true" {...rightButton} />}
         </div>
@@ -172,10 +172,10 @@ const MultiPageSheetContent = React.forwardRef<
         {...props}
       >
         <SheetHeader hideButton={true}>
-          <div className="s-flex s-items-center s-justify-between s-pr-8">
-            <div className="s-flex s-items-center s-gap-3">
+          <div className="flex items-center justify-between pr-8">
+            <div className="flex items-center gap-3">
               {showNavigation && showHeaderNavigation && (
-                <div className="s-flex s-items-center s-gap-1">
+                <div className="flex items-center gap-1">
                   <Button
                     icon={ChevronLeft}
                     variant="ghost"
@@ -194,12 +194,12 @@ const MultiPageSheetContent = React.forwardRef<
                   />
                 </div>
               )}
-              <div className="s-flex s-items-center s-gap-2">
+              <div className="flex items-center gap-2">
                 {currentPage.icon && (
                   <Icon
                     visual={currentPage.icon}
                     size="lg"
-                    className="s-text-foreground"
+                    className="text-foreground"
                   />
                 )}
                 <div>
@@ -213,30 +213,30 @@ const MultiPageSheetContent = React.forwardRef<
               </div>
             </div>
             {showNavigation && pages.length > 1 && (
-              <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <div className="text-xs text-muted-foreground">
                 {currentPageIndex + 1} / {pages.length}
               </div>
             )}
           </div>
         </SheetHeader>
 
-        <div className="s-min-h-0 s-flex-1 s-overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div
             className={cn(
-              "s-h-full",
-              currentPage.fixedContent ? "s-flex s-flex-col" : ""
+              "h-full",
+              currentPage.fixedContent ? "flex flex-col" : ""
             )}
           >
             {currentPage.fixedContent && (
               <>
-                <div className="s-flex-none s-px-5 s-py-4">
+                <div className="flex-none px-5 py-4">
                   {currentPage.fixedContent}
                 </div>
                 <Separator />
               </>
             )}
             <SheetContainer
-              className={currentPage.fixedContent ? "s-flex-1" : undefined}
+              className={currentPage.fixedContent ? "flex-1" : undefined}
               noScroll={currentPage.noScroll}
             >
               {currentPage.content}

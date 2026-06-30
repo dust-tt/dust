@@ -6,7 +6,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
-    "tailwind": "npx tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
+    "tailwind": "npx @tailwindcss/cli -i ./src/styles/tailwind.css -o dist/sparkle.css",
     "build:esm": "npm run copy:esm && tsgo && tsc-alias",
     "copy:esm": "copyfiles -u 1 src/**/*.css src/**/*.svg src/**/*.png src/**/*.json dist/esm",
     "build:cjs": "node scripts/build-cjs.mjs",
@@ -41,9 +41,10 @@
       "require": "./dist/cjs/*.js"
     },
     "./dist/sparkle.css": "./dist/sparkle.css",
-    "./tailwind-preset": "./tailwind-preset.js"
+    "./styles/tailwind.css": "./src/styles/tailwind.css",
+    "./styles/theme.css": "./src/styles/theme.css"
   },
-  "files": ["dist/", "src/", "tailwind-preset.js", "!src/stories/"],
+  "files": ["dist/", "src/", "!src/stories/"],
   "sideEffects": ["src/index_with_tw_base.ts", "*.css"],
   "devDependencies": {
     "@chromatic-com/storybook": "^5.2.1",
@@ -53,14 +54,15 @@
     "@storybook/react": "10.4.1",
     "@storybook/react-vite": "10.4.1",
     "@svgr/cli": "^8.0.1",
-    "@tailwindcss/container-queries": "^0.1.1",
-    "@tailwindcss/forms": "^0.5.3",
+    "@tailwindcss/forms": "^0.5.9",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^9.0.6",
     "@typescript/native-preview": "^7.0.0-dev.20260224.1",
-    "autoprefixer": "^10.4.23",
+    "@tailwindcss/cli": "^4.3.0",
+    "@tailwindcss/postcss": "^4.3.0",
+
     "copyfiles": "^2.4.1",
     "esbuild": "^0.27.3",
     "esbuild-plugin-postcss2": "^0.1.2",
@@ -68,9 +70,9 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "storybook": "10.4.1",
-    "tailwindcss": "^3.4.19",
-    "tailwindcss-animate": "^1.0.7",
+    "tailwindcss": "^4.3.0",
     "tsc-alias": "^1.8.10",
+    "tw-animate-css": "^1.4.0",
     "typescript-transform-paths": "^3.4.7",
     "uuid": "^9.0.1",
     "vite": "^8.0.0"

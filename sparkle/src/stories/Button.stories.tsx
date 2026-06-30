@@ -138,16 +138,12 @@ const ButtonBySize = ({
 }) => (
   <>
     <Separator />
-    <h3 className="s-text-primary dark:s-text-primary-50">
-      {size?.toUpperCase()}
-    </h3>
-    <div className="s-flex s-flex-col s-gap-4">
+    <h3 className="text-primary">{size?.toUpperCase()}</h3>
+    <div className="flex flex-col gap-4">
       {BUTTON_VARIANTS.map((variant) => (
-        <div key={variant} className="s-flex s-flex-col s-gap-2">
-          <div className="s-text-sm s-font-medium s-text-primary dark:s-text-primary-night">
-            {variant}
-          </div>
-          <div className="s-flex s-items-center s-gap-4">
+        <div key={variant} className="flex flex-col gap-2">
+          <div className="text-sm font-medium text-primary">{variant}</div>
+          <div className="flex items-center gap-4">
             <Button size={size} variant={variant} label="Button" />
             <Button size={size} variant={variant} label="Button" isLoading />
             <Button size={size} variant={variant} icon={Plus} label="Button" />
@@ -161,7 +157,7 @@ const ButtonBySize = ({
 
 export const Gallery: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       <ButtonBySize size="xs" />
       <ButtonBySize size="sm" />
       <ButtonBySize size="md" />

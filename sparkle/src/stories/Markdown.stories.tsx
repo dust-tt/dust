@@ -25,11 +25,7 @@ const meta = {
   decorators: [(Story) => <Story />],
   argTypes: {
     textColor: {
-      options: [
-        "s-text-foreground",
-        "s-text-muted-foreground",
-        "s-text-green-700",
-      ],
+      options: ["text-foreground", "text-muted-foreground", "text-green-700"],
       control: { type: "radio" },
     },
   },

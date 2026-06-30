@@ -24,9 +24,7 @@ export function RecentInvoices() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
-          Invoices
-        </h2>
+        <h2 className="text-xl font-semibold text-foreground">Invoices</h2>
         {billingInvoices.length > 0 && (
           <Button
             label="See all"
@@ -42,7 +40,7 @@ export function RecentInvoices() {
           <Spinner />
         </div>
       ) : billingInvoices.length === 0 ? (
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-sm text-muted-foreground">
           No invoices available.
         </div>
       ) : (
@@ -54,7 +52,7 @@ export function RecentInvoices() {
               return (
                 <div
                   key={invoice.id}
-                  className="grid grid-cols-1 gap-2 border-b border-border py-2 text-sm text-muted-foreground last:border-b-0 dark:border-border-night dark:text-muted-foreground-night md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center md:gap-4"
+                  className="grid grid-cols-1 gap-2 border-b border-border py-2 text-sm text-muted-foreground last:border-b-0 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center md:gap-4"
                 >
                   <div className="truncate">{getInvoiceLabel(invoice)}</div>
                   <div>

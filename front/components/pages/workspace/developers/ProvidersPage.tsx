@@ -97,10 +97,7 @@ export function Providers({ owner }: ProvidersProps) {
               title="Model Providers"
               description="Model providers available to your Dust apps."
             />
-            <ul
-              role="list"
-              className="divide-y divide-separator pt-4 dark:divide-separator-night"
-            >
+            <ul role="list" className="divide-y divide-separator pt-4">
               {filteredProviders.map((provider) => (
                 <ProviderListItem
                   key={provider.providerId}
@@ -121,10 +118,7 @@ export function Providers({ owner }: ProvidersProps) {
               title="Service Providers"
               description="Service providers enable your Dust Apps to query external data or write to external services."
             />
-            <ul
-              role="list"
-              className="divide-y divide-separator pt-4 dark:divide-separator-night"
-            >
+            <ul role="list" className="divide-y divide-separator pt-4">
               {serviceProviders.map((provider) => (
                 <ProviderListItem
                   key={provider.providerId}
@@ -166,9 +160,7 @@ function ProviderListItem({
             <p
               className={cn(
                 "heading-base truncate",
-                isEnabled
-                  ? "text-foreground dark:text-foreground-night"
-                  : "text-primary-500 dark:text-primary-500-night"
+                isEnabled ? "text-foreground" : "text-primary-500"
               )}
             >
               {name}
@@ -180,7 +172,7 @@ function ProviderListItem({
             />
           </div>
           {apiKey && (
-            <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
               <span className="shrink-0">API Key:</span>
               <div className="dd-privacy-mask max-w-72 truncate">
                 {redactString(apiKey, 4)}

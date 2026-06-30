@@ -97,11 +97,9 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
     }));
 
     return (
-      <div
-        className={cn(menuStyleClasses.container, "s-w-72 s-p-0 s-shadow-lg")}
-      >
+      <div className={cn(menuStyleClasses.container, "w-72 p-0 shadow-lg")}>
         {items.length === 0 ? (
-          <div className="s-px-3 s-py-3 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <div className="px-3 py-3 text-sm text-muted-foreground">
             No matches
           </div>
         ) : (
@@ -111,10 +109,8 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
               type="button"
               className={cn(
                 menuStyleClasses.item({ variant: "default" }),
-                "s-w-full s-text-left",
-                index === selectedIndex
-                  ? "s-bg-muted-background dark:s-bg-muted-night"
-                  : ""
+                "w-full text-left",
+                index === selectedIndex ? "bg-muted-background" : ""
               )}
               onMouseDown={(event) => {
                 event.preventDefault();
@@ -129,12 +125,12 @@ const SuggestionList = forwardRef<SuggestionListHandle, SuggestionProps>(
                 visual={item.avatarUrl}
                 isRounded={item.type === "user"}
               />
-              <div className="s-flex s-min-w-0 s-flex-1 s-items-center">
-                <div className="s-heading-sm s-truncate s-text-foreground dark:s-text-foreground-night">
+              <div className="flex min-w-0 flex-1 items-center">
+                <div className="heading-sm truncate text-foreground">
                   {item.label}
                 </div>
               </div>
-              <span className="s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="text-xs font-normal text-muted-foreground">
                 {item.type === "user" ? "Member" : "Agent"}
               </span>
             </button>
@@ -157,7 +153,7 @@ const SuggestionAdd = Mark.create({
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-suggestion-add": "",
-        class: "s-rounded s-px-0.5",
+        class: "rounded px-0.5",
       }),
       0,
     ];
@@ -174,7 +170,7 @@ const SuggestionRemove = Mark.create({
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-suggestion-remove": "",
-        class: "s-rounded s-px-0.5 s-line-through",
+        class: "rounded px-0.5 line-through",
       }),
       0,
     ];
@@ -191,8 +187,7 @@ const DiffAdd = Mark.create({
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-diff-add": "",
-        class:
-          "s-rounded s-bg-success-100 dark:s-bg-success-100-night s-px-0.5 s-text-success-800 dark:s-text-success-800-night",
+        class: "rounded bg-success-100 px-0.5 text-success-800",
       }),
       0,
     ];
@@ -209,8 +204,7 @@ const DiffRemove = Mark.create({
       "span",
       mergeAttributes(HTMLAttributes, {
         "data-diff-remove": "",
-        class:
-          "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-px-0.5 s-text-warning-800 dark:s-text-warning-800-night s-line-through",
+        class: "rounded bg-warning-100 px-0.5 text-warning-800 line-through",
       }),
       0,
     ];
@@ -314,7 +308,7 @@ const getSuggestionBlockRange = (
 };
 
 const suggestionSelectionVariants = cva(
-  "s-transition-colors s-duration-200 s-ease-in-out",
+  "transition-colors duration-200 ease-in-out",
   {
     variants: {
       kind: {
@@ -330,26 +324,22 @@ const suggestionSelectionVariants = cva(
       {
         kind: "add",
         state: "selected",
-        className:
-          "s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800 dark:s-text-highlight-800-night",
+        className: "rounded bg-highlight-100 text-highlight-800",
       },
       {
         kind: "add",
         state: "unselected",
-        className:
-          "s-rounded s-bg-highlight-50 dark:s-bg-highlight-50-night s-text-muted-foreground dark:s-text-muted-foreground-night",
+        className: "rounded bg-highlight-50 text-muted-foreground",
       },
       {
         kind: "remove",
         state: "selected",
-        className:
-          "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 dark:s-text-warning-800-night",
+        className: "rounded bg-warning-100 text-warning-800",
       },
       {
         kind: "remove",
         state: "unselected",
-        className:
-          "s-rounded s-bg-warning-50 dark:s-bg-muted-background-night s-text-muted-foreground dark:s-text-muted-foreground-night",
+        className: "rounded bg-warning-50 text-muted-foreground",
       },
     ],
   }
@@ -439,13 +429,7 @@ const mentionExtension = Mention.extend({
   draggable: true,
 }).configure({
   HTMLAttributes: {
-    class: cn(
-      "sparkle-mention",
-      "s-rounded s-px-1 s-transition-colors",
-      "s-text-highlight-600 dark:s-text-highlight-600-night",
-      "hover:s-bg-highlight-100 dark:hover:s-bg-highlight-100-night",
-      "hover:s-text-highlight-800 dark:hover:s-text-highlight-800-night"
-    ),
+    class: cn("sparkle-mention", "rounded px-1 transition-colors"),
   },
   renderText({ node }) {
     const label = node.attrs.label ?? node.attrs.id ?? "";
@@ -522,8 +506,7 @@ const instructionSnippetMark = Mark.create({
         "data-instruction-snippet": "",
         class: cn(
           "sparkle-instruction",
-          "s-rounded s-text-golden-900 s-bg-golden-100 s-px-1",
-          "dark:s-text-golden-900-night dark:s-bg-golden-100-night"
+          "rounded text-golden-900 bg-golden-100 px-1"
         ),
       }),
       0,
@@ -533,33 +516,29 @@ const instructionSnippetMark = Mark.create({
 
 const richTextAreaVariants = cva(
   cn(
-    "s-w-full s-text-base s-leading-6 s-outline-none s-whitespace-pre-wrap s-break-words",
-    "s-text-foreground dark:s-text-foreground-night"
+    "w-full text-base leading-6 outline-hidden whitespace-pre-wrap break-words"
   ),
   {
     variants: {
       variant: {
         default: cn(
-          "s-px-3 s-py-2",
-          "s-bg-muted-background dark:s-bg-muted-background-night",
-          "s-border s-rounded-xl s-transition s-duration-100",
-          "s-border-border dark:s-border-border-night",
-          "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
-          "focus-visible:s-outline-none focus-visible:s-ring-2",
-          "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50",
-          "s-min-h-40"
+          "px-3 py-2",
+          "border rounded-xl transition duration-100",
+          "focus-visible:outline-hidden focus-visible:ring-2",
+          "focus-visible:ring-highlight/20",
+          "min-h-40"
         ),
         compact: cn(
-          "s-p-5",
-          "s-bg-transparent s-border-0 s-rounded-none",
-          "focus-visible:s-ring-0 focus-visible:s-border-0",
-          "s-min-h-0"
+          "p-5",
+          "bg-transparent border-0 rounded-none",
+          "focus-visible:ring-0 focus-visible:border-0",
+          "min-h-0"
         ),
         embedded: cn(
-          "s-px-3 s-py-2",
-          "s-bg-transparent s-border-0 s-rounded-none",
-          "focus-visible:s-ring-0 focus-visible:s-border-0",
-          "s-min-h-0"
+          "px-3 py-2",
+          "bg-transparent border-0 rounded-none",
+          "focus-visible:ring-0 focus-visible:border-0",
+          "min-h-0"
         ),
       },
     },
@@ -641,8 +620,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           autolink: true,
           linkOnPaste: true,
           HTMLAttributes: {
-            class:
-              "s-text-highlight-600 dark:s-text-highlight-600-night s-underline",
+            class: "text-highlight-600 underline",
           },
         }),
         mentionExtension,
@@ -661,7 +639,6 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         attributes: {
           class: cn(
             richTextAreaVariants({ variant: editorVariant }),
-            "sparkle-richtextarea selection:s-bg-highlight-100 dark:selection:s-bg-highlight-150-night",
             className
           ),
         },
@@ -1162,21 +1139,16 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         {hasTopBar ? (
           <div
             className={cn(
-              "s-flex s-w-full s-flex-col",
-              "s-rounded-xl s-border s-bg-muted-background dark:s-bg-muted-background-night s-transition s-duration-100",
-              "s-border-border dark:s-border-border-night",
-              "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
-              "focus-within:s-outline-none focus-within:s-ring-2",
-              "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50",
-              "s-min-h-40",
+              "flex w-full flex-col",
+              "focus-within:outline-hidden focus-within:ring-2",
+              "focus-within:ring-highlight/20",
+              "min-h-40",
               containerClassName
             )}
           >
             <div
               className={cn(
-                "s-sticky s-top-0 s-z-10 s-flex s-items-center s-rounded-t-xl",
-                "s-border-b s-border-border dark:s-border-border-night",
-                "s-bg-muted-background/80 s-backdrop-blur-sm dark:s-bg-muted-background-night/80",
+                "sticky top-0 z-10 flex items-center rounded-t-xl",
                 topBarClassName
               )}
             >

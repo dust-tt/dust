@@ -20,21 +20,21 @@ const editorVariants = cva(
   [
     "overflow-auto p-2 resize-y min-h-60",
     "rounded-xl border transition-all duration-200",
-    "bg-muted-background dark:bg-muted-background-night",
-    "focus-within:ring-highlight-300 dark:focus-within:ring-highlight-300-night",
-    "focus-within:outline-highlight-200 dark:focus-within:outline-highlight-200-night",
-    "focus-within:border-highlight-300 dark:focus-within:border-highlight-300-night",
+    "bg-muted-background",
+    "focus-within:ring-highlight-300",
+    "focus-within:outline-highlight-200",
+    "focus-within:border-highlight-300",
   ],
   {
     variants: {
       error: {
         true: [
-          "border-warning-500 dark:border-warning-500-night",
-          "focus-within:ring-warning-500 dark:focus-within:ring-warning-500-night",
-          "focus-within:outline-warning-500 dark:focus-within:outline-warning-500-night",
-          "focus-within:border-warning-500 dark:focus-within:border-warning-500-night",
+          "border-warning-500",
+          "focus-within:ring-warning-500",
+          "focus-within:outline-warning-500",
+          "focus-within:border-warning-500",
         ],
-        false: ["border-border dark:border-border-night"],
+        false: ["border-border"],
       },
     },
     defaultVariants: {
@@ -218,9 +218,7 @@ function CharacterCountDisplay({
     <span
       className={cn(
         "text-end text-xs",
-        isOverLimit
-          ? "text-warning"
-          : "text-muted-foreground dark:text-muted-foreground-night"
+        isOverLimit ? "text-warning" : "text-muted-foreground"
       )}
     >
       {count} / {maxCount} characters

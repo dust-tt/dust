@@ -469,10 +469,10 @@ function PhoneInputStep({
           <Page.Vertical sizing="grow" gap="lg">
             {isMetronome ? (
               <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
+                <h1 className="text-2xl font-bold text-foreground">
                   Verify your phone
                 </h1>
-                <p className="text-muted-foreground dark:text-muted-foreground-night">
+                <p className="text-muted-foreground">
                   We verify your number once to keep free credits fair. We won't
                   text you otherwise.
                 </p>
@@ -483,7 +483,7 @@ function PhoneInputStep({
                   title="Phone number"
                   icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
                 />
-                <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+                <p className="-mt-4 text-muted-foreground">
                   To start your free trial, we need to verify your account with
                   an SMS code. <br />
                   Your number will only be used for this verification.
@@ -556,12 +556,12 @@ function CodeVerificationStep({
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
             <div className="flex flex-col gap-2">
-              <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
+              <h1 className="text-2xl font-bold text-foreground">
                 Enter verification code
               </h1>
-              <p className="text-muted-foreground dark:text-muted-foreground-night">
+              <p className="text-muted-foreground">
                 A verification code has been sent to{" "}
-                <span className="font-medium text-foreground dark:text-foreground-night">
+                <span className="font-medium text-foreground">
                   {maskedPhone}
                 </span>
               </p>
@@ -639,7 +639,7 @@ function CaptchaStep({
               title="Verify you're human"
               icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
             />
-            <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+            <p className="-mt-4 text-muted-foreground">
               A quick check before we send your verification code.
             </p>
 
@@ -674,10 +674,10 @@ function StartTrialStep({ error, isLoading, onActivate }: StartTrialStepProps) {
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
             <div className="flex flex-col gap-2">
-              <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
+              <h1 className="text-2xl font-bold text-foreground">
                 Your phone number has already been verified.
               </h1>
-              <p className="text-muted-foreground dark:text-muted-foreground-night">
+              <p className="text-muted-foreground">
                 Click below to activate your free subscription.
               </p>
             </div>
@@ -710,12 +710,12 @@ function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
             size="lg"
             className="text-highlight-500"
           />
-          <h1 className="text-4xl font-bold text-foreground dark:text-foreground-night">
+          <h1 className="text-4xl font-bold text-foreground">
             You're in. Welcome to Dust.
           </h1>
-          <p className="text-lg text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-lg text-muted-foreground">
             You've got{" "}
-            <span className="font-bold text-foreground dark:text-foreground-night">
+            <span className="font-bold text-foreground">
               {credits.toLocaleString()} credits
             </span>{" "}
             to explore, they never expire, so take your time. Let's put them to

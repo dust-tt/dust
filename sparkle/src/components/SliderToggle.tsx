@@ -10,35 +10,29 @@ type SliderToggleProps = {
 };
 
 const baseClasses =
-  "s-rounded-full s-cursor-pointer s-transition-colors s-duration-300 s-ease-out s-cursor-pointer s-flex s-items-center s-flex";
+  "shrink-0 rounded-full cursor-pointer transition-colors duration-300 ease-out flex items-center";
 
 const sizeClasses = {
-  xs: "s-h-7 s-w-10",
-  sm: "s-h-9 s-w-14",
+  xs: "h-7 w-10",
+  sm: "h-9 w-14",
 };
 
 const cusrsorSizeClasses = {
-  xs: "s-h-6 s-w-6",
-  sm: "s-h-8 s-w-8",
+  xs: "h-6 w-6",
+  sm: "h-8 w-8",
 };
 const cusrsorTranslateSizeClasses = {
-  xs: "s-translate-x-[14px]",
-  sm: "s-translate-x-[22px]",
+  xs: "translate-x-[14px]",
+  sm: "translate-x-[22px]",
 };
 
 const stateClasses = {
-  idle: cn(
-    "s-bg-primary-200 dark:s-bg-primary-600",
-    "hover:s-bg-highlight-300 hover:dark:s-bg-highlight-800"
-  ),
-  selected: cn(
-    "s-bg-highlight-400 dark:s-bg-highlight-400-night",
-    "hover:s-bg-highlight-300 hover:dark:s-bg-highlight-200-night"
-  ),
+  idle: cn("bg-primary-200", "hover:bg-highlight-300"),
+  selected: cn("bg-highlight-400"),
   disabled: cn(
-    "s-bg-primary-200 dark:s-bg-primary-200-night",
-    "hover:s-bg-primary-200 dark:hover:s-bg-primary-200-night",
-    "s-cursor-not-allowed hover:s-cursor-not-allowed"
+    "bg-primary-200",
+    "hover:bg-primary-200",
+    "cursor-not-allowed hover:cursor-not-allowed"
   ),
 };
 
@@ -67,10 +61,10 @@ export function SliderToggle({
       <div
         id="cursor"
         className={cn(
-          "s-transform s-rounded-full s-bg-background s-drop-shadow s-transition-transform s-duration-300 s-ease-out",
-          disabled && "s-opacity-50",
+          "transform rounded-full bg-white drop-shadow transition-transform duration-300 ease-out",
+          disabled && "opacity-50",
           size && cusrsorSizeClasses[size],
-          selected ? cusrsorTranslateSizeClasses[size] : "s-translate-x-[2px]"
+          selected ? cusrsorTranslateSizeClasses[size] : "translate-x-[2px]"
         )}
       />
     </div>

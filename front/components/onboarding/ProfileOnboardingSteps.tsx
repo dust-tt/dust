@@ -100,19 +100,15 @@ export function UserProfileStep({
         title={`Hello ${formData.firstName || "there"}!`}
         icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
       />
-      <p className="text-muted-foreground dark:text-muted-foreground-night">
-        Let's check a few things.
-      </p>
+      <p className="text-muted-foreground">Let's check a few things.</p>
       {!isAdmin && (
-        <p className="text-muted-foreground dark:text-muted-foreground-night">
+        <p className="text-muted-foreground">
           You'll be joining the workspace:{" "}
           <span className="font-medium">{owner.name}</span>.
         </p>
       )}
       <div>
-        <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
-          Your name is:
-        </p>
+        <p className="pb-2 text-muted-foreground">Your name is:</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <Input
@@ -148,7 +144,7 @@ export function UserProfileStep({
         </div>
       </div>
       <div>
-        <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
+        <p className="pb-2 text-muted-foreground">
           Pick your role to customize your experience:
         </p>
         <div className="flex flex-wrap gap-2">
@@ -198,7 +194,7 @@ export function FavoritePlatformsStep({
   return (
     <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
       <Page.Header title="What are your favorite platforms?" />
-      <p className="text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-muted-foreground">
         Dust works at full potential when it can play with your knowledge and
         help with your tools. Do you recognise some of these?
       </p>
