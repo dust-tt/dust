@@ -26,6 +26,7 @@ import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { QUERY_TABLES_V2_SERVER } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import {
   getRunAgentToolDescription,
@@ -124,6 +125,7 @@ const SERVERS: ServerEntry[] = [
   { name: "data_warehouses", tools: DATA_WAREHOUSES_SERVER.tools },
   { name: "query_tables_v2", tools: QUERY_TABLES_V2_SERVER.tools },
   { name: "pod_manager", tools: POD_MANAGER_SERVER.tools },
+  { name: "productboard", tools: PRODUCTBOARD_SERVER.tools },
   { name: "sound_studio", tools: SOUND_STUDIO_SERVER.tools },
   { name: "workday", tools: WORKDAY_SERVER.tools },
   { name: "speech_generator", tools: SPEECH_GENERATOR_SERVER.tools },

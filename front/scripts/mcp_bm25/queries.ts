@@ -1073,6 +1073,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "speech_generator.text_to_dialogue",
   },
 
+  // --- productboard ---
+  {
+    query: "capture customer feedback in Productboard",
+    expected: "productboard.create_note",
+  },
+  {
+    query: "find Productboard features by status and owner",
+    expected: "productboard.query_entities",
+  },
+
   // --- statuspage ---
   {
     query: "list available status pages",
