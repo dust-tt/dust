@@ -40,8 +40,9 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
   });
 
   it("returns success for sandbox function invocation result callbacks", async () => {
-    const { token, workspace } =
+    const { sandbox, token, workspace } =
       await createSandboxFunctionInvocationTokenTestContext();
+    const invocationId = `test-invocation-${sandbox.sId}`;
 
     const response = await postSandboxFunctionResult(workspace, token, {
       function: "test_function",
@@ -54,11 +55,11 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
       {
         type: "sandbox_function_invocation_result",
         created: expect.any(Number),
-        invocationId: expect.stringMatching(/^sfi_/),
-        functionId: expect.stringMatching(/^sfn_/),
+        invocationId,
+        functionId: "sfn_test",
         result: { hello: "world" },
       },
-      { invocationId: expect.stringMatching(/^sfi_/) }
+      { invocationId }
     );
   });
 
