@@ -20,6 +20,9 @@ describe("getToolNameFromFunctionCallName", () => {
 });
 
 describe("getToolDisplayLabels", () => {
+  const getMicrosoftNodeId = (decodedId: string) =>
+    `microsoft-${Buffer.from(decodedId).toString("base64url")}`;
+
   it("resolves labels for internal tools", () => {
     expect(
       getToolDisplayLabels({
@@ -93,18 +96,58 @@ describe("getToolDisplayLabels", () => {
     });
   });
 
-  it("uses provider labels when data source file node IDs are opaque", () => {
+  it.each([
+    ["gdrive-abc123", "Google Drive file"],
+    ["gdrive-sharedWithMe", "Google Drive shared with me"],
+    ["notion-unknown", "Notion orphaned resources"],
+    ["project-context-folder", "Dust project context"],
+    ["intercom-teams-12", "Intercom conversations"],
+    ["intercom-team-12-team_abc", "Intercom team"],
+    ["zendesk-brand-12-34", "Zendesk brand"],
+    ["gong-transcript-folder-12", "Gong transcripts"],
+    ["dpd_1234567890abcdef", "Dust project folder"],
+  ])("uses provider labels for data source file node ID %s", (nodeId, target) => {
     expect(
       getToolDisplayLabels({
         internalMCPServerName: "data_sources_file_system",
         toolName: "cat",
         inputs: {
-          nodeId: "gdrive-abc123",
+          nodeId,
         },
       })
     ).toEqual({
-      running: "Reading Google Drive file",
-      done: "Read Google Drive file",
+      running: `Reading ${target}`,
+      done: `Read ${target}`,
+    });
+  });
+
+  it("decodes Microsoft data source file targets without showing Graph IDs", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: getMicrosoftNodeId(
+            "worksheet//drives/drive-id/items/item-id/workbook/worksheets/sheet-id"
+          ),
+        },
+      })
+    ).toEqual({
+      running: "Reading Microsoft worksheet",
+      done: "Read Microsoft worksheet",
+    });
+
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "data_sources_file_system",
+        toolName: "cat",
+        inputs: {
+          nodeId: getMicrosoftNodeId("file//drives/drive-id/items/item-id"),
+        },
+      })
+    ).toEqual({
+      running: "Reading Microsoft file",
+      done: "Read Microsoft file",
     });
   });
 
