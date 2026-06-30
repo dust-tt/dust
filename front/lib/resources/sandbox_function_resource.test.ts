@@ -503,6 +503,11 @@ describe("SandboxFunctionResource", () => {
         outputSchema,
       }
     );
+    const invocation = await SandboxFunctionInvocationModel.create({
+      workspaceId: workspace.id,
+      sandboxFunctionId: sandboxFunction.id,
+      status: "created",
+    });
 
     const deleteResult = await SandboxFunctionResource.deleteAllForSpace(
       authenticator,
@@ -517,6 +522,14 @@ describe("SandboxFunctionResource", () => {
     ).resolves.toBeNull();
     await expect(
       FileResource.fetchById(authenticator, file.sId)
+    ).resolves.toBeNull();
+    await expect(
+      SandboxFunctionInvocationModel.findOne({
+        where: {
+          id: invocation.id,
+          workspaceId: workspace.id,
+        },
+      })
     ).resolves.toBeNull();
   });
 

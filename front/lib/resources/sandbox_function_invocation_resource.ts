@@ -6,7 +6,8 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, type Result } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, Transaction } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -67,12 +68,35 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return new this(this.model, invocation.get(), { sandboxFunction });
   }
 
+  static async deleteAllForSandboxFunction(
+    sandboxFunction: SandboxFunctionResource,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<number> {
+    return this.model.destroy({
+      where: {
+        sandboxFunctionId: sandboxFunction.id,
+        workspaceId: sandboxFunction.workspaceId,
+      },
+      transaction,
+    });
+  }
+
   async delete(
-    _auth: Authenticator,
-    _options: { transaction?: Transaction } = {}
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    return new Err(
-      new Error("Sandbox function invocations cannot be deleted yet.")
-    );
+    try {
+      await this.model.destroy({
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      });
+
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 }

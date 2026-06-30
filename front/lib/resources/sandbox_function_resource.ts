@@ -385,6 +385,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         return new Err(new Error("Sandbox function space is not accessible."));
       }
 
+      await SandboxFunctionInvocationResource.deleteAllForSandboxFunction(this);
+
       await this.model.destroy({
         where: {
           id: this.id,
