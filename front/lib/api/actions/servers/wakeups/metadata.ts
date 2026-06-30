@@ -9,14 +9,10 @@ export const WAKEUPS_SERVER_NAME = "wakeups" as const;
 export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
   schedule_wakeup: {
     description:
-      "Schedule a wake-up that posts a user message at a future time to re-invoke " +
-      "the agent. Useful for requests to check back on something later, remind the user, poll " +
-      "until a condition is met, or schedule recurring work. The `when` field accepts three formats: " +
-      '(1) relative duration like "in 2h", "in 30m", "in 1d";\n' +
-      '(2) absolute ISO 8601 timestamp like "2026-04-16T16:00:00Z";\n' +
-      '(3) 5-field cron expression like "0 9 * * MON-FRI". (# and L are not supported).\n' +
-      "Cron expressions fire recurrently until a fire cap is reached. Only one active wake-up " +
-      "is allowed at a time.",
+      "Schedule a wake-up, reminder, or recurring ping to re-invoke and remind the " +
+      "agent at a future time. Useful for requests to check back on something later, " +
+      "poll until a condition is met, set a follow-up reminder, or schedule recurring " +
+      "work (every morning, every Monday, or any cron pattern).",
     schema: {
       when: z
         .string()
@@ -62,10 +58,9 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
   },
   cancel_wakeup: {
     description:
-      "Cancel or stop a previously scheduled wake-up or reminder by ID. " +
-      "Useful for requests to stop a reminder set earlier, remove a scheduled follow-up, or cancel " +
-      "a wake-up. Cancelling an already-fired, cancelled, or expired wake-up " +
-      "is a no-op.",
+      "Cancel, stop, or delete a previously scheduled wake-up or reminder by ID. " +
+      "Useful for turning off a recurring ping, stopping a reminder set earlier, or " +
+      "removing a scheduled alert.",
     schema: {
       wakeUpId: z
         .string()
