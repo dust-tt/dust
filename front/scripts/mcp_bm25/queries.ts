@@ -1026,4 +1026,14 @@ export const QUERIES: LabeledQuery[] = [
     expected: "zendesk.post_reply",
     maxRank: 4,
   },
+
+  // --- statuspage ---
+  {
+    query: "list available status pages",
+    expected: "statuspage.list_pages",
+  },
+  {
+    query: "show active incidents on the status page",
+    expected: "statuspage.list_incidents",
+  },
 ];
