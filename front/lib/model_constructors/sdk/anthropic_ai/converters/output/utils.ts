@@ -23,6 +23,7 @@ import {
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,
+  ErrorType,
   ModelResponseEvent,
   NonDeltaResponseEvent,
   ProviderPassthroughEvent,
@@ -41,6 +42,7 @@ import {
   assertNever,
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
@@ -401,7 +403,9 @@ function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: APIError
 ): ErrorEvent {
-  const status = error.status;
+  // Mid-stream SSE `error` events surface as an `APIError` with no HTTP status;
+  // the old router defaulted those to 500, so mirror that here.
+  const status = error.status ?? 500;
   switch (status) {
     case 400:
     case 422:
@@ -493,15 +497,127 @@ export function streamErrorToErrorEvent(
     case "api":
       return apiErrorToErrorEvent(metadata, classified.error);
     case "unknown":
-      return buildErrorEvent({
-        metadata,
-        type: "unknown_error",
-        message: `Unknown error from Anthropic`,
-        originalError: error,
-      });
+      return bareStreamErrorToErrorEvent(metadata, error);
     default:
       assertNever(classified);
   }
+}
+
+// Errors that are neither an `APIError` nor an `APIConnectionError` reach here —
+// most commonly a mid-stream connection drop the SDK rewraps as a bare
+// `AnthropicError`. The old router classified these by substring-matching the
+// message (its `categorizeLLMError`), which kept transient failures retryable
+// instead of collapsing them into a terminal unknown_error. We replicate that
+// here verbatim for migration parity (see CODING_RULES GEN1); revisit once the
+// old router is fully retired. The new `ErrorType` union has no
+// `terminated_error`/`context_length_exceeded`, so those map to the closest
+// retryability-equivalent type (network_error / invalid_request_error).
+function bareStreamErrorToErrorEvent(
+  metadata: EndpointMetadata,
+  error: unknown
+): ErrorEvent {
+  const message = normalizeError(error).message;
+  const lower = message.toLowerCase();
+
+  const build = (type: ErrorType, text: string): ErrorEvent =>
+    buildErrorEvent({ metadata, type, message: text, originalError: error });
+
+  if (lower.includes("terminated") || lower.includes("other side closed")) {
+    return build(
+      "network_error",
+      `Connection to Anthropic terminated: ${message}`
+    );
+  }
+  if (
+    lower.includes("rate limit") ||
+    lower.includes("quota exceeded") ||
+    lower.includes("too many requests")
+  ) {
+    return build(
+      "rate_limit_error",
+      `Rate limit exceeded for Anthropic/${metadata.modelId}: ${message}`
+    );
+  }
+  if (
+    lower.includes("overloaded") ||
+    lower.includes("capacity") ||
+    lower.includes("service unavailable")
+  ) {
+    return build("overloaded_error", `Anthropic is overloaded: ${message}`);
+  }
+  if (
+    lower.includes("context") ||
+    lower.includes("token limit") ||
+    lower.includes("context window") ||
+    lower.includes("too large")
+  ) {
+    return build(
+      "invalid_request_error",
+      `Context length exceeded for Anthropic/${metadata.modelId}: ${message}`
+    );
+  }
+  if (
+    lower.includes("unauthorized") ||
+    lower.includes("authentication") ||
+    lower.includes("api key")
+  ) {
+    return build(
+      "authentication_error",
+      `Authentication failed for Anthropic: ${message}`
+    );
+  }
+  if (lower.includes("forbidden") || lower.includes("permission")) {
+    return build(
+      "permission_error",
+      `Permission denied for Anthropic: ${message}`
+    );
+  }
+  if (lower.includes("not found")) {
+    return build(
+      "not_found_error",
+      `Resource not found for Anthropic: ${message}`
+    );
+  }
+  if (
+    lower.includes("invalid request") ||
+    lower.includes("bad request") ||
+    lower.includes("validation error")
+  ) {
+    return build(
+      "invalid_request_error",
+      `Invalid request to Anthropic: ${message}`
+    );
+  }
+  if (
+    lower.includes("network") ||
+    lower.includes("connection") ||
+    lower.includes("econnrefused") ||
+    lower.includes("enotfound") ||
+    lower.includes("etimedout")
+  ) {
+    return build(
+      "network_error",
+      `Network error connecting to Anthropic: ${message}`
+    );
+  }
+  if (lower.includes("timeout") || lower.includes("timed out")) {
+    return build("timeout_error", `Request to Anthropic timed out: ${message}`);
+  }
+  if (
+    lower.includes("stream") ||
+    lower.includes("streaming") ||
+    lower.includes("interrupted")
+  ) {
+    return build("stream_error", `Stream error from Anthropic: ${message}`);
+  }
+  if (
+    lower.includes("internal server error") ||
+    lower.includes("server error")
+  ) {
+    return build("server_error", `Server error from Anthropic: ${message}`);
+  }
+
+  return build("unknown_error", `Unknown error from Anthropic: ${message}`);
 }
 
 // -- Composite state machine: depends on the leaf converters --
