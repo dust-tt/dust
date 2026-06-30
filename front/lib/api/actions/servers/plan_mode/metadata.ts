@@ -21,6 +21,9 @@ export const CLOSE_PLAN_TOOL_NAME = "close_plan" as const;
 
 export const PLAN_FILE_NAME = "plan.md" as const;
 
+// Directory under the conversation file system where closed plans are archived.
+export const ARCHIVED_PLANS_DIR_NAME = "archived_plans" as const;
+
 export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
   create_plan: {
     description:

@@ -1,4 +1,7 @@
-import { PLAN_FILE_NAME } from "@app/lib/api/actions/servers/plan_mode/metadata";
+import {
+  ARCHIVED_PLANS_DIR_NAME,
+  PLAN_FILE_NAME,
+} from "@app/lib/api/actions/servers/plan_mode/metadata";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
@@ -9,7 +12,6 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 // Plan mode has no database model: all state is derived from the conversation file system.
-const ARCHIVED_PLANS_DIR = "archived_plans";
 
 function planPath(conversation: ConversationWithoutContentType): string {
   return `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${PLAN_FILE_NAME}`;
@@ -18,7 +20,7 @@ function planPath(conversation: ConversationWithoutContentType): string {
 function archivedPlansDir(
   conversation: ConversationWithoutContentType
 ): string {
-  return `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${ARCHIVED_PLANS_DIR}`;
+  return `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${ARCHIVED_PLANS_DIR_NAME}`;
 }
 
 // One plan per conversation: a conversation-scoped lock serializes create/edit/close.

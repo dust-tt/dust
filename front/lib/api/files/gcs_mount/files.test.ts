@@ -189,6 +189,38 @@ describe("copyConversationGCSMount", () => {
     );
   });
 
+  it("skips plan mode (todos) artifacts so the fork starts without the source plan", async () => {
+    const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+    const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+    const past = "2020-01-01T00:00:00.000Z";
+    getFilesMock.mockResolvedValue([
+      { name: `${sourcePrefix}report.pdf`, metadata: { updated: past } },
+      { name: `${sourcePrefix}plan.md`, metadata: { updated: past } },
+      {
+        name: `${sourcePrefix}archived_plans/plan-1.md`,
+        metadata: { updated: past },
+      },
+    ]);
+
+    const result = await copyConversationGCSMount(auth, { source, dest });
+
+    assert(result.isOk());
+    expect(result.value.copiedCount).toBe(1);
+    expect(copyFileMock).toHaveBeenCalledTimes(1);
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${sourcePrefix}report.pdf`,
+      `${destPrefix}report.pdf`
+    );
+    expect(copyFileMock).not.toHaveBeenCalledWith(
+      `${sourcePrefix}plan.md`,
+      `${destPrefix}plan.md`
+    );
+    expect(copyFileMock).not.toHaveBeenCalledWith(
+      `${sourcePrefix}archived_plans/plan-1.md`,
+      `${destPrefix}archived_plans/plan-1.md`
+    );
+  });
+
   it("returns Ok with copiedCount 0 when source prefix is empty", async () => {
     const result = await copyConversationGCSMount(auth, { source, dest });
 
