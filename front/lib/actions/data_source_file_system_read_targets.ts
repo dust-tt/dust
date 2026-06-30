@@ -31,7 +31,6 @@ const DATA_SOURCE_FILE_SYSTEM_NODE_READ_TARGET_PREFIXES = [
   { prefix: "intercom-help-center-", target: "Intercom help center" },
   { prefix: "intercom-teams-", target: "Intercom conversations" },
   { prefix: "intercom-team-", target: "Intercom team" },
-  { prefix: "zendesk-article-", target: "Zendesk article" },
   { prefix: "zendesk-category-", target: "Zendesk category" },
   { prefix: "zendesk-help-center-", target: "Zendesk help center" },
   { prefix: "zendesk-brand-", target: "Zendesk brand" },
