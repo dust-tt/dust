@@ -60,9 +60,7 @@ export function MCPSkillEnableActionDetails({
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           {outputItems.length > 0 && (
             <div>
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                Output
-              </span>
+              <span className="font-medium text-foreground">Output</span>
               <div className="my-2 flex flex-col gap-2">
                 {outputItems.map((o, index) => (
                   <ContentMessage key={index} variant="primary" size="lg">
@@ -75,17 +73,15 @@ export function MCPSkillEnableActionDetails({
 
           {showInstructionsSection && (
             <div>
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                Instructions
-              </span>
+              <span className="font-medium text-foreground">Instructions</span>
               <div className="my-2">
                 {isSkillLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Spinner size="xs" />
                     <span>Loading instructions...</span>
                   </div>
                 ) : isSkillError ? (
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <div className="text-sm text-muted-foreground">
                     Could not load the skill instructions.
                   </div>
                 ) : hasInstructions ? (

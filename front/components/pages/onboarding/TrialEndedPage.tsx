@@ -34,7 +34,7 @@ export function TrialEndedPage() {
       {/* Logo and headline */}
       <div className="mb-12 flex flex-col items-center">
         <DustLogo className="h-8 w-32" />
-        <h1 className="mt-4 text-xl font-medium text-foreground dark:text-foreground-night">
+        <h1 className="mt-4 text-xl font-medium text-foreground">
           Your free trial has ended
         </h1>
       </div>

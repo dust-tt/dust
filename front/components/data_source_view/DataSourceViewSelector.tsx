@@ -567,7 +567,7 @@ export function DataSourceViewsSelector({
 
   return (
     <div className="dd-privacy-mask">
-      <div className="sticky top-0 z-10 -mt-3 bg-background pb-4 pt-3 dark:bg-background-night">
+      <div className="sticky top-0 z-10 -mt-3 bg-background pb-4 pt-3">
         {searchInput}
       </div>
       {selectorContent}

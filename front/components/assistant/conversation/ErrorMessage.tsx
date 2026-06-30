@@ -46,7 +46,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
               href={CONTEXT_WINDOW_DOC_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-foreground dark:hover:text-foreground-night"
+              className="underline hover:text-foreground"
             >
               Learn more
             </a>

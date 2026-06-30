@@ -199,12 +199,9 @@ export const IconsUsedInProduct: Story = {
             <Icon
               visual={IconComponent}
               size="md"
-              className="s-text-foreground dark:s-text-foreground-night"
+              className="text-foreground"
             />
-            <div
-              style={itemStyle}
-              className="s-text-sm s-text-foreground dark:s-text-foreground-night"
-            >
+            <div style={itemStyle} className="text-sm text-foreground">
               {iconName}
             </div>
           </div>

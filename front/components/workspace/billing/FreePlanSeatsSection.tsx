@@ -23,7 +23,7 @@ export function FreePlanSeatsSection({
 
   if (isFreeSeatCountsLoading) {
     return (
-      <div className="flex items-center justify-center rounded-2xl bg-muted-background p-4 dark:bg-muted-background-night">
+      <div className="flex items-center justify-center rounded-2xl bg-muted-background p-4">
         <Spinner />
       </div>
     );
@@ -42,28 +42,26 @@ export function FreePlanSeatsSection({
     : `Free workspaces include ${maxLifetimeSeats} free seats. Once used, free seats are permanent. Upgrade a member to a Pro or Max seat anytime to go beyond the cap.`;
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-muted-background p-4 dark:bg-muted-background-night">
+    <div className="flex flex-col gap-3 rounded-2xl bg-muted-background p-4">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-1.5">
           <Icon visual={InfoSquare} size="sm" />
-          <span className="text-base font-semibold text-foreground dark:text-foreground-night">
+          <span className="text-base font-semibold text-foreground">
             {heading}
           </span>
         </div>
-        <p className="text-sm text-foreground dark:text-foreground-night">
-          {description}
-        </p>
+        <p className="text-sm text-foreground">{description}</p>
       </div>
 
       <div className="flex h-1 w-full gap-0.5">
         {fillPercent > 0 && (
           <div
-            className="h-full shrink-0 rounded-lg bg-foreground dark:bg-foreground-night"
+            className="h-full shrink-0 rounded-lg bg-foreground"
             style={{ width: `${fillPercent}%` }}
           />
         )}
         {!isAtCapacity && (
-          <div className="h-full min-w-0 flex-1 rounded-lg bg-black/[0.08] dark:bg-white/[0.08]" />
+          <div className="h-full min-w-0 flex-1 rounded-lg bg-black/[0.08]" />
         )}
       </div>
     </div>

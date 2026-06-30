@@ -99,9 +99,9 @@ export const Demo = () => {
   );
 
   return (
-    <div className="s-flex s-h-[400px] s-w-full s-flex-row s-gap-12">
-      <div className="s-h-[400px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
+    <div className="flex h-[400px] w-full flex-row gap-12">
+      <div className="h-[400px] w-[240px]">
+        <NavigationList className="relative h-full w-full px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} />
@@ -133,7 +133,7 @@ export const Demo = () => {
                       }
                     }}
                     label={title}
-                    className="s-w-full"
+                    className="w-full"
                     moreMenu={getMoreMenu(title)}
                     status={getStatus(index)}
                   />
@@ -143,8 +143,8 @@ export const Demo = () => {
           ))}
         </NavigationList>
       </div>
-      <div className="s-h-[400px] s-w-[240px]">
-        <NavigationList className="s-relative s-h-full s-w-full s-px-3 dark:s-bg-muted-background-night">
+      <div className="h-[400px] w-[240px]">
+        <NavigationList className="relative h-full w-full px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} isSticky />
@@ -176,7 +176,7 @@ export const Demo = () => {
                       }
                     }}
                     label={title}
-                    className="s-w-full"
+                    className="w-full"
                     moreMenu={getMoreMenu(title)}
                     status={getStatus(index)}
                   />
@@ -234,14 +234,14 @@ export const CollapsibleSection = () => {
   );
 
   return (
-    <div className="s-dark:bg-muted-background-night s-flex s-h-[800px] s-w-[260px] s-flex-col s-border-r s-border-border s-bg-muted-background">
-      <NavigationList className="s-h-full s-w-[260px]">
+    <div className="flex h-[800px] w-[260px] flex-col border-r border-border bg-muted-background">
+      <NavigationList className="h-full w-[260px]">
         <NavigationListCollapsibleSection
           label="Inbox"
-          className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
+          className="border-b border-t border-border bg-background/50 px-2 pb-2"
           action={
             <>
-              {/* <div className="s-heading-xs s-h-5 s-cursor-pointer s-px-2 s-text-muted-foreground hover:s-text-foreground">
+              {/* <div className="heading-xs h-5 cursor-pointer px-2 text-muted-foreground hover:text-foreground">
                 Mark as read
               </div> */}
               <Button
@@ -290,7 +290,7 @@ export const CollapsibleSection = () => {
                   }
                 }}
                 label={title}
-                className="s-w-full"
+                className="w-full"
                 moreMenu={getMoreMenu(title)}
               />
             );
@@ -301,7 +301,7 @@ export const CollapsibleSection = () => {
           type="collapse"
           defaultOpen={true}
           visibleItems={4}
-          className="s-px-2 s-maw-w-full"
+          className="px-2 maw-w-full"
           action={
             <>
               <Button
@@ -398,7 +398,7 @@ export const CollapsibleSection = () => {
           label="Conversations"
           type="static"
           defaultOpen={true}
-          className="s-px-2"
+          className="px-2"
           action={
             <>
               <Button
@@ -449,7 +449,7 @@ export const CollapsibleSection = () => {
                       }
                     }}
                     label={title}
-                    className="s-w-full"
+                    className="w-full"
                     moreMenu={getMoreMenu(title)}
                   />
                 );
@@ -493,37 +493,37 @@ export const CollapsibleSection = () => {
               handle: "alex",
               name: "Alex",
               emoji: "🤖",
-              color: "s-bg-blue-300",
+              color: "bg-blue-300",
             },
             {
               handle: "sam",
               name: "Sam",
               emoji: "🎨",
-              color: "s-bg-violet-300",
+              color: "bg-violet-300",
             },
             {
               handle: "taylor",
               name: "Taylor",
               emoji: "🚀",
-              color: "s-bg-pink-300",
+              color: "bg-pink-300",
             },
             {
               handle: "jordan",
               name: "Jordan",
               emoji: "⚡",
-              color: "s-bg-orange-300",
+              color: "bg-orange-300",
             },
             {
               handle: "riley",
               name: "Riley",
               emoji: "🌟",
-              color: "s-bg-golden-300",
+              color: "bg-golden-300",
             },
             {
               handle: "casey",
               name: "Casey",
               emoji: "💡",
-              color: "s-bg-emerald-300",
+              color: "bg-emerald-300",
             },
           ].map((agent, index) => (
             <NavigationListItem
@@ -542,7 +542,7 @@ export const CollapsibleSection = () => {
                   backgroundColor={agent.color}
                 />
               }
-              className="s-w-full"
+              className="w-full"
             />
           ))}
         </NavigationListCollapsibleSection>

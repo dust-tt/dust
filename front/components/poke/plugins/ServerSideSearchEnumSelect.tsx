@@ -111,10 +111,8 @@ export function ServerSideSearchEnumSelect({
             variant="outline"
             role="combobox"
             className={cn(
-              "w-auto justify-between border-border-dark bg-background " +
-                "dark:border-border-darker-night dark:bg-background-night",
-              !selectedValue &&
-                "text-muted-foreground dark:text-muted-foreground-night"
+              "w-auto justify-between border-border-dark bg-background " + "",
+              !selectedValue && "text-muted-foreground"
             )}
           >
             {title}
@@ -145,7 +143,7 @@ export function ServerSideSearchEnumSelect({
           />
           <PokeCommandList>
             {isLoading ? (
-              <div className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Searching members…
               </div>
@@ -172,7 +170,7 @@ export function ServerSideSearchEnumSelect({
                         <span
                           className={cn(
                             isSelected && "font-medium",
-                            "text-gray-900 dark:text-gray-900-night"
+                            "text-primary-900"
                           )}
                         >
                           {option.label}
@@ -199,7 +197,7 @@ export function ServerSideSearchEnumSelect({
                           <span
                             className={cn(
                               isSelected && "font-medium",
-                              "text-gray-900 dark:text-gray-900-night"
+                              "text-primary-900"
                             )}
                           >
                             {memberLabel}

@@ -679,7 +679,7 @@ export const VisualizationActionIframe = forwardRef<
                     </div>
 
                     {errorMessage && (
-                      <div className="mb-4 rounded-md bg-warning-50 p-3 text-xs text-warning-900 dark:bg-warning-50-night dark:text-warning-900-night">
+                      <div className="mb-4 rounded-md bg-warning-50 p-3 text-xs text-warning-900">
                         {errorMessage}
                       </div>
                     )}
@@ -702,11 +702,11 @@ export const VisualizationActionIframe = forwardRef<
                     <div className="flex flex-col items-center gap-2 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <AlertCircle className="h-8 w-8" />
-                        <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+                        <p className="heading-xl leading-7 text-foreground">
                           Visualization Error
                         </p>
                       </div>
-                      <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+                      <p className="copy-sm leading-tight text-muted-foreground">
                         This visualization encountered an error and cannot be
                         displayed.
                         <br /> Please contact the creator of this visualization
@@ -721,7 +721,7 @@ export const VisualizationActionIframe = forwardRef<
         </div>
       </div>
       {showSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-panel-background dark:bg-panel-background-night">
+        <div className="absolute inset-0 flex items-center justify-center bg-panel-background">
           <Spinner size="xl" variant="color" />
         </div>
       )}

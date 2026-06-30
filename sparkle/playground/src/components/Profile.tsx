@@ -239,12 +239,12 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
           rowA.original.name.localeCompare(rowB.original.name),
         cell: ({ row }) => (
           <DataTable.CellContent grow>
-            <div className="s-flex s-flex-row s-items-center s-gap-3 s-py-3">
-              <div className="s-flex s-min-w-0 s-flex-grow s-flex-col s-gap-0 s-overflow-hidden">
-                <div className="s-truncate s-text-sm s-font-semibold s-text-foreground">
+            <div className="flex flex-row items-center gap-3 py-3">
+              <div className="flex min-w-0 flex-grow flex-col gap-0 overflow-hidden">
+                <div className="truncate text-sm font-semibold text-foreground">
                   {row.original.name}
                 </div>
-                <div className="s-truncate s-text-sm s-text-muted-foreground">
+                <div className="truncate text-sm text-muted-foreground">
                   {row.original.description}
                 </div>
               </div>
@@ -256,7 +256,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
             </div>
           </DataTable.CellContent>
         ),
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
       },
       {
         header: "",
@@ -272,7 +272,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
             ]}
           />
         ),
-        meta: { className: "s-w-12" },
+        meta: { className: "w-12" },
       },
     ],
     []
@@ -287,9 +287,9 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
           rowA.original.agentName.localeCompare(rowB.original.agentName),
         cell: ({ row }) => (
           <DataTable.CellContent>
-            <div className="s-flex s-items-center s-gap-2">
+            <div className="flex items-center gap-2">
               <Avatar size="xs" visual={row.original.agentPictureUrl} />
-              <div className="s-truncate s-text-sm s-font-semibold s-text-foreground">
+              <div className="truncate text-sm font-semibold text-foreground">
                 {row.original.agentName}
               </div>
               {row.original.agentStatus !== "enabled" && (
@@ -301,7 +301,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
             </div>
           </DataTable.CellContent>
         ),
-        meta: { className: "s-w-48" },
+        meta: { className: "w-48" },
       },
       {
         accessorKey: "name",
@@ -310,19 +310,17 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
           rowA.original.name.localeCompare(rowB.original.name),
         cell: ({ row }) => (
           <DataTable.CellContent grow>
-            <div className="s-flex s-flex-row s-items-center s-gap-1 s-py-3 s-text-muted-foreground">
+            <div className="flex flex-row items-center gap-1 py-3 text-muted-foreground">
               <Avatar
                 size="xs"
                 visual={
                   row.original.kind === "schedule" ? <Clock /> : <Bell01 />
                 }
               />
-              <div className="s-flex s-min-w-0 s-flex-col s-gap-0">
-                <div className="s-text-sm s-font-semibold">
-                  {row.original.name}
-                </div>
+              <div className="flex min-w-0 flex-col gap-0">
+                <div className="text-sm font-semibold">{row.original.name}</div>
                 {row.original.scheduleLabel && (
-                  <div className="s-truncate s-text-sm">
+                  <div className="truncate text-sm">
                     {row.original.scheduleLabel}
                   </div>
                 )}
@@ -330,14 +328,14 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
             </div>
           </DataTable.CellContent>
         ),
-        meta: { className: "s-w-full" },
+        meta: { className: "w-full" },
       },
       {
         header: "Action",
         accessorKey: "actions",
         cell: ({ row }) => (
           <DataTable.CellContent>
-            <div className="s-flex s-gap-2">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -353,7 +351,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
             </div>
           </DataTable.CellContent>
         ),
-        meta: { className: "s-w-32" },
+        meta: { className: "w-32" },
       },
     ],
     []
@@ -375,9 +373,9 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
           visual={user.portrait ?? undefined}
           isRounded
         />
-        <div className="s-space-y-1">
-          <div className="s-flex s-gap-4">
-            <div className="s-flex-1">
+        <div className="space-y-1">
+          <div className="flex gap-4">
+            <div className="flex-1">
               <Input
                 name="firstName"
                 label="First Name"
@@ -386,7 +384,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
                 placeholder="First Name"
               />
             </div>
-            <div className="s-flex-1">
+            <div className="flex-1">
               <Input
                 name="lastName"
                 label="Last Name"
@@ -399,7 +397,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
 
           <Collapsible open={isNameDirty}>
             <CollapsibleContent>
-              <div className="s-flex s-gap-2 s-py-2">
+              <div className="flex gap-2 py-2">
                 <Button
                   variant="outline"
                   label="Cancel"
@@ -428,13 +426,13 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
           </Collapsible>
         </div>
 
-        <div className="s-flex s-gap-2">
+        <div className="flex gap-2">
           <Label>Email</Label>
-          <span className="s-text-muted-foreground">{user.email}</span>
+          <span className="text-muted-foreground">{user.email}</span>
         </div>
 
-        <div className="s-flex s-w-full s-flex-row s-justify-between s-gap-4">
-          <div className="s-flex-1">
+        <div className="flex w-full flex-row justify-between gap-4">
+          <div className="flex-1">
             <div>
               <Label>Theme</Label>
             </div>
@@ -445,7 +443,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
                   icon={themeIcon}
                   label={themeLabel}
                   isSelect
-                  className="s-w-fit"
+                  className="w-fit"
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -467,9 +465,9 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <div className="s-flex-1">
+          <div className="flex-1">
             <Label>Keyboard Shortcuts</Label>
-            <div className="s-copy-sm s-flex s-items-center s-gap-2 s-text-foreground">
+            <div className="copy-sm flex items-center gap-2 text-foreground">
               Send message:
               <DropdownMenu>
                 <DropdownMenuTrigger>
@@ -481,7 +479,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
                         : "Cmd + Enter (⌘ + ↵)"
                     }
                     isSelect
-                    className="s-w-fit"
+                    className="w-fit"
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -507,7 +505,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
           title="Default Notification Settings"
           description="Tell us what you’d generally like to be notified about."
         />
-        <div className="s-items-center s-pt-1.5 s-space-y-1">
+        <div className="items-center pt-1.5 space-y-1">
           Notify me{" "}
           <DropdownMenu>
             <DropdownMenuTrigger>
@@ -611,13 +609,13 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
 
         <Separator />
         <Page.SectionHeader title="Tools & Triggers" />
-        <Tabs defaultValue="tools" className="s-w-full">
+        <Tabs defaultValue="tools" className="w-full">
           <TabsList>
             <TabsTrigger value="tools" label="Tools" icon={Zap} />
             <TabsTrigger value="triggers" label="Triggers" icon={Bell01} />
           </TabsList>
-          <TabsContent value="tools" className="s-mt-4">
-            <div className="s-relative s-my-4">
+          <TabsContent value="tools" className="mt-4">
+            <div className="relative my-4">
               <SearchInput
                 name="tools-search"
                 placeholder="Search tools"
@@ -639,8 +637,8 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               </Label>
             )}
           </TabsContent>
-          <TabsContent value="triggers" className="s-mt-4">
-            <div className="s-relative s-my-4">
+          <TabsContent value="triggers" className="mt-4">
+            <div className="relative my-4">
               <SearchInput
                 name="triggers-search"
                 placeholder="Search triggers and agents"
@@ -655,11 +653,11 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
                 sorting={[{ id: "agentName", desc: false }]}
               />
             ) : FAKE_TRIGGERS.length === 0 ? (
-              <div className="s-py-8 s-text-center s-text-muted-foreground">
+              <div className="py-8 text-center text-muted-foreground">
                 You haven't created any triggers yet.
               </div>
             ) : (
-              <div className="s-py-8 s-text-center s-text-muted-foreground">
+              <div className="py-8 text-center text-muted-foreground">
                 No triggers match your search criteria.
               </div>
             )}
@@ -673,8 +671,8 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
 /** Embedded profile panel for use in sidebar layouts: Notification.Area + ProfileContent with the given user. */
 export function ProfilePanel({ user }: { user: User }) {
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
-      <div className="s-min-h-0 s-flex-1 s-overflow-y-auto">
+    <div className="flex h-full w-full flex-col bg-background">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <Notification.Area>
           <ProfileContent initialUser={user} />
         </Notification.Area>

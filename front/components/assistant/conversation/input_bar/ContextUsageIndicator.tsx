@@ -42,9 +42,7 @@ function CircleProgress({
       width={size}
       height={size}
       viewBox={`0 0 ${size} ${size}`}
-      className={
-        variant === "warning" ? "text-red-400 dark:text-red-400-night" : ""
-      }
+      className={variant === "warning" ? "text-warning-400" : ""}
     >
       <circle
         cx={size / 2}
@@ -116,7 +114,7 @@ export function ContextUsageIndicator({
         </PopoverTrigger>
         <PopoverContent side="top" className="w-auto p-3">
           <div className="flex flex-col items-start gap-3">
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground">
               {contextUsagePercentage}% of context used.{" "}
               <LinkWrapper
                 href={COMPACTION_GUIDE_URL}

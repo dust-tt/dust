@@ -25,20 +25,17 @@ export function UniversalSearchItem({
   return (
     <ListItem
       onClick={onClick}
-      className={cn(
-        selected && "s-bg-highlight-50 dark:s-bg-highlight-50-night",
-        className
-      )}
+      className={cn(selected && "bg-highlight-50", className)}
       hasSeparator={hasSeparator}
     >
-      <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         {visual}
-        <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-text-foreground">
-          <div className="s-heading-sm s-flex s-min-w-0 s-gap-1 s-truncate s-text-foreground dark:s-text-foreground-night">
+        <div className="flex min-w-0 flex-1 flex-col text-foreground">
+          <div className="heading-sm flex min-w-0 gap-1 truncate text-foreground">
             {title}
           </div>
           {description && (
-            <div className="s-line-clamp-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <div className="line-clamp-1 text-sm text-muted-foreground">
               {description}
             </div>
           )}

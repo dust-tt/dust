@@ -3,11 +3,7 @@ import { Avatar, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 export function EmptyCell() {
-  return (
-    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-      —
-    </span>
-  );
+  return <span className="text-xs text-muted-foreground">—</span>;
 }
 
 export function AvatarNameCell({

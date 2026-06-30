@@ -27,7 +27,7 @@ export function buildMemberNameColumn<TRow extends MemberNameRow>(): ColumnDef<
           <div>{info.row.original.name}</div>
           {info.row.original.email &&
             info.row.original.email !== info.row.original.name && (
-              <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="text-xs text-muted-foreground">
                 {info.row.original.email}
               </div>
             )}

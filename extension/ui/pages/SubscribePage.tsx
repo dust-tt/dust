@@ -28,8 +28,7 @@ export const SubscribePage = () => {
       <div
         className={cn(
           "flex h-screen flex-col p-4",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-4">

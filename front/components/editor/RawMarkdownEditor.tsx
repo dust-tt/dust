@@ -25,9 +25,9 @@ export const RawMarkdownEditor = forwardRef<
         "block h-full min-h-0 w-full resize-none overflow-y-auto overflow-x-hidden",
         "border-0 bg-transparent p-0 shadow-none",
         "font-mono text-sm leading-relaxed",
-        "text-foreground dark:text-foreground-night",
+        "text-foreground",
         "focus:outline-none focus:ring-0",
-        "placeholder:text-muted-foreground dark:placeholder:text-muted-foreground-night",
+        "placeholder:text-muted-foreground",
         className
       )}
       value={value}

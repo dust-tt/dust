@@ -82,7 +82,7 @@ export const gleanLandingConfig: GleanLandingConfig = {
     headline: (
       <>
         The Best{" "}
-        <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
+        <span className="bg-linear-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
           Glean Alternatives
         </span>
         <br />
@@ -108,7 +108,7 @@ export const gleanLandingConfig: GleanLandingConfig = {
     catchLine: (
       <>
         But there&apos;s a catch: It&apos;s fundamentally a{" "}
-        <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
+        <span className="bg-linear-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
           search-first tool.
         </span>{" "}
         Companies no longer want tools that just find information. They want AI

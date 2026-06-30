@@ -22,27 +22,27 @@ export const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
 export type AvatarVariantType = (typeof AVATAR_VARIANTS)[number];
 
 const avatarVariants = cva(
-  "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
+  "flex flex-shrink-0 items-center justify-center overflow-hidden",
   {
     variants: {
       size: {
-        xxs: "s-h-5 s-w-5",
-        xs: "s-h-7 s-w-7",
-        sm: "s-h-9 s-w-9",
-        md: "s-h-12 s-w-12",
-        lg: "s-h-16 s-w-16",
-        xl: "s-h-20 s-w-20",
-        "2xl": "s-h-36 s-w-36",
-        auto: "s-w-full s-relative",
+        xxs: "h-5 w-5",
+        xs: "h-7 w-7",
+        sm: "h-9 w-9",
+        md: "h-12 w-12",
+        lg: "h-16 w-16",
+        xl: "h-20 w-20",
+        "2xl": "h-36 w-36",
+        auto: "w-full relative",
       },
       variant: {
         default: "",
         clickable:
-          "s-cursor-pointer hover:s-filter group-hover:s-filter group-hover:s-brightness-110 hover:s-brightness-110 group-active:s-brightness-90 active:s-brightness-90 s-transition s-duration-200 s-ease-out",
-        disabled: "s-opacity-50",
+          "cursor-pointer hover:filter group-hover:filter group-hover:brightness-110 hover:brightness-110 group-active:brightness-90 active:brightness-90 transition duration-200 ease-out",
+        disabled: "opacity-50",
       },
       rounded: {
-        true: "s-rounded-full s-ring-[1px] s-ring-border-dark/50 dark:s-ring-border-dark-night/50",
+        true: "rounded-full ring-[1px] ring-border-dark/50",
         false: "",
       },
     },
@@ -50,42 +50,42 @@ const avatarVariants = cva(
       {
         rounded: false,
         size: "xxs",
-        className: "s-rounded",
+        className: "rounded",
       },
       {
         rounded: false,
         size: "xs",
-        className: "s-rounded-md",
+        className: "rounded-md",
       },
       {
         rounded: false,
         size: "sm",
-        className: "s-rounded-lg",
+        className: "rounded-lg",
       },
       {
         rounded: false,
         size: "md",
-        className: "s-rounded-xl",
+        className: "rounded-xl",
       },
       {
         rounded: false,
         size: "lg",
-        className: "s-rounded-2xl",
+        className: "rounded-2xl",
       },
       {
         rounded: false,
         size: "xl",
-        className: "s-rounded-[22px]",
+        className: "rounded-[22px]",
       },
       {
         rounded: false,
         size: "2xl",
-        className: "s-rounded-[32px]",
+        className: "rounded-[32px]",
       },
       {
         rounded: false,
         size: "auto",
-        className: "s-rounded-[24%]",
+        className: "rounded-[24%]",
       },
     ],
     defaultVariants: {
@@ -96,17 +96,17 @@ const avatarVariants = cva(
   }
 );
 
-const textVariants = cva("s-select-none s-font-semibold", {
+const textVariants = cva("select-none font-semibold", {
   variants: {
     size: {
-      xxs: "s-text-[10px]",
-      xs: "s-text-xs",
-      sm: "s-text-sm",
-      md: "s-text-base",
-      lg: "s-text-3xl",
-      xl: "s-text-5xl",
-      "2xl": "s-text-7xl",
-      auto: "s-text-xl",
+      xxs: "text-[10px]",
+      xs: "text-xs",
+      sm: "text-sm",
+      md: "text-base",
+      lg: "text-3xl",
+      xl: "text-5xl",
+      "2xl": "text-7xl",
+      auto: "text-xl",
     },
   },
   defaultVariants: {
@@ -116,42 +116,42 @@ const textVariants = cva("s-select-none s-font-semibold", {
 
 const getColor = (name: string) => {
   if (/\+/.test(name)) {
-    return "s-bg-primary-300";
+    return "bg-primary-300";
   }
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const colors = [
-    "s-bg-blue-300",
-    "s-bg-violet-300",
-    "s-bg-pink-300",
-    "s-bg-red-300",
-    "s-bg-orange-300",
-    "s-bg-golden-300",
-    "s-bg-lime-300",
-    "s-bg-emerald-300",
+    "bg-blue-300",
+    "bg-violet-300",
+    "bg-pink-300",
+    "bg-red-300",
+    "bg-orange-300",
+    "bg-golden-300",
+    "bg-lime-300",
+    "bg-emerald-300",
   ];
   return colors[Math.abs(hash) % colors.length];
 };
 
 const getTextVariant = (name: string) => {
   if (/\+/.test(name)) {
-    return "s-text-muted-foreground";
+    return "text-muted-foreground";
   }
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const txtColors = [
-    "s-text-blue-700",
-    "s-text-violet-700",
-    "s-text-pink-700",
-    "s-text-red-700",
-    "s-text-orange-700",
-    "s-text-golden-700",
-    "s-text-lime-700",
-    "s-text-emerald-700",
+    "text-blue-700",
+    "text-violet-700",
+    "text-pink-700",
+    "text-red-700",
+    "text-orange-700",
+    "text-golden-700",
+    "text-lime-700",
+    "text-emerald-700",
   ];
   return txtColors[Math.abs(hash) % txtColors.length];
 };
@@ -187,7 +187,7 @@ export function Avatar({
   disabled = false,
   className,
   icon,
-  iconColor = "s-text-foreground",
+  iconColor = "text-foreground",
 }: AvatarProps) {
   const normalizedVisual = visual === "" ? null : visual;
   const emojiInfos =
@@ -210,18 +210,18 @@ export function Avatar({
     isImageVisual || hexBgColor
       ? ""
       : (backgroundColorToUse ??
-        (name ? getColor(name) : "s-bg-muted-background"));
+        (name ? getColor(name) : "bg-muted-background"));
 
   return (
     <div
       className={cn(
-        !isImageVisual && "s-border s-border-primary-800/10",
+        !isImageVisual && "border border-primary-800/10",
         avatarVariants({
           size,
           variant,
           rounded: isRounded,
         }),
-        busy ? "s-animate-breathing s-cursor-default" : "",
+        busy ? "animate-breathing cursor-default" : "",
         bgColorClass,
         className
       )}
@@ -236,16 +236,13 @@ export function Avatar({
         <ImageWrapper
           src={visualToUse}
           alt={name}
-          className={cn(
-            avatarVariants({ size }),
-            "s-object-cover s-object-center"
-          )}
+          className={cn(avatarVariants({ size }), "object-cover object-center")}
         />
       ) : visualToUse ? (
         visualToUse
       ) : icon ? (
         React.createElement(icon, {
-          className: cn("s-h-1/2 s-w-1/2", iconColor),
+          className: cn("h-1/2 w-1/2", iconColor),
         })
       ) : emojiToUse ? (
         <span className={textVariants({ size })}>{emojiToUse}</span>
@@ -254,7 +251,7 @@ export function Avatar({
           {/\+/.test(name) ? name : name[0].toUpperCase()}
         </span>
       ) : (
-        <User01 className="s-h-1/2 s-w-1/2 s-text-foreground s-opacity-20" />
+        <User01 className="h-1/2 w-1/2 text-foreground opacity-20" />
       )}
     </div>
   );
@@ -354,14 +351,14 @@ Avatar.Stack = function ({
         <>
           <div
             className={cn(
-              "s-flex",
+              "flex",
               onTop === "first"
                 ? orientation === "vertical"
-                  ? "s-flex-col-reverse s-justify-end"
-                  : "s-flex-row-reverse s-justify-end"
+                  ? "flex-col-reverse justify-end"
+                  : "flex-row-reverse justify-end"
                 : orientation === "vertical"
-                  ? "s-flex-col"
-                  : "s-flex-row"
+                  ? "flex-col"
+                  : "flex-row"
             )}
             onMouseEnter={() => visibleAvatars.length > 1 && setIsHovered(true)}
             onMouseLeave={() =>
@@ -383,7 +380,7 @@ Avatar.Stack = function ({
             {visibleAvatars.map((avatarProps, i) => (
               <div
                 key={i}
-                className="s-cursor-pointer"
+                className="cursor-pointer"
                 style={{
                   [orientation === "vertical" ? "height" : "width"]: isHovered
                     ? orientation === "vertical"
@@ -423,7 +420,7 @@ Avatar.Stack = function ({
             ))}
             {remainingCount > 0 && (
               <div
-                className="s-cursor-pointer"
+                className="cursor-pointer"
                 style={{
                   [orientation === "vertical" ? "height" : "width"]: isHovered
                     ? orientation === "vertical"

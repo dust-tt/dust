@@ -206,7 +206,7 @@ export function EditSpendLimitModal({
               <DialogTitle>
                 Edit spend limit for {displayedMember?.name}
               </DialogTitle>
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <p className="text-sm text-muted-foreground">
                 Maximum pool credits this member can consume during a billing
                 cycle. This limit is added on top of the seat&apos;s built-in
                 allowance.
@@ -273,7 +273,7 @@ export function EditSpendLimitModal({
                       }
                       className="pr-16 text-right"
                     />
-                    <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground">
                       credits
                     </span>
                   </div>

@@ -78,7 +78,7 @@ export function RemoteMCPServerConfigurationSection({
     <>
       {defaultServerConfig && (
         <div className="mb-4">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             {defaultServerConfig.description}
             {defaultServerConfig.documentationUrl && (
               <>
@@ -87,7 +87,7 @@ export function RemoteMCPServerConfigurationSection({
                   href={defaultServerConfig.documentationUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline dark:text-primary-night"
+                  className="text-primary hover:underline"
                 >
                   See {defaultServerConfig.name} documentation.
                 </a>
@@ -95,7 +95,7 @@ export function RemoteMCPServerConfigurationSection({
             )}
           </p>
           {defaultServerConfig.connectionInstructions && (
-            <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="mt-2 text-sm text-muted-foreground">
               {defaultServerConfig.connectionInstructions}
             </p>
           )}
@@ -190,7 +190,7 @@ export function RemoteMCPServerConfigurationSection({
           </div>
           {(authMethod === "oauth-dynamic" ||
             defaultServerConfig?.authMethod === "oauth-dynamic") && (
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="text-xs text-muted-foreground">
               Dust will automatically discover if OAuth authentication is
               required. If OAuth is not needed, the server will be accessed
               without authentication. Otherwise, Dust will try to use dynamic
@@ -214,7 +214,7 @@ export function RemoteMCPServerConfigurationSection({
             </div>
           )}
           {!defaultServerConfig && authMethod === "oauth-static" && (
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="text-xs text-muted-foreground">
               The redirect URI to allow is{" "}
               <strong>{finalizeUriForProvider("mcp_static")}</strong>
             </div>

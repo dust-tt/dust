@@ -27,7 +27,7 @@ export default meta;
 
 export const CollapseExample = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="flex flex-col gap-4">
       <CollapseButton direction="left" />
       <CollapseButton direction="right" />
     </div>

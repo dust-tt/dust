@@ -72,7 +72,7 @@ export function PodTaskUserSection({
             <Avatar size="xs" isRounded />
           )}
           <div className="flex flex-1 flex-col">
-            <h4 className="heading-base text-muted-foreground dark:text-foreground-night">
+            <h4 className="heading-base text-muted-foreground">
               {displayName}
               {user !== null && isYou ? " (you)" : ""}
             </h4>
@@ -82,7 +82,7 @@ export function PodTaskUserSection({
       {suggestedTasks.length > 0 && (
         <Card variant="primary" size="md">
           <div className="flex w-full flex-col gap-4">
-            <div className="heading-sm flex items-center gap-2 text-muted-foreground dark:text-muted-foreground-night">
+            <div className="heading-sm flex items-center gap-2 text-muted-foreground">
               <Icon visual={Stars02} size="sm" />
               Suggestions
             </div>

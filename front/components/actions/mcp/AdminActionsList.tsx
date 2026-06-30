@@ -54,12 +54,12 @@ const NameCell = ({ row }: { row: RowData }) => {
       >
         {getAvatar(mcpServer)}
         <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
-          <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+          <div className="truncate text-sm font-semibold text-foreground">
             {mcpServerView
               ? getMcpServerViewDisplayName(mcpServerView)
               : getMcpServerDisplayName(mcpServer)}
           </div>
-          <div className="truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="truncate text-sm text-muted-foreground">
             {mcpServerView
               ? getMcpServerViewDescription(mcpServerView)
               : mcpServer.description}

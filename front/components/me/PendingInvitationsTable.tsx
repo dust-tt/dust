@@ -61,10 +61,10 @@ export function PendingInvitationsTable({
                 row.original.isExpired && "opacity-60"
               )}
             >
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              <span className="text-sm font-semibold text-foreground">
                 {row.original.workspaceName}
               </span>
-              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <span className="text-xs text-muted-foreground">
                 Role: {row.original.initialRole}
               </span>
             </div>
@@ -81,7 +81,7 @@ export function PendingInvitationsTable({
           rowA.original.createdAt - rowB.original.createdAt,
         cell: ({ row }) => (
           <DataTable.CellContent>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="text-sm text-muted-foreground">
               {new Date(row.original.createdAt).toLocaleString()}
             </span>
           </DataTable.CellContent>

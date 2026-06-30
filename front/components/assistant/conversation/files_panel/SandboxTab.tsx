@@ -52,7 +52,7 @@ function SandboxImageCard({ entry, onClick }: SandboxImageCardProps) {
           <Spinner size="sm" />
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
+      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
         <Tooltip
           tooltipTriggerAsChild
           label={entry.fileName}
@@ -136,7 +136,7 @@ export function SandboxTab({
 
   if (files.length === 0) {
     return (
-      <div className="p-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="p-4 text-sm text-muted-foreground">
         No files in the Computer yet.
       </div>
     );
@@ -163,9 +163,7 @@ export function SandboxTab({
             }
             return (
               <div key={value}>
-                <div className="heading-sm pb-2 text-foreground dark:text-foreground-night">
-                  {plural}
-                </div>
+                <div className="heading-sm pb-2 text-foreground">{plural}</div>
                 <CardGrid>
                   {categoryFiles.map((entry) => {
                     if (value === "image") {
@@ -206,7 +204,7 @@ export function SandboxTab({
                               }
                             />
                           </div>
-                          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                          <div className="text-xs text-muted-foreground">
                             {entry.lastModifiedMs
                               ? moment(entry.lastModifiedMs).fromNow()
                               : null}

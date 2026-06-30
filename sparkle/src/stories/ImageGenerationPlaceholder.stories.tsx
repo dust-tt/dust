@@ -29,7 +29,7 @@ const IMAGE_SRC = "https://picsum.photos/seed/city42/520/520";
 
 export function GeneratingState() {
   return (
-    <div className="s-flex s-items-center s-justify-center s-p-12">
+    <div className="flex items-center justify-center p-12">
       <ImageGenerationPlaceholder />
     </div>
   );
@@ -37,7 +37,7 @@ export function GeneratingState() {
 
 export function RevealedState() {
   return (
-    <div className="s-flex s-items-center s-justify-center s-p-12">
+    <div className="flex items-center justify-center p-12">
       <ImageGenerationPlaceholder src={IMAGE_SRC} alt="A futuristic city" />
     </div>
   );
@@ -53,9 +53,9 @@ export function LiveTransition() {
   };
 
   return (
-    <div className="s-flex s-flex-col s-items-center s-gap-6 s-p-12">
+    <div className="flex flex-col items-center gap-6 p-12">
       <ImageGenerationPlaceholder key={key} src={src} alt="A futuristic city" />
-      <div className="s-flex s-gap-3">
+      <div className="flex gap-3">
         <Button
           label="Reveal image"
           size="sm"
@@ -71,20 +71,18 @@ export function LiveTransition() {
 
 export function Sizes() {
   return (
-    <div className="s-flex s-flex-wrap s-items-end s-gap-6 s-p-12">
-      <div className="s-flex s-flex-col s-items-center s-gap-2">
+    <div className="flex flex-wrap items-end gap-6 p-12">
+      <div className="flex flex-col items-center gap-2">
         <ImageGenerationPlaceholder size={120} />
-        <span className="s-text-xs s-text-muted-foreground">120px</span>
+        <span className="text-xs text-muted-foreground">120px</span>
       </div>
-      <div className="s-flex s-flex-col s-items-center s-gap-2">
+      <div className="flex flex-col items-center gap-2">
         <ImageGenerationPlaceholder size={200} />
-        <span className="s-text-xs s-text-muted-foreground">200px</span>
+        <span className="text-xs text-muted-foreground">200px</span>
       </div>
-      <div className="s-flex s-flex-col s-items-center s-gap-2">
+      <div className="flex flex-col items-center gap-2">
         <ImageGenerationPlaceholder size={260} />
-        <span className="s-text-xs s-text-muted-foreground">
-          260px (default)
-        </span>
+        <span className="text-xs text-muted-foreground">260px (default)</span>
       </div>
     </div>
   );
@@ -92,7 +90,7 @@ export function Sizes() {
 
 export function CustomLabel() {
   return (
-    <div className="s-flex s-items-center s-justify-center s-p-12">
+    <div className="flex items-center justify-center p-12">
       <ImageGenerationPlaceholder label="Generating scene" />
     </div>
   );

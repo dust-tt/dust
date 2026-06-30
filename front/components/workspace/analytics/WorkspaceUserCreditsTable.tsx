@@ -39,7 +39,7 @@ function TopAgentsCell({ agents }: { agents: UserCreditAgent[] }) {
             />
             <span className="flex min-w-0 items-baseline gap-1.5">
               <span className="truncate text-sm">{agent.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <span className="shrink-0 text-xs text-muted-foreground">
                 {agent.modelDisplayName}
               </span>
             </span>

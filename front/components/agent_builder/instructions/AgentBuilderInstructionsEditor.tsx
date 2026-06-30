@@ -125,28 +125,28 @@ const editorVariants = cva(
       embedded: {
         true: [
           "rounded-b-xl border-0 bg-transparent",
-          "focus:ring-0 focus:outline-none focus:border-0",
+          "focus:ring-0 focus:outline-hidden focus:border-0",
         ],
         false: [
           "border rounded-xl",
-          "bg-muted-background dark:bg-muted-background-night",
-          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
-          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
-          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
+          "bg-muted-background",
+          "focus:ring-highlight-300",
+          "focus:outline-highlight-200",
+          "focus:border-highlight-300",
         ],
       },
       error: {
         true: [
-          "border-warning-500 dark:border-warning-500-night",
-          "focus:ring-warning-500 dark:focus:ring-warning-500-night",
-          "focus:outline-warning-500 dark:focus:outline-warning-500-night",
-          "focus:border-warning-500 dark:focus:border-warning-500-night",
+          "border-warning-500",
+          "focus:ring-warning-500",
+          "focus:outline-warning-500",
+          "focus:border-warning-500",
         ],
         false: [
-          "border-border dark:border-border-night",
-          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
-          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
-          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
+          "border-border",
+          "focus:ring-highlight-300",
+          "focus:outline-highlight-200",
+          "focus:border-highlight-300",
         ],
       },
     },
@@ -230,7 +230,7 @@ export function AgentBuilderInstructionsEditor({
         owner,
         HTMLAttributes: {
           class:
-            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+            "min-w-0 px-0 py-0 border-none outline-hidden focus:outline-hidden focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
         },
         suggestion: createMentionSuggestion({
           owner,
@@ -552,9 +552,7 @@ const CharacterCountDisplay = ({
     <span
       className={cn(
         "text-end text-xs",
-        isOverLimit
-          ? "text-warning"
-          : "text-muted-foreground dark:text-muted-foreground-night"
+        isOverLimit ? "text-warning" : "text-muted-foreground"
       )}
     >
       {count} / {maxCount} characters

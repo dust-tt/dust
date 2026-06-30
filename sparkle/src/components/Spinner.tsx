@@ -232,14 +232,14 @@ const Spinner: React.FC<SpinnerProps> = ({ size = "md", variant = "mono" }) => {
     <>
       <Lottie
         animationData={variant && variant === "mono" ? darkAnim : lightAnim}
-        className="s-block dark:s-hidden"
+        className="light-only"
         style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
         loop
         autoplay
       />
       <Lottie
         animationData={variant && variant === "mono" ? lightAnim : darkAnim}
-        className="s-hidden dark:s-block"
+        className="dark-only"
         style={{ width: `${fullSize}px`, height: `${fullSize}px` }}
         loop
         autoplay

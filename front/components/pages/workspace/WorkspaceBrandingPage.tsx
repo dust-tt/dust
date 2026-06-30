@@ -16,13 +16,11 @@ export function WorkspaceBrandingPage() {
         <div
           className={cn(
             "flex flex-col gap-2 rounded-xl border p-6",
-            "border-border dark:border-border-night bg-muted dark:bg-muted-night"
+            "border-border bg-muted"
           )}
         >
-          <p className="heading-lg text-foreground dark:text-foreground-night">
-            Workspace branding
-          </p>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="heading-lg text-foreground">Workspace branding</p>
+          <p className="text-sm text-muted-foreground">
             Workspace branding is not available for this workspace. Whitelabel
             frames must be enabled to customize your workspace logo.
           </p>

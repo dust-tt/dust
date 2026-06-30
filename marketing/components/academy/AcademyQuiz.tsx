@@ -385,7 +385,7 @@ export function AcademyQuiz({
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={quizSettings.quizAnswerPlaceholder}
-                  className="flex-1 resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm focus:border-highlight focus:outline-none focus:ring-1 focus:ring-highlight"
+                  className="flex-1 resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm focus:border-highlight focus:outline-hidden focus:ring-1 focus:ring-highlight"
                   rows={2}
                   disabled={isLoading}
                 />

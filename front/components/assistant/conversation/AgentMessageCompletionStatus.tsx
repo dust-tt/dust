@@ -59,9 +59,9 @@ export const AgentMessageCompletionStatus = ({
     <div
       className={cn(
         "flex cursor-pointer items-center gap-1 text-xs",
-        "text-muted-foreground dark:text-muted-foreground-night",
-        "hover:text-foreground dark:hover:text-foreground-night",
-        isOpened && "text-foreground dark:text-foreground-night"
+        "text-muted-foreground",
+        "hover:text-foreground",
+        isOpened && "text-foreground"
       )}
       onClick={handleClick}
     >

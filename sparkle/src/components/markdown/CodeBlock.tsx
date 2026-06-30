@@ -2,7 +2,9 @@ import { customColors } from "@sparkle/lib/colors";
 import { safeLazy } from "@sparkle/lib/safeLazy";
 import { cva } from "class-variance-authority";
 import React, { Suspense } from "react";
-import { violet } from "tailwindcss/colors";
+import colors from "tailwindcss/colors";
+
+const violet = colors.violet;
 
 const SyntaxHighlighter = safeLazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
@@ -10,15 +12,15 @@ const SyntaxHighlighter = safeLazy(
 
 export const codeInlineVariants = cva(
   [
-    "s-mx-0.5 s-my-0.5 s-cursor-text s-rounded-md s-border s-px-0.5 s-py-0",
-    "s-border-border dark:s-border-border-night",
-    "s-text-[0.90em]",
-    "s-text-golden-700 dark:s-text-golden-700-night",
+    "mx-0.5 my-0.5 cursor-text rounded-md border px-0.5 py-0",
+    "border-border",
+    "text-[0.90em]",
+    "text-info-700",
   ],
   {
     variants: {
       variant: {
-        surface: ["s-bg-muted/70 dark:s-bg-muted-night/70"],
+        surface: ["bg-muted/70"],
       },
     },
     defaultVariants: {
@@ -29,14 +31,14 @@ export const codeInlineVariants = cva(
 
 export const codeBlockVariants = cva(
   [
-    "s-mx-0.5 s-my-0.5 s-cursor-text s-rounded-md s-border s-p-2",
-    "s-border-border dark:s-border-border-night",
-    "s-text-[0.90em]",
+    "mx-0.5 my-0.5 cursor-text rounded-md border p-2",
+    "border-border",
+    "text-[0.90em]",
   ],
   {
     variants: {
       variant: {
-        surface: ["s-bg-muted/70 dark:s-bg-muted-night/70"],
+        surface: ["bg-muted/70"],
       },
     },
     defaultVariants: {
@@ -50,12 +52,12 @@ const codeStyle = {
     display: "block",
     overflowX: "auto",
     padding: "1em",
-    color: "var(--s-foreground)",
+    color: "var(--color-foreground)",
     backgroundColor: "transparent",
     fontSize: "0.875rem",
   },
   "hljs-ln": {
-    color: "var(--s-muted-foreground)",
+    color: "var(--color-muted-foreground)",
     fontSize: "0.75rem",
     paddingRight: "1em",
     textAlign: "right",
@@ -82,7 +84,7 @@ const codeStyle = {
   },
   "hljs-variable": {
     // Regular variables
-    color: "var(--s-foreground)",
+    color: "var(--color-foreground)",
   },
   "hljs-literal": {
     // true, false, null
@@ -102,11 +104,11 @@ const codeStyle = {
   },
   "hljs-property": {
     // Object properties
-    color: "var(--s-foreground)",
+    color: "var(--color-foreground)",
   },
   "hljs-punctuation": {
     // Brackets, dots, etc
-    color: "var(--s-foreground)",
+    color: "var(--color-foreground)",
   },
   "hljs-operator": {
     // =, +, -, etc
@@ -130,7 +132,7 @@ const codeStyle = {
   },
   "hljs-params": {
     // Function parameters
-    color: "var(--s-foreground)",
+    color: "var(--color-foreground)",
   },
   // Typography styles
   "hljs-emphasis": {
@@ -170,14 +172,14 @@ export function CodeBlock({
 
   return !inline ? (
     <Suspense fallback={<div />}>
-      <div className="s-text-foreground dark:s-text-foreground-night">
+      <div className="text-foreground">
         <SyntaxHighlighter
           wrapLongLines={wrapLongLines}
           showLineNumbers={showLineNumber}
           style={codeStyle}
           language={languageToUse}
           PreTag="div"
-          className="s-cursor-text"
+          className="cursor-text"
         >
           {String(children).replace(/\n$/, "")}
         </SyntaxHighlighter>

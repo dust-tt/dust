@@ -46,20 +46,20 @@ const Example = () => {
   };
 
   return (
-    <div className="s-flex s-w-[900px] s-flex-1 s-px-0">
+    <div className="flex w-[900px] flex-1 px-0">
       <RainbowEffect
-        containerClassName="s-w-full"
-        className="s-w-full"
+        containerClassName="w-full"
+        className="w-full"
         size={isFocused ? "large" : "medium"}
       >
         <div
           ref={divRef}
           onClick={handleFocus}
           className={cn(
-            "s-relative s-flex s-h-[120px] s-w-full s-flex-row s-p-5",
-            "s-rounded-3xl s-border s-border-border/0 s-bg-primary-50 s-transition-all",
+            "relative flex h-[120px] w-full flex-row p-5",
+            "rounded-3xl border border-transparent bg-primary-50 transition-all",
             isFocused
-              ? "s-border-border s-ring-2 s-ring-highlight-300 s-ring-offset-2"
+              ? "border-border ring-2 ring-highlight-300 ring-offset-2"
               : ""
           )}
         >
