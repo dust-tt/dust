@@ -3511,8 +3511,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Pod default skills live in the `project_metadata.defaultSkillsIds` array
-    // so they are removed when the workspace's project_metadata rows are scrubbed
     await AgentSkillModel.destroy({
       where: { workspaceId },
     });
