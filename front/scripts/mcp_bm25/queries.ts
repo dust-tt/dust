@@ -449,6 +449,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "slack_bot.read_channel_history",
   },
 
+  // --- outlook ---
+  {
+    query: "get emails from my Outlook inbox",
+    expected: "outlook.get_messages",
+  },
+  {
+    query: "check Outlook Calendar availability for multiple people",
+    expected: "outlook_calendar.check_availability",
+  },
+
   // --- microsoft_teams ---
   {
     query: "search microsoft teams messages for the budget discussion",
