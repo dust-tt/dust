@@ -995,6 +995,52 @@ export const QUERIES: LabeledQuery[] = [
     expected: "workspace_analytics.get_usage_timeseries",
   },
 
+  // --- ashby ---
+  {
+    query: "find a candidate in ashby by email",
+    expected: "ashby.search_candidates",
+  },
+  {
+    query: "download an ashby report as a csv file",
+    expected: "ashby.get_report_data",
+  },
+  {
+    query: "show the interview feedback for a candidate in ashby",
+    expected: "ashby.get_interview_feedback",
+  },
+  {
+    query: "read all the notes on a candidate in ashby",
+    expected: "ashby.get_candidate_notes",
+  },
+  {
+    query: "add a note to a candidate's profile in ashby",
+    expected: "ashby.create_candidate_note",
+  },
+  {
+    query: "list the job openings in ashby",
+    expected: "ashby.list_openings",
+  },
+  {
+    query: "list the published job postings in ashby",
+    expected: "ashby.list_job_postings",
+  },
+  {
+    query: "update the description of a job posting in ashby",
+    expected: "ashby.update_job_posting",
+  },
+  {
+    query: "show the referral form fields in ashby",
+    expected: "ashby.get_referral_form",
+  },
+  {
+    query: "create a referral for a candidate in ashby",
+    expected: "ashby.create_referral",
+  },
+  {
+    query: "get the offer and hire details for a hired candidate in ashby",
+    expected: "ashby.get_hire_data",
+  },
+
   // --- web_search_&_browse ---
   {
     query: "search the web for the latest AI research papers",
