@@ -18,6 +18,7 @@ import {
   DustConnectorWorkflowError,
   ExternalOAuthTokenError,
   ProviderTransientError,
+  RemoteDatabaseConnectionNotReadonlyError,
   WorkspaceQuotaExceededError,
 } from "./error";
 import { syncFailed } from "./sync_status";
@@ -209,9 +210,11 @@ export class ActivityInboundLogInterceptor
 
       if (
         err instanceof ExternalOAuthTokenError ||
+        err instanceof RemoteDatabaseConnectionNotReadonlyError ||
         err instanceof WorkspaceQuotaExceededError
       ) {
-        // We have a connector working on an expired token, we need to cancel the workflow.
+        // The connector cannot make progress without a human action, so pause it
+        // and stop its workflow.
         if (connectorId) {
           if (!connector) {
             throw new Error(
@@ -229,6 +232,20 @@ export class ActivityInboundLogInterceptor
                 workspaceId,
               },
               `Stopping connector manager because of expired token.`
+            );
+          } else if (err instanceof RemoteDatabaseConnectionNotReadonlyError) {
+            await syncFailed(
+              connectorId,
+              "remote_database_connection_not_readonly"
+            );
+            this.logger.info(
+              {
+                connectorId,
+                dataSourceId,
+                error: err,
+                workspaceId,
+              },
+              `Stopping connector manager because the remote database connection is not read-only.`
             );
           } else {
             await syncFailed(connectorId, "workspace_quota_exceeded");

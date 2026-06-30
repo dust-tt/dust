@@ -17,6 +17,7 @@ import {
   getAvailableInputBarSlashCommands,
   type InputBarSlashCommand,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import {
   isRunCommandSlashCommand,
   isSkillSlashCommand,
@@ -143,6 +144,41 @@ export const INPUT_BAR_ACTIONS = [
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
+export interface DefaultSkillReference {
+  sId: string;
+  name: string;
+  icon: string | null;
+}
+
+function readDefaultSkillEditorState(editor: Editor): {
+  skillIds: string[];
+  hasUserContent: boolean;
+} {
+  const skillIds: string[] = [];
+  let hasUserContent = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === SKILL_NODE_TYPE) {
+      if (typeof node.attrs.skillId === "string") {
+        skillIds.push(node.attrs.skillId);
+      }
+      return false;
+    }
+    if (node.isText) {
+      if ((node.text ?? "").trim().length > 0) {
+        hasUserContent = true;
+      }
+    } else if (node.isInline && node.type.name !== "hardBreak") {
+      hasUserContent = true;
+    }
+    return true;
+  });
+  return { skillIds, hasUserContent };
+}
+
+function sameSkillIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
 export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
@@ -168,6 +204,9 @@ export interface InputBarContainerProps {
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
+  // Skills pre-inserted into a new conversation's editor, as if manually added.
+  defaultSkills?: DefaultSkillReference[];
+  isDefaultSkillsLoading?: boolean;
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
@@ -207,6 +246,8 @@ const InputBarContainer = ({
   getDraft,
   defaultAgentId,
   isDefaultAgentLoading,
+  defaultSkills,
+  isDefaultSkillsLoading,
   isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
@@ -1284,6 +1325,71 @@ const InputBarContainer = ({
     stickyMentions,
   });
 
+  useEffect(() => {
+    if (defaultSkills === undefined) {
+      return;
+    }
+    if (conversation || isAgentBuilder) {
+      return;
+    }
+
+    if (isDefaultSkillsLoading) {
+      return;
+    }
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    const desiredSkillIds = defaultSkills.map((skill) => skill.sId);
+
+    queueMicrotask(() => {
+      if (
+        !editor ||
+        editor.isDestroyed ||
+        !editor.isEditable ||
+        !editor.isInitialized
+      ) {
+        return;
+      }
+
+      const { skillIds, hasUserContent } = readDefaultSkillEditorState(editor);
+
+      if (hasUserContent) {
+        return;
+      }
+
+      if (sameSkillIds(skillIds, desiredSkillIds)) {
+        return;
+      }
+
+      let chain = editor.chain();
+      if (skillIds.length > 0) {
+        chain = chain.clearContent();
+      }
+      for (const skill of defaultSkills) {
+        chain = chain.insertSkillNode({
+          skillId: skill.sId,
+          skillName: skill.name,
+          skillIcon: skill.icon,
+        });
+      }
+      chain.run();
+    });
+  }, [
+    conversation,
+    defaultSkills,
+    isDefaultSkillsLoading,
+    isAgentBuilder,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+  ]);
+
   const buttonSize = useMemo(() => {
     return isMobile ? "sm" : "xs";
   }, [isMobile]);
@@ -1296,13 +1402,6 @@ const InputBarContainer = ({
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
-  // A pod can pre-select a default agent that the current member can't access
-  // (e.g. an unpublished agent). `allAgents` only contains agents the member
-  // can read, so when the configured default is missing from it, the
-  // resolution in `useHandleMentions` silently falls back to @dust. Surface a
-  // notice on the agent pill so the member understands why the pod's default
-  // isn't the one shown. (We can't distinguish "no access" from "deleted"
-  // client-side, so the copy stays neutral.)
   const isDefaultAgentUnavailable =
     !conversation &&
     !isAgentBuilder &&
@@ -1315,7 +1414,7 @@ const InputBarContainer = ({
     "inline-block w-full",
     "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "px-3 sm:pl-4 pt-3 sm:pt-3.5"
+    "px-3 md:pl-4 pt-3 md:pt-3.5"
   );
 
   const isRecording = activeVoiceService.status === "recording";
@@ -1378,7 +1477,7 @@ const InputBarContainer = ({
           className={cn(
             INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
             INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
-            "relative min-w-0 w-full gap-1 px-1 sm:pt-0"
+            "relative min-w-0 w-full gap-1 px-1 md:pt-0"
           )}
         >
           {!isVoiceActive && (
@@ -1388,7 +1487,7 @@ const InputBarContainer = ({
                 INPUT_BAR_COMPACT_PREVIEW_CLASSES,
                 compactPreviewText
                   ? "text-foreground dark:text-foreground-night"
-                  : "text-faint dark:text-faint-night"
+                  : "text-muted-foreground dark:text-muted-foreground-night"
               )}
             >
               {compactPreviewText || compactDisplayPlaceholder}
@@ -1410,7 +1509,7 @@ const InputBarContainer = ({
                   elapsedSeconds={activeVoiceService.elapsedSeconds}
                   onRecordStart={activeVoiceService.startRecording}
                   onRecordStop={activeVoiceService.stopRecording}
-                  size="xs"
+                  size="sm"
                   compact
                   showStopLabel={false}
                   disabled={disableInput}
@@ -1422,7 +1521,7 @@ const InputBarContainer = ({
       <div
         id="InputBarContainer"
         className={cn(
-          "relative flex flex-1 cursor-text flex-row transition-opacity duration-200 sm:pt-0",
+          "relative flex flex-1 cursor-text flex-row transition-opacity duration-200 md:pt-0",
           isCompact &&
             "pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
         )}
@@ -1444,7 +1543,7 @@ const InputBarContainer = ({
                 contentEditableClasses,
                 "scrollbar-hide",
                 "overflow-y-auto",
-                "max-h-[40vh] min-h-14 sm:min-h-16"
+                "max-h-[40vh] min-h-14 md:min-h-16"
               )}
             />
           </div>
@@ -1459,7 +1558,7 @@ const InputBarContainer = ({
             )}
           </BubbleMenu>
           <div
-            className={cn("flex w-full flex-col", "py-1.5 sm:pb-2")}
+            className={cn("flex w-full flex-col", "py-1.5 md:pb-2")}
             style={{
               transition: `padding ${COLLAPSE_TRANSITION}`,
             }}

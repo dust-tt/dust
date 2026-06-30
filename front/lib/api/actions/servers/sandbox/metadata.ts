@@ -6,6 +6,31 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const SANDBOX_TOOL_NAME = "sandbox" as const;
 
+// Default and maximum timeout the model can request for a single bash command.
+// The value is enforced in-container by the `timeout` wrapper (see
+// `wrapCommandWithCapture`), which kills the command and returns the captured
+// output when it overruns.
+export const SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS = 60000;
+export const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 120000;
+
+// Extra time we add on top of a command's in-container timeout to set the
+// timeout we give the sandbox provider. The in-container `timeout`
+// wrapper stops the command and returns whatever output it has; this extra
+// time lets that finish and reach us before the provider gives up. A few
+// seconds is plenty (it only covers stopping the command and sending its
+// output back). It must stay small enough that the provider timeout
+// (max command timeout + this) stays under SANDBOX_MCP_REQUEST_TIMEOUT_MS.
+export const SANDBOX_EXEC_TIMEOUT_BUFFER_MS = 10000;
+
+// Outer MCP request deadline for the sandbox server. It must be strictly
+// greater than the max in-container command timeout so the graceful
+// in-container timeout (which returns partial output) always fires before the
+// MCP layer hard-aborts the call. The buffer covers process teardown, output
+// flushing, and the host round-trip.
+const SANDBOX_MCP_TIMEOUT_BUFFER_MS = 30000;
+export const SANDBOX_MCP_REQUEST_TIMEOUT_MS =
+  SANDBOX_MAX_COMMAND_TIMEOUT_MS + SANDBOX_MCP_TIMEOUT_BUFFER_MS;
+
 export const SANDBOX_TOOLS_METADATA = createToolsRecord({
   bash: {
     description:
@@ -31,10 +56,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .describe("Working directory for command execution. Defaults to /tmp."),
       timeoutMs: z
         .number()
-        .max(120000)
+        .max(SANDBOX_MAX_COMMAND_TIMEOUT_MS)
         .optional()
         .describe(
-          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000."
+          `Timeout in milliseconds for command execution. Defaults to ${SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS}, max ${SANDBOX_MAX_COMMAND_TIMEOUT_MS}.`
         ),
     },
     stake: "never_ask",
@@ -42,6 +67,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       running: "Executing command",
       done: "Execute command in the Computer",
     },
+    enableAlerting: true,
   },
   describe_toolset: {
     description:
@@ -106,7 +132,6 @@ export const SANDBOX_SERVER = {
     authorization: null,
     icon: "CommandLineIcon",
     documentationUrl: null,
-    instructions: null,
   },
   // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
   // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.

@@ -64,7 +64,11 @@ import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadat
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
-import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
+import {
+  SANDBOX_MCP_REQUEST_TIMEOUT_MS,
+  SANDBOX_SERVER,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
@@ -86,6 +90,7 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
 import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
@@ -93,6 +98,7 @@ import type {
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
 import {
@@ -204,6 +210,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "user_mentions",
   "val_town",
   "vanta",
+  "workday",
   "front",
   "web_search_&_browse",
   "zendesk",
@@ -216,6 +223,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "pod_tasks",
   "poke",
   "sandbox",
+  "sandbox_functions",
   "ask_user_question",
   "wakeups",
   "plan_mode",
@@ -1038,7 +1046,22 @@ export const INTERNAL_MCP_SERVERS = {
     metadata: SANDBOX_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
-    timeoutMs: 120000, // 2 minutes for command execution
+    // Derived from the max command timeout plus a buffer so the in-container
+    // timeout returns captured output before this MCP deadline aborts the call.
+    timeoutMs: SANDBOX_MCP_REQUEST_TIMEOUT_MS,
+  },
+  sandbox_functions: {
+    id: 1037,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_functions");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SANDBOX_FUNCTIONS_SERVER,
   },
   user_mentions: {
     id: 1026,
@@ -1064,7 +1087,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   ask_user_question: {
     id: 1028,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
@@ -1079,6 +1102,17 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
+    runtimeToolStakeLevelCallback: ({
+      toolName,
+      plan,
+      configuredStakeLevel,
+    }) => {
+      if (toolName !== "schedule_wakeup") {
+        return configuredStakeLevel;
+      }
+
+      return plan && isCreditPricedPlanPrefix(plan.code) ? "low" : "high";
+    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1145,6 +1179,17 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: EXA_SERVER,
   },
+  workday: {
+    id: 1038,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("workday_mcp"),
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKDAY_SERVER,
+  },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
   [K in InternalMCPServerNameType]: InternalMCPServerEntryBase<K>;
@@ -1156,12 +1201,23 @@ type IsRestrictedCallback = (params: {
   isDeepDiveDisabled: boolean;
 }) => boolean;
 
+type RuntimeToolStakeLevelCallbackParams = {
+  toolName: string;
+  plan: PlanType | null;
+  configuredStakeLevel: MCPToolStakeLevelType;
+};
+
+type RuntimeToolStakeLevelCallback = (
+  params: RuntimeToolStakeLevelCallbackParams
+) => MCPToolStakeLevelType;
+
 type InternalMCPServerEntryCommon = {
   id: number;
   availability: MCPServerAvailability;
   allowMultipleInstances: boolean;
   isRestricted: IsRestrictedCallback | undefined;
   isPreview: boolean;
+  runtimeToolStakeLevelCallback?: RuntimeToolStakeLevelCallback;
   // Defines which arguments require per-agent approval for "medium" stake tools.
   // When a tool has "medium" stake, the user must approve the specific combination
   // of (agent, tool, argument values) before the tool can execute.
@@ -1394,6 +1450,18 @@ export function getInternalMCPServerToolStakes(
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata.tools_stakes;
+}
+
+export function resolveInternalMCPServerToolStakeLevel(
+  name: InternalMCPServerNameType,
+  params: RuntimeToolStakeLevelCallbackParams
+): MCPToolStakeLevelType {
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+
+  return (
+    server.runtimeToolStakeLevelCallback?.(params) ??
+    params.configuredStakeLevel
+  );
 }
 
 export function getInternalMCPServerToolDisplayLabels<

@@ -94,6 +94,11 @@ DataSourceModel.init(
         name: "data_sources_conversation_id",
         concurrently: true,
       },
+      {
+        fields: ["dustAPIDataSourceId"],
+        name: "data_sources_dust_api_data_source_id",
+        concurrently: true,
+      },
     ],
   }
 );

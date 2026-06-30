@@ -76,6 +76,7 @@ app.post(
       trialPeriodDays: body.trialPeriodDays,
       canUseProduct: body.limits.canUseProduct,
       isByok: body.isByok,
+      hasAdvancedModelAccess: body.hasAdvancedModelAccess,
     };
 
     let plan = await PlanModel.findOne({ where: { code: body.code } });

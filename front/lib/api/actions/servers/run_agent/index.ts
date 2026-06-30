@@ -30,6 +30,7 @@ import {
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
+  getRunAgentToolDescription,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
   RUN_AGENT_PLACEHOLDER_TOOL_NAME,
   RUN_AGENT_TOOL_SCHEMA,
@@ -914,8 +915,17 @@ async function createServer(
     sId: childAgentId!, // We are sure childAgentId is *not* undefined here, as we check for childAgentBlob above
   });
   const toolDescription = isHandoffConfiguration
-    ? `Handoff completely to ${childAgentBlob.name} (${childAgentBlob.description}). Inform the user that you are handing off to ${mentionChild} before calling the tool since this agent will respond in the conversation.`
-    : `Run ${childAgentBlob.name} in the background and pass results back to the main agent. You will have access to the results of the agent in the conversation.`;
+    ? getRunAgentToolDescription({
+        executionMode: "handoff",
+        childAgentName: childAgentBlob.name,
+        childAgentDescription: childAgentBlob.description,
+        childAgentMention: mentionChild,
+      })
+    : getRunAgentToolDescription({
+        executionMode: "run-agent",
+        childAgentName: childAgentBlob.name,
+        childAgentDescription: childAgentBlob.description,
+      });
 
   const schema = {
     ...RUN_AGENT_TOOL_SCHEMA,

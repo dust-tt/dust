@@ -159,8 +159,7 @@ app.post(
     try {
       await SubscriptionResource.pokeUpgradeWorkspaceToEnterprise(
         auth,
-        validated,
-        stripeSubscription
+        validated
       );
       await restoreWorkspaceAfterSubscription(auth);
 

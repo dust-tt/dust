@@ -26,13 +26,7 @@ struct InputBarView: View {
                 attachmentPreviewBar
             }
 
-            if viewModel.speechService.isRecording {
-                recordingView
-            } else if viewModel.speechService.isTranscribing {
-                transcribingView
-            } else {
-                textFieldView
-            }
+            textFieldView
 
             HStack {
                 agentButton
@@ -91,6 +85,12 @@ struct InputBarView: View {
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        .fullScreenCover(isPresented: $viewModel.showVoiceInput) {
+            VoiceInputView(viewModel: viewModel) {
+                viewModel.showVoiceInput = false
+                sendAction()
+            }
         }
         .task {
             // A task hop is needed; setting @FocusState in onAppear doesn't take.
@@ -186,45 +186,6 @@ struct InputBarView: View {
             }
     }
 
-    // MARK: - Recording View
-
-    private var recordingView: some View {
-        HStack(spacing: 12) {
-            AudioWaveView(level: viewModel.speechService.audioLevel)
-                .frame(maxWidth: .infinity)
-
-            Button {
-                viewModel.cancelVoiceInput()
-            } label: {
-                SparkleIcon.xMark.image
-                    .resizable()
-                    .frame(width: 12, height: 12)
-                    .foregroundStyle(Color.dustForeground.opacity(0.5))
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(minHeight: 44)
-    }
-
-    // MARK: - Transcribing View
-
-    private var transcribingView: some View {
-        HStack(spacing: 8) {
-            ProgressView()
-                .progressViewStyle(.circular)
-                .scaleEffect(0.8)
-                .tint(Color.highlight)
-            Text("Transcribing...")
-                .sparkleCopySm()
-                .foregroundStyle(Color.dustForeground.opacity(0.5))
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(minHeight: 44)
-    }
-
     // MARK: - Agent Button
 
     private var agentButton: some View {
@@ -253,7 +214,6 @@ struct InputBarView: View {
             .padding(.vertical, 8)
         }
         .liquidGlassCapsule()
-        .disabled(viewModel.speechService.isRecording || viewModel.speechService.isTranscribing)
     }
 
     // MARK: - Attachment Button
@@ -288,46 +248,46 @@ struct InputBarView: View {
                 .padding(8)
         }
         .liquidGlassCircle()
-        .disabled(viewModel.speechService.isRecording || viewModel.speechService.isTranscribing || viewModel.isSending)
+        .disabled(viewModel.isSending)
     }
 
-    // MARK: - Action Button (Send, Mic, or Stop)
+    // MARK: - Action Button (Send or Mic)
 
     @ViewBuilder
     private var actionButton: some View {
-        if viewModel.speechService.isRecording {
-            stopButton
-        } else if viewModel.speechService.isTranscribing {
-            // No action button while transcribing
-            EmptyView()
-        } else if viewModel.canSend {
+        if viewModel.canSend {
             sendButton
         } else {
             micButton
         }
     }
 
-    // MARK: - Send Button
+    // MARK: - Send
+
+    /// Shared by the inline send button and the full-screen voice view's send control.
+    private func sendAction() {
+        // @MainActor so callbacks after the await (e.g. navigation) run on the main actor.
+        Task { @MainActor in
+            isTextFieldFocused = false
+            if let conversationId {
+                let pendingText = viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !pendingText.isEmpty {
+                    onWillSendReply?(pendingText)
+                }
+                if await viewModel.sendReply(conversationId: conversationId) {
+                    onMessageSent?()
+                } else {
+                    onReplySendFailed?()
+                }
+            } else if let conversation = await viewModel.sendMessage() {
+                onConversationCreated?(conversation)
+            }
+        }
+    }
 
     private var sendButton: some View {
         Button {
-            // @MainActor so callbacks after the await (e.g. navigation) run on the main actor.
-            Task { @MainActor in
-                isTextFieldFocused = false
-                if let conversationId {
-                    let pendingText = viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !pendingText.isEmpty {
-                        onWillSendReply?(pendingText)
-                    }
-                    if await viewModel.sendReply(conversationId: conversationId) {
-                        onMessageSent?()
-                    } else {
-                        onReplySendFailed?()
-                    }
-                } else if let conversation = await viewModel.sendMessage() {
-                    onConversationCreated?(conversation)
-                }
-            }
+            sendAction()
         } label: {
             Circle()
                 .fill(Color.highlight)
@@ -346,7 +306,7 @@ struct InputBarView: View {
 
     private var micButton: some View {
         Button {
-            viewModel.startVoiceInput()
+            viewModel.presentVoiceInput()
         } label: {
             SparkleIcon.mic.image
                 .resizable()
@@ -355,56 +315,5 @@ struct InputBarView: View {
                 .padding(11)
         }
         .liquidGlassCircle()
-    }
-
-    // MARK: - Stop Button
-
-    private var stopButton: some View {
-        Button {
-            viewModel.stopVoiceInput()
-        } label: {
-            Circle()
-                .fill(Color.highlight)
-                .frame(width: 36, height: 36)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(.white)
-                        .frame(width: 12, height: 12)
-                }
-        }
-    }
-}
-
-// MARK: - Audio Wave Visualization
-
-private struct AudioWaveView: View {
-    let level: Float
-
-    @State private var phase: Double = 0
-    private let barCount = 24
-    private let barSpacing: CGFloat = 3
-
-    var body: some View {
-        HStack(spacing: barSpacing) {
-            ForEach(0 ..< barCount, id: \.self) { index in
-                let position = Double(index) / Double(barCount - 1)
-                let distanceFromCenter = abs(position - 0.5)
-                let envelope = 1.0 - distanceFromCenter * 1.4
-                let wave = sin(position * .pi * 3 + phase)
-                let amplitude = Double(max(level, 0.05))
-                let height = max((0.15 + envelope * amplitude * (0.5 + wave * 0.5)) * 24, 3)
-
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color.highlight)
-                    .frame(width: 2, height: height)
-            }
-        }
-        .frame(height: 24)
-        .animation(.easeOut(duration: 0.12), value: level)
-        .onAppear {
-            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
-                phase = .pi * 2
-            }
-        }
     }
 }

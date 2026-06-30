@@ -11,16 +11,16 @@ import {
 } from "@app/lib/credits/awu_purchase_status";
 import {
   addPaymentGatedCommitToContract,
+  floorToHourISO,
   getMetronomeCustomerStripeCustomerId,
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
-  CARRY_ON_RENEWAL_FOREVER_VALUE,
   CURRENCY_TO_CREDIT_TYPE_ID,
-  FOREVER_ENDING_BEFORE,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
+  oneYearAfter,
 } from "@app/lib/metronome/constants";
 import { USAGE_TAG } from "@app/lib/metronome/setup_common";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
@@ -335,6 +335,8 @@ export async function purchaseAwuCredits(
     amountCredits,
   });
 
+  const accessEndingBefore = oneYearAfter(now);
+
   const editResult = await addPaymentGatedCommitToContract({
     metronomeCustomerId,
     metronomeContractId,
@@ -342,7 +344,7 @@ export async function purchaseAwuCredits(
     accessAmount: amountCredits,
     accessCreditTypeId: getCreditTypeAwuId(),
     accessStartingAt: now,
-    accessEndingBefore: FOREVER_ENDING_BEFORE,
+    accessEndingBefore,
     invoiceUnitPrice,
     invoiceQuantity: 1,
     invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[currency],
@@ -355,7 +357,7 @@ export async function purchaseAwuCredits(
         : `Credit top-up: ${amountCredits.toLocaleString()} credits`,
     uniquenessKey,
     customFields: {
-      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: CARRY_ON_RENEWAL_FOREVER_VALUE,
+      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: floorToHourISO(accessEndingBefore),
     },
     // Stamped on the Stripe invoice Metronome pushes downstream so the
     // existing eligibility check (`isAwuPurchaseInvoice`) still recognises

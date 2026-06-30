@@ -14,7 +14,7 @@ import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations"
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
-import { usePodMetadata } from "@app/lib/swr/pods";
+import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type {
@@ -120,6 +120,11 @@ export function PodConversationsTab({
     hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
 
+  const { defaultSkills, isDefaultSkillsLoading } = usePodDefaultSkills({
+    owner,
+    podId: podInfo.sId,
+  });
+
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
   const noConversationsForFilterMessage = useMemo(() => {
@@ -205,7 +210,7 @@ export function PodConversationsTab({
               )}
             </div>
             {podInfo.archivedAt ? (
-              <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
+              <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
                 <EmptyCTA
                   message="This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}
@@ -222,6 +227,8 @@ export function PodConversationsTab({
                 placeholder={`Get work done in ${podInfo.name}`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
+                defaultSkills={defaultSkills}
+                isDefaultSkillsLoading={isDefaultSkillsLoading}
               />
             ) : (
               <PodJoinCTA

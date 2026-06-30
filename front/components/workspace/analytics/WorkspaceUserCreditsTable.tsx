@@ -1,4 +1,5 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import type { AnalyticsEntityFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import { CreditsTableCard } from "@app/components/workspace/analytics/CreditsTableCard";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
@@ -111,11 +112,13 @@ const columns: ColumnDef<UserCreditRowData>[] = [
 interface WorkspaceUserCreditsTableProps {
   workspaceId: string;
   period: ObservabilityTimeRangeType;
+  onSelectUser?: (filter: AnalyticsEntityFilter) => void;
 }
 
 export function WorkspaceUserCreditsTable({
   workspaceId,
   period,
+  onSelectUser,
 }: WorkspaceUserCreditsTableProps) {
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: 300,
@@ -129,6 +132,13 @@ export function WorkspaceUserCreditsTable({
       search: debouncedValue || undefined,
       disabled: !workspaceId,
     });
+
+  const rows: UserCreditRowData[] = onSelectUser
+    ? userCredits.map((row) => ({
+        ...row,
+        onClick: () => onSelectUser({ id: row.userId, name: row.name }),
+      }))
+    : userCredits;
 
   const exportParams = new URLSearchParams({
     days: period.toString(),
@@ -165,7 +175,7 @@ export function WorkspaceUserCreditsTable({
           : "No user activity for this selection."
       }
       columns={columns}
-      data={userCredits}
+      data={rows}
     />
   );
 }

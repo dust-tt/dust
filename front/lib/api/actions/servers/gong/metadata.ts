@@ -36,8 +36,8 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
   },
   get_call: {
     description:
-      "Retrieve detailed information about a specific call by its ID. Returns comprehensive call data including " +
-      "participants, topics discussed, key points, action items, call summary, and interaction statistics.",
+      "Retrieve the details and summary of a specific Gong call by its ID. Returns comprehensive call data including " +
+      "participants, topics discussed, key points, action items, the call summary, and interaction statistics.",
     schema: {
       callId: z
         .string()
@@ -80,7 +80,6 @@ export const GONG_SERVER = {
     },
     icon: "GongLogo",
     documentationUrl: "https://docs.dust.tt/update/docs/gong-mcp",
-    instructions: null,
   },
   tools: Object.values(GONG_TOOLS_METADATA).map((t) => ({
     name: t.name,

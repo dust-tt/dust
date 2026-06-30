@@ -51,10 +51,11 @@ vi.mock("@app/lib/lock", () => ({
 
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
-  ConversationSandboxModel,
   SandboxModel,
+  SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -64,6 +65,7 @@ import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { encrypt } from "@app/types/shared/utils/encryption";
+import type { WhereOptions } from "sequelize";
 
 describe("SandboxResource.updateStatus", () => {
   let authenticator: Authenticator;
@@ -139,7 +141,7 @@ describe("SandboxResource.updateStatus", () => {
 
     expect(mockDistribution).not.toHaveBeenCalled();
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -160,7 +162,7 @@ describe("SandboxResource.updateStatus", () => {
     await sandbox.updateStatus("sleeping", { ctx });
     const afterTransition = Date.now();
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -174,7 +176,7 @@ describe("SandboxResource.updateStatus", () => {
   });
 });
 
-describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
+describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping", () => {
   let authenticator: Authenticator;
   let conversationResource: ConversationResource;
 
@@ -218,10 +220,11 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
       }
     );
 
-    const result = await SandboxResource.dangerouslyDestroyIfSleeping(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+        authenticator,
+        conversationResource
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
@@ -229,15 +232,76 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
     });
     expect(mockDeleteSandboxPolicy).toHaveBeenCalledWith(sandbox.providerId);
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
     expect(reloaded?.status).toBe("deleted");
   });
+
+  it("does not operate on a sandbox when ownership is missing", async () => {
+    const sandbox = await SandboxFactory.create(
+      authenticator,
+      conversationResource.toJSON(),
+      {
+        status: "sleeping",
+      }
+    );
+
+    const where: WhereOptions = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
+    await SandboxOwnerModel.destroy({ where });
+
+    const result =
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+        authenticator,
+        conversationResource
+      );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+
+    const row = await SandboxModel.findOne({
+      where: {
+        id: sandbox.id,
+        workspaceId: authenticator.getNonNullableWorkspace().id,
+      },
+    });
+    expect(row?.status).toBe("sleeping");
+  });
+
+  it("deleteSandbox deletes the owner link and sandbox row", async () => {
+    const sandbox = await SandboxFactory.create(
+      authenticator,
+      conversationResource.toJSON()
+    );
+    const workspaceModelId = authenticator.getNonNullableWorkspace().id;
+
+    const result = await ConversationSandboxAdapter.deleteSandbox(
+      authenticator,
+      conversationResource
+    );
+
+    expect(result.isOk()).toBe(true);
+    const [linkCount, sandboxCount] = await Promise.all([
+      SandboxOwnerModel.count({
+        where: {
+          conversationId: conversationResource.id,
+          sandboxId: sandbox.id,
+          workspaceId: workspaceModelId,
+        },
+      }),
+      SandboxModel.count({
+        where: { id: sandbox.id, workspaceId: workspaceModelId },
+      }),
+    ]);
+    expect([linkCount, sandboxCount]).toEqual([0, 0]);
+  });
 });
 
-describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
+describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", () => {
   let authenticator: Authenticator;
   let conversationResource: ConversationResource;
 
@@ -286,17 +350,18 @@ describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
       }
     );
 
-    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+        authenticator,
+        conversationResource
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
       workspaceId: authenticator.getNonNullableWorkspace().sId,
     });
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
@@ -308,15 +373,16 @@ describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
       status: "running",
     });
 
-    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+        authenticator,
+        conversationResource
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
 
-    const reloaded = await SandboxResource.fetchByConversation(
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversationResource.toJSON()
     );
@@ -329,10 +395,11 @@ describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
       killRequestedAt: new Date(),
     });
 
-    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
-      authenticator,
-      conversationResource
-    );
+    const result =
+      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+        authenticator,
+        conversationResource
+      );
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
@@ -357,7 +424,7 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
   });
 
   it("returns rows with killRequestedAt set and status != deleted", async () => {
-    await SandboxFactory.create(authenticator, conversation, {
+    const sandbox = await SandboxFactory.create(authenticator, conversation, {
       status: "running",
       killRequestedAt: new Date(),
     });
@@ -367,7 +434,7 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
     });
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.conversationId).toBe(conversation.id);
+    expect(rows[0]?.id).toBe(sandbox.id);
   });
 
   it("skips deleted rows even when killRequestedAt is set", async () => {
@@ -440,7 +507,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(2);
-    const stillUnmarked = await SandboxResource.fetchByConversation(
+    const stillUnmarked = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       other
     );
@@ -477,7 +544,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(2);
-    const matched = await SandboxResource.fetchByConversation(
+    const matched = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       cMatch
     );
@@ -507,7 +574,7 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     });
 
     expect(affected).toBe(1);
-    const alreadyMarked = await SandboxResource.fetchByConversation(
+    const alreadyMarked = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       cAlreadyMarked
     );
@@ -531,6 +598,102 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
   });
 });
 
+describe("ConversationSandboxAdapter.fetchSandbox", () => {
+  let authenticator: Authenticator;
+  let agentConfigId: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    agentConfigId = agentConfig.sId;
+  });
+
+  async function makeConversation(): Promise<ConversationType> {
+    return ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfigId,
+      messagesCreatedAt: [new Date()],
+    });
+  }
+
+  it("reads from sandbox_owners", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+
+    const fetched = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversation
+    );
+
+    expect(fetched?.id).toBe(sandbox.id);
+  });
+
+  it("writes sandbox_owners", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+    const where = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
+
+    await expect(SandboxOwnerModel.count({ where })).resolves.toBe(1);
+  });
+
+  it("returns null when no ownership row exists", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+    const where = {
+      sandboxId: sandbox.id,
+      workspaceId: authenticator.getNonNullableWorkspace().id,
+    };
+
+    await SandboxOwnerModel.destroy({ where });
+
+    const fetched = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversation
+    );
+
+    expect(fetched).toBeNull();
+  });
+
+  it("loads conversation ownership mappings by sandboxes", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+
+    const conversationModelIdsBySandboxModelId =
+      await ConversationSandboxAdapter.dangerouslyFetchConversationModelIdsBySandboxes(
+        [sandbox]
+      );
+
+    expect(conversationModelIdsBySandboxModelId.get(sandbox.id)).toBe(
+      conversation.id
+    );
+  });
+
+  it("does not load ownership mappings for the wrong workspace", async () => {
+    const conversation = await makeConversation();
+    const sandbox = await SandboxFactory.create(authenticator, conversation);
+
+    const conversationModelIdsBySandboxModelId =
+      await ConversationSandboxAdapter.dangerouslyFetchConversationModelIdsBySandboxes(
+        [
+          {
+            id: sandbox.id,
+            workspaceId: sandbox.workspaceId + 1,
+          },
+        ]
+      );
+
+    expect(
+      conversationModelIdsBySandboxModelId.get(sandbox.id)
+    ).toBeUndefined();
+  });
+});
+
 describe("SandboxResource.ensureActive", () => {
   let authenticator: Authenticator;
   let conversation: ConversationType;
@@ -551,6 +714,7 @@ describe("SandboxResource.ensureActive", () => {
           imageId: { imageName: "test-image", tag: "0.0.1" },
           envVars: {
             DST_API_TOKEN: "image-token",
+            SPACE_ID: "image-space-id",
             WORKSPACE_ID: "image-workspace-id",
           },
           network: { egress: "restricted" },
@@ -631,7 +795,7 @@ describe("SandboxResource.ensureActive", () => {
       },
     ]);
 
-    const result = await SandboxResource.ensureActive(
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
       conversation
     );
@@ -666,25 +830,28 @@ describe("SandboxResource.ensureActive", () => {
     expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
       "DD_HOST"
     );
+    expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
+      "SPACE_ID"
+    );
     expect(mockProviderExec).not.toHaveBeenCalled();
   });
 
   it("records baseImage and version from the registered image on fresh create", async () => {
-    const result = await SandboxResource.ensureActive(
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
       conversation
     );
 
     expect(result.isOk()).toBe(true);
 
-    const persisted = await SandboxResource.fetchByConversation(
+    const persisted = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
     expect(persisted?.baseImage).toBe("test-image");
     expect(persisted?.version).toBe("0.0.1");
 
-    const link = await ConversationSandboxModel.findOne({
+    const link = await SandboxOwnerModel.findOne({
       where: {
         conversationId: conversation.id,
         workspaceId: authenticator.getNonNullableWorkspace().id,
@@ -700,14 +867,14 @@ describe("SandboxResource.ensureActive", () => {
       version: "0.0.0-old",
     });
 
-    const result = await SandboxResource.ensureActive(
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
       conversation
     );
 
     expect(result.isOk()).toBe(true);
 
-    const persisted = await SandboxResource.fetchByConversation(
+    const persisted = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );
@@ -725,7 +892,7 @@ describe("SandboxResource.ensureActive", () => {
       killRequestedAt: new Date(),
     });
 
-    const result = await SandboxResource.ensureActive(
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
       conversation
     );
@@ -736,7 +903,7 @@ describe("SandboxResource.ensureActive", () => {
     });
     expect(mockProviderCreate).toHaveBeenCalled();
 
-    const persisted = await SandboxResource.fetchByConversation(
+    const persisted = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
       conversation
     );

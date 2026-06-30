@@ -109,6 +109,8 @@ COPY --from=base-deps /app/front/package.json ./package.json
 COPY --from=base-deps /app/front/node_modules ./node_modules
 # Copy scripts directory
 COPY --from=base-deps /app/front/scripts ./scripts
+# Copy migration SQL files so the helm pre-deploy hook can run migration:check commands.
+COPY --from=base-deps /app/front/migrations ./migrations
 # Shared migration tooling lives at the repo root; front/package.json runs `node ../scripts/db/run-migrate.cjs`.
 COPY --from=base-deps /app/scripts/db /app/scripts/db
 # Copy built SDK

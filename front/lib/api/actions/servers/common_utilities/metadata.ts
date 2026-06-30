@@ -12,7 +12,7 @@ const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
 export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
   generate_random_number: {
     description:
-      "Generate a random positive number between 1 and the provided maximum (inclusive).",
+      "Generate a random integer (whole number) between 1 and the provided maximum (inclusive). Pick a random number in a range.",
     schema: {
       max: z
         .number()
@@ -78,9 +78,12 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     },
   },
   math_operation: {
-    description: "Perform mathematical operations.",
+    description:
+      "Calculate the result of a math expression: arithmetic, percentages, and other mathematical operations.",
     schema: {
-      expression: z.string().describe("The expression to evaluate. "),
+      expression: z
+        .string()
+        .describe("The math expression to evaluate, e.g. 15 percent of 240."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -113,7 +116,6 @@ export const COMMON_UTILITIES_SERVER = {
     icon: "ActionAtomIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => ({
     name: t.name,

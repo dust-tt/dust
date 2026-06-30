@@ -13,7 +13,7 @@ export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content" as const;
 export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
   list_all_published_agents: {
     description:
-      "Returns a complete list of all agents accessible to the user in the workspace, " +
+      "Return a complete list of all agents accessible to the user in the workspace, " +
       "including their personal (unpublished) agents. " +
       "Each agent includes its name, description, and mention directive " +
       "(e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
@@ -27,7 +27,7 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
   },
   suggest_agents_for_content: {
     description:
-      "Analyzes a user query and returns relevant specialized agents that might be better " +
+      "Analyze a user query and return relevant specialized agents that might be better " +
       "suited to handling specific requests. The tool uses semantic matching to find agents " +
       "whose capabilities align with the query content. Each suggested agent includes its " +
       "mention directive (e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link, " +
@@ -53,7 +53,6 @@ export const AGENT_ROUTER_SERVER = {
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(AGENT_ROUTER_TOOLS_METADATA).map((t) => ({
     name: t.name,

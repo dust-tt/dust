@@ -1,5 +1,6 @@
 import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
+import { GrantFreeCreditsButton } from "@app/components/poke/credits/GrantFreeCreditsButton";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
@@ -241,12 +242,22 @@ function makeColumns({
       header: () => null,
       enableSorting: false,
       cell: ({ row }) => (
-        <ReconcileCreditStateButton
-          owner={owner}
-          target="user"
-          userId={row.original.sId}
-          onReconciled={onReconciled}
-        />
+        <div className="flex items-center justify-end gap-2">
+          {row.original.seatType === "free" && (
+            <GrantFreeCreditsButton
+              owner={owner}
+              userId={row.original.sId}
+              memberName={row.original.name}
+              onGranted={onReconciled}
+            />
+          )}
+          <ReconcileCreditStateButton
+            owner={owner}
+            target="user"
+            userId={row.original.sId}
+            onReconciled={onReconciled}
+          />
+        </div>
       ),
     },
   ];

@@ -12,7 +12,6 @@ export const MISSING_ACTION_CATCHER_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
-    instructions: null,
   },
   // Tools are created dynamically at runtime based on the agentLoopContext.
   tools: [],

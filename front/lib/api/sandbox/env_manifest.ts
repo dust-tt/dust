@@ -1,6 +1,10 @@
 import { randomBytes } from "node:crypto";
 
 import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
+import {
+  getSandboxOwnerEnvManifestEntries,
+  type SandboxRuntimeOwner,
+} from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -31,7 +35,8 @@ function sortByName<T extends { name: string }>(entries: T[]): T[] {
 }
 
 export async function buildSandboxEnvManifest(
-  auth: Authenticator
+  auth: Authenticator,
+  owner: SandboxRuntimeOwner
 ): Promise<Result<SandboxEnvManifest, Error>> {
   const allVars = await WorkspaceSandboxEnvVarResource.listForWorkspace(auth);
 
@@ -65,10 +70,7 @@ export async function buildSandboxEnvManifest(
   return new Ok({
     version: 1,
     system: sortByName([
-      {
-        name: "CONVERSATION_ID",
-        description: "current conversation sId",
-      },
+      ...getSandboxOwnerEnvManifestEntries(owner),
       {
         name: "WORKSPACE_ID",
         description: "current workspace sId",
@@ -85,9 +87,10 @@ export async function buildSandboxEnvManifest(
 
 export async function writeSandboxEnvManifestFile(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
+  owner: SandboxRuntimeOwner
 ): Promise<Result<void, Error>> {
-  const manifestResult = await buildSandboxEnvManifest(auth);
+  const manifestResult = await buildSandboxEnvManifest(auth, owner);
   if (manifestResult.isErr()) {
     return manifestResult;
   }

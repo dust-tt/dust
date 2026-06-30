@@ -89,7 +89,7 @@ describe("MarkdownFilePreview", () => {
     expect(onViewModeChange).toHaveBeenCalledWith("edit");
   });
 
-  it("does not switch to edit mode when clicking a link", () => {
+  it("does not switch to edit mode when double-clicking a link", () => {
     const onViewModeChange = vi.fn();
 
     render(
@@ -101,7 +101,7 @@ describe("MarkdownFilePreview", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("link", { name: "Dust" }));
+    fireEvent.doubleClick(screen.getByRole("link", { name: "Dust" }));
 
     expect(onViewModeChange).not.toHaveBeenCalled();
   });

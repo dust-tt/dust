@@ -1,18 +1,20 @@
 import type {
   ImageBlockParam,
   TextBlockParam,
-  ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   assistantMessageToContentBlocks,
+  assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
   assistantTextMessageToTextBlock,
   assistantToolCallRequestToToolUseBlock,
   cacheControlFor,
   conversationToMessages,
   forceToolNameToToolChoice,
+  imageUrlToBase64ImageBlock,
+  imageUrlToImageBlock,
   outputFormatToOutputConfig,
   parseToolArguments,
   reasoningToThinkingConfig,
@@ -29,6 +31,7 @@ import type {
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
+  BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
@@ -38,18 +41,23 @@ import type {
   BaseUserTextMessage,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/types/shared/utils/image_utils", () => ({
+  trustedFetchImageBase64: vi.fn(),
+}));
 
 // The real leaf converters, bundled into the interface the composites consume.
 // Used wherever a test wants the genuine end-to-end conversion.
 const realConverters: MessageBlockConverters = {
   systemMessageToTextBlock,
   userTextMessageToTextBlock,
-  userImageMessageToImageBlock,
-  toolCallResultMessageToToolResultBlock,
+  imageUrlToImageBlock,
   assistantTextMessageToTextBlock,
   assistantReasoningMessageToThinkingBlocks,
   assistantToolCallRequestToToolUseBlock,
+  assistantProviderPassthroughMessageToBlocks,
 };
 
 // A fully stubbed converters object, so composites can be checked for pure
@@ -62,20 +70,11 @@ function makeStubConverters(): MessageBlockConverters {
     userTextMessageToTextBlock: vi.fn(
       () => ({ type: "text", text: "stub-user-text" }) as TextBlockParam
     ),
-    userImageMessageToImageBlock: vi.fn(
-      () =>
-        ({
-          type: "image",
-          source: { type: "url", url: "stub-url" },
-        }) as ImageBlockParam
-    ),
-    toolCallResultMessageToToolResultBlock: vi.fn(
-      () =>
-        ({
-          type: "tool_result",
-          tool_use_id: "stub-call",
-          content: [],
-        }) as ToolResultBlockParam
+    imageUrlToImageBlock: vi.fn(() =>
+      Promise.resolve({
+        type: "image",
+        source: { type: "url", url: "stub-url" },
+      } as ImageBlockParam)
     ),
     assistantTextMessageToTextBlock: vi.fn(
       () => ({ type: "text", text: "stub-assistant-text" }) as TextBlockParam
@@ -90,6 +89,7 @@ function makeStubConverters(): MessageBlockConverters {
           input: {},
         }) as ToolUseBlockParam
     ),
+    assistantProviderPassthroughMessageToBlocks: vi.fn(() => []),
   };
 }
 
@@ -205,6 +205,54 @@ describe("userTextMessageToTextBlock", () => {
   });
 });
 
+describe("imageUrlToImageBlock", () => {
+  it("converts a url to a url image block", async () => {
+    expect(await imageUrlToImageBlock("https://example.com/cat.png")).toEqual({
+      type: "image",
+      source: { type: "url", url: "https://example.com/cat.png" },
+    });
+  });
+});
+
+describe("imageUrlToBase64ImageBlock", () => {
+  const url = "https://example.com/cat.png";
+
+  it("fetches the image and inlines it as a base64 image block", async () => {
+    vi.mocked(trustedFetchImageBase64).mockResolvedValueOnce({
+      mediaType: "image/png",
+      data: "ZmFrZS1wbmctYnl0ZXM=",
+    });
+    expect(await imageUrlToBase64ImageBlock(url)).toEqual({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: "image/png",
+        data: "ZmFrZS1wbmctYnl0ZXM=",
+      },
+    });
+    expect(trustedFetchImageBase64).toHaveBeenCalledWith(url);
+  });
+
+  it("degrades to a text note when the fetch fails", async () => {
+    vi.mocked(trustedFetchImageBase64).mockRejectedValueOnce(new Error("boom"));
+    expect(await imageUrlToBase64ImageBlock(url)).toEqual({
+      type: "text",
+      text: "Attachment: image could not be loaded.",
+    });
+  });
+
+  it("degrades to a text note when the media type is unsupported", async () => {
+    vi.mocked(trustedFetchImageBase64).mockResolvedValueOnce({
+      mediaType: "image/tiff",
+      data: "ZmFrZQ==",
+    });
+    expect(await imageUrlToBase64ImageBlock(url)).toEqual({
+      type: "text",
+      text: "Attachement: an unsupported media type was provided.",
+    });
+  });
+});
+
 describe("userImageMessageToImageBlock", () => {
   const base: BaseUserImageMessage = {
     role: "user",
@@ -212,24 +260,45 @@ describe("userImageMessageToImageBlock", () => {
     content: { url: "https://example.com/cat.png" },
   };
 
-  it("converts to a url image block", () => {
-    expect(userImageMessageToImageBlock(base)).toEqual({
+  it("delegates to the image leaf and emits a url block", async () => {
+    expect(await userImageMessageToImageBlock(base, realConverters)).toEqual({
       type: "image",
       source: { type: "url", url: "https://example.com/cat.png" },
     });
   });
 
-  it("includes cache control when set", () => {
-    expect(userImageMessageToImageBlock({ ...base, cache: "long" })).toEqual({
+  it("includes cache control when set", async () => {
+    expect(
+      await userImageMessageToImageBlock(
+        { ...base, cache: "long" },
+        realConverters
+      )
+    ).toEqual({
       type: "image",
       source: { type: "url", url: "https://example.com/cat.png" },
       cache_control: { type: "ephemeral", ttl: "1h" },
     });
   });
+
+  it("inlines base64 when the image leaf is the base64 variant", async () => {
+    vi.mocked(trustedFetchImageBase64).mockResolvedValueOnce({
+      mediaType: "image/png",
+      data: "ZmFrZQ==",
+    });
+    expect(
+      await userImageMessageToImageBlock(base, {
+        ...realConverters,
+        imageUrlToImageBlock: imageUrlToBase64ImageBlock,
+      })
+    ).toEqual({
+      type: "image",
+      source: { type: "base64", media_type: "image/png", data: "ZmFrZQ==" },
+    });
+  });
 });
 
 describe("toolCallResultMessageToToolResultBlock", () => {
-  it("converts text and image parts in order", () => {
+  it("converts text and image parts in order", async () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
@@ -243,7 +312,9 @@ describe("toolCallResultMessageToToolResultBlock", () => {
         isError: false,
       },
     };
-    expect(toolCallResultMessageToToolResultBlock(message)).toEqual({
+    expect(
+      await toolCallResultMessageToToolResultBlock(message, realConverters)
+    ).toEqual({
       type: "tool_result",
       tool_use_id: "call_1",
       content: [
@@ -256,7 +327,39 @@ describe("toolCallResultMessageToToolResultBlock", () => {
     });
   });
 
-  it("sets is_error only when isError is true", () => {
+  it("inlines image parts as base64 when the image leaf is the base64 variant", async () => {
+    vi.mocked(trustedFetchImageBase64).mockResolvedValueOnce({
+      mediaType: "image/png",
+      data: "ZmFrZQ==",
+    });
+    const message: BaseToolCallResultMessage = {
+      role: "user",
+      type: "tool_call_result",
+      content: {
+        callId: "call_b64",
+        toolName: "tool_b64",
+        parts: [{ type: "image_url", url: "https://example.com/img.png" }],
+        isError: false,
+      },
+    };
+    expect(
+      await toolCallResultMessageToToolResultBlock(message, {
+        ...realConverters,
+        imageUrlToImageBlock: imageUrlToBase64ImageBlock,
+      })
+    ).toEqual({
+      type: "tool_result",
+      tool_use_id: "call_b64",
+      content: [
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data: "ZmFrZQ==" },
+        },
+      ],
+    });
+  });
+
+  it("sets is_error only when isError is true", async () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
@@ -267,7 +370,9 @@ describe("toolCallResultMessageToToolResultBlock", () => {
         isError: true,
       },
     };
-    expect(toolCallResultMessageToToolResultBlock(message)).toEqual({
+    expect(
+      await toolCallResultMessageToToolResultBlock(message, realConverters)
+    ).toEqual({
       type: "tool_result",
       tool_use_id: "call_err",
       content: [],
@@ -275,7 +380,7 @@ describe("toolCallResultMessageToToolResultBlock", () => {
     });
   });
 
-  it("omits is_error when isError is false", () => {
+  it("omits is_error when isError is false", async () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
@@ -286,12 +391,12 @@ describe("toolCallResultMessageToToolResultBlock", () => {
         isError: false,
       },
     };
-    expect(toolCallResultMessageToToolResultBlock(message)).not.toHaveProperty(
-      "is_error"
-    );
+    expect(
+      await toolCallResultMessageToToolResultBlock(message, realConverters)
+    ).not.toHaveProperty("is_error");
   });
 
-  it("includes cache control when set", () => {
+  it("includes cache control when set", async () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
@@ -303,12 +408,14 @@ describe("toolCallResultMessageToToolResultBlock", () => {
       },
       cache: "short",
     };
-    expect(toolCallResultMessageToToolResultBlock(message)).toMatchObject({
+    expect(
+      await toolCallResultMessageToToolResultBlock(message, realConverters)
+    ).toMatchObject({
       cache_control: { type: "ephemeral", ttl: "5m" },
     });
   });
 
-  it("produces empty content for no parts", () => {
+  it("produces empty content for no parts", async () => {
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
@@ -319,7 +426,10 @@ describe("toolCallResultMessageToToolResultBlock", () => {
         isError: false,
       },
     };
-    expect(toolCallResultMessageToToolResultBlock(message).content).toEqual([]);
+    expect(
+      (await toolCallResultMessageToToolResultBlock(message, realConverters))
+        .content
+    ).toEqual([]);
   });
 });
 
@@ -399,49 +509,62 @@ describe("assistantToolCallRequestToToolUseBlock", () => {
 });
 
 describe("userMessageToContentBlocks", () => {
-  it("delegates text messages to userTextMessageToTextBlock", () => {
+  it("delegates text messages to userTextMessageToTextBlock", async () => {
     const stub = makeStubConverters();
     const message: BaseUserTextMessage = {
       role: "user",
       type: "text",
       content: { value: "hello" },
     };
-    const result = userMessageToContentBlocks(message, stub);
+    const result = await userMessageToContentBlocks(message, stub);
     expect(stub.userTextMessageToTextBlock).toHaveBeenCalledWith(message);
     expect(result).toEqual([{ type: "text", text: "stub-user-text" }]);
   });
 
-  it("delegates image messages to userImageMessageToImageBlock", () => {
+  it("routes image messages through the image leaf", async () => {
     const stub = makeStubConverters();
     const message: BaseUserImageMessage = {
       role: "user",
       type: "image_url",
       content: { url: "u" },
     };
-    userMessageToContentBlocks(message, stub);
-    expect(stub.userImageMessageToImageBlock).toHaveBeenCalledWith(message);
+    const result = await userMessageToContentBlocks(message, stub);
+    expect(stub.imageUrlToImageBlock).toHaveBeenCalledWith("u");
+    expect(result).toEqual([
+      { type: "image", source: { type: "url", url: "stub-url" } },
+    ]);
   });
 
-  it("delegates tool_call_result messages to toolCallResultMessageToToolResultBlock", () => {
+  it("routes tool_call_result image parts through the image leaf", async () => {
     const stub = makeStubConverters();
     const message: BaseToolCallResultMessage = {
       role: "user",
       type: "tool_call_result",
-      content: { callId: "c", toolName: "t", parts: [], isError: false },
+      content: {
+        callId: "c",
+        toolName: "t",
+        parts: [{ type: "image_url", url: "u" }],
+        isError: false,
+      },
     };
-    userMessageToContentBlocks(message, stub);
-    expect(stub.toolCallResultMessageToToolResultBlock).toHaveBeenCalledWith(
-      message
-    );
+    const result = await userMessageToContentBlocks(message, stub);
+    expect(stub.imageUrlToImageBlock).toHaveBeenCalledWith("u");
+    expect(result).toEqual([
+      {
+        type: "tool_result",
+        tool_use_id: "c",
+        content: [{ type: "image", source: { type: "url", url: "stub-url" } }],
+      },
+    ]);
   });
 
-  it("wraps the leaf result in a single-element array (real converters)", () => {
+  it("wraps the leaf result in a single-element array (real converters)", async () => {
     const message: BaseUserTextMessage = {
       role: "user",
       type: "text",
       content: { value: "hi" },
     };
-    expect(userMessageToContentBlocks(message, realConverters)).toEqual([
+    expect(await userMessageToContentBlocks(message, realConverters)).toEqual([
       { type: "text", text: "hi" },
     ]);
   });
@@ -506,10 +629,80 @@ describe("assistantMessageToContentBlocks", () => {
       { type: "tool_use", id: "stub-id", name: "stub-name", input: {} },
     ]);
   });
+
+  it("delegates provider_passthrough messages to assistantProviderPassthroughMessageToBlocks", () => {
+    const stub = makeStubConverters();
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: { type: "x" } },
+    };
+    assistantMessageToContentBlocks(message, stub);
+    expect(
+      stub.assistantProviderPassthroughMessageToBlocks
+    ).toHaveBeenCalledWith(message);
+  });
+});
+
+describe("assistantProviderPassthroughMessageToBlocks", () => {
+  const serverToolUseBlock = {
+    type: "server_tool_use",
+    id: "srvtoolu_1",
+    name: "tool_search_tool_bm25",
+    input: { query: "x" },
+  };
+  const toolSearchResultBlock = {
+    type: "tool_search_tool_result",
+    tool_use_id: "srvtoolu_1",
+    content: {
+      type: "tool_search_tool_search_result",
+      tool_references: [{ type: "tool_reference", tool_name: "slack__post" }],
+    },
+  };
+
+  it("replays an anthropic server_tool_use block verbatim", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: serverToolUseBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([
+      serverToolUseBlock,
+    ]);
+  });
+
+  it("replays an anthropic tool_search_tool_result block verbatim", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: toolSearchResultBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([
+      toolSearchResultBlock,
+    ]);
+  });
+
+  it("skips a block tagged for another provider", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "openai", block: serverToolUseBlock },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([]);
+  });
+
+  it("skips an anthropic block that fails to parse", () => {
+    const message: BaseAssistantProviderPassthroughMessage = {
+      role: "assistant",
+      type: "provider_passthrough",
+      content: { provider: "anthropic", block: { type: "text", text: "no" } },
+    };
+    expect(assistantProviderPassthroughMessageToBlocks(message)).toEqual([]);
+  });
 });
 
 describe("conversationToMessages", () => {
-  it("maps user and assistant messages to role-tagged MessageParams in order", () => {
+  it("maps user and assistant messages to role-tagged MessageParams in order", async () => {
     const conversation: BaseConversation = {
       system: [],
       messages: [
@@ -517,18 +710,20 @@ describe("conversationToMessages", () => {
         { role: "assistant", type: "text", content: { value: "hi back" } },
       ],
     };
-    expect(conversationToMessages(conversation, realConverters)).toEqual([
+    expect(await conversationToMessages(conversation, realConverters)).toEqual([
       { role: "user", content: [{ type: "text", text: "hello" }] },
       { role: "assistant", content: [{ type: "text", text: "hi back" }] },
     ]);
   });
 
-  it("returns an empty array for an empty conversation", () => {
+  it("returns an empty array for an empty conversation", async () => {
     const conversation: BaseConversation = { system: [], messages: [] };
-    expect(conversationToMessages(conversation, realConverters)).toEqual([]);
+    expect(await conversationToMessages(conversation, realConverters)).toEqual(
+      []
+    );
   });
 
-  it("preserves message ordering across mixed roles", () => {
+  it("preserves message ordering across mixed roles", async () => {
     const conversation: BaseConversation = {
       system: [],
       messages: [
@@ -537,7 +732,7 @@ describe("conversationToMessages", () => {
         { role: "assistant", type: "text", content: { value: "c" } },
       ],
     };
-    const result = conversationToMessages(conversation, realConverters);
+    const result = await conversationToMessages(conversation, realConverters);
     expect(result.map((m) => m.role)).toEqual([
       "assistant",
       "user",
@@ -684,35 +879,35 @@ describe("reasoningToThinkingConfig", () => {
   it("enables adaptive thinking for 'xhigh'", () => {
     expect(reasoningToThinkingConfig({ effort: "xhigh" })).toEqual({
       output_config: { effort: "xhigh" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'low'", () => {
     expect(reasoningToThinkingConfig({ effort: "low" })).toEqual({
       output_config: { effort: "low" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'medium'", () => {
     expect(reasoningToThinkingConfig({ effort: "medium" })).toEqual({
       output_config: { effort: "medium" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("enables adaptive thinking for 'high'", () => {
     expect(reasoningToThinkingConfig({ effort: "high" })).toEqual({
       output_config: { effort: "high" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 
   it("maps 'maximal' effort to Anthropic's 'max'", () => {
     expect(reasoningToThinkingConfig({ effort: "maximal" })).toEqual({
       output_config: { effort: "max" },
-      thinking: { type: "adaptive" },
+      thinking: { type: "adaptive", display: "summarized" },
     });
   });
 });

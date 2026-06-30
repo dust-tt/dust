@@ -1,5 +1,12 @@
-import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/api/actions/servers/interactive_content/instructions";
+import {
+  INTERACTIVE_CONTENT_INSTRUCTIONS,
+  INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST,
+} from "@app/lib/api/actions/servers/interactive_content/instructions";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 export const framesSkill = {
   sId: "frames",
@@ -14,7 +21,20 @@ export const framesSkill = {
     "using when tsx or React code is shared or available in the conversation. " +
     "Frames used to a be a tool, now deprecated. Use this skill when the Frames/interactive " +
     "content tool is mentioned.",
-  instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
+  // Computer-first guidance (edit the mounted source in place, then publish) is taught only when the
+  // Computer and frame_publish are both available. Otherwise the model updates Frames through the
+  // retrieve and edit tools.
+  fetchInstructions: async (
+    auth: Authenticator,
+    _params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
+  ) => {
+    const flags = await getFeatureFlags(auth);
+    const computerFirst =
+      flags.includes("frame_publish") && isComputerFeatureEnabled(flags);
+    return computerFirst
+      ? INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST
+      : INTERACTIVE_CONTENT_INSTRUCTIONS;
+  },
   mcpServers: [{ name: "interactive_content" }],
   version: 3,
   icon: "ActionFrameIcon",

@@ -8,7 +8,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
   ask_user_question: {
     description:
-      "Asks the user a question during execution.\n\n" +
+      "Ask the user a question during execution.\n\n" +
       "This tool can serve multiple purposes:\n" +
       "- Clarify ambiguous instructions where multiple interpretations are plausible\n" +
       "- Validate major decisions before moving forward\n" +
@@ -49,7 +49,6 @@ export const ASK_USER_QUESTION_SERVER = {
     icon: "ActionChatBubbleThoughtIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(ASK_USER_QUESTION_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -105,6 +105,10 @@ ConversationMCPServerViewModel.init(
         name: "conversation_mcp_server_views_conversation_id",
         concurrently: true,
       },
+      {
+        fields: ["mcpServerViewId"],
+        concurrently: true,
+      },
     ],
   }
 );

@@ -131,11 +131,25 @@ interface BillingPeriodSwitchProps {
   size?: React.ComponentProps<typeof ButtonsSwitchList>["size"];
 }
 
+const CHIP_SIZE_FOR_SWITCH: Record<
+  "xs" | "sm" | "md",
+  React.ComponentProps<typeof Chip>["size"]
+> = {
+  xs: "mini",
+  sm: "xs",
+  md: "sm",
+};
+
 export function BillingPeriodSwitch({
   defaultValue = "monthly",
   onValueChange,
   size,
 }: BillingPeriodSwitchProps) {
+  const chipSize =
+    size && size in CHIP_SIZE_FOR_SWITCH
+      ? CHIP_SIZE_FOR_SWITCH[size as keyof typeof CHIP_SIZE_FOR_SWITCH]
+      : "xs";
+
   return (
     <ButtonsSwitchList
       defaultValue={defaultValue}
@@ -149,7 +163,7 @@ export function BillingPeriodSwitch({
         value="yearly"
         label="Yearly"
         className="flex-row-reverse"
-        icon={<Chip size="xs" color="blue" label="Save 20%" />}
+        icon={<Chip size={chipSize} color="blue" label="Save 20%" />}
       />
     </ButtonsSwitchList>
   );

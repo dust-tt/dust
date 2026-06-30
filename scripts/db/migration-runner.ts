@@ -167,6 +167,14 @@ async function runCheckPhase(
   logger: MigrationLogger,
   phase: Phase
 ): Promise<void> {
+  const dir = `migrations/${phase}`;
+  if (!existsSync(dir)) {
+    logger.error(
+      { phase, dir, cwd: process.cwd() },
+      "Migrations directory missing — refusing to pass check."
+    );
+    process.exit(1);
+  }
   const pending = await createUmzug(
     sequelize,
     getDatabaseURI,

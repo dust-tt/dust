@@ -18,6 +18,7 @@ import {
 } from "@app/types/memberships";
 import {
   Clock,
+  createSelectionColumn,
   DataTable,
   Icon,
   LoadingBlock,
@@ -29,6 +30,7 @@ import type {
   CellContext,
   ColumnDef,
   PaginationState,
+  RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -38,6 +40,7 @@ type RowData = {
   name: string;
   email: string | null;
   image: string | null;
+  groups: string[];
   seatType: MembershipSeatType | null;
   memberUsageLimit: number | null;
   seatBalanceAwu: number | null;
@@ -138,7 +141,9 @@ export function AwuUsageBar({
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
   const isFreeWithBalance =
-    seatType === "free" && seatBalanceAwu !== null && memberUsageLimit !== null;
+    seatType === "free" &&
+    typeof seatBalanceAwu === "number" &&
+    typeof memberUsageLimit === "number";
   const lifetimeConsumed = isFreeWithBalance
     ? Math.max(0, memberUsageLimit - seatBalanceAwu!)
     : null;
@@ -331,6 +336,26 @@ export function AwuUsageBar({
 
 const nameColumn = buildMemberNameColumn<RowData>();
 
+const groupsColumn: ColumnDef<RowData, string> = {
+  id: "groups" as const,
+  header: "Groups",
+  enableSorting: false,
+  accessorFn: (row) => row.groups.join(", "),
+  cell: (info: Info) => {
+    const { groups } = info.row.original;
+    return (
+      <DataTable.CellContent>
+        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {groups.length > 0 ? groups.join(", ") : "--"}
+        </span>
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-48",
+  },
+};
+
 const seatTypeColumn: ColumnDef<RowData, string> = {
   id: "seatType" as const,
   header: "Seat",
@@ -398,9 +423,6 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
       />
     </div>
   ),
-  meta: {
-    className: "w-64",
-  },
   enableSorting: true,
 };
 
@@ -417,13 +439,27 @@ const actionsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildColumns(): ColumnDef<RowData, string>[] {
-  return [nameColumn, seatTypeColumn, consumedAwuCreditsColumn, actionsColumn];
+function buildColumns({
+  enableSelection,
+  showGroupsColumn,
+}: {
+  enableSelection: boolean;
+  showGroupsColumn: boolean;
+}): ColumnDef<RowData, string>[] {
+  return [
+    ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
+    nameColumn,
+    ...(showGroupsColumn ? [groupsColumn] : []),
+    seatTypeColumn,
+    { ...consumedAwuCreditsColumn, meta: { className: "w-64" } },
+    actionsColumn,
+  ];
 }
 
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
+  isRefreshing?: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
@@ -437,11 +473,16 @@ interface MembersUsageTableProps {
   totalRowCount: number;
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
+  showGroupsColumn?: boolean;
+  enableSelection?: boolean;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
 }
 
 export function MembersUsageTable({
   members,
   isLoading,
+  isRefreshing = false,
   totalAllowedUsagePendingMemberIds,
   seatChangePendingMemberIds,
   isSeatBased,
@@ -455,6 +496,10 @@ export function MembersUsageTable({
   totalRowCount,
   sorting,
   setSorting,
+  showGroupsColumn = false,
+  enableSelection = false,
+  rowSelection,
+  onRowSelectionChange,
 }: MembersUsageTableProps) {
   const rows: RowData[] = useMemo(
     () =>
@@ -463,6 +508,7 @@ export function MembersUsageTable({
         name: m.name,
         email: m.email,
         image: m.image,
+        groups: m.groups,
         seatType: m.seatType,
         memberUsageLimit: m.memberUsageLimit,
         seatBalanceAwu: m.seatBalanceAwu,
@@ -497,7 +543,13 @@ export function MembersUsageTable({
                 },
               ]
             : []),
-          ...(showSpendLimit
+          // Only paid, message-sending seats have a spend limit to edit. Free
+          // seats have no pool (their cap is just the fixed free allowance), and
+          // "none"/seatless members can't send anything — so the option hides.
+          ...(showSpendLimit &&
+          m.seatType &&
+          m.seatType !== "free" &&
+          m.seatType !== "none"
             ? [
                 {
                   kind: "item" as const,
@@ -534,7 +586,10 @@ export function MembersUsageTable({
     ]
   );
 
-  const columns = useMemo(() => buildColumns(), []);
+  const columns = useMemo(
+    () => buildColumns({ enableSelection, showGroupsColumn }),
+    [enableSelection, showGroupsColumn]
+  );
 
   if (isLoading) {
     return (
@@ -547,15 +602,34 @@ export function MembersUsageTable({
   }
 
   return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      pagination={pagination}
-      setPagination={setPagination}
-      totalRowCount={totalRowCount}
-      sorting={sorting}
-      setSorting={setSorting}
-      isServerSideSorting
-    />
+    <div className="relative">
+      <div
+        className={
+          isRefreshing
+            ? "pointer-events-none opacity-50 transition-opacity"
+            : "transition-opacity"
+        }
+      >
+        <DataTable
+          data={rows}
+          columns={columns}
+          pagination={pagination}
+          setPagination={setPagination}
+          totalRowCount={totalRowCount}
+          sorting={sorting}
+          setSorting={setSorting}
+          isServerSideSorting
+          enableRowSelection={enableSelection}
+          rowSelection={rowSelection}
+          setRowSelection={onRowSelectionChange}
+          getRowId={(row) => row.sId}
+        />
+      </div>
+      {isRefreshing && (
+        <div className="absolute inset-x-0 top-16 flex justify-center">
+          <Spinner size="sm" />
+        </div>
+      )}
+    </div>
   );
 }

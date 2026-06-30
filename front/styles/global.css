@@ -62,6 +62,46 @@ body {
   overscroll-behavior: none;
 }
 
+/*
+ * Mobile document scroll (body.document-scroll-mode via useDocumentScrollMode).
+ * Top-level height chain + panel background. Component layout overrides live in
+ * MOBILE_DOCUMENT_SCROLL_CLASSES (see AppContentLayout, DropzoneContainer).
+ */
+html:has(body.document-scroll-mode),
+html:has(body.document-scroll-mode) body,
+html:has(body.document-scroll-mode) #root {
+  height: auto;
+  min-height: 100dvh;
+}
+
+html:has(body.document-scroll-mode),
+html:has(body.document-scroll-mode) #__next,
+body.document-scroll-mode,
+body.document-scroll-mode #root {
+  @apply bg-panel-background;
+}
+
+html.dark:has(body.document-scroll-mode),
+html.dark:has(body.document-scroll-mode) #__next,
+.dark body.document-scroll-mode,
+.dark body.document-scroll-mode #root {
+  @apply bg-panel-background-night;
+}
+
+body.document-scroll-mode {
+  display: flex;
+  flex-direction: column;
+  overflow-y: visible;
+  overscroll-behavior: auto;
+}
+
+body.document-scroll-mode #root {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 #__next {
   @apply h-full;
 }

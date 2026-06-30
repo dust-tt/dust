@@ -35,14 +35,6 @@ export type FileUseCase =
   // Workspace branding: logo/favicon uploaded by workspace admins.
   | "workspace_branding";
 
-// Audit trail for a plan-mode approval. Recorded on `plan.md.useCaseMetadata` when the user
-// approves a `request_plan_approval` call.
-export type PlanModeApproval = {
-  approvedAt: string; // ISO timestamp.
-  approvedByUserId: string; // sId of the approving user.
-  fileVersion: number; // FileModel.version at the moment of approval.
-};
-
 export type FileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
@@ -59,15 +51,12 @@ export type FileUseCaseMetadata = {
   // only the original blob exists. Stamped together for sandbox-mounted raw delimited files.
   skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
-  // Plan mode. `isPlanFile: true` marks a file as agent-owned (user can't directly mutate).
-  // `planModeLastApproval` is set when the agent's `request_plan_approval` is approved.
-  // `isPlanClosed: true` marks the plan as retired — hidden from UI and ignored by the skill.
-  // Active plans omit `isPlanClosed` (only closed plans have it set).
-  isPlanFile?: boolean;
-  planModeLastApproval?: PlanModeApproval | null;
-  isPlanClosed?: boolean;
   // Which branding asset this file was uploaded for (workspace_branding use case only).
   asset?: string;
+  // Root scoped path of a published Frame's source tree in the mount (interactive content
+  // only). Set when the frame has been published: its presence means a built bundle exists
+  // (stored as the processed version) and records where to re-read sources on republish.
+  frameBundleRootPath?: string;
 };
 
 export function isConversationFileUseCase(
@@ -453,7 +442,6 @@ export const FILE_FORMATS = {
     exts: [".json"],
     isSafeToDisplay: true,
   },
-
   // Data.
   "text/plain": {
     cat: "data",
@@ -648,6 +636,8 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
 export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
+export const sandboxFunctionContentType =
+  "application/vnd.dust.sandbox.function";
 
 // Interactive Content MIME types for specialized use cases (not exposed via APIs).
 export const INTERACTIVE_CONTENT_FILE_FORMATS = {
@@ -670,13 +660,26 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
 export type InteractiveContentFileContentType =
   keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
+export const SANDBOX_FUNCTION_FILE_FORMATS = {
+  [sandboxFunctionContentType]: {
+    cat: "code",
+    exts: [".ts"],
+    isSafeToDisplay: false,
+  },
+} as const satisfies Record<string, FileFormat>;
+
+export type SandboxFunctionFileContentType =
+  keyof typeof SANDBOX_FUNCTION_FILE_FORMATS;
+
 export const ALL_FILE_FORMATS = {
   ...INTERACTIVE_CONTENT_FILE_FORMATS,
+  ...SANDBOX_FUNCTION_FILE_FORMATS,
   ...FILE_FORMATS,
 };
-// Union type for all supported content types (public + Interactive Content).
+// Union type for all supported content types.
 export type AllSupportedFileContentType =
   | InteractiveContentFileContentType
+  | SandboxFunctionFileContentType
   | SupportedFileContentType;
 
 export type AllSupportedWithDustSpecificFileContentType =
@@ -737,11 +740,20 @@ export function isInteractiveContentType(
   ];
 }
 
+export function isSandboxFunctionContentType(
+  contentType: string
+): contentType is SandboxFunctionFileContentType {
+  return !!SANDBOX_FUNCTION_FILE_FORMATS[
+    contentType as SandboxFunctionFileContentType
+  ];
+}
+
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
     isInteractiveContentType(contentType) ||
+    isSandboxFunctionContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );
 }

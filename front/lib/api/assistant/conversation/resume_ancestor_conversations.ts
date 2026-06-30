@@ -54,18 +54,27 @@ export async function resumeAncestorConversations(
     );
 
     if (retryRes.isErr()) {
-      logger.error(
-        {
-          workspaceId: owner.sId,
-          parentConversationId: parentConversation.sId,
-          parentAgentMessageId: parentAgentMessage.sId,
-          err: retryRes.error,
-        },
-        "Failed to retry blocked actions on parent conversation"
-      );
-      return new Err(
-        new DustError("internal_error", "Failed to resume parent conversation")
-      );
+      const isAlreadyRunning =
+        retryRes.error instanceof DustError &&
+        retryRes.error.code === "agent_loop_already_running";
+
+      if (!isAlreadyRunning) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            parentConversationId: parentConversation.sId,
+            parentAgentMessageId: parentAgentMessage.sId,
+            err: retryRes.error,
+          },
+          "Failed to retry blocked actions on parent conversation"
+        );
+        return new Err(
+          new DustError(
+            "internal_error",
+            "Failed to resume parent conversation"
+          )
+        );
+      }
     }
 
     cursor = {

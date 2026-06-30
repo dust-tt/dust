@@ -169,7 +169,16 @@ final class ConversationDetailViewModel: ObservableObject {
     // MARK: - Mark as Read
 
     private func markAsRead() {
-        guard conversation.unread else { return }
+        // `actionRequired` conversations also surface in the unread inbox; the server's
+        // read:true path self-heals a stale actionRequired flag, so mark those too.
+        guard conversation.unread || conversation.actionRequired else { return }
+
+        // Optimistically clear the list's unread indicator right away.
+        NotificationCenter.default.post(
+            name: .conversationDidMarkRead,
+            object: nil,
+            userInfo: [ConversationReadNotification.conversationIdKey: conversation.sId]
+        )
 
         markAsReadTask = Task { [weak self] in
             guard let self else { return }

@@ -575,7 +575,8 @@ export async function recordSelfImprovingSkillsUsageActivity({
     // conversion rounds up per (provider, model) group, applied here at
     // conversation granularity.
     const conversationPriceAwuCredits = intelligenceAwuFromRunUsages(
-      conversationRunUsages
+      conversationRunUsages,
+      "reinforcement"
     );
 
     totalPriceMicroUsd += conversationPriceMicroUsd;

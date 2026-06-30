@@ -122,6 +122,8 @@ type SkillResourceConstructorOptions =
       // For global skills, there is no editor group.
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
+      // When true, the global skill's instructions are exposed to the front-end.
+      exposeInstructions?: boolean;
       fileAttachments: FileResource[];
       globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
@@ -130,6 +132,8 @@ type SkillResourceConstructorOptions =
   | {
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: GroupResource;
+      // Custom skills always expose their own instructions; this flag is unused.
+      exposeInstructions?: undefined;
       fileAttachments: FileResource[];
       globalSId?: undefined;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
@@ -228,6 +232,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly version: number | null = null;
 
   private readonly globalSId: string | null;
+  // Only meaningful for global skills: whether their instructions may be
+  // serialized to the front-end. Custom skills always expose their own.
+  private readonly exposeInstructions: boolean;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
@@ -236,6 +243,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     blob: Attributes<SkillConfigurationModel>,
     {
       dataSourceConfigurations,
+      exposeInstructions,
       fileAttachments,
       globalSId,
       mcpServerConfigurations,
@@ -247,6 +255,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     this.dataSourceConfigurations = dataSourceConfigurations;
     this.editorGroup = editorGroup ?? null;
+    this.exposeInstructions = exposeInstructions ?? false;
     this.fileAttachments = fileAttachments ?? [];
     this.globalSId = globalSId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
@@ -892,38 +901,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async fetchActiveByName(
     auth: Authenticator,
-    name: string
-  ): Promise<SkillResource | null> {
-    const resources = await this.baseFetch(auth, {
-      where: {
-        name,
-        status: "active",
-      },
-      limit: 1,
-    });
-
-    if (resources.length === 0) {
-      return null;
-    }
-
-    return resources[0];
-  }
-
-  static async listActiveByNameForAgentLoop(
-    auth: Authenticator,
     name: string,
-    agentLoopData: AgentLoopExecutionData
-  ): Promise<SkillResource[]> {
-    return this.baseFetch(
+    { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
+  ): Promise<SkillResource | null> {
+    const resources = await this.baseFetch(
       auth,
       {
         where: {
           name,
           status: "active",
         },
+        limit: 1,
       },
       { agentLoopData }
     );
+
+    if (resources.length === 0) {
+      return null;
+    }
+
+    return resources[0];
   }
 
   static async fetchByNames(
@@ -1755,6 +1752,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
+        exposeInstructions: def.exposeInstructions,
         globalSId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
@@ -2046,22 +2044,49 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
+  async upsertEditors(
+    auth: Authenticator,
+    users: UserResource[]
+  ): Promise<Result<void, Error>> {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    if (!this.canWrite(auth)) {
+      return new Err(
+        new Error("User is not authorized to update skill editors.")
+      );
+    }
+
+    if (!this.editorGroup) {
+      return new Err(new Error("The skill does not have an editors group."));
+    }
+
+    const existingEditors = await this.listEditors(auth);
+    const existingEditorIds = new Set(existingEditors?.map((u) => u.id) ?? []);
+    const usersToAdd = users.filter((u) => !existingEditorIds.has(u.id));
+
+    if (usersToAdd.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const addResult = await this.editorGroup.dangerouslyAddMembers(auth, {
+      users: usersToAdd.map((u) => u.toJSON()),
+    });
+    if (addResult.isErr()) {
+      return new Err(new Error(addResult.error.message));
+    }
+
+    return new Ok(undefined);
+  }
+
   private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
     const user = auth.user();
-    if (!this.editorGroup || !user) {
+    if (!user) {
       return;
     }
 
-    if (!this.editorGroup.canWrite(auth)) {
-      return;
-    }
-
-    const isMember = await this.editorGroup.isMember(user);
-    if (!isMember) {
-      await this.editorGroup.dangerouslyAddMember(auth, {
-        user: user.toJSON(),
-      });
-    }
+    await this.upsertEditors(auth, [user]);
   }
 
   async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
@@ -3391,7 +3416,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ],
       where: {
         workspaceId: workspace.id,
-        customSkillId: { [Op.in]: [...skillsById.keys()] },
+        customSkillId: {
+          [Op.ne]: null,
+          [Op.in]: [...skillsById.keys()],
+        },
       },
     });
 
@@ -3633,6 +3661,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       })
     );
 
+    // Code-defined (global) skills hide their instructions from the front-end by
+    // default; a skill opts in via `exposeInstructions` in its definition (e.g.
+    // docs/pptx/xlsx) so builders can read and build on top of it. System skills
+    // and the rest stay opaque. Custom skills always expose their own
+    // instructions. The list endpoints strip instructions/tools regardless, and
+    // the public v1 API only returns custom skills, so this only surfaces on the
+    // single-skill detail fetch.
+    const hideInstructions =
+      this.globalSId !== null && !this.exposeInstructions;
+
     return {
       id: this.id,
       sId: this.sId,
@@ -3643,9 +3681,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
       userFacingDescription: this.userFacingDescription,
-      // We don't want to expose global skills instructions to the front-end.
-      instructions: this.globalSId ? null : this.instructions,
-      instructionsHtml: this.globalSId ? null : this.instructionsHtml,
+      instructions: hideInstructions ? null : this.instructions,
+      instructionsHtml: hideInstructions ? null : this.instructionsHtml,
       requestedSpaceIds,
       icon: this.icon ?? null,
       reinforcement: this.reinforcement,
@@ -3678,9 +3715,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         fileName: file.fileName,
       })),
       canWrite: this.canWrite(auth),
-      isExtendable: false,
       isDefault: this.isDefault,
-      extendedSkillId: null,
     };
   }
 

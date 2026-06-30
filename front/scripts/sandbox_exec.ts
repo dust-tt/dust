@@ -108,7 +108,6 @@ async function runInteractive(sandbox: Sandbox, command: string, user: string) {
   });
 
   stdin.setRawMode(true);
-  stdin.setEncoding("utf8");
 
   stdin.on("data", (data: Buffer) => {
     void sandbox.pty.sendInput(pty.pid, new Uint8Array(data));

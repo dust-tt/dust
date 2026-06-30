@@ -240,6 +240,7 @@ export function useMembersUsage({
   orderColumn,
   orderDirection,
   seatType,
+  groupId,
   disabled,
 }: {
   workspaceId: string;
@@ -249,6 +250,7 @@ export function useMembersUsage({
   orderColumn?: "name" | "email" | "consumedAwuCredits";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType | "none";
+  groupId?: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -276,14 +278,18 @@ export function useMembersUsage({
   if (seatType) {
     searchParams.set("seatType", seatType);
   }
+  if (groupId) {
+    searchParams.set("groupId", groupId);
+  }
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, isLoading } = useSWRWithDefaults(
     `${membersUsageUrl(workspaceId)}?${searchParams.toString()}`,
     membersUsageFetcher,
     {
       keepPreviousData: true,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      dedupingInterval: 60_000,
       disabled,
     }
   );
@@ -291,6 +297,7 @@ export function useMembersUsage({
   return {
     membersUsage: data?.members ?? emptyArray(),
     isMembersUsageLoading: !error && !data && !disabled,
+    isMembersUsageRefreshing: isLoading && !!data && !disabled,
     isMembersUsageError: !!error,
     totalMembersUsage: data?.total ?? 0,
   };

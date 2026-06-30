@@ -11,7 +11,7 @@ export const JIT_TESTING_TOOL_NAME = "jit_testing" as const;
 export const JIT_TESTING_TOOLS_METADATA = createToolsRecord({
   jit_all_optionals_and_defaults: {
     description:
-      "A single tool aggregating optional/default configs for TIME_FRAME, JSON_SCHEMA, DATA_SOURCE, and AGENT for JIT testing.",
+      "Aggregate optional/default configs for TIME_FRAME, JSON_SCHEMA, DATA_SOURCE, and AGENT for JIT testing.",
     schema: {
       // TIME_FRAME: default and optional variants
       timeFrameDefault: ConfigurableToolInputSchemas[
@@ -80,7 +80,6 @@ export const JIT_TESTING_SERVER = {
     icon: "ActionEmotionLaughIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(JIT_TESTING_TOOLS_METADATA).map((t) => ({
     name: t.name,

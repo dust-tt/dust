@@ -1,5 +1,7 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
+import { toggleScopeEntity } from "@app/components/workspace/analytics/analyticsFilter";
 import { WorkspaceAgentCreditsTable } from "@app/components/workspace/analytics/WorkspaceAgentCreditsTable";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
@@ -70,6 +72,8 @@ export function AnalyticsPage() {
   const [period, setPeriod] =
     useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
 
+  const [filter, setFilter] = useState<AnalyticsFilter>({});
+
   return (
     <Page.Vertical align="stretch" gap="xl">
       <Page.Header
@@ -95,10 +99,27 @@ export function AnalyticsPage() {
       />
       <div className="flex flex-col pb-8 gap-8">
         <SafeSuspense fallback={<ChartFallback />}>
-          <AwuUsageFromAnalyticsChart workspaceId={owner.sId} period={period} />
+          <AwuUsageFromAnalyticsChart
+            workspaceId={owner.sId}
+            period={period}
+            filter={filter}
+            onFilterChange={setFilter}
+          />
         </SafeSuspense>
-        <WorkspaceUserCreditsTable workspaceId={owner.sId} period={period} />
-        <WorkspaceAgentCreditsTable workspaceId={owner.sId} period={period} />
+        <WorkspaceUserCreditsTable
+          workspaceId={owner.sId}
+          period={period}
+          onSelectUser={(entity) =>
+            setFilter((prev) => toggleScopeEntity(prev, "user", entity))
+          }
+        />
+        <WorkspaceAgentCreditsTable
+          workspaceId={owner.sId}
+          period={period}
+          onSelectAgent={(entity) =>
+            setFilter((prev) => toggleScopeEntity(prev, "agent", entity))
+          }
+        />
         <SafeSuspense fallback={<ChartFallback />}>
           <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>

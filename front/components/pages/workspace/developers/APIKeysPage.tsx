@@ -1,6 +1,7 @@
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
+import { EditKeyCreditCapDialog } from "@app/components/workspace/api-keys/EditKeyCreditCapDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import type { KeyRole } from "@app/components/workspace/api-keys/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -27,6 +28,7 @@ export function APIKeys({ owner }: APIKeysProps) {
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
   const showLegacyUsdMonthlyCap = !isCreditPricedPlan(subscription.plan);
+  const showCreditMonthlyCap = isCreditPricedPlan(subscription.plan);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
   const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
 
@@ -48,11 +50,13 @@ export function APIKeys({ owner }: APIKeysProps) {
         name,
         groups: selectedGroups,
         monthlyCapMicroUsd,
+        monthlyCapAwuCredits,
         role,
       }: {
         name: string;
         groups: GroupType[];
         monthlyCapMicroUsd: number | null;
+        monthlyCapAwuCredits: number | null;
         role: KeyRole;
       }) => {
         const response = await clientFetch(`/api/w/${owner.sId}/keys`, {
@@ -64,6 +68,7 @@ export function APIKeys({ owner }: APIKeysProps) {
             name,
             group_ids: selectedGroups.map((g) => g.sId),
             monthly_cap_micro_usd: monthlyCapMicroUsd,
+            monthly_cap_awu_credits: monthlyCapAwuCredits,
             role,
           }),
         });
@@ -131,6 +136,40 @@ export function APIKeys({ owner }: APIKeysProps) {
       }
     });
 
+  const { submit: handleUpdateCreditCap, isSubmitting: isUpdatingCreditCap } =
+    useSubmitFunction(async (monthlyCapAwuCredits: number | null) => {
+      if (!editCapKey) {
+        return;
+      }
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/keys/${editCapKey.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            monthly_cap_awu_credits: monthlyCapAwuCredits,
+          }),
+        }
+      );
+      await mutate(`/api/w/${owner.sId}/keys`);
+      if (response.ok) {
+        sendNotification({
+          title: "Credit cap updated",
+          type: "success",
+        });
+        setEditCapKey(null);
+      } else {
+        const errorResponse = await response.json();
+        sendNotification({
+          title: "Error updating credit cap",
+          description: get(errorResponse, "error.message", "Unknown error"),
+          type: "error",
+        });
+      }
+    });
+
   // Show a loading spinner while API keys or groups are being fetched.
   if (isValidating || isGroupsLoading) {
     return <Spinner />;
@@ -175,6 +214,7 @@ export function APIKeys({ owner }: APIKeysProps) {
         onRevoke={handleRevoke}
         onEditCap={setEditCapKey}
         showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
+        showCreditMonthlyCap={showCreditMonthlyCap}
       />
       {showLegacyUsdMonthlyCap && editCapKey && (
         <EditKeyCapDialog
@@ -183,6 +223,15 @@ export function APIKeys({ owner }: APIKeysProps) {
           onClose={() => setEditCapKey(null)}
           onSave={handleUpdateCap}
           isSaving={isUpdatingCap}
+        />
+      )}
+      {showCreditMonthlyCap && editCapKey && (
+        <EditKeyCreditCapDialog
+          keyData={editCapKey}
+          isOpen={!!editCapKey}
+          onClose={() => setEditCapKey(null)}
+          onSave={handleUpdateCreditCap}
+          isSaving={isUpdatingCreditCap}
         />
       )}
     </>

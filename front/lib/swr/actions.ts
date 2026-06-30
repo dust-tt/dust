@@ -12,7 +12,7 @@ export function useAgentConfigurationActions(
   const { fetcher } = useFetcher();
   const disabled = agentConfigurationId === null;
   const actionsFetcher: Fetcher<GetActionsResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
     `/api/w/${ownerId}/builder/assistants/${agentConfigurationId}/actions`,
     actionsFetcher,
     {
@@ -34,6 +34,8 @@ export function useAgentConfigurationActions(
   return {
     actions: actionsWithIds,
     isActionsLoading: !error && !data && !disabled,
+    isActionsError: !!error,
+    isActionsValidating: isValidating,
     mutateActions: mutate,
     error,
   };

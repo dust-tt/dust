@@ -81,21 +81,34 @@ final class ConversationListViewModel: ObservableObject {
     @Published var workspaces: [Workspace] = []
     @Published var pods: [Space] = []
     @Published var isPodsExpanded: Bool = true
+    /// Dust sId of the signed-in user, used to scope tool-approval prompts to their own turns.
+    @Published var currentUserSId: String?
 
     private let tokenProvider: TokenProvider
     private var titleObserver: ConversationTitleObserver?
+    private var readObserver: ConversationReadObserver?
+    private var hasLoaded = false
 
     init(tokenProvider: TokenProvider) {
         self.tokenProvider = tokenProvider
         self.titleObserver = ConversationTitleObserver { [weak self] conversationId, title in
             self?.conversations.updateTitle(conversationId: conversationId, title: title)
         }
+        self.readObserver = ConversationReadObserver { [weak self] conversationId in
+            self?.markConversationsAsRead([conversationId])
+        }
     }
 
     func load() async {
+        // Initial load only. The view re-renders into the loading state on every
+        // workspace switch, which re-triggers the load `.task`; without this guard
+        // that re-fetches /api/user and reverts `workspace` to the session's default,
+        // sending us back to the previous workspace's endpoints.
+        guard !hasLoaded else { return }
         state = .loading
         do {
             let dustUser = try await AuthService.fetchDustUser(tokenProvider: tokenProvider)
+            currentUserSId = dustUser.sId
             workspaces = dustUser.workspaces
 
             let workspaceId = dustUser.selectedWorkspace ?? dustUser.workspaces.first?.sId
@@ -109,6 +122,7 @@ final class ConversationListViewModel: ObservableObject {
             async let podsTask: Void = loadPods()
             try await convosTask
             await podsTask
+            hasLoaded = true
         } catch {
             logger.error("Failed to load conversations: \(error)")
             state = .error(error.localizedDescription)

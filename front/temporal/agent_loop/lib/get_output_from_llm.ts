@@ -456,6 +456,18 @@ export async function getOutputFromLLMStream(
           nativeChainOfThought += "\n\n";
           continue;
         }
+        case "provider_passthrough": {
+          // Opaque provider block stored in stream order so the producing
+          // provider can replay it verbatim.
+          contents.push({
+            type: "provider_passthrough",
+            value: {
+              provider: event.content.provider,
+              block: event.content.block,
+            },
+          });
+          continue;
+        }
         default:
           break;
       }

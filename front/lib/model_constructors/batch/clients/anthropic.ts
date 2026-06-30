@@ -14,6 +14,9 @@ import type { Credentials } from "@app/lib/model_constructors/types/credentials"
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { ANTHROPIC_API } from "@app/lib/model_constructors/types/provider_apis";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+
+const BUILD_PAYLOAD_CONCURRENCY = 8;
 
 /**
  * The batch sibling of `AnthropicStream`: same input/output converters (so batch
@@ -51,11 +54,13 @@ export abstract class AnthropicBatch extends WithAnthropicAIInputConverter(
   async sendBatch(
     requests: Map<string, BatchRequest<AnthropicInputConfig>>
   ): Promise<string> {
-    const batchRequests = Array.from(requests.entries()).map(
-      ([customId, { payload, config }]) => ({
+    const batchRequests = await concurrentExecutor(
+      Array.from(requests.entries()),
+      async ([customId, { payload, config }]) => ({
         custom_id: customId,
-        params: this.buildRequestPayload(payload, config),
-      })
+        params: await this.buildRequestPayload(payload, config),
+      }),
+      { concurrency: BUILD_PAYLOAD_CONCURRENCY }
     );
 
     const batch = await this.client.messages.batches.create({

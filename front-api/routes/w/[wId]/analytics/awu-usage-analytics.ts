@@ -1,6 +1,7 @@
 import {
   AwuUsageAnalyticsQuerySchema,
   type AwuUsageAnalyticsResponse,
+  awuUsageToCsvRows,
   getAwuUsageFromAnalytics,
 } from "@app/lib/api/analytics/awu_usage_analytics";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
@@ -43,20 +44,7 @@ app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
     return ctx.json(result.value);
   }
 
-  const { groups, points } = result.value;
-  const seriesFilter = series ? new Set(series.split(",")) : null;
-  const visibleGroups = seriesFilter
-    ? groups.filter((group) => seriesFilter.has(group.groupKey))
-    : groups;
-  const rows = points.flatMap((point) => {
-    const date = new Date(point.timestamp).toISOString().slice(0, 10);
-    return visibleGroups.map((group) => ({
-      date,
-      granularity: query.granularity,
-      series: group.name,
-      credits: point.values[group.groupKey] ?? 0,
-    }));
-  });
+  const rows = awuUsageToCsvRows(result.value, series);
 
   ctx.header("Content-Type", "text/csv");
   ctx.header(

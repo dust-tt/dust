@@ -11,6 +11,7 @@ import DowngradeToNoPlanButton from "@app/components/poke/subscriptions/Downgrad
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import SwitchContractDialog from "@app/components/poke/subscriptions/SwitchContractDialog";
+import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
@@ -306,6 +307,36 @@ function CancelPendingSubscriptionButton({
   );
 }
 
+function SeatCommitmentsSection({
+  seatPlan,
+}: {
+  seatPlan: SeatPlanResponseBody | null;
+}) {
+  const entries = Object.entries(seatPlan ?? {});
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="pb-1 pt-4 text-sm font-semibold">Seat Commitments</div>
+      <PokeTable>
+        <PokeTableBody>
+          {entries.map(([seatType, info]) => (
+            <PokeTableRow key={seatType}>
+              <PokeTableCell>{info.name}</PokeTableCell>
+              <PokeTableCell>
+                {info.minSeats} min / {info.maxSeats ?? "∞"} max /{" "}
+                {info.assignedCount} used
+              </PokeTableCell>
+            </PokeTableRow>
+          ))}
+        </PokeTableBody>
+      </PokeTable>
+    </>
+  );
+}
+
 interface ActiveSubscriptionTableProps {
   owner: WorkspaceType;
   metronomeCustomerId: string | null;
@@ -315,6 +346,7 @@ interface ActiveSubscriptionTableProps {
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   hasMetronomeBillingFeature: boolean;
   stripeCustomerId: string | null;
+  seatPlan: SeatPlanResponseBody | null;
 }
 
 export function ActiveSubscriptionTable({
@@ -326,6 +358,7 @@ export function ActiveSubscriptionTable({
   programmaticUsageConfig,
   hasMetronomeBillingFeature,
   stripeCustomerId,
+  seatPlan,
 }: ActiveSubscriptionTableProps) {
   const status = getSubscriptionDisplayStatus(subscription);
   const { chipColor, chipLabel, cardClass } = STATUS_CONFIG[status];
@@ -381,6 +414,7 @@ export function ActiveSubscriptionTable({
             subscription={subscription}
             metronomeCustomerId={metronomeCustomerId}
           />
+          <SeatCommitmentsSection seatPlan={seatPlan} />
         </div>
       </div>
       {pendingSubscription && (

@@ -188,7 +188,7 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
 
   [GET_CONVERSATION_DETAILS_TOOL_NAME]: {
     description:
-      "Full conversation with messages, tool calls, agent actions, and errors.",
+      "Get the full conversation with messages, tool calls, agent actions, and errors.",
     schema: {
       ...workspaceIdSchema,
       conversation_id: z.string().describe("The sId of the conversation."),
@@ -357,7 +357,6 @@ export const POKE_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(POKE_TOOLS_METADATA).map((t) => ({
     name: t.name,

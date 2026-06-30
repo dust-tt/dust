@@ -23,6 +23,11 @@ export DUST_USE_DEV_SH=1
 # tools would otherwise disable colors when they detect a non-TTY pipe.
 export FORCE_COLOR=1
 
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker is not running. Please start Docker Desktop/Orb Stack and try again."
+  exit 1
+fi
+
 if ! command -v process-compose >/dev/null 2>&1; then
   echo "process-compose is not installed."
   echo "Install it with: brew install f1bonacc1/tap/process-compose"

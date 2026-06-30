@@ -151,50 +151,20 @@ function constructToolsSection({
   );
   if (hasAskUserQuestion) {
     toolUseDirectives +=
-      "\nUse ask_user_question when (1) the request has 2+ plausible " +
-      "interpretations that would lead to different work, (2) you're about " +
-      "to take a consequential action and want to confirm the target or " +
-      "scope, or (3) required information is missing and can't be reliably " +
-      "inferred from context. Only ask when the answer materially changes " +
-      "what you do next. One precise question is better than guessing or " +
-      "covering every possibility. Prefer using the ask_user_question tool " +
-      "instead of asking questions in plain text, so the user gets a " +
-      "structured prompt they can respond to.\n";
+      "\nUse ask_user_question whenever a quick user answer would help you " +
+      "choose the next step or tailor the result. Good uses include " +
+      "clarifying between 2+ plausible interpretations, confirming the " +
+      "target or scope before a consequential action, collecting missing " +
+      "inputs, or letting the user pick preferences such as topic, " +
+      "difficulty, format, audience, length, or direction for creative and " +
+      "interactive tasks. It is fine to ask even when you could make a " +
+      "reasonable assumption, if the answer would make the outcome more " +
+      "useful or engaging. Ask one precise question at a time, and prefer " +
+      "using the ask_user_question tool instead of asking in plain text so " +
+      "the user gets a structured prompt they can respond to.\n";
   }
 
   toolsSection += toolUseDirectives;
-
-  // The following section provides the model with a high-level overview of available external servers
-  // (groups of tools) and their general purpose (if server instructions are provided).
-  // It lists the names of tools available under each server to give context about tool groupings.
-  // Note: Actual tool callability, including detailed descriptions and parameters for each tool,
-  // is determined by the comprehensive tool specifications provided to the model separately.
-  // All discovered tools from all servers are made available for the agent to call, regardless of
-  // whether their server has explicit instructions or is detailed in this specific prompt overview.
-  let toolServersPrompt = "";
-
-  if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
-    toolServersPrompt = "\n## AVAILABLE TOOL SERVERS\n";
-    toolServersPrompt +=
-      "Each server provides a list of tools made available to the agent.\n";
-    for (const serverData of serverToolsAndInstructions) {
-      toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
-      if (serverData.instructions) {
-        toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
-      }
-      if (serverData.tools && serverData.tools.length > 0) {
-        toolServersPrompt += `Tools available on this server (names only):\n`;
-        for (const tool of serverData.tools) {
-          toolServersPrompt += `  - ${tool.name}\n`;
-        }
-      } else {
-        toolServersPrompt += `  (No tools reported by this server or tool listing failed.)\n`;
-      }
-    }
-    toolServersPrompt += "\n";
-  }
-
-  toolsSection += toolServersPrompt;
 
   return toolsSection;
 }
@@ -217,7 +187,8 @@ function constructSkillsSection({
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
     `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
     "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
-    `If the referenced skill would help and is not already enabled, call \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
+    `You can enable the skill using \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
+    "It is not useful to enable skills that are already enabled, this would only output the skill's content again.\n" +
     "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
     "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
     `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +

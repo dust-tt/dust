@@ -9,7 +9,11 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isSandboxResumeState } from "@app/lib/actions/types";
-import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
+import {
+  SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
+  SANDBOX_EXEC_TIMEOUT_BUFFER_MS,
+  SANDBOX_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -36,7 +40,7 @@ import {
   wrapCommandWithCapture,
 } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
-import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -236,8 +240,8 @@ export async function createSandboxTools(
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
-  // The add_egress_domain tool requires both sandbox tools and the
-  // per-workspace setting that admins toggle on top of them.
+  // The add_egress_domain tool requires Computer access and the
+  // per-workspace setting that admins toggle on top of it.
   const flags = await getFeatureFlags(auth);
   if (
     isComputerFeatureEnabled(flags) &&
@@ -316,7 +320,7 @@ export async function runSandboxBashTool(
     : null;
   const isResumeMode = resumeExecId !== null;
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
@@ -362,7 +366,13 @@ export async function runSandboxBashTool(
   const startMs = performance.now();
 
   const providerId = agentConfiguration.model.providerId;
-  const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
+  const commandTimeoutMs = timeoutMs ?? SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS;
+  const timeoutSec = Math.ceil(commandTimeoutMs / 1000);
+  // Give the provider a slightly longer timeout than the in-container one, so
+  // the in-container `timeout` wrapper always stops the command first and we
+  // get its partial output, instead of the provider cutting the call short
+  // with no output.
+  const execTimeoutMs = commandTimeoutMs + SANDBOX_EXEC_TIMEOUT_BUFFER_MS;
   const commandToRun = isResumeMode
     ? buildWaitAndCollectCommand(execId)
     : wrapCommandWithCapture(command, execId, providerId, { timeoutSec });
@@ -378,6 +388,7 @@ export async function runSandboxBashTool(
       DUST_SANDBOX_TOKEN: sandboxToken,
       DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
     },
+    timeoutMs: execTimeoutMs,
     user: "agent-proxied",
   });
 
@@ -473,9 +484,9 @@ export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  // Defense-in-depth: createSandboxTools already filters this tool out when the
-  // sandbox tools flag is off, so this metadata-only check is enough
-  // to reject any caller that bypasses tool-list filtering.
+  // Defense-in-depth: createSandboxTools already filters this tool out when
+  // the workspace setting is off, so this metadata-only check is enough to
+  // reject any caller that bypasses tool-list filtering.
   if (!isSandboxAgentEgressRequestsAllowed(auth)) {
     return new Err(
       new MCPError(
@@ -489,7 +500,7 @@ export async function addEgressDomainTool(
     return new Err(new MCPError("No conversation context available."));
   }
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }

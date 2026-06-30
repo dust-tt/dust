@@ -6,6 +6,7 @@ import SwiftUI
 struct MessageBubbleView: View {
     let message: ConversationMessage
     let currentUserEmail: String
+    var currentUserSId: String?
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
     var completedSteps: [ActivityStep] = []
@@ -31,6 +32,7 @@ struct MessageBubbleView: View {
         case let .agent(msg):
             AgentMessageBubble(
                 message: msg,
+                currentUserSId: currentUserSId,
                 streamingPhase: streamingPhase,
                 activeActions: activeActions,
                 completedSteps: completedSteps,
@@ -107,6 +109,7 @@ struct OtherUserMessageBubble: View {
 
 struct AgentMessageBubble: View {
     let message: AgentMessage
+    var currentUserSId: String?
     var streamingPhase: AgentStreamingPhase = .idle
     var activeActions: [ActiveAction] = []
     var completedSteps: [ActivityStep] = []
@@ -190,6 +193,10 @@ struct AgentMessageBubble: View {
                     ToolApprovalInlineView(
                         approval: approval,
                         isLoading: isValidatingAction,
+                        canRespond: canRespondToBlockedAction(
+                            triggeringUserId: approval.triggeringUserId,
+                            currentUserSId: currentUserSId
+                        ),
                         onValidate: onValidateAction
                     )
                 case let .personalAuthRequired(provider, _):
@@ -206,6 +213,10 @@ struct AgentMessageBubble: View {
                     UserQuestionInlineView(
                         question: info.question,
                         isLoading: isValidatingAction,
+                        canRespond: canRespondToBlockedAction(
+                            triggeringUserId: info.triggeringUserId,
+                            currentUserSId: currentUserSId
+                        ),
                         onAnswer: onAnswerQuestion
                     )
                 case .idle, .thinking, .generating:
@@ -289,12 +300,22 @@ struct ContentFragmentList: View {
     var body: some View {
         FlowLayout(spacing: 4) {
             ForEach(fragments) { fragment in
-                FileChip(
-                    title: fragment.title,
-                    contentType: fragment.contentType,
-                    isTappable: fragment.fileId != nil && onTap != nil,
-                    onTap: { onTap?(fragment) }
-                )
+                if Attachment.isImage(fragment.contentType), let fileId = fragment.fileId {
+                    AttachmentImagePreview(
+                        fileId: fileId,
+                        title: fragment.title,
+                        contentType: fragment.contentType,
+                        isTappable: onTap != nil,
+                        onTap: { onTap?(fragment) }
+                    )
+                } else {
+                    FileChip(
+                        title: fragment.title,
+                        contentType: fragment.contentType,
+                        isTappable: fragment.fileId != nil && onTap != nil,
+                        onTap: { onTap?(fragment) }
+                    )
+                }
             }
         }
     }
@@ -309,12 +330,22 @@ struct GeneratedFilesList: View {
     var body: some View {
         FlowLayout(spacing: 4, alignment: .leading) {
             ForEach(files) { file in
-                FileChip(
-                    title: file.title,
-                    contentType: file.contentType,
-                    isTappable: onTap != nil,
-                    onTap: { onTap?(file) }
-                )
+                if Attachment.isImage(file.contentType), let fileId = file.fileId {
+                    AttachmentImagePreview(
+                        fileId: fileId,
+                        title: file.title,
+                        contentType: file.contentType,
+                        isTappable: onTap != nil,
+                        onTap: { onTap?(file) }
+                    )
+                } else {
+                    FileChip(
+                        title: file.title,
+                        contentType: file.contentType,
+                        isTappable: file.fileId != nil && onTap != nil,
+                        onTap: { onTap?(file) }
+                    )
+                }
             }
         }
     }
@@ -750,6 +781,7 @@ struct ThinkingStepView: View {
 struct ToolApprovalInlineView: View {
     let approval: ToolApprovalInfo
     var isLoading: Bool = false
+    var canRespond: Bool = true
     var onValidate: ((ActionApproval) -> Void)?
 
     @State private var showDetails = false
@@ -804,11 +836,15 @@ struct ToolApprovalInlineView: View {
             Divider()
                 .foregroundStyle(Color.dustBorder)
 
-            ToolApprovalActionButtons(
-                canAlwaysAllow: approval.canAlwaysAllow,
-                isLoading: isLoading,
-                onValidate: onValidate
-            )
+            if canRespond {
+                ToolApprovalActionButtons(
+                    canAlwaysAllow: approval.canAlwaysAllow,
+                    isLoading: isLoading,
+                    onValidate: onValidate
+                )
+            } else {
+                BlockedWaitingView(label: "Waiting for a teammate to approve this.")
+            }
         }
         .padding(12)
         .liquidGlassRoundedRect()
@@ -882,6 +918,23 @@ struct ToolApprovalActionButtons: View {
     }
 }
 
+/// Shown in place of action buttons when the current user isn't the one whose turn
+/// triggered the blocked action, so they can see what's pending without acting on it.
+struct BlockedWaitingView: View {
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .scaleEffect(0.7)
+            Text(label)
+                .sparkleCopyXs()
+                .foregroundStyle(Color.dustFaint)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 // MARK: - Auth / File Access Required
 
 struct AuthRequiredView: View {
@@ -933,6 +986,7 @@ struct AuthRequiredView: View {
 struct UserQuestionInlineView: View {
     let question: UserQuestion
     var isLoading: Bool = false
+    var canRespond: Bool = true
     var onAnswer: ((UserQuestionAnswer) -> Void)?
 
     @State private var selectedOptions: Set<Int> = []
@@ -953,45 +1007,49 @@ struct UserQuestionInlineView: View {
                 .foregroundStyle(Color.dustForeground)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(spacing: 6) {
-                ForEach(Array(question.options.enumerated()), id: \.offset) { index, option in
-                    optionRow(index: index, option: option)
+            if canRespond {
+                VStack(spacing: 6) {
+                    ForEach(Array(question.options.enumerated()), id: \.offset) { index, option in
+                        optionRow(index: index, option: option)
+                    }
                 }
+
+                TextField("Type something else", text: $customResponse, axis: .vertical)
+                    .sparkleCopyXs()
+                    .lineLimit(1 ... 4)
+                    .padding(10)
+                    .background(Color.dustMutedBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Divider()
+                    .foregroundStyle(Color.dustBorder)
+
+                VStack(spacing: 8) {
+                    Button { onAnswer?(buildAnswer()) } label: {
+                        Text("Send")
+                            .sparkleLabelXs()
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.highlight)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(!canSend)
+                    .opacity(canSend ? 1.0 : 0.5)
+
+                    Button { onAnswer?(UserQuestionAnswer(selectedOptions: [], customResponse: nil)) } label: {
+                        Text("Skip")
+                            .sparkleLabelXs()
+                            .foregroundStyle(Color.dustForeground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                }
+                .disabled(isLoading)
+                .opacity(isLoading ? 0.5 : 1.0)
+            } else {
+                BlockedWaitingView(label: "Waiting for a teammate to respond.")
             }
-
-            TextField("Type something else", text: $customResponse, axis: .vertical)
-                .sparkleCopyXs()
-                .lineLimit(1 ... 4)
-                .padding(10)
-                .background(Color.dustMutedBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-
-            Divider()
-                .foregroundStyle(Color.dustBorder)
-
-            VStack(spacing: 8) {
-                Button { onAnswer?(buildAnswer()) } label: {
-                    Text("Send")
-                        .sparkleLabelXs()
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.highlight)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .disabled(!canSend)
-                .opacity(canSend ? 1.0 : 0.5)
-
-                Button { onAnswer?(UserQuestionAnswer(selectedOptions: [], customResponse: nil)) } label: {
-                    Text("Skip")
-                        .sparkleLabelXs()
-                        .foregroundStyle(Color.dustForeground)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-            }
-            .disabled(isLoading)
-            .opacity(isLoading ? 0.5 : 1.0)
         }
         .padding(12)
         .liquidGlassRoundedRect()

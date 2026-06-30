@@ -7,6 +7,8 @@ import {
   maybeNotifyAdminsBalanceThresholdReached,
 } from "@app/lib/api/credits/balance_threshold_alert";
 import {
+  dispatchApiKeyCapReached,
+  dispatchApiKeyCapResolved,
   dispatchCreditsAdded,
   dispatchLowBalance,
   dispatchPaygCapReached,
@@ -68,6 +70,7 @@ import {
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
+import { API_KEY_NAME_GROUP_KEY } from "@app/lib/metronome/per_api_key_usage";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
@@ -774,6 +777,13 @@ export async function processMetronomeWebhook({
       const isPerUser = userIdGroup !== undefined;
       const userId = userIdGroup?.value;
 
+      // Per-API-key cap: scoped via an `api_key_name` group value (no user_id,
+      // no usage_type). Presence of the key, not its value, decides routing.
+      const apiKeyNameGroup = event.properties.group_values?.find(
+        (g) => g.key === API_KEY_NAME_GROUP_KEY
+      );
+      const apiKeyName = apiKeyNameGroup?.value;
+
       if (isPerUser) {
         if (!userId) {
           logger.warn(
@@ -789,6 +799,29 @@ export async function processMetronomeWebhook({
         });
         if (handleResult.isErr()) {
           return handleResult;
+        }
+      } else if (apiKeyNameGroup !== undefined) {
+        if (!apiKeyName) {
+          logger.warn(
+            { eventId: event.id, workspaceId: workspace.sId },
+            "[Metronome Webhook] spend_threshold_reached: per-API-key alert with no api_key_name value, skipping"
+          );
+          break;
+        }
+        const dispatchResult = await dispatchApiKeyCapReached({
+          workspace,
+          keyName: apiKeyName,
+        });
+        if (dispatchResult.isErr()) {
+          logger.error(
+            {
+              eventId: event.id,
+              workspaceId: workspace.sId,
+              keyName: apiKeyName,
+              err: dispatchResult.error,
+            },
+            "[Metronome Webhook] spend_threshold_reached: dispatchApiKeyCapReached failed"
+          );
         }
       } else if (isProgrammaticMonthlyCap(event)) {
         // Programmatic monthly cap alerts. Three alerts exist per workspace
@@ -862,6 +895,11 @@ export async function processMetronomeWebhook({
       const isPerUser = userIdGroup !== undefined;
       const userId = userIdGroup?.value;
 
+      const apiKeyNameGroup = event.properties.group_values?.find(
+        (g) => g.key === API_KEY_NAME_GROUP_KEY
+      );
+      const apiKeyName = apiKeyNameGroup?.value;
+
       if (isPerUser) {
         if (!userId) {
           logger.warn(
@@ -877,6 +915,31 @@ export async function processMetronomeWebhook({
         });
         if (handleResult.isErr()) {
           return handleResult;
+        }
+      } else if (apiKeyNameGroup !== undefined) {
+        if (!apiKeyName) {
+          logger.warn(
+            { eventId: event.id, workspaceId: workspace.sId },
+            "[Metronome Webhook] spend_threshold_resolved: per-API-key alert with no api_key_name value, skipping"
+          );
+          break;
+        }
+        // Billing-cycle renewal resets current_spend to 0, firing this for
+        // every previously-capped key — transition it back to on_pool.
+        const dispatchResult = await dispatchApiKeyCapResolved({
+          workspace,
+          keyName: apiKeyName,
+        });
+        if (dispatchResult.isErr()) {
+          logger.error(
+            {
+              eventId: event.id,
+              workspaceId: workspace.sId,
+              keyName: apiKeyName,
+              err: dispatchResult.error,
+            },
+            "[Metronome Webhook] spend_threshold_resolved: dispatchApiKeyCapResolved failed"
+          );
         }
       } else if (isProgrammaticMonthlyCap(event)) {
         await dispatchProgrammaticCapReset({ workspace });
@@ -1374,6 +1437,17 @@ export async function processMetronomeWebhook({
         );
       }
 
+      // The contract was archived (cancelled) after the start webhook was
+      // enqueued but before it was delivered — skip to avoid swapping the
+      // active subscription onto a dead contract.
+      if (contractResult.value.archived_at) {
+        logger.info(
+          { contractId, workspaceId: workspace.sId },
+          "[Metronome Webhook] contract.start: contract is archived, skipping"
+        );
+        break;
+      }
+
       const renewalTransition = contractResult.value.transitions?.find(
         (t) => t.to_contract_id === contractId
       );
@@ -1421,7 +1495,7 @@ export async function processMetronomeWebhook({
 
       // Reconcile per-user credit states against the new contract's live
       // per-seat balances. Seats were synced to this contract at provision
-      // time (`syncContractQuantities` → `syncSeatCount`), but that path does
+      // time (`syncSeatCount`), but that path does
       // not touch per-user credit states; now that the contract is active the
       // balances are live, so this lands each user in the right seat↔pool
       // state. Without it, a switch that changes seat allocations (e.g. moving

@@ -120,7 +120,6 @@ export const POD_TASKS_SERVER = {
     icon: "ActionCheckCircleIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(POD_TASKS_TOOLS_METADATA).map((t) => ({
     name: t.name,

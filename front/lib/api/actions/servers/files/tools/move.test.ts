@@ -3,6 +3,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { moveHandler } from "@app/lib/api/actions/servers/files/tools/move";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
+import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -77,10 +78,11 @@ describe("moveHandler", () => {
       type: "text",
       text:
         `Moved \`conversation-${conversation.sId}/report.pdf\` to \`pod-${spaceId}/report.pdf\`. ` +
-        `To show a previewable file citation in your response, output this markdown directive exactly on its own line:\n` +
-        `:preview_file{path="pod-${spaceId}/report.pdf" title="report.pdf" contentType="text/plain"}\n` +
-        "The rendered citation opens the file preview, where the user can download the file. " +
-        "Do not invent a URL for this file.",
+        getFilePreviewDirectiveInstruction({
+          contentType: "text/plain",
+          path: `pod-${spaceId}/report.pdf`,
+          title: "report.pdf",
+        }),
     });
   });
 

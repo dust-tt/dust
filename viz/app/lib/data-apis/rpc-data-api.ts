@@ -24,6 +24,26 @@ export class RPCDataAPI implements VisualizationDataAPI {
     this.sendMessage = sendMessage;
   }
 
+  async callFunction(functionId: string, input?: unknown) {
+    try {
+      const result = await this.sendMessage("callFunction", {
+        functionId,
+        input,
+      });
+
+      return result;
+    } catch (error) {
+      console.error(`Failed to call sandbox function ${functionId}:`, error);
+      return {
+        result: null,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to call sandbox function.",
+      };
+    }
+  }
+
   async fetchFile(fileId: string): Promise<File | null> {
     try {
       console.log(">> RPCDataAPI: Fetching file via RPC", fileId);

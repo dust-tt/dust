@@ -248,6 +248,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "UkgLogo",
   "ValTownLogo",
   "VantaLogo",
+  "YoutrustLogo",
   "ZendeskLogo",
 ] as const;
 

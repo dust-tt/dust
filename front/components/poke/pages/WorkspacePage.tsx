@@ -141,6 +141,7 @@ export function WorkspacePage() {
     defaultAlerts,
     programmaticCreditState,
     programmaticWarningReached,
+    seatPlan,
     stripeSubscription,
     stripeCustomerId,
     subscriptions,
@@ -252,6 +253,7 @@ export function WorkspacePage() {
                   programmaticUsageConfig={programmaticUsageConfig}
                   hasMetronomeBillingFeature={hasMetronomeFeature}
                   stripeCustomerId={stripeCustomerId}
+                  seatPlan={seatPlan}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">

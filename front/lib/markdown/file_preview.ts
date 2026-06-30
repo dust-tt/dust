@@ -219,9 +219,10 @@ export function getFilePreviewDirectiveInstruction({
   title?: string;
 }): string {
   return (
-    "To show a previewable file citation in your response, output this markdown directive exactly on its own line:\n" +
-    `${getFilePreviewMarkdownDirective({ contentType, path, title })}\n` +
-    "The rendered citation opens the file preview, where the user can download the file. " +
+    "Always place the previewable file directive inline within the sentence that mentions the file, " +
+    "rather than as a standalone element at the end of the response. " +
+    `For example: "Here is your file ${getFilePreviewMarkdownDirective({ contentType, path, title })}"\n` +
+    "The rendered link opens the file preview, where the user can download the file. " +
     "Do not invent a URL for this file."
   );
 }

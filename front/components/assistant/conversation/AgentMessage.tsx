@@ -27,7 +27,10 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
+import {
+  CREDIT_COST_ITEM_CLASS_NAME,
+  useCreditCostMenuItem,
+} from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -49,6 +52,7 @@ import {
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
+import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -129,6 +133,7 @@ import {
 } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
+import { mutate } from "swr";
 
 const RUN_AGENT_TOOL_NAME = "run_agent";
 
@@ -248,6 +253,13 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // Latches to true the first time the menu opens. We use this rather than
+  // `isMenuOpen` to gate the cost fetch so the query stays enabled after the
+  // menu closes: otherwise disabling it nulls the SWR key, dropping
+  // `refreshedMessage` back to the prop values (which never carry
+  // `subAgentCostCredits`) and flickering the displayed total during the close
+  // animation.
+  const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
   // Re-fetch (on menu open) only if a cost we want to show is still missing:
   // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
   // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
@@ -257,22 +269,26 @@ export function AgentMessage({
     agentMessage.costCredits == null ||
     (hasMessageSpawnedSubAgent(agentMessage) &&
       agentMessage.subAgentCostCredits == null);
-  const { message: refreshedMessage } = useConversationMessage({
-    conversationId,
-    workspaceId: owner.sId,
-    messageId: agentMessage.sId,
-    options: {
-      disabled: !isMenuOpen || !needsCostFetch,
-    },
-  });
+  const { message: refreshedMessage, isMessageLoading } =
+    useConversationMessage({
+      conversationId,
+      workspaceId: owner.sId,
+      messageId: agentMessage.sId,
+      options: {
+        disabled: !hasOpenedMenu || !needsCostFetch,
+      },
+    });
   const refreshedAgentMessage =
     refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
-  const creditCostItem = useCreditCostMenuItem({
+  const { creditCostItem, isCreditPriced } = useCreditCostMenuItem({
     credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
     subAgentCredits:
       refreshedAgentMessage?.subAgentCostCredits ??
       agentMessage.subAgentCostCredits,
   });
+  // On a credit-priced plan, keep the cost section visible while the fetch is
+  // in flight (showing a loader) rather than popping it in once it resolves.
+  const isCreditCostLoading = needsCostFetch && isMessageLoading;
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -433,6 +449,14 @@ export function AgentMessage({
             ) {
               void mutateSandboxFiles();
             }
+            if (action.internalMCPServerName === "plan_mode") {
+              // The conversation-channel `plan_updated` event can be lost (flaky SSE + small replay
+              // buffer), leaving the plan card/panel stale until turn end. The tool action rides the
+              // reliable per-message stream, so revalidate the plan here for a timely update.
+              void mutate(
+                planFileKey({ workspaceId: owner.sId, conversationId })
+              );
+            }
             break;
           }
           case "end-of-stream":
@@ -451,6 +475,7 @@ export function AgentMessage({
         sId,
         removeAllBlockedActionsForMessage,
         conversationId,
+        owner,
         mutateConversationAttachments,
         mutateSandboxStatus,
         mutateSandboxFiles,
@@ -874,7 +899,14 @@ export function AgentMessage({
           icon={isCopied ? ClipboardCheck : Clipboard}
           className="text-muted-foreground dark:text-muted-foreground-night"
         />
-        <DropdownMenu onOpenChange={setIsMenuOpen}>
+        <DropdownMenu
+          onOpenChange={(open) => {
+            setIsMenuOpen(open);
+            if (open) {
+              setHasOpenedMenu(true);
+            }
+          }}
+        >
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
@@ -884,9 +916,20 @@ export function AgentMessage({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {creditCostItem && (
+            {isCreditPriced && (creditCostItem || isCreditCostLoading) && (
               <>
-                <DropdownMenuItem {...creditCostItem} />
+                {creditCostItem ? (
+                  <DropdownMenuItem {...creditCostItem} />
+                ) : (
+                  <DropdownMenuItem
+                    label="Credit cost"
+                    endComponent={
+                      <div className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
+                    }
+                    className={CREDIT_COST_ITEM_CLASS_NAME}
+                    onSelect={(e) => e.preventDefault()}
+                  />
+                )}
                 <DropdownMenuSeparator />
               </>
             )}
@@ -1277,23 +1320,6 @@ function AgentMessageContent({
     );
   }
 
-  if (agentMessage.status === "failed") {
-    return (
-      <ErrorMessage
-        error={
-          agentMessage.error ?? {
-            message: "Unexpected Error",
-            code: "unexpected_error",
-            metadata: {},
-          }
-        }
-        retryHandler={async () =>
-          retryHandler({ conversationId, messageId: agentMessage.sId })
-        }
-      />
-    );
-  }
-
   // Extract file IDs already referenced inline (to avoid duplicate rendering).
   // Match file IDs only in markdown IMAGE syntax: ![...](url containing fil_XXX)
   // NOT plain text mentions or links, to avoid filtering out images from the grid.
@@ -1454,6 +1480,20 @@ function AgentMessageContent({
               />
             </div>
           </div>
+        )}
+        {agentMessage.status === "failed" && (
+          <ErrorMessage
+            error={
+              agentMessage.error ?? {
+                message: "Unexpected Error",
+                code: "unexpected_error",
+                metadata: {},
+              }
+            }
+            retryHandler={async () =>
+              retryHandler({ conversationId, messageId: agentMessage.sId })
+            }
+          />
         )}
       </div>
     </CitationsContext.Provider>

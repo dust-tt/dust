@@ -24,7 +24,7 @@ const CandidateSearchSchema = {
 export const ASHBY_TOOLS_METADATA = createToolsRecord({
   search_candidates: {
     description:
-      "Search for candidates by name and/or email. " +
+      "Find, search, and look up candidates in Ashby by name and/or email. " +
       `Returns up to ${DEFAULT_SEARCH_LIMIT} matching candidates by default.`,
     schema: CandidateSearchSchema,
     stake: "never_ask",
@@ -62,8 +62,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
   },
   get_candidate_notes: {
     description:
-      "Retrieve all notes for a candidate. " +
-      "This tool will search for the candidate by name or email and return all notes on their profile.",
+      "Retrieve and read all existing notes recorded on a candidate's profile in Ashby. " +
+      "Searches for the candidate by name or email and returns every note already on their profile.",
     schema: CandidateSearchSchema,
     stake: "never_ask",
     displayLabels: {
@@ -102,7 +102,7 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
   },
   create_candidate_note: {
     description:
-      "Create a note on a candidate's profile in Ashby. " +
+      "Create and add a new note to a candidate's profile in Ashby. " +
       "The note content can include basic HTML formatting (supported tags: h1-h6, p, b, i, u, a, ul, ol, li, code, pre).",
     schema: {
       ...CandidateSearchSchema,
@@ -247,7 +247,6 @@ export const ASHBY_SERVER = {
     authorization: null,
     icon: "AshbyLogo",
     documentationUrl: "https://docs.dust.tt/docs/ashby-mcp",
-    instructions: null,
   },
   tools: Object.values(ASHBY_TOOLS_METADATA).map((t) => ({
     name: t.name,

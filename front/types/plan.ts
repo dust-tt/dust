@@ -89,6 +89,7 @@ export type PlanType = {
   trialPeriodDays: number;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
+  hasAdvancedModelAccess: boolean;
 };
 
 export type SubscriptionType = {

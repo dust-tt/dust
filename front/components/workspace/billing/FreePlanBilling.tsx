@@ -3,6 +3,7 @@ import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePl
 import { SubscriptionStatusChip } from "@app/components/workspace/billing/SubscriptionStatusChip";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Button } from "@dust-tt/sparkle";
 
 interface FreePlanBillingProps {
   owner: LightWorkspaceType;
@@ -19,7 +20,16 @@ export function FreePlanBilling({ owner, subscription }: FreePlanBillingProps) {
         <SubscriptionStatusChip />
       </div>
       <FreePlanSeatsSection owner={owner} subscription={subscription} />
-      <FreePlanUpgradeSection owner={owner} />
+      <FreePlanUpgradeSection
+        action={
+          <Button
+            label="Upgrade a member"
+            size="sm"
+            variant="highlight"
+            href={`/w/${owner.sId}/usage`}
+          />
+        }
+      />
     </div>
   );
 }

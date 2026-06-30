@@ -14,7 +14,7 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
-import type { KeyType } from "@app/types/key";
+import type { ApiKeyCreditState, KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { redactString } from "@app/types/shared/utils/string_utils";
@@ -79,6 +79,8 @@ export class KeyResource extends BaseResource<KeyModel> {
       isSystem: key.isSystem,
       role: key.role,
       monthlyCapMicroUsd: key.monthlyCapMicroUsd,
+      monthlyCapAwuCredits: key.monthlyCapAwuCredits,
+      creditState: key.creditState,
       workspaceId: key.workspaceId,
       groupIds: key.groupIds,
       userId: key.userId,
@@ -219,6 +221,24 @@ export class KeyResource extends BaseResource<KeyModel> {
     return new this(KeyResource.model, key.get());
   }
 
+  // All active keys with a given name. Names are not unique, and Metronome
+  // aggregates spend per name, so the per-key credit cap is effectively
+  // per-name: the cap webhook transitions every active key sharing the name.
+  static async listActiveByWorkspaceAndName(
+    workspace: LightWorkspaceType,
+    name: string
+  ) {
+    const keys = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        name,
+        status: "active",
+      },
+    });
+
+    return keys.map((key) => new this(KeyResource.model, key.get()));
+  }
+
   static async listNonSystemKeysByWorkspace(workspace: LightWorkspaceType) {
     const keys = await this.model.findAll({
       where: {
@@ -330,6 +350,8 @@ export class KeyResource extends BaseResource<KeyModel> {
       groupIds: this.groupIds,
       role: this.role,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
+      monthlyCapAwuCredits: this.monthlyCapAwuCredits,
+      creditState: this.creditState,
     };
   }
 
@@ -359,5 +381,19 @@ export class KeyResource extends BaseResource<KeyModel> {
     monthlyCapMicroUsd: number | null;
   }) {
     await this.update({ monthlyCapMicroUsd });
+  }
+
+  async updateMonthlyCapAwuCredits(
+    monthlyCapAwuCredits: number | null,
+    transaction?: Transaction
+  ) {
+    await this.update({ monthlyCapAwuCredits }, transaction);
+  }
+
+  async updateCreditState(
+    creditState: ApiKeyCreditState,
+    transaction?: Transaction
+  ) {
+    await this.update({ creditState }, transaction);
   }
 }

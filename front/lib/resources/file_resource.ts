@@ -14,6 +14,7 @@ import {
   getConversationFilePath,
   getConversationFilesBasePath,
   getPodFilesBasePath,
+  getPodSandboxFunctionsBasePath,
   isLegacyScopedPath,
   makeProcessedMountFileName,
   resolveCanonicalScopedPath,
@@ -84,6 +85,7 @@ import {
   frameSlideshowContentType,
   isConversationFileUseCase,
   isInteractiveContentType,
+  isSandboxFunctionContentType,
 } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -239,9 +241,10 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
+    // Serve what renders: a published frame's bundle (processed), else the source.
     const content = await r.value.file.getFileContent(
       r.value.workspace,
-      "original"
+      r.value.file.getRenderableVersion()
     );
     if (!content) {
       return null;
@@ -407,28 +410,6 @@ export class FileResource extends BaseResource<FileModel> {
 
     const files = await this.model.findAll({
       where: whereClause,
-      order: [["createdAt", "DESC"]],
-    });
-
-    return files.map((f) => new this(this.model, f.get()));
-  }
-
-  // List plan-mode files attached to a conversation. Callers filter active vs. closed via the
-  // returned `useCaseMetadata.isPlanClosed` flag (present only on closed plans). Ordered by
-  // createdAt DESC so the most recent plan is first.
-  static async listPlanFilesForConversation(
-    auth: Authenticator,
-    { conversationId }: { conversationId: string }
-  ): Promise<FileResource[]> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const files = await this.model.findAll({
-      where: {
-        workspaceId: owner.id,
-        useCase: "conversation",
-        status: "ready",
-        useCaseMetadata: { conversationId, isPlanFile: true },
-      },
       order: [["createdAt", "DESC"]],
     });
 
@@ -669,6 +650,24 @@ export class FileResource extends BaseResource<FileModel> {
     return hasProcessedVersion(this.contentType, this.useCase)
       ? "processed"
       : "original";
+  }
+
+  /**
+   * The version the viz engine should render for a frame. A published frame's bundle is stored
+   * as the processed version. Until a frame is published (no bundle) the source ("original")
+   * renders. Non-frame files always render their original, so this is safe to call generically.
+   */
+  getRenderableVersion(): FileVersion {
+    // Frame-specific signal, deliberately kept in useCaseMetadata rather than a FileResource field
+    // to avoid growing frame concerns on this generic resource. A dedicated Frame data model will
+    // likely own this soon.
+    if (
+      this.isInteractiveContent &&
+      this.useCaseMetadata?.frameBundleRootPath
+    ) {
+      return "processed";
+    }
+    return "original";
   }
 
   /**
@@ -1040,6 +1039,20 @@ export class FileResource extends BaseResource<FileModel> {
     await this.markAsReady(auth);
   }
 
+  /**
+   * Store derived content as the file's processed version. Unlike {@link uploadContent} it does
+   * not touch the mount path (the processed version is a derived artifact, not a mounted source)
+   * and does not bump the version (which tracks source edits). Frames use it for their built
+   * bundle, the artifact {@link getRenderableVersion} renders.
+   */
+  async uploadProcessed(auth: Authenticator, content: string): Promise<void> {
+    await this.getBucketForVersion("processed").uploadRawContentToBucket({
+      content,
+      contentType: this.contentType,
+      filePath: this.getCloudStoragePath(auth, "processed"),
+    });
+  }
+
   async setUseCaseMetadata(auth: Authenticator, metadata: FileUseCaseMetadata) {
     const result = await this.update({ useCaseMetadata: metadata });
     await this.resolveAndSetMountFilePath(auth);
@@ -1146,10 +1159,17 @@ export class FileResource extends BaseResource<FileModel> {
     { podId }: { podId: string }
   ): Promise<{ path: string; fallbackPath: string }> {
     const owner = auth.getNonNullableWorkspace();
-    const basePath = getPodFilesBasePath({
-      workspaceId: owner.sId,
-      podId,
-    });
+    // Sandbox function bundles route to their own front-owned prefix (see
+    // getPodSandboxFunctionsBasePath). Regular project files keep the R/W pod files prefix.
+    const basePath = isSandboxFunctionContentType(this.contentType)
+      ? getPodSandboxFunctionsBasePath({
+          workspaceId: owner.sId,
+          podId,
+        })
+      : getPodFilesBasePath({
+          workspaceId: owner.sId,
+          podId,
+        });
 
     const desiredPath = `${basePath}${this.fileName}`;
     const fallbackPath = `${basePath}${disambiguateFileName(this)}`;
@@ -1601,8 +1621,9 @@ export class FileResource extends BaseResource<FileModel> {
           const workspace = renderLightWorkspaceType({
             workspace: auth.getNonNullableWorkspace(),
           });
+          // Recurse into what the nested frame actually renders (its bundle if published).
           const bufferResult = await streamToBuffer(
-            file.getSharedReadStream(workspace, "original")
+            file.getSharedReadStream(workspace, file.getRenderableVersion())
           );
           if (bufferResult.isOk()) {
             nestedContent = bufferResult.value.toString("utf-8") || undefined;

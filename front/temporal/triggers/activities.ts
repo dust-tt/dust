@@ -300,7 +300,8 @@ export async function runTriggeredAgentsActivity({
       errorType === "model_disabled" ||
       errorType === "invalid_request_error" ||
       errorType === "agent_inaccessible" ||
-      errorType === "webhook_storage_error";
+      errorType === "webhook_storage_error" ||
+      errorType === "no_seat";
 
     if (isNonRetryable) {
       logger.info(

@@ -64,7 +64,7 @@ export abstract class LLM<TPayload = unknown> {
       context,
       getTraceOutput,
       modelId,
-      reasoningEffort,
+      reasoningEffort = "none",
       responseFormat = null,
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
     }: LLMParameters
@@ -79,10 +79,7 @@ export abstract class LLM<TPayload = unknown> {
     }
     this.modelConfig = modelConfig;
     this.temperature = temperature;
-    this.reasoningEffort =
-      reasoningEffort !== undefined
-        ? reasoningEffort
-        : modelConfig.defaultReasoningEffort;
+    this.reasoningEffort = reasoningEffort;
     this.responseFormat = responseFormat;
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = {

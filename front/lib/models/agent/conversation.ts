@@ -112,6 +112,7 @@ ConversationModel.init(
       {
         fields: ["workspaceId", "spaceId"],
       },
+      { fields: ["spaceId"], concurrently: true },
       {
         fields: ["workspaceId", "createdAt"],
         name: "conversations_workspace_id_created_at_idx",

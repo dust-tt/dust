@@ -215,9 +215,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
     const versionParam = ctx.req.query("version");
+    // Default to the frame's renderable version (a published frame serves its built bundle);
+    // non-frame files and unpublished frames resolve to "original". An explicit ?version wins.
     const version = isValidViewVersion(versionParam)
       ? versionParam
-      : "original";
+      : file.getRenderableVersion();
 
     const readStream = file.getReadStream({ auth, version });
     return new Response(readableToReadableStream(readStream), {
@@ -246,20 +248,6 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const accessCheck = await checkFileAccess(ctx, file);
   if (accessCheck) {
     return accessCheck;
-  }
-
-  // Plan-mode files are agent-owned: the user interacts with them only through
-  // the agent (via messages and approval decisions), never by direct mutation.
-  // The agent can retire a plan via the `close_plan` tool.
-  if (file.useCaseMetadata?.isPlanFile) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "plan.md is managed by the agent and cannot be deleted directly. Ask the agent to close the plan.",
-      },
-    });
   }
 
   const space = await getSpaceForFile(auth, file);
@@ -319,18 +307,6 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const accessCheck = await checkFileAccess(ctx, file);
   if (accessCheck) {
     return accessCheck;
-  }
-
-  // Plan-mode files are agent-owned; users cannot upload over them.
-  if (file.useCaseMetadata?.isPlanFile) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "plan.md is managed by the agent and cannot be overwritten directly.",
-      },
-    });
   }
 
   const space = await getSpaceForFile(auth, file);

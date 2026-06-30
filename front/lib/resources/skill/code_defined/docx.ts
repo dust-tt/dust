@@ -130,6 +130,7 @@ export const docxSkill = {
   agentFacingDescription:
     "Work with .docx and .doc files in the sandbox using python-docx.",
   instructions: DOCX_SKILL_INSTRUCTIONS,
+  exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "ActionDocumentTextIcon",

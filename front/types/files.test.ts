@@ -2,9 +2,13 @@ import {
   authorizedFileAccessEntrySchema,
   ensureFileSize,
   getAuthorizedFileRefLabel,
+  isAllSupportedFileContentType,
+  isSandboxFunctionContentType,
+  isSupportedFileContentType,
   parseAuthorizedFileAccessEntry,
   resolveFileContentType,
   resolveMaxFileSizes,
+  sandboxFunctionContentType,
 } from "@app/types/files";
 import { describe, expect, it } from "vitest";
 
@@ -139,5 +143,15 @@ describe("resolveFileContentType", () => {
     expect(
       resolveFileContentType("application/octet-stream", "data.xlsx")
     ).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  });
+});
+
+describe("sandboxFunctionContentType", () => {
+  it("is a specialized internal file content type", () => {
+    expect(isSandboxFunctionContentType(sandboxFunctionContentType)).toBe(true);
+    expect(isAllSupportedFileContentType(sandboxFunctionContentType)).toBe(
+      true
+    );
+    expect(isSupportedFileContentType(sandboxFunctionContentType)).toBe(false);
   });
 });

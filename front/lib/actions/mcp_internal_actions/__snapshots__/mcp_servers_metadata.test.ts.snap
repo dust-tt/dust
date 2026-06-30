@@ -202,6 +202,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_organization_projects": "never_ask",
     "list_pull_requests": "never_ask",
     "search_advanced": "never_ask",
+    "update_issue": "medium",
   },
   "gmail": {
     "create_draft": "medium",
@@ -326,6 +327,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "edit_interactive_content_file": "never_ask",
     "export_interactive_content_file": "never_ask",
     "get_interactive_content_file_share_url": "never_ask",
+    "publish_interactive_content_file": "never_ask",
     "rename_interactive_content_file": "never_ask",
     "retrieve_interactive_content_file": "never_ask",
     "revert_interactive_content_file": "never_ask",
@@ -462,11 +464,13 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_contact": "high",
     "create_draft": "medium",
     "delete_draft": "low",
+    "get_attachment": "never_ask",
     "get_attachments": "never_ask",
     "get_contacts": "never_ask",
     "get_drafts": "never_ask",
     "get_message_body": "never_ask",
     "get_messages": "never_ask",
+    "list_attachments": "never_ask",
     "list_folders": "never_ask",
     "move_messages": "medium",
     "send_mail": "high",
@@ -487,7 +491,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "close_plan": "never_ask",
     "create_plan": "never_ask",
     "edit_plan": "never_ask",
-    "request_plan_approval": "high",
   },
   "pod_manager": {
     "add_content_node": "never_ask",
@@ -573,6 +576,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "add_egress_domain": "high",
     "bash": "never_ask",
     "describe_toolset": "never_ask",
+  },
+  "sandbox_functions": {
+    "get": "never_ask",
+    "list": "never_ask",
+    "publish": "low",
   },
   "schedules_management": {
     "create_schedule": "high",
@@ -702,6 +710,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "web_search_&_browse": {
     "webbrowser": "never_ask",
     "websearch": "never_ask",
+  },
+  "workday": {
+    "get_workers": "never_ask",
   },
   "workspace_analytics": {
     "get_agent_details": "never_ask",

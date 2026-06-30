@@ -58,6 +58,17 @@ jobs:
         with:
           workspaces: cli/dust-sandbox
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - name: Build functions runner bundle
+        # runner.js is a generated bundle (not committed); dsbx embeds it via
+        # include_str!, so it must exist before any cargo compile (clippy/build/test).
+        working-directory: cli/dust-sandbox/functions-runner
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
       - name: Lint
         working-directory: cli/dust-sandbox
         run: cargo fmt --all -- --check
@@ -78,3 +89,9 @@ jobs:
         working-directory: cli/dust-sandbox
         # The e2e harness spawns subprocess listeners and shared local proxy/upstream fixtures.
         run: cargo test --test e2e_local -- --test-threads=1 --nocapture
+
+      - name: Test functions runner
+        # The runner's logic lives in TypeScript; cargo never executes the bundle,
+        # so its bun:test suite is the only coverage of protocol/invoke/schema/runner.
+        working-directory: cli/dust-sandbox/functions-runner
+        run: bun test

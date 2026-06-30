@@ -306,11 +306,15 @@ const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 const FrameSlideshowContentTypeSchema = z.literal(
   "application/vnd.dust.frame.slideshow"
 );
+const SandboxFunctionContentTypeSchema = z.literal(
+  "application/vnd.dust.sandbox.function"
+);
 
 const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
   FrameSlideshowContentTypeSchema,
+  SandboxFunctionContentTypeSchema,
 ]);
 
 export function isSupportedFileContentType(
@@ -719,7 +723,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dummy_feature_for_flag_testing"
   | "dust_academy"
   | "dust_agent_gpt_5_5_default"
-  | "dust_desktop"
   | "dust_internal_global_agents"
   | "dust_no_spa"
   | "dust_spa"
@@ -730,7 +733,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "hootl_subscriptions"
   | "http_client_tool"
   | "index_private_slack_channel"
-  | "labs_mcp_actions_dashboard"
+  | "models_picker"
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "netsuite_mcp"
@@ -746,14 +749,15 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_billing"
   | "plan_mode"
   | "pod_default_agent"
+  | "pod_default_skills"
   | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
+  | "sandbox_functions"
   | "sandbox_dsbx_tools"
-  | "sandbox_tools"
   | "sandbox_workspace_admin"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
@@ -765,6 +769,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"
+  | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
   | "conversations_slack_notifications"
@@ -773,8 +778,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_dust_keys"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
-  | "conversation_search_indexing"
-  | "conversation_search_read"
   | "new_file_explorer"
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
@@ -783,7 +786,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "live_speech_to_text"
   | "force_us_api_url"
   | "workspace_default_agent"
+  | "sound_notification"
   | "whitelabel_frames"
+  | "frame_publish"
+  | "workday_mcp"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3384,6 +3390,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
+  | "YoutrustLogo"
   | "ZendeskLogo"
 >();
 

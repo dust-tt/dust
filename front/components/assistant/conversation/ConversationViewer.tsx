@@ -3,7 +3,6 @@ import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimi
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
-import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
@@ -18,6 +17,7 @@ import {
   createPlaceholderUserMessage,
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
+import { handlePlanUpdatedEvent } from "@app/components/assistant/conversation/plan_mode/handle_plan_updated";
 import type {
   ConversationForkNotice,
   VirtuosoMessage,
@@ -65,6 +65,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
+import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
 import {
   type ConversationForkedChildType,
   type ConversationListItemType,
@@ -103,6 +104,7 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
+import { ConversationErrorDisplay } from "./ConversationError";
 import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -336,6 +338,7 @@ export const ConversationViewer = ({
     useRef<
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
+  const isMobile = useIsMobile();
   const isAutoScrollEnabledRef = useRef(true);
   const prevScrollLocationRef = useRef({
     scrollHeight: 0,
@@ -588,10 +591,8 @@ export const ConversationViewer = ({
 
   // Sync the virtuoso ref with the side panel context.
   const {
-    closePanel,
     data: panelData,
     currentPanel,
-    openPanel,
     setVirtuosoMsg,
   } = useConversationSidePanelContext();
 
@@ -724,26 +725,6 @@ export const ConversationViewer = ({
   );
 
   const eventIds = useRef<string[]>([]);
-
-  // Last-seen plan.md version for this conversation. Used to auto-open the plan panel on the
-  // skeleton-to-first-edit transition (v1 -> v2+). If the user lands on an already-populated
-  // plan, no auto-open. ConversationViewer is keyed on conversationId by its parent, so the
-  // ref is naturally reset on conversation switch via remount.
-  const lastPlanVersionRef = useRef<number | undefined>(undefined);
-
-  // `onEventCallback` is bound by `useConversationEvents` once at mount and does not re-subscribe
-  // on identity changes (see useEventSource intentional behavior). Any state read from the
-  // closure would go stale, so we mirror `currentPanel` into a ref.
-  const currentPanelRef = useRef(currentPanel);
-  useEffect(() => {
-    currentPanelRef.current = currentPanel;
-  }, [currentPanel]);
-
-  const isMobile = useIsMobile();
-  const isMobileRef = useRef(isMobile);
-  useEffect(() => {
-    isMobileRef.current = isMobile;
-  }, [isMobile]);
 
   // Only conversation related events are handled here.
   const onEventCallback = useCallback(
@@ -1058,23 +1039,25 @@ export const ConversationViewer = ({
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
           case "plan_updated": {
-            const prevVersion = lastPlanVersionRef.current;
-            lastPlanVersionRef.current = event.version;
-            if (event.isClosed && currentPanelRef.current === "plan") {
-              closePanel();
-            } else if (
-              prevVersion === 1 &&
-              event.version >= 2 &&
-              !isMobileRef.current
-            ) {
-              openPanel({ type: "plan" });
-            }
-            void mutate(
-              planFileKey({
-                workspaceId: owner.sId,
-                conversationId: event.conversationId,
-              })
-            );
+            // The acting client already updates via the per-message plan tool action; this handles
+            // cross-client propagation (e.g. another viewer) and is a backstop. PlanCard opens/closes
+            // the panel in reaction to the content change.
+            const planKey = planFileKey({
+              workspaceId: owner.sId,
+              conversationId: event.conversationId,
+            });
+            handlePlanUpdatedEvent(event, {
+              // Close is authoritative: write null directly (no fetch, cannot reject).
+              writeClosedToCache: () =>
+                void mutate<GetConversationPlanModeResponseBody>(
+                  planKey,
+                  { content: null },
+                  { revalidate: false }
+                ),
+              // SWR owns request ordering, so a revalidation that resolves after a later close is
+              // discarded.
+              revalidatePlan: () => void mutate(planKey),
+            });
             break;
           }
           case "wake_up_updated": {
@@ -1103,7 +1086,6 @@ export const ConversationViewer = ({
       }
     },
     [
-      closePanel,
       conversationId,
       debouncedMarkAsRead,
       mutateContextUsage,
@@ -1113,7 +1095,6 @@ export const ConversationViewer = ({
       mutateConversations,
       mutateMessages,
       mutateWakeUps,
-      openPanel,
       owner.sId,
       user.sId,
     ]
@@ -1498,6 +1479,7 @@ export const ConversationViewer = ({
         <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
           onRenderedDataChange={onRenderedDataChange}
           StickyHeader={ConversationBranchApprovalModal}
+          useWindowScroll={isMobile}
           data={{
             data: initialListData,
             scrollModifier: {
@@ -1518,8 +1500,8 @@ export const ConversationViewer = ({
             "dd-privacy-mask",
             "@container/conversation",
             "touch-pan-y",
-            "overscroll-contain",
-            "h-full w-full px-5",
+            "w-full px-5",
+            !isMobile && "overscroll-contain h-full",
             !agentBuilderContext && "md:px-8"
           )}
           shortSizeAlign="top"

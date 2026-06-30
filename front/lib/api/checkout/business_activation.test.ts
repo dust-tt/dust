@@ -153,9 +153,12 @@ vi.mock("@app/lib/metronome/constants", () => ({
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY: "DUST_PAYMENT_GATE_TYPE",
   PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION: "subscription_activation",
   CURRENCY_TO_CREDIT_TYPE_ID: { usd: "usd-credit", eur: "eur-credit" },
-  FOREVER_ENDING_BEFORE: "9999-12-31T00:00:00.000Z",
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY: "CARRY_ON_RENEWAL",
-  CARRY_ON_RENEWAL_FOREVER_VALUE: "forever",
+  oneYearAfter: (start: Date) => {
+    const end = new Date(start);
+    end.setUTCFullYear(end.getUTCFullYear() + 1);
+    return end;
+  },
   SEAT_PRIORITY_SUBSCRIPTION_COMMIT: 100,
   getProductSeatSubscriptionCommitId: () => "seat-commit-product",
 }));

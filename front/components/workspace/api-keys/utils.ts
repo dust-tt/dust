@@ -49,6 +49,32 @@ export function dollarsToMicroUsd(dollars: number | null): number | null {
   return Math.round(dollars * 1_000_000);
 }
 
+/**
+ * Schema for the per-key credit cap input (credit-priced plans), as a string
+ * from the input. Empty → unlimited. Otherwise a whole number of AWU credits
+ * (min 1) — no decimals or scientific notation.
+ */
+export const monthlyCapCreditsSchema = z.string().refine(
+  (value) => {
+    if (value === "") {
+      return true;
+    }
+    if (!/^\d+$/.test(value)) {
+      return false;
+    }
+    return parseInt(value, 10) >= 1;
+  },
+  { message: "Credit cap must be a whole number of credits (min 1)" }
+);
+
+export function creditsToString(credits: number | null): string {
+  return credits === null ? "" : credits.toString();
+}
+
+export function parseCreditsString(value: string): number | null {
+  return value === "" ? null : parseInt(value, 10);
+}
+
 export const prettifyGroupName = (group: GroupType) => {
   if (group.kind === "global") {
     return GLOBAL_SPACE_NAME;

@@ -64,6 +64,7 @@ import providerCredential from "./provider_credentials/[providerId]";
 import providers from "./providers";
 import provisioningStatus from "./provisioning-status";
 import sandbox from "./sandbox";
+import sandboxFunctions from "./sandbox-functions";
 import search from "./search";
 import searchToolsUpload from "./search/tools/upload";
 import seats from "./seats";
@@ -606,7 +607,7 @@ app.post(
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
-            message: "Sandbox tools are not enabled for this workspace.",
+            message: "Computer is disabled for this workspace.",
           },
         });
       }
@@ -778,6 +779,7 @@ app.route("/provider_credentials", providerCredentials);
 app.route("/providers", providers);
 app.route("/provisioning-status", provisioningStatus);
 app.route("/sandbox", sandbox);
+app.route("/sandbox-functions", sandboxFunctions);
 app.route("/search", search);
 app.route("/search/tools/upload", searchToolsUpload);
 app.route("/seats", seats);

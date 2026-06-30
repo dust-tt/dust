@@ -16,7 +16,8 @@ export const WEB_SEARCH_BROWSE_ACTION_DESCRIPTION =
 export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
   websearch: {
     description:
-      "A tool that performs a Google web search based on a string query.",
+      "Search Google for web results, news, and current online information. " +
+      "Look up any topic on the internet using a search query.",
     schema: WebsearchInputSchema.shape,
     stake: "never_ask",
     enableAlerting: true,
@@ -26,7 +27,10 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
     },
   },
   webbrowser: {
-    description: `A tool to browse websites, you can provide a list of up to ${MAX_BROWSE_URLS} urls to browse all at once.`,
+    description:
+      `Fetch and read the content of web pages and webpages from given URLs. ` +
+      `Open and browse websites to extract text, or take a viewport or ` +
+      `full-page screenshot. Accepts up to ${MAX_BROWSE_URLS} URLs at once.`,
     schema: WebbrowseInputSchema.shape,
     stake: "never_ask",
     enableAlerting: true,
@@ -45,7 +49,6 @@ export const WEB_SEARCH_BROWSE_SERVER = {
     authorization: null,
     icon: "ActionGlobeAltIcon" as const,
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(WEB_SEARCH_BROWSE_TOOLS_METADATA).map((t) => ({
     name: t.name,

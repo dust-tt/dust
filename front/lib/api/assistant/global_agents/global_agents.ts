@@ -30,10 +30,12 @@ import {
   _getDustGlobalAgent,
   _getDustGoogGlobalAgent,
   _getDustGoogHighGlobalAgent,
+  _getDustGoogLiteGlobalAgent,
   _getDustGoogMediumGlobalAgent,
   _getDustGoogProGlobalAgent,
   _getDustGoogProHighGlobalAgent,
   _getDustGoogProMediumGlobalAgent,
+  _getDustHaikuGlobalAgent,
   _getDustHighGlobalAgent,
   _getDustHighOmittedGlobalAgent,
   _getDustKimiGlobalAgent,
@@ -53,6 +55,7 @@ import {
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
   _getDustOaiMediumGlobalAgent,
+  _getDustOaiNanoHighGlobalAgent,
   _getDustOmittedGlobalAgent,
   _getDustPistacheGlobalAgent,
   _getDustPistacheHighGlobalAgent,
@@ -201,6 +204,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.DUST_GOOG]: {
     injectsMemory: true,
     injectsToolsets: true,
@@ -214,6 +223,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_GOOG_LITE]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -262,6 +277,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_HAIKU]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -1032,6 +1053,15 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_HAIKU:
+      agentConfiguration = _getDustHaikuGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_KIMI:
       agentConfiguration = _getDustKimiGlobalAgent(auth, {
         settings,
@@ -1203,6 +1233,15 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
+      agentConfiguration = _getDustOaiNanoHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_GOOG:
       agentConfiguration = _getDustGoogGlobalAgent(auth, {
         settings,
@@ -1223,6 +1262,15 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_HIGH:
       agentConfiguration = _getDustGoogHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GOOG_LITE:
+      agentConfiguration = _getDustGoogLiteGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         mcpServerViews,
@@ -1553,6 +1601,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
     GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_HAIKU,
     GLOBAL_AGENTS_SID.DUST_EDGE,
     GLOBAL_AGENTS_SID.DUST_KIMI,
     GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
@@ -1571,9 +1620,11 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_OAI,
     GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+    GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH,
     GLOBAL_AGENTS_SID.DUST_GOOG,
     GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
+    GLOBAL_AGENTS_SID.DUST_GOOG_LITE,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH,

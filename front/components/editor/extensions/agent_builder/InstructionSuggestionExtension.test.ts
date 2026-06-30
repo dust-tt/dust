@@ -569,6 +569,244 @@ describe("InstructionSuggestionExtension", () => {
     });
   });
 
+  describe("diff rendering artifacts (blank line / blank list item)", () => {
+    // Addition widgets should render inline content; a block-level element
+    // (<p>, <li>) inside one means a wrapper leaked and renders as a phantom
+    // line/row. These helpers detect that.
+    function getAdditionWidgets(editor: Editor) {
+      return Array.from(
+        editor.view.dom.querySelectorAll(
+          ".suggestion-addition.ProseMirror-widget"
+        )
+      );
+    }
+
+    function getBlockLevelAdditions(editor: Editor) {
+      return Array.from(
+        editor.view.dom.querySelectorAll(".suggestion-addition")
+      ).filter((el) => ["P", "LI", "DIV"].includes(el.tagName));
+    }
+
+    it("renders a smart-quote swap inline without a phantom line", () => {
+      const { schema } = editor.state;
+
+      // A multi-paragraph block (instructionBlock content is `block+`).
+      const makeBlock = (apostrophe: string) =>
+        schema.node("instructionBlock", { type: "rules" }, [
+          schema.node("paragraph", null, [schema.text("First line stays")]),
+          schema.node("paragraph", null, [
+            schema.text(`Don${apostrophe}t change me`),
+          ]),
+        ]);
+
+      // Only the apostrophe (U+0027 -> U+2019) changes: exactly one inline change.
+      const changes = diffBlockContent(makeBlock("'"), makeBlock("’"), schema);
+      expect(changes).toHaveLength(1);
+
+      // Render it through the extension.
+      editor.commands.setContent(
+        ["<rules>", "First line stays", "", "Don't change me", "</rules>"].join(
+          "\n"
+        ),
+        { contentType: "markdown" }
+      );
+
+      let blockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "instructionBlock") {
+          blockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(blockId).not.toBeNull();
+
+      editor.commands.applySuggestion({
+        id: "smart-quote",
+        targetBlockId: blockId!,
+        content: `<div data-type="instruction-block" data-instruction-type="rules"><p>First line stays</p><p>Don’t change me</p></div>`,
+      });
+
+      // The straight quote is struck through inline.
+      const deletions = getDeletions(editor);
+      expect(deletions).toHaveLength(1);
+      expect(deletions[0].text).toBe("'");
+
+      // The curly quote is added inline — no phantom block (<p>) on its own line.
+      expect(getBlockLevelAdditions(editor)).toHaveLength(0);
+
+      const widgets = getAdditionWidgets(editor);
+      expect(widgets).toHaveLength(1);
+      expect(widgets[0].textContent).toBe("’");
+    });
+
+    it("edits one item in an ordered list without rendering a blank list item", () => {
+      editor.commands.setContent("1. Keep this\n2. Second item", {
+        contentType: "markdown",
+      });
+
+      let listBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "orderedList") {
+          listBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(listBlockId).not.toBeNull();
+
+      // Edit only the second item ("item" -> "task"); the first is untouched.
+      editor.commands.applySuggestion({
+        id: "list-one",
+        targetBlockId: listBlockId!,
+        content:
+          "<ol><li><p>Keep this</p></li><li><p>Second task</p></li></ol>",
+      });
+
+      // No empty list item is rendered.
+      const emptyListItems = Array.from(
+        editor.view.dom.querySelectorAll("li")
+      ).filter((li) => (li.textContent ?? "").trim() === "");
+      expect(emptyListItems).toHaveLength(0);
+
+      // The addition stays inline (no <li>/<p> block leaked into the preview).
+      expect(getBlockLevelAdditions(editor)).toHaveLength(0);
+
+      // One genuinely changed item -> one addition widget.
+      const widgets = getAdditionWidgets(editor);
+      expect(widgets).toHaveLength(1);
+      expect(widgets[0].textContent).toBe("task");
+    });
+
+    it("edits multiple list items without rendering blank list items", () => {
+      editor.commands.setContent("1. First item\n2. Second item", {
+        contentType: "markdown",
+      });
+
+      let listBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "orderedList") {
+          listBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(listBlockId).not.toBeNull();
+
+      // Append a distinct suffix to each item -> exactly one addition per item.
+      editor.commands.applySuggestion({
+        id: "list-both",
+        targetBlockId: listBlockId!,
+        content:
+          "<ol><li><p>First item one</p></li><li><p>Second item two</p></li></ol>",
+      });
+
+      const emptyListItems = Array.from(
+        editor.view.dom.querySelectorAll("li")
+      ).filter((li) => (li.textContent ?? "").trim() === "");
+      expect(emptyListItems).toHaveLength(0);
+
+      expect(getBlockLevelAdditions(editor)).toHaveLength(0);
+
+      // Two changed items -> two addition widgets.
+      const widgets = getAdditionWidgets(editor);
+      expect(widgets).toHaveLength(2);
+      expect(widgets.map((w) => w.textContent)).toEqual([" one", " two"]);
+    });
+
+    it("inserts an empty paragraph as a single blank widget, not two", () => {
+      // A blank line inserted between two paragraphs renders as one blank widget.
+      editor.commands.setContent(
+        ["<rules>", "First", "", "Last", "</rules>"].join("\n"),
+        { contentType: "markdown" }
+      );
+
+      let blockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "instructionBlock") {
+          blockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(blockId).not.toBeNull();
+
+      editor.commands.applySuggestion({
+        id: "blank-line",
+        targetBlockId: blockId!,
+        content: `<div data-type="instruction-block" data-instruction-type="rules"><p>First</p><p></p><p>Last</p></div>`,
+      });
+
+      // Exactly one (empty) addition widget for the single inserted blank line.
+      const widgets = getAdditionWidgets(editor);
+      expect(widgets).toHaveLength(1);
+      const emptyParagraphAdditions = widgets[0].querySelectorAll("p");
+      expect(emptyParagraphAdditions).toHaveLength(1);
+    });
+
+    it("edits a list item's first word inline (change touches the item start)", () => {
+      // The change starts at the item's first character, so its slice touches
+      // the list-item boundary — it must still render inline, not as a row.
+      editor.commands.setContent("1. First item\n2. Second item", {
+        contentType: "markdown",
+      });
+
+      let listBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "orderedList") {
+          listBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(listBlockId).not.toBeNull();
+
+      editor.commands.applySuggestion({
+        id: "first-word",
+        targetBlockId: listBlockId!,
+        content:
+          "<ol><li><p>First item</p></li><li><p>Renamed item</p></li></ol>",
+      });
+
+      const emptyListItems = Array.from(
+        editor.view.dom.querySelectorAll("li")
+      ).filter((li) => (li.textContent ?? "").trim() === "");
+      expect(emptyListItems).toHaveLength(0);
+      expect(getBlockLevelAdditions(editor)).toHaveLength(0);
+      expect(getAdditionWidgets(editor).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders an inserted empty list item as a single blank row, not doubled", () => {
+      editor.commands.setContent("1. A\n2. B\n3. C", {
+        contentType: "markdown",
+      });
+
+      let listBlockId: string | null = null;
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "orderedList") {
+          listBlockId = node.attrs[BLOCK_ID_ATTRIBUTE];
+          return false;
+        }
+        return true;
+      });
+      expect(listBlockId).not.toBeNull();
+
+      // An empty list item is `listItem > paragraph()` — non-zero size, so the
+      // shallow size check would let two copies through.
+      editor.commands.applySuggestion({
+        id: "empty-item",
+        targetBlockId: listBlockId!,
+        content:
+          "<ol><li><p>A</p></li><li><p>B</p></li><li><p></p></li><li><p>C</p></li></ol>",
+      });
+
+      const emptyListItems = Array.from(
+        editor.view.dom.querySelectorAll("li")
+      ).filter((li) => (li.textContent ?? "").trim() === "");
+      expect(emptyListItems).toHaveLength(1);
+    });
+  });
+
   describe("markdown parsing resilience", () => {
     it("should handle angle-bracketed non-HTML tokens like <URL>", () => {
       const escaped = preprocessMarkdownForEditor("Test <URL>");

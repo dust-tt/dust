@@ -147,6 +147,14 @@ open $(dust-hive url myenv)
 dust-hive down
 ```
 
+## External workspace managers
+
+See [docs/conductor.md](docs/conductor.md) for the Conductor setup. The same
+pattern applies to other tools that create Git worktrees at a fixed location:
+create the worktree inside the Dust repo, run `dust-hive adopt --path ...`, keep
+the environment cold by default, and use `dust-hive unregister` when the
+external workspace is archived.
+
 ## Commands
 
 > **Tip**: Run `dust-hive <command> --help` for all available options.

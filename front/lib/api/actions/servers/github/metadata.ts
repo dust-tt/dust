@@ -6,7 +6,9 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const GITHUB_TOOLS_METADATA = createToolsRecord({
   create_issue: {
-    description: "Create a new issue on a specified GitHub repository.",
+    description:
+      "Create or file a brand new issue (a bug report or feature request) on" +
+      " a specified GitHub repository, optionally with assignees and labels.",
     schema: {
       owner: z
         .string()
@@ -31,6 +33,66 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       done: "Create GitHub issue",
     },
   },
+  update_issue: {
+    description:
+      "Update an existing issue on a GitHub repository: its title, body," +
+      " labels, assignees, milestone, and open/closed state (closing or" +
+      " reopening the issue). Only the provided fields are changed.",
+    schema: {
+      owner: z
+        .string()
+        .describe(
+          "The owner of the repository (account or organization name)."
+        ),
+      repo: z.string().describe("The name of the repository."),
+      issueNumber: z.number().describe("The number that identifies the issue."),
+      title: z.string().optional().describe("The new title of the issue."),
+      body: z
+        .string()
+        .optional()
+        .describe("The new contents of the issue (GitHub markdown)."),
+      state: z
+        .enum(["open", "closed"])
+        .optional()
+        .describe(
+          "The open or closed state of the issue. Set to 'closed' to close the" +
+            " issue, or 'open' to reopen it."
+        ),
+      stateReason: z
+        .enum(["completed", "not_planned", "reopened"])
+        .optional()
+        .describe(
+          "The reason for the state change. Ignored unless state is changed."
+        ),
+      assignees: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Logins for Users to assign to this issue. Replaces the current set" +
+            " of assignees; pass an empty array to clear all assignees."
+        ),
+      labels: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Labels to associate with this issue. Replaces the current set of" +
+            " labels; pass an empty array to clear all labels."
+        ),
+      milestone: z
+        .number()
+        .nullable()
+        .optional()
+        .describe(
+          "The number of the milestone to associate this issue with, or null" +
+            " to remove the current milestone."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating GitHub issue",
+      done: "Update GitHub issue",
+    },
+  },
   get_pull_request: {
     description:
       "Retrieve a pull request from a specified GitHub repository including" +
@@ -53,7 +115,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   },
   create_pull_request_review: {
     description:
-      "Create a review on a pull request with optional line comments.",
+      "Approve, request changes on, or submit a review verdict for a pull request, with optional inline line comments.",
     schema: {
       owner: z
         .string()
@@ -173,7 +235,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   },
   list_discussion_categories: {
     description:
-      "List the discussion categories available in a GitHub repository. Use this to get the category ID required when creating a discussion.",
+      "List the available discussion categories in a GitHub repository. Use this to get the category ID required to create one.",
     schema: {
       owner: z
         .string()
@@ -197,7 +259,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_discussion: {
-    description: "Create a new discussion in a GitHub repository.",
+    description:
+      "Create and start a brand new single GitHub discussion thread under a chosen category.",
     schema: {
       owner: z
         .string()
@@ -268,7 +331,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   },
   get_discussion_comments: {
     description:
-      "Retrieve comments from a specified GitHub discussion with pagination.",
+      "Retrieve, fetch, and list the comments posted on a specified GitHub discussion, with pagination.",
     schema: {
       owner: z
         .string()
@@ -294,7 +357,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   },
   list_discussions: {
     description:
-      "List discussions from a specified GitHub repository with optional filtering.",
+      "List discussions in a GitHub repository: browse and enumerate the repository's discussions, returning many discussions with optional filtering.",
     schema: {
       owner: z
         .string()
@@ -313,19 +376,19 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       sort: z
         .enum(["CREATED_AT", "UPDATED_AT"])
         .optional()
-        .describe("What to sort results by. Defaults to UPDATED_AT."),
+        .describe("Sort field. Defaults to UPDATED_AT."),
       direction: z
         .enum(["ASC", "DESC"])
         .optional()
-        .describe("The direction of the sort. Defaults to DESC."),
+        .describe("Sort direction. Defaults to DESC."),
       perPage: z
         .number()
         .min(1)
         .max(100)
         .optional()
         .describe("Results per page. Defaults to 50, max 100."),
-      after: z.string().optional().describe("The cursor to start after."),
-      before: z.string().optional().describe("The cursor to start before."),
+      after: z.string().optional().describe("Pagination cursor."),
+      before: z.string().optional().describe("Pagination cursor."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -335,7 +398,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   },
   get_issue: {
     description:
-      "Retrieve an issue from a specified GitHub repository including its description, comments, and labels.",
+      "Retrieve and read the full details of a single issue from a specified GitHub repository, including its description, comments, and labels.",
     schema: {
       owner: z
         .string()
@@ -418,20 +481,16 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
   },
   search_advanced: {
     description:
-      "Search issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested searches. " +
-      "Supports advanced query syntax like 'is:issue AND assignee:@me AND (label:support OR comments:>5)' or 'is:pr AND assignee:@me'. " +
-      "Use 'is:issue' to search for issues, 'is:pr' to search for pull requests, or omit to search both. " +
-      "Note that `@me` behavior depends on the connection type: " +
-      "with a personal connection, `@me` resolves to the user's GitHub account (example: `is:issue AND assignee:@me`); " +
-      "with a workspace (shared) connection, `@me` resolves to the Dust GitHub App bot, NOT the user, " +
-      "use the user's actual GitHub username instead (example: `is:issue AND assignee:username`).",
+      "Search GitHub issues and pull requests using GitHub's advanced search syntax with AND/OR operators and nested filters. " +
+      "Use 'is:issue' for issues, 'is:pr' for pull requests, or omit to search both. " +
+      "The `@me` qualifier resolves to the authenticated account on a personal connection, but on a workspace (shared) connection it resolves to the Dust GitHub App bot, so pass the GitHub username explicitly there.",
     schema: {
       query: z
         .string()
         .describe(
-          "The advanced search query string. Supports AND/OR operators and nested searches. " +
-            "Examples: 'is:issue AND assignee:username AND (label:bug OR comments:>5)', 'is:pr AND assignee:@me', or 'assignee:username' to search both. " +
-            "Note: Spaces between multiple repo/org/user filters are treated as AND operators."
+          "The advanced search query string. Supports AND/OR operators and nested filters. " +
+            "Examples: 'is:issue AND assignee:username AND (label:bug OR comments:>5)', 'is:pr AND assignee:@me'. " +
+            "Spaces between repo/org/user filters are treated as AND operators."
         ),
       first: z
         .number()
@@ -498,7 +557,6 @@ export const GITHUB_SERVER = {
     },
     icon: "GithubLogo",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(GITHUB_TOOLS_METADATA).map((t) => ({
     name: t.name,

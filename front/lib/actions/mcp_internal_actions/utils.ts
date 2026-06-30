@@ -22,9 +22,7 @@ export function makeInternalMCPServer(
 ): McpServer {
   const serverInfo = getInternalMCPServerInfo(name);
 
-  return new McpServer(serverInfo, {
-    instructions: serverInfo.instructions ?? undefined,
-  });
+  return new McpServer(serverInfo);
 }
 
 // Returns an MCPError when the caller is not a workspace admin, null otherwise.

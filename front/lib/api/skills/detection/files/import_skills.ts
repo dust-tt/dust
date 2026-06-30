@@ -10,7 +10,9 @@ import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
@@ -58,11 +60,13 @@ export async function importSkillsFromFiles(
   {
     uploadedFiles,
     names,
+    editors,
     source = "local_file",
     onConflict = "skip",
   }: {
     uploadedFiles: formidable.File[];
     names?: string[];
+    editors?: string[];
     source?: FileImportSource;
     onConflict?: ImportConflictStrategyType;
   }
@@ -125,6 +129,15 @@ export async function importSkillsFromFiles(
   if (selectedSkills.length === 0) {
     return new Err(new Error("No matching importable skills found."));
   }
+
+  const editorUsersResult = await resolveEditorUsersFromEmails(
+    auth,
+    editors ?? []
+  );
+  if (editorUsersResult.isErr()) {
+    return editorUsersResult;
+  }
+  const editorUsers = editorUsersResult.value;
 
   const user = auth.user();
   const imported: SkillResource[] = [];
@@ -190,6 +203,11 @@ export async function importSkillsFromFiles(
         skillId: existing.sId,
       });
 
+      const editorsResult = await existing.upsertEditors(auth, editorUsers);
+      if (editorsResult.isErr()) {
+        return editorsResult;
+      }
+
       updated.push(existing);
     } else {
       let icon: string | null = null;
@@ -239,11 +257,71 @@ export async function importSkillsFromFiles(
         skillId: skillResource.sId,
       });
 
+      const editorsResult = await skillResource.upsertEditors(
+        auth,
+        editorUsers
+      );
+      if (editorsResult.isErr()) {
+        return editorsResult;
+      }
+
       imported.push(skillResource);
     }
   }
 
   return new Ok({ imported, updated, skipped });
+}
+
+async function resolveEditorUsersFromEmails(
+  auth: Authenticator,
+  editorEmails: string[]
+): Promise<Result<UserResource[], Error>> {
+  const normalizedEditorEmails = [
+    ...new Set(
+      editorEmails.map((email) => email.trim().toLowerCase()).filter(Boolean)
+    ),
+  ];
+
+  if (normalizedEditorEmails.length === 0) {
+    return new Ok([]);
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const editorUsers = await UserResource.listUserWithExactEmails(
+    workspace,
+    normalizedEditorEmails
+  );
+  const foundEmails = new Set(editorUsers.map((u) => u.email.toLowerCase()));
+  const missingEmails = normalizedEditorEmails.filter(
+    (email) => !foundEmails.has(email)
+  );
+
+  if (missingEmails.length > 0) {
+    return new Err(
+      new Error(`Editors not found in workspace: ${missingEmails.join(", ")}`)
+    );
+  }
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users: editorUsers,
+    workspace,
+  });
+  const membershipByUserId = new Map(
+    memberships.map((membership) => [membership.userId, membership])
+  );
+  const nonBuilderEmails = editorUsers
+    .filter((user) => !membershipByUserId.get(user.id)?.isBuilder)
+    .map((user) => user.email);
+
+  if (nonBuilderEmails.length > 0) {
+    return new Err(
+      new Error(
+        `Editors must be workspace builders: ${nonBuilderEmails.join(", ")}`
+      )
+    );
+  }
+
+  return new Ok(editorUsers);
 }
 
 async function uploadAttachment(

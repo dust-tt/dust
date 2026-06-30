@@ -77,7 +77,10 @@ export const TableBlock = memo(
         innerClassName="s-relative s-my-2 s-w-full s-border s-border-border dark:s-border-border-night s-rounded-2xl"
         content={tableData}
       >
-        <ScrollArea className="s-w-full s-rounded-2xl">
+        <ScrollArea
+          scrollContainment="horizontal"
+          className="s-w-full s-rounded-2xl"
+        >
           <table className="s-w-full">{children}</table>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>

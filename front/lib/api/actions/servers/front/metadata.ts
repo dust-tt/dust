@@ -7,14 +7,12 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const FRONT_TOOLS_METADATA = createToolsRecord({
   search_conversations: {
     description:
-      "Search conversations in Front by keywords, customer email, tags, status, or other criteria. " +
-      "Returns matching conversations with their details.",
+      "Search or find conversations in the Front inbox by keywords, customer email, tags, status, or other criteria. Returns matching conversations with their details.",
     schema: {
       q: z
         .string()
         .describe(
-          "Search query. Can include keywords, email addresses (e.g., 'customer@example.com'), " +
-            "status filters (e.g., 'is:open', 'is:archived'), tag filters (e.g., 'tag:bug'), etc."
+          "Search query: keywords, customer email, status (is:open, is:archived), or tags (tag:bug)."
         ),
       limit: z
         .number()
@@ -101,7 +99,7 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
   },
   get_customer_history: {
     description:
-      "Retrieve past conversations with a specific customer by their email address.",
+      "Retrieve a customer's past conversations in Front, by their email address.",
     schema: {
       customer_email: z
         .string()
@@ -218,7 +216,7 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
   },
   add_comment: {
     description:
-      "Add an internal comment/note to a conversation (only visible to team).",
+      "Add an internal comment or note to a Front conversation, visible only to your team.",
     schema: {
       conversation_id: z.string().describe("The unique ID of the conversation"),
       body: z.string().describe("The comment content"),
@@ -250,7 +248,7 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
   },
   send_message: {
     description:
-      "Send a reply or internal comment to a conversation. Can send as email reply or internal note.",
+      "Reply or respond to a customer on a Front conversation. Sends a customer-facing email by default. Can also post an internal note.",
     schema: {
       conversation_id: z.string().describe("The unique ID of the conversation"),
       body: z.string().describe("The message content (supports markdown)"),
@@ -275,7 +273,7 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
   },
   update_conversation_status: {
     description:
-      "Update the status of a conversation (archive, reopen, delete, spam, trash).",
+      "Update the status of a Front conversation: archive (close), reopen, delete, mark as spam, or move to trash.",
     schema: {
       conversation_id: z.string().describe("The unique ID of the conversation"),
       status: z
@@ -313,7 +311,6 @@ export const FRONT_SERVER = {
     authorization: null,
     icon: "FrontLogo",
     documentationUrl: "https://docs.dust.tt/docs/front-mcp",
-    instructions: null,
   },
   tools: Object.values(FRONT_TOOLS_METADATA).map((t) => ({
     name: t.name,

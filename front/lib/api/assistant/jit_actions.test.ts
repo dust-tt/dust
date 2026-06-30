@@ -72,6 +72,22 @@ describe("getJITServers", () => {
       expect(commonUtilitiesServer?.mcpServerViewId).toBeDefined();
     });
 
+    it("should always return the ask_user_question MCP server", async () => {
+      const { servers: jitServers } = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments: [],
+      });
+
+      const askUserQuestionServer = jitServers.find(
+        (server) => server.name === "ask_user_question"
+      );
+
+      expect(askUserQuestionServer).toBeDefined();
+      expect(askUserQuestionServer?.type).toBe("mcp_server_configuration");
+      expect(askUserQuestionServer?.mcpServerViewId).toBeDefined();
+    });
+
     it("should include conversation_files server when attachments exist", async () => {
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(auth, user, {
@@ -339,8 +355,7 @@ describe("getJITServers", () => {
   });
 
   describe("sandbox (Computer) availability", () => {
-    it("auto-equips the sandbox skill for any agent when sandbox_tools is on", async () => {
-      await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    it("auto-equips the sandbox skill for any agent when Computer is enabled", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // The test agent does not list the sandbox skill in its configuration.
@@ -357,7 +372,9 @@ describe("getJITServers", () => {
       expect(computerSkill?.instructions).toBe("");
     });
 
-    it("does not equip or enable the sandbox skill when sandbox_tools is off", async () => {
+    it("does not equip or enable the sandbox skill when Computer is disabled", async () => {
+      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
       const { enabledSkills, systemSkills, equippedSkills } =
         await SkillResource.listForAgentLoop(auth, {
           agentConfiguration: agentConfig,
@@ -370,7 +387,6 @@ describe("getJITServers", () => {
     });
 
     it("keeps the sandbox skill available for nested sub-agent conversations", async () => {
-      await FeatureFlagFactory.basic(auth, "sandbox_tools");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // run_agent sub-agents run in a child conversation (depth > 0); they get
@@ -386,7 +402,6 @@ describe("getJITServers", () => {
     });
 
     it("includes skill_management so agents can enable the sandbox skill", async () => {
-      await FeatureFlagFactory.basic(auth, "sandbox_tools");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       const { servers: jitServers } = await getJITServers(auth, {

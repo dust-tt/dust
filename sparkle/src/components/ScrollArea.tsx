@@ -7,6 +7,8 @@ interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
   hideScrollBar?: boolean;
   orientation?: "vertical" | "horizontal";
+  /** Horizontal: clip x-axis only so a parent/window can scroll vertically. */
+  scrollContainment?: "default" | "horizontal";
   scrollBarClassName?: string;
   viewportClassName?: string;
   viewportRef?: React.Ref<HTMLDivElement>;
@@ -22,6 +24,7 @@ const ScrollArea = React.forwardRef<
       children,
       hideScrollBar = false,
       orientation = "vertical",
+      scrollContainment = "default",
       scrollBarClassName,
       viewportClassName,
       viewportRef,
@@ -47,7 +50,13 @@ const ScrollArea = React.forwardRef<
     return (
       <ScrollAreaPrimitive.Root
         ref={ref}
-        className={cn("s-relative s-z-20 s-overflow-hidden", className)}
+        className={cn(
+          "s-relative s-z-20",
+          scrollContainment === "horizontal"
+            ? "s-overflow-x-auto s-overflow-y-visible"
+            : "s-overflow-hidden",
+          className
+        )}
         {...props}
       >
         <ScrollAreaPrimitive.Viewport

@@ -51,7 +51,7 @@ const MAX_CHANNEL_SEARCH_RESULTS = 20;
 export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
   search_messages: {
     description:
-      "Search messages across public channels, private channels, DMs, and group DMs where the current user is a member",
+      "Search Slack messages by keyword across public channels, private channels, DMs, and group DMs where the current user is a member",
     schema: {
       keywords: z
         .string()
@@ -71,7 +71,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
   },
   semantic_search_messages: {
     description:
-      "Use semantic search to find messages across public channels, private channels, DMs, and group DMs where the current user is a member",
+      "Use semantic search to find Slack messages across public channels, private channels, DMs, and group DMs where the current user is a member",
     schema: {
       query: z
         .string()
@@ -88,7 +88,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
   },
   post_message: {
     description:
-      "Post a message to a public channel, private channel, or DM. You MUST ONLY post to channels or users that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
+      "Post a message from the user's personal Slack account to a public channel, private channel, or DM. You MUST ONLY post to channels or users that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
       to: z
         .union([z.string(), z.string().array().min(2)])
@@ -100,7 +100,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
+          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links. The system converts Markdown to Slack format automatically. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle). " +
             "To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
@@ -138,7 +138,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
   },
   schedule_message: {
     description:
-      "Schedule a message to be posted to a channel at a future time. Messages can be scheduled up to 120 days in advance. Maximum of 30 scheduled messages per 5 minutes per channel. You MUST ONLY schedule messages to channels or users that were explicitly specified by the user in their request. NEVER schedule messages to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
+      "Schedule a message to be posted from the user's personal Slack account to a channel at a future time. Messages can be scheduled up to 120 days in advance. Maximum of 30 scheduled messages per 5 minutes per channel. You MUST ONLY schedule messages to channels or users that were explicitly specified by the user in their request. NEVER schedule messages to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
     schema: {
       to: z
         .string()
@@ -149,7 +149,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
+          "The message to post, using standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). Do NOT use Slack-specific markup like <url|text> for links. The system converts Markdown to Slack format automatically. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle). " +
             "To reference a channel, use #CHANNEL or <#CHANNEL_ID>."
@@ -217,7 +217,7 @@ The search_all parameter should only be set to true if the user explicitly reque
   },
   list_user_groups: {
     description:
-      "List all user groups in the workspace. User groups (e.g., @engineering, @marketing) can be mentioned in messages.",
+      "List all Slack user groups in the workspace. User groups (e.g., @engineering, @marketing) can be mentioned in messages.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -256,7 +256,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
   },
   list_messages: {
     description:
-      "List messages for a given channel, private channel, or DM. Returns message headers with timestamps (ts field). Use read_thread_messages with the ts field to read the full thread content for messages that have replies.",
+      "List the recent messages in a Slack channel, private channel, or direct message (DM). Returns message headers with their timestamps (ts).",
     schema: {
       channel: z
         .string()
@@ -281,7 +281,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
   },
   read_thread_messages: {
     description:
-      "Read all messages in a specific thread from public channels, private channels, or DMs. Use list_messages first to find thread timestamps (ts field).",
+      "Read all messages in a Slack thread from a public channel, private channel, or direct message (DM). Use list_messages first to find the thread's timestamp (ts).",
     schema: {
       channel: z
         .string()
@@ -358,13 +358,13 @@ Set search_all=true only if the user explicitly requests to search all public wo
   },
   write_canvas: {
     description:
-      "Create or edit a Slack canvas.\n\n" +
+      "Create or edit a Slack canvas (a shared document / doc / page pinned in a channel).\n\n" +
       "**Creating a new canvas** (omit canvas_id):\n" +
       "  - Optionally provide title, content (initial markdown), and channel_id to pin it to a channel tab.\n" +
       "**Editing an existing canvas** (provide canvas_id + operation):\n" +
       "  - insert_at_end / insert_at_start: add content at the end or beginning (requires content).\n" +
       "  - insert_after / insert_before: insert content relative to a section (requires content + section_id from read_canvas).\n" +
-      "  - replace: replace entire canvas or a specific section (requires content; section_id optional).\n" +
+      "  - replace: replace entire canvas or a specific section (requires content, section_id optional).\n" +
       "  - delete: remove a specific section (requires section_id).\n" +
       "  - rename: rename the canvas (requires title).\n\n" +
       "Content must be Markdown. Use read_canvas to get section IDs before doing relative edits.",
@@ -508,7 +508,6 @@ export const SLACK_PERSONAL_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-    instructions: null,
   },
   tools: Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -696,11 +696,6 @@ export async function createConversationFork(
     return childConversationId;
   }
 
-  await ConversationResource.triggerEsIndexing(
-    auth,
-    childConversationId.value.childConversationId
-  );
-
   const launchForkWorkflowResult = await launchConversationForkWorkflow({
     workspaceId: auth.getNonNullableWorkspace().sId,
     sourceConversationId: parentConversation.sId,

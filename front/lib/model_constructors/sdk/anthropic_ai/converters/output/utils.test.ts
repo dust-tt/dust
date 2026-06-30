@@ -33,6 +33,7 @@ import {
   messageToEvents,
   rawOutputToEvents,
   reasoningDeltaToReasoningDeltaEvent,
+  serverToolBlockToProviderPassthroughEvent,
   stopReasonToErrorEvent,
   streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
@@ -61,6 +62,7 @@ const realConverters: OutputEventConverters = {
   inputJsonDeltaToToolCallDeltaEvent,
   accumulatedToolCallToToolCallEvent,
   invalidJsonToolCallToToolCallEvent,
+  serverToolBlockToProviderPassthroughEvent,
   messageDeltaUsageToTokenUsageEvent,
   stopReasonToErrorEvent,
   streamErrorToErrorEvent,
@@ -116,6 +118,11 @@ function makeStubConverters(): OutputEventConverters {
         name: "stub-tool",
         arguments: { INVALID_JSON: "stub-invalid" },
       },
+      metadata,
+    })),
+    serverToolBlockToProviderPassthroughEvent: vi.fn(() => ({
+      type: "provider_passthrough" as const,
+      content: { provider: "anthropic" as const, block: {} },
       metadata,
     })),
     messageDeltaUsageToTokenUsageEvent: vi.fn(() => ({
@@ -521,7 +528,51 @@ describe("streamErrorToErrorEvent", () => {
     );
   });
 
-  it("maps a non-SDK error to unknown_error", () => {
+  // An `APIError` raised mid-stream from an SSE `error` event carries no HTTP
+  // status; like the old router we default it to 500 (server_error) instead of
+  // collapsing it to unknown_error.
+  it("maps a statusless APIError to server_error", () => {
+    const err = new APIError(
+      undefined,
+      { error: { type: "overloaded_error", message: "Overloaded" } },
+      "overloaded",
+      undefined,
+      "overloaded_error"
+    );
+    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
+      "server_error"
+    );
+  });
+
+  // The SDK rewraps any non-APIError stream-body failure (connection drop, SSE
+  // parse failure, stream-invariant violation) into a bare `AnthropicError`.
+  // The old router substring-matched these to keep transient failures retryable;
+  // we replicate that classification (see `bareStreamErrorToErrorEvent`).
+  it.each([
+    ["terminated", "network_error"],
+    ["other side closed", "network_error"],
+    ["socket hang up, connection reset", "network_error"],
+    ["ECONNREFUSED", "network_error"],
+    ["too many requests", "rate_limit_error"],
+    ["Overloaded", "overloaded_error"],
+    ["request timed out", "timeout_error"],
+    ["stream interrupted", "stream_error"],
+    ["internal server error", "server_error"],
+  ] as const)("classifies bare AnthropicError %j as %s (old-router parity)", (message, expectedType) => {
+    const err = new AnthropicError(message);
+    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
+      expectedType
+    );
+  });
+
+  it("maps an unclassifiable bare error to unknown_error", () => {
+    const err = new AnthropicError("something inexplicable happened");
+    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
+      "unknown_error"
+    );
+  });
+
+  it("maps a non-SDK error with no matchable message to unknown_error", () => {
     expect(streamErrorToErrorEvent(metadata, "boom").content.type).toBe(
       "unknown_error"
     );
@@ -610,6 +661,76 @@ describe("contentBlockStartToEvents", () => {
     );
     expect(events).toEqual([]);
     expect(state).toBe(prior);
+  });
+
+  it("opens a server tool search block as a tool_search cursor", () => {
+    const event = {
+      type: "content_block_start",
+      index: 5,
+      content_block: {
+        type: "server_tool_use",
+        id: "srvtoolu_1",
+        name: "tool_search_tool_bm25",
+        input: {},
+      },
+    } as RawContentBlockStartEvent;
+    const [events, state] = contentBlockStartToEvents(
+      event,
+      null,
+      metadata,
+      realConverters
+    );
+    expect(events).toEqual([]);
+    expect(state).toEqual({
+      index: 5,
+      accumulator: "",
+      type: "tool_search",
+      toolName: "tool_search_tool_bm25",
+      toolId: "srvtoolu_1",
+    });
+  });
+
+  it("emits a tool search result block as passthrough without opening a cursor", () => {
+    const event = {
+      type: "content_block_start",
+      index: 6,
+      content_block: {
+        type: "tool_search_tool_result",
+        tool_use_id: "srvtoolu_1",
+        content: {
+          type: "tool_search_tool_search_result",
+          tool_references: [
+            { type: "tool_reference", tool_name: "slack__post_message" },
+          ],
+        },
+      },
+    } as RawContentBlockStartEvent;
+    const [events, state] = contentBlockStartToEvents(
+      event,
+      null,
+      metadata,
+      realConverters
+    );
+    expect(events).toEqual([
+      {
+        type: "provider_passthrough",
+        content: {
+          provider: "anthropic",
+          block: {
+            type: "tool_search_tool_result",
+            tool_use_id: "srvtoolu_1",
+            content: {
+              type: "tool_search_tool_search_result",
+              tool_references: [
+                { type: "tool_reference", tool_name: "slack__post_message" },
+              ],
+            },
+          },
+        },
+        metadata,
+      },
+    ]);
+    expect(state).toBeNull();
   });
 });
 
@@ -897,6 +1018,67 @@ describe("contentBlockStopToEvents", () => {
       {
         type: "tool_call",
         content: { id: "tu-1", name: "search", arguments: {} },
+        metadata,
+      },
+    ]);
+  });
+
+  it("closes a tool_search block by emitting the server_tool_use as passthrough", () => {
+    const state = {
+      index: 0,
+      accumulator: '{"query":"send a slack message"}',
+      type: "tool_search" as const,
+      toolName: "tool_search_tool_bm25" as const,
+      toolId: "srvtoolu_1",
+    };
+    expect(
+      contentBlockStopToEvents(stopEvent, state, metadata, realConverters)
+    ).toEqual([
+      [
+        {
+          type: "provider_passthrough",
+          content: {
+            provider: "anthropic",
+            block: {
+              type: "server_tool_use",
+              id: "srvtoolu_1",
+              name: "tool_search_tool_bm25",
+              input: { query: "send a slack message" },
+            },
+          },
+          metadata,
+        },
+      ],
+      null,
+    ]);
+  });
+
+  it("falls back to an empty input when the tool_search query did not parse", () => {
+    const state = {
+      index: 0,
+      accumulator: "{not json",
+      type: "tool_search" as const,
+      toolName: "tool_search_tool_bm25" as const,
+      toolId: "srvtoolu_1",
+    };
+    const [events] = contentBlockStopToEvents(
+      stopEvent,
+      state,
+      metadata,
+      realConverters
+    );
+    expect(events).toEqual([
+      {
+        type: "provider_passthrough",
+        content: {
+          provider: "anthropic",
+          block: {
+            type: "server_tool_use",
+            id: "srvtoolu_1",
+            name: "tool_search_tool_bm25",
+            input: {},
+          },
+        },
         metadata,
       },
     ]);
@@ -1225,6 +1407,39 @@ describe("messageToEvents", () => {
       "response_id",
       "token_usage",
       "success",
+    ]);
+  });
+
+  it("emits server_tool_use and tool_search_tool_result as passthrough", () => {
+    const serverToolUseBlock = {
+      type: "server_tool_use",
+      id: "srvtoolu_1",
+      name: "tool_search_tool_bm25",
+      input: { query: "x" },
+    };
+    const toolSearchResultBlock = {
+      type: "tool_search_tool_result",
+      tool_use_id: "srvtoolu_1",
+      content: {
+        type: "tool_search_tool_search_result",
+        tool_references: [{ type: "tool_reference", tool_name: "slack__post" }],
+      },
+    };
+    const message = messageWith({
+      content: [serverToolUseBlock, toolSearchResultBlock],
+    } as Partial<Message>);
+    const events = messageToEvents(message, metadata, realConverters);
+    expect(events.filter((e) => e.type === "provider_passthrough")).toEqual([
+      {
+        type: "provider_passthrough",
+        content: { provider: "anthropic", block: serverToolUseBlock },
+        metadata,
+      },
+      {
+        type: "provider_passthrough",
+        content: { provider: "anthropic", block: toolSearchResultBlock },
+        metadata,
+      },
     ]);
   });
 });

@@ -1,3 +1,4 @@
+import { INPUT_BAR_COMPACT_SURFACE_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   NavigationSidebar,
@@ -21,6 +22,15 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type React from "react";
 import { useContext } from "react";
+
+const MOBILE_NAV_MENU_BUTTON_CLASSES = cn(
+  INPUT_BAR_COMPACT_SURFACE_CLASSES,
+  "transition-none",
+  "hover:border-transparent hover:bg-hover hover:backdrop-blur-none",
+  "dark:hover:bg-hover-night",
+  "active:border-transparent active:bg-primary-300 active:backdrop-blur-none",
+  "dark:active:bg-hover-night"
+);
 
 interface NavigationProps {
   hideSidebar: boolean;
@@ -63,12 +73,14 @@ export function Navigation({
     >
       {isMobile ? (
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <div className="fixed left-0 top-0 z-40 flex h-12 shrink-0 items-center gap-x-4 px-2">
+          <div className="fixed left-0 top-0 z-40 flex shrink-0 items-center px-2 pt-2">
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 icon={Menu01}
+                className={MOBILE_NAV_MENU_BUTTON_CLASSES}
                 onClick={() => setSidebarOpen(true)}
+                aria-label="Open navigation"
               />
             </SheetTrigger>
           </div>

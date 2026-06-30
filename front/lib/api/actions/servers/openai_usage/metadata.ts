@@ -132,7 +132,6 @@ export const OPENAI_USAGE_SERVER = {
     authorization: null,
     icon: "OpenaiLogo",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(OPENAI_USAGE_TOOLS_METADATA).map((t) => ({
     name: t.name,

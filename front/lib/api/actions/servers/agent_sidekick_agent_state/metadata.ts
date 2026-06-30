@@ -25,7 +25,6 @@ export const AGENT_SIDEKICK_AGENT_STATE_SERVER_INFO = {
   authorization: null,
   icon: "ActionRobotIcon" as const,
   documentationUrl: null,
-  instructions: null,
 };
 
 export const AGENT_SIDEKICK_AGENT_STATE_SERVER = {

@@ -342,6 +342,7 @@ export const pptxSkill = {
     "text, charts, tables, media) so existing decks can be adapted in place " +
     "via python-pptx rather than rebuilt from scratch with pptxgenjs.",
   instructions: PPTX_SKILL_INSTRUCTIONS,
+  exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "ActionSlideshowIcon",

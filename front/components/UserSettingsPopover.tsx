@@ -2,13 +2,19 @@ import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
+import {
+  SoundNotificationPreferences,
+  useSoundNotificationPreferencesForm,
+} from "@app/components/me/SoundNotificationPreferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
 import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import {
@@ -97,11 +103,11 @@ function SectionContent({
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-8">
         <header className="flex flex-col gap-1">
-          <h2 className="min-h-9 text-2xl font-semibold leading-9 text-foreground dark:text-foreground-night">
+          <h2 className="heading-2xl text-foreground dark:text-foreground-night">
             {title}
           </h2>
           {description && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
               {description}
             </p>
           )}
@@ -136,9 +142,12 @@ function ordinalDay(day: number): string {
 interface UsageSectionProps {
   owner: WorkspaceType;
   onClose: () => void;
+  // The popover stays mounted while closed (animated exit), so gate fetches on
+  // visibility to avoid polling the analytics endpoint from a hidden dialog.
+  visible: boolean;
 }
 
-function UsageSection({ owner, onClose }: UsageSectionProps) {
+function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
   const { isAdmin, subscription } = useAuth();
 
   const isCreditBased = isCreditPricedPlan(subscription.plan);
@@ -225,6 +234,7 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
                     }
                     consumedFromPool={myUsage?.consumedFromPoolAwuCredits ?? 0}
                     memberUsageLimit={myUsage?.memberUsageLimit ?? null}
+                    seatBalanceAwu={myUsage?.seatBalanceAwu ?? null}
                     effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
                     seatType={myUsage?.seatType ?? null}
                     isTotalAllowedUsagePending={false}
@@ -234,6 +244,13 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
             </div>
           )}
         </section>
+      )}
+
+      {isCreditBased && (
+        <MyAwuUsageFromAnalyticsChart
+          workspaceId={owner.sId}
+          disabled={!visible}
+        />
       )}
 
       {isAdmin && (
@@ -564,23 +581,61 @@ function CustomizationSection() {
 
 function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const { user } = useUser();
+  const { hasFeature } = useFeatureFlags();
+  const sendNotification = useSendNotification();
   const notificationPreferencesRef =
     useRef<NotificationPreferencesRefProps>(null);
-  const [isDirty, setIsDirty] = useState(false);
+  const sound = useSoundNotificationPreferencesForm();
+  const [notifDirty, setNotifDirty] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isDirty = sound.isDirty || notifDirty;
 
   const handleSave = async () => {
-    if (notificationPreferencesRef.current) {
-      await notificationPreferencesRef.current.savePreferences();
-      setIsDirty(false);
+    setIsSubmitting(true);
+    try {
+      const [soundSaved, notifResult] = await Promise.all([
+        sound.save(),
+        notificationPreferencesRef.current?.savePreferences(),
+      ]);
+      setNotifDirty(notificationPreferencesRef.current?.isDirty() ?? false);
+      if (soundSaved && notifResult !== false) {
+        sendNotification({
+          type: "success",
+          title: "Notification preferences saved",
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const handleNotifChanged = () => {
+    setNotifDirty(notificationPreferencesRef.current?.isDirty() ?? false);
+  };
+
+  const saveButton = (
+    <Button
+      label="Save"
+      variant="primary"
+      type="button"
+      onClick={handleSave}
+      disabled={!isDirty || isSubmitting}
+    />
+  );
+
   if (!user?.subscriberHash) {
     return (
-      <SectionContent title="Notifications">
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Notification preferences are not available for your account.
-        </p>
+      <SectionContent
+        title="Notifications"
+        description="Manage the notifications of your Dust workspace"
+        footer={saveButton}
+      >
+        {hasFeature("sound_notification") && (
+          <SoundNotificationPreferences
+            control={sound.control}
+            disabled={sound.isLoading}
+          />
+        )}
       </SectionContent>
     );
   }
@@ -588,19 +643,18 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   return (
     <SectionContent
       title="Notifications"
-      footer={
-        <Button
-          label="Save"
-          variant="primary"
-          type="button"
-          onClick={handleSave}
-          disabled={!isDirty}
-        />
-      }
+      description="Manage the notifications of your Dust workspace"
+      footer={saveButton}
     >
+      {hasFeature("sound_notification") && (
+        <SoundNotificationPreferences
+          control={sound.control}
+          disabled={sound.isLoading}
+        />
+      )}
       <NotificationPreferences
         ref={notificationPreferencesRef}
-        onChanged={() => setIsDirty(true)}
+        onChanged={handleNotifChanged}
         owner={owner}
       />
     </SectionContent>
@@ -767,7 +821,11 @@ export function UserSettingsPopover({
               <PersonalInfoSection owner={owner} />
             )}
             {activeSection === "usage" && (
-              <UsageSection owner={owner} onClose={() => onOpenChange(false)} />
+              <UsageSection
+                owner={owner}
+                onClose={() => onOpenChange(false)}
+                visible={open}
+              />
             )}
             {activeSection === "customization" && <CustomizationSection />}
             {activeSection === "notifications" && (

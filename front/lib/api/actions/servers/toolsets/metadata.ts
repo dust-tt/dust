@@ -36,7 +36,6 @@ export const TOOLSETS_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
-    instructions: null,
   },
   tools: Object.values(TOOLSETS_TOOLS_METADATA).map((t) => ({
     name: t.name,

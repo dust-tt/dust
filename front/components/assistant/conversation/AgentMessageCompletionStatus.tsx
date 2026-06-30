@@ -15,14 +15,14 @@ export const AgentMessageCompletionStatus = ({
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
   onClick?: () => void;
 }) => {
-  const { openPanel, data } = useConversationSidePanelContext();
+  const { togglePanel, data } = useConversationSidePanelContext();
 
   const handleClick = () => {
     if (onClick) {
       onClick();
       return;
     }
-    openPanel({
+    togglePanel({
       type: "actions",
       messageId: agentMessage.sId,
     });

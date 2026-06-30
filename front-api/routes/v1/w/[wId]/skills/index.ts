@@ -111,6 +111,12 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *                 type: string
  *                 enum: [error, skip, override]
  *                 description: Conflict handling strategy. Defaults to error.
+ *               editors:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: email
+ *                 description: Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors.
  *     responses:
  *       200:
  *         description: Skills import result.
@@ -204,7 +210,7 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     });
   }
 
-  const { names } = fields;
+  const { editors, names } = fields;
 
   const onConflict = fields.onConflict?.[0] ?? "error";
   if (!isImportConflictStrategy(onConflict)) {
@@ -219,6 +225,7 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
 
   const result = await importSkillsFromFiles(auth, {
     uploadedFiles,
+    editors,
     names,
     source: "api",
     onConflict,

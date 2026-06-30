@@ -1,5 +1,6 @@
 import type {
   CacheControlEphemeral,
+  ContentBlockParam,
   ImageBlockParam,
   MessageParam,
   OutputConfig,
@@ -14,14 +15,17 @@ import type {
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
+import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import type {
   OutputFormat,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   BaseAssistantMessage,
+  BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
@@ -33,9 +37,36 @@ import type {
   CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isRecord } from "@app/types/shared/utils/general";
+import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+
+const MESSAGE_CONVERSION_CONCURRENCY = 10;
+
+const SUPPORTED_IMAGE_MEDIA_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+] as const;
+type SupportedImageMediaType = (typeof SUPPORTED_IMAGE_MEDIA_TYPES)[number];
+
+function isSupportedImageMediaType(
+  mediaType: string
+): mediaType is SupportedImageMediaType {
+  return SUPPORTED_IMAGE_MEDIA_TYPES.some((t) => t === mediaType);
+}
+
+// Kept byte-identical to the legacy AnthropicLLM client so the model-visible
+// fallback text is iso across the router migration (typo included).
+const IMAGE_LOAD_FAILED_TEXT = "Attachment: image could not be loaded.";
+const UNSUPPORTED_MEDIA_TYPE_TEXT =
+  "Attachement: an unsupported media type was provided.";
 
 // The per-message leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
@@ -43,10 +74,10 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 export interface MessageBlockConverters {
   systemMessageToTextBlock(message: SystemTextMessage): TextBlockParam;
   userTextMessageToTextBlock(message: BaseUserTextMessage): TextBlockParam;
-  userImageMessageToImageBlock(message: BaseUserImageMessage): ImageBlockParam;
-  toolCallResultMessageToToolResultBlock(
-    message: BaseToolCallResultMessage
-  ): ToolResultBlockParam;
+  // The single provider-specific image conversion point, shared by user image
+  // messages and tool-result image parts (mirrors the legacy client). Direct
+  // Anthropic keeps the URL source; Vertex overrides it to inline base64.
+  imageUrlToImageBlock(url: string): Promise<ImageBlockParam | TextBlockParam>;
   assistantTextMessageToTextBlock(
     message: BaseAssistantTextMessage
   ): TextBlockParam;
@@ -56,6 +87,9 @@ export interface MessageBlockConverters {
   assistantToolCallRequestToToolUseBlock(
     message: BaseAssistantToolCallRequestMessage
   ): ToolUseBlockParam;
+  assistantProviderPassthroughMessageToBlocks(
+    message: BaseAssistantProviderPassthroughMessage
+  ): MessageParam["content"];
 }
 
 // -- Small, reusable building blocks --
@@ -110,36 +144,41 @@ export function userTextMessageToTextBlock(
   };
 }
 
-export function userImageMessageToImageBlock(
-  message: BaseUserImageMessage
-): ImageBlockParam {
-  return {
-    type: "image",
-    source: { type: "url", url: message.content.url },
-    ...cacheControlFor(message.cache),
-  };
+export async function imageUrlToImageBlock(
+  url: string
+): Promise<ImageBlockParam> {
+  return { type: "image", source: { type: "url", url } };
 }
 
-export function toolCallResultMessageToToolResultBlock(
-  message: BaseToolCallResultMessage
-): ToolResultBlockParam {
-  const content: Array<TextBlockParam | ImageBlockParam> =
-    message.content.parts.map((part) => {
-      switch (part.type) {
-        case "text":
-          return { type: "text", text: part.text };
-        case "image_url":
-          return { type: "image", source: { type: "url", url: part.url } };
-        default:
-          return assertNever(part);
-      }
-    });
+// Vertex AI rejects URL image sources, so fetch the bytes and inline them as
+// base64, degrading to a text note rather than failing the whole request.
+export async function imageUrlToBase64ImageBlock(
+  url: string
+): Promise<ImageBlockParam | TextBlockParam> {
+  let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+  try {
+    fetchResult = await trustedFetchImageBase64(url);
+  } catch (err) {
+    // Don't log the URL: conversation image URLs are signed GCS URLs ([SEC1]).
+    logger.warn(
+      { err: normalizeError(err) },
+      "Failed to fetch image for base64 inlining; using text placeholder."
+    );
+    return { type: "text", text: IMAGE_LOAD_FAILED_TEXT };
+  }
+
+  const { mediaType, data } = fetchResult;
+  if (!isSupportedImageMediaType(mediaType)) {
+    logger.warn(
+      { mediaType },
+      "Unsupported image media type for base64 inlining; using text placeholder."
+    );
+    return { type: "text", text: UNSUPPORTED_MEDIA_TYPE_TEXT };
+  }
+
   return {
-    type: "tool_result",
-    tool_use_id: message.content.callId,
-    content,
-    ...(message.content.isError ? { is_error: true } : {}),
-    ...cacheControlFor(message.cache),
+    type: "image",
+    source: { type: "base64", media_type: mediaType, data },
   };
 }
 
@@ -176,19 +215,70 @@ export function assistantToolCallRequestToToolUseBlock(
   };
 }
 
+export function assistantProviderPassthroughMessageToBlocks(
+  message: BaseAssistantProviderPassthroughMessage
+): MessageParam["content"] {
+  // Replay the provider's own tool-search blocks verbatim so interleaved
+  // thinking signatures stay valid. Skip blocks tagged for another provider or
+  // that fail to parse.
+  if (message.content.provider !== ANTHROPIC_PROVIDER_ID) {
+    return [];
+  }
+
+  const parsed = parseAnthropicToolSearchBlock(message.content.block);
+  return parsed ? [parsed] : [];
+}
+
 // -- Composite message converters (depend on the leaf converters) --
 
-export function userMessageToContentBlocks(
+export async function userImageMessageToImageBlock(
+  message: BaseUserImageMessage,
+  converters: MessageBlockConverters
+): Promise<ImageBlockParam | TextBlockParam> {
+  const block = await converters.imageUrlToImageBlock(message.content.url);
+  return { ...block, ...cacheControlFor(message.cache) };
+}
+
+export async function toolCallResultMessageToToolResultBlock(
+  message: BaseToolCallResultMessage,
+  converters: MessageBlockConverters
+): Promise<ToolResultBlockParam> {
+  const content = await concurrentExecutor(
+    message.content.parts,
+    (part): Promise<TextBlockParam | ImageBlockParam> => {
+      switch (part.type) {
+        case "text":
+          return Promise.resolve({ type: "text", text: part.text });
+        case "image_url":
+          return converters.imageUrlToImageBlock(part.url);
+        default:
+          return assertNever(part);
+      }
+    },
+    { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
+  );
+  return {
+    type: "tool_result",
+    tool_use_id: message.content.callId,
+    content,
+    ...(message.content.isError ? { is_error: true } : {}),
+    ...cacheControlFor(message.cache),
+  };
+}
+
+export async function userMessageToContentBlocks(
   message: BaseUserMessage,
   converters: MessageBlockConverters
-): MessageParam["content"] {
+): Promise<MessageParam["content"]> {
   switch (message.type) {
     case "text":
       return [converters.userTextMessageToTextBlock(message)];
     case "image_url":
-      return [converters.userImageMessageToImageBlock(message)];
+      return [await userImageMessageToImageBlock(message, converters)];
     case "tool_call_result":
-      return [converters.toolCallResultMessageToToolResultBlock(message)];
+      return [
+        await toolCallResultMessageToToolResultBlock(message, converters),
+      ];
     default:
       assertNever(message);
   }
@@ -205,31 +295,65 @@ export function assistantMessageToContentBlocks(
       return converters.assistantReasoningMessageToThinkingBlocks(message);
     case "tool_call_request":
       return [converters.assistantToolCallRequestToToolUseBlock(message)];
+    case "provider_passthrough":
+      return converters.assistantProviderPassthroughMessageToBlocks(message);
     default:
       assertNever(message);
   }
 }
 
-export function conversationToMessages(
+function contentToBlocks(
+  content: MessageParam["content"]
+): ContentBlockParam[] {
+  return typeof content === "string"
+    ? [{ type: "text", text: content }]
+    : content;
+}
+
+export async function conversationToMessages(
   conversation: BaseConversation,
   converters: MessageBlockConverters
-): MessageParam[] {
-  return conversation.messages.map((message) => {
-    switch (message.role) {
-      case "user":
-        return {
-          role: "user",
-          content: userMessageToContentBlocks(message, converters),
-        };
-      case "assistant":
-        return {
-          role: "assistant",
-          content: assistantMessageToContentBlocks(message, converters),
-        };
-      default:
-        assertNever(message);
+): Promise<MessageParam[]> {
+  const messages = await concurrentExecutor(
+    conversation.messages,
+    async (message): Promise<MessageParam> => {
+      switch (message.role) {
+        case "user":
+          return {
+            role: "user",
+            content: await userMessageToContentBlocks(message, converters),
+          };
+        case "assistant":
+          return {
+            role: "assistant",
+            content: assistantMessageToContentBlocks(message, converters),
+          };
+        default:
+          assertNever(message);
+      }
+    },
+    { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
+  );
+
+  // Anthropic rejects consecutive same-role messages, so merge them: one
+  // logical turn arrives split into a message per content block (e.g. text +
+  // image).
+  return messages.reduce<MessageParam[]>((merged, message) => {
+    const previous = merged[merged.length - 1];
+    if (previous && previous.role === message.role) {
+      return [
+        ...merged.slice(0, -1),
+        {
+          ...previous,
+          content: [
+            ...contentToBlocks(previous.content),
+            ...contentToBlocks(message.content),
+          ],
+        },
+      ];
     }
-  });
+    return [...merged, message];
+  }, []);
 }
 
 export function systemMessagesToSystemParam(
@@ -265,13 +389,6 @@ export function toolSpecToAnthropicAITool(tool: ToolSpecification): Tool {
     ...(tool.deferLoading ? { defer_loading: true } : {}),
   };
 }
-
-// Search tool that lets the model discover deferred tools on demand. Prepended
-// to the tools array whenever at least one tool is deferred.
-const TOOL_SEARCH_TOOL = {
-  type: "tool_search_tool_bm25_20251119",
-  name: "tool_search_tool_bm25",
-} as const;
 
 export function toolSpecsToAnthropicAITools(
   tools: ToolSpecification[],
@@ -340,7 +457,7 @@ export const reasoningToThinkingConfig: ReasoningToThinkingConfig = (
 
   return {
     output_config: { effort: effortToAnthropicEffort(reasoning.effort) },
-    thinking: { type: "adaptive" },
+    thinking: { type: "adaptive", display: "summarized" },
   };
 };
 

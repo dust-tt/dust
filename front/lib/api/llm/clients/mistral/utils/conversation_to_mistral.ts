@@ -90,7 +90,7 @@ function toAssistantMessage(
   const textContents = message.contents
     .filter(
       (c): c is AgentTextContentType | AgentReasoningContentType =>
-        c.type !== "function_call"
+        c.type === "text_content" || c.type === "reasoning"
     )
     .map(toContentChunk);
   const toolCalls = message.contents

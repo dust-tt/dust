@@ -80,7 +80,7 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
   },
   get_topics: {
     description:
-      "Retrieve all topics for navigation and organization understanding.",
+      "Retrieve all Slab topics for navigation and organization understanding.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -110,7 +110,6 @@ export const SLAB_SERVER = {
     authorization: null,
     icon: "SlabLogo",
     documentationUrl: "https://docs.dust.tt/docs/slab-mcp",
-    instructions: null,
   },
   tools: Object.values(SLAB_TOOLS_METADATA).map((t) => ({
     name: t.name,

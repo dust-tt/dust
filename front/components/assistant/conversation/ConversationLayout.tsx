@@ -21,6 +21,7 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type {
   ConversationError,
   ConversationWithoutContentType,
@@ -150,36 +151,50 @@ function ConversationInnerLayout({
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
+  const isMobile = useIsMobile();
+
+  const conversationMain = (
+    <>
+      {activeConversationId && !conversationError && (
+        <ConversationTitle owner={owner} />
+      )}
+      {conversationError ? (
+        <ConversationErrorDisplay error={conversationError} />
+      ) : (
+        <FileDropProvider>
+          <GenerationContextProvider>{children}</GenerationContextProvider>
+        </FileDropProvider>
+      )}
+    </>
+  );
+
   return (
     <ErrorBoundary fallback={<UncaughtConversationErrorFallback />}>
-      <div className="flex h-full w-full flex-col">
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="flex h-full w-full flex-1"
-        >
-          <ResizablePanel defaultSize={100}>
-            <div className="flex flex-col h-panel">
-              {activeConversationId && !conversationError && (
-                <ConversationTitle owner={owner} />
-              )}
-              {conversationError ? (
-                <ConversationErrorDisplay error={conversationError} />
-              ) : (
-                <FileDropProvider>
-                  <GenerationContextProvider>
-                    {children}
-                  </GenerationContextProvider>
-                </FileDropProvider>
-              )}
-            </div>
-          </ResizablePanel>
-
+      {isMobile ? (
+        <div className="relative flex w-full flex-col">
+          {conversationMain}
           <ConversationSidePanelContainer
             owner={owner}
             conversation={conversation}
           />
-        </ResizablePanelGroup>
-      </div>
+        </div>
+      ) : (
+        <div className="flex h-full w-full flex-col">
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="flex h-full w-full flex-1"
+          >
+            <ResizablePanel defaultSize={100}>
+              <div className="flex h-panel flex-col">{conversationMain}</div>
+            </ResizablePanel>
+
+            <ConversationSidePanelContainer
+              owner={owner}
+              conversation={conversation}
+            />
+          </ResizablePanelGroup>
+        </div>
+      )}
     </ErrorBoundary>
   );
 }

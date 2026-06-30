@@ -9,7 +9,33 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
+
+function extractSkillIdsFromConversationMessages(
+  agentLoopData: AgentLoopExecutionData
+): string[] {
+  const userMessageSkillIds = new Set(
+    extractUniqueSkillIds(agentLoopData.userMessage.content)
+  );
+
+  for (const messageVersions of agentLoopData.conversation.content) {
+    const message = messageVersions.at(-1);
+
+    if (
+      message &&
+      isUserMessageType(message) &&
+      message.visibility === "visible" &&
+      message.rank <= agentLoopData.userMessage.rank
+    ) {
+      for (const skillId of extractUniqueSkillIds(message.content)) {
+        userMessageSkillIds.add(skillId);
+      }
+    }
+  }
+
+  return [...userMessageSkillIds];
+}
 
 async function findAvailableSkillForAgentLoop({
   auth,
@@ -24,7 +50,7 @@ async function findAvailableSkillForAgentLoop({
     await SkillResource.listForAgentLoop(auth, agentLoopData);
   const userMessageSkills = await SkillResource.fetchActiveByIdsForAgentLoop(
     auth,
-    extractUniqueSkillIds(agentLoopData.userMessage.content),
+    extractSkillIdsFromConversationMessages(agentLoopData),
     agentLoopData
   );
   const directlyAllowedSkills = [
@@ -46,31 +72,26 @@ async function findAvailableSkillForAgentLoop({
       skill,
     ])
   );
-  const candidates = await SkillResource.listActiveByNameForAgentLoop(
-    auth,
-    skillName,
-    agentLoopData
-  );
-  if (candidates.length === 0) {
+  const candidate = await SkillResource.fetchActiveByName(auth, skillName, {
+    agentLoopData,
+  });
+  if (!candidate) {
     return null;
   }
 
-  const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(
-    auth,
-    candidates
-  );
+  const usedBySkillsByChild = await SkillResource.batchFetchUsedBySkills(auth, [
+    candidate,
+  ]);
 
-  return (
-    candidates.find((skill) =>
-      (usedBySkillsByChild.get(skill.sId) ?? []).some(({ sId }) => {
-        const parentSkill = parentSkillById.get(sId);
+  return (usedBySkillsByChild.get(candidate.sId) ?? []).some(({ sId }) => {
+    const parentSkill = parentSkillById.get(sId);
 
-        return parentSkill
-          ? extractUniqueSkillIds(parentSkill.instructions).includes(skill.sId)
-          : false;
-      })
-    ) ?? null
-  );
+    return parentSkill
+      ? extractUniqueSkillIds(parentSkill.instructions).includes(candidate.sId)
+      : false;
+  })
+    ? candidate
+    : null;
 }
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {

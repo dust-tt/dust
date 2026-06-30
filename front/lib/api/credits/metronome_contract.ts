@@ -5,7 +5,6 @@ import {
   cancelWorkspaceContractAtPeriodEnd,
   reactivateWorkspaceContract,
 } from "@app/lib/metronome/contract_lifecycle";
-import { parseMauTiers } from "@app/lib/metronome/mau_sync";
 import {
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
@@ -56,12 +55,6 @@ export async function getMetronomeContractSummary(
     ? "enterprise"
     : "pro";
 
-  const mauTiersField = contract.custom_fields?.MAU_TIERS;
-  const parsed = parseMauTiers(mauTiersField);
-  const mauTiers = parsed
-    ? parsed.map((t) => ({ start: t.start, end: t.end ?? null }))
-    : null;
-
   const contractEndingAtMs = contract.ending_before
     ? new Date(contract.ending_before).getTime()
     : null;
@@ -82,7 +75,6 @@ export async function getMetronomeContractSummary(
 
   return new Ok({
     planFamily,
-    mauTiers,
     contractEndingAtMs,
     hasSeatSubscription,
     hasPersonalCreditSeats,

@@ -25,7 +25,7 @@ function statusForKind(kind: SwitchContractErrorKind): {
     case "metronome_api_error":
     case "provision_inconsistent":
       return { status_code: 502, type: "internal_server_error" };
-    case "payg_config_failed":
+    case "credit_config_failed":
       return { status_code: 500, type: "internal_server_error" };
     default:
       assertNever(kind);

@@ -4,6 +4,7 @@ import {
   computeSeatCreditTransfers,
   getSeatCreditNameForSeatType,
   hasContractSeatSubscription,
+  promoteNoneSeatTypesForContract,
   resolveRemappedSeatType,
 } from "@app/lib/metronome/seats";
 import {
@@ -303,6 +304,161 @@ describe("resolveRemappedSeatType — workspace-tier fallback for enterprise poo
     expect(resolveRemappedSeatType("pro_yearly", c, pt, { seatLimits })).toBe(
       "workspace_yearly"
     );
+  });
+});
+
+describe("promoteNoneSeatTypesForContract", () => {
+  const { contract, productSeatTypes } = makeContract({
+    seats: [{ seatType: "free" }, { seatType: "pro", awu: 8000 }],
+  });
+
+  it("promotes every none member when committed capacity covers them all", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 3, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("promotes none members when capacity exactly matches the none count", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 2, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("promotes no one (all-or-nothing) when capacity is short of the none count", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 2, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none", "none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["none", "none", "none", "none"]);
+  });
+
+  it("counts seats already taken by non-none targets against capacity", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 3, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["pro", "pro", "none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "pro", "none", "none"]);
+  });
+
+  it("does not promote when there is no committed paid seat", () => {
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+      })
+    ).toEqual(["none", "none"]);
+  });
+
+  it("never hands out the one-shot free tier on promotion", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 2, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("leaves non-none targets untouched", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["max", "pro_yearly", "free"],
+        seatLimits,
+      })
+    ).toEqual(["max", "pro_yearly", "free"]);
+  });
+
+  it("promotes into committed workspace tiers, not just pro", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [{ seatType: "workspace_yearly", entitled: true }],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 25, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["workspace_yearly", "workspace_yearly", "workspace_yearly"]);
+  });
+
+  it("never auto-promotes into a committed max tier", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [{ seatType: "max", awu: 40000, entitled: true }],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["max", { minSeats: 10, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["none", "none"]);
+  });
+
+  it("fills the lowest committed tier first when several are available", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 8000, entitled: true },
+        { seatType: "workspace_yearly", entitled: true },
+      ],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 1, maxSeats: null }],
+      ["workspace_yearly", { minSeats: 1, maxSeats: null }],
+    ]);
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none"],
+        seatLimits,
+      })
+    ).toEqual(["pro", "workspace_yearly"]);
   });
 });
 

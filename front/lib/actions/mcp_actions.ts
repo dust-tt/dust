@@ -36,6 +36,7 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolStakes,
   INTERNAL_MCP_SERVERS,
+  resolveInternalMCPServerToolStakeLevel,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -292,6 +293,46 @@ function generateRemoteContentMetadata(content: CallToolResult["content"]): {
 }
 
 /**
+ * Runs `callTool` with a throwaway per-call signal so `compositeSignal` retains
+ * nothing once the call settles.
+ *
+ * The MCP SDK (v1.x) adds an `abort` listener to the signal we pass and never
+ * removes it. Since `compositeSignal` is pod-lifetime (composed with the shutdown
+ * signal in `temporal/agent_loop/activities/run_tool.ts`), that listener would pin
+ * every tool result until the pod dies.
+ *
+ * We bridge aborts onto a fresh controller and detach the bridge in `finally`, so
+ * the SDK's dangling listener hangs off a collectable per-call signal instead.
+ * We can remove this once we upgrade to v2 when it's stable.
+ */
+export async function runToolCallWithDetachedSignal<T>(
+  compositeSignal: AbortSignal | undefined,
+  callTool: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const perToolCallController = new AbortController();
+
+  if (!compositeSignal) {
+    return callTool(perToolCallController.signal);
+  }
+
+  if (compositeSignal.aborted) {
+    // Even if it's already aborted we still make a tool call
+    // so it runs its normal abort path (which rejects the call) rather
+    // than us inventing a separate error.
+    perToolCallController.abort(compositeSignal.reason);
+    return callTool(perToolCallController.signal);
+  }
+
+  const onAbort = () => perToolCallController.abort(compositeSignal.reason);
+  compositeSignal.addEventListener("abort", onAbort, { once: true });
+  try {
+    return await callTool(perToolCallController.signal);
+  } finally {
+    compositeSignal.removeEventListener("abort", onAbort);
+  }
+}
+
+/**
  * Try to call an MCP tool.
  *
  * May fail when connecting to remote/client-side servers.
@@ -457,21 +498,27 @@ export async function* tryCallMCPTool(
       "mcp.tool.call",
       { resource: toolConfiguration.originalName },
       async () =>
-        client.callTool(
-          {
-            name: toolConfiguration.originalName,
-            arguments: inputs,
-            _meta: {
-              ...toolConfiguration.meta,
-              progressToken,
+        // Hand the SDK a throwaway per-call signal instead of `abortSignal`.
+        // The SDK attaches an `abort` listener it never removes; `abortSignal`
+        // is composed with the pod-lifetime shutdown signal, so that listener
+        // would pin the tool result until the pod dies.
+        runToolCallWithDetachedSignal(abortSignal, (signal) =>
+          client.callTool(
+            {
+              name: toolConfiguration.originalName,
+              arguments: inputs,
+              _meta: {
+                ...toolConfiguration.meta,
+                progressToken,
+              },
             },
-          },
-          CallToolResultSchema,
-          {
-            timeout:
-              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-            signal: abortSignal,
-          }
+            CallToolResultSchema,
+            {
+              timeout:
+                toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+              signal,
+            }
+          )
         )
     );
 
@@ -1262,26 +1309,41 @@ export async function buildToolConfigurationsFromRawTools(
   } = r.value;
 
   const availability = getAvailabilityOfInternalMCPServerById(mcpServerId);
+  const serverNameResult = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+  const internalServerName = serverNameResult.isOk()
+    ? serverNameResult.value.name
+    : null;
 
   const toolsWithStakesRetryPoliciesAndTimeout = allToolsRaw
     .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
-    .map((tool) => ({
-      ...tool,
-      stakeLevel:
+    .map((tool) => {
+      const configuredStakeLevel =
         toolsStakes[tool.name] ||
         (availability === "manual"
           ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-          : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL),
-      availability,
-      toolServerId: mcpServerId,
-      ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
-      retryPolicy:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        toolsRetryPolicies?.[tool.name] ||
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        toolsRetryPolicies?.["default"] ||
-        DEFAULT_MCP_TOOL_RETRY_POLICY,
-    }));
+          : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL);
+      const stakeLevel = internalServerName
+        ? resolveInternalMCPServerToolStakeLevel(internalServerName, {
+            toolName: tool.name,
+            plan: auth.plan(),
+            configuredStakeLevel,
+          })
+        : configuredStakeLevel;
+
+      return {
+        ...tool,
+        stakeLevel,
+        availability,
+        toolServerId: mcpServerId,
+        ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
+        retryPolicy:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          toolsRetryPolicies?.[tool.name] ||
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          toolsRetryPolicies?.["default"] ||
+          DEFAULT_MCP_TOOL_RETRY_POLICY,
+      };
+    });
 
   const serverSideToolConfigs = makeServerSideMCPToolConfigurations(
     config,

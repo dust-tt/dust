@@ -2,6 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { CouponDiscountType } from "@app/types/coupon";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 export class CouponModel extends BaseModel<CouponModel> {
@@ -10,7 +11,7 @@ export class CouponModel extends BaseModel<CouponModel> {
 
   declare code: string;
   declare description: string | null;
-  declare discountType: "seat";
+  declare discountType: CouponDiscountType;
   declare amount: number;
   declare durationMonths: number | null;
   declare maxRedemptions: number | null;

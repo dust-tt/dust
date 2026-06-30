@@ -89,9 +89,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     })),
     fileAttachments: [],
     canWrite: false,
-    isExtendable: false,
     isDefault: false,
-    extendedSkillId: null,
   };
 }
 
