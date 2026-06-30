@@ -2742,7 +2742,7 @@ describe("listPrivateConversationsForUser", () => {
     assert(scheduledWakeUpResult.isOk(), "Failed to create scheduled wake-up.");
 
     const result =
-      await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+      await ConversationResource.listPrivateConversationsForUserPaginated(
         userAuth,
         { limit: 100 }
       );
@@ -2805,7 +2805,7 @@ describe("listPrivateConversationsForUser", () => {
     });
 
     const result =
-      await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+      await ConversationResource.listPrivateConversationsForUserPaginated(
         userAuth,
         { limit: 100 }
       );
