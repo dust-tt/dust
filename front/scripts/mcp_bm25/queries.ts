@@ -449,6 +449,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "slack_bot.read_channel_history",
   },
 
+  // --- monday ---
+  {
+    query: "list all boards in Monday.com",
+    expected: "monday.get_boards",
+  },
+  {
+    query: "create a new item in a Monday.com board",
+    expected: "monday.create_item",
+  },
+
   // --- notion ---
   {
     query: "find a Notion page by keyword",
