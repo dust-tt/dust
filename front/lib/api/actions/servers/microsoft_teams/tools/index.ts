@@ -16,23 +16,18 @@ import {
   renderMeetings,
   renderUsers,
 } from "@app/lib/api/actions/servers/microsoft_teams/microsoft_teams_rendering";
+import {
+  MAX_MESSAGES_TO_SCAN,
+  MAX_NUMBER_OF_MESSAGES,
+  MESSAGES_PAGE_SIZE,
+  shouldContinuePagination,
+} from "@app/lib/api/actions/servers/microsoft_teams/tools/pagination";
 import config from "@app/lib/api/config";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import sanitizeHtml from "sanitize-html";
-
-const MAX_NUMBER_OF_MESSAGES = 200;
-// Operational backstop on how many messages we'll scan in a single
-// list_messages call. The channel endpoint supports no server-side date
-// filtering, so a range whose upper bound (toDate) is in the past forces a
-// newest-first walk through history until we reach the window. This is NOT a
-// results limit (that's MAX_NUMBER_OF_MESSAGES) — it only guards against a
-// runaway loop / Graph throttling on very large channels, and is surfaced to
-// the caller when hit so they can narrow the range. Set high so it does not
-// truncate legitimate deep-history retrieval.
-const MAX_MESSAGES_TO_SCAN = 10000;
 
 const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
   search_messages_content: async ({ query }, { authInfo }) => {
@@ -261,44 +256,16 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         );
       }
 
-      // Filter function to check if message is in date range
+      // Filter on createdDateTime, not lastModifiedDateTime: a message sent in
+      // the range but edited/reacted-to later (which bumps lastModifiedDateTime)
+      // must still count as in-range, and a message sent outside the range must
+      // not be pulled in by a later edit. "Messages between April and May" means
+      // sent then.
       const isMessageInDateRange = (message: TeamsMessage): boolean => {
-        const messageDate = new Date(message.lastModifiedDateTime);
+        const messageDate = new Date(message.createdDateTime);
         const afterFromDate = !fromDateTime || messageDate >= fromDateTime;
         const beforeToDate = messageDate <= toDateTime;
         return afterFromDate && beforeToDate;
-      };
-
-      // Process messages and update shouldContinue flag
-      const processMessages = (
-        messages: TeamsMessage[] | undefined
-      ): boolean => {
-        // A page may come back empty (e.g. a server-side filter matched nothing
-        // on this skiptoken page). Keep following nextLink unless we're full.
-        if (!messages || messages.length === 0) {
-          return allMessages.length < MAX_NUMBER_OF_MESSAGES;
-        }
-
-        const messagesInDateRange = messages.filter(isMessageInDateRange);
-        allMessages.push(...messagesInDateRange);
-
-        if (allMessages.length >= MAX_NUMBER_OF_MESSAGES) {
-          return false;
-        }
-
-        // Messages are returned newest-first, so the last message on the page is
-        // the oldest. Messages newer than toDate are simply skipped, not a reason
-        // to stop. Keep paginating until the oldest message on this page is older
-        // than fromDate — every subsequent (older) page would then be out of range
-        // too. With no lower bound, paginate until the message limit is hit.
-        const oldestMessageOnPage = messages[messages.length - 1];
-        if (!fromDateTime || !oldestMessageOnPage) {
-          return true;
-        }
-        const oldestMessageDate = new Date(
-          oldestMessageOnPage.lastModifiedDateTime
-        );
-        return oldestMessageDate >= fromDateTime;
       };
 
       const messagesSuffix = messageId ? `/${messageId}/replies` : "";
@@ -306,39 +273,53 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         ? `/chats/${chatId}/messages${messagesSuffix}`
         : `/teams/${teamId}/channels/${channelId}/messages${messagesSuffix}`;
 
-      let request = client.api(baseEndpoint).top(50);
+      let request = client.api(baseEndpoint).top(MESSAGES_PAGE_SIZE);
 
-      // The chat messages endpoint supports server-side date filtering, which
-      // lets the server skip messages outside the range instead of us paging
-      // through and discarding them client-side (the channel endpoint supports
-      // neither $filter nor $orderby — see MAX_PAGES_TO_FETCH). We gate this on
-      // !messageId because the optimization targets the chat messages listing,
-      // not the per-message replies endpoint. The client-side filter below
-      // stays authoritative; this is purely a fetch-reduction.
-      if (chatId && !messageId) {
-        const filterConditions: string[] = [];
-        // $filter uses exclusive gt/lt. Nudge the bounds outward by 1ms so the
-        // server filter is a strict superset of the inclusive (>=/<=)
-        // client-side filter and can never drop a boundary message.
-        if (fromDateTime) {
-          const fromBound = new Date(fromDateTime.getTime() - 1);
-          filterConditions.push(
-            `lastModifiedDateTime gt ${fromBound.toISOString()}`
-          );
-        }
+      // The chat messages listing supports $orderby/$filter; the channel
+      // endpoint and the per-message replies endpoint do not (and channels are
+      // always ordered by lastModifiedDateTime of the reply chain). For chat
+      // listings we order by createdDateTime so the page order matches the
+      // field we range on; everywhere else we walk Graph's default
+      // lastModifiedDateTime order. The stop condition must compare whichever
+      // field actually orders the pages — see shouldContinuePagination.
+      const isChatListing = Boolean(chatId) && !messageId;
+      const orderingField = isChatListing
+        ? "createdDateTime"
+        : "lastModifiedDateTime";
+
+      if (isChatListing) {
+        request = request.orderby(`${orderingField} desc`);
+
+        // Push the upper bound server-side so the server skips messages newer
+        // than toDate instead of us paging through and discarding them. Graph
+        // only supports the `lt` operator on createdDateTime (no `gt`), so the
+        // lower bound stays a client-side concern (handled by the walk + stop).
+        // Nudge +1ms so the exclusive server filter is a strict superset of the
+        // inclusive (<=) client-side filter and can never drop a boundary
+        // message. $filter only applies when $orderby targets the same property.
         if (toDate) {
           const toBound = new Date(toDateTime.getTime() + 1);
-          filterConditions.push(
-            `lastModifiedDateTime lt ${toBound.toISOString()}`
+          request = request.filter(
+            `${orderingField} lt ${toBound.toISOString()}`
           );
         }
-        if (filterConditions.length > 0) {
-          // $filter only takes effect when $orderby targets the same property.
-          request = request
-            .orderby("lastModifiedDateTime desc")
-            .filter(filterConditions.join(" and "));
-        }
       }
+
+      // Accumulate the in-range messages from a page, then defer the
+      // keep-paging decision to the pure (testable) helper.
+      const processMessages = (
+        messages: TeamsMessage[] | undefined
+      ): boolean => {
+        if (messages && messages.length > 0) {
+          allMessages.push(...messages.filter(isMessageInDateRange));
+        }
+        return shouldContinuePagination({
+          pageMessages: messages,
+          fromDateTime,
+          collectedCount: allMessages.length,
+          orderingField,
+        });
+      };
 
       // First page
       let response = await request.get();
@@ -377,6 +358,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         );
       }
 
+      const matchedCount = allMessages.length;
       const limitedMessages = allMessages.slice(0, MAX_NUMBER_OF_MESSAGES);
 
       const content = [
@@ -385,15 +367,23 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
           text: JSON.stringify(limitedMessages, null, 2),
         },
       ];
-      // Tell the caller when the backstop cut the walk short, so an agent can
-      // recover by narrowing the range instead of treating partial history as
-      // complete.
+      // Tell the caller when results are incomplete, so an agent can recover by
+      // narrowing the range instead of treating partial history as complete.
+      // The two cases are mutually exclusive: hitting the result limit sets
+      // shouldContinue false, which clears truncatedByScanLimit.
       if (truncatedByScanLimit) {
         content.push({
           type: "text" as const,
           text:
             `Note: stopped after scanning ${scannedCount} messages before reaching the start of the requested date range, so older messages in the range may be missing. ` +
-            `Narrow the date range (a smaller fromDate–toDate window) to retrieve the rest.`,
+            `Narrow the date range (a smaller fromDate-toDate window) to retrieve the rest.`,
+        });
+      } else if (matchedCount > MAX_NUMBER_OF_MESSAGES) {
+        content.push({
+          type: "text" as const,
+          text:
+            `Note: more than ${MAX_NUMBER_OF_MESSAGES} messages match the requested range; showing the ${MAX_NUMBER_OF_MESSAGES} most recent. ` +
+            `Narrow the date range to retrieve older messages.`,
         });
       }
 
