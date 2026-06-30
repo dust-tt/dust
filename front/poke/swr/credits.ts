@@ -1,4 +1,7 @@
-import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
+import type {
+  AnalyticsScopeFilter,
+  AwuUsageAnalyticsResponse,
+} from "@app/lib/api/analytics/awu_usage_analytics";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
@@ -94,16 +97,14 @@ export function usePokeAwuUsageFromAnalytics({
   groupByCount,
   granularity,
   days,
-  userId,
-  agentId,
+  filter,
   disabled,
 }: PokeConditionalFetchProps & {
   groupBy?: "usage_type" | "agent" | "user" | "origin";
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;
-  userId?: string;
-  agentId?: string;
+  filter?: AnalyticsScopeFilter;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<AwuUsageAnalyticsResponse> = fetcher;
@@ -121,11 +122,8 @@ export function usePokeAwuUsageFromAnalytics({
   if (days !== undefined) {
     queryParams.set("days", days.toString());
   }
-  if (userId) {
-    queryParams.set("userId", userId);
-  }
-  if (agentId) {
-    queryParams.set("agentId", agentId);
+  if (filter && Object.keys(filter).length > 0) {
+    queryParams.set("filter", JSON.stringify(filter));
   }
   const queryString = queryParams.toString();
   const key = `/api/poke/workspaces/${owner.sId}/analytics/awu-usage-analytics?${queryString}`;

@@ -1,5 +1,5 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import type { AnalyticsEntityFilter } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
+import type { AnalyticsEntityFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import { CreditsTableCard } from "@app/components/workspace/analytics/CreditsTableCard";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
