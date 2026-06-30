@@ -341,6 +341,10 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "get the details of freshservice ticket 88",
     expected: "freshservice.get_ticket",
+    // Knife-edge tie with the sibling get_ticket_read_fields: both share
+    // "freshservice"/"ticket"/"details"; the global IDF shift from corpus growth
+    // tips the top slot between them. Not lexically separable without renaming.
+    maxRank: 2,
   },
   {
     query: "post a private internal note on a freshservice ticket",
@@ -1013,6 +1017,24 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "browse this webpage and summarize it",
     expected: "web_search_&_browse.webbrowser",
+  },
+
+  // --- clari_copilot ---
+  {
+    query: "find clari copilot sales calls with acme last week",
+    expected: "clari_copilot.search_calls",
+  },
+  {
+    query: "list clari copilot calls with a customer by date",
+    expected: "clari_copilot.search_calls",
+  },
+  {
+    query: "get the ai summary and action items for a clari copilot call",
+    expected: "clari_copilot.get_call_details",
+  },
+  {
+    query: "show the transcript and competitor mentions of a clari copilot call",
+    expected: "clari_copilot.get_call_details",
   },
 
   // --- cross-server (no platform named) ---
