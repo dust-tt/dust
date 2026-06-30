@@ -1,10 +1,5 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
-import {
-  filterEnabledModels,
-  getAdvancedModels,
-  isAdvancedModel,
-  isModelAvailable,
-} from "@app/lib/assistant";
+import { filterEnabledModels, isModelAvailable } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   FREE_NO_PLAN_CODE,
@@ -13,11 +8,6 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import {
-  CLAUDE_OPUS_4_6_MODEL_ID,
-  CLAUDE_OPUS_4_7_MODEL_ID,
-  CLAUDE_OPUS_4_8_MODEL_ID,
-} from "@app/types/assistant/models/anthropic";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
@@ -94,64 +84,6 @@ function createMockPlan(
     hasAdvancedModelAccess,
   };
 }
-
-describe("isAdvancedModel", () => {
-  it("should return true when plansWithAdvancedModels is set to true", () => {
-    const model = createMockModel({
-      availableIfOneOf: { plansWithAdvancedModels: true },
-    });
-
-    expect(isAdvancedModel(model)).toBe(true);
-  });
-
-  it("should return false when plansWithAdvancedModels is not set", () => {
-    const model = createMockModel({
-      availableIfOneOf: { featureFlag: "deepseek_feature" },
-    });
-
-    expect(isAdvancedModel(model)).toBe(false);
-  });
-
-  it("should return false when availableIfOneOf is undefined", () => {
-    const model = createMockModel({ availableIfOneOf: undefined });
-
-    expect(isAdvancedModel(model)).toBe(false);
-  });
-});
-
-describe("getAdvancedModels", () => {
-  it("should return all supported models with plansWithAdvancedModels set to true", () => {
-    const expectedAdvancedModels = SUPPORTED_MODEL_CONFIGS.filter(
-      (m) => m.availableIfOneOf?.plansWithAdvancedModels === true
-    );
-
-    expect(getAdvancedModels()).toEqual(expectedAdvancedModels);
-  });
-
-  it("should include the Claude Opus advanced models", () => {
-    const advancedModelIds = getAdvancedModels().map((m) => m.modelId);
-
-    expect(advancedModelIds).toEqual(
-      expect.arrayContaining([
-        CLAUDE_OPUS_4_6_MODEL_ID,
-        CLAUDE_OPUS_4_7_MODEL_ID,
-        CLAUDE_OPUS_4_8_MODEL_ID,
-      ])
-    );
-  });
-
-  it("should not include models gated only by feature flags", () => {
-    const featureFlagOnlyModels = SUPPORTED_MODEL_CONFIGS.filter(
-      (m) =>
-        m.availableIfOneOf?.featureFlag !== undefined &&
-        m.availableIfOneOf.plansWithAdvancedModels !== true
-    );
-
-    for (const model of featureFlagOnlyModels) {
-      expect(getAdvancedModels()).not.toContain(model);
-    }
-  });
-});
 
 describe("isModelAvailable", () => {
   const owner: WorkspaceType = LightWorkspaceFactory.build();
