@@ -3,6 +3,11 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import {
+  MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS,
+  MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS,
+  setApiKeySpendLimit,
+} from "@app/lib/api/keys/spend_limit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -11,6 +16,7 @@ import type {
   GetKeysResponseBody,
   PostKeysResponseBody,
 } from "@app/types/api/keys";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -26,6 +32,9 @@ const CreateKeyPostBodySchema = z.object({
   group_id: z.string().optional(),
   group_ids: z.array(z.string()).optional(),
   monthly_cap_micro_usd: z.number().nullish(),
+  // Per-key credit cap in AWU credits (credit-priced plans only). null/omitted
+  // = unlimited.
+  monthly_cap_awu_credits: z.number().nullish(),
   role: z.enum(["user", "builder", "admin"]).optional(),
 });
 
@@ -57,8 +66,14 @@ app.post(
     const user = auth.getNonNullableUser();
     const owner = auth.getNonNullableWorkspace();
 
-    const { name, group_id, group_ids, monthly_cap_micro_usd, role } =
-      ctx.req.valid("json");
+    const {
+      name,
+      group_id,
+      group_ids,
+      monthly_cap_micro_usd,
+      monthly_cap_awu_credits,
+      role,
+    } = ctx.req.valid("json");
     const trimmedName = name.trim();
     const keyRole = role ?? "builder";
 
@@ -84,6 +99,41 @@ app.post(
           message: "monthly_cap_micro_usd must be greater than or equal to 0",
         },
       });
+    }
+
+    // Per-key credit cap: only valid on credit-priced plans and within range.
+    // Validated up front so we never create a key whose requested cap can't be
+    // applied.
+    if (
+      monthly_cap_awu_credits !== null &&
+      monthly_cap_awu_credits !== undefined
+    ) {
+      const plan = auth.subscription()?.plan;
+      if (!plan || !isCreditPricedPlan(plan)) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Per-key credit spend limits are only available on credit-priced plans.",
+          },
+        });
+      }
+      if (
+        monthly_cap_awu_credits < MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS ||
+        monthly_cap_awu_credits > MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS
+      ) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              `monthly_cap_awu_credits must be between ` +
+              `${MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS} and ` +
+              `${MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS}.`,
+          },
+        });
+      }
     }
 
     const existingKey = await KeyResource.fetchByName(auth, {
@@ -189,9 +239,45 @@ app.post(
       },
     });
 
+    // Apply the per-key credit cap (persists the cap, creates the Metronome
+    // alert, reconciles state). Validated above, so only a Metronome failure
+    // can error here.
+    if (
+      monthly_cap_awu_credits !== null &&
+      monthly_cap_awu_credits !== undefined
+    ) {
+      const limitResult = await setApiKeySpendLimit(auth, {
+        keyModelId: key.id,
+        limit: { kind: "limited", awuCredits: monthly_cap_awu_credits },
+      });
+      if (limitResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            keyName: trimmedName,
+            err: limitResult.error,
+          },
+          "[Keys] Failed to apply credit cap on newly created key"
+        );
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Key created but failed to set credit cap: ${limitResult.error.message}`,
+          },
+        });
+      }
+    }
+
+    const created =
+      (await KeyResource.fetchByWorkspaceAndId({
+        workspace: owner,
+        id: key.id,
+      })) ?? key;
+
     return ctx.json(
       {
-        key: key.toJSON(),
+        key: created.toJSON(),
       },
       201
     );
