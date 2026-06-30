@@ -1,5 +1,4 @@
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
-import { maybePersistDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -47,10 +46,6 @@ app.post(
       // connections).
       return ctx.json({ success: false });
     }
-
-    await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
-      serverId,
-    });
 
     return ctx.json(result);
   }
