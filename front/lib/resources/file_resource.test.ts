@@ -19,6 +19,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   frameContentType,
   isUnverifiableFrameFileRefsShareError,
+  sandboxFunctionContentType,
 } from "@app/types/files";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1430,6 +1431,54 @@ describe("FileResource", () => {
           },
         ]);
       }
+    });
+  });
+
+  describe("sandbox function mount routing", () => {
+    it("resolves a sandbox function bundle under the dedicated prefix", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const space = await SpaceFactory.regular(workspace);
+
+      const bundleFile = await FileFactory.create(auth, null, {
+        contentType: sandboxFunctionContentType,
+        fileName: "greet.ts",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+
+      const row = await FileModel.findOne({
+        where: { id: bundleFile.id, workspaceId: workspace.id },
+      });
+      expect(row?.mountFilePath).toBe(
+        `w/${workspace.sId}/pods/${space.sId}/sandbox_functions/greet.ts`
+      );
+    });
+
+    it("keeps regular project files under the pod files prefix", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const space = await SpaceFactory.regular(workspace);
+
+      const projectFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: "notes.txt",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+
+      const row = await FileModel.findOne({
+        where: { id: projectFile.id, workspaceId: workspace.id },
+      });
+      expect(row?.mountFilePath).toBe(
+        `w/${workspace.sId}/pods/${space.sId}/files/notes.txt`
+      );
     });
   });
 });
