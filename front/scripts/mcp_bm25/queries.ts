@@ -953,6 +953,40 @@ export const QUERIES: LabeledQuery[] = [
     expected: "workspace_analytics.get_usage_timeseries",
   },
 
+  // --- web_search_&_browse ---
+  {
+    query: "search the web for the latest AI research papers",
+    expected: "web_search_&_browse.websearch",
+  },
+  {
+    query: "google this topic for me",
+    expected: "web_search_&_browse.websearch",
+  },
+  {
+    query: "find recent news about the acquisition online",
+    expected: "web_search_&_browse.websearch",
+  },
+  {
+    query: "look up current information on the internet",
+    expected: "web_search_&_browse.websearch",
+  },
+  {
+    query: "fetch the content of this URL",
+    expected: "web_search_&_browse.webbrowser",
+  },
+  {
+    query: "open and read these web pages",
+    expected: "web_search_&_browse.webbrowser",
+  },
+  {
+    query: "take a full page screenshot of this website",
+    expected: "web_search_&_browse.webbrowser",
+  },
+  {
+    query: "browse this webpage and summarize it",
+    expected: "web_search_&_browse.webbrowser",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
