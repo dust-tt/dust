@@ -7,11 +7,13 @@ import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/sandbox/functions/events", async (importOriginal) => {
   const mod =
-    await importOriginal<typeof import("@app/lib/api/sandbox/functions/events")>();
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox/functions/events")
+    >();
   return {
     ...mod,
     publishSandboxFunctionInvocationEvent: vi.fn(),
@@ -33,6 +35,10 @@ const outputSchema: JSONSchema = {
     ok: { type: "boolean" },
   },
 };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

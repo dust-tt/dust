@@ -7,7 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/sandbox/functions/events", async (importOriginal) => {
   const mod =
-    await importOriginal<typeof import("@app/lib/api/sandbox/functions/events")>();
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox/functions/events")
+    >();
   return {
     ...mod,
     publishSandboxFunctionInvocationEvent: vi.fn(),

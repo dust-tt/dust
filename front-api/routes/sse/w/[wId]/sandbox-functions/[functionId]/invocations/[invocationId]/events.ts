@@ -27,11 +27,11 @@ app.get(
   (ctx) => {
     const { functionId, invocationId } = ctx.req.valid("param");
     const { lastEventId } = ctx.req.valid("query");
-    return streamSandboxFunctionInvocationEventsForRoute(
-      ctx,
-      ctx.var.auth,
-      { functionId, invocationId, lastEventId }
-    );
+    return streamSandboxFunctionInvocationEventsForRoute(ctx, ctx.var.auth, {
+      functionId,
+      invocationId,
+      lastEventId,
+    });
   }
 );
 

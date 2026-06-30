@@ -88,10 +88,7 @@ export async function* getSandboxFunctionInvocationEvents({
       }
     }
   } catch (error) {
-    logger.error(
-      { error },
-      "Error getting sandbox function invocation events"
-    );
+    logger.error({ error }, "Error getting sandbox function invocation events");
   } finally {
     signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
