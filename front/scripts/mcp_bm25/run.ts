@@ -25,6 +25,7 @@ import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/m
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
 import { GONG_SERVER } from "@app/lib/api/actions/servers/gong/metadata";
+import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
@@ -177,6 +178,7 @@ const SERVERS: ServerEntry[] = [
   { name: "gong", tools: GONG_SERVER.tools },
   { name: "files", tools: FILES_SERVER.tools },
   { name: "gmail", tools: GMAIL_SERVER.tools },
+  { name: "google_calendar", tools: GOOGLE_CALENDAR_SERVER.tools },
 ];
 
 function out(line: string): void {

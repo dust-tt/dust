@@ -1307,6 +1307,40 @@ export const QUERIES: LabeledQuery[] = [
     expected: "gmail.get_thread",
   },
 
+  // --- google_calendar ---
+  {
+    query: "list all my google calendars",
+    expected: "google_calendar.list_calendars",
+  },
+  {
+    query: "what events are on my google calendar this week",
+    expected: "google_calendar.list_events",
+  },
+  {
+    query: "get the details of a calendar event by its id",
+    expected: "google_calendar.get_event",
+  },
+  {
+    query: "schedule a meeting on my google calendar",
+    expected: "google_calendar.create_event",
+  },
+  {
+    query: "reschedule a calendar event to a new time",
+    expected: "google_calendar.update_event",
+  },
+  {
+    query: "cancel and remove a calendar event",
+    expected: "google_calendar.delete_event",
+  },
+  {
+    query: "find a free time slot when everyone is available to meet",
+    expected: "google_calendar.check_availability",
+  },
+  {
+    query: "look up the timezone of meeting attendees",
+    expected: "google_calendar.get_user_timezones",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
