@@ -11,7 +11,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
-  functionId: z.string().min(1),
+  functionIdOrSlug: z.string().min(1),
 });
 
 const PostSandboxFunctionInvocationBodySchema = z
@@ -26,7 +26,7 @@ const PostSandboxFunctionInvocationBodySchema = z
   })
   .strict();
 
-// Mounted at /api/w/:wId/sandbox-functions/:functionId/invocations.
+// Mounted at /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations.
 const app = workspaceApp();
 
 /**
@@ -79,14 +79,14 @@ app.post(
   validate("json", PostSandboxFunctionInvocationBodySchema),
   async (ctx): HandlerResult<PostSandboxFunctionInvocationResponseBody> => {
     const auth = ctx.get("auth");
-    const { functionId } = ctx.req.valid("param");
+    const { functionIdOrSlug } = ctx.req.valid("param");
 
     const body: PostSandboxFunctionInvocationRequestBody =
       ctx.req.valid("json");
 
-    const sandboxFunction = await SandboxFunctionResource.fetchById(
+    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
       auth,
-      functionId
+      functionIdOrSlug
     );
     if (!sandboxFunction) {
       return apiError(ctx, {

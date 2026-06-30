@@ -17,7 +17,7 @@ const GetFileParamsSchema = z.object({
 type GetFileParams = z.infer<typeof GetFileParamsSchema>;
 
 const CallFunctionParamsSchema = z.object({
-  functionId: z.string(),
+  functionIdOrSlug: z.string(),
   input: z.unknown().optional(),
 });
 
