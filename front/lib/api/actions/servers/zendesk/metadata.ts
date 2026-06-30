@@ -39,12 +39,12 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   },
   search_tickets: {
     description:
-      "Search for Zendesk tickets using query syntax. Returns matching tickets with their details. Filter by status (e.g. open, pending, solved), priority, type, assignee, tags, custom fields, dates, and text fields.",
+      "Search and find Zendesk tickets using query syntax. Returns matching tickets with their details. Filter by status (open, pending, solved), priority (low, medium, high), type, assignee, tags, dates, and text fields.",
     schema: {
       query: z
         .string()
         .describe(
-          "Zendesk search query. Supports field:value pairs (status, priority, type, assignee, tags) and custom_field_{id}:\"value\". Do not include 'type:ticket'."
+          "Zendesk search query. Supports field:value pairs for status, priority, type, assignee, or tags. Do not include 'type:ticket'."
         ),
       sortBy: z
         .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
@@ -65,7 +65,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   },
   list_ticket_fields: {
     description:
-      "List Zendesk ticket field definitions. Both built-in fields (Subject, Priority, Status) and custom fields. With their id, title, type, and active state.",
+      "List and enumerate all Zendesk ticket field definitions — built-in fields (Subject, Priority, Status) and custom fields — with their id, title, type, and active state. Use this to discover what fields exist on a ticket.",
     schema: {
       includeInactive: z
         .boolean()
