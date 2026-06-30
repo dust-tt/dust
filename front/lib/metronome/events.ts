@@ -71,7 +71,7 @@ export function isToolCategory(value: string): value is ToolCategory {
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
 const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
-  // Set as basic but overriden as free
+  // Set as basic but overridden as free
   agent_memory: "basic",
   agent_router: "basic",
   common_utilities: "basic",
