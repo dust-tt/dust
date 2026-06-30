@@ -4,7 +4,10 @@ import type {
   AwuUsageGroupByType,
   GetAwuUsageResponse,
 } from "@app/lib/api/analytics/awu_usage";
-import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
+import type {
+  AnalyticsScopeFilter,
+  AwuUsageAnalyticsResponse,
+} from "@app/lib/api/analytics/awu_usage_analytics";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
@@ -655,6 +658,7 @@ export function useAwuUsageFromAnalytics({
   groupByCount,
   granularity,
   days,
+  filter,
   disabled,
   urlPrefix,
 }: {
@@ -663,6 +667,7 @@ export function useAwuUsageFromAnalytics({
   groupByCount?: number;
   granularity?: "day" | "week" | "month";
   days?: number;
+  filter?: AnalyticsScopeFilter;
   disabled?: boolean;
   urlPrefix?: string;
 }) {
@@ -681,6 +686,9 @@ export function useAwuUsageFromAnalytics({
   }
   if (days !== undefined) {
     queryParams.set("days", days.toString());
+  }
+  if (filter && Object.keys(filter).length > 0) {
+    queryParams.set("filter", JSON.stringify(filter));
   }
   const queryString = queryParams.toString();
   const prefix =
