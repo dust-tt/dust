@@ -12,11 +12,15 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+const RETRIEVE_RECENT_DOCUMENTS_DESCRIPTION =
+  "Load and include full document content, documents, or docs from selected data sources or the company knowledge base as conversation context. " +
+  "Retrieves the most recent documents in reverse chronological order up to the retrieval limit, " +
+  "so the latest pre-configured information is included when the agent needs broad full-context data or all available recent content.";
+
 // Base tool without tags support
 export const INCLUDE_DATA_BASE_TOOLS_METADATA = createToolsRecord({
   retrieve_recent_documents: {
-    description:
-      "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
+    description: RETRIEVE_RECENT_DOCUMENTS_DESCRIPTION,
     schema: IncludeInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -34,8 +38,7 @@ const includeWithTagsSchema = {
 
 export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
   retrieve_recent_documents: {
-    description:
-      "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
+    description: RETRIEVE_RECENT_DOCUMENTS_DESCRIPTION,
     schema: includeWithTagsSchema,
     stake: "never_ask",
     displayLabels: {

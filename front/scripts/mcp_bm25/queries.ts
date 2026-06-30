@@ -543,6 +543,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "confluence.get_current_user",
   },
 
+  // --- include_data ---
+  {
+    query: "include all recent documents as context",
+    expected: "include_data.retrieve_recent_documents",
+  },
+  {
+    query: "load the latest documents from my selected data sources",
+    expected: "include_data.retrieve_recent_documents",
+  },
+
   // --- hubspot ---
   {
     query: "find a hubspot contact by email address",
