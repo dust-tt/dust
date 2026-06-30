@@ -204,7 +204,7 @@ app.get("/", async (ctx): HandlerResult<GetConversationsResponseBody> => {
   const pagination = paginationRes.value;
 
   const result =
-    await ConversationResource.listPrivateConversationsForUserPaginatedFromES(
+    await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
       auth,
       {
         limit: pagination.limit,

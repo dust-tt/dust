@@ -290,15 +290,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
     stage: "on_demand",
   },
-  conversation_search_indexing: {
-    description: "Enable ES indexing of conversations on mutation (write path)",
-    stage: "dust_only",
-  },
-  conversation_search_read: {
-    description:
-      "Enable ES-backed conversation listing in the sidebar (read path)",
-    stage: "dust_only",
-  },
   restricted_spaces_in_input_bar: {
     description:
       "Allow users to explicitly select restricted Spaces from the conversation input bar.",
