@@ -179,19 +179,30 @@ export function CreateCouponForm({
               set("discountType", value as CouponDiscountType)
             }
           >
-            <RadioGroupItem value="seat" label="Seat" />
+            <RadioGroupItem value="seat" label="Seat (subscription discount)" />
+            <RadioGroupItem
+              value="credit_pool_top_up"
+              label="Credit pool top-up (bonus AWU)"
+            />
           </RadioGroup>
         </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">
-            Amount <span className="text-red-500">*</span>
+            {form.discountType === "credit_pool_top_up"
+              ? "Bonus AWU credits"
+              : "Amount (currency units, e.g. $)"}{" "}
+            <span className="text-red-500">*</span>
           </label>
           <Input
             type="number"
             value={form.amount}
             onChange={(e) => set("amount", e.target.value)}
-            placeholder="e.g. 50"
+            placeholder={
+              form.discountType === "credit_pool_top_up"
+                ? "e.g. 5000"
+                : "e.g. 50"
+            }
             min={0.5}
             step={0.5}
           />

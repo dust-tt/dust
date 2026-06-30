@@ -320,6 +320,58 @@ export function useAwuPurchaseInfo({
   };
 }
 
+export type RedeemCreditsCouponOutcome =
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+// Redeems a "credits" coupon (the "Use coupon" Top-Up tab). Grants free AWU
+// credits synchronously — no payment involved. Refreshes the pool summary on
+// success.
+export function useRedeemCreditsCoupon({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const { mutateAwuPoolSummary } = useAwuPoolSummary({
+    workspaceId,
+    disabled: true,
+  });
+
+  const redeemCreditsCoupon = useCallback(
+    async (code: string): Promise<RedeemCreditsCouponOutcome> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/coupon/redeem`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          const message =
+            errorData?.error?.message ?? "Failed to redeem coupon.";
+          return { status: "error", message };
+        }
+
+        resetAwuPostPurchaseRefreshCount(workspaceId);
+        void mutateAwuPoolSummary();
+
+        return { status: "success" };
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to redeem coupon.";
+        return { status: "error", message };
+      }
+    },
+    [workspaceId, mutateAwuPoolSummary]
+  );
+
+  return { redeemCreditsCoupon };
+}
+
 export function useMyUsage({
   workspaceId,
   disabled,

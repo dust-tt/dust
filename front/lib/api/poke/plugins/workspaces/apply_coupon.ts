@@ -84,6 +84,12 @@ export const applyCouponPlugin = createPlugin({
                   `Coupon "${couponCode}" has already been redeemed by this workspace.`
                 )
               );
+            case "wrong_coupon_type":
+              return new Err(
+                new Error(
+                  `Coupon "${couponCode}" cannot be applied as a subscription discount.`
+                )
+              );
             default:
               return assertNever(err.reason);
           }

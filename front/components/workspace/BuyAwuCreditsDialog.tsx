@@ -14,7 +14,12 @@ import {
   awuCreditsToCurrency,
   currencyToAwuCredits,
 } from "@app/lib/metronome/amounts";
-import { useAwuPurchaseStatus } from "@app/lib/swr/credits";
+import {
+  useAwuPurchaseStatus,
+  useRedeemCreditsCoupon,
+} from "@app/lib/swr/credits";
+import { useValidateCoupon } from "@app/lib/swr/workspaces";
+import type { CouponType } from "@app/types/coupon";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
@@ -30,11 +35,19 @@ import {
   Icon,
   Input,
   Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   XCircle,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PurchaseState = "idle" | "processing" | "success" | "error";
+
+// Coupon redemption is synchronous (no payment): idle → checked (after the
+// "Check" button validates) → success/error (after "Apply").
+type CouponState = "idle" | "checked" | "redeeming" | "success" | "error";
 
 const QUICK_SELECT_AMOUNTS = [50, 100, 200] as const;
 
@@ -121,7 +134,18 @@ export function BuyAwuCreditsDialog({
   const [purchaseStartedAtMs, setPurchaseStartedAtMs] = useState<number | null>(
     null
   );
+  // "Use coupon" tab state (independent of the "Buy credits" tab).
+  const [couponInput, setCouponInput] = useState<string>("");
+  const [checkedCoupon, setCheckedCoupon] = useState<CouponType | null>(null);
+  const [couponState, setCouponState] = useState<CouponState>("idle");
+  const [couponError, setCouponError] = useState<string>("");
+  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const { purchaseAwuCredits } = useAwuPurchase({ workspaceId });
+  const { validateCoupon } = useValidateCoupon({ workspaceId });
+  const { redeemCreditsCoupon } = useRedeemCreditsCoupon({ workspaceId });
+
+  // For a "credits" coupon, `amount` is the number of bonus AWU credits granted.
+  const bonusCredits = checkedCoupon?.amount ?? 0;
 
   // Poll the payment-gated commit status only while waiting on the webhook
   // outcome. The Metronome -> Stripe payment is async, so the dialog can't
@@ -162,8 +186,64 @@ export function BuyAwuCreditsDialog({
     setPurchaseState("idle");
     setErrorMessage("");
     setPurchaseStartedAtMs(null);
+    setCouponInput("");
+    setCheckedCoupon(null);
+    setCouponState("idle");
+    setCouponError("");
     onClose();
   }, [onClose]);
+
+  // "Check" button: validate the code as a "credits" coupon and surface the
+  // bonus it would grant before the user commits.
+  const handleCheckCoupon = useCallback(async () => {
+    const code = couponInput.trim();
+    if (!code) {
+      return;
+    }
+    setCouponError("");
+    setIsCheckingCoupon(true);
+    try {
+      const result = await validateCoupon(code, "credits");
+      if (!result.ok) {
+        setCheckedCoupon(null);
+        setCouponState("idle");
+        setCouponError(result.message);
+        return;
+      }
+      setCheckedCoupon(result.coupon);
+      setCouponState("checked");
+    } finally {
+      setIsCheckingCoupon(false);
+    }
+  }, [couponInput, validateCoupon]);
+
+  // "Apply" button: actually redeem the checked coupon and grant the credits.
+  const handleRedeemCoupon = useCallback(async () => {
+    if (!checkedCoupon) {
+      return;
+    }
+    setCouponState("redeeming");
+    const result = await redeemCreditsCoupon(checkedCoupon.code);
+    switch (result.status) {
+      case "success":
+        setCouponState("success");
+        onPurchaseSuccess?.();
+        break;
+      case "error":
+        setCouponError(result.message);
+        setCouponState("error");
+        break;
+      default:
+        assertNeverAndIgnore(result);
+    }
+  }, [checkedCoupon, redeemCreditsCoupon, onPurchaseSuccess]);
+
+  const resetCouponInput = useCallback(() => {
+    setCheckedCoupon(null);
+    setCouponState("idle");
+    setCouponInput("");
+    setCouponError("");
+  }, []);
 
   const currency = awuPurchaseInfo?.canPurchase
     ? awuPurchaseInfo.currency
@@ -486,6 +566,183 @@ export function BuyAwuCreditsDialog({
     }
   };
 
+  const renderCouponContent = () => {
+    switch (couponState) {
+      case "redeeming":
+        return (
+          <div className="flex flex-col items-center justify-center gap-4 py-8">
+            <Spinner size="lg" />
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Applying coupon...
+            </p>
+          </div>
+        );
+      case "success":
+        return (
+          <div className="flex flex-col items-center justify-center gap-4 py-8">
+            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
+            <div className="text-center">
+              <p className="text-lg font-medium text-foreground dark:text-foreground-night">
+                Coupon applied!
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                <span className="font-semibold">
+                  {formatCredits(bonusCredits)} credits
+                </span>{" "}
+                have been added to your pool.
+              </p>
+            </div>
+          </div>
+        );
+      case "error":
+        return (
+          <div className="flex flex-col items-center justify-center gap-4 py-8">
+            <Icon visual={XCircle} size="lg" className="text-warning-500" />
+            <div className="text-center">
+              <p className="text-lg font-medium text-foreground dark:text-foreground-night">
+                Couldn't apply coupon
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {couponError}
+              </p>
+            </div>
+          </div>
+        );
+      default:
+        return (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Have a coupon code? Enter it below to add free credits to your
+              Workspace Credits Pool.
+            </p>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="couponCode"
+                className="text-sm font-medium text-foreground dark:text-foreground-night"
+              >
+                Coupon code
+              </label>
+              <div className="flex items-start gap-2">
+                <div className="flex flex-col gap-1">
+                  <Input
+                    id="couponCode"
+                    placeholder="Enter code"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value);
+                      setCouponError("");
+                      setCheckedCoupon(null);
+                      setCouponState("idle");
+                    }}
+                    isError={!!couponError}
+                    className="w-48"
+                  />
+                  {couponError && (
+                    <span className="text-xs text-warning-500 dark:text-warning-500-night">
+                      {couponError}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  label="Check"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCheckCoupon}
+                  disabled={!couponInput.trim() || isCheckingCoupon}
+                  isLoading={isCheckingCoupon}
+                />
+              </div>
+            </div>
+
+            {couponState === "checked" && checkedCoupon && (
+              <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4 dark:bg-muted-background-night">
+                <SummaryRow label="Coupon" value={checkedCoupon.code} dimmed />
+                {currentTotalPoolCredits !== undefined && (
+                  <SummaryRow
+                    label="Current Credits Pool"
+                    value={<CreditValue credits={currentTotalPoolCredits} />}
+                    dimmed
+                  />
+                )}
+                <SummaryRow
+                  label="Bonus Credits"
+                  value={<CreditValue credits={bonusCredits} />}
+                  dimmed
+                />
+                <div className="py-1" />
+                {currentTotalPoolCredits !== undefined && (
+                  <SummaryRow
+                    label="New Credits Pool"
+                    value={
+                      <CreditValue
+                        credits={currentTotalPoolCredits + bonusCredits}
+                      />
+                    }
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        );
+    }
+  };
+
+  const renderCouponFooter = () => {
+    switch (couponState) {
+      case "redeeming":
+        return (
+          <DialogFooter
+            rightButtonProps={{
+              label: "Applying...",
+              variant: "primary",
+              disabled: true,
+            }}
+          />
+        );
+      case "success":
+        return (
+          <DialogFooter
+            rightButtonProps={{
+              label: "Close",
+              variant: "primary",
+              onClick: resetModalStateAndClose,
+            }}
+          />
+        );
+      case "error":
+        return (
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: resetModalStateAndClose,
+            }}
+            rightButtonProps={{
+              label: "Try again",
+              variant: "primary",
+              onClick: resetCouponInput,
+            }}
+          />
+        );
+      default:
+        return (
+          <DialogFooter>
+            <Button
+              label="Cancel"
+              variant="outline"
+              onClick={resetModalStateAndClose}
+            />
+            <Button
+              label="Apply coupon"
+              variant="primary"
+              onClick={handleRedeemCoupon}
+              disabled={couponState !== "checked"}
+            />
+          </DialogFooter>
+        );
+    }
+  };
+
   if (isAwuPurchaseInfoLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -627,95 +884,88 @@ export function BuyAwuCreditsDialog({
     );
   }
 
-  // Cannot purchase: pending payment.
-  if (
+  // Buy-credits states that only block buying (not coupon redemption). These
+  // render inside the "Buy credits" tab so the "Use coupon" tab stays usable.
+  const buyPendingBlock =
     !isPurchaseInFlight &&
-    awuPurchaseInfo &&
+    !!awuPurchaseInfo &&
     !awuPurchaseInfo.canPurchase &&
-    awuPurchaseInfo.reason === "pending_purchase"
-  ) {
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Top-up</DialogTitle>
-            <DialogDescription>
-              You have pending credit purchases awaiting payment.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogContainer>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Please complete your pending payment before making a new purchase
-              or{" "}
-              <a
-                href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
-                className="text-action-500 hover:underline"
-              >
-                contact support
-              </a>{" "}
-              to cancel your pending payments.
-            </p>
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Close",
-              variant: "outline",
-              onClick: onClose,
-            }}
-            rightButtonProps={{
-              label: "Manage invoices",
-              variant: "primary",
-              onClick: () => {
-                window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
-              },
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Limit exhausted for this billing cycle.
-  if (
+    awuPurchaseInfo.reason === "pending_purchase";
+  const buyExhaustedBlock =
     !isPurchaseInFlight &&
-    awuPurchaseInfo?.canPurchase &&
-    awuPurchaseInfo.remainingCycleCredits < MIN_AWU_PURCHASE_CREDITS
-  ) {
-    return (
-      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Top-up</DialogTitle>
-            <DialogDescription>
-              You've reached your credit limit for this billing cycle.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogContainer>
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Your credit purchase limit resets at the start of your next
-              billing cycle. If you need additional credits before then, please{" "}
-              <a
-                href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
-                className="text-action-500 hover:underline"
-              >
-                contact support
-              </a>
-              .
-            </p>
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Close",
-              variant: "outline",
-              onClick: onClose,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-    );
-  }
+    !!awuPurchaseInfo?.canPurchase &&
+    awuPurchaseInfo.remainingCycleCredits < MIN_AWU_PURCHASE_CREDITS;
 
-  // Can purchase.
+  const renderBuyTabBody = () => {
+    if (purchaseState === "idle" && buyPendingBlock) {
+      return (
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          You have pending credit purchases awaiting payment. Please complete
+          your pending payment before making a new purchase or{" "}
+          <a
+            href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
+            className="text-action-500 hover:underline"
+          >
+            contact support
+          </a>{" "}
+          to cancel your pending payments.
+        </p>
+      );
+    }
+    if (purchaseState === "idle" && buyExhaustedBlock) {
+      return (
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          You've reached your credit limit for this billing cycle. It resets at
+          the start of your next billing cycle. If you need additional credits
+          before then, please{" "}
+          <a
+            href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
+            className="text-action-500 hover:underline"
+          >
+            contact support
+          </a>
+          .
+        </p>
+      );
+    }
+    return renderContent();
+  };
+
+  const renderBuyTabFooter = () => {
+    if (purchaseState === "idle" && buyPendingBlock) {
+      return (
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: resetModalStateAndClose,
+          }}
+          rightButtonProps={{
+            label: "Manage invoices",
+            variant: "primary",
+            onClick: () => {
+              window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+            },
+          }}
+        />
+      );
+    }
+    if (purchaseState === "idle" && buyExhaustedBlock) {
+      return (
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: resetModalStateAndClose,
+          }}
+        />
+      );
+    }
+    return renderFooter();
+  };
+
+  // Buy or use a coupon. While a buy is in flight (processing/success/error) the
+  // tabs are hidden so the user can't switch away mid-payment.
   return (
     <Dialog
       open={isOpen}
@@ -724,12 +974,28 @@ export function BuyAwuCreditsDialog({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Top-up</DialogTitle>
-          <DialogDescription>
-            Add credits to your Workspace Credits Pool.
-          </DialogDescription>
         </DialogHeader>
-        <DialogContainer>{renderContent()}</DialogContainer>
-        {renderFooter()}
+        {isPurchaseInFlight ? (
+          <>
+            <DialogContainer>{renderContent()}</DialogContainer>
+            {renderFooter()}
+          </>
+        ) : (
+          <Tabs defaultValue="buy">
+            <TabsList>
+              <TabsTrigger value="buy" label="Buy credits" />
+              <TabsTrigger value="coupon" label="Use coupon" />
+            </TabsList>
+            <TabsContent value="buy">
+              <DialogContainer>{renderBuyTabBody()}</DialogContainer>
+              {renderBuyTabFooter()}
+            </TabsContent>
+            <TabsContent value="coupon">
+              <DialogContainer>{renderCouponContent()}</DialogContainer>
+              {renderCouponFooter()}
+            </TabsContent>
+          </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );
