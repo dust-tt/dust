@@ -575,6 +575,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
           "Same as dust-ant-high but with omitted reasoning summaries.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_HAIKU:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_HAIKU,
+        name: "dust-haiku",
+        description: "Same as dust but running Claude 4.5 Haiku.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_KIMI:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_KIMI,
