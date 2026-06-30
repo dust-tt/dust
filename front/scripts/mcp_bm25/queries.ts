@@ -894,6 +894,65 @@ export const QUERIES: LabeledQuery[] = [
     expected: "pod_manager.add_message_to_conversation",
   },
 
+  // --- workspace_analytics ---
+  {
+    query: "which agents are used most in the workspace",
+    expected: "workspace_analytics.get_top_agents",
+  },
+  {
+    query: "show me the top 10 most active agents this month",
+    expected: "workspace_analytics.get_top_agents",
+  },
+  {
+    query: "who are the most active users this month",
+    expected: "workspace_analytics.get_top_users",
+  },
+  {
+    query: "rank workspace members by messages sent",
+    expected: "workspace_analytics.get_top_users",
+  },
+  {
+    query:
+      "what does the support agent actually do - show its configuration and prompt",
+    expected: "workspace_analytics.get_agent_details",
+  },
+  {
+    query: "inspect an agent's full system prompt and tools",
+    expected: "workspace_analytics.get_agent_details",
+  },
+  {
+    query: "which skills are executed most in the workspace",
+    expected: "workspace_analytics.get_top_skills",
+  },
+  {
+    query: "what are the top MCP tools used by agents",
+    expected: "workspace_analytics.get_top_tools",
+  },
+  {
+    query: "where do workspace messages come from - slack, api, or browser",
+    expected: "workspace_analytics.get_source_breakdown",
+  },
+  {
+    query: "how many AWU credits did the workspace consume this month",
+    expected: "workspace_analytics.get_credit_usage",
+  },
+  {
+    query: "break down credit spending by agent",
+    expected: "workspace_analytics.get_credit_usage",
+  },
+  {
+    query: "show the credit spending trend over the last 30 days",
+    expected: "workspace_analytics.get_credit_timeseries",
+  },
+  {
+    query: "chart message and conversation volume over time",
+    expected: "workspace_analytics.get_usage_timeseries",
+  },
+  {
+    query: "how has agent activity changed over the last 30 days",
+    expected: "workspace_analytics.get_usage_timeseries",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
