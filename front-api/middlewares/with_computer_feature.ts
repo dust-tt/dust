@@ -8,7 +8,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
 export function withComputerFeature({
-  message = "Sandbox tools are not enabled for this workspace.",
+  message = "Computer is disabled for this workspace.",
 }: {
   message?: string;
 } = {}) {

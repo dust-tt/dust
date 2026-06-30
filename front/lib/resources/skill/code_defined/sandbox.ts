@@ -383,8 +383,8 @@ export const sandboxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "CommandLineIcon",
-  // Auto-equipped for every agent when the `sandbox_tools` flag is on (the flag gate lives in
-  // isRestricted), but not enabled until the agent decides to use it.
+  // Auto-equipped for every agent unless the workspace has disabled the
+  // Computer, but not enabled until the agent decides to use it.
   isAutoEquippedForAgentLoop: (): boolean => true,
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

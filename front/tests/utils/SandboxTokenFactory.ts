@@ -19,10 +19,8 @@ import type { AgentMCPActionType } from "@app/types/actions";
 process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
 export async function createSandboxTokenTestContext({
-  enableSandboxTools = false,
   disableComputerFeature = false,
 }: {
-  enableSandboxTools?: boolean;
   disableComputerFeature?: boolean;
 } = {}) {
   const user = await UserFactory.basic();
@@ -35,9 +33,6 @@ export async function createSandboxTokenTestContext({
   );
   const { globalSpace } = await SpaceFactory.defaults(auth);
 
-  if (enableSandboxTools) {
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
-  }
   if (disableComputerFeature) {
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
   }
@@ -114,14 +109,11 @@ export async function createSandboxTokenTestContext({
 }
 
 export async function createSandboxFunctionInvocationTokenTestContext({
-  enableSandboxTools = false,
   disableComputerFeature = false,
 }: {
-  enableSandboxTools?: boolean;
   disableComputerFeature?: boolean;
 } = {}) {
   const context = await createSandboxTokenTestContext({
-    enableSandboxTools,
     disableComputerFeature,
   });
   const token = await generateSandboxFunctionInvocationToken(context.auth, {

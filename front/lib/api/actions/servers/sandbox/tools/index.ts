@@ -240,8 +240,8 @@ export async function createSandboxTools(
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
-  // The add_egress_domain tool requires both sandbox tools and the
-  // per-workspace setting that admins toggle on top of them.
+  // The add_egress_domain tool requires Computer access and the
+  // per-workspace setting that admins toggle on top of it.
   const flags = await getFeatureFlags(auth);
   if (
     isComputerFeatureEnabled(flags) &&
@@ -484,9 +484,9 @@ export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  // Defense-in-depth: createSandboxTools already filters this tool out when the
-  // sandbox tools flag is off, so this metadata-only check is enough
-  // to reject any caller that bypasses tool-list filtering.
+  // Defense-in-depth: createSandboxTools already filters this tool out when
+  // the workspace setting is off, so this metadata-only check is enough to
+  // reject any caller that bypasses tool-list filtering.
   if (!isSandboxAgentEgressRequestsAllowed(auth)) {
     return new Err(
       new MCPError(

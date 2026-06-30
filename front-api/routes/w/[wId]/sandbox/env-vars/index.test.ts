@@ -21,17 +21,17 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 async function setupTest({
   role = "admin",
-  withFeatureFlags = true,
+  disableComputerFeature = false,
 }: {
   role?: MembershipRoleType;
-  withFeatureFlags?: boolean;
+  disableComputerFeature?: boolean;
 } = {}) {
   const { workspace, auth, ...rest } = await createPrivateApiMockRequest({
     role,
   });
 
-  if (withFeatureFlags) {
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+  if (disableComputerFeature) {
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
   }
 
   return { workspace, auth, ...rest };
@@ -65,20 +65,8 @@ describe("GET/POST /api/w/:wId/sandbox/env-vars", () => {
     });
   });
 
-  it("returns 403 when sandbox feature flags are missing", async () => {
-    const { workspace } = await setupTest({ withFeatureFlags: false });
-
-    const response = await listEnvVars(workspace.sId);
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
-    });
-  });
-
   it("returns 403 when Computer is disabled", async () => {
-    const { workspace, auth } = await setupTest();
-    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+    const { workspace } = await setupTest({ disableComputerFeature: true });
 
     const response = await listEnvVars(workspace.sId);
 

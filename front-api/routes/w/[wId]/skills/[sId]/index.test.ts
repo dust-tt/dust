@@ -6,7 +6,6 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -159,12 +158,10 @@ describe("GET /api/w/:wId/skills/:sId", () => {
 
   it("should expose instructions for an opted-in code-defined skill", async () => {
     // pptx sets exposeInstructions: true, so its prompt is surfaced on the detail
-    // fetch as plain markdown (instructionsHtml stays null). The skill is gated
-    // behind the computer feature, so enable it first.
-    const { workspace, requestUserAuth } = await setupTest({
+    // fetch as plain markdown (instructionsHtml stays null).
+    const { workspace } = await setupTest({
       requestUserRole: "admin",
     });
-    await FeatureFlagFactory.basic(requestUserAuth, "sandbox_tools");
 
     const response = await getSkill(workspace, "pptx");
 

@@ -10,7 +10,6 @@ describe("framesSkill.fetchInstructions", () => {
   it("teaches the computer-first flow when frame_publish and the Computer are both enabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frame_publish");
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const instructions = await framesSkill.fetchInstructions(auth, {
       spaceIds: [],
@@ -25,7 +24,6 @@ describe("framesSkill.fetchInstructions", () => {
 
   it("falls back to the retrieve and edit flow when frame_publish is off", async () => {
     const { authenticator: auth } = await createResourceTest({});
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const instructions = await framesSkill.fetchInstructions(auth, {
       spaceIds: [],
@@ -35,9 +33,10 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("### Updating Existing Files:");
   });
 
-  it("falls back when frame_publish is on but the Computer is unavailable", async () => {
+  it("falls back when frame_publish is on but the Computer is disabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frame_publish");
+    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
     const instructions = await framesSkill.fetchInstructions(auth, {
       spaceIds: [],

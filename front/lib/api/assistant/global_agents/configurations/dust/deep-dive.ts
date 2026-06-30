@@ -587,9 +587,9 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
-    // The "sandbox" (Computer) skill is auto-equipped for all agents when the
-    // `sandbox_tools` feature flag is on (see SkillResource.listForAgentLoop),
-    // so it no longer needs to be listed here.
+    // The "sandbox" (Computer) skill is auto-equipped for all agents unless
+    // the workspace has disabled Computer, so it no longer needs to be listed
+    // here.
     skills: ["frames", "discover_skills", "skill-authoring"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };

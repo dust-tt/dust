@@ -529,7 +529,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });
 
-  it("should point agents to the Computer for uploaded files when sandbox tools are available", () => {
+  it("should point agents to the Computer for uploaded files when Computer is available", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: agentConfig1,
@@ -555,7 +555,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("especially PDFs");
   });
 
-  it("should point legacy attachment prompts to the Computer when sandbox tools are available", () => {
+  it("should point legacy attachment prompts to the Computer when Computer is available", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: agentConfig1,
@@ -580,7 +580,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
   });
 
-  it("should not mention the Computer file mount when sandbox tools are unavailable", () => {
+  it("should not mention the Computer file mount when Computer is unavailable", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: agentConfig1,
