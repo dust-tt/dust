@@ -23,7 +23,7 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
   },
   get_event: {
     description:
-      "Get detailed information about a specific Luma event by its ID.",
+      "Get the full details of a specific Luma event by its event ID.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event to retrieve."),
     },
@@ -101,8 +101,9 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
   },
   update_event: {
     description:
-      "Update an existing Luma event. " +
-      "Only the fields you provide will be updated. " +
+      "Update an existing Luma event: edit or reschedule its name, start time, " +
+      "capacity, or visibility. " +
+      "Only the fields you provide will be changed. " +
       "Set suppress_notifications to true to avoid emailing guests about minor changes.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event to update."),
@@ -190,7 +191,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_guest: {
-    description: "Get detailed information about a specific guest of an event.",
+    description:
+      "Get the registration record of a single guest who signed up for a Luma event.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event."),
       guest_api_id: z.string().describe("The API ID of the guest."),
@@ -203,9 +205,8 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
   },
   update_guest_status: {
     description:
-      "Update the approval status of a single guest. " +
-      "Can approve or decline a guest. " +
-      "Use should_refund when declining guests with paid tickets.",
+      "Approve or decline a single guest on a Luma event, including pending guests. " +
+      "Use should_refund when declining guests who paid for registration.",
     schema: {
       event_api_id: z.string().describe("The API ID of the event."),
       guest_api_id_or_email: z
@@ -218,7 +219,7 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether to refund the guest when declining (for paid tickets)."
+          "Whether to refund the guest when declining (for paid registrations)."
         ),
     },
     stake: "medium",
@@ -270,9 +271,9 @@ export const LUMA_TOOLS_METADATA = createToolsRecord({
   },
   search_guests: {
     description:
-      "Search for a guest by name or email across all registrations of an event. " +
+      "Find a specific attendee by name or email across all registrations of a Luma event. " +
       "Fetches all guests internally and filters by the query string (case-insensitive partial match). " +
-      "Use this when you need to find a specific person. May take a moment for large events.",
+      "Use this to locate one person. May take a moment for large events.",
     schema: {
       event_api_id: z
         .string()

@@ -28,6 +28,7 @@ import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_gene
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
+import { LUMA_SERVER } from "@app/lib/api/actions/servers/luma/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
@@ -167,6 +168,7 @@ const SERVERS: ServerEntry[] = [
   { name: "image_generation", tools: IMAGE_GENERATION_SERVER.tools },
   { name: "file_generation", tools: FILE_GENERATION_SERVER.tools },
   { name: "fathom", tools: FATHOM_SERVER.tools },
+  { name: "luma", tools: LUMA_SERVER.tools },
 ];
 
 function out(line: string): void {

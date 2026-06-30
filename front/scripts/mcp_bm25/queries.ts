@@ -1156,6 +1156,56 @@ export const QUERIES: LabeledQuery[] = [
     expected: "fathom.get_transcript",
   },
 
+  // --- luma ---
+  {
+    query: "which Luma account is the api key configured for",
+    expected: "luma.get_authenticated_user",
+  },
+  {
+    query: "get the details of a Luma event by id",
+    expected: "luma.get_event",
+  },
+  {
+    query: "list upcoming events on my Luma calendar",
+    expected: "luma.list_events",
+  },
+  {
+    query: "create a new event on Luma",
+    expected: "luma.create_event",
+  },
+  {
+    query: "edit the start time of a Luma event",
+    expected: "luma.update_event",
+  },
+  {
+    query: "list the guests registered for a Luma event",
+    expected: "luma.list_guests",
+  },
+  {
+    query: "get the registration details of one Luma guest",
+    expected: "luma.get_guest",
+  },
+  {
+    query: "approve a pending guest on a Luma event",
+    expected: "luma.update_guest_status",
+  },
+  {
+    query: "add guests to a Luma event by email",
+    expected: "luma.add_guests",
+  },
+  {
+    query: "send email invitations for a Luma event",
+    expected: "luma.send_invites",
+  },
+  {
+    query: "find a specific attendee by name in a Luma event",
+    expected: "luma.search_guests",
+  },
+  {
+    query: "show registration counts and check-in rate for a Luma event",
+    expected: "luma.get_event_insights",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
