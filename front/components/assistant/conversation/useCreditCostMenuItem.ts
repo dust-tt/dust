@@ -7,7 +7,7 @@ const BEGINNING_AGENT_TOOLTIP =
   "Credits used for this message (tokens and actions).";
 
 export const CREDIT_COST_ITEM_CLASS_NAME =
-  "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent dark:text-muted-foreground-night dark:hover:bg-transparent dark:focus:bg-transparent";
+  "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent";
 
 interface UseCreditCostMenuItemProps {
   credits: number | null | undefined;
