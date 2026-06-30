@@ -150,13 +150,6 @@
       ]
     },
     {
-      "includes": [
-        "front/lib/actions/mcp_internal_actions/**/*.{js,jsx,ts,tsx}",
-        "front/lib/api/actions/servers/**/*.{js,jsx,ts,tsx}"
-      ],
-      "plugins": ["./.grit/patterns/noMcpServerInstructions.grit"]
-    },
-    {
       "includes": ["front-api/routes/**/*.ts"],
       "plugins": ["./.grit/patterns/noDirectRoleCheck.grit"]
     },
