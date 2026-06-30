@@ -953,6 +953,33 @@ export class DustFileSystem {
     return null;
   }
 
+  /**
+   * Translate a canonical scoped path to its absolute path inside a mounted sandbox (the mount's
+   * gcsfuse mount point), e.g. `pod-{pId}/greet.ts` -> `/files/pod-{pId}/greet.ts`.
+   *
+   * Applies the same traversal, mount-membership, and read-permission checks as `read`. Returns
+   * `Err("invalid_path")` for a bare mount root (no file component).
+   */
+  toSandboxPath(scopedPath: string): Result<string, DustFileSystemError> {
+    const resolved = this.requireReadMount(scopedPath);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+
+    const { mount, path: normalized } = resolved.value;
+    if (normalized === mount.scopedPrefix) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `Path has no file component: ${scopedPath}`
+        )
+      );
+    }
+
+    const rel = normalized.slice(mount.scopedPrefix.length + 1);
+    return new Ok(`${mount.sandboxMountPoint}/${rel}`);
+  }
+
   /** No-ops when the sandbox image does not support the required capability. */
   async setupSandboxMount(
     sandbox: SandboxResource,

@@ -11,10 +11,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  isValidSandboxFunctionSlug,
-  SandboxFunctionModel,
-} from "@app/lib/resources/storage/models/sandbox_function";
+import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -23,10 +20,12 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
+import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -171,6 +170,76 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
 
     return new this(this.model, sandboxFunction.get(), space, file);
+  }
+
+  /**
+   * Replace this function's bundle and contract on re-publish: point the row at the new file, refresh
+   * the schemas and description, then delete the superseded bundle. Enforces the same file invariants
+   * as makeNew. The caller checks write permission.
+   */
+  async updateContent(
+    auth: Authenticator,
+    {
+      file,
+      description,
+      inputSchema,
+      outputSchema,
+    }: {
+      file: FileResource;
+      description: string;
+      inputSchema: JSONSchema;
+      outputSchema: JSONSchema;
+    }
+  ): Promise<Result<undefined, Error>> {
+    assert(
+      file.workspaceId === auth.getNonNullableWorkspace().id,
+      "The file must belong to the authenticated workspace."
+    );
+    assert(
+      file.contentType === sandboxFunctionContentType,
+      `The file must use the ${sandboxFunctionContentType} content type.`
+    );
+    assert(
+      file.useCase === "project_context",
+      "The file must use the project_context use case."
+    );
+    assert(
+      file.useCaseMetadata?.spaceId === this.space.sId,
+      "The file must belong to the same pod as the sandbox function."
+    );
+
+    const previousFile = this.file;
+
+    try {
+      await this.update({
+        fileId: file.id,
+        description,
+        inputSchema,
+        outputSchema,
+      });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+
+    this.file = file;
+
+    // The row already points at the new bundle, so a failed cleanup of the old one only orphans a
+    // file in the front-only prefix. Log it rather than failing an otherwise successful publish.
+    if (previousFile.id !== file.id) {
+      const deleteResult = await previousFile.delete(auth);
+      if (deleteResult.isErr()) {
+        logger.error(
+          {
+            err: deleteResult.error,
+            sandboxFunctionId: this.sId,
+            previousFileId: previousFile.sId,
+          },
+          "Failed to delete superseded sandbox function bundle"
+        );
+      }
+    }
+
+    return new Ok(undefined);
   }
 
   private static async baseFetch(

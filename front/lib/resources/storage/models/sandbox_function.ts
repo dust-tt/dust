@@ -5,7 +5,10 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { SandboxFunctionInvocationStatus } from "@app/types/api/sandbox_functions";
-import { SANDBOX_FUNCTION_INVOCATION_STATUSES } from "@app/types/api/sandbox_functions";
+import {
+  isValidSandboxFunctionSlug,
+  SANDBOX_FUNCTION_INVOCATION_STATUSES,
+} from "@app/types/api/sandbox_functions";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
@@ -18,13 +21,6 @@ function validateSandboxFunctionJsonSchema(value: unknown): void {
   if (!validationResult.isValid) {
     throw new Error(`Invalid JSON schema: ${validationResult.error}`);
   }
-}
-
-// Lowercase alphanumeric with single hyphen separators (e.g. `greet`, `send-slack-message`).
-export const SANDBOX_FUNCTION_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-export function isValidSandboxFunctionSlug(value: unknown): value is string {
-  return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);
 }
 
 function validateSandboxFunctionSlug(value: unknown): void {

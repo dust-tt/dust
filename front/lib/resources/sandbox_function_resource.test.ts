@@ -479,6 +479,83 @@ describe("SandboxFunctionResource", () => {
     });
   });
 
+  it("replaces the bundle and contract on re-publish", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const makeBundle = (fileName: string) =>
+      FileFactory.create(authenticator, null, {
+        contentType: sandboxFunctionContentType,
+        fileName,
+        fileSize: 100,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+
+    const firstFile = await makeBundle("greet.ts");
+    const sandboxFunction = await SandboxFunctionResource.makeNew(
+      authenticator,
+      {
+        space,
+        file: firstFile,
+        slug: "greet",
+        description: "First.",
+        inputSchema,
+        outputSchema,
+      }
+    );
+
+    const newInputSchema: JSONSchema = {
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+    };
+    const newOutputSchema: JSONSchema = {
+      type: "object",
+      properties: { text: { type: "string" } },
+      required: ["text"],
+    };
+    const secondFile = await makeBundle("greet.ts");
+
+    const result = await sandboxFunction.updateContent(authenticator, {
+      file: secondFile,
+      description: "Second.",
+      inputSchema: newInputSchema,
+      outputSchema: newOutputSchema,
+    });
+    expect(result.isOk()).toBe(true);
+
+    // The same row now points at the new bundle and contract.
+    expect(sandboxFunction.fileId).toBe(secondFile.id);
+    expect(sandboxFunction.description).toBe("Second.");
+    expect(sandboxFunction.inputSchema).toEqual(newInputSchema);
+    expect(sandboxFunction.outputSchema).toEqual(newOutputSchema);
+    expect(sandboxFunction.file.id).toBe(secondFile.id);
+
+    // Exactly one row remains, and the superseded bundle was deleted.
+    const listed = await SandboxFunctionResource.listBySpace(
+      authenticator,
+      space
+    );
+    expect(listed.map(({ id }) => id)).toEqual([sandboxFunction.id]);
+    await expect(
+      FileResource.fetchById(authenticator, firstFile.sId)
+    ).resolves.toBeNull();
+    await expect(
+      FileResource.fetchById(authenticator, secondFile.sId)
+    ).resolves.not.toBeNull();
+
+    const fetched = await SandboxFunctionResource.fetchById(
+      authenticator,
+      sandboxFunction.sId
+    );
+    expect(fetched?.fileId).toBe(secondFile.id);
+    expect(fetched?.description).toBe("Second.");
+    expect(fetched?.outputSchema).toEqual(newOutputSchema);
+  });
+
   it("deletes all sandbox functions for a space", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",

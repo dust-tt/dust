@@ -1039,7 +1039,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       if (err instanceof SandboxNotFoundError) {
         logger.error(
           { sandbox: this.toLogJSON() },
-          "Sandbox not found at provider during readFile — marking as deleted"
+          "Sandbox not found at provider during readFile, marking as deleted"
         );
 
         await this.updateStatus("deleted");
