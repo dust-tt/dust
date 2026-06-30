@@ -4,7 +4,12 @@ import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_functio
 import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -66,6 +71,63 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
 
     return new this(this.model, invocation.get(), { sandboxFunction });
+  }
+
+  private static async baseFetch(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+    },
+    options?: ResourceFindOptions<SandboxFunctionInvocationModel>
+  ): Promise<SandboxFunctionInvocationResource[]> {
+    const { where, ...rest } = options ?? {};
+    const invocations = await this.model.findAll({
+      where: {
+        ...where,
+        sandboxFunctionId: sandboxFunction.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      ...rest,
+    });
+
+    return invocations.map(
+      (invocation) =>
+        new this(this.model, invocation.get(), { sandboxFunction })
+    );
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+      invocationId,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+      invocationId: string;
+    }
+  ): Promise<SandboxFunctionInvocationResource | null> {
+    if (!isResourceSId("sandbox_function_invocation", invocationId)) {
+      return null;
+    }
+
+    const invocationModelId = getResourceIdFromSId(invocationId);
+    if (invocationModelId === null) {
+      return null;
+    }
+
+    const [invocation] = await this.baseFetch(
+      auth,
+      { sandboxFunction },
+      {
+        where: {
+          id: invocationModelId,
+        },
+      }
+    );
+
+    return invocation ?? null;
   }
 
   static async deleteAllForSandboxFunction(

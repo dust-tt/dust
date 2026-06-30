@@ -8674,6 +8674,64 @@
         }
       }
     },
+    "/api/w/{wId}/sandbox-functions/{functionId}/invocations/{invocationId}/events": {
+      "get": {
+        "summary": "Stream sandbox function invocation events",
+        "description": "Stream real-time events for a sandbox function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.",
+        "tags": [
+          "Private Events"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "functionId",
+            "required": true,
+            "description": "ID of the sandbox function",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invocationId",
+            "required": true,
+            "description": "ID of the sandbox function invocation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE event stream. Each event is sent as `data: {json}\\n\\n`.\nEvents are discriminated by the `type` field.\n",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationEvent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}": {
       "get": {
         "summary": "Get a data source view",
@@ -12052,6 +12110,97 @@
           "userId": {
             "type": "string",
             "description": "sId of the user who owns the wake-up."
+          }
+        }
+      },
+      "PrivateSandboxFunctionInvocationEvent": {
+        "type": "object",
+        "description": "Server-Sent Event for sandbox function invocation streaming. Discriminated on the `type` field.",
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationCreatedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PrivateSandboxFunctionInvocationResultEvent"
+          }
+        ]
+      },
+      "PrivateSandboxFunctionInvocationCreatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "invocation"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sandbox_function_invocation_created"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "invocation": {
+            "type": "object",
+            "required": [
+              "sId",
+              "functionId",
+              "status",
+              "createdAt"
+            ],
+            "properties": {
+              "sId": {
+                "type": "string"
+              },
+              "functionId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "created"
+                ]
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "PrivateSandboxFunctionInvocationResultEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "invocationId",
+          "functionId",
+          "result"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "sandbox_function_invocation_result"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "invocationId": {
+            "type": "string"
+          },
+          "functionId": {
+            "type": "string"
+          },
+          "result": {
+            "description": "Result returned by the sandbox function."
           }
         }
       },
