@@ -15,6 +15,7 @@ import {
   getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
+  isSlackPostingPermissionError,
   isSlackWebAPIPlatformError,
   isWebAPIRateLimitedError,
   SlackExternalUserError,
@@ -85,6 +86,10 @@ const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
   "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <https://dust4ai.slack.com/marketplace/A09214D6XQT-dust|Dust App for Slack>).";
 const SLACK_ERROR_TEXT =
   "An unexpected error occurred while answering your message, please retry.";
+const SLACK_POSTING_PERMISSION_ERROR_MARKDOWN =
+  "Dust doesn't have permission to post in this channel. The agent answered, but " +
+  "Slack rejected the reply. Ask a workspace admin to allow the Dust app to post " +
+  "here, then retry.";
 
 // Keep aligned with front/types/files.ts MAX_FILE_SIZES for conversation uploads.
 const MAX_OTHER_FILE_SIZE_TO_UPLOAD = 50 * 1024 * 1024; // 50 MB
@@ -207,6 +212,13 @@ export async function botAnswerMessage(
           thread_ts: slackMessageTs,
           unfurl_links: false,
         });
+      } else if (isSlackPostingPermissionError(e)) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_POSTING_PERMISSION_ERROR_MARKDOWN),
+          thread_ts: slackMessageTs,
+          unfurl_links: false,
+        });
       } else {
         await slackClient.chat.postMessage({
           channel: slackChannel,
@@ -280,6 +292,13 @@ export async function botReplaceMention(
         await slackClient.chat.postMessage({
           channel: slackChannel,
           blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
+          thread_ts: slackMessageTs,
+          unfurl_links: false,
+        });
+      } else if (isSlackPostingPermissionError(e)) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_POSTING_PERMISSION_ERROR_MARKDOWN),
           thread_ts: slackMessageTs,
           unfurl_links: false,
         });
