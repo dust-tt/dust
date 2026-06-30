@@ -602,7 +602,9 @@ export const InputBarAttachmentsPicker = ({
         </DropdownMenuSubTrigger>
       )}
       <ContentWrapper
-        className="h-80 w-80 xs:h-96 xs:w-96"
+        // Radix ScrollArea wraps content in a content-height `display:table` div. Force it to fill
+        // the viewport so the empty-state's `h-full` centering resolves against the full height.
+        className="h-80 w-80 xs:h-96 xs:w-96 [&_[data-radix-scroll-area-viewport]>div]:h-full"
         collisionPadding={15}
         onEscapeKeyDown={() => setIsOpen(false)}
         {...(type === "subdropdown"
