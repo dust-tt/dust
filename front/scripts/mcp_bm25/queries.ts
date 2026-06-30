@@ -1341,6 +1341,85 @@ export const QUERIES: LabeledQuery[] = [
     expected: "google_calendar.get_user_timezones",
   },
 
+  // --- github ---
+  {
+    query: "open a new github issue for this bug",
+    expected: "github.create_issue",
+  },
+  {
+    query: "close a github issue and update its labels",
+    expected: "github.update_issue",
+  },
+  {
+    query: "show me the diff and reviews of a github pull request",
+    expected: "github.get_pull_request",
+  },
+  {
+    query: "approve a github pull request with review comments",
+    expected: "github.create_pull_request_review",
+  },
+  {
+    query: "list the open project boards in my github organization",
+    expected: "github.list_organization_projects",
+  },
+  {
+    query: "add a github issue to a project board",
+    expected: "github.add_issue_to_project",
+  },
+  {
+    query: "leave a comment on a github issue",
+    expected: "github.comment_on_issue",
+  },
+  {
+    query: "what discussion categories are available in this github repo",
+    expected: "github.list_discussion_categories",
+  },
+  {
+    query: "start a new github discussion in the repo",
+    expected: "github.create_discussion",
+  },
+  {
+    query: "reply to a github discussion thread",
+    expected: "github.comment_on_discussion",
+  },
+  {
+    query: "read a github discussion and its category",
+    expected: "github.get_discussion",
+  },
+  {
+    query: "fetch the comments on a github discussion",
+    expected: "github.get_discussion_comments",
+  },
+  {
+    query: "list the discussions in a github repository",
+    expected: "github.list_discussions",
+    // create_discussion is a much shorter sibling sharing the same
+    // github/discussion/repository tokens, so BM25 length normalization keeps
+    // it just above this longer, filter-heavy list tool; the user's "list"
+    // verb cannot fully overcome the short-document advantage.
+    maxRank: 2,
+  },
+  {
+    query: "get the details and comments of a github issue",
+    expected: "github.get_issue",
+  },
+  {
+    query: "read the project custom field values on a github issue",
+    expected: "github.get_issue_custom_fields",
+  },
+  {
+    query: "list the open issues in a github repository",
+    expected: "github.list_issues",
+  },
+  {
+    query: "search github issues and pull requests assigned to me",
+    expected: "github.search_advanced",
+  },
+  {
+    query: "list the open pull requests in a github repository",
+    expected: "github.list_pull_requests",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
