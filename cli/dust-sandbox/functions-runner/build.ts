@@ -28,7 +28,7 @@ export async function build(
 ): Promise<BuildResult> {
   // 1. Bundle the source with its relative imports into one module. External packages stay
   //    as imports (`packages: "external"`) for the sandbox harness to resolve at invocation time.
-  let bundled: string;
+  let bundle: Blob;
   try {
     const result = await Bun.build({
       entrypoints: [srcPath],
@@ -46,7 +46,7 @@ export async function build(
       };
     }
 
-    bundled = await result.outputs[0].text();
+    bundle = result.outputs[0];
   } catch (e) {
     return {
       ok: false,
@@ -54,7 +54,9 @@ export async function build(
     };
   }
 
-  await Bun.write(outBundlePath, bundled);
+  // The build artifact is an in-memory Blob. Hand it to Bun.write directly so its bytes go
+  // straight to the file instead of being decoded into a JS string first.
+  await Bun.write(outBundlePath, bundle);
 
   // 2. Extract the schema from the built artifact. Importing it also validates that the bundle
   //    loads and exposes a well-formed `schema` export.
