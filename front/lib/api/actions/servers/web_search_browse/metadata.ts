@@ -15,7 +15,9 @@ export const WEB_SEARCH_BROWSE_ACTION_DESCRIPTION =
 
 export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
   websearch: {
-    description: "Search Google web results based on a string query.",
+    description:
+      "Search Google for web results, news, and current online information. " +
+      "Look up any topic on the internet using a search query.",
     schema: WebsearchInputSchema.shape,
     stake: "never_ask",
     enableAlerting: true,
@@ -25,7 +27,10 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
     },
   },
   webbrowser: {
-    description: `Browse websites; provide a list of up to ${MAX_BROWSE_URLS} URLs to browse all at once.`,
+    description:
+      `Fetch and read the content of web pages and webpages from given URLs. ` +
+      `Open and browse websites to extract text, or take a viewport or ` +
+      `full-page screenshot. Accepts up to ${MAX_BROWSE_URLS} URLs at once.`,
     schema: WebbrowseInputSchema.shape,
     stake: "never_ask",
     enableAlerting: true,
