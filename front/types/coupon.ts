@@ -1,6 +1,16 @@
 import { z } from "zod";
 
-export type CouponDiscountType = "seat";
+// "seat" — discounts the monthly seat subscription price at checkout.
+// "credit_pool_top_up" — grants bonus AWU credits to the workspace credit pool.
+// For a "credit_pool_top_up" coupon, `amount` is expressed directly in AWU
+// credits (not in currency / cents), because AWU is a currency-independent unit.
+export type CouponDiscountType = "seat" | "credit_pool_top_up";
+
+// Context in which a coupon is being redeemed. Maps 1:1 to `CouponDiscountType`
+// ("seat" coupons apply to the "subscription" context, "credit_pool_top_up"
+// coupons to the "credits" / Top-Up context) but is named after the redemption
+// flow rather than the discount mechanic.
+export type CouponRedemptionContext = "subscription" | "credits";
 
 export type CouponRedemptionStatus =
   | "pending"
@@ -31,7 +41,7 @@ export interface CouponRedemptionType {
   status: CouponRedemptionStatus;
 }
 
-export const CouponDiscountTypeSchema = z.enum(["seat"]);
+export const CouponDiscountTypeSchema = z.enum(["seat", "credit_pool_top_up"]);
 
 export const CreateCouponBodySchema = z.object({
   code: z.string().min(1).max(64),
