@@ -66,6 +66,7 @@ export const RECONCILE_CREDIT_STATE_TARGETS = [
   "pool",
   "programmatic",
   "user",
+  "api_key",
 ] as const;
 
 export type ReconcileCreditStateTarget =
@@ -117,10 +118,19 @@ type UserReconcileReport = {
   consumedAwuCredits: number | null;
 };
 
+// Names aren't unique, so reconciling a key name covers every active key
+// sharing it (each reconciled per its own cap, matching the webhook/backfill).
+type ApiKeyTargetReconcileReport = {
+  target: "api_key";
+  keyName: string;
+  keys: ApiKeyReconcileReport[];
+};
+
 export type ReconcileCreditStateReport =
   | PoolReconcileReport
   | ProgrammaticReconcileReport
-  | UserReconcileReport;
+  | UserReconcileReport
+  | ApiKeyTargetReconcileReport;
 
 // Treat the legacy "normal" alias as its canonical "on_pool" value when
 // comparing the persisted state with the expected one (see USER_CREDIT_STATES).
@@ -144,6 +154,7 @@ export async function reconcileCreditState({
   metronomeCustomerId,
   target,
   userId,
+  keyName,
   execute,
 }: {
   auth: Authenticator;
@@ -151,6 +162,7 @@ export async function reconcileCreditState({
   metronomeCustomerId: string;
   target: ReconcileCreditStateTarget;
   userId: string | null;
+  keyName: string | null;
   execute: boolean;
 }): Promise<Result<ReconcileCreditStateReport, Error>> {
   switch (target) {
@@ -176,6 +188,39 @@ export async function reconcileCreditState({
         userId,
         execute,
       });
+    case "api_key": {
+      if (!keyName) {
+        return new Err(
+          new Error("A key name is required to reconcile the per-key state.")
+        );
+      }
+      const metronomeContractId =
+        auth.subscription()?.metronomeContractId ?? null;
+      const keys = await KeyResource.listActiveByWorkspaceAndName(
+        renderLightWorkspaceType({ workspace }),
+        keyName
+      );
+      if (keys.length === 0) {
+        return new Err(
+          new Error(`No active API key named '${keyName}' in this workspace.`)
+        );
+      }
+      const reports: ApiKeyReconcileReport[] = [];
+      for (const key of keys) {
+        const result = await reconcileApiKey({
+          workspaceId: workspace.sId,
+          metronomeCustomerId,
+          metronomeContractId,
+          key,
+          execute,
+        });
+        if (result.isErr()) {
+          return new Err(result.error);
+        }
+        reports.push(result.value);
+      }
+      return new Ok({ target: "api_key", keyName, keys: reports });
+    }
     default:
       return assertNever(target);
   }
