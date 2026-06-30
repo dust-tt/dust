@@ -71,16 +71,18 @@ export function isToolCategory(value: string): value is ToolCategory {
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
 const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
+  // Set as basic but overridden as free
+  agent_memory: "basic",
+  agent_router: "basic",
+  common_utilities: "basic",
+  toolsets: "basic",
+
   // Basic (1 AWU) — web search, orchestration, platform utilities.
   "web_search_&_browse": "basic",
   run_agent: "basic",
-  agent_router: "basic",
   agent_sidekick_agent_state: "basic",
   agent_sidekick_context: "basic",
-  agent_memory: "basic",
   run_dust_app: "basic",
-  common_utilities: "basic",
-  toolsets: "basic",
   user_mentions: "basic",
   missing_action_catcher: "basic",
   primitive_types_debugger: "basic",
@@ -153,9 +155,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   clari_copilot: "advanced",
 };
 
-export function getToolCategory(
-  internalMCPServerName: string | null
-): ToolCategory {
+function getToolCategory(internalMCPServerName: string | null): ToolCategory {
   if (
     !internalMCPServerName ||
     !isInternalMCPServerName(internalMCPServerName)
@@ -173,26 +173,29 @@ export function getToolCategory(
 
 // Origins whose entire conversation is free (platform-assistive, not
 // user-requested output).
-export const FREE_ORIGINS: ReadonlySet<string> = new Set<string>([
-  "agent_sidekick",
-]);
+export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
+  new Set<UserMessageOrigin>(["agent_sidekick"]);
 
 // Internal MCP servers whose tool invocations are always free regardless of
 // the message-level usage type (platform plumbing, not user output).
 const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
+  "agent_memory",
   "agent_router",
   "common_utilities",
   "toolsets",
-  "agent_memory",
 ]);
 
-export function isFreeOrigin(origin: string): boolean {
+function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
+  if (origin == null) {
+    return false;
+  }
+
   return FREE_ORIGINS.has(origin);
 }
 
 export function getUsageType(
   isProgrammaticUsage: boolean,
-  origin: string
+  origin: UserMessageOrigin
 ): UsageType {
   if (isFreeOrigin(origin)) {
     return USAGE_TYPE_FREE;
@@ -202,8 +205,8 @@ export function getUsageType(
 
 // A tool invocation is always free (priced at 0 in the rate card) when its
 // internal MCP server is platform plumbing — see FREE_TOOL_SERVERS.
-export function isFreeToolServer(
-  internalMCPServerName: string | null
+function isFreeToolServer(
+  internalMCPServerName: InternalMCPServerNameType | null
 ): boolean {
   return (
     internalMCPServerName !== null &&
@@ -213,7 +216,7 @@ export function isFreeToolServer(
 
 function getToolUsageType(
   baseUsageType: UsageType,
-  internalMCPServerName: string | null
+  internalMCPServerName: InternalMCPServerNameType | null
 ): UsageType {
   if (isFreeToolServer(internalMCPServerName)) {
     return USAGE_TYPE_FREE;
@@ -261,8 +264,13 @@ export function awuFromMicroUsd(microUsd: number): number {
 // `intelligenceAwuFromRunUsagesGroupedByRunKey` (which ceils per execution),
 // not this directly over the union of all runs.
 export function intelligenceAwuFromRunUsages(
-  runUsages: RunUsageType[]
+  runUsages: RunUsageType[],
+  contextOrigin: UserMessageOrigin | null
 ): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+
   const costByModel = new Map<string, number>();
   for (const usage of runUsages) {
     // Need this grouping to rightfully apply the Math.ceil in awuFromMicroUsd
@@ -289,8 +297,13 @@ const LEGACY_RUN_KEY = "__legacy__";
 // instead would undercount (`ceil(a) + ceil(b) >= ceil(a + b)`), so we group by
 // runKey first, ceil each group via `intelligenceAwuFromRunUsages`, then sum.
 export function intelligenceAwuFromRunUsagesGroupedByRunKey(
-  runUsages: (RunUsageType & { runKey: string | null })[]
+  runUsages: (RunUsageType & { runKey: string | null })[],
+  contextOrigin: UserMessageOrigin | null
 ): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+
   const byRunKey = new Map<string, RunUsageType[]>();
   for (const usage of runUsages) {
     const key = usage.runKey ?? LEGACY_RUN_KEY;
@@ -301,7 +314,7 @@ export function intelligenceAwuFromRunUsagesGroupedByRunKey(
 
   let total = 0;
   for (const group of byRunKey.values()) {
-    total += intelligenceAwuFromRunUsages(group);
+    total += intelligenceAwuFromRunUsages(group, contextOrigin);
   }
   return total;
 }
@@ -313,17 +326,28 @@ export function intelligenceAwuFromRunUsagesGroupedByRunKey(
 // should pass only final-status actions (matching the usage_queue extraction)
 // so this equals the billed amount.
 export function toolAwuFromActions(
-  actions: { internalMCPServerName: string | null }[]
+  actions: { internalMCPServerName: InternalMCPServerNameType | null }[],
+  contextOrigin: UserMessageOrigin | null
 ): number {
   return actions.reduce((total, action) => {
-    if (isFreeToolServer(action.internalMCPServerName)) {
-      return total;
-    }
     return (
-      total +
-      TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(action.internalMCPServerName)]
+      total + toolAwuFromServerName(action.internalMCPServerName, contextOrigin)
     );
   }, 0);
+}
+
+export function toolAwuFromServerName(
+  internalMCPServerName: InternalMCPServerNameType | null,
+  contextOrigin: UserMessageOrigin | null
+): number {
+  if (isFreeOrigin(contextOrigin)) {
+    return 0;
+  }
+
+  if (isFreeToolServer(internalMCPServerName)) {
+    return 0;
+  }
+  return TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(internalMCPServerName)];
 }
 
 // ---------------------------------------------------------------------------

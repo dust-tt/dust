@@ -1,3 +1,4 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
@@ -5,7 +6,6 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   computeRunKey,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
-  isFreeOrigin,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -17,21 +17,24 @@ import {
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import {
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
+  type UserMessageOrigin,
+} from "@app/types/assistant/conversation";
 
 interface CreditActionMinimalInput {
-  internalMCPServerName: string | null;
+  internalMCPServerName: InternalMCPServerNameType | null;
   status: ToolExecutionStatus;
 }
 
 export function computeAgentMessageCredits({
   runUsages,
   actions,
-  isFreeUsage = false,
+  contextOrigin,
 }: {
   runUsages: (RunUsageType & { runKey: string | null })[];
   actions: CreditActionMinimalInput[];
-  isFreeUsage?: boolean;
+  contextOrigin: UserMessageOrigin | null;
 }): number | null {
   const finalActions = actions.filter((a) =>
     isToolExecutionStatusFinal(a.status)
@@ -41,16 +44,12 @@ export function computeAgentMessageCredits({
     return null;
   }
 
-  if (isFreeUsage) {
-    return 0;
-  }
-
   // Intelligence cost is ceiled per agent-loop execution (runKey) to match the
   // per-execution Metronome events. Tool cost has no ceiling (fixed 1/3 per
   // action), so it is grouping-invariant and stays message-level.
   return (
-    intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages) +
-    toolAwuFromActions(finalActions)
+    intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages, contextOrigin) +
+    toolAwuFromActions(finalActions, contextOrigin)
   );
 }
 
@@ -121,9 +120,7 @@ export async function computeAndStoreAgentMessageCredits(
       internalMCPServerName: action.metadata.internalMCPServerName,
       status: action.status,
     })),
-    isFreeUsage:
-      triggeringUserMessageOrigin !== null &&
-      isFreeOrigin(triggeringUserMessageOrigin),
+    contextOrigin: triggeringUserMessageOrigin,
   });
 
   await ConversationResource.updateAgentMessageCostCredits(auth, {
