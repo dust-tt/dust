@@ -123,7 +123,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
     const body = await response.json();
     expect(body).toEqual({
       invocation: {
-        id: "test-invocation-id",
+        sId: "test-invocation-id",
         functionId: sandboxFunction.sId,
         status: "created",
         createdAt,
