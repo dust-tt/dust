@@ -1,3 +1,4 @@
+import { closeActivePlan } from "@app/lib/api/assistant/plan_mode";
 import { copyConversationGCSMount } from "@app/lib/api/files/gcs_mount/files";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -74,6 +75,22 @@ export async function copyConversationGCSMountActivity({
         copiedCount: result.value.copiedCount,
       },
       "[conversation_fork_queue] Copied GCS mount files between conversations."
+    );
+  }
+
+  // The source plan (todos) was copied into the fork as an active `plan.md`. Archive it on the
+  // fork so the new conversation does not start with the parent's todo card while still keeping
+  // the plan available in `archived_plans` (same behavior as closing a plan).
+  const archiveRes = await closeActivePlan(auth, dest.toJSON());
+  if (archiveRes.isErr()) {
+    logger.error(
+      {
+        workspaceId,
+        sourceConversationId,
+        destConversationId,
+        error: archiveRes.error,
+      },
+      "[conversation_fork_queue] Failed to archive forked plan. Unblocking fork."
     );
   }
 

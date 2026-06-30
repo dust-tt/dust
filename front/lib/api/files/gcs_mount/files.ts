@@ -1,8 +1,4 @@
 import {
-  ARCHIVED_PLANS_DIR_NAME,
-  PLAN_FILE_NAME,
-} from "@app/lib/api/actions/servers/plan_mode/metadata";
-import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
@@ -28,16 +24,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 const GCS_MOUNT_COPY_CONCURRENCY = 4;
 const GCS_MOUNT_COPY_MAX_FILES = 5000;
-
-// Plan mode (todos) state is conversation-specific: the active `plan.md` and any archived plans
-// belong to the source conversation only. A fork should start without the parent's todos, so we
-// skip these files when copying the conversation mount.
-function isPlanModeArtifact(relativePath: string): boolean {
-  return (
-    relativePath === PLAN_FILE_NAME ||
-    relativePath.startsWith(`${ARCHIVED_PLANS_DIR_NAME}/`)
-  );
-}
 
 export type GCSMountPoint =
   | { useCase: "conversation"; conversationId: string }
@@ -350,12 +336,6 @@ export async function copyConversationGCSMount(
       currentFiles,
       async (gcsFile) => {
         const relativePath = gcsFile.name.slice(sourcePrefix.length);
-
-        // Do not carry the source conversation's plan mode (todos) state into the fork.
-        if (isPlanModeArtifact(relativePath)) {
-          return;
-        }
-
         const destPath = `${destPrefix}${relativePath}`;
 
         const isUnchanged =
