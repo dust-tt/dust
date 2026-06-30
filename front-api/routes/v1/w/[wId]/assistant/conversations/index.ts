@@ -27,7 +27,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithContentNode,
@@ -143,18 +142,6 @@ app.post(
       blocking,
       spaceId,
     } = ctx.req.valid("json");
-
-    // Extremely temporary debug.
-    if (auth.getNonNullableWorkspace().sId === "ba367d3014") {
-      logger.info(
-        {
-          message: "conversations/index",
-          body: ctx.req.valid("json"),
-          rawBody: await ctx.req.text(),
-        },
-        "conversations/index"
-      );
-    }
 
     const origin = message?.context.origin ?? "api";
 
