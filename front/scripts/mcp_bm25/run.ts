@@ -35,6 +35,7 @@ import {
 } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
+import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
@@ -118,6 +119,7 @@ const SERVERS: ServerEntry[] = [
   { name: "include_data", tools: INCLUDE_DATA_SERVER.tools },
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
   { name: "salesloft", tools: SALESLOFT_SERVER.tools },
+  { name: "slab", tools: SLAB_SERVER.tools },
   { name: "interactive_content", tools: INTERACTIVE_CONTENT_SERVER.tools },
   { name: "snowflake", tools: SNOWFLAKE_SERVER.tools },
   {
