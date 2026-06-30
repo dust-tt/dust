@@ -45,7 +45,7 @@ app.post("/sync", async (ctx): HandlerResult<SyncCouponResponseBody> => {
 
   const body: CouponType = await ctx.req.json();
 
-  const result = await CouponResource.upsertBySId(body);
+  const result = await CouponResource.upsertById(body);
   if (result.isErr()) {
     return apiError(ctx, {
       status_code: 500,

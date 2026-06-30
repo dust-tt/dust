@@ -167,7 +167,14 @@ export class CouponResource extends BaseResource<CouponModel> {
     };
   }
 
-  static async upsertBySId(
+  // Used exclusively for cross-region coupon sync. When a coupon is created in
+  // the main region (US) and pushed to the secondary region (EU), the EU row
+  // must share the exact same numeric primary key as the US row. This is
+  // required because CouponRedemptionModel.couponId is a numeric FK: if a
+  // workspace relocates cross-region, its redemptions must still resolve to the
+  // correct coupon row. INSERT ... ON CONFLICT (id) DO UPDATE preserves the PK
+  // without advancing the EU sequence, keeping both regions in sync.
+  static async upsertById(
     coupon: CouponType
   ): Promise<Result<CouponResource, Error>> {
     try {
