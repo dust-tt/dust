@@ -914,6 +914,96 @@ export const QUERIES: LabeledQuery[] = [
     expected: "pod_manager.add_message_to_conversation",
   },
 
+  // --- val_town ---
+  {
+    query: "create a new Val Town project for a scheduled script",
+    expected: "val_town.create_val",
+  },
+  {
+    query: "set up a new serverless Val Town function",
+    expected: "val_town.create_val",
+  },
+  {
+    query: "get a specific Val Town val by its ID",
+    expected: "val_town.get_val",
+  },
+  {
+    query: "retrieve a Val Town project and its files and metadata",
+    expected: "val_town.get_val",
+  },
+  {
+    query: "show the vals available in my Val Town account",
+    expected: "val_town.list_vals",
+  },
+  {
+    query: "list Val Town projects in my account",
+    expected: "val_town.list_vals",
+  },
+  {
+    query: "search for a Val Town val by name or code",
+    expected: "val_town.search_vals",
+  },
+  {
+    query: "find Val Town projects matching a description",
+    expected: "val_town.search_vals",
+  },
+  {
+    query: "list the files in a Val Town val",
+    expected: "val_town.list_val_files",
+  },
+  {
+    query: "show all files in a specific Val Town project",
+    expected: "val_town.list_val_files",
+  },
+  {
+    query: "get the content of a specific file in Val Town",
+    expected: "val_town.get_file_content",
+  },
+  {
+    query: "read the content of a file in Val Town",
+    expected: "val_town.get_file_content",
+  },
+  {
+    query: "delete a file from a Val Town val",
+    expected: "val_town.delete_file",
+  },
+  {
+    query: "remove a file from a Val Town project",
+    expected: "val_town.delete_file",
+  },
+  {
+    query: "update the code of a Val Town file",
+    expected: "val_town.update_file_content",
+  },
+  {
+    query: "update a Val Town file's content",
+    expected: "val_town.update_file_content",
+  },
+  {
+    query: "rename a Val Town file",
+    expected: "val_town.write_file",
+  },
+  {
+    query: "move a Val Town file to another directory",
+    expected: "val_town.write_file",
+  },
+  {
+    query: "create a new empty file in a Val Town val",
+    expected: "val_town.create_file",
+  },
+  {
+    query: "create a file in an existing Val Town val",
+    expected: "val_town.create_file",
+  },
+  {
+    query: "call an HTTP endpoint in Val Town",
+    expected: "val_town.call_http_endpoint",
+  },
+  {
+    query: "run a Val Town HTTP val endpoint",
+    expected: "val_town.call_http_endpoint",
+  },
+
   // --- vanta ---
   {
     query: "show all automated Vanta compliance tests",

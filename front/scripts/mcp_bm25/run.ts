@@ -36,6 +36,7 @@ import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metad
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
+import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
@@ -119,6 +120,7 @@ const SERVERS: ServerEntry[] = [
   { name: "data_warehouses", tools: DATA_WAREHOUSES_SERVER.tools },
   { name: "query_tables_v2", tools: QUERY_TABLES_V2_SERVER.tools },
   { name: "pod_manager", tools: POD_MANAGER_SERVER.tools },
+  { name: "val_town", tools: VAL_TOWN_SERVER.tools },
   { name: "vanta", tools: VANTA_SERVER.tools },
   {
     name: "workspace_analytics",
