@@ -255,7 +255,7 @@ describe("ensureConversationSandboxReady", () => {
         {
           kind: "pod_sandbox_functions",
           id: pod.sId,
-          sandboxMountPoint: `/sandbox_functions/pods/${pod.sId}`,
+          sandboxMountPoint: `/sandbox-functions/pods/${pod.sId}`,
           readOnly: true,
         },
       ],

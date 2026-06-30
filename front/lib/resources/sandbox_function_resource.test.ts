@@ -452,7 +452,7 @@ describe("SandboxFunctionResource", () => {
     // The bundle is read from the read-only mount, so the command is just the run, no staging write.
     expect(command).toBe("/opt/bin/dsbx function run 'add-comment'");
     expect(opts?.envVars).toMatchObject({
-      DUST_FUNCTIONS_DIR: `/sandbox_functions/pods/${space.sId}`,
+      DUST_FUNCTIONS_DIR: `/sandbox-functions/pods/${space.sId}`,
       DUST_SANDBOX_TOKEN: "sbt-function-token",
     });
     expect(opts?.user).toBe("agent-proxied");

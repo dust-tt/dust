@@ -175,7 +175,7 @@ describe("buildAccessBoundaryRules", () => {
 
   it("grants read-only (objectViewer) for a read-only prefix", () => {
     const rules = buildAccessBoundaryRules("bucket-x", [
-      { prefix: "w/ws1/pods/spc1/sandbox_functions", readOnly: true },
+      { prefix: "w/ws1/pods/spc1/sandbox-functions", readOnly: true },
     ]);
     expect(
       rules.some((r) => r.availablePermissions[0].includes("objectViewer"))

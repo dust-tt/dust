@@ -59,7 +59,7 @@ describe("mount_path helpers", () => {
     it("should return a dedicated prefix separate from pod files", () => {
       expect(
         getPodSandboxFunctionsBasePath({ workspaceId: "ws1", podId: "spc1" })
-      ).toBe("w/ws1/pods/spc1/sandbox_functions/");
+      ).toBe("w/ws1/pods/spc1/sandbox-functions/");
     });
   });
 

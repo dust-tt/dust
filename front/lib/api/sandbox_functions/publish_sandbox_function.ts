@@ -15,7 +15,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * bundle and its extracted contract.
  *
  * The bundle is stored as a single `project_context` FileResource with the sandbox-function content
- * type, which FileResource routes into the dedicated, front-only sandbox_functions prefix. The
+ * type, which FileResource routes into the dedicated, front-only sandbox-functions prefix. The
  * SandboxFunctionResource is upserted on (space, slug): re-publish swaps the bundle, otherwise a new
  * row is created. Returns a domain Result, no HTTP shapes (BACK18).
  */

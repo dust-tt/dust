@@ -84,7 +84,7 @@ export function getPodSandboxFunctionsBasePath({
   workspaceId: string;
   podId: string;
 }): string {
-  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/sandbox_functions/`;
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/sandbox-functions/`;
 }
 
 /**
@@ -93,7 +93,7 @@ export function getPodSandboxFunctionsBasePath({
  * collision.
  */
 export function getPodSandboxFunctionsMountPoint(podId: string): string {
-  return `/sandbox_functions/pods/${podId}`;
+  return `/sandbox-functions/pods/${podId}`;
 }
 
 /**

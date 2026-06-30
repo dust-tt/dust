@@ -103,7 +103,7 @@ describe("publishSandboxFunction", () => {
     expect(bundle.fileName).toBe("greet.ts");
     expect(bundle.useCaseMetadata?.spaceId).toBe(space.sId);
     expect(bundle.mountFilePath).toBe(
-      `w/${workspace.sId}/pods/${space.sId}/sandbox_functions/greet.ts`
+      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
     );
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
@@ -165,7 +165,7 @@ describe("publishSandboxFunction", () => {
     });
     expect(files.map((file) => file.id)).toEqual([firstFileId]);
     expect(files[0].mountFilePath).toBe(
-      `w/${workspace.sId}/pods/${space.sId}/sandbox_functions/greet.ts`
+      `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greet.ts`
     );
     expect(files[0].version).toBeGreaterThan(firstVersion ?? 0);
   });

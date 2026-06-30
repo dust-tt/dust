@@ -613,7 +613,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   private sandboxOnlyMountGCSPrefix(mount: SandboxOnlyMount): string {
     switch (mount.kind) {
       case "pod_sandbox_functions":
-        return `w/${this.workspaceId}/pods/${mount.id}/sandbox_functions`;
+        return `w/${this.workspaceId}/pods/${mount.id}/sandbox-functions`;
 
       default:
         assertNever(mount.kind);
