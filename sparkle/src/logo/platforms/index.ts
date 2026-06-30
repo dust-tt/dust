@@ -94,6 +94,7 @@ export { default as UkgLogo } from "./Ukg";
 export { default as ValTownLogo } from "./ValTown";
 export { default as VantaLogo } from "./Vanta";
 export { default as VideoLogo } from "./Video";
+export { default as YoutrustLogo } from "./Youtrust";
 export { default as ZapierLogo } from "./Zapier";
 export { default as ZendeskLogo } from "./Zendesk";
 export { default as ZendeskWhiteLogo } from "./ZendeskWhite";
