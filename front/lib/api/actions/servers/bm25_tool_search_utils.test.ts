@@ -5,6 +5,7 @@ import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
@@ -189,4 +190,8 @@ export const SERVERS: ServerEntry[] = [
   { name: "microsoft_excel", tools: MICROSOFT_EXCEL_SERVER.tools },
   { name: "openai_usage", tools: OPENAI_USAGE_SERVER.tools },
   { name: "databricks", tools: DATABRICKS_SERVER.tools },
+  {
+    name: "data_sources_file_system",
+    tools: DATA_SOURCES_FILE_SYSTEM_SERVER.tools,
+  },
 ];
