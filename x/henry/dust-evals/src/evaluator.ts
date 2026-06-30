@@ -267,6 +267,15 @@ export async function runEvaluation(
       ).length
     : 0
 
+  // Aggregate agent message cost (in Dust credits) across every result that has
+  // a known cost.
+  const costCredits = results
+    .map((r) => r.agentCostCredits)
+    .filter((c): c is number => typeof c === "number")
+  const totalCostCredits = costCredits.reduce((a, b) => a + b, 0)
+  const averageCostCredits =
+    costCredits.length > 0 ? totalCostCredits / costCredits.length : null
+
   return Ok({
     config,
     startTime: checkpointStartTime,
@@ -283,6 +292,8 @@ export async function runEvaluation(
       normalizedAverageScore: normalizedAvg,
       averageJudgeAgreement: avgAgreement,
       lowAgreementCount,
+      totalCostCredits,
+      averageCostCredits,
     },
     metadata: {
       scaleUsed: scale,
@@ -453,11 +464,13 @@ async function executeTask(
     `  [${agentId}] "${row.prompt.substring(0, PROMPT_DISPLAY_LENGTH)}..." (run ${runNumber})`
   )
 
-  // Call agent
+  // Call agent (attaching any files referenced by the prompt row)
   const agentResult = await client.callAgent(
     agentId,
     row.prompt,
-    config.timeout
+    config.timeout,
+    true,
+    row.files
   )
 
   if (!agentResult.isOk) {
@@ -486,6 +499,7 @@ async function executeTask(
       agentConversationId: agentResponse.conversationId,
       agentMessageId: agentResponse.messageId,
       agentRetryCount: agentResponse.retryCount,
+      agentCostCredits: agentResponse.costCredits,
       error: agentResponse.error,
       wasTimeout: agentResponse.wasTimeout,
     }
@@ -503,7 +517,7 @@ async function executeTask(
   // Execute all judge calls concurrently
   const judgePromises = Array.from({ length: config.judgeRuns }, (_, i) =>
     client
-      .callJudge(config.judgeAgent, judgePrompt, config.timeout)
+      .callJudge(config.judgeAgent, judgePrompt, config.timeout, row.files)
       .then((result) => ({ index: i, result }))
   )
 
@@ -558,6 +572,7 @@ async function executeTask(
       agentConversationId: agentResponse.conversationId,
       agentMessageId: agentResponse.messageId,
       agentRetryCount: agentResponse.retryCount,
+      agentCostCredits: agentResponse.costCredits,
       error: `Unreliable: ${judgeFailures}/${config.judgeRuns} judge evaluations failed`,
       wasTimeout: undefined,
     }
@@ -577,6 +592,7 @@ async function executeTask(
       agentConversationId: agentResponse.conversationId,
       agentMessageId: agentResponse.messageId,
       agentRetryCount: agentResponse.retryCount,
+      agentCostCredits: agentResponse.costCredits,
       error: "All judge evaluations failed",
       wasTimeout: undefined,
     }
@@ -599,6 +615,7 @@ async function executeTask(
     agentConversationId: agentResponse.conversationId,
     agentMessageId: agentResponse.messageId,
     agentRetryCount: agentResponse.retryCount,
+    agentCostCredits: agentResponse.costCredits,
     error: undefined,
     wasTimeout: undefined,
   }
@@ -627,6 +644,7 @@ function createErrorResult(
     agentConversationId: "",
     agentMessageId: "",
     agentRetryCount: 0,
+    agentCostCredits: null,
     error: errorMessage,
     wasTimeout: undefined,
   }
@@ -644,6 +662,15 @@ function calculateStatistics(
     const successfulResults = agentResults.filter((r) => !r.error)
     const timeoutResults = agentResults.filter((r) => r.wasTimeout)
     const scores = successfulResults.map((r) => r.judgeResult.finalScore)
+
+    // Cost is incurred whenever the agent produced a message, so aggregate over
+    // all results (not just judged-successful ones) that have a known cost.
+    const costCredits = agentResults
+      .map((r) => r.agentCostCredits)
+      .filter((c): c is number => typeof c === "number")
+    const totalCostCredits = costCredits.reduce((a, b) => a + b, 0)
+    const averageCostCredits =
+      costCredits.length > 0 ? totalCostCredits / costCredits.length : null
 
     if (scores.length === 0) {
       stats.push({
@@ -663,6 +690,8 @@ function calculateStatistics(
         averageDurationMs: 0,
         averageRetryCount: 0,
         averageJudgeAgreement: 0,
+        averageCostCredits,
+        totalCostCredits,
       })
       continue
     }
@@ -703,6 +732,8 @@ function calculateStatistics(
       averageDurationMs: avgDuration,
       averageRetryCount: avgRetries,
       averageJudgeAgreement: avgAgreement,
+      averageCostCredits,
+      totalCostCredits,
     })
   }
 
