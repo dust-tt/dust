@@ -1478,6 +1478,12 @@ export const QUERIES: LabeledQuery[] = [
     expected: "exa_people_and_company.search_companies",
   },
 
+  // --- databricks ---
+  {
+    query: "list the SQL warehouses in my Databricks workspace",
+    expected: "databricks.list_warehouses",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
