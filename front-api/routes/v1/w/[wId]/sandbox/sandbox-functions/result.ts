@@ -1,3 +1,5 @@
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox/functions/events";
+import { isSandboxFunctionInvocationTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -29,11 +31,22 @@ app.post(
     const { function: functionName, result } = ctx.req.valid("json");
 
     void auth;
-    void sandboxClaims;
     void functionName;
-    void result;
 
-    // TODO(spolu): Post the result event to the sandbox function invocation stream.
+    if (!isSandboxFunctionInvocationTokenPayload(sandboxClaims)) {
+      return ctx.json({ success: true });
+    }
+
+    await publishSandboxFunctionInvocationEvent(
+      {
+        type: "sandbox_function_invocation_result",
+        created: Date.now(),
+        invocationId: sandboxClaims.invocationId,
+        functionId: sandboxClaims.sandboxFunctionId,
+        result,
+      },
+      { invocationId: sandboxClaims.invocationId }
+    );
 
     return ctx.json({ success: true });
   }

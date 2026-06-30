@@ -9,6 +9,17 @@ import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@app/lib/api/sandbox/functions/events", async (importOriginal) => {
+  const mod =
+    await importOriginal<typeof import("@app/lib/api/sandbox/functions/events")>();
+  return {
+    ...mod,
+    publishSandboxFunctionInvocationEvent: vi.fn(),
+  };
+});
+
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox/functions/events";
+
 const inputSchema: JSONSchema = {
   type: "object",
   properties: {
@@ -133,6 +144,19 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
       input: { message: "hello" },
       context: { frameFileId: sandboxFunction.file.sId },
     });
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      {
+        type: "sandbox_function_invocation_created",
+        created: Date.parse(createdAt),
+        invocation: {
+          sId: "test-invocation-id",
+          functionId: sandboxFunction.sId,
+          status: "created",
+          createdAt,
+        },
+      },
+      { invocationId: "test-invocation-id" }
+    );
   });
 
   it("returns 404 when the user cannot access the function space", async () => {
