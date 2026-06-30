@@ -20,7 +20,7 @@ import type {
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import {
   extractEncryptedContentFromMetadata,
-  extractIdFromMetadata,
+  parseReasoningMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -165,15 +165,16 @@ export function toBaseMessages(
                   },
                 ];
               }
+              const { id, encryptedContent } = parseReasoningMetadata(
+                c.value.metadata
+              );
               return [
                 {
                   role: "assistant",
                   type: "reasoning",
                   content: { value: c.value.reasoning },
-                  signature: extractIdFromMetadata(c.value.metadata),
-                  encryptedContent: extractEncryptedContentFromMetadata(
-                    c.value.metadata
-                  ),
+                  signature: id,
+                  encryptedContent,
                 },
               ];
             }
