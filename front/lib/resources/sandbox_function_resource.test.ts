@@ -11,6 +11,7 @@ import {
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
@@ -50,6 +51,7 @@ const outputSchema: JSONSchema = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fileStorageMock.reset();
 });
 
 describe("SandboxFunctionResource", () => {
@@ -477,6 +479,82 @@ describe("SandboxFunctionResource", () => {
       body: JSON.stringify({ message: "hello" }),
       encoding: "utf8",
     });
+  });
+
+  it("overwrites the bundle and contract in place on re-publish", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+
+    const firstFile = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "greet.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    await firstFile.uploadContent(authenticator, "v1");
+
+    const sandboxFunction = await SandboxFunctionResource.makeNew(
+      authenticator,
+      {
+        space,
+        file: firstFile,
+        slug: "greet",
+        description: "First.",
+        inputSchema,
+        outputSchema,
+      }
+    );
+    const firstVersion = firstFile.version;
+
+    const newInputSchema: JSONSchema = {
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+    };
+    const newOutputSchema: JSONSchema = {
+      type: "object",
+      properties: { text: { type: "string" } },
+      required: ["text"],
+    };
+
+    const result = await sandboxFunction.updateContent(authenticator, {
+      bundleCode: "v2",
+      description: "Second.",
+      inputSchema: newInputSchema,
+      outputSchema: newOutputSchema,
+    });
+    expect(result.isOk()).toBe(true);
+
+    // The row keeps the same bundle file and gets the refreshed contract.
+    expect(sandboxFunction.fileId).toBe(firstFile.id);
+    expect(sandboxFunction.description).toBe("Second.");
+    expect(sandboxFunction.inputSchema).toEqual(newInputSchema);
+    expect(sandboxFunction.outputSchema).toEqual(newOutputSchema);
+    expect(sandboxFunction.file.id).toBe(firstFile.id);
+    // Re-upload bumped the bundle's version rather than creating a new file.
+    expect(sandboxFunction.file.version).toBeGreaterThan(firstVersion);
+
+    // Exactly one row and one (reused) bundle file remain.
+    const listed = await SandboxFunctionResource.listBySpace(
+      authenticator,
+      space
+    );
+    expect(listed.map(({ id }) => id)).toEqual([sandboxFunction.id]);
+    await expect(
+      FileResource.fetchById(authenticator, firstFile.sId)
+    ).resolves.not.toBeNull();
+
+    const fetched = await SandboxFunctionResource.fetchById(
+      authenticator,
+      sandboxFunction.sId
+    );
+    expect(fetched?.fileId).toBe(firstFile.id);
+    expect(fetched?.description).toBe("Second.");
+    expect(fetched?.outputSchema).toEqual(newOutputSchema);
   });
 
   it("deletes all sandbox functions for a space", async () => {

@@ -1,5 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { SANDBOX_FUNCTION_SLUG_REGEX } from "@app/types/api/sandbox_functions";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -36,7 +37,41 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
       done: "Got sandbox function",
     },
   },
-  // TODO(SANDBOX_FUNCTION) Add publish tool once we have pod's sandboxes.
+  publish: {
+    description:
+      "Publish a sandbox function from a TypeScript source file in the current pod. The source " +
+      "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
+      "`schema` with zod `input` and `output`. It is bundled on the pod sandbox (only `zod` is " +
+      "available to import) and its input and output JSON schemas are extracted from the `schema` " +
+      "export. Re-publishing the same slug replaces the previous version.",
+    schema: {
+      slug: z
+        .string()
+        .regex(SANDBOX_FUNCTION_SLUG_REGEX)
+        .describe(
+          "Unique function identifier within the pod: lowercase alphanumeric with single hyphen " +
+            "separators (e.g. `send-slack-message`)."
+        ),
+      description: z
+        .string()
+        .min(1)
+        .describe(
+          "Short description of what the function does, shown by the list tool."
+        ),
+      path: z
+        .string()
+        .min(1)
+        .describe(
+          "Scoped path to the function's TypeScript source in the pod, as shown by the files " +
+            "tools (e.g. `pod-<id>/greet.ts`)."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Publishing sandbox function...",
+      done: "Published sandbox function",
+    },
+  },
 });
 
 export const SANDBOX_FUNCTIONS_SERVER = {

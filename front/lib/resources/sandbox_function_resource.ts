@@ -11,10 +11,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  isValidSandboxFunctionSlug,
-  SandboxFunctionModel,
-} from "@app/lib/resources/storage/models/sandbox_function";
+import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -27,6 +24,7 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
+import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -171,6 +169,36 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
 
     return new this(this.model, sandboxFunction.get(), space, file);
+  }
+
+  /**
+   * Re-publish: overwrite this function's bundle in place and refresh its contract. uploadContent
+   * rewrites the same file (canonical original plus its mount path <prefix>/<slug>.ts) and bumps the
+   * version, so the function's storage path stays stable across re-publishes rather than drifting to
+   * a disambiguated name. The caller checks write permission.
+   */
+  async updateContent(
+    auth: Authenticator,
+    {
+      bundleCode,
+      description,
+      inputSchema,
+      outputSchema,
+    }: {
+      bundleCode: string;
+      description: string;
+      inputSchema: JSONSchema;
+      outputSchema: JSONSchema;
+    }
+  ): Promise<Result<undefined, Error>> {
+    try {
+      await this.file.uploadContent(auth, bundleCode);
+      await this.update({ description, inputSchema, outputSchema });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+
+    return new Ok(undefined);
   }
 
   private static async baseFetch(
