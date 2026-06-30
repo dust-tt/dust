@@ -13,7 +13,6 @@ export const MODEL_PROVIDER_IDS = [
   "anthropic",
   "mistral",
   "google_ai_studio",
-  "togetherai",
   "deepseek",
   "fireworks",
   "xai",
@@ -38,8 +37,6 @@ export function getProviderDisplayName(
       return "Mistral";
     case "google_ai_studio":
       return "Google";
-    case "togetherai":
-      return "TogetherAI";
     case "deepseek":
       return "DeepSeek";
     case "fireworks":

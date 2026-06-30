@@ -10,7 +10,6 @@ import {
   GrokLogo,
   MistralLogo,
   OpenaiLogo,
-  TogetheraiLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -36,9 +35,6 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   },
   google_ai_studio: {
     light: GeminiLogo,
-  },
-  togetherai: {
-    light: TogetheraiLogo,
   },
   deepseek: {
     light: DeepseekLogo,

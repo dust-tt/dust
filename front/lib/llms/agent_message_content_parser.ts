@@ -11,7 +11,6 @@ import {
 } from "@app/types/assistant/chain_of_thought_meta_prompt";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 import { DEEPSEEK_CHAT_MODEL_ID } from "@app/types/assistant/models/deepseek";
-import { TOGETHERAI_DEEPSEEK_V3_MODEL_ID } from "@app/types/assistant/models/togetherai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import escapeRegExp from "lodash/escapeRegExp";
@@ -282,10 +281,7 @@ export class AgentMessageContentParser {
   }
 }
 
-const DEEPSEEK_MODELS: ModelIdType[] = [
-  TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
-  DEEPSEEK_CHAT_MODEL_ID,
-];
+const DEEPSEEK_MODELS: ModelIdType[] = [DEEPSEEK_CHAT_MODEL_ID];
 
 export function getDelimitersConfiguration({
   model,

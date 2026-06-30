@@ -302,26 +302,6 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 1.25,
     output: 15.0,
   },
-  "meta-llama/Llama-3.3-70B-Instruct-Turbo": {
-    input: 0.88,
-    output: 0.88,
-  },
-  "Qwen/Qwen2.5-Coder-32B-Instruct": {
-    input: 0.5,
-    output: 0.5,
-  },
-  "Qwen/QwQ-32B-Preview": {
-    input: 0.5,
-    output: 0.5,
-  },
-  "Qwen/Qwen2-72B-Instruct": {
-    input: 0.9,
-    output: 0.9,
-  },
-  "deepseek-ai/DeepSeek-V3": {
-    input: 0.27,
-    output: 1.1,
-  },
   "deepseek-chat": {
     input: 0.14,
     output: 0.28,

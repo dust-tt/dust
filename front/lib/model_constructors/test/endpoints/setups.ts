@@ -41,7 +41,6 @@ import { OpenAIResponsesGlobalGptFiveDotOneStream } from "@app/lib/model_constru
 import { OpenAIResponsesGlobalGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_two";
 import { OpenAIResponsesGlobalGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_mini";
 import { OpenAIResponsesGlobalGptFiveNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_nano";
-import { TogetheraiGlobalLlama3370BInstructTurboStream } from "@app/lib/model_constructors/stream/endpoints/togetherai_global_llama_3_3_70b_instruct_turbo";
 import { AgentPlatformEuropeClaudeHaikuFourDotFiveStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_haiku_four_dot_five.test";
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_claude_sonnet_four_dot_six.test";
 import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStreamSetup } from "@app/lib/model_constructors/test/endpoints/agent_platform_eu_gemini_3_1_flash_lite.test";
@@ -80,7 +79,6 @@ import { OpenAIResponsesGlobalGptFiveDotOneStreamSetup } from "@app/lib/model_co
 import { OpenAIResponsesGlobalGptFiveDotTwoStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_dot_two.test";
 import { OpenAIResponsesGlobalGptFiveMiniStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_mini.test";
 import { OpenAIResponsesGlobalGptFiveNanoStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_global_gpt_five_nano.test";
-import { TogetheraiGlobalLlama3370BInstructTurboStreamSetup } from "@app/lib/model_constructors/test/endpoints/togetherai_global_llama_3_3_70b_instruct_turbo.test";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
 export const STREAM_ENDPOINT_SETUPS = {
@@ -155,6 +153,4 @@ export const STREAM_ENDPOINT_SETUPS = {
     OpenAIResponsesGlobalGptFiveNanoStreamSetup,
   [OpenAIResponsesGlobalGptFiveStream.id]:
     OpenAIResponsesGlobalGptFiveStreamSetup,
-  [TogetheraiGlobalLlama3370BInstructTurboStream.id]:
-    TogetheraiGlobalLlama3370BInstructTurboStreamSetup,
 } satisfies Record<StreamEndpointId, StreamSetup>;
