@@ -1073,6 +1073,12 @@ export const QUERIES: LabeledQuery[] = [
     expected: "speech_generator.text_to_dialogue",
   },
 
+  // --- salesloft ---
+  {
+    query: "get my due sales cadence actions in Salesloft",
+    expected: "salesloft.get_actions",
+  },
+
   // --- productboard ---
   {
     query: "capture customer feedback in Productboard",
