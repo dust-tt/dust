@@ -5,14 +5,44 @@ function getFirstRegexCapture(match: RegExpMatchArray | null) {
   return value && value.length > 0 ? value : null;
 }
 
-const DATA_SOURCE_FILE_SYSTEM_NODE_READ_TARGETS = [
+const EXACT_NODE_READ_TARGETS = [
   { nodeId: "gdrive-sharedWithMe", target: "Google Drive shared with me" },
   { nodeId: "notion-syncing", target: "Notion syncing resources" },
   { nodeId: "notion-unknown", target: "Notion orphaned resources" },
   { nodeId: "project-context-folder", target: "Dust project context" },
 ];
 
-const DATA_SOURCE_FILE_SYSTEM_NODE_READ_TARGET_PREFIXES = [
+const NUMBERED_NODE_READ_TARGETS = [
+  { pattern: /^github-issue-\d+-(\d+)$/, target: "GitHub issue" },
+  { pattern: /^github-discussion-\d+-(\d+)$/, target: "GitHub discussion" },
+  { pattern: /^zendesk-ticket-\d+-\d+-(\d+)$/, target: "Zendesk ticket" },
+  { pattern: /^zendesk-article-\d+-\d+-(\d+)$/, target: "Zendesk article" },
+];
+
+const PATTERN_NODE_READ_TARGETS = [
+  { pattern: /^github-code-\d+-file-[a-f0-9]+$/, target: "GitHub code file" },
+  {
+    pattern: /^github-code-\d+-dir-[a-f0-9]+$/,
+    target: "GitHub code directory",
+  },
+  { pattern: /^slack-[^-]+-thread-.+$/, target: "Slack thread" },
+  { pattern: /^slack-[^-]+-messages-.+$/, target: "Slack messages" },
+  {
+    pattern: /^salesforce-synced-query-document-\d+-\d+-.+$/,
+    target: "Salesforce record",
+  },
+  {
+    pattern: /^dust-project-\d+-project-.+-conversation-.+$/,
+    target: "Dust project conversation",
+  },
+  {
+    pattern: /^dust-project-\d+-project-.+-metadata$/,
+    target: "Dust project metadata",
+  },
+  { pattern: /^dust-project-\d+-project-.+$/, target: "Dust project" },
+];
+
+const PREFIX_NODE_READ_TARGETS = [
   { prefix: "github-code-", target: "GitHub repository code" },
   { prefix: "github-issues-", target: "GitHub issues" },
   { prefix: "github-discussions-", target: "GitHub discussions" },
@@ -44,81 +74,30 @@ const DATA_SOURCE_FILE_SYSTEM_NODE_READ_TARGET_PREFIXES = [
 ];
 
 function getDataSourceFileSystemNodeReadTarget(nodeId: string): string | null {
-  for (const {
-    nodeId: knownNodeId,
-    target,
-  } of DATA_SOURCE_FILE_SYSTEM_NODE_READ_TARGETS) {
-    if (nodeId === knownNodeId) {
-      return target;
+  for (const exactTarget of EXACT_NODE_READ_TARGETS) {
+    if (nodeId === exactTarget.nodeId) {
+      return exactTarget.target;
     }
   }
 
-  const githubIssueNumber = getFirstRegexCapture(
-    nodeId.match(/^github-issue-\d+-(\d+)$/)
-  );
-  if (githubIssueNumber) {
-    return `GitHub issue #${githubIssueNumber}`;
+  for (const numberedTarget of NUMBERED_NODE_READ_TARGETS) {
+    const itemNumber = getFirstRegexCapture(
+      nodeId.match(numberedTarget.pattern)
+    );
+    if (itemNumber) {
+      return `${numberedTarget.target} #${itemNumber}`;
+    }
   }
 
-  const githubDiscussionNumber = getFirstRegexCapture(
-    nodeId.match(/^github-discussion-\d+-(\d+)$/)
-  );
-  if (githubDiscussionNumber) {
-    return `GitHub discussion #${githubDiscussionNumber}`;
+  for (const patternTarget of PATTERN_NODE_READ_TARGETS) {
+    if (patternTarget.pattern.test(nodeId)) {
+      return patternTarget.target;
+    }
   }
 
-  if (/^github-code-\d+-file-[a-f0-9]+$/.test(nodeId)) {
-    return "GitHub code file";
-  }
-
-  if (/^github-code-\d+-dir-[a-f0-9]+$/.test(nodeId)) {
-    return "GitHub code directory";
-  }
-
-  if (/^slack-[^-]+-thread-.+$/.test(nodeId)) {
-    return "Slack thread";
-  }
-
-  if (/^slack-[^-]+-messages-.+$/.test(nodeId)) {
-    return "Slack messages";
-  }
-
-  const zendeskTicketId = getFirstRegexCapture(
-    nodeId.match(/^zendesk-ticket-\d+-\d+-(\d+)$/)
-  );
-  if (zendeskTicketId) {
-    return `Zendesk ticket #${zendeskTicketId}`;
-  }
-
-  const zendeskArticleId = getFirstRegexCapture(
-    nodeId.match(/^zendesk-article-\d+-\d+-(\d+)$/)
-  );
-  if (zendeskArticleId) {
-    return `Zendesk article #${zendeskArticleId}`;
-  }
-
-  if (/^salesforce-synced-query-document-\d+-\d+-.+$/.test(nodeId)) {
-    return "Salesforce record";
-  }
-
-  if (/^dust-project-\d+-project-.+-conversation-.+$/.test(nodeId)) {
-    return "Dust project conversation";
-  }
-
-  if (/^dust-project-\d+-project-.+-metadata$/.test(nodeId)) {
-    return "Dust project metadata";
-  }
-
-  if (/^dust-project-\d+-project-.+$/.test(nodeId)) {
-    return "Dust project";
-  }
-
-  for (const {
-    prefix,
-    target,
-  } of DATA_SOURCE_FILE_SYSTEM_NODE_READ_TARGET_PREFIXES) {
-    if (nodeId.startsWith(prefix)) {
-      return target;
+  for (const prefixTarget of PREFIX_NODE_READ_TARGETS) {
+    if (nodeId.startsWith(prefixTarget.prefix)) {
+      return prefixTarget.target;
     }
   }
 
