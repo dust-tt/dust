@@ -91,7 +91,7 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
           } else {
             editor
               .chain()
-              .insertContentAt(editor.state.doc.content.size, content, {
+              .insertContentAt(editor.state.doc.content.size - 1, content, {
                 updateSelection: false,
               })
               .run();
@@ -135,9 +135,11 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
           } else {
             editor
               .chain()
-              .insertContentAt(editor.state.doc.content.size, committedText, {
-                updateSelection: false,
-              })
+              .insertContentAt(
+                editor.state.doc.content.size - 1,
+                committedText,
+                { updateSelection: false }
+              )
               .run();
           }
         }
