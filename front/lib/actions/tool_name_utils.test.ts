@@ -49,4 +49,16 @@ describe("getPrefixedToolName", () => {
     const result = getPrefixedToolName(shortServerName, longToolName);
     expect(result).toBe("a".repeat(60));
   });
+
+  it("should prefix an underscore when the prefixed name starts with a digit", () => {
+    const result = getPrefixedToolName("1Password", "get item");
+    expect(result).toBe(`_1password${TOOL_NAME_SEPARATOR}get_item`);
+  });
+
+  it("should prefix an underscore when the unprefixed name starts with a digit", () => {
+    const shortServerName = "ab";
+    const longToolName = "3" + "a".repeat(59);
+    const result = getPrefixedToolName(shortServerName, longToolName);
+    expect(result).toBe("_3" + "a".repeat(59));
+  });
 });
