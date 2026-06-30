@@ -914,6 +914,108 @@ export const QUERIES: LabeledQuery[] = [
     expected: "pod_manager.add_message_to_conversation",
   },
 
+  // --- vanta ---
+  {
+    query: "show all automated Vanta compliance tests",
+    expected: "vanta.list_tests",
+  },
+  {
+    query: "list Vanta tests that need attention",
+    expected: "vanta.list_tests",
+  },
+  {
+    query: "show resources failing a specific Vanta security test",
+    expected: "vanta.list_test_entities",
+  },
+  {
+    query: "which assets are failing this Vanta test",
+    expected: "vanta.list_test_entities",
+  },
+  {
+    query: "show all security controls in my Vanta account",
+    expected: "vanta.list_controls",
+  },
+  {
+    query: "list Vanta controls by framework",
+    expected: "vanta.list_controls",
+  },
+  {
+    query: "which automated tests validate this Vanta control",
+    expected: "vanta.list_control_tests",
+  },
+  {
+    query: "show tests that check a specific Vanta security control",
+    expected: "vanta.list_control_tests",
+  },
+  {
+    query: "what evidence documents are attached to this Vanta control",
+    expected: "vanta.list_control_documents",
+  },
+  {
+    query: "list supporting documents for a security control in Vanta",
+    expected: "vanta.list_control_documents",
+  },
+  {
+    query: "list all compliance documents in Vanta",
+    expected: "vanta.list_documents",
+  },
+  {
+    query: "retrieve a specific Vanta document by ID",
+    expected: "vanta.list_documents",
+  },
+  {
+    query: "show controls and links attached to a Vanta document",
+    expected: "vanta.list_document_resources",
+  },
+  {
+    query: "show all Vanta integrations",
+    expected: "vanta.list_integrations",
+  },
+  {
+    query: "which tools are connected to Vanta",
+    expected: "vanta.list_integrations",
+  },
+  {
+    query: "show our SOC2 compliance progress in Vanta",
+    expected: "vanta.list_frameworks",
+  },
+  {
+    query: "what compliance frameworks are tracked in Vanta",
+    expected: "vanta.list_frameworks",
+  },
+  {
+    query: "show controls associated with a Vanta compliance framework",
+    expected: "vanta.list_framework_controls",
+  },
+  {
+    query: "list the controls required by a compliance framework in Vanta",
+    expected: "vanta.list_framework_controls",
+  },
+  {
+    query: "list people in Vanta with their roles and groups",
+    expected: "vanta.list_people",
+  },
+  {
+    query: "list all people in our Vanta account",
+    expected: "vanta.list_people",
+  },
+  {
+    query: "show our risk register in Vanta",
+    expected: "vanta.list_risks",
+  },
+  {
+    query: "what are the current risks in Vanta",
+    expected: "vanta.list_risks",
+  },
+  {
+    query: "list critical vulnerabilities detected in Vanta",
+    expected: "vanta.list_vulnerabilities",
+  },
+  {
+    query: "what vulnerabilities has Vanta detected with their CVE details",
+    expected: "vanta.list_vulnerabilities",
+  },
+
   // --- workspace_analytics ---
   {
     query: "which agents are used most in the workspace",
