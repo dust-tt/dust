@@ -26,6 +26,7 @@ export const CLAUDE_OPUS_4_7_MODEL_ID = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8_MODEL_ID = "claude-opus-4-8" as const;
 export const CLAUDE_FABLE_5_MODEL_ID = "claude-fable-5" as const;
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
+export const CLAUDE_SONNET_5_MODEL_ID = "claude-sonnet-5" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -421,6 +422,42 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
+// https://platform.claude.com/docs/en/about-claude/models/overview
+export const CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_SONNET_5_MODEL_ID,
+  displayName: "Claude Sonnet 5",
+  contextSize: 250_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude Sonnet 5 model, reaching near-Opus quality on coding and agentic work while balancing power and efficiency (200k context).",
+  shortDescription: "Anthropic's latest balanced model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
+  supportsPromptCaching: true,
+  supportsBatchProcessing: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  customThinkingType: "auto",
+  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
+  disablePrefill: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
 export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_SONNET_4_6_MODEL_ID,
@@ -431,9 +468,9 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "Anthropic's Claude Sonnet 4.6 model, balancing power and efficiency with enhanced reasoning capabilities (200k context).",
-  shortDescription: "Anthropic's latest balanced model.",
+  shortDescription: "Anthropic's balanced model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,

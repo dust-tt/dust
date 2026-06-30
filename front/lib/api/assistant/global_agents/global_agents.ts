@@ -6,8 +6,8 @@ import {
   _getClaude3HaikuGlobalAgent,
   _getClaude3OpusGlobalAgent,
   _getClaude4_5HaikuGlobalAgent,
-  _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
+  _getClaudeSonnetLatestGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import {
   _getArchivedBrowserSummaryAgent,
@@ -642,7 +642,7 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
-  [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: {
+  [GLOBAL_AGENTS_SID.CLAUDE_SONNET_LATEST]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
@@ -847,8 +847,8 @@ function getGlobalAgent({
         mcpServerViews,
       });
       break;
-    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
-      agentConfiguration = _getClaude4_5SonnetGlobalAgent({
+    case GLOBAL_AGENTS_SID.CLAUDE_SONNET_LATEST:
+      agentConfiguration = _getClaudeSonnetLatestGlobalAgent({
         auth,
         settings,
         mcpServerViews,

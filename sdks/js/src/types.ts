@@ -64,6 +64,7 @@ export type KnownModelLLMId =
   | "claude-opus-4-8"
   | "claude-fable-5"
   | "claude-sonnet-4-6"
+  | "claude-sonnet-5"
   | "mistral-large-latest"
   | "mistral-medium"
   | "mistral-medium-3-5"

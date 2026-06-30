@@ -133,7 +133,9 @@ export enum GLOBAL_AGENTS_SID {
   O3_MINI = "o3-mini",
   O3 = "o3",
   CLAUDE_4_5_HAIKU = "claude-4.5-haiku",
-  CLAUDE_4_5_SONNET = "claude-4.5-sonnet",
+  // Rolling "latest Sonnet" global agent. The value string is the persisted
+  // sId (favorites, settings, conversations) and must not change.
+  CLAUDE_SONNET_LATEST = "claude-4.5-sonnet",
   CLAUDE_4_SONNET = "claude-4-sonnet",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
@@ -204,7 +206,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.O3:
       return "OpenAI";
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
-    case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
+    case GLOBAL_AGENTS_SID.CLAUDE_SONNET_LATEST:
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
       return "Anthropic";
     case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
@@ -222,7 +224,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.DEEP_DIVE,
-  GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_SONNET_LATEST,
   GLOBAL_AGENTS_SID.GPT5,
   GLOBAL_AGENTS_SID.GEMINI_PRO,
   GLOBAL_AGENTS_SID.MISTRAL_LARGE,

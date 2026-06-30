@@ -17,7 +17,7 @@ import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 
 /**
@@ -298,7 +298,7 @@ export function _getClaude3_7GlobalAgent({
   };
 }
 
-export function _getClaude4_5SonnetGlobalAgent({
+export function _getClaudeSonnetLatestGlobalAgent({
   auth,
   settings,
   mcpServerViews,
@@ -312,7 +312,7 @@ export function _getClaude4_5SonnetGlobalAgent({
     status = "disabled_free_workspace";
   }
 
-  const sId = GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET;
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_SONNET_LATEST;
   const metadata = getGlobalAgentMetadata(sId);
 
   return {
@@ -330,11 +330,11 @@ export function _getClaude4_5SonnetGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      providerId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
       reasoningEffort:
-        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+        CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

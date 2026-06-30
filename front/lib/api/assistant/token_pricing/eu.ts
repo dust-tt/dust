@@ -18,6 +18,14 @@ export const EU_MODEL_PRICING: Partial<Record<string, PricingEntry>> = {
     cache_creation_input_tokens: 4.125,
     cache_read_input_tokens: 0.33,
   },
+  // TODO(2026-08-31): intro pricing ends; revert to standard rates
+  // (input 3.3, output 16.5, cache_creation 4.125, cache_read 0.33).
+  "claude-sonnet-5": {
+    input: 2.2,
+    output: 11.0,
+    cache_creation_input_tokens: 2.75,
+    cache_read_input_tokens: 0.22,
+  },
   "claude-opus-4-5-20251101": {
     input: 5.5,
     output: 27.5,
