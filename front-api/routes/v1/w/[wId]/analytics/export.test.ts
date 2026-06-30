@@ -56,6 +56,7 @@ vi.mock("@app/lib/api/analytics/agents_export", async () => ({
     async () =>
       new Ok([{ agentId: "agent-123", name: "TestAgent", messages: 5 }])
   ),
+  toAgentExportCsvRow: (row: unknown) => row,
 }));
 
 vi.mock("@app/lib/api/analytics/users_export", async () => ({

@@ -2,13 +2,14 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import {
   AGENT_EXPORT_HEADERS,
   fetchAgentExportRows,
+  toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
+import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { stringify } from "csv-stringify/sync";
 import { z } from "zod";
 
 const QuerySchema = z.object({
@@ -46,12 +47,10 @@ app.get(
       });
     }
 
-    const csvData = result.value.map((row) =>
-      AGENT_EXPORT_HEADERS.map((h) => row[h])
+    const csv = rowsToCsv(
+      AGENT_EXPORT_HEADERS,
+      result.value.map(toAgentExportCsvRow)
     );
-    const csv = stringify([AGENT_EXPORT_HEADERS, ...csvData], {
-      header: false,
-    });
 
     ctx.header("Content-Type", "text/csv");
     ctx.header(
