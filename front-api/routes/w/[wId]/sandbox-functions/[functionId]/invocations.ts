@@ -1,4 +1,4 @@
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox/functions/events";
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,

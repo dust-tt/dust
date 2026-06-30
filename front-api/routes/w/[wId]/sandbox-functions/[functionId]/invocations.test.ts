@@ -9,10 +9,10 @@ import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/sandbox/functions/events", async (importOriginal) => {
+vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   const mod =
     await importOriginal<
-      typeof import("@app/lib/api/sandbox/functions/events")
+      typeof import("@app/lib/api/sandbox_functions/events")
     >();
   return {
     ...mod,
@@ -20,7 +20,7 @@ vi.mock("@app/lib/api/sandbox/functions/events", async (importOriginal) => {
   };
 });
 
-import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox/functions/events";
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 
 const inputSchema: JSONSchema = {
   type: "object",
