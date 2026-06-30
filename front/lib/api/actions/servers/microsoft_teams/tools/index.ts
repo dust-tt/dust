@@ -276,12 +276,13 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       let request = client.api(baseEndpoint).top(MESSAGES_PAGE_SIZE);
 
       // The chat messages listing supports $orderby/$filter; the channel
-      // endpoint and the per-message replies endpoint do not (and channels are
-      // always ordered by lastModifiedDateTime of the reply chain). For chat
-      // listings we order by createdDateTime so the page order matches the
-      // field we range on; everywhere else we walk Graph's default
-      // lastModifiedDateTime order. The stop condition must compare whichever
-      // field actually orders the pages — see shouldContinuePagination.
+      // endpoint does not, and is always ordered by lastModifiedDateTime of the
+      // reply chain. We also don't push filters on the per-message replies
+      // endpoint (conservative — its filterability isn't documented). For chat
+      // listings we order by createdDateTime so the page order matches the field
+      // we range on; everywhere else we walk Graph's default lastModifiedDateTime
+      // order. The stop condition must compare whichever field actually orders
+      // the pages — see shouldContinuePagination.
       const isChatListing = Boolean(chatId) && !messageId;
       const orderingField = isChatListing
         ? "createdDateTime"
@@ -382,8 +383,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         content.push({
           type: "text" as const,
           text:
-            `Note: more than ${MAX_NUMBER_OF_MESSAGES} messages match the requested range; showing the ${MAX_NUMBER_OF_MESSAGES} most recent. ` +
-            `Narrow the date range to retrieve older messages.`,
+            `Note: more than ${MAX_NUMBER_OF_MESSAGES} messages match the requested range; showing ${MAX_NUMBER_OF_MESSAGES} of them. ` +
+            `Narrow the date range to retrieve the rest.`,
         });
       }
 

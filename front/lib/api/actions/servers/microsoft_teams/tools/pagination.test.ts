@@ -1,4 +1,3 @@
-import type { MessageOrderingField } from "@app/lib/api/actions/servers/microsoft_teams/tools/pagination";
 import {
   MAX_NUMBER_OF_MESSAGES,
   shouldContinuePagination,
@@ -6,12 +5,12 @@ import {
 import { describe, expect, it } from "vitest";
 
 // Graph returns messages newest-first, so a "page" here is ordered newest to
-// oldest by the ordering field; the last element is the oldest on the page.
-function page(field: MessageOrderingField, ...isoDates: string[]) {
+// oldest; the last element is the oldest on the page. Both timestamps are set
+// equal — the case that distinguishes them builds its message inline.
+function page(...isoDates: string[]) {
   return isoDates.map((value) => ({
     createdDateTime: value,
     lastModifiedDateTime: value,
-    [field]: value,
   }));
 }
 
@@ -24,7 +23,6 @@ describe("shouldContinuePagination", () => {
     expect(
       shouldContinuePagination({
         pageMessages: page(
-          "createdDateTime",
           "2026-05-10T00:00:00.000Z",
           "2026-04-15T00:00:00.000Z"
         ),
@@ -40,7 +38,6 @@ describe("shouldContinuePagination", () => {
     expect(
       shouldContinuePagination({
         pageMessages: page(
-          "createdDateTime",
           "2026-04-15T00:00:00.000Z",
           "2026-03-20T00:00:00.000Z"
         ),
@@ -57,7 +54,6 @@ describe("shouldContinuePagination", () => {
     expect(
       shouldContinuePagination({
         pageMessages: page(
-          "createdDateTime",
           "2026-06-20T00:00:00.000Z",
           "2026-06-10T00:00:00.000Z"
         ),
@@ -71,7 +67,7 @@ describe("shouldContinuePagination", () => {
   it("pages until the message limit when there is no lower bound", () => {
     expect(
       shouldContinuePagination({
-        pageMessages: page("createdDateTime", "2020-01-01T00:00:00.000Z"),
+        pageMessages: page("2020-01-01T00:00:00.000Z"),
         fromDateTime: null,
         collectedCount: 5,
         orderingField: "createdDateTime",
@@ -82,7 +78,7 @@ describe("shouldContinuePagination", () => {
   it("stops as soon as the message limit is reached, regardless of dates", () => {
     expect(
       shouldContinuePagination({
-        pageMessages: page("createdDateTime", "2026-05-01T00:00:00.000Z"),
+        pageMessages: page("2026-05-01T00:00:00.000Z"),
         fromDateTime,
         collectedCount: MAX_NUMBER_OF_MESSAGES,
         orderingField: "createdDateTime",
