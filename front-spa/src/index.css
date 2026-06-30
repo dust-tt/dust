@@ -43,6 +43,7 @@
 @source "./**/*.{ts,tsx}";
 @source "../../front/components/**/*.{ts,tsx}";
 @source "../../front/lib/**/*.{ts,tsx}";
+@source "../../front/hooks/**/*.{ts,tsx}";
 
 /* Safelists front needs beyond sparkle's: dynamic text-* colors and taller
    grids (sparkle already safelists bg-* and grid-rows-2..5). */
