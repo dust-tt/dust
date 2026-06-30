@@ -14,8 +14,11 @@ import * as React from "react";
 
 // Redesigned button, added alongside the existing Button (which is unchanged).
 // Sizes use a 24/32/40px scale. In dark mode, primary and outline swap (each
-// renders the other's light design); other variants are unchanged apart from
-// ghost text/hover tints, which flip via -night tokens.
+// renders the other's light design): both are built from the `primary` token
+// ramp, which flips on its own under `.dark`, so the swap needs no `dark:`
+// code. Every other variant's colors come from semantic tokens that flip too;
+// only the translucent hover/active overlays carry explicit `dark:` values
+// (a white tint can't flip through a token).
 
 export const NEW_BUTTON_VARIANTS = [
   "primary",
@@ -33,151 +36,145 @@ export type NewButtonVariantType = (typeof NEW_BUTTON_VARIANTS)[number];
 export const NEW_BUTTON_SIZES = ["xs", "sm", "md"] as const;
 export type NewButtonSizeType = (typeof NEW_BUTTON_SIZES)[number];
 
-// The shadow shared by every raised button: a tinted 0.5px outline, a drop,
-// and a faint inset highlight. The outline hex is literal because arbitrary
-// shadows can't reference theme tokens.
-const SOLID_SHADOW = (outline: string) =>
-  `s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_${outline},0_1px_1.5px_0_rgba(0,0,0,0.10)]`;
+// The shadow shared by every raised button: a 0.5px hairline outline, a drop,
+// and a faint inset highlight. The hairline uses the `border-dark` token via
+// `var()` so it flips with the theme — light gray in light mode, dark slate in
+// dark — which is exactly the per-mode tint the primary/outline swap needs.
+const RAISED_SHADOW =
+  "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.10)]";
 
 // Hover/active overlay for the raised variants. Per-variant (not in the base)
 // so ghost variants leave the ::after pseudo free for consumers (e.g. Tabs).
 const OVERLAY = cn(
-  "after:s-pointer-events-none after:s-absolute after:s-inset-0 after:s-rounded-[inherit]",
-  "after:s-transition-colors disabled:after:s-hidden"
+  "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit]",
+  "after:transition-colors disabled:after:hidden"
 );
-
-// `dark:` shadow literals for the primary/outline swap, spelled out (not a
-// computed prefix) so Tailwind's JIT emits them.
-const DARK_OUTLINE_SHADOW =
-  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#DFE0E2,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
-const DARK_SOLID_SHADOW =
-  "dark:s-shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_#364153,0_1px_1.5px_0_rgba(0,0,0,0.10)]";
 
 const newButtonVariants = cva(
   cn(
-    "s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
+    "relative isolate inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap",
     // `transform` stays in the transition list for the `press` scale.
-    "s-transition-[color,background-color,border-color,transform] s-duration-100 s-ease-out",
-    "motion-reduce:s-transition-none",
-    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
+    "transition-[color,background-color,border-color,transform] duration-100 ease-out",
+    "motion-reduce:transition-none",
+    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
     // Disabled styling is per-variant (below), not a blanket opacity. Disabled
     // buttons must not show a focus ring.
-    "disabled:s-cursor-not-allowed disabled:focus-visible:s-ring-0"
+    "disabled:cursor-not-allowed disabled:focus-visible:ring-0"
   ),
   {
     variants: {
       variant: {
+        // Built from the flipping `primary` ramp: dark gradient + light text in
+        // light mode, light gradient + dark text in dark mode. That auto-swap
+        // is the whole primary/outline relationship — no `dark:` needed.
         primary: cn(
           OVERLAY,
-          "s-bg-gradient-to-b s-from-stone-700 s-to-stone-800",
-          "s-text-white",
-          SOLID_SHADOW("#364153"),
-          "disabled:s-from-stone-300 disabled:s-to-stone-400 disabled:s-shadow-none",
-          "dark:s-border dark:s-border-border-dark",
-          "dark:s-from-white dark:s-to-stone-50 dark:s-text-muted-foreground",
-          DARK_OUTLINE_SHADOW,
-          "dark:hover:after:s-bg-gray-950/[0.02] dark:active:after:s-bg-gray-950/[0.02]",
-          "dark:disabled:s-from-white dark:disabled:s-to-stone-50 dark:disabled:s-shadow-none dark:disabled:s-text-faint"
+          "bg-linear-to-b from-primary-700 to-primary-800",
+          "text-primary-50",
+          RAISED_SHADOW,
+          "disabled:from-primary-300 disabled:to-primary-400 disabled:shadow-none",
+          // Light: dark button -> white overlay (size-based, below). Dark: light
+          // button -> a faint dark overlay instead.
+          "dark:hover:after:bg-black/[0.04] dark:active:after:bg-black/[0.04]"
         ),
         highlight: cn(
           OVERLAY,
-          "s-bg-gradient-to-b s-from-highlight-400 s-to-highlight-500",
-          "s-text-white",
-          SOLID_SHADOW("#4BABFF"),
-          "disabled:s-from-highlight-200 disabled:s-to-highlight-300 disabled:s-shadow-none"
+          "bg-linear-to-b from-highlight-400 to-highlight-500",
+          "text-white",
+          RAISED_SHADOW,
+          "disabled:from-highlight-200 disabled:to-highlight-300 disabled:shadow-none"
         ),
         warning: cn(
           OVERLAY,
-          "s-bg-gradient-to-b s-from-red-400 s-to-red-500",
-          "s-text-white",
-          SOLID_SHADOW("#E76449"),
-          "disabled:s-from-red-200 disabled:s-to-red-300 disabled:s-shadow-none"
+          "bg-linear-to-b from-red-400 to-red-500",
+          "text-white",
+          RAISED_SHADOW,
+          "disabled:from-red-200 disabled:to-red-300 disabled:shadow-none"
         ),
+        // The mirror of primary: light gradient + muted text in light mode,
+        // dark gradient + light text in dark mode, via the same flipping ramp.
         outline: cn(
           OVERLAY,
-          "s-border s-border-border-dark",
-          "s-bg-gradient-to-b s-from-white s-to-stone-50",
-          "s-text-muted-foreground",
-          SOLID_SHADOW("#DFE0E2"),
-          "hover:after:s-bg-gray-950/[0.02] active:after:s-bg-gray-950/[0.02]",
-          "disabled:s-shadow-none disabled:s-text-faint",
-          "dark:s-border-0 dark:s-from-stone-700 dark:s-to-stone-800 dark:s-text-white",
-          DARK_SOLID_SHADOW,
-          "dark:disabled:s-from-stone-300 dark:disabled:s-to-stone-400 dark:disabled:s-text-white dark:disabled:s-shadow-none"
+          "border border-border-dark",
+          "bg-linear-to-b from-primary-50 to-primary-100",
+          "text-muted-foreground",
+          RAISED_SHADOW,
+          // Light: light button -> faint dark overlay. Dark: dark button ->
+          // white overlay (size-based, below).
+          "hover:after:bg-black/[0.02] active:after:bg-black/[0.02]",
+          "disabled:shadow-none disabled:text-faint"
         ),
         ghost: cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-bg-black/[0.02] active:s-bg-black/[0.02]",
-          "dark:hover:s-bg-white/[0.08] dark:active:s-bg-white/[0.08]",
-          "disabled:s-text-faint dark:disabled:s-text-faint-night",
-          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
+          "text-foreground",
+          "hover:bg-black/[0.02] active:bg-black/[0.02]",
+          "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
+          "disabled:text-faint",
+          "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
         ),
         "ghost-secondary": cn(
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
-          "hover:s-bg-black/[0.02] active:s-bg-black/[0.02]",
-          "dark:hover:s-bg-white/[0.08] dark:active:s-bg-white/[0.08]",
-          "disabled:s-text-faint dark:disabled:s-text-faint-night",
-          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
+          "text-muted-foreground",
+          "hover:bg-black/[0.02] active:bg-black/[0.02]",
+          "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
+          "disabled:text-faint",
+          "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
         ),
         "highlight-ghost": cn(
-          "s-text-highlight-500 dark:s-text-highlight-500-night",
-          "hover:s-bg-highlight-50 active:s-bg-highlight-50",
-          "dark:hover:s-bg-highlight-50-night dark:active:s-bg-highlight-50-night",
-          "disabled:s-text-highlight-muted",
-          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
+          "text-highlight-500",
+          "hover:bg-highlight-50 active:bg-highlight-50",
+          "disabled:text-highlight-muted",
+          "disabled:hover:bg-transparent"
         ),
         "warning-ghost": cn(
-          "s-text-red-500",
-          "hover:s-bg-red-50 active:s-bg-red-50",
-          "dark:hover:s-bg-warning-50-night dark:active:s-bg-warning-50-night",
-          "disabled:s-text-warning-muted",
-          "disabled:hover:s-bg-transparent dark:disabled:hover:s-bg-transparent"
+          "text-warning-500",
+          "hover:bg-warning-50 active:bg-warning-50",
+          "disabled:text-warning-muted",
+          "disabled:hover:bg-transparent"
         ),
       },
       size: {
-        xs: "s-h-6 s-gap-1.5 s-px-2 s-text-sm s-font-medium s-leading-4 s-tracking-[-0.28px] s-rounded-[9px]",
-        sm: "s-h-8 s-gap-1.5 s-px-3 s-text-sm s-font-medium s-tracking-[-0.28px] s-rounded-xl",
-        md: "s-h-10 s-gap-1.5 s-px-4 s-text-base s-font-medium s-tracking-[-0.32px] s-rounded-[15px]",
+        xs: "h-6 gap-1.5 px-2 text-sm font-medium leading-4 tracking-[-0.28px] rounded-[9px]",
+        sm: "h-8 gap-1.5 px-3 text-sm font-medium tracking-[-0.28px] rounded-xl",
+        md: "h-10 gap-1.5 px-4 text-base font-medium tracking-[-0.32px] rounded-[15px]",
       },
       isIconOnly: {
         true: "",
         false: "",
       },
       press: {
-        true: "active:s-scale-[0.985] motion-reduce:active:s-scale-100",
+        true: "active:scale-[0.985] motion-reduce:active:scale-100",
         false: "",
       },
     },
     compoundVariants: [
-      { size: "xs", isIconOnly: true, className: "s-w-6 s-px-0" },
-      { size: "sm", isIconOnly: true, className: "s-w-8 s-px-0" },
-      { size: "md", isIconOnly: true, className: "s-w-10 s-px-0" },
+      { size: "xs", isIconOnly: true, className: "w-6 px-0" },
+      { size: "sm", isIconOnly: true, className: "w-8 px-0" },
+      { size: "md", isIconOnly: true, className: "w-10 px-0" },
       // White overlay on solid variants: large buttons get a stronger tint
       // (Figma uses white/0.2 at Large, white/0.1 at Small/Medium). Hover and
       // active share the same value — only the press scale differentiates them.
+      // For primary (which is light in dark mode) the dark-mode override in the
+      // variant wins on specificity, so this only applies in light mode there.
       {
         variant: ["primary", "highlight", "warning"],
         size: ["xs", "sm"],
-        className: "hover:after:s-bg-white/10 active:after:s-bg-white/10",
+        className: "hover:after:bg-white/10 active:after:bg-white/10",
       },
       {
         variant: ["primary", "highlight", "warning"],
         size: "md",
-        className: "hover:after:s-bg-white/20 active:after:s-bg-white/20",
+        className: "hover:after:bg-white/20 active:after:bg-white/20",
       },
-      // Outline renders as a dark solid in dark mode, so it follows the same
-      // size rule for its (dark-only) white overlay.
+      // Outline renders as a dark solid in dark mode, so it gets the same
+      // size-based white overlay there (its light-mode overlay is in the variant).
       {
         variant: "outline",
         size: ["xs", "sm"],
-        className:
-          "dark:hover:after:s-bg-white/10 dark:active:after:s-bg-white/10",
+        className: "dark:hover:after:bg-white/10 dark:active:after:bg-white/10",
       },
       {
         variant: "outline",
         size: "md",
-        className:
-          "dark:hover:after:s-bg-white/20 dark:active:after:s-bg-white/20",
+        className: "dark:hover:after:bg-white/20 dark:active:after:bg-white/20",
       },
     ],
     defaultVariants: {
@@ -197,7 +194,7 @@ const RAISED_VARIANTS: NewButtonVariantType[] = [
   "outline",
 ];
 const TEXT_SHADOW = "[text-shadow:0_1px_1.5px_rgba(0,0,0,0.08)]";
-const ICON_SHADOW = "s-drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)]";
+const ICON_SHADOW = "drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)]";
 
 const ICON_SIZE_MAP: Record<NewButtonSizeType, "xs" | "sm"> = {
   xs: "xs",
@@ -212,14 +209,16 @@ const COUNTER_SIZE_MAP: Record<NewButtonSizeType, "xs" | "sm"> = {
 };
 
 const chevronVariantMap: Record<NewButtonVariantType, string> = {
-  primary: "s-text-white/60",
-  highlight: "s-text-white/60",
-  warning: "s-text-white/60",
-  outline: "s-text-faint",
-  ghost: "s-text-faint",
-  "ghost-secondary": "s-text-faint",
-  "highlight-ghost": "s-text-highlight-400",
-  "warning-ghost": "s-text-warning-400",
+  // primary swaps to a light button in dark mode, so its chevron tracks the
+  // flipping text token rather than a fixed white.
+  primary: "text-primary-50/60",
+  highlight: "text-white/60",
+  warning: "text-white/60",
+  outline: "text-faint",
+  ghost: "text-faint",
+  "ghost-secondary": "text-faint",
+  "highlight-ghost": "text-highlight-400",
+  "warning-ghost": "text-warning-400",
 };
 
 // Loading spinner color, matched to each variant's text color (including the
@@ -302,7 +301,7 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
 
     const renderIcon = (visual: NewButtonIconType, extraClass = "") => {
       if (isReactElement(visual)) {
-        return <span className={cn("s-shrink-0", extraClass)}>{visual}</span>;
+        return <span className={cn("shrink-0", extraClass)}>{visual}</span>;
       }
       return <Icon visual={visual} size={iconSize} className={extraClass} />;
     };
@@ -367,7 +366,7 @@ const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
             isIconOnly,
             press: !isMenuTrigger,
           }),
-          isPulsing && "s-animate-ring-pulse-soft",
+          isPulsing && "animate-ring-pulse-soft",
           className
         )}
         disabled={isLoading || props.disabled}

@@ -109,8 +109,7 @@ type Story = StoryObj<typeof meta>;
 // Showcase helpers
 // ---------------------------------------------------------------------------
 
-const labelClass =
-  "s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night";
+const labelClass = "text-xs font-medium text-muted-foreground ";
 
 // One variant row across its states.
 function VariantRow({
@@ -121,8 +120,8 @@ function VariantRow({
   size: NewButtonSizeType;
 }) {
   return (
-    <div className="s-flex s-items-center s-gap-3">
-      <div className={`s-w-32 s-shrink-0 ${labelClass}`}>{variant}</div>
+    <div className="flex items-center gap-3">
+      <div className={`w-32 shrink-0 ${labelClass}`}>{variant}</div>
       <NewButton size={size} variant={variant} label="NewButton" />
       <NewButton size={size} variant={variant} icon={Plus} label="NewButton" />
       <NewButton
@@ -141,13 +140,13 @@ function VariantRow({
 
 function ColumnLegend() {
   return (
-    <div className={`s-flex s-items-center s-gap-3 ${labelClass}`}>
-      <div className="s-w-32 s-shrink-0">variant \ state</div>
-      <div className="s-w-[88px]">label</div>
-      <div className="s-w-[112px]">+ icon</div>
-      <div className="s-w-[132px]">+ both</div>
-      <div className="s-w-8">icon</div>
-      <div className="s-w-[100px]">loading</div>
+    <div className={`flex items-center gap-3 ${labelClass}`}>
+      <div className="w-32 shrink-0">variant \ state</div>
+      <div className="w-[88px]">label</div>
+      <div className="w-[112px]">+ icon</div>
+      <div className="w-[132px]">+ both</div>
+      <div className="w-8">icon</div>
+      <div className="w-[100px]">loading</div>
       <div>disabled</div>
     </div>
   );
@@ -155,7 +154,7 @@ function ColumnLegend() {
 
 function VariantGrid({ size = "md" }: { size?: NewButtonSizeType }) {
   return (
-    <div className="s-flex s-flex-col s-gap-3">
+    <div className="flex flex-col gap-3">
       <ColumnLegend />
       {NEW_BUTTON_VARIANTS.map((variant) => (
         <VariantRow key={variant} variant={variant} size={size} />
@@ -164,7 +163,7 @@ function VariantGrid({ size = "md" }: { size?: NewButtonSizeType }) {
   );
 }
 
-// A themed surface card. `dark` toggles the `.s-dark` ancestor (sparkle's
+// A themed surface card. `dark` toggles the `.dark` ancestor (sparkle's
 // class-based dark mode) so every button inside renders its dark treatment.
 function Surface({
   dark = false,
@@ -180,16 +179,14 @@ function Surface({
   return (
     <div
       className={[
-        dark ? "s-dark s-bg-background-night s-border-border-night" : "",
-        !dark ? "s-bg-background s-border-border" : "",
-        "s-flex s-flex-col s-gap-4 s-rounded-2xl s-border s-p-6",
+        dark ? "dark bg-background border-border" : "",
+        !dark ? "bg-background border-border" : "",
+        "flex flex-col gap-4 rounded-2xl border p-6",
       ].join(" ")}
     >
       <div>
-        <div className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-          {title}
-        </div>
-        {caption && <div className={`s-mt-0.5 ${labelClass}`}>{caption}</div>}
+        <div className="text-sm font-semibold text-foreground ">{title}</div>
+        {caption && <div className={`mt-0.5 ${labelClass}`}>{caption}</div>}
       </div>
       {children}
     </div>
@@ -222,7 +219,7 @@ export const Playground: Story = {
  */
 export const Overview: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-6">
+    <div className="flex flex-col gap-6">
       <Surface title="Light">
         <VariantGrid size="md" />
       </Surface>
@@ -240,9 +237,9 @@ export const Overview: Story = {
 /** The S / M / L scale (24 / 32 / 40px) across all variants. */
 export const Sizes: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-6">
+    <div className="flex flex-col gap-6">
       {NEW_BUTTON_SIZES.map((size) => (
-        <div key={size} className="s-flex s-flex-col s-gap-3">
+        <div key={size} className="flex flex-col gap-3">
           <Separator />
           <h3 className={labelClass}>{size.toUpperCase()}</h3>
           <VariantGrid size={size} />
@@ -255,7 +252,7 @@ export const Sizes: Story = {
 /** Icon-only buttons across sizes, plus the fully-rounded shape. */
 export const IconButtons: Story = {
   render: () => (
-    <div className="s-flex s-items-center s-gap-4">
+    <div className="flex items-center gap-4">
       <NewButton size="xs" variant="outline" icon={Plus} tooltip="Add" />
       <NewButton size="sm" variant="outline" icon={Plus} tooltip="Add" />
       <NewButton size="md" variant="outline" icon={Plus} tooltip="Add" />
@@ -268,8 +265,8 @@ export const IconButtons: Story = {
 /** Dropdown affordance (isSelect), inline counter, and pulsing. */
 export const SpecialStates: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
-      <div className="s-flex s-items-center s-gap-4">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-4">
         <NewButton
           variant="outline"
           label="Select agent"

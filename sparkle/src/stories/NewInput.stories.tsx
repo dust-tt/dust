@@ -90,7 +90,7 @@ export const Playground: Story = {
 
 export const Sizes: Story = {
   render: () => (
-    <div className="s-flex s-w-72 s-flex-col s-gap-4">
+    <div className="flex w-72 flex-col gap-4">
       {NEW_INPUT_SIZES.map((size) => (
         <NewInput key={size} size={size} placeholder={`Size ${size}`} />
       ))}
@@ -100,7 +100,7 @@ export const Sizes: Story = {
 
 export const WithIcons: Story = {
   render: () => (
-    <div className="s-flex s-w-72 s-flex-col s-gap-4">
+    <div className="flex w-72 flex-col gap-4">
       <NewInput placeholder="Search…" icon={SearchMd} />
       <NewInput placeholder="With trailing icon" iconRight={Image03} />
       <NewInput placeholder="Both" icon={SearchMd} iconRight={Image03} />
@@ -110,14 +110,14 @@ export const WithIcons: Story = {
 
 export const WithPrefixSuffix: Story = {
   render: () => (
-    <div className="s-flex s-w-72 s-flex-col s-gap-4">
+    <div className="flex w-72 flex-col gap-4">
       <NewInput
         placeholder="0.00"
-        prefix={<span className="s-text-faint">$</span>}
+        prefix={<span className="text-faint">$</span>}
       />
       <NewInput
         placeholder="12,890"
-        suffix={<span className="s-text-faint">cr</span>}
+        suffix={<span className="text-faint">cr</span>}
       />
     </div>
   ),
@@ -154,8 +154,8 @@ export const WithInfoMessage: Story = {
 
 export const AllVariants: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-20">
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+    <div className="flex flex-col gap-20">
+      <div className="grid grid-cols-3 gap-4">
         <NewInput
           placeholder="placeholder"
           name="input"
@@ -190,7 +190,7 @@ export const AllVariants: Story = {
           messageStatus="error"
         />
       </div>
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <NewInput placeholder="placeholder" name="input" />
         <NewInput
           placeholder="placeholder"
@@ -219,7 +219,7 @@ export const AllVariants: Story = {
           messageStatus="error"
         />
       </div>
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <NewInput
           placeholder="placeholder"
           name="input"

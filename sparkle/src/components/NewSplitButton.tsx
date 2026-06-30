@@ -28,19 +28,19 @@ const NewFlexSplitButton = React.forwardRef<
     });
 
     return (
-      <div className={cn("s-relative s-inline-block", containerClassName)}>
+      <div className={cn("relative inline-block", containerClassName)}>
         <NewButton
           ref={ref}
           variant={variant}
           size="sm"
-          className={cn(className, "s-pr-12")}
+          className={cn(className, "pr-12")}
           isLoading={isLoading}
           {...buttonProps}
         />
-        <span className="s-absolute s-right-1 s-top-1 s-flex s-items-center s-gap-1">
+        <span className="absolute right-1 top-1 flex items-center gap-1">
           {/* Opaque divider: the main button's hover/active overlay sits behind
               it, so a translucent line would visibly shift on hover. */}
-          <div className="s-h-4 s-w-px s-bg-separator dark:s-bg-separator-night" />
+          <div className="h-4 w-px bg-separator" />
           {clonedSplitAction}
         </span>
       </div>
