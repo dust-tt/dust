@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::os::unix::fs::chown;
+use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -22,16 +22,11 @@ const FUNCTIONS_DIR_ENV: &str = "DUST_FUNCTIONS_DIR";
 /// not need `bun`.
 const RUNNER_JS: &str = include_str!("../../../functions-runner/runner.js");
 
-/// The unprivileged, egress-proxied uid the sandbox runs agent code as — the
-/// `agent-proxied` user (`SANDBOX_AGENT_PROXIED_UID` in front), whose `skuid` is
-/// what `dsbx healthcheck`'s nftables rules force through the egress proxy.
-/// Untrusted function code must run here too, so when `dsbx` is invoked
-/// privileged (as root, by the sandbox resource) the `bun` child is downgraded
-/// to this uid (its gid + supplementary groups are looked up, not assumed — the
-/// user's primary group is `agent`, not 1003).
-// Only referenced by the Linux privilege-drop path.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
-const AGENT_UID: u32 = 1003;
+/// The unprivileged, egress-proxied user the sandbox runs agent code as (the
+/// `agent-proxied` user created in the sandbox image; its `skuid` is what
+/// `dsbx healthcheck`'s nftables rules force through the egress proxy). Untrusted
+/// function code must run as this user too.
+const AGENT_USER: &str = "agent-proxied";
 
 #[derive(Subcommand)]
 pub enum FunctionCommand {
@@ -47,70 +42,16 @@ pub enum FunctionCommand {
     },
 }
 
-/// The identity to downgrade the `bun` child to: the agent uid plus its real
-/// primary gid and supplementary groups (resolved from /etc/passwd + /etc/group).
-// Only constructed on Linux (privilege dropping is a Linux-sandbox concept); the
-// fields are still read by run_bun on every platform.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
-struct DropTarget {
-    uid: libc::uid_t,
-    gid: libc::gid_t,
-    groups: Vec<libc::gid_t>,
-}
-
-/// Resolve how to downgrade the `bun` child, or `None` to run it as the current
-/// user.
+/// Whether `dsbx` is running privileged (effective uid 0).
 ///
-/// The function (runner harness + bundle) is untrusted, so when `dsbx` runs
-/// privileged — as root, e.g. invoked by the sandbox resource — it is dropped to
-/// the agent-proxied user so its network is forced through the egress proxy
-/// (domain allowlisting + DSEC secret substitution) like agent code. When `dsbx`
-/// is already unprivileged (local dev), there is nothing to contain and no
-/// privilege to `setuid`, so the child runs as-is.
-///
-/// The gid and supplementary groups are looked up here, in the parent, because
-/// `getpwuid`/`getgrouplist` are not async-signal-safe and must not run between
-/// fork and exec; `pre_exec` then applies only `setgroups`/`setgid`/`setuid`.
-#[cfg(target_os = "linux")]
-fn resolve_drop_target() -> Result<Option<DropTarget>> {
-    // SAFETY: geteuid only reads the caller's effective uid.
-    if unsafe { libc::geteuid() } != 0 {
-        return Ok(None);
-    }
-
-    // SAFETY: getpwuid returns a pointer into static storage valid until the
-    // next getpw* call; we read the fields we need immediately.
-    let pw = unsafe { libc::getpwuid(AGENT_UID as libc::uid_t) };
-    if pw.is_null() {
-        return Err(emit_error(anyhow!(
-            "agent uid {AGENT_UID} not found (getpwuid); cannot drop privileges safely"
-        )));
-    }
-    let gid = unsafe { (*pw).pw_gid };
-    let name = unsafe { (*pw).pw_name };
-
-    // getgrouplist fills the groups `agent-proxied` belongs to (incl. `agent`).
-    // It returns -1 when the buffer is too small, setting `n` to the size needed.
-    let mut n: libc::c_int = 32;
-    let mut groups: Vec<libc::gid_t> = vec![0; n as usize];
-    // SAFETY: `name` is valid (from pw); the buffer matches `n`.
-    while unsafe { libc::getgrouplist(name, gid, groups.as_mut_ptr(), &mut n) } < 0 {
-        groups.resize(n as usize, 0);
-    }
-    groups.truncate(n.max(0) as usize);
-
-    Ok(Some(DropTarget {
-        uid: AGENT_UID as libc::uid_t,
-        gid,
-        groups,
-    }))
-}
-
-/// Non-Linux (dev) builds never drop privileges — the agent uid and its egress
-/// containment are a Linux-sandbox concept.
-#[cfg(not(target_os = "linux"))]
-fn resolve_drop_target() -> Result<Option<DropTarget>> {
-    Ok(None)
+/// When it is — i.e. invoked by the sandbox resource as root — the untrusted
+/// function must be dropped to the `agent-proxied` user so its network is forced
+/// through the egress proxy (domain allowlisting + DSEC secret substitution)
+/// like agent code. When `dsbx` is already unprivileged (local dev), there is
+/// nothing to contain and no privilege to drop, so the function runs as the
+/// current user.
+fn running_as_root() -> bool {
+    rustix::process::geteuid().is_root()
 }
 
 /// Spawn the embedded runner under `bun` for `subcommand` (`run` or `get`)
@@ -120,11 +61,15 @@ fn resolve_drop_target() -> Result<Option<DropTarget>> {
 /// result API). Does not exit the process — the caller decides.
 ///
 /// The `bun` child (runner harness + the untrusted function bundle) is
-/// downgraded to the agent uid/gid (clearing supplementary groups) whenever
-/// `dsbx` runs privileged — see [`privilege_drop_target`]. `dsbx` itself may
-/// stay root: it chowns the runner and stages the bundle into a uid-owned temp
-/// dir (named `<name>.ts` so `get`'s schema name is preserved), so the dropped
-/// child can read both even when the originals are root-only.
+/// downgraded to the `agent-proxied` user whenever `dsbx` runs privileged: the
+/// child is launched via `runuser`, which resolves that user's uid/gid/
+/// supplementary groups and drops privileges before exec — so `dsbx` needs no
+/// unsafe privilege-dropping syscalls. `dsbx` may stay root to read bundles: it
+/// stages the bundle into a temp dir (named `<name>.ts` so `get`'s schema name
+/// is preserved) and makes both it and the runner world-readable, so the dropped
+/// child can read them even when the originals are root-only. The contents are
+/// not secret (the runner is embedded in the binary; the bundle is the function
+/// being executed) and the temp names are random.
 pub(crate) async fn spawn_function(
     subcommand: &str,
     name: &str,
@@ -136,71 +81,61 @@ pub(crate) async fn spawn_function(
     // parent of the resolved <name>.ts), not wherever dsbx was invoked from.
     let functions_dir = path.parent().map(Path::to_path_buf);
     let runner = ensure_runner()?;
-    let drop = resolve_drop_target()?;
+    let as_agent = running_as_root();
 
     // Hold the staged temp dir alive until after the child exits.
     let mut staged: Option<TempDir> = None;
-    let handler: PathBuf = match &drop {
-        None => path,
-        Some(t) => {
-            chown(&runner, Some(t.uid), Some(t.gid)).map_err(|e| {
-                emit_error(anyhow!("failed to prepare runner for uid {}: {e}", t.uid))
-            })?;
-            staged = Some(stage_bundle(&path, name, t.uid, t.gid)?);
-            staged
-                .as_ref()
-                .expect("just set")
-                .path()
-                .join(format!("{name}.ts"))
-        }
+    let handler: PathBuf = if as_agent {
+        // The dropped child must read the runner and the bundle, which dsbx (as
+        // root) created — make them world-readable rather than chowning, so no
+        // uid lookup is needed.
+        set_mode(&runner, 0o644)
+            .map_err(|e| emit_error(anyhow!("failed to prepare runner: {e}")))?;
+        let dir = stage_bundle(&path, name)?;
+        let handler = dir.path().join(format!("{name}.ts"));
+        staged = Some(dir);
+        handler
+    } else {
+        path
     };
 
-    let mut cmd = Command::new("bun");
-    cmd.arg(&*runner)
-        .arg(subcommand)
-        .arg(&handler)
-        .stdin(if inherit_stdin {
-            Stdio::inherit()
-        } else {
-            Stdio::null()
-        })
-        .stdout(if capture_stdout {
-            Stdio::piped()
-        } else {
-            Stdio::inherit()
-        })
-        .stderr(Stdio::inherit());
+    // When privileged, run the function as `agent-proxied` via `runuser`
+    // (util-linux), which drops to that user (uid + primary gid + supplementary
+    // groups) and execs `bun` — no privileged code in dsbx. Otherwise run `bun`
+    // directly as the current (already unprivileged) user.
+    let mut cmd = if as_agent {
+        let mut c = Command::new("runuser");
+        c.arg("-u")
+            .arg(AGENT_USER)
+            .arg("--")
+            .arg("bun")
+            .arg(&*runner)
+            .arg(subcommand)
+            .arg(&handler);
+        c
+    } else {
+        let mut c = Command::new("bun");
+        c.arg(&*runner).arg(subcommand).arg(&handler);
+        c
+    };
+    cmd.stdin(if inherit_stdin {
+        Stdio::inherit()
+    } else {
+        Stdio::null()
+    })
+    .stdout(if capture_stdout {
+        Stdio::piped()
+    } else {
+        Stdio::inherit()
+    })
+    .stderr(Stdio::inherit());
     if let Some(dir) = &functions_dir {
-        // chdir happens before the pre_exec privilege drop, i.e. while still
-        // root, so it works even when the dir is root-only.
         cmd.current_dir(dir);
-    }
-
-    if let Some(t) = drop {
-        // Drop privileges in the forked child before exec, in order, while still
-        // privileged: set the supplementary groups, then gid, then uid. The
-        // closure runs post-fork/pre-exec, so it uses only async-signal-safe
-        // syscalls (the group lookup already happened in the parent).
-        let DropTarget { uid, gid, groups } = t;
-        unsafe {
-            cmd.pre_exec(move || {
-                if libc::setgroups(groups.len() as _, groups.as_ptr()) != 0 {
-                    return Err(std::io::Error::last_os_error());
-                }
-                if libc::setgid(gid) != 0 {
-                    return Err(std::io::Error::last_os_error());
-                }
-                if libc::setuid(uid) != 0 {
-                    return Err(std::io::Error::last_os_error());
-                }
-                Ok(())
-            });
-        }
     }
 
     let mut child = cmd
         .spawn()
-        .map_err(|e| emit_error(anyhow!("failed to run bun: {e}")))?;
+        .map_err(|e| emit_error(anyhow!("failed to run function: {e}")))?;
 
     // Capturing reads stdout to EOF (child closes it on exit) before waiting.
     // Only stdout is piped; stderr/stdin are inherited, so there is no deadlock.
@@ -219,7 +154,7 @@ pub(crate) async fn spawn_function(
     let status = child
         .wait()
         .await
-        .map_err(|e| emit_error(anyhow!("failed to run bun: {e}")))?;
+        .map_err(|e| emit_error(anyhow!("failed to run function: {e}")))?;
     runner.close().ok();
     if let Some(dir) = staged {
         dir.close().ok();
@@ -227,24 +162,30 @@ pub(crate) async fn spawn_function(
     Ok((status.code().unwrap_or(1), captured))
 }
 
-/// Copy a function bundle into a fresh temp dir owned by `uid`/`gid`, as
-/// `<name>.ts`, so a privileged dsbx can hand a (possibly root-only) bundle to
-/// an unprivileged child. Returns the temp dir (kept alive by the caller).
-fn stage_bundle(path: &Path, name: &str, uid: u32, gid: u32) -> Result<TempDir> {
+/// Copy a function bundle into a fresh temp dir as `<name>.ts`, world-readable,
+/// so a privileged dsbx can hand a (possibly root-only) bundle to the
+/// unprivileged `agent-proxied` child. Returns the temp dir (kept alive by the
+/// caller). Making the copy world-readable avoids needing the agent uid/gid.
+fn stage_bundle(path: &Path, name: &str) -> Result<TempDir> {
+    let stage_err = |e: std::io::Error| emit_error(anyhow!("failed to stage function {name}: {e}"));
     let bytes = std::fs::read(path)
         .map_err(|e| emit_error(anyhow!("failed to read function {name}: {e}")))?;
     let dir = tempfile::Builder::new()
         .prefix("dsbx-fn-")
         .tempdir()
-        .map_err(|e| emit_error(anyhow!("failed to stage function {name}: {e}")))?;
+        .map_err(stage_err)?;
+    // The dropped child must traverse the dir and read the bundle.
+    set_mode(dir.path(), 0o755).map_err(stage_err)?;
     let staged = dir.path().join(format!("{name}.ts"));
-    std::fs::write(&staged, &bytes)
-        .map_err(|e| emit_error(anyhow!("failed to stage function {name}: {e}")))?;
-    // The child must own/traverse the dir and read the file.
-    chown(dir.path(), Some(uid), Some(gid))
-        .and_then(|()| chown(&staged, Some(uid), Some(gid)))
-        .map_err(|e| emit_error(anyhow!("failed to stage function {name}: {e}")))?;
+    std::fs::write(&staged, &bytes).map_err(stage_err)?;
+    set_mode(&staged, 0o644).map_err(stage_err)?;
     Ok(dir)
+}
+
+/// Set a path's permission bits (used to make temp runner/bundle files readable
+/// by the dropped child without a uid lookup).
+fn set_mode(path: impl AsRef<Path>, mode: u32) -> std::io::Result<()> {
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
 }
 
 /// Write the embedded runner to a fresh uniquely-named temp file (mode 0600)
