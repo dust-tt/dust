@@ -364,20 +364,21 @@ function checkSandboxImageLabel() {
  */
 function warnTemporalWorkflowChanges(files: string[]) {
   warn(
-    "Temporal workflow/activity files have been modified:\n" +
-      files.map((f) => `- \`${f}\``).join("\n") +
-      "\n\n**IMPORTANT**: Workflow code must stay deterministic. Temporal " +
-      "replays workflow history on resume, so changing control flow, renaming " +
-      "or reordering activities, or altering activity signatures can cause " +
-      "non-deterministic errors that crash in-flight workflows.\n\n" +
-      "Best practices:\n" +
-      "- **DO NOT** rename or reorder existing activities referenced by running workflows\n" +
-      "- **DO NOT** change activity signatures in a backward-incompatible way\n" +
-      "- **DO** add new workflows/activities instead of mutating existing ones when behavior must change\n" +
-      "- **DO** use Temporal patching/versioning for unavoidable workflow logic changes\n" +
-      "- **DO** ensure running workflows drain before removing old activities\n\n" +
-      "If you're only adding new workflows/activities or fixing bugs within " +
-      "existing ones, this warning can be ignored."
+    `Temporal workflow/activity files have been modified:
+${files.map((f) => `    - \`${f}\``).join("\n")}
+
+    **IMPORTANT**: Renaming activity functions or changing workflow logic can cause non-deterministic errors in Temporal workflows.
+
+    Running workflows replay their history on resume, so they may still reference the old activity names or expect the old control flow, which will cause failures when they execute.
+
+    Best practices:
+    - **DO NOT** rename existing activity functions
+    - **DO** create new activities with new names if you need different behavior
+    - **DO** use activity versioning patterns if you must change activity signatures
+    - **DO** use Temporal patching/versioning for unavoidable workflow logic changes
+    - **DO** ensure all running workflows complete before removing old activities
+
+    If you're only adding new workflows/activities or fixing bugs within existing ones, this warning can be ignored.`
   );
 }
 
