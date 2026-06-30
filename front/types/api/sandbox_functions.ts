@@ -17,6 +17,24 @@ export type SandboxFunctionInvocationType = {
   createdAt: string;
 };
 
+export type SandboxFunctionInvocationCreatedEvent = {
+  type: "sandbox_function_invocation_created";
+  created: number;
+  invocation: SandboxFunctionInvocationType;
+};
+
+export type SandboxFunctionInvocationResultEvent = {
+  type: "sandbox_function_invocation_result";
+  created: number;
+  invocationId: string;
+  functionId: string;
+  result: unknown;
+};
+
+export type SandboxFunctionInvocationEvent =
+  | SandboxFunctionInvocationCreatedEvent
+  | SandboxFunctionInvocationResultEvent;
+
 export type PostSandboxFunctionInvocationRequestBody = {
   input?: unknown;
   context?: {

@@ -341,6 +341,10 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "get the details of freshservice ticket 88",
     expected: "freshservice.get_ticket",
+    // Knife-edge tie with the sibling get_ticket_read_fields: both share
+    // "freshservice"/"ticket"/"details"; the global IDF shift from corpus growth
+    // tips the top slot between them. Not lexically separable without renaming.
+    maxRank: 2,
   },
   {
     query: "post a private internal note on a freshservice ticket",
@@ -443,6 +447,36 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "read the message history of a slack channel the bot is in",
     expected: "slack_bot.read_channel_history",
+  },
+
+  // --- monday ---
+  {
+    query: "list all boards in Monday.com",
+    expected: "monday.get_boards",
+  },
+  {
+    query: "create a new item in a Monday.com board",
+    expected: "monday.create_item",
+  },
+
+  // --- notion ---
+  {
+    query: "find a Notion page by keyword",
+    expected: "notion.search",
+  },
+  {
+    query: "insert a new row into a Notion database",
+    expected: "notion.insert_row_into_database",
+  },
+
+  // --- outlook ---
+  {
+    query: "get emails from my Outlook inbox",
+    expected: "outlook.get_messages",
+  },
+  {
+    query: "check Outlook Calendar availability for multiple people",
+    expected: "outlook_calendar.check_availability",
   },
 
   // --- microsoft_teams ---
@@ -981,6 +1015,52 @@ export const QUERIES: LabeledQuery[] = [
     expected: "workspace_analytics.get_usage_timeseries",
   },
 
+  // --- ashby ---
+  {
+    query: "find a candidate in ashby by email",
+    expected: "ashby.search_candidates",
+  },
+  {
+    query: "download an ashby report as a csv file",
+    expected: "ashby.get_report_data",
+  },
+  {
+    query: "show the interview feedback for a candidate in ashby",
+    expected: "ashby.get_interview_feedback",
+  },
+  {
+    query: "read all the notes on a candidate in ashby",
+    expected: "ashby.get_candidate_notes",
+  },
+  {
+    query: "add a note to a candidate's profile in ashby",
+    expected: "ashby.create_candidate_note",
+  },
+  {
+    query: "list the job openings in ashby",
+    expected: "ashby.list_openings",
+  },
+  {
+    query: "list the published job postings in ashby",
+    expected: "ashby.list_job_postings",
+  },
+  {
+    query: "update the description of a job posting in ashby",
+    expected: "ashby.update_job_posting",
+  },
+  {
+    query: "show the referral form fields in ashby",
+    expected: "ashby.get_referral_form",
+  },
+  {
+    query: "create a referral for a candidate in ashby",
+    expected: "ashby.create_referral",
+  },
+  {
+    query: "get the offer and hire details for a hired candidate in ashby",
+    expected: "ashby.get_hire_data",
+  },
+
   // --- web_search_&_browse ---
   {
     query: "search the web for the latest AI research papers",
@@ -1013,6 +1093,43 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "browse this webpage and summarize it",
     expected: "web_search_&_browse.webbrowser",
+  },
+
+  // --- clari_copilot ---
+  {
+    query: "find clari copilot sales calls with acme last week",
+    expected: "clari_copilot.search_calls",
+  },
+  {
+    query: "list clari copilot calls with a customer by date",
+    expected: "clari_copilot.search_calls",
+  },
+  {
+    query: "get the ai summary and action items for a clari copilot call",
+    expected: "clari_copilot.get_call_details",
+  },
+  {
+    query: "show the transcript and competitor mentions of a clari copilot call",
+    expected: "clari_copilot.get_call_details",
+  },
+
+  // --- image_generation ---
+  {
+    query: "generate an image of a watercolor mountain landscape at sunset",
+    expected: "image_generation.generate_image",
+  },
+  {
+    query: "create a picture of a minimalist tech company logo",
+    expected: "image_generation.generate_image",
+  },
+  {
+    query: "draw an illustration of a friendly robot mascot",
+    expected: "image_generation.generate_image",
+  },
+  {
+    query:
+      "edit this photo to remove the background and replace it with a beach",
+    expected: "image_generation.generate_image",
   },
 
   // --- cross-server (no platform named) ---

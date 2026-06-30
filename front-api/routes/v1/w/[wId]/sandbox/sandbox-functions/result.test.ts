@@ -3,7 +3,20 @@ import {
   createSandboxTokenTestContext,
 } from "@app/tests/utils/SandboxTokenFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
+  const mod =
+    await importOriginal<
+      typeof import("@app/lib/api/sandbox_functions/events")
+    >();
+  return {
+    ...mod,
+    publishSandboxFunctionInvocationEvent: vi.fn(),
+  };
+});
+
+import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 
 function postSandboxFunctionResult(
   workspace: { sId: string },
@@ -24,9 +37,14 @@ function postSandboxFunctionResult(
 }
 
 describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("returns success for sandbox function invocation result callbacks", async () => {
-    const { token, workspace } =
+    const { sandbox, token, workspace } =
       await createSandboxFunctionInvocationTokenTestContext();
+    const invocationId = `test-invocation-${sandbox.sId}`;
 
     const response = await postSandboxFunctionResult(workspace, token, {
       function: "test_function",
@@ -35,6 +53,16 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      {
+        type: "sandbox_function_invocation_result",
+        created: expect.any(Number),
+        invocationId,
+        functionId: "sfn_test",
+        result: { hello: "world" },
+      },
+      { invocationId }
+    );
   });
 
   it("keeps accepting callbacks without a function name", async () => {
@@ -65,5 +93,6 @@ describe("POST /api/v1/w/[wId]/sandbox/sandbox-functions/result", () => {
           "This sandbox token cannot access sandbox function invocations.",
       },
     });
+    expect(publishSandboxFunctionInvocationEvent).not.toHaveBeenCalled();
   });
 });

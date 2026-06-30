@@ -12,6 +12,8 @@
 // Usage: npx tsx scripts/mcp_bm25/run.ts   (from the front/ directory)
 
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
+import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
@@ -20,11 +22,16 @@ import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
+import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
+import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
+import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
+import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { QUERY_TABLES_V2_SERVER } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
@@ -114,6 +121,10 @@ const SERVERS: ServerEntry[] = [
   { name: "slack", tools: SLACK_PERSONAL_SERVER.tools },
   { name: "slack_bot", tools: SLACK_BOT_SERVER.tools },
   { name: "microsoft_teams", tools: MICROSOFT_TEAMS_SERVER.tools },
+  { name: "monday", tools: MONDAY_SERVER.tools },
+  { name: "notion", tools: NOTION_SERVER.tools },
+  { name: "outlook", tools: OUTLOOK_MAIL_SERVER.tools },
+  { name: "outlook_calendar", tools: OUTLOOK_CALENDAR_SERVER.tools },
   { name: "wakeups", tools: WAKEUPS_SERVER.tools },
   { name: "confluence", tools: CONFLUENCE_SERVER.tools },
   { name: "hubspot", tools: HUBSPOT_SERVER.tools },
@@ -145,10 +156,13 @@ const SERVERS: ServerEntry[] = [
     name: "workspace_analytics",
     tools: WORKSPACE_ANALYTICS_SERVER.tools,
   },
+  { name: "ashby", tools: ASHBY_SERVER.tools },
   {
     name: "web_search_&_browse",
     tools: WEB_SEARCH_BROWSE_SERVER.tools,
   },
+  { name: "clari_copilot", tools: CLARI_COPILOT_SERVER.tools },
+  { name: "image_generation", tools: IMAGE_GENERATION_SERVER.tools },
 ];
 
 function out(line: string): void {
