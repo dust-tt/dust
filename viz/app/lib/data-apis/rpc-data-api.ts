@@ -27,7 +27,7 @@ export class RPCDataAPI implements VisualizationDataAPI {
   async callFunction(functionId: string, input?: unknown) {
     try {
       const result = await this.sendMessage("callFunction", {
-        functionId,
+        functionIdOrSlug: functionId,
         input,
       });
 

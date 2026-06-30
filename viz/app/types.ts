@@ -7,7 +7,7 @@ interface GetFileParams {
 }
 
 interface CallFunctionParams {
-  functionId: string;
+  functionIdOrSlug: string;
   input?: unknown;
 }
 
