@@ -29,3 +29,13 @@ export function makeMetronomeSeatCountSyncWorkflowId({
 }): string {
   return `metronome-seat-count-sync-${workspaceId}`;
 }
+
+export function makeReconcileApiKeyCreditStateWorkflowId({
+  workspaceId,
+  keyId,
+}: {
+  workspaceId: string;
+  keyId: number;
+}): string {
+  return `metronome-api-key-cap-reconcile-${workspaceId}-${keyId}`;
+}
