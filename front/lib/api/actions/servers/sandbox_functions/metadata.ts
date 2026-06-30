@@ -1,6 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { SANDBOX_FUNCTION_SLUG_REGEX } from "@app/types/api/sandbox/functions";
+import { SANDBOX_FUNCTION_SLUG_REGEX } from "@app/types/api/sandbox_functions";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
