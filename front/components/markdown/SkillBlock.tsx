@@ -31,7 +31,7 @@ export function SkillBlock({
       icon={{ visual: getSkillIcon(skillIcon), size: "xs" }}
       href={href}
       target={href ? "_blank" : undefined}
-      color="white"
+      color="primary"
       size="xs"
     />
   );

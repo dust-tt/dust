@@ -793,7 +793,7 @@ export const SelectDataSourceExample = () => {
                     <span className="text-sm text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
-                    <Chip size="sm" color="green" label="Syncing (235)" />
+                    <Chip size="sm" color="success" label="Syncing (235)" />
                     <Button
                       label="Manage"
                       icon={Settings01}
@@ -813,7 +813,7 @@ export const SelectDataSourceExample = () => {
                     <span className="text-sm text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
-                    <Chip size="sm" color="green" label="Syncing (235)" />
+                    <Chip size="sm" color="success" label="Syncing (235)" />
                     <Button
                       label="Manage"
                       icon={Settings01}
@@ -832,7 +832,7 @@ export const SelectDataSourceExample = () => {
                     <span className="text-sm text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
-                    <Chip size="sm" color="green" label="Syncing (235)" />
+                    <Chip size="sm" color="success" label="Syncing (235)" />
                     <Button
                       label="Manage"
                       icon={Settings01}
@@ -860,7 +860,7 @@ export const SelectDataSourceExample = () => {
                     <span className="text-sm text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
-                    <Chip size="sm" color="green" label="Syncing (235)" />
+                    <Chip size="sm" color="success" label="Syncing (235)" />
                     <Button
                       label="Manage"
                       icon={Settings01}

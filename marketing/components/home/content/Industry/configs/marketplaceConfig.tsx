@@ -23,7 +23,7 @@ export const marketplaceConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Marketplace",
-      color: "blue",
+      color: "highlight",
       icon: ShoppingBag01,
     },
     title: (

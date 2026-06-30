@@ -9,16 +9,7 @@ export interface SeoConfig {
 // Basic config types
 export interface ChipConfig {
   label: string;
-  color:
-    | "primary"
-    | "success"
-    | "warning"
-    | "info"
-    | "highlight"
-    | "green"
-    | "blue"
-    | "rose"
-    | "golden";
+  color: "primary" | "success" | "warning" | "info" | "highlight";
   icon: React.ComponentType;
 }
 

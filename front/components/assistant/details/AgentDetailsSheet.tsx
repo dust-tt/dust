@@ -90,7 +90,7 @@ export const SCOPE_INFO: Record<
   {
     shortLabel: string;
     label: string;
-    color: "green" | "golden" | "blue" | "primary";
+    color: "success" | "info" | "highlight" | "primary";
     icon?: typeof Users01 | undefined;
     text: string;
   }
@@ -110,7 +110,7 @@ export const SCOPE_INFO: Record<
   visible: {
     shortLabel: "Published",
     label: "Published",
-    color: "green",
+    color: "success",
     text: "Visible agents.",
   },
 } as const;

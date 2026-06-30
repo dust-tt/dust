@@ -88,7 +88,7 @@ export function FramePage() {
         {/* Summary Chips */}
         <div className="flex flex-wrap gap-2">
           <Chip
-            color={file.status === "ready" ? "green" : "warning"}
+            color={file.status === "ready" ? "success" : "warning"}
             label={`Status: ${file.status}`}
             size="sm"
           />

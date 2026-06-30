@@ -338,7 +338,6 @@ export function EditAdvancedModelsModal({
                         <Spinner size="xs" />
                       ) : (
                         <SliderToggle
-                          size="xs"
                           selected={isAllowed}
                           disabled={readOnly}
                           onClick={() =>

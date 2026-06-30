@@ -174,7 +174,7 @@ function PrunedContextChip() {
         <Chip
           label="Context limit reached"
           size="xs"
-          color="white"
+          color="primary"
           icon={InfoCircle}
         />
       }

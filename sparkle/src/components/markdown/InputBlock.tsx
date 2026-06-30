@@ -35,7 +35,6 @@ export const InputBlock = memo(
       <div className="inline-flex items-center">
         <Checkbox
           ref={inputRef as unknown as React.Ref<HTMLButtonElement>}
-          size="xs"
           checked={checked}
           className="translate-y-[3px]"
           onCheckedChange={handleCheckedChange}

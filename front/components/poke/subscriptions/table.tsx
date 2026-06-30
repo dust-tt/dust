@@ -84,7 +84,7 @@ function getSubscriptionDisplayStatus(
 const STATUS_CONFIG: Record<
   SubscriptionStatus,
   {
-    chipColor: "info" | "blue" | "warning" | "success" | "rose";
+    chipColor: "info" | "highlight" | "warning" | "success" | "warning";
     chipLabel: string;
     cardClass: string;
   }
@@ -95,7 +95,7 @@ const STATUS_CONFIG: Record<
     cardClass: "border-info-200 bg-info-50",
   },
   trialing: {
-    chipColor: "blue",
+    chipColor: "highlight",
     chipLabel: "Trialing",
     cardClass: "border-highlight-200 bg-highlight-50",
   },
@@ -110,7 +110,7 @@ const STATUS_CONFIG: Record<
     cardClass: "border-success-200 bg-success-50",
   },
   inconsistent: {
-    chipColor: "rose",
+    chipColor: "warning",
     chipLabel: "Inconsistent",
     cardClass: "border-warning-200 bg-warning-50",
   },
@@ -416,7 +416,7 @@ export function ActiveSubscriptionTable({
             <div className="flex items-center justify-between gap-2 pb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-md font-bold">Pending Subscription</h2>
-                <Chip color="blue" label="Pending activation" size="xs" />
+                <Chip color="highlight" label="Pending activation" size="xs" />
               </div>
               <CancelPendingSubscriptionButton owner={owner} />
             </div>

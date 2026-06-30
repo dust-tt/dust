@@ -47,7 +47,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
   return (
     <div className="group/suggestion-item flex items-start gap-3 py-1 pl-6">
       <div className="mt-1 shrink-0">
-        <Checkbox size="xs" checked={false} disabled />
+        <Checkbox checked={false} disabled />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="relative min-w-0 text-left">

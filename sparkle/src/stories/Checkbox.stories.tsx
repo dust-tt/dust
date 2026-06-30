@@ -2,8 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { expect } from "storybook/test";
 
-import { CHECKBOX_SIZES } from "@sparkle/components/Checkbox";
-
 import {
   Checkbox,
   type CheckboxProps,
@@ -44,14 +42,6 @@ const meta = {
     },
   },
   argTypes: {
-    size: {
-      description: "The size of the checkbox",
-      options: CHECKBOX_SIZES,
-      control: { type: "select" },
-      table: {
-        defaultValue: { summary: "sm" },
-      },
-    },
     checked: {
       description: "The checked state of the checkbox",
       options: Object.keys(CHECKED_STATES),
@@ -96,7 +86,6 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    size: "sm",
     checked: false,
     disabled: false,
   },

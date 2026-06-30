@@ -712,9 +712,9 @@ const DropdownMenuRadioItem = React.forwardRef<
       )}
       {...props}
     >
-      <span className={cn("absolute left-2", radioStyles({ size: "xs" }))}>
+      <span className={cn("absolute left-2", radioStyles())}>
         <DropdownMenuPrimitive.ItemIndicator>
-          <div className={radioIndicatorStyles({ size: "xs" })} />
+          <div className={radioIndicatorStyles()} />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       <ItemWithLabelIconAndDescription

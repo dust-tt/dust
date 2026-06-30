@@ -65,7 +65,6 @@ export function IntercomConfigView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetNewConfig(!isSyncNotesEnabled);
               }}

@@ -49,7 +49,7 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
         title={
           <div className="flex items-center gap-2">
             <span>Email agents</span>
-            <Chip size="xs" color="golden" label="Beta" />
+            <Chip size="xs" color="info" label="Beta" />
           </div>
         }
         subElement={

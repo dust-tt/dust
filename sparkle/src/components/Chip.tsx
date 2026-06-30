@@ -19,11 +19,6 @@ export const CHIP_COLORS = [
   "warning",
   "info",
   "highlight",
-  "green",
-  "blue",
-  "rose",
-  "golden",
-  "white",
 ] as const;
 
 type ChipColorType = (typeof CHIP_COLORS)[number];
@@ -31,40 +26,23 @@ type ChipColorType = (typeof CHIP_COLORS)[number];
 const chipVariants = cva("inline-flex box-border items-center", {
   variants: {
     size: {
-      mini: "rounded-md min-h-5 text-xs font-medium px-1.5 py-1 gap-0.5",
-      xs: "rounded-lg min-h-7 heading-xs px-3 gap-1",
-      sm: "rounded-xl min-h-9 heading-sm px-4 gap-1.5",
+      mini: "rounded-lg min-h-5 text-xs font-medium px-1.5 gap-1",
+      xs: "rounded-[9px] min-h-6 heading-xs px-[9px] gap-1",
+      sm: "rounded-xl min-h-8 heading-sm px-3 gap-1.5",
     },
+    // Semantic scales (primary/highlight/info/warning) auto-flip in the `.dark`
+    // block, so they need no dark variants. `primary` resolves to stone (Figma
+    // Badge Grey) via the token layer. `success` is overridden to the emerald
+    // palette to match the Figma Badge Green, so it carries dark variants.
     color: {
-      primary: cn("bg-muted-background border-border", "text-primary-900"),
-      highlight: cn(
-        "bg-highlight-100 border-highlight-200",
-        "text-highlight-900"
+      primary: cn("bg-primary-50 text-primary-700"),
+      success: cn(
+        "bg-emerald-50 text-emerald-700",
+        "dark:bg-emerald-950 dark:text-emerald-300"
       ),
-      success: cn("bg-success-100 border-success-200", "text-success-900"),
-      info: cn("bg-info-100 border-info-200", "text-info-900"),
-      warning: cn("bg-warning-100 border-warning-200", "text-warning-900"),
-      // The raw palette scales (green/blue/rose/golden) are not redefined in
-      // the `.dark` block (unlike the semantic scales above), so they need
-      // explicit dark variants to flip. The dark shades mirror the inverted
-      // mapping the v3 `-night` shades used (e.g. green-100 -> green-900).
-      green: cn(
-        "bg-green-100 border-green-200 text-green-900",
-        "dark:bg-green-900 dark:border-green-800 dark:text-green-100"
-      ),
-      blue: cn(
-        "bg-blue-100 border-blue-200 text-blue-900",
-        "dark:bg-blue-900 dark:border-blue-800 dark:text-blue-100"
-      ),
-      rose: cn(
-        "bg-rose-100 border-rose-200 text-rose-900",
-        "dark:bg-rose-900 dark:border-rose-800 dark:text-rose-100"
-      ),
-      golden: cn(
-        "bg-golden-100 border-golden-200 text-golden-900",
-        "dark:bg-golden-900 dark:border-golden-800 dark:text-golden-100"
-      ),
-      white: cn("border bg-background border-border", "text-primary-900"),
+      warning: cn("bg-warning-50 text-warning-700"),
+      info: cn("bg-info-50 text-info-700"),
+      highlight: cn("bg-highlight-50 text-highlight-700"),
     },
   },
   defaultVariants: {
@@ -75,35 +53,19 @@ const chipVariants = cva("inline-flex box-border items-center", {
 
 const closeIconVariants: Record<ChipColorType, string> = {
   primary: cn(
-    "text-primary-700 hover:text-primary-500 active:text-primary-950"
+    "text-primary-700 hover:text-primary-900 active:text-primary-950"
   ),
   highlight: cn(
-    "text-highlight-900 hover:text-highlight-700 active:text-highlight-950"
+    "text-highlight-700 hover:text-highlight-900 active:text-highlight-950"
   ),
   success: cn(
-    "text-success-900 hover:text-success-700 active:text-success-950"
+    "text-emerald-700 hover:text-emerald-900 active:text-emerald-950",
+    "dark:text-emerald-300 dark:hover:text-emerald-100 dark:active:text-emerald-50"
   ),
   warning: cn(
-    "text-warning-900 hover:text-warning-700 active:text-warning-950"
+    "text-warning-700 hover:text-warning-900 active:text-warning-950"
   ),
-  info: cn("text-info-900 hover:text-info-700 active:text-info-950"),
-  green: cn(
-    "text-green-900 hover:text-green-700 active:text-green-950",
-    "dark:text-green-100 dark:hover:text-green-300 dark:active:text-green-50"
-  ),
-  blue: cn(
-    "text-blue-900 hover:text-blue-700 active:text-blue-950",
-    "dark:text-blue-100 dark:hover:text-blue-300 dark:active:text-blue-50"
-  ),
-  rose: cn(
-    "text-rose-900 hover:text-rose-700 active:text-rose-950",
-    "dark:text-rose-100 dark:hover:text-rose-300 dark:active:text-rose-50"
-  ),
-  golden: cn(
-    "text-golden-900 hover:text-golden-700 active:text-golden-950",
-    "dark:text-golden-100 dark:hover:text-golden-300 dark:active:text-golden-50"
-  ),
-  white: cn("text-primary-700 hover:text-primary-500 active:text-primary-950"),
+  info: cn("text-info-700 hover:text-info-900 active:text-info-950"),
 };
 
 interface ChipInternalButtonProps {
@@ -123,7 +85,7 @@ const ChipButton = React.forwardRef<HTMLButtonElement, ChipInternalButtonProps>(
       aria-label={ariaLabel}
       className={cn(
         "rounded-md p-0.5",
-        "transition-colors duration-200",
+        "transition-colors duration-200 motion-reduce:transition-none",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         className
       )}

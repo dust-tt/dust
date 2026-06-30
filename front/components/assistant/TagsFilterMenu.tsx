@@ -101,7 +101,7 @@ export const TagsFilterMenu = ({
                 <DropdownMenuTagItem
                   key={tag.sId}
                   label={tag.name}
-                  color="golden"
+                  color="info"
                   className="m-0.5"
                   onClick={() => {
                     setSelectedTags([...selectedTags, tag]);

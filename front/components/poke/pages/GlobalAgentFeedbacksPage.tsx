@@ -38,7 +38,7 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
         const { thumbDirection } = row.original;
         return (
           <Chip
-            color={thumbDirection === "up" ? "green" : "rose"}
+            color={thumbDirection === "up" ? "success" : "warning"}
             size="xs"
             label={thumbDirection === "up" ? "up" : "down"}
           />

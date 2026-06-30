@@ -261,7 +261,7 @@ Tree.Item = React.forwardRef<
             />
           )}
           {type === "leaf" && <div className="w-[24px] flex-shrink-0"></div>}
-          {checkbox && <Checkbox {...checkbox} size="xs" />}
+          {checkbox && <Checkbox {...checkbox} />}
           <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
           {isTruncated ? (
             <TooltipProvider>

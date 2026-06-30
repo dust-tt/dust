@@ -31,7 +31,6 @@ export function ProviderToggleContextItem({
       visual={<Icon visual={LogoComponent} size="lg" />}
       action={
         <SliderToggle
-          size="xs"
           selected={providersSelection[providerId]}
           onClick={handleToggleChange}
           disabled={disabled}

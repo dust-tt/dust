@@ -118,7 +118,7 @@ function CapabilitiesPickerItemsList({
       {items.map((item) => {
         const endComponent =
           item.kind === "uninstalled_tool" ? (
-            <Chip size="xs" color="golden" label="Configure" />
+            <Chip size="xs" color="info" label="Configure" />
           ) : (
             <Button
               icon={DotsHorizontal}

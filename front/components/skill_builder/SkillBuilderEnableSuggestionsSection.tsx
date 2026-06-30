@@ -43,7 +43,6 @@ export function SkillBuilderEnableSuggestionsSection({
         <SliderToggle
           selected={enabled && !isDisabled}
           onClick={handleToggle}
-          size="xs"
         />
         <span className="text-sm text-foreground">Self-improve</span>
         <Tooltip

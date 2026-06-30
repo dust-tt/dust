@@ -40,7 +40,6 @@ export const createConnectorOptionsPdfEnabled = (description: string) => {
           action={
             <div className="relative">
               <SliderToggle
-                size="xs"
                 onClick={async () => {
                   await handleSetPdfEnabled(!pdfEnabled);
                 }}

@@ -110,9 +110,9 @@ interface ConversationViewProps {
 
 function ConversationView({ conversation }: ConversationViewProps) {
   const roleChipColors: Record<string, ComponentProps<typeof Chip>["color"]> = {
-    user: "blue",
-    assistant: "green",
-    function: "golden",
+    user: "highlight",
+    assistant: "success",
+    function: "info",
   };
 
   return (

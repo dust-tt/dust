@@ -139,7 +139,7 @@ function StatusCell({
       );
     }
     return (
-      <Chip color="green" size="xs">
+      <Chip color="success" size="xs">
         Matched
       </Chip>
     );

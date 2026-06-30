@@ -388,7 +388,7 @@ function TaskDirectiveChipInner({
             <AttachmentChip
               label={displayLabel}
               icon={{ visual: CheckCircle }}
-              color="green"
+              color="success"
               className="min-w-0 max-w-full transition-opacity group-hover:opacity-90"
             />
           </button>

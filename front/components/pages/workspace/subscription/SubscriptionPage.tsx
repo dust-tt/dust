@@ -518,7 +518,7 @@ export function SubscriptionPage() {
   const isProcessing =
     isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
 
-  const chipColor = !isUpgraded(plan) ? "green" : "blue";
+  const chipColor = !isUpgraded(plan) ? "success" : "highlight";
 
   const planLabel =
     trialDaysRemaining === null

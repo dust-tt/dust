@@ -140,7 +140,6 @@ function getColumns(
         return (
           <DataTable.CellContent>
             <SliderToggle
-              size="xs"
               selected={selected}
               disabled={isEnabledUpdating || isLocked}
               onClick={onToggleEnabled}
@@ -192,7 +191,6 @@ function getColumns(
         return (
           <DataTable.CellContent>
             <SliderToggle
-              size="xs"
               selected={selected}
               disabled={isLockUpdating}
               onClick={onToggleLock}

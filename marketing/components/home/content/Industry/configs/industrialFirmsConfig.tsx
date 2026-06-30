@@ -17,7 +17,7 @@ export const industrialFirmsConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Industrial Manufacturing",
-      color: "blue",
+      color: "highlight",
       icon: BarChart01,
     },
     title: (

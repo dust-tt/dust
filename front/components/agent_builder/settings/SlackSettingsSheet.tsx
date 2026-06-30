@@ -165,7 +165,6 @@ function SlackChannelsList({
                       handleChannelToggle(channel, checked === true)
                     }
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    size="xs"
                   />
                   <span className="text-sm font-medium text-primary-900">
                     {channel.slackChannelName}
