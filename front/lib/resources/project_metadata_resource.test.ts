@@ -143,7 +143,11 @@ describe("ProjectMetadataResource", () => {
         { description: "d" }
       );
 
-      await metadata.setDefaultSkills([skillA, skillB, globalSkill]);
+      await metadata.setDefaultSkills(authenticator, [
+        skillA,
+        skillB,
+        globalSkill,
+      ]);
 
       const reloaded = await ProjectMetadataResource.fetchBySpace(
         authenticator,
@@ -158,7 +162,7 @@ describe("ProjectMetadataResource", () => {
       );
 
       // Full replacement drops the omitted skills (keep only the global one).
-      await metadata.setDefaultSkills([globalSkill]);
+      await metadata.setDefaultSkills(authenticator, [globalSkill]);
       const afterReplace = await ProjectMetadataResource.fetchBySpace(
         authenticator,
         space
@@ -166,13 +170,45 @@ describe("ProjectMetadataResource", () => {
       expect(afterReplace!.defaultSkillIds).toEqual([globalSkill.sId]);
 
       // Empty set clears everything and stores null.
-      await metadata.setDefaultSkills([]);
+      await metadata.setDefaultSkills(authenticator, []);
       const afterClear = await ProjectMetadataResource.fetchBySpace(
         authenticator,
         space
       );
       expect(afterClear!.defaultSkillIds).toEqual([]);
       expect(afterClear!.defaultSkillsIds).toBeNull();
+    });
+
+    it("drops skills that are not usable in the global space", async () => {
+      const { workspace: skillWorkspace, authenticator } =
+        await createResourceTest({ role: "admin" });
+      const space = await SpaceFactory.project(skillWorkspace);
+      const restrictedSpace = await SpaceFactory.regular(skillWorkspace);
+
+      const globalSkill = await SkillFactory.create(authenticator, {
+        name: "global",
+      });
+      const restrictedSkill = await SkillFactory.create(authenticator, {
+        name: "restricted",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+
+      await metadata.setDefaultSkills(authenticator, [
+        globalSkill,
+        restrictedSkill,
+      ]);
+
+      const reloaded = await ProjectMetadataResource.fetchBySpace(
+        authenticator,
+        space
+      );
+      expect(reloaded!.defaultSkillIds).toEqual([globalSkill.sId]);
     });
 
     it("de-duplicates skills", async () => {
@@ -189,7 +225,7 @@ describe("ProjectMetadataResource", () => {
 
       // The (workspace, project, skill) unique index would reject a duplicate;
       // setDefaultSkills de-dupes before inserting.
-      await metadata.setDefaultSkills([skill, skill]);
+      await metadata.setDefaultSkills(authenticator, [skill, skill]);
 
       const reloaded = await ProjectMetadataResource.fetchBySpace(
         authenticator,
@@ -209,10 +245,8 @@ describe("ProjectMetadataResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills([skill]);
+      await metadata.setDefaultSkills(authenticator, [skill]);
 
-      // Default skills are stored inline as the `defaultSkillsIds` array on the
-      // project_metadata row, so delete() removes them along with the row.
       const result = await metadata.delete(authenticator, {});
       expect(result.isOk()).toBe(true);
 

@@ -14,8 +14,7 @@ import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations"
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
-import { usePodMetadata } from "@app/lib/swr/pods";
-import { useSkills } from "@app/lib/swr/skill_configurations";
+import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type {
@@ -121,29 +120,8 @@ export function PodConversationsTab({
     hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
 
-  // This pod's default skills, pre-inserted into new conversations started here.
-  // Insertion happens downstream in the input bar's editor.
-  const hasPodDefaultSkillsFeature = hasFeature("pod_default_skills");
-  const { skills, isSkillsLoading } = useSkills({
-    owner,
-    status: "active",
-    globalSpaceOnly: true,
-    disabled: !hasPodDefaultSkillsFeature,
-  });
-  // `undefined` when the feature is off.
-  const defaultSkills = useMemo(() => {
-    if (!hasPodDefaultSkillsFeature) {
-      return undefined;
-    }
-    const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
-    // Preserve the stored order.
-    return (podMetadata?.defaultSkillIds ?? []).flatMap((skillId) => {
-      const skill = skillBySId.get(skillId);
-      return skill
-        ? [{ sId: skill.sId, name: skill.name, icon: skill.icon }]
-        : [];
-    });
-  }, [hasPodDefaultSkillsFeature, skills, podMetadata?.defaultSkillIds]);
+  const { defaultSkills, isDefaultSkillsLoading, defaultSkillsKey } =
+    usePodDefaultSkills({ owner, podId: podInfo.sId });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
@@ -238,6 +216,7 @@ export function PodConversationsTab({
               </div>
             ) : podInfo.isMember ? (
               <InputBar
+                key={defaultSkillsKey}
                 owner={owner}
                 user={user}
                 onSubmit={onSubmit}
@@ -248,7 +227,7 @@ export function PodConversationsTab({
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
                 defaultSkills={defaultSkills}
-                isDefaultSkillsLoading={isPodMetadataLoading || isSkillsLoading}
+                isDefaultSkillsLoading={isDefaultSkillsLoading}
               />
             ) : (
               <PodJoinCTA

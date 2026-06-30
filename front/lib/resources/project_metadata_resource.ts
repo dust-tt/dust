@@ -189,19 +189,20 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ defaultAgentId }, transaction);
   }
 
-  // Replaces the pod's default skills with the given set (full replacement, not a
-  // merge). Works for both global and custom skills, stored as their sIds inline
-  // on the pod row. The caller is responsible for validating that the skills
-  // exist and are usable in the workspace — see the PATCH project_metadata route,
-  // which uses SkillResource.fetchByIds() for that.
   async setDefaultSkills(
+    auth: Authenticator,
     skills: SkillResource[],
     transaction?: Transaction
   ): Promise<void> {
-    // De-duplicate by sId, preserving order.
-    const defaultSkillsIds = [...new Map(skills.map((s) => [s.sId, s])).keys()];
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const globalSpaceSkills = skills.filter((skill) =>
+      skill.requestedSpaceIds.every((id) => id === globalSpace.id)
+    );
 
-    // Store null rather than an empty array when the pod has no default skills.
+    const defaultSkillsIds = [
+      ...new Map(globalSpaceSkills.map((s) => [s.sId, s])).keys(),
+    ];
+
     await this.update(
       {
         defaultSkillsIds: defaultSkillsIds.length > 0 ? defaultSkillsIds : null,

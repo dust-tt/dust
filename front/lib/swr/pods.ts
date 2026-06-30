@@ -10,9 +10,11 @@ import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
   emptyArray,
@@ -1082,6 +1084,54 @@ export function usePodMetadata({
     isPodMetadataLoading: !error && !data && !disabled,
     isPodMetadataError: error,
     mutatePodMetadata: mutate,
+  };
+}
+
+export function usePodDefaultSkills({
+  owner,
+  podId,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { hasFeature } = useFeatureFlags();
+  const hasPodDefaultSkillsFeature = hasFeature("pod_default_skills");
+  const enabled = hasPodDefaultSkillsFeature && !disabled;
+
+  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId,
+    disabled: !enabled,
+  });
+  const { skills, isSkillsLoading } = useSkills({
+    owner,
+    status: "active",
+    globalSpaceOnly: true,
+    disabled: !enabled,
+  });
+
+  const defaultSkills = useMemo(() => {
+    if (!hasPodDefaultSkillsFeature) {
+      return undefined;
+    }
+    const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+    // Preserve the stored order.
+    return (podMetadata?.defaultSkillIds ?? []).flatMap((skillId) => {
+      const skill = skillBySId.get(skillId);
+      return skill
+        ? [{ sId: skill.sId, name: skill.name, icon: skill.icon }]
+        : [];
+    });
+  }, [hasPodDefaultSkillsFeature, skills, podMetadata?.defaultSkillIds]);
+
+  const defaultSkillsKey = (podMetadata?.defaultSkillIds ?? []).join(",");
+
+  return {
+    defaultSkills,
+    isDefaultSkillsLoading: isPodMetadataLoading || isSkillsLoading,
+    defaultSkillsKey,
   };
 }
 

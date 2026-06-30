@@ -118,11 +118,6 @@ app.patch(
       }
     }
 
-    // Validate the requested default skills exist and are active. Both global and
-    // custom (workspace) skills are supported — the mapping table stores each via
-    // its skillReference ({ globalSkillId } or { customSkillId }). Full
-    // replacement: an empty array clears all default skills. Gated behind the
-    // pod_default_skills feature flag.
     let resolvedDefaultSkills: SkillResource[] | null = null;
     if (defaultSkillsEnabled && body.defaultSkillIds !== undefined) {
       const requestedSkillIds = [...new Set(body.defaultSkillIds)];
@@ -235,9 +230,6 @@ app.patch(
       }
     }
 
-    // The default skills live in a separate mapping table, so the in-memory
-    // resource still holds the pre-update set. Re-fetch to reflect the new set
-    // in the response.
     if (resolvedDefaultSkills) {
       const refreshed = await ProjectMetadataResource.fetchBySpace(auth, space);
       if (refreshed) {
