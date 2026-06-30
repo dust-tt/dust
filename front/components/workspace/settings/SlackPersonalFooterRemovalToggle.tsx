@@ -13,7 +13,7 @@ export function SlackPersonalFooterRemovalToggle({
   return (
     <ContextItem
       title="Slack attribution footer"
-      subElement="Allow agents to remove the 'Sent via Agent_name' footer when posting Slack messages"
+      subElement="Allow agents to remove the 'Sent via Agent_name' footer when posting Slack messages using Slack personal MCP"
       visual={<SlackLogo className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
