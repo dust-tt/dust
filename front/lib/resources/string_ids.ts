@@ -75,6 +75,7 @@ export const RESOURCES_PREFIX = {
 
   // Sandbox functions.
   sandbox_function: "sfn",
+  sandbox_function_invocation: "sfi",
 
   // Academy quiz attempts.
   academy_quiz_attempt: "aqz",

@@ -103,7 +103,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
       .spyOn(SandboxFunctionResource.prototype, "invoke")
       .mockResolvedValue(
         new Ok({
-          id: "test-invocation-id",
+          sId: "test-invocation-id",
           functionId: sandboxFunction.sId,
           status: "created",
           createdAt,
@@ -123,7 +123,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
     const body = await response.json();
     expect(body).toEqual({
       invocation: {
-        id: "test-invocation-id",
+        sId: "test-invocation-id",
         functionId: sandboxFunction.sId,
         status: "created",
         createdAt,
@@ -155,7 +155,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionId/invocations", () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
     vi.spyOn(SandboxFunctionResource.prototype, "invoke").mockResolvedValue(
       new Ok({
-        id: "test-invocation-id",
+        sId: "test-invocation-id",
         functionId: sandboxFunction.sId,
         status: "created",
         createdAt: new Date().toISOString(),

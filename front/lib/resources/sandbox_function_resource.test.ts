@@ -4,7 +4,10 @@ import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -409,22 +412,30 @@ describe("SandboxFunctionResource", () => {
       context: { frameFileId: file.sId },
     });
 
-    expect(result.isOk()).toBe(true);
     if (result.isErr()) {
-      return;
+      throw result.error;
     }
     expect(result.value).toMatchObject({
       functionId: sandboxFunction.sId,
       status: "created",
     });
+    expect(result.value.sId).toMatch(/^sfi_/);
     expect(Date.parse(result.value.createdAt)).not.toBeNaN();
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        sandboxFunctionId: sandboxFunction.id,
+      },
+    });
+    expect(invocation).not.toBeNull();
+    expect(invocation?.status).toBe("created");
     expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space);
     expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
       authenticator,
       {
         sandbox,
         sandboxFunction,
-        invocationId: result.value.id,
+        invocationId: result.value.sId,
         execId: expect.any(String),
       }
     );
@@ -436,7 +447,7 @@ describe("SandboxFunctionResource", () => {
       return;
     }
     const [, command, opts] = execCall;
-    const stagedFunctionsDir = `/tmp/dust-sandbox-functions/${result.value.id}`;
+    const stagedFunctionsDir = `/tmp/dust-sandbox-functions/${result.value.sId}`;
     expect(command).toContain(
       `cat > '${stagedFunctionsDir}/add-comment.ts' <<'DUST_SANDBOX_FUNCTION_EOF'`
     );
@@ -456,12 +467,12 @@ describe("SandboxFunctionResource", () => {
     const inputEnvelope = JSON.parse(opts.stdin);
     expect(inputEnvelope).toMatchObject({
       method: "POST",
-      url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${result.value.id}`,
+      url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${result.value.sId}`,
       headers: {
         "content-type": "application/json",
         "x-dust-frame-file-id": file.sId,
         "x-dust-sandbox-function-id": sandboxFunction.sId,
-        "x-dust-sandbox-function-invocation-id": result.value.id,
+        "x-dust-sandbox-function-invocation-id": result.value.sId,
       },
       body: JSON.stringify({ message: "hello" }),
       encoding: "utf8",
@@ -492,6 +503,11 @@ describe("SandboxFunctionResource", () => {
         outputSchema,
       }
     );
+    const invocation = await SandboxFunctionInvocationModel.create({
+      workspaceId: workspace.id,
+      sandboxFunctionId: sandboxFunction.id,
+      status: "created",
+    });
 
     const deleteResult = await SandboxFunctionResource.deleteAllForSpace(
       authenticator,
@@ -506,6 +522,14 @@ describe("SandboxFunctionResource", () => {
     ).resolves.toBeNull();
     await expect(
       FileResource.fetchById(authenticator, file.sId)
+    ).resolves.toBeNull();
+    await expect(
+      SandboxFunctionInvocationModel.findOne({
+        where: {
+          id: invocation.id,
+          workspaceId: workspace.id,
+        },
+      })
     ).resolves.toBeNull();
   });
 

@@ -2,7 +2,7 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
-} from "@app/types/api/sandbox/functions";
+} from "@app/types/api/sandbox_functions";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

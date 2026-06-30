@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import path from "node:path";
 import config from "@app/lib/api/config";
 import {
@@ -10,6 +9,7 @@ import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   isValidSandboxFunctionSlug,
@@ -26,7 +26,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationType,
-} from "@app/types/api/sandbox/functions";
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -80,7 +80,8 @@ export interface SandboxFunctionResource
 export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionModel> =
     SandboxFunctionModel;
-  space: SpaceResource;
+
+  readonly space: SpaceResource;
   file: FileResource;
 
   constructor(
@@ -306,18 +307,20 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         return ensureResult;
       }
 
-      const invocationId = randomUUID();
+      const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+        sandboxFunction: this,
+      });
       const execId = generateExecId();
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox: ensureResult.value.sandbox,
         sandboxFunction: this,
-        invocationId,
+        invocationId: invocation.sId,
         execId,
       });
 
       const stagedFunctionsDir = path.posix.join(
         SANDBOX_FUNCTION_STAGING_ROOT,
-        invocationId
+        invocation.sId
       );
       const command = buildSandboxFunctionCommand({
         stagedFunctionsDir,
@@ -325,11 +328,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       });
       const inputEnvelope = {
         method: "POST",
-        url: `https://dust.local/sandbox-functions/${this.sId}/invocations/${invocationId}`,
+        url: `https://dust.local/sandbox-functions/${this.sId}/invocations/${invocation.sId}`,
         headers: {
           "content-type": "application/json",
           "x-dust-sandbox-function-id": this.sId,
-          "x-dust-sandbox-function-invocation-id": invocationId,
+          "x-dust-sandbox-function-invocation-id": invocation.sId,
           ...(body.context?.frameFileId
             ? { "x-dust-frame-file-id": body.context.frameFileId }
             : {}),
@@ -366,10 +369,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       // of this flow will let dsbx post invocation results back to Dust with
       // the same token, then revoke it once results are accepted.
       return new Ok({
-        id: invocationId,
+        sId: invocation.sId,
         functionId: this.sId,
-        status: "created",
-        createdAt: new Date().toISOString(),
+        status: invocation.status,
+        createdAt: invocation.createdAt.toISOString(),
       });
     } catch (error) {
       return new Err(normalizeError(error));
@@ -381,6 +384,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       if (!this.space.canReadOrAdministrate(auth)) {
         return new Err(new Error("Sandbox function space is not accessible."));
       }
+
+      await SandboxFunctionInvocationResource.deleteAllForSandboxFunction(this);
 
       await this.model.destroy({
         where: {

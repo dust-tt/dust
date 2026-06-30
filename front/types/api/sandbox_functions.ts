@@ -1,7 +1,10 @@
-export type SandboxFunctionInvocationStatus = "created";
+export const SANDBOX_FUNCTION_INVOCATION_STATUSES = ["created"] as const;
+
+export type SandboxFunctionInvocationStatus =
+  (typeof SANDBOX_FUNCTION_INVOCATION_STATUSES)[number];
 
 export type SandboxFunctionInvocationType = {
-  id: string;
+  sId: string;
   functionId: string;
   status: SandboxFunctionInvocationStatus;
   createdAt: string;

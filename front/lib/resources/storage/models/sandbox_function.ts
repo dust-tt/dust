@@ -4,6 +4,8 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
+import type { SandboxFunctionInvocationStatus } from "@app/types/api/sandbox_functions";
+import { SANDBOX_FUNCTION_INVOCATION_STATUSES } from "@app/types/api/sandbox_functions";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
@@ -46,6 +48,16 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
 
   declare space: NonAttribute<SpaceModel>;
   declare file: NonAttribute<FileModel>;
+}
+
+export class SandboxFunctionInvocationModel extends WorkspaceAwareModel<SandboxFunctionInvocationModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare sandboxFunctionId: ForeignKey<SandboxFunctionModel["id"]>;
+  declare status: SandboxFunctionInvocationStatus;
+
+  declare sandboxFunction: NonAttribute<SandboxFunctionModel>;
 }
 
 SandboxFunctionModel.init(
@@ -141,4 +153,51 @@ SandboxFunctionModel.belongsTo(FileModel, {
 FileModel.hasMany(SandboxFunctionModel, {
   foreignKey: { name: "fileId", allowNull: false },
   as: "sandboxFunctions",
+});
+
+SandboxFunctionInvocationModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sandboxFunctionId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING(64),
+      allowNull: false,
+      validate: {
+        isIn: [SANDBOX_FUNCTION_INVOCATION_STATUSES],
+      },
+    },
+  },
+  {
+    modelName: "sandbox_function_invocation",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["sandboxFunctionId"],
+        concurrently: true,
+      },
+    ],
+  }
+);
+
+SandboxFunctionInvocationModel.belongsTo(SandboxFunctionModel, {
+  foreignKey: { name: "sandboxFunctionId", allowNull: false },
+  onDelete: "RESTRICT",
+  as: "sandboxFunction",
+});
+
+SandboxFunctionModel.hasMany(SandboxFunctionInvocationModel, {
+  foreignKey: { name: "sandboxFunctionId", allowNull: false },
+  as: "invocations",
 });
