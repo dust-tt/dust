@@ -60,9 +60,10 @@
 
   /* v4 Preflight no longer sets cursor: pointer on buttons (matches the
      native browser default). Restore the v3 behavior so interactive
-     buttons keep the pointer cursor. */
-  button,
-  [role="button"] {
+     buttons keep the pointer cursor — but disabled buttons keep the
+     normal cursor. */
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not(:disabled):not([aria-disabled="true"]) {
     cursor: pointer;
   }
 
