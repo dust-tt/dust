@@ -11,6 +11,11 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  AllowedAdvancedModelType,
+  GroupAllowedAdvancedModelsType,
+  UserAllowedAdvancedModelsType,
+} from "@app/types/api/advanced_models";
 import {
   isModelId,
   SUPPORTED_MODEL_CONFIGS,
@@ -24,18 +29,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
-
-export type AllowedAdvancedModelType = SupportedModel;
-
-export type UserAllowedAdvancedModelsType = {
-  userId: string;
-  models: AllowedAdvancedModelType[];
-};
-
-export type GroupAllowedAdvancedModelsType = {
-  groupId: string;
-  models: AllowedAdvancedModelType[];
-};
 
 export class AdvancedModelResource {
   private static assertIsAdmin(auth: Authenticator): void {
