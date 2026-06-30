@@ -43,7 +43,6 @@ export * from "./soft_delete_conversation";
 export * from "./sync_api_key_cap_alerts";
 export * from "./sync_default_pool_cap_alerts";
 export * from "./sync_metronome_seats";
-export * from "./sync_missing_transcripts_date_range";
 export * from "./toggle_auto_create_space";
 export * from "./toggle_disable_manual_invitations";
 export * from "./toggle_feature_flag";

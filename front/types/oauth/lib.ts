@@ -683,10 +683,7 @@ export function validateOAuthCredentials({
 
 // Credentials Providers
 
-export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
-  "gong",
-  "modjo",
-] as const;
+export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"] as const;
 
 export type ProvidersWithWorkspaceConfigurations =
   (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
@@ -697,8 +694,6 @@ export const CREDENTIALS_PROVIDERS = [
   "salesforce",
   "notion",
   "slack",
-  // LABS
-  "modjo",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
@@ -795,7 +790,6 @@ export type BigQueryCredentialsWithLocation = z.infer<
 export const ApiKeyCredentialsSchema = z.object({
   api_key: z.string(),
 });
-export type ModjoCredentials = z.infer<typeof ApiKeyCredentialsSchema>;
 export type LinearCredentials = z.infer<typeof ApiKeyCredentialsSchema>;
 
 export const HubspotCredentialsSchema = z.object({
@@ -819,16 +813,9 @@ export type ConnectionCredentials =
   | SnowflakeCredentials
   | BigQueryCredentialsWithLocation
   | SalesforceCredentials
-  | ModjoCredentials
   | HubspotCredentials
   | LinearCredentials
   | NotionCredentials;
-
-export function isModjoCredentials(
-  credentials: ConnectionCredentials
-): credentials is ModjoCredentials {
-  return "api_key" in credentials;
-}
 
 export type ModelProviderPostCredentialsBody = {
   provider: ByokModelProviderIdType;
