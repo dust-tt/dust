@@ -303,7 +303,7 @@ function SearchResults({
               <Spinner size="sm" />
             </div>
           ) : allPods.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <div className="px-3 py-2 text-sm text-muted-foreground">
               No results found
             </div>
           ) : (
@@ -371,7 +371,7 @@ function SearchResults({
           }
         >
           {allConversations.length === 0 && !showConversationsLoading ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <div className="px-3 py-2 text-sm text-muted-foreground">
               No results found
             </div>
           ) : (
@@ -906,7 +906,7 @@ export function AgentSidebarMenu({
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60 mb-4">
+              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 mb-4">
                 <div className="flex gap-2">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
@@ -1151,7 +1151,7 @@ export function AgentSidebarMenu({
               </div>
             )}
             {isConversationsError && (
-              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+              <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
                 Error loading conversations
               </Label>
             )}
@@ -1248,7 +1248,7 @@ function UnreadConversationsSection({
     <NavigationListCollapsibleSection
       label={label}
       count={totalCount}
-      className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night p-1 mx-sidebar-side-spacing"
+      className="bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
@@ -1258,7 +1258,7 @@ function UnreadConversationsSection({
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
             hasLighterFont
-            className="hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
+            className="hover:s:bg-sidebar-foreground active:s:bg-sidebar-foreground"
           />
         ) : null
       }
@@ -1332,7 +1332,7 @@ interface WakeUpSuffixProps {
 
 function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
   return (
-    <span className="copy-xs flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
+    <span className="copy-xs flex items-center gap-1 text-muted-foreground">
       <Icon visual={Clock} size="xs" />
       {formatWakeUpSidebarLabel(nextWakeupAt)}
     </span>
@@ -1408,13 +1408,13 @@ const ConversationListItem = memo(
       <div className="flex items-center mx-2 py-2">
         <Checkbox
           id={`conversation-${conversation.sId}`}
-          className="bg-background dark:bg-background-night"
+          className="bg-background"
           checked={selectedConversations.includes(conversation)}
           onCheckedChange={() => toggleConversationSelection(conversation)}
         />
         <Label
           htmlFor={`conversation-${conversation.sId}`}
-          className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
+          className="copy-sm ml-2 text-muted-foreground"
         >
           {conversationLabel}
         </Label>

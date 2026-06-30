@@ -63,9 +63,7 @@ export function UsageNotificationsCard({
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
-        <span className="heading-base text-foreground dark:text-foreground-night">
-          Notifications
-        </span>
+        <span className="heading-base text-foreground">Notifications</span>
         <Page.P variant="secondary">
           Customize when and how you receive usage based notification
         </Page.P>

@@ -50,7 +50,7 @@ export function SsoEnforcedPage() {
           </div>
           <div className="h-10"></div>
           <div>
-            <p className="font-base mb-8 text-muted-foreground dark:text-muted-foreground-night">
+            <p className="font-base mb-8 text-muted-foreground">
               Access requires Single Sign-On (SSO) authentication. Use your SSO
               provider to sign in.{" "}
             </p>

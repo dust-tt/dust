@@ -102,7 +102,7 @@ const columns: ColumnDef<AgentCreditRowData>[] = [
             label={description}
             tooltipTriggerAsChild
             trigger={
-              <span className="line-clamp-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <span className="line-clamp-2 text-sm text-muted-foreground">
                 {description}
               </span>
             }

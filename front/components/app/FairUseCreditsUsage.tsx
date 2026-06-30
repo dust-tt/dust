@@ -67,16 +67,14 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
         // actually visible.
         "mx-3 mb-3",
         "rounded-lg border p-3",
-        "border-border dark:border-border-night",
-        "bg-background dark:bg-background-night"
+        "border-border",
+        "bg-background"
       )}
     >
       <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="font-semibold text-foreground dark:text-foreground-night">
-          Fair usage
-        </span>
-        <span className="font-medium text-foreground dark:text-foreground-night">
-          <span className={cn(isCritical && "text-red-600 dark:text-red-400")}>
+        <span className="font-semibold text-foreground">Fair usage</span>
+        <span className="font-medium text-foreground">
+          <span className={cn(isCritical && "text-warning-600")}>
             {formatCredits(count)}
           </span>{" "}
           / {formatCredits(limit)} cr.
@@ -85,15 +83,13 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
       <div
         className={cn(
           "h-2 w-full overflow-hidden rounded-full",
-          "bg-gray-100 dark:bg-gray-100-night"
+          "bg-primary-100"
         )}
       >
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            isCritical
-              ? "bg-red-700 dark:bg-red-700-night"
-              : "bg-foreground dark:bg-foreground-night"
+            isCritical ? "bg-warning-700" : "bg-foreground"
           )}
           style={{ width: `${Math.min(percentage * 100, 100)}%` }}
         />

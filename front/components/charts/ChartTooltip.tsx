@@ -54,13 +54,9 @@ export function ChartTooltipCard({
   return (
     <div
       role="tooltip"
-      className="min-w-32 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl dark:border-border-night/50 dark:bg-background-night"
+      className="min-w-32 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
     >
-      {title && (
-        <div className="mb-1 font-medium text-foreground dark:text-foreground-night">
-          {title}
-        </div>
-      )}
+      {title && <div className="mb-1 font-medium text-foreground">{title}</div>}
       <ul className="space-y-1.5">
         {visibleRows.map((r) => {
           const rowKey = r.key ?? r.label;
@@ -70,34 +66,31 @@ export function ChartTooltipCard({
               key={rowKey}
               className={cn(
                 "flex items-center gap-2 rounded",
-                isActive &&
-                  "-mx-1.5 bg-muted-background/60 px-1.5 dark:bg-muted-background-night/60"
+                isActive && "-mx-1.5 bg-muted-background/60 px-1.5"
               )}
             >
               {r.colorClassName && <LegendDot className={r.colorClassName} />}
               <span
                 className={cn(
                   isActive
-                    ? "font-medium text-foreground dark:text-foreground-night"
-                    : "text-muted-foreground dark:text-muted-foreground-night"
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground"
                 )}
               >
                 {r.label}
               </span>
-              <span className="ml-auto font-mono font-medium tabular-nums text-foreground dark:text-foreground-night">
+              <span className="ml-auto font-mono font-medium tabular-nums text-foreground">
                 {r.value.toLocaleString()}
               </span>
               {typeof r.percent === "number" && (
-                <span className="text-muted-foreground dark:text-muted-foreground-night">
-                  ({r.percent}%)
-                </span>
+                <span className="text-muted-foreground">({r.percent}%)</span>
               )}
             </li>
           );
         })}
       </ul>
       {footer && (
-        <div className="mt-1 border-t border-border/50 pt-1 text-muted-foreground dark:border-border-night/50 dark:text-muted-foreground-night">
+        <div className="mt-1 border-t border-border/50 pt-1 text-muted-foreground">
           {footer}
         </div>
       )}

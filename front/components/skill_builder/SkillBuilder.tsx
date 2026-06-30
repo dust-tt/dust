@@ -334,8 +334,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
           <div
             className={cn(
               "flex h-dvh flex-row",
-              "bg-background text-foreground",
-              "dark:bg-background-night dark:text-foreground-night"
+              "bg-background text-foreground"
             )}
           >
             {showSuggestionsPanel ? (

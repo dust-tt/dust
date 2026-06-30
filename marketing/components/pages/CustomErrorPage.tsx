@@ -22,16 +22,10 @@ export default function CustomErrorPage({
       <div className="flex flex-col gap-3 text-center">
         <div className="flex flex-col items-center">
           <div>
-            <Icon
-              visual={AlertCircle}
-              size="lg"
-              className="dark:text-golder-400-night text-golden-400"
-            />
+            <Icon visual={AlertCircle} size="lg" className="text-golden-400" />
           </div>
-          <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
-            {title}
-          </p>
-          <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+          <p className="heading-xl leading-7 text-foreground">{title}</p>
+          <p className="copy-sm leading-tight text-muted-foreground">
             {description}
           </p>
         </div>

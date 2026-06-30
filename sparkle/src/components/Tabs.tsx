@@ -10,17 +10,16 @@ const Tabs = TabsPrimitive.Root;
 
 const tabsTriggerVariants = cva(
   [
-    "s-relative",
-    "after:s-absolute after:s-bottom-[-10px] after:s-left-1/2 after:s-h-[2px]",
-    "after:s-w-full after:s--translate-x-1/2",
-    "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100",
-    "dark:after:s-bg-foreground-night",
+    "relative",
+    "after:absolute after:bottom-[-10px] after:left-1/2 after:h-[2px]",
+    "after:w-full after:-translate-x-1/2",
+    "after:bg-foreground after:opacity-0 data-[state=active]:after:opacity-100",
   ],
   {
     variants: {
       variant: {
         ghost:
-          "data-[state=inactive]:s-text-muted-foreground data-[state=inactive]:hover:s-text-primary-900 data-[state=inactive]:dark:s-text-muted-foreground-night data-[state=inactive]:dark:hover:s-text-primary-900-night",
+          "data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-primary-900",
         primary: "",
         highlight: "",
         "highlight-secondary": "",
@@ -33,10 +32,10 @@ const tabsTriggerVariants = cva(
   }
 );
 
-const tabsListVariants = cva("s-flex s-h-11 s-gap-2 s-w-full", {
+const tabsListVariants = cva("flex h-11 gap-2 w-full", {
   variants: {
     border: {
-      true: "s-border-b s-border-border dark:s-border-border-night",
+      true: "border-b border-border",
     },
   },
   defaultVariants: {
@@ -57,7 +56,7 @@ const TabsList = React.forwardRef<
       className={cn(tabsListVariants({ border }), className)}
       {...props}
     />
-    <ScrollBar orientation="horizontal" className="s-hidden" />
+    <ScrollBar orientation="horizontal" className="hidden" />
   </ScrollArea>
 ));
 TabsList.displayName = TabsPrimitive.List.displayName;
@@ -96,7 +95,7 @@ const TabsTrigger = React.forwardRef<
     return (
       <TabsPrimitive.Trigger
         ref={ref}
-        className={cn("disabled:s-pointer-events-none", className)}
+        className={cn("disabled:pointer-events-none", className)}
         disabled={disabled}
         asChild
         {...props}
@@ -133,7 +132,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "s-contents s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
+      "contents ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2",
       className
     )}
     {...props}

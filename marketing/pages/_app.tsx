@@ -1,8 +1,7 @@
-// Tailwind base globals
+// Tailwind base globals (preflight/theme/tokens/keyframes; emits no utilities).
 import "@marketing/styles/global.css";
-// Use sparkle styles, override local globals
-import "@dust-tt/sparkle/dist/sparkle.css";
-// Local tailwind components override sparkle styles
+// Single unified Tailwind build: scans marketing + sparkle/src in one pass.
+// Replaces the old precompiled `@dust-tt/sparkle/dist/sparkle.css` concat.
 import "@marketing/styles/components.css";
 
 import type { NextPage } from "next";

@@ -142,10 +142,8 @@ export default function DataSourcePicker({
                 <div
                   className={classNames(
                     "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                    readOnly
-                      ? "text-gray-400 dark:text-gray-400-night"
-                      : "text-muted-foreground dark:text-muted-foreground-night",
-                    "focus:outline-none focus:ring-0"
+                    readOnly ? "text-primary-400" : "text-muted-foreground",
+                    "focus:outline-hidden focus:ring-0"
                   )}
                 >
                   <MaybeLink href={getEditLink(selectedDataSourceView)}>
@@ -153,7 +151,7 @@ export default function DataSourcePicker({
                       {selectedDataSourceView.dataSource.name}
                     </div>
                   </MaybeLink>
-                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-muted-foreground dark:text-muted-foreground-night" />
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-muted-foreground" />
                 </div>
               ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
                 <Button
@@ -166,9 +164,7 @@ export default function DataSourcePicker({
                 <LinkWrapper
                   href={`/w/${owner.sId}/spaces/${space.sId}`}
                   className={classNames(
-                    readOnly
-                      ? "text-gray-400 dark:text-gray-400-night"
-                      : "text-muted-foreground dark:text-muted-foreground-night"
+                    readOnly ? "text-primary-400" : "text-muted-foreground"
                   )}
                 >
                   Create DataSource
@@ -206,7 +202,7 @@ export default function DataSourcePicker({
                     </div>
                   ))}
                   {filteredDataSourceViews.length === 0 && (
-                    <span className="block px-4 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="block px-4 py-2 text-sm text-muted-foreground">
                       No datasources found
                     </span>
                   )}

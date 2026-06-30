@@ -30,19 +30,19 @@ const useButtonsSwitch = () => {
 
 const listStyles = cva(
   cn(
-    "s-inline-flex s-items-center s-gap-1",
-    "s-box-border s-bg-muted s-border s-border-border dark:s-border-border-night dark:s-bg-muted-night"
+    "inline-flex items-center gap-1",
+    "box-border bg-muted border border-border"
   ),
   {
     variants: {
       fullWidth: {
-        true: "s-w-full",
+        true: "w-full",
         false: "",
       },
       size: {
-        xs: "s-rounded-xl s-p-[3px]",
-        sm: "s-rounded-2xl s-p-1",
-        md: "s-rounded-3xl s-p-1.5",
+        xs: "rounded-xl p-[3px]",
+        sm: "rounded-2xl p-1",
+        md: "rounded-3xl p-1.5",
       },
     },
     defaultVariants: {

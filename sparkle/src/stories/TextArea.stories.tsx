@@ -33,8 +33,8 @@ export const TextAreaExample = () => {
     "",
   ]);
   return (
-    <div className="s-flex s-flex-col s-gap-20">
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+    <div className="flex flex-col gap-20">
+      <div className="grid grid-cols-3 gap-4">
         <TextArea
           placeholder="placeholder"
           onChange={(e) => {

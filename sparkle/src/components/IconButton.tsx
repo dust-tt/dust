@@ -8,57 +8,57 @@ export const ICON_BUTTON_VARIANTS = BUTTON_VARIANTS;
 export type IconButtonVariantType = (typeof ICON_BUTTON_VARIANTS)[number];
 
 const iconButtonVariants = cva(
-  "s-transition-all s-ease-out s-duration-300 s-cursor-pointer hover:s-scale-110",
+  "transition-all ease-out duration-300 cursor-pointer hover:scale-110",
   {
     variants: {
       variant: {
         primary: cn(
-          "s-text-highlight-500 dark:s-text-highlight-500-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "text-highlight-500",
+          "hover:text-highlight-400",
+          "active:text-highlight-600",
+          "text-primary-500"
         ),
         warning: cn(
-          "s-text-warning-500 dark:s-text-warning-500-night",
-          "hover:s-text-warning-400 dark:hover:s-text-warning-500-night",
-          "active:s-text-warning-600 dark:active:s-text-warning-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "text-warning-500",
+          "hover:text-warning-400",
+          "active:text-warning-600",
+          "text-primary-500"
         ),
         "warning-secondary": cn(
-          "s-text-warning-500 dark:s-text-warning-500-night",
-          "hover:s-text-warning-400 dark:hover:s-text-warning-500-night",
-          "active:s-text-warning-600 dark:active:s-text-warning-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "text-warning-500",
+          "hover:text-warning-400",
+          "active:text-warning-600",
+          "text-primary-500"
         ),
         highlight: cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "text-foreground",
+          "hover:text-highlight-400",
+          "active:text-highlight-600",
+          "text-primary-500"
         ),
         "highlight-secondary": cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "text-foreground",
+          "hover:text-highlight-400",
+          "active:text-highlight-600",
+          "text-primary-500"
         ),
         outline: cn(
-          "s-text-primary-700 dark:s-text-primary-700-night",
-          "hover:s-text-primary-400 dark:hover:s-text-primary-400-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "text-primary-700",
+          "hover:text-primary-400",
+          "active:text-highlight-600",
+          "text-primary-500"
         ),
         ghost: cn(
-          "s-text-white dark:s-text-primary-950",
-          "hover:s-text-primary-100 dark:hover:s-text-primary-100-night",
-          "active:s-text-primary-200 dark:active:s-text-primary-200-night",
-          "s-text-white/50 dark:s-text-primary-950/50"
+          "text-background",
+          "hover:text-primary-100",
+          "active:text-primary-200",
+          "text-background/50"
         ),
         "ghost-secondary": cn(
-          "s-text-white",
-          "hover:s-text-primary-100 dark:hover:s-text-primary-100-night",
-          "active:s-text-primary-200 dark:active:s-text-primary-200-night",
-          "s-text-white/50 dark:s-text-primary-950/50"
+          "text-white",
+          "hover:text-primary-100",
+          "active:text-primary-200",
+          "text-background/50"
         ),
       },
     },
@@ -98,11 +98,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
       tooltip={tooltip}
       className={cn(
         iconButtonVariants({ variant }),
-        disabled &&
-          cn(
-            "s-text-primary-500 dark:s-text-primary-500-night",
-            "s-cursor-default hover:s-scale-100"
-          ),
+        disabled && cn("text-primary-500", "cursor-default hover:scale-100"),
         className
       )}
       onClick={onClick}

@@ -72,8 +72,8 @@ function TocItemComponent({
           item.level === 3 && "ml-8",
           item.level === 4 && "ml-12",
           isActive
-            ? "border-primary text-foreground dark:text-foreground-night"
-            : "border-transparent text-muted-foreground hover:border-border hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+            ? "border-primary text-foreground"
+            : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
         )}
       >
         {item.text}
@@ -133,7 +133,7 @@ export function TableOfContents({
     >
       {items.length > 0 && (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Table of contents
           </h3>
           <nav className="space-y-1" aria-label="Table of contents">
@@ -152,9 +152,7 @@ export function TableOfContents({
         <div
           className={classNames(
             "flex-none",
-            items.length > 0
-              ? "mt-6 border-t border-border pt-6 dark:border-border-night"
-              : null
+            items.length > 0 ? "mt-6 border-t border-border pt-6" : null
           )}
         >
           {cta}

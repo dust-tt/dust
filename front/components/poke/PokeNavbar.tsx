@@ -190,7 +190,7 @@ function PokeSearchCommandUI({
         <PokeCommandInput
           placeholder="Type a command or search..."
           onValueChange={(value) => onSearchTermChange(value.trim())}
-          className="border-none focus:outline-none focus:ring-0"
+          className="border-none focus:outline-hidden focus:ring-0"
         />
         <PokeCommandList>
           {isLoading && <div className="p-4 text-sm">Searching...</div>}
@@ -209,10 +209,10 @@ function PokeSearchCommandUI({
           )}
           {searchTerm.length < MIN_SEARCH_CHARACTERS && (
             <div className="p-4 text-sm">
-              <div className="mb-3 text-muted-foreground dark:text-muted-foreground-night">
+              <div className="mb-3 text-muted-foreground">
                 Search for resources by:
               </div>
-              <div className="space-y-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="space-y-2 text-sm text-muted-foreground">
                 <div>
                   <span className="font-medium">Workspace ID:</span>{" "}
                   <span className="font-mono">123456</span>
@@ -254,13 +254,13 @@ function PokeSearchCommandUI({
           {results.map((item, index) => {
             const CommandItemContent = () => (
               <PokeCommandItem value={item.name} index={index}>
-                <div className="flex w-full items-center justify-between gap-3 px-2 text-foreground dark:text-foreground-night">
+                <div className="flex w-full items-center justify-between gap-3 px-2 text-foreground">
                   <div className="flex min-w-0 items-baseline gap-3">
                     <Chip size="xs" color={getPokeItemChipColor(item)}>
                       {item.type}
                     </Chip>
                     <span className="text-sm font-medium">{item.name}</span>
-                    <span className="font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="font-mono text-xs text-muted-foreground">
                       (id: {item.id})
                     </span>
                     {showRegion && item.region && (

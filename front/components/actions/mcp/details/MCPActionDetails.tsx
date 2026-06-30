@@ -449,16 +449,12 @@ export function GenericActionDetails({
       {displayContext !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           <div>
-            <span className="font-medium text-foreground dark:text-foreground-night">
-              Inputs
-            </span>
+            <span className="font-medium text-foreground">Inputs</span>
             <RenderToolItemMarkdown text={inputs} type="input" />
           </div>
           {action.output && (
             <div>
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                Output
-              </span>
+              <span className="font-medium text-foreground">Output</span>
               <div className="my-2 flex flex-col gap-2">
                 {action.output
                   .filter(

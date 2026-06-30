@@ -13,18 +13,18 @@ const CitationContext = React.createContext<{ compact: boolean }>({
 });
 
 const citationVariants = cva(
-  "s-relative s-flex s-min-w-24 s-flex-none s-overflow-hidden",
+  "relative flex min-w-24 flex-none overflow-hidden",
   {
     variants: {
       hasImage: {
         // Use min() to maintain aspect ratio in grid mode (8% of width) while capping
         // padding at 3 (0.75rem) for list mode to prevent excessive top padding on wide items.
-        false: "s-pt-[min(8%,theme(spacing.3))]",
-        true: "s-border-0 s-p-0",
+        false: "pt-[min(8%,theme(spacing.3))]",
+        true: "border-0 p-0",
       },
       compact: {
-        true: "s-flex-row s-flex-wrap s-items-center s-gap-x-2 s-pt-0",
-        false: "s-flex-col",
+        true: "flex-row flex-wrap items-center gap-x-2",
+        false: "flex-col",
       },
     },
     defaultVariants: {
@@ -117,10 +117,10 @@ const CitationIndex = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-z-10",
-        "s-heading-xs s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full",
-        "s-text-primary-200 dark:s-text-primary-200-night",
-        "s-bg-primary-600 dark:s-bg-primary-600-night",
+        "z-10",
+        "heading-xs flex h-4 w-4 items-center justify-center rounded-full",
+        "text-primary-200",
+        "bg-primary-600",
         className
       )}
       {...props}
@@ -134,14 +134,14 @@ CitationIndex.displayName = "CitationIndex";
 const CITATION_GRID_VARIANTS = ["grid", "list"] as const;
 type CitationGridVariantType = (typeof CITATION_GRID_VARIANTS)[number];
 
-const citationGridVariants = cva("s-grid s-gap-2", {
+const citationGridVariants = cva("grid gap-2", {
   variants: {
     variant: {
-      grid: "s-grid-cols-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6",
-      list: "s-grid-cols-1",
+      grid: "grid-cols-2 @xxs:grid-cols-3 @xs:grid-cols-4 @md:grid-cols-5 @lg:grid-cols-6",
+      list: "grid-cols-1",
     },
     reversed: {
-      true: "s-rotate-180 [&>*]:s-rotate-180",
+      true: "rotate-180 [&>*]:rotate-180",
       false: "",
     },
   },
@@ -161,7 +161,7 @@ const CitationGrid = React.forwardRef<HTMLDivElement, CitationGridProps>(
     return (
       <div
         ref={ref}
-        className={cn("s-min-w-60 s-@container", className)}
+        className={cn("min-w-60 @container", className)}
         {...props}
       >
         <div className={citationGridVariants({ variant, reversed })}>
@@ -244,11 +244,7 @@ const CitationIcons = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn(
-        "s-flex s-items-center s-gap-2",
-        !compact && "s-pb-1",
-        className
-      )}
+      className={cn("flex items-center gap-2", !compact && "pb-1", className)}
       {...props}
     >
       {children}
@@ -265,15 +261,15 @@ const CitationLoading = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-inset-0 s-z-20 s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-1 s-rounded-xl s-backdrop-blur-sm",
-        "s-bg-primary-100/80 dark:s-bg-primary-100-night/80",
+        "absolute inset-0 z-20 flex h-full w-full flex-col items-center justify-center gap-1 rounded-xl backdrop-blur-sm",
+        "bg-primary-100/80",
         className
       )}
       {...props}
     >
       <Spinner size="md" />
       {label != null && (
-        <span className="s-heading-xs s-font-mono s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <span className="heading-xs font-mono text-muted-foreground">
           {label}
         </span>
       )}
@@ -293,11 +289,11 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
       <div
         ref={ref}
         className={cn(
-          "s-z-10",
-          "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
-          "s-heading-sm",
-          "s-text-foreground dark:s-text-foreground-night",
-          compact && "s-flex-1 s-min-w-0",
+          "z-10",
+          "line-clamp-1 overflow-hidden text-ellipsis break-all",
+          "heading-sm",
+          "text-foreground",
+          compact && "flex-1 min-w-0",
           className
         )}
         {...props}
@@ -323,11 +319,11 @@ const CitationDescription = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-z-10",
-        "s-line-clamp-1 s-overflow-hidden s-text-ellipsis",
-        "s-text-xs s-font-normal",
-        "s-text-muted-foreground dark:s-text-muted-foreground-night",
-        compact && "s-basis-full",
+        "z-10",
+        "line-clamp-1 overflow-hidden text-ellipsis",
+        "text-xs font-normal",
+        "text-muted-foreground",
+        compact && "basis-full",
         className
       )}
       {...props}

@@ -142,12 +142,12 @@ function SearchResultRow({
           onClick={(event) => event.stopPropagation()}
         />
         <Icon size="sm" visual={Visual} />
-        <div className="min-w-0 flex-1 truncate text-sm text-foreground dark:text-foreground-night">
+        <div className="min-w-0 flex-1 truncate text-sm text-foreground">
           {getDisplayTitleForDataSourceViewContentNode(node, {
             disambiguate: true,
           })}
         </div>
-        <div className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground dark:text-muted-foreground-night sm:block">
+        <div className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:block">
           {location}
         </div>
       </div>
@@ -361,7 +361,7 @@ export function DataSourceSelectionSearchResults({
   ) : null;
 
   const summary = (
-    <div className="flex items-center justify-between text-sm text-muted-foreground dark:text-muted-foreground-night">
+    <div className="flex items-center justify-between text-sm text-muted-foreground">
       <span className="min-h-5">
         {isSearchPending ? (
           <AnimatedText variant="muted">{summaryLabel}</AnimatedText>
@@ -384,13 +384,13 @@ export function DataSourceSelectionSearchResults({
     return renderLayout({
       warning,
       summary: (
-        <div className="text-end text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-end text-sm text-muted-foreground">
           0 results found
         </div>
       ),
       list: (
         <div className="flex items-center justify-center p-8 text-center">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             No matching results found. Try different search terms.
           </p>
         </div>
@@ -407,7 +407,7 @@ export function DataSourceSelectionSearchResults({
       }
     >
       <ScrollSearchToTop />
-      <div className="flex items-center gap-3 p-3 text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+      <div className="flex items-center gap-3 p-3 text-sm font-medium text-muted-foreground">
         <div className="w-5" />
         <div className="min-w-0 flex-1">Name</div>
         <div className="hidden min-w-0 flex-1 truncate sm:block">Location</div>

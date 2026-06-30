@@ -39,13 +39,13 @@ const TooltipContent = React.forwardRef<
         ref={ref}
         sideOffset={sideOffset}
         className={cn(
-          "s-z-50 s-max-w-sm s-overflow-hidden s-whitespace-pre-wrap s-break-words s-rounded-md s-border",
-          "s-bg-background dark:s-bg-background-night",
-          "s-text-foreground dark:s-text-foreground-night",
-          "s-border-border dark:s-border-border-night",
-          "s-px-3 s-py-1.5 s-text-sm s-shadow-md",
-          "s-animate-in s-fade-in-0 s-zoom-in-95",
-          "data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=closed]:s-zoom-out-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2",
+          "z-50 max-w-sm overflow-hidden whitespace-pre-wrap break-words rounded-md border",
+          "bg-background",
+          "text-foreground",
+          "border-border",
+          "px-3 py-1.5 text-sm shadow-md",
+          "animate-in fade-in-0 zoom-in-95",
+          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           className || ""
         )}
         {...props}
@@ -88,7 +88,7 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
           {trigger}
         </TooltipTrigger>
         <TooltipContent {...props} ref={ref}>
-          <div className="s-inline-flex s-items-center s-gap-2">
+          <div className="inline-flex items-center gap-2">
             {label}
             {shortcut && <KeyboardShortcut shortcut={shortcut} />}
           </div>

@@ -17,47 +17,47 @@ export interface TextareaProps
 
 const textAreaVariants = cva(
   cn(
-    "s-flex s-w-full s-px-3 s-py-2 s-text-sm",
-    "s-text-foreground dark:s-text-foreground-night",
-    "s-bg-muted-background dark:s-bg-muted-background-night",
-    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
-    "s-ring-offset-background",
-    "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
-    "focus-visible:s-border-border dark:focus-visible:s-border-border-night focus-visible:s-ring"
+    "flex w-full px-3 py-2 text-sm",
+    "text-foreground",
+    "bg-muted-background",
+    "placeholder:text-muted-foreground",
+    "ring-offset-background",
+    "border border-border rounded-xl transition duration-100 focus-visible:outline-hidden",
+    "focus-visible:border-border focus-visible:ring"
   ),
   {
     variants: {
       resize: {
-        none: "s-resize-none",
-        vertical: "s-resize-y",
-        horizontal: "s-resize-x",
-        both: "s-resize",
+        none: "resize-none",
+        vertical: "resize-y",
+        horizontal: "resize-x",
+        both: "resize",
       },
       error: {
         true: cn(
-          "s-border-border-warning/30 dark:s-border-border-warning-night/60",
-          "s-ring-warning/0 dark:s-ring-warning-night/0",
-          "focus-visible:s-border-border-warning dark:focus-visible:s-border-border-warning-night",
-          "focus-visible:s-outline-none focus-visible:s-ring-2",
-          "focus-visible:s-ring-warning/10 dark:focus-visible:s-ring-warning/30"
+          "border-border-warning/30",
+          "ring-warning/0",
+          "focus-visible:border-border-warning",
+          "focus-visible:outline-hidden focus-visible:ring-2",
+          "focus-visible:ring-warning/10"
         ),
         false: cn(
-          "s-border-border dark:s-border-border-night",
-          "s-ring-highlight/0 dark:s-ring-highlight-night/0",
-          "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
-          "focus-visible:s-outline-none focus-visible:s-ring-2",
-          "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50"
+          "border-border",
+          "ring-highlight/0",
+          "focus-visible:border-border-focus",
+          "focus-visible:outline-hidden focus-visible:ring-2",
+          "focus-visible:ring-highlight/20"
         ),
       },
       disabled: {
         true: cn(
-          "disabled:s-cursor-not-allowed",
-          "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night"
+          "disabled:cursor-not-allowed",
+          "disabled:text-muted-foreground"
         ),
         false: "",
       },
       isDisplay: {
-        true: "s-cursor-default",
+        true: "cursor-default",
         false: "",
       },
     },
@@ -85,7 +85,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     ref
   ) => {
     return (
-      <div className="s-flex s-flex-col s-gap-1 s-p-px">
+      <div className="flex flex-col gap-1 p-px">
         <textarea
           className={cn(
             textAreaVariants({
@@ -102,9 +102,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {error && showErrorLabel && (
-          <div className="s-ml-2 s-text-xs s-text-warning-500 dark:s-text-warning-500-night">
-            {error}
-          </div>
+          <div className="ml-2 text-xs text-warning-500">{error}</div>
         )}
       </div>
     );
@@ -125,9 +123,8 @@ const ReadOnlyTextArea = ({
       isDisplay
       minRows={minRows}
       className={cn(
-        "s-copy-sm s-h-full s-min-h-60 s-w-full s-min-w-0 s-rounded-xl",
-        "s-resize-none s-border-border s-bg-muted-background",
-        "dark:s-border-border-night dark:s-bg-muted-background-night"
+        "copy-sm h-full min-h-60 w-full min-w-0 rounded-xl",
+        "resize-none border-border bg-muted-background"
       )}
       defaultValue={content ?? ""}
     />

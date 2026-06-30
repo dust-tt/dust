@@ -93,16 +93,14 @@ export const PlanCard = React.memo(function PlanCard({
     <ContentMessageInline
       icon={ListSelect}
       variant="outline"
-      className="mb-3 flex w-full bg-background dark:bg-background-night"
+      className="mb-3 flex w-full bg-background"
     >
       <button
         type="button"
         onClick={() => togglePanel({ type: "plan" })}
         className="flex w-full min-w-0 items-center gap-2 text-left"
       >
-        <span className="min-w-0 truncate text-foreground dark:text-foreground-night">
-          {title}
-        </span>
+        <span className="min-w-0 truncate text-foreground">{title}</span>
         {progress.total > 0 && (
           <span className="shrink-0">
             {progress.done}/{progress.total} done
@@ -115,7 +113,7 @@ export const PlanCard = React.memo(function PlanCard({
         size="xs"
         tooltip="Close plan"
         isLoading={isClosing}
-        className="text-muted-foreground dark:text-muted-foreground-night"
+        className="text-muted-foreground"
         onClick={() => void closePlan()}
       />
     </ContentMessageInline>

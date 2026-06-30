@@ -63,7 +63,7 @@ export const AgentEditBar = ({
 
   return (
     <>
-      <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2 dark:bg-muted-background-night">
+      <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2">
         <Button
           size="xs"
           variant="outline"

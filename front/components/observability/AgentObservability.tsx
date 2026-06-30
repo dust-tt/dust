@@ -87,9 +87,7 @@ const UsageMetricsChart = safeLazy(
 );
 
 function ChartFallback() {
-  return (
-    <div className="h-64 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
-  );
+  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
 }
 
 interface AgentObservabilityProps {
@@ -136,7 +134,7 @@ export function AgentObservability({
         {isTimeRangeMode && (
           <div className="mb-4">
             {isSummaryLoading ? (
-              <div className="bg-card rounded-lg border border-border p-4 dark:border-border-night">
+              <div className="bg-background rounded-lg border border-border p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <LoadingBlock className="h-5 w-24" />
                 </div>
@@ -194,7 +192,7 @@ export function AgentObservability({
               content={
                 <div className="flex flex-col gap-1 text-2xl">
                   {agentAnalytics?.activeUsers !== undefined ? (
-                    <div className="truncate text-foreground dark:text-foreground-night">
+                    <div className="truncate text-foreground">
                       {agentAnalytics.activeUsers}
                     </div>
                   ) : (
@@ -227,7 +225,7 @@ export function AgentObservability({
                 className="h-24"
                 content={
                   <div className="flex flex-col gap-1 text-2xl">
-                    <div className="truncate text-foreground dark:text-foreground-night">
+                    <div className="truncate text-foreground">
                       {agentAnalytics?.costs?.totalCostCredits != null
                         ? `${formatCreditsCompact(agentAnalytics.costs.totalCostCredits)} credits`
                         : "-"}
@@ -241,7 +239,7 @@ export function AgentObservability({
               className="h-24"
               content={
                 <div className="flex flex-col gap-1 text-2xl">
-                  <div className="truncate text-foreground dark:text-foreground-night">
+                  <div className="truncate text-foreground">
                     {agentAnalytics?.costs?.avgCostCredits != null
                       ? `${formatCreditsCompact(agentAnalytics.costs.avgCostCredits)} credits`
                       : "-"}
@@ -255,7 +253,7 @@ export function AgentObservability({
                 className="h-24"
                 content={
                   <div className="flex flex-col gap-1 text-2xl">
-                    <div className="truncate text-foreground dark:text-foreground-night">
+                    <div className="truncate text-foreground">
                       {agentAnalytics?.costs?.medianCostCredits != null
                         ? `${formatCreditsCompact(agentAnalytics.costs.medianCostCredits)} credits`
                         : "-"}

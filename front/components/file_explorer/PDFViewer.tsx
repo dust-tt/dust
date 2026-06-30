@@ -166,7 +166,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
       )}
       {hasError && (
         <div className="flex flex-1 items-center justify-center px-4">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             Unable to load file. You can download it instead.
           </p>
         </div>
@@ -174,8 +174,8 @@ export function PDFViewer({ url }: PDFViewerProps) {
       {!isFetching && !hasError && (
         <>
           {numPages !== null && (
-            <div className="flex items-center justify-between rounded-lg bg-muted-background px-3 py-1.5 dark:bg-muted-background-night">
-              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="flex items-center justify-between rounded-lg bg-muted-background px-3 py-1.5">
+              <span className="text-xs text-muted-foreground">
                 Page {currentPage} of {numPages}
               </span>
               <div className="flex items-center gap-1">
@@ -187,7 +187,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
                   onClick={() => dispatch({ type: "zoom_out" })}
                   tooltip="Zoom out"
                 />
-                <span className="w-10 text-center text-xs text-muted-foreground dark:text-muted-foreground-night">
+                <span className="w-10 text-center text-xs text-muted-foreground">
                   {Math.round(zoom * 100)}%
                 </span>
                 <Button

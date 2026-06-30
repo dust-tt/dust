@@ -25,72 +25,42 @@ export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
 export type CardSizeType = (typeof CARD_SIZES)[number];
 
 const interactiveClasses = cn(
-  "s-cursor-pointer",
-  "s-transition s-duration-200",
-  "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
-  "active:s-bg-primary-150 dark:active:s-bg-primary-150-night",
-  "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-  "disabled:s-border-border dark:disabled:s-border-border-night",
-  "disabled:s-pointer-events-none"
+  "cursor-pointer",
+  "transition duration-200",
+  "hover:bg-primary-100",
+  "active:bg-primary-150",
+  "disabled:text-primary-muted",
+  "disabled:border-border",
+  "disabled:pointer-events-none"
 );
 
 const cardVariants = cva(
   cn(
-    "s-flex s-text-left s-group",
-    "s-border s-overflow-hidden",
-    "s-text-foreground dark:s-text-foreground-night"
+    "flex text-left group",
+    "border border-border overflow-hidden",
+    "text-foreground"
   ),
   {
     variants: {
       variant: {
-        primary: cn(
-          "s-bg-muted-background",
-          "s-border-border/0",
-          "dark:s-bg-muted-background-night",
-          "dark:s-border-border-night/0"
-        ),
-        active: cn(
-          "s-bg-muted-background",
-          "s-border-border",
-          "dark:s-bg-muted-background-night",
-          "dark:s-border-border-night"
-        ),
-        highlight: cn(
-          "s-bg-highlight-50",
-          "s-border-border/0",
-          "dark:s-bg-highlight-100-night",
-          "dark:s-border-border-night/0"
-        ),
-        warning: cn(
-          "s-bg-warning-50",
-          "s-border-border/0",
-          "dark:s-bg-warning-50-night",
-          "dark:s-border-border-night/0"
-        ),
-        secondary: cn(
-          "s-bg-background",
-          "s-border-border",
-          "dark:s-bg-background-night",
-          "dark:s-border-border-night"
-        ),
-        tertiary: cn(
-          "s-bg-background",
-          "s-border-border/0",
-          "dark:s-bg-background-night",
-          "dark:s-border-border-night/0"
-        ),
+        primary: cn("bg-muted-background", "border-transparent"),
+        active: cn("bg-muted-background", "border-border"),
+        highlight: cn("bg-highlight-50", "border-transparent"),
+        warning: cn("bg-warning-50", "border-transparent"),
+        secondary: cn("bg-background", "border-border"),
+        tertiary: cn("bg-background", "border-transparent"),
       },
       size: {
-        xs: "s-px-2 s-py-1.5 s-rounded-lg",
-        sm: "s-p-3 s-rounded-xl",
-        md: "s-p-4 s-rounded-2xl",
-        lg: "s-p-5 s-rounded-3xl",
+        xs: "px-2 py-1.5 rounded-lg",
+        sm: "p-3 rounded-xl",
+        md: "p-4 rounded-2xl",
+        lg: "p-5 rounded-3xl",
       },
       selected: {
         true: cn(
-          "s-border-highlight-300 dark:s-border-highlight-300-night",
-          "s-ring-2 s-ring-highlight-200/70 dark:s-ring-highlight-300/60",
-          "s-shadow-sm"
+          "border-highlight-300",
+          "ring-2 ring-highlight-200/70",
+          "shadow-sm"
         ),
         false: "",
       },
@@ -160,7 +130,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       cardVariants({ variant, size, selected: isSelected }),
       // Apply interactive styles when either href or onClick is present
       isInteractive ? interactiveClasses : "",
-      isPulsing && "s-animate-ring-pulse s-overflow-visible",
+      isPulsing && "animate-ring-pulse overflow-visible",
       className
     );
 
@@ -170,9 +140,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       const linkContent = (
         <Link
           href={href}
-          className={
-            isPulsing ? "s-block s-h-full s-w-full" : cardButtonClassNames
-          }
+          className={isPulsing ? "block h-full w-full" : cardButtonClassNames}
           replace={replace}
           shallow={shallow}
           target={target}
@@ -239,11 +207,8 @@ export type CardProps = CardPropsWithLink | CardPropsWithButton;
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ containerClassName, className, action, ...props }, ref) => {
     return (
-      <div
-        className={cn("s-group/card s-relative", containerClassName)}
-        ref={ref}
-      >
-        <InnerCard className={cn("s-h-full s-w-full", className)} {...props} />
+      <div className={cn("group/card relative", containerClassName)} ref={ref}>
+        <InnerCard className={cn("h-full w-full", className)} {...props} />
         {action && <CardActions>{action}</CardActions>}
       </div>
     );
@@ -261,8 +226,8 @@ const CardActions = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-right-2 s-top-2 s-transition-opacity sm:s-opacity-0",
-        "group-focus-within/card:s-opacity-100 group-hover/card:s-opacity-100"
+        "absolute right-2 top-2 transition-opacity sm:opacity-0",
+        "group-focus-within/card:opacity-100 group-hover/card:opacity-100"
       )}
       {...props}
     >
@@ -291,17 +256,17 @@ export const CardActionButton = React.forwardRef<
 CardActionButton.displayName = "CardActionButton";
 
 const uncappedGridClasses = cn(
-  "@xxs:s-grid-cols-2",
-  "@sm:s-grid-cols-3",
-  "@lg:s-grid-cols-4",
-  "@xl:s-grid-cols-5"
+  "@xxs:grid-cols-2",
+  "@sm:grid-cols-3",
+  "@lg:grid-cols-4",
+  "@xl:grid-cols-5"
 );
 
 const adaptiveGridClasses = cn(
-  "@xxs:has-[>:nth-child(2)]:s-grid-cols-2",
-  "@sm:has-[>:nth-child(3)]:s-grid-cols-3",
-  "@lg:has-[>:nth-child(4)]:s-grid-cols-4",
-  "@xl:has-[>:nth-child(5)]:s-grid-cols-5"
+  "@xxs:has-[>:nth-child(2)]:grid-cols-2",
+  "@sm:has-[>:nth-child(3)]:grid-cols-3",
+  "@lg:has-[>:nth-child(4)]:grid-cols-4",
+  "@xl:has-[>:nth-child(5)]:grid-cols-5"
 );
 
 interface CardGridProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -315,10 +280,10 @@ export const CardGrid = React.forwardRef<HTMLDivElement, CardGridProps>(
     ref
   ) => {
     return (
-      <div ref={ref} className={cn("s-@container", className)} {...props}>
+      <div ref={ref} className={cn("@container", className)} {...props}>
         <div
           className={cn(
-            "s-grid s-grid-cols-1 s-gap-2",
+            "grid grid-cols-1 gap-2",
             gridClassName ??
               (adaptColumns ? adaptiveGridClasses : uncappedGridClasses)
           )}

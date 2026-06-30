@@ -69,7 +69,7 @@ export const chatgptConfig: ChatGPTConfig = {
       <>
         <span className="text-gray-900">ChatGPT gives advice.</span>
         <br />
-        <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
+        <span className="bg-linear-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
           Dust closes deals.
         </span>
       </>

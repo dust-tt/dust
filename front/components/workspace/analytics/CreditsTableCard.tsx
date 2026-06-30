@@ -9,11 +9,7 @@ type CreditsTableRow = {
 };
 
 function CreditsTableMessage({ children }: { children: string }) {
-  return (
-    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-      {children}
-    </div>
-  );
+  return <div className="text-sm text-muted-foreground">{children}</div>;
 }
 
 interface CreditsTableBodyProps<T extends CreditsTableRow> {
@@ -85,15 +81,11 @@ export function CreditsTableCard<T extends CreditsTableRow>({
   actions,
 }: CreditsTableCardProps<T>) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 dark:border-border-night">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-medium text-foreground dark:text-foreground-night">
-            {title}
-          </h3>
-          <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {description}
-          </p>
+          <h3 className="text-base font-medium text-foreground">{title}</h3>
+          <p className="text-xs text-muted-foreground">{description}</p>
         </div>
         <div className="flex items-center gap-2">
           <SearchInput

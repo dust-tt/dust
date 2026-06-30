@@ -45,12 +45,7 @@ function BreadcrumbDropZone({
     <div
       {...dropTargetProps}
       className={
-        isDragOver
-          ? cn(
-              "rounded-xl",
-              "ring-2 ring-highlight-300 dark:ring-highlight-300-night"
-            )
-          : undefined
+        isDragOver ? cn("rounded-xl", "ring-2 ring-highlight-300") : undefined
       }
     >
       {children}
@@ -79,7 +74,7 @@ export function FileExplorerBreadcrumb({
   return (
     <div className="flex items-center gap-2">
       {currentFolderPath !== "" && isDragging && (
-        <span className="animate-in fade-in slide-in-from-left-1 duration-150 text-sm font-medium leading-5 text-foreground dark:text-foreground-night">
+        <span className="animate-in fade-in slide-in-from-left-1 duration-150 text-sm font-medium leading-5 text-foreground">
           Move to…
         </span>
       )}
@@ -106,7 +101,7 @@ export function FileExplorerBreadcrumb({
               {!isLast && (
                 <span
                   aria-hidden="true"
-                  className="select-none px-0.5 text-sm text-muted-foreground dark:text-muted-foreground-night"
+                  className="select-none px-0.5 text-sm text-muted-foreground"
                 >
                   /
                 </span>

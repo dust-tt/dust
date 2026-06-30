@@ -26,7 +26,7 @@ export function ReplySection({
   lastMessageBy,
 }: ReplySectionProps) {
   return (
-    <div className="s-flex s-items-center s-gap-2 s-pt-2">
+    <div className="flex items-center gap-2 pt-2">
       {replyCount > 0 && (
         <Avatar.Stack
           avatars={avatars}
@@ -35,40 +35,40 @@ export function ReplySection({
           size="xs"
         />
       )}
-      <div className="s-min-w-0 s-flex-1 s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
         {mentionCount > 0 ? (
           <>
-            <span className="s-heading-xs s-text-highlight">
+            <span className="heading-xs text-highlight">
               {mentionCount} {mentionCount === 1 ? "Mention" : "Mentions"}
             </span>
             {unreadCount !== mentionCount && (
-              <span className="s-heading-xs  s-text-highlight">
+              <span className="heading-xs  text-highlight">
                 {" "}
                 in {unreadCount} {unreadCount === 1 ? "unread" : "unreads"}
               </span>
             )}
             {replyCount !== unreadCount && (
-              <span className="s-heading-xs">
+              <span className="heading-xs">
                 {" "}
                 ({replyCount} {replyCount === 1 ? "reply" : "replies"})
               </span>
             )}
           </>
         ) : unreadCount === 0 ? (
-          <span className="s-heading-xs">
+          <span className="heading-xs">
             {replyCount} {replyCount === 1 ? "Reply" : "Replies"}
           </span>
         ) : unreadCount === replyCount ? (
-          <span className="s-heading-xs s-text-highlight">
+          <span className="heading-xs text-highlight">
             {unreadCount} Unread
           </span>
         ) : (
           <>
-            <span className="s-heading-xs s-text-highlight">
+            <span className="heading-xs text-highlight">
               {unreadCount} Unread
             </span>
             {replyCount > 0 && (
-              <span className="s-heading-xs">
+              <span className="heading-xs">
                 {" "}
                 ({replyCount} {replyCount === 1 ? "reply" : "replies"}).
               </span>
@@ -77,7 +77,7 @@ export function ReplySection({
         )}{" "}
         {replyCount > 0 && (
           <>
-            Last by <span className="s-heading-xs">{lastMessageBy}</span>.
+            Last by <span className="heading-xs">{lastMessageBy}</span>.
           </>
         )}
       </div>
@@ -152,10 +152,8 @@ export function ConversationListItem({
       onClick={onClick}
       groupName="conversation-item"
       className={cn(
-        `s-transition-colors s-duration-500 ${
-          isFocusVisible
-            ? "s-bg-highlight-50 dark:s-bg-highlight-100-night"
-            : ""
+        `transition-colors duration-500 ${
+          isFocusVisible ? "bg-highlight-50" : ""
         }`,
         className
       )}
@@ -177,10 +175,10 @@ export function ConversationListItem({
           backgroundColor={avatar.backgroundColor}
         />
       ) : null}
-      <div className="s-mb-0.5 s-flex s-min-w-0 s-grow s-flex-col s-gap-1">
-        <div className="s-heading-sm s-flex s-w-full s-items-center s-justify-between s-gap-2 s-text-foreground dark:s-text-foreground-night">
-          <div className="s-flex s-min-w-0 s-flex-1 s-gap-2 s-overflow-hidden">
-            <span className="s-min-w-0 s-truncate">
+      <div className="mb-0.5 flex min-w-0 grow flex-col gap-1">
+        <div className="heading-sm flex w-full items-center justify-between gap-2 text-foreground">
+          <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
+            <span className="min-w-0 truncate">
               {textAnimation === "streaming" ? (
                 <AnimatedText variant="muted">
                   {conversation.title}
@@ -190,17 +188,17 @@ export function ConversationListItem({
               )}
             </span>
             {creator && (
-              <span className="s-hidden s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night sm:s-inline">
+              <span className="hidden shrink-0 text-muted-foreground sm:inline">
                 {creator.fullName}
               </span>
             )}
           </div>
-          <div className="s-flex s-shrink-0 s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            <span className="s-font-normal">{time}</span>
+          <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-normal">{time}</span>
           </div>
         </div>
         {conversation.description && (
-          <div className="s-line-clamp-2 s-text-sm s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <div className="line-clamp-2 text-sm font-normal text-muted-foreground">
             {textAnimation === "streaming" ? (
               <AnimatedText variant="muted">
                 {conversation.description}

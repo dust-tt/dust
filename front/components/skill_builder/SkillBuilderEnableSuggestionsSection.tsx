@@ -28,7 +28,7 @@ export function SkillBuilderEnableSuggestionsSection({
   return (
     <div className="flex flex-col gap-2">
       {isDisabled && (
-        <div className="flex items-start gap-1.5 text-xs text-muted-foreground dark:text-muted-foreground-night">
+        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
           <InfoCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             {!isAllowedByWorkspace
@@ -45,14 +45,10 @@ export function SkillBuilderEnableSuggestionsSection({
           onClick={handleToggle}
           size="xs"
         />
-        <span className="text-sm text-foreground dark:text-foreground-night">
-          Self-improve
-        </span>
+        <span className="text-sm text-foreground">Self-improve</span>
         <Tooltip
           label="Dust will analyze how this skill is used and suggest improvements to its instructions over time."
-          trigger={
-            <InfoCircle className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
-          }
+          trigger={<InfoCircle className="text-muted-foreground h-4 w-4" />}
         />
       </div>
     </div>
