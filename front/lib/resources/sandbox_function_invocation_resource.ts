@@ -9,6 +9,7 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -72,6 +73,31 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return new this(this.model, invocation.get(), { sandboxFunction });
   }
 
+  private static async baseFetch(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+    },
+    options?: ResourceFindOptions<SandboxFunctionInvocationModel>
+  ): Promise<SandboxFunctionInvocationResource[]> {
+    const { where, ...rest } = options ?? {};
+    const invocations = await this.model.findAll({
+      where: {
+        ...where,
+        sandboxFunctionId: sandboxFunction.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      ...rest,
+    });
+
+    return invocations.map(
+      (invocation) =>
+        new this(this.model, invocation.get(), { sandboxFunction })
+    );
+  }
+
   static async fetchById(
     auth: Authenticator,
     {
@@ -91,18 +117,17 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return null;
     }
 
-    const invocation = await this.model.findOne({
-      where: {
-        id: invocationModelId,
-        sandboxFunctionId: sandboxFunction.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-    if (!invocation) {
-      return null;
-    }
+    const [invocation] = await this.baseFetch(
+      auth,
+      { sandboxFunction },
+      {
+        where: {
+          id: invocationModelId,
+        },
+      }
+    );
 
-    return new this(this.model, invocation.get(), { sandboxFunction });
+    return invocation ?? null;
   }
 
   static async deleteAllForSandboxFunction(
