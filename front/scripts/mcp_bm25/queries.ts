@@ -1146,6 +1146,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "file_generation.get_supported_source_formats_for_output_format",
   },
 
+  // --- fathom ---
+  {
+    query: "list my fathom call recordings",
+    expected: "fathom.list_meetings",
+  },
+  {
+    query: "get the transcript of a fathom call",
+    expected: "fathom.get_transcript",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
