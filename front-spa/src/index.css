@@ -1,7 +1,55 @@
-/* App-specific CSS overrides go here */
-/* Tailwind directives are already included in @dust-tt/front/styles/global.css */
+/* Single unified Tailwind build for front-spa.
+ *
+ * Scans front-spa, front, and sparkle sources in ONE Tailwind pass so every
+ * utility lands in a single, correctly-ordered `@layer utilities` (base before
+ * variant). global.css is imported separately in main.tsx; it emits no
+ * utilities.
+ */
+
+/* Sparkle's full CSS entry: tailwindcss, tokens, themes, plugins, base/
+   components/utilities layers, and the sparkle/src source scan. */
+@import "@dust-tt/sparkle/styles/tailwind.css";
+
+/* Front theme extras (shared with front's components.css). */
+@import "@dust-tt/front/styles/theme-extras.css";
+
+/* Container query variants must be inlined — @tailwindcss/postcss does not
+   resolve @custom-variant from @import'ed files. Keep in sync with sparkle's
+   tailwind.css (canonical copy). */
+@custom-variant @xxxs (@container (width >= 16rem));
+@custom-variant @xxs (@container (width >= 24rem));
+@custom-variant @xs (@container (width >= 32rem));
+@custom-variant @sm (@container (width >= 40rem));
+@custom-variant @md (@container (width >= 48rem));
+@custom-variant @lg (@container (width >= 64rem));
+@custom-variant @xl (@container (width >= 80rem));
+@custom-variant @xxxs-conversation (@container conversation (width >= 16rem));
+@custom-variant @xxs-conversation (@container conversation (width >= 24rem));
+@custom-variant @xs-conversation (@container conversation (width >= 32rem));
+@custom-variant @sm-conversation (@container conversation (width >= 40rem));
+@custom-variant @md-conversation (@container conversation (width >= 48rem));
+@custom-variant @lg-conversation (@container conversation (width >= 64rem));
+@custom-variant @xl-conversation (@container conversation (width >= 80rem));
+@custom-variant @xxxs-table (@container table (width >= 16rem));
+@custom-variant @xxs-table (@container table (width >= 24rem));
+@custom-variant @xs-table (@container table (width >= 32rem));
+@custom-variant @sm-table (@container table (width >= 40rem));
+@custom-variant @md-table (@container table (width >= 48rem));
+@custom-variant @lg-table (@container table (width >= 64rem));
+@custom-variant @xl-table (@container table (width >= 80rem));
+
+/* Source scanning for the unified build. sparkle/src is already scanned by the
+   imported sparkle entry's own @source (relies on the workspace symlink). */
+@source "./**/*.{ts,tsx}";
+@source "../../front/components/**/*.{ts,tsx}";
+@source "../../front/lib/**/*.{ts,tsx}";
+
+/* Safelists front needs beyond sparkle's: dynamic text-* colors and taller
+   grids (sparkle already safelists bg-* and grid-rows-2..5). */
+@source inline("text-gray-100 text-gray-200 text-gray-300 text-gray-400 text-gray-500 text-gray-600 text-gray-700 text-gray-800 text-gray-900 text-blue-100 text-blue-200 text-blue-300 text-blue-400 text-blue-500 text-blue-600 text-blue-700 text-blue-800 text-blue-900 text-violet-100 text-violet-200 text-violet-300 text-violet-400 text-violet-500 text-violet-600 text-violet-700 text-violet-800 text-violet-900 text-pink-100 text-pink-200 text-pink-300 text-pink-400 text-pink-500 text-pink-600 text-pink-700 text-pink-800 text-pink-900 text-red-100 text-red-200 text-red-300 text-red-400 text-red-500 text-red-600 text-red-700 text-red-800 text-red-900 text-orange-100 text-orange-200 text-orange-300 text-orange-400 text-orange-500 text-orange-600 text-orange-700 text-orange-800 text-orange-900 text-golden-100 text-golden-200 text-golden-300 text-golden-400 text-golden-500 text-golden-600 text-golden-700 text-golden-800 text-golden-900 text-lime-100 text-lime-200 text-lime-300 text-lime-400 text-lime-500 text-lime-600 text-lime-700 text-lime-800 text-lime-900 text-emerald-100 text-emerald-200 text-emerald-300 text-emerald-400 text-emerald-500 text-emerald-600 text-emerald-700 text-emerald-800 text-emerald-900 text-green-100 text-green-200 text-green-300 text-green-400 text-green-500 text-green-600 text-green-700 text-green-800 text-green-900 text-rose-100 text-rose-200 text-rose-300 text-rose-400 text-rose-500 text-rose-600 text-rose-700 text-rose-800 text-rose-900");
+@source inline("grid-rows-6 grid-rows-7 grid-rows-8");
 
 /* SPA uses #root instead of Next.js #__next - ensure full height */
 #root {
-  @apply h-full;
+  height: 100%;
 }
