@@ -372,7 +372,7 @@ export class ProductboardClient {
     }
 
     const filterData: Record<string, unknown> = {
-      type: filters.type,
+      type: [filters.type],
     };
 
     if (filters.ids !== undefined && filters.ids.length > 0) {
