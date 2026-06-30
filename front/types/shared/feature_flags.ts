@@ -216,6 +216,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
+  workday_mcp: {
+    description: "Workday MCP tool",
+    stage: "on_demand",
+  },
   sandbox_tools: {
     description:
       "Full Computer (sandbox) feature set: tools, dsbx CLI, and workspace admin configuration",
