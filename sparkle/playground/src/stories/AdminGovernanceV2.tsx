@@ -1,6 +1,9 @@
 import {
   Avatar,
+  ActionFrame,
   BarChart01,
+  Brain,
+  Robot,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
@@ -20,6 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   DotsHorizontal,
   Fingerprint04,
@@ -32,12 +36,15 @@ import {
   LayersThree01,
   LayersTwo01,
   Lock01,
+  Mail01,
+  Microphone01,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
   Page,
   PieChart01,
   Plus,
+  Pencil01,
   PuzzlePiece01,
   ScrollArea,
   ScrollBar,
@@ -72,6 +79,7 @@ import {
   Lightning01,
   ShapesPlus,
   ChevronRight,
+  Trash01,
 } from "@dust-tt/sparkle";
 import {
   AmplitudeLogo,
@@ -90,7 +98,9 @@ import {
   IntercomLogo,
   JiraLogo,
   LinearLogo,
+  DiscordLogo,
   MicrosoftLogo,
+  MicrosoftTeamsLogo,
   MistralLogo,
   NotionLogo,
   OpenaiLogo,
@@ -99,7 +109,7 @@ import {
   ZendeskLogo,
 } from "@dust-tt/sparkle/logo/platforms";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // ─── Global animation styles ──────────────────────────────────────────────────
 
@@ -669,6 +679,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
   super_admin: [
     "people",
     "capabilities",
+    "model_providers",
     "identity",
     "workspace",
     "analytics",
@@ -679,7 +690,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "billing",
     "usage",
   ],
-  admin: ["people", "capabilities", "analytics", "usage", "billing"],
+  admin: ["people", "capabilities", "model_providers", "analytics", "usage"],
   security_admin: ["people", "identity"],
   billing_admin: ["billing", "usage"],
 };
@@ -877,6 +888,7 @@ function PeoplePage({
   onNavigate,
   defaultTab,
   onTabChange,
+  onCreateGroup,
 }: {
   role: Role;
   members: MemberRow[];
@@ -886,6 +898,7 @@ function PeoplePage({
   onNavigate: (page: AdminPage) => void;
   defaultTab?: "members" | "groups";
   onTabChange?: (tab: "members" | "groups") => void;
+  onCreateGroup: () => void;
 }) {
   const [sub, setSub] = useState<"members" | "groups">(defaultTab ?? "members");
   const [search, setSearch] = useState("");
@@ -896,8 +909,6 @@ function PeoplePage({
     "monthly"
   );
   const [invitePlan, setInvitePlan] = useState<"free" | "pro" | "max">("pro");
-  const [createGroupOpen, setCreateGroupOpen] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<GroupRow | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
   const [memberPlan, setMemberPlan] = useState<MemberRole>("member");
@@ -1138,21 +1149,6 @@ function PeoplePage({
     setInviteOpen(false);
   };
 
-  const handleCreateGroup = () => {
-    if (!newGroupName.trim()) return;
-    setGroups([
-      ...groups,
-      {
-        id: `g${Date.now()}`,
-        name: newGroupName.trim(),
-        memberCount: 0,
-        type: "manual" as const,
-      },
-    ]);
-    setNewGroupName("");
-    setCreateGroupOpen(false);
-  };
-
   const handleSaveGroup = (selected: string[]) => {
     if (!selectedGroup) return;
     setGroups(
@@ -1265,7 +1261,7 @@ function PeoplePage({
                       label="Create group"
                       variant="primary"
                       size="sm"
-                      onClick={() => setCreateGroupOpen(true)}
+                      onClick={onCreateGroup}
                     />
                   </span>
                 )}
@@ -1426,47 +1422,6 @@ function PeoplePage({
           />
         </DialogContent>
       </Dialog>
-
-      {/* Create group sheet */}
-      <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-        <SheetContent side="right" size="lg">
-          <SheetHeader>
-            <SheetTitle>New group</SheetTitle>
-          </SheetHeader>
-          <div className="s-flex s-flex-col s-gap-4 s-flex-1 s-overflow-auto s-px-6 s-py-4">
-            <Page.Vertical gap="xs">
-              <Label>Group name</Label>
-              <Input
-                placeholder="e.g. Engineering Team"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-              />
-            </Page.Vertical>
-            <Page.Vertical gap="xs">
-              <Label>Add members</Label>
-              <SearchInput
-                name="search"
-                placeholder="Search by name or email"
-                value=""
-                onChange={() => {}}
-              />
-            </Page.Vertical>
-          </div>
-          <SheetFooter
-            leftButtonProps={{
-              label: "Cancel",
-              onClick: () => setCreateGroupOpen(false),
-              variant: "outline",
-            }}
-            rightButtonProps={{
-              label: "Create group",
-              onClick: handleCreateGroup,
-              variant: "primary",
-              disabled: !newGroupName.trim(),
-            }}
-          />
-        </SheetContent>
-      </Sheet>
 
       {/* Edit group sheet */}
       <MemberPickerSheet
@@ -1812,7 +1767,7 @@ function IdentityPage({ role }: { role: Role }) {
           <div className="s-flex s-items-start s-gap-4 s-p-4">
             <Page.Vertical gap="xs" sizing="grow">
               <Page.Horizontal gap="sm">
-                <Page.H variant="h5">Single Sign-On (SSO)</Page.H>
+                <Page.H variant="h6">Single Sign-On (SSO)</Page.H>
                 <Chip color="green" label="Enabled" size="sm" />
                 <Page.P variant="secondary" size="sm">
                   Okta
@@ -1830,7 +1785,7 @@ function IdentityPage({ role }: { role: Role }) {
           </div>
           <div className="s-flex s-items-start s-gap-4 s-p-4">
             <Page.Vertical gap="xs" sizing="grow">
-              <Page.H variant="h5">Auto-join Workspace</Page.H>
+              <Page.H variant="h6">Auto-join Workspace</Page.H>
               <Page.P variant="secondary" size="sm">
                 Allow your team members to access your Dust workspace when they
                 authenticate with a "@dust.tt", "@dust.us", "@dust.com" account.
@@ -1850,7 +1805,7 @@ function IdentityPage({ role }: { role: Role }) {
         <div className="s-flex s-items-start s-gap-4 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
           <Page.Vertical gap="xs" sizing="grow">
             <Page.Horizontal gap="sm">
-              <Page.H variant="h5">Directory sync</Page.H>
+              <Page.H variant="h6">Directory sync</Page.H>
               <Chip color="green" label="Enabled" size="sm" />
             </Page.Horizontal>
             <Page.P variant="secondary" size="sm">
@@ -1893,11 +1848,15 @@ function GovernanceRow({
   canEdit,
   onChange,
   groups,
+  onCreateGroup,
+  groupsOnly = false,
 }: {
   setting: GovernanceSetting;
   canEdit: boolean;
   onChange: (s: GovernanceSetting) => void;
   groups: GroupRow[];
+  onCreateGroup: () => void;
+  groupsOnly?: boolean;
 }) {
   const [groupSearch, setGroupSearch] = useState("");
   const filteredGroups = groups.filter(
@@ -1907,29 +1866,31 @@ function GovernanceRow({
   );
 
   return (
-    <div className="ag-governance-row s-w-full s-flex s-flex-col s-gap-3 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+    <div className="ag-governance-row s-w-full s-flex s-flex-col s-gap-3 s-p-4">
       <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
         <Page.Vertical gap="xs" sizing="grow">
-          <Page.H variant="h5">{setting.label}</Page.H>
+          <Page.H variant="h6">{setting.label}</Page.H>
           <Page.P variant="secondary" size="sm">
             {setting.description}
           </Page.P>
         </Page.Vertical>
-        <ButtonsSwitchList
-          key={setting.scope}
-          size="xs"
-          defaultValue={setting.scope}
-          onValueChange={(v) =>
-            canEdit && onChange({ ...setting, scope: v as GovernanceScope })
-          }
-          disabled={!canEdit}
-        >
-          <ButtonsSwitch value="everyone" label="Everyone" />
-          <ButtonsSwitch value="groups" label="Groups" />
-          <ButtonsSwitch value="disabled" label="Disabled" />
-        </ButtonsSwitchList>
+        {!groupsOnly && (
+          <ButtonsSwitchList
+            key={setting.scope}
+            size="xs"
+            defaultValue={setting.scope}
+            onValueChange={(v) =>
+              canEdit && onChange({ ...setting, scope: v as GovernanceScope })
+            }
+            disabled={!canEdit}
+          >
+            <ButtonsSwitch value="everyone" label="Everyone" />
+            <ButtonsSwitch value="groups" label="Groups" />
+            <ButtonsSwitch value="disabled" label="Disabled" />
+          </ButtonsSwitchList>
+        )}
       </div>
-      {setting.scope === "groups" && (
+      {(groupsOnly || setting.scope === "groups") && (
         <div className="ag-section-in s-flex s-items-center s-gap-2 s-flex-wrap">
           {canEdit && (
             <DropdownMenu>
@@ -1954,6 +1915,15 @@ function GovernanceRow({
                   <DropdownMenuItem
                     key={g.id}
                     label={g.name}
+                    endComponent={
+                      <Chip
+                        label={
+                          g.type === "provisioned" ? "Provisioned" : "Manual"
+                        }
+                        color={g.type === "provisioned" ? "green" : "blue"}
+                        size="xs"
+                      />
+                    }
                     onClick={() =>
                       onChange({
                         ...setting,
@@ -1968,6 +1938,12 @@ function GovernanceRow({
                     disabled
                   />
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  label="Create a group"
+                  icon={Plus}
+                  onClick={onCreateGroup}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -2108,22 +2084,212 @@ function ModelGovernanceRow({
   );
 }
 
+type FrameVisibilityLevel = "workspace_only" | "email_invite" | "public";
+
+interface FrameVisibilitySetting {
+  level: FrameVisibilityLevel;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  scope: GovernanceScope;
+  groups: string[];
+}
+
+const FRAME_VISIBILITY_OPTIONS: Omit<
+  FrameVisibilitySetting,
+  "scope" | "groups"
+>[] = [
+  {
+    level: "workspace_only",
+    label: "Workspace members only",
+    description: "Frames can only be viewed by workspace members",
+    icon: Lock01,
+  },
+  {
+    level: "email_invite",
+    label: "Members + email invites",
+    description:
+      "Frames can be shared with workspace members or via email invite",
+    icon: Users01,
+  },
+  {
+    level: "public",
+    label: "No restrictions",
+    description:
+      "Members can share Frames publicly, with the workspace, or via email invite",
+    icon: Globe01,
+  },
+];
+
+function FrameSharingGovernanceRow({
+  settings,
+  canEdit,
+  onChange,
+  groups,
+  onCreateGroup,
+}: {
+  settings: FrameVisibilitySetting[];
+  canEdit: boolean;
+  onChange: (updated: FrameVisibilitySetting[]) => void;
+  groups: GroupRow[];
+  onCreateGroup: () => void;
+}) {
+  const [searchByLevel, setSearchByLevel] = useState<
+    Partial<Record<FrameVisibilityLevel, string>>
+  >({});
+
+  const update = (updated: FrameVisibilitySetting) =>
+    onChange(settings.map((s) => (s.level === updated.level ? updated : s)));
+
+  return (
+    <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+      {settings.map((s) => {
+        const Icon = s.icon;
+        const search = searchByLevel[s.level] ?? "";
+        const filteredGroups = groups.filter(
+          (g) =>
+            !s.groups.includes(g.name) &&
+            g.name.toLowerCase().includes(search.toLowerCase())
+        );
+        return (
+          <div
+            key={s.level}
+            className="ag-governance-row s-w-full s-flex s-flex-col s-gap-3 s-p-4"
+          >
+            <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
+              <Page.Vertical gap="xs" sizing="grow">
+                <div className="s-flex s-items-center s-gap-2">
+                  <Icon className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                  <Page.H variant="h6">{s.label}</Page.H>
+                </div>
+                <Page.P variant="secondary" size="sm">
+                  {s.description}
+                </Page.P>
+              </Page.Vertical>
+              <ButtonsSwitchList
+                key={s.scope}
+                size="xs"
+                defaultValue={s.scope}
+                onValueChange={(v) =>
+                  canEdit && update({ ...s, scope: v as GovernanceScope })
+                }
+                disabled={!canEdit}
+              >
+                <ButtonsSwitch value="everyone" label="Everyone" />
+                <ButtonsSwitch value="groups" label="Groups" />
+                <ButtonsSwitch value="disabled" label="Disabled" />
+              </ButtonsSwitchList>
+            </div>
+            {s.scope === "groups" && (
+              <div className="ag-section-in s-flex s-items-center s-gap-2 s-flex-wrap">
+                {canEdit && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        icon={Plus}
+                        label="Add a group"
+                        isSelect
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuSearchbar
+                        name={`frame-group-search-${s.level}`}
+                        placeholder="Search groups"
+                        value={search}
+                        onChange={(v) =>
+                          setSearchByLevel((prev) => ({
+                            ...prev,
+                            [s.level]: v,
+                          }))
+                        }
+                        autoFocus
+                      />
+                      {filteredGroups.map((g) => (
+                        <DropdownMenuItem
+                          key={g.id}
+                          label={g.name}
+                          endComponent={
+                            <Chip
+                              label={
+                                g.type === "provisioned"
+                                  ? "Provisioned"
+                                  : "Manual"
+                              }
+                              color={
+                                g.type === "provisioned" ? "green" : "blue"
+                              }
+                              size="xs"
+                            />
+                          }
+                          onClick={() =>
+                            update({ ...s, groups: [...s.groups, g.name] })
+                          }
+                        />
+                      ))}
+                      {filteredGroups.length === 0 && (
+                        <DropdownMenuItem
+                          label={
+                            search ? "No groups found" : "All groups added"
+                          }
+                          disabled
+                        />
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        label="Create a group"
+                        icon={Plus}
+                        onClick={onCreateGroup}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {s.groups.map((g) => (
+                  <span key={g} className="ag-chip-in">
+                    <Chip
+                      label={g}
+                      size="xs"
+                      color="highlight"
+                      onRemove={
+                        canEdit
+                          ? () =>
+                              update({
+                                ...s,
+                                groups: s.groups.filter((x) => x !== g),
+                              })
+                          : undefined
+                      }
+                    />
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function GovernancePage({
   role,
   settings,
   setSettings,
   groups,
   onNavigateToGroups,
-  providers,
-  setProviders,
+  onCreateGroup,
+  frameSharing,
+  setFrameSharing,
 }: {
   role: Role;
   settings: GovernanceSetting[];
   setSettings: (s: GovernanceSetting[]) => void;
   groups: GroupRow[];
   onNavigateToGroups: () => void;
-  providers: ProviderDef[];
-  setProviders: (p: ProviderDef[]) => void;
+  onCreateGroup: () => void;
+  frameSharing: FrameVisibilitySetting[];
+  setFrameSharing: (s: FrameVisibilitySetting[]) => void;
 }) {
   const canEdit = role === "super_admin" || role === "admin";
   const update = (updated: GovernanceSetting) =>
@@ -2147,65 +2313,121 @@ function GovernancePage({
           </button>
         </Page.P>
       </div>
-      <Page.Vertical gap="sm">
-        <Page.SectionHeader title="Agents" />
-        {settings
-          .filter((s) => s.id.includes("agent"))
-          .map((s) => (
-            <GovernanceRow
-              key={s.id}
-              setting={s}
-              canEdit={canEdit}
-              onChange={update}
-              groups={groups}
-            />
-          ))}
-      </Page.Vertical>
-      <Page.Separator />
-      <Page.Vertical gap="sm">
-        <Page.SectionHeader title="Skills" />
-        {settings
-          .filter((s) => s.id.includes("skill"))
-          .map((s) => (
-            <GovernanceRow
-              key={s.id}
-              setting={s}
-              canEdit={canEdit}
-              onChange={update}
-              groups={groups}
-            />
-          ))}
-      </Page.Vertical>
-      <Page.Separator />
-      <Page.Vertical gap="sm">
-        <Page.SectionHeader title="Billing & Security" />
-        {settings
-          .filter(
-            (s) => s.id === "billing_access" || s.id === "security_access"
-          )
-          .map((s) => (
-            <GovernanceRow
-              key={s.id}
-              setting={s}
-              canEdit={canEdit}
-              onChange={update}
-              groups={groups}
-            />
-          ))}
-      </Page.Vertical>
+      <div className="s-flex s-w-full s-flex-col s-gap-8">
+        <div className="s-flex s-w-full s-flex-col s-gap-4">
+          <div className="s-flex s-items-center s-gap-2">
+            <Robot className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Agents</Page.H>
+          </div>
+          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            {settings
+              .filter((s) => s.id.includes("agent"))
+              .map((s) => (
+                <GovernanceRow
+                  key={s.id}
+                  setting={s}
+                  canEdit={canEdit}
+                  onChange={update}
+                  groups={groups}
+                  onCreateGroup={onCreateGroup}
+                />
+              ))}
+          </div>
+        </div>
+        <div className="s-flex s-w-full s-flex-col s-gap-4">
+          <div className="s-flex s-items-center s-gap-2">
+            <PuzzlePiece01 className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+            <Page.H variant="h5">Skills</Page.H>
+          </div>
+          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            {settings
+              .filter((s) => s.id.includes("skill"))
+              .map((s) => (
+                <GovernanceRow
+                  key={s.id}
+                  setting={s}
+                  canEdit={canEdit}
+                  onChange={update}
+                  groups={groups}
+                  onCreateGroup={onCreateGroup}
+                />
+              ))}
+          </div>
+        </div>
+        <div className="s-flex s-w-full s-flex-col s-gap-4">
+          <div className="s-flex s-flex-col s-gap-1">
+            <div className="s-flex s-items-center s-gap-2">
+              <ActionFrame className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <Page.H variant="h5">Frame sharing policy</Page.H>
+            </div>
+            <Page.P variant="secondary" size="sm">
+              Control how Frames can be shared in this workspace.
+            </Page.P>
+          </div>
+          <FrameSharingGovernanceRow
+            settings={frameSharing}
+            canEdit={canEdit}
+            onChange={setFrameSharing}
+            groups={groups}
+            onCreateGroup={onCreateGroup}
+          />
+        </div>
+        {role === "super_admin" && (
+          <div className="s-flex s-w-full s-flex-col s-gap-4">
+            <Page.SectionHeader title="Billing & Security" />
+            <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+              {settings
+                .filter(
+                  (s) => s.id === "billing_access" || s.id === "security_access"
+                )
+                .map((s) => (
+                  <GovernanceRow
+                    key={s.id}
+                    setting={s}
+                    canEdit={canEdit}
+                    onChange={update}
+                    groups={groups}
+                    onCreateGroup={onCreateGroup}
+                    groupsOnly
+                  />
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Page>
+  );
+}
 
-      <Page.Separator />
-      <Page.SectionHeader title="Models" />
+// ─── Model Providers Page ─────────────────────────────────────────────────────
+
+function ModelProvidersPage({
+  role,
+  providers,
+  setProviders,
+  groups,
+}: {
+  role: Role;
+  providers: ProviderDef[];
+  setProviders: (p: ProviderDef[]) => void;
+  groups: GroupRow[];
+}) {
+  const canEdit = role === "super_admin" || role === "admin";
+  return (
+    <Page>
+      <Page.Header
+        title="Model Providers"
+        description="Control which AI models are available to your workspace members."
+        icon={Brain}
+      />
       {providers.map((provider) => (
         <div key={provider.id} className="s-flex s-w-full s-flex-col s-gap-3">
-          {/* Provider sub-header */}
           <div className="s-flex s-items-center s-gap-2">
             <provider.Logo className="s-h-5 s-w-5 s-shrink-0" />
             <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
               {provider.name}
             </span>
           </div>
-          {/* All models in one full-width bordered container */}
           <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
             {provider.models.map((model) => (
               <ModelGovernanceRow
@@ -2837,16 +3059,338 @@ const SPACE_MOCK_DATA: Record<string, SpaceCategoryRow[]> = {
   ],
 };
 
+// ─── Space Settings Sheet ─────────────────────────────────────────────────────
+
+type SpaceAccessMode = "manual" | "group";
+
+function SpaceSettingsSheet({
+  name,
+  open,
+  onClose,
+  onSave,
+  members,
+  groups,
+  initialSelectedMembers,
+  initialSelectedGroupIds,
+}: {
+  name: string;
+  open: boolean;
+  onClose: () => void;
+  onSave: (memberIds: string[], groupIds: string[]) => void;
+  members: MemberRow[];
+  groups: GroupRow[];
+  initialSelectedMembers: string[];
+  initialSelectedGroupIds: string[];
+}) {
+  const [spaceName, setSpaceName] = useState(name);
+  const [restrictedAccess, setRestrictedAccess] = useState(true);
+  const [accessMode, setAccessMode] = useState<SpaceAccessMode>("manual");
+  const [memberSearch, setMemberSearch] = useState("");
+  const [selectedMembers, setSelectedMembers] = useState<string[]>(
+    initialSelectedMembers
+  );
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
+    initialSelectedGroupIds
+  );
+  const [groupSearch, setGroupSearch] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setSelectedMembers(initialSelectedMembers);
+      setSelectedGroupIds(initialSelectedGroupIds);
+    }
+  }, [open]);
+
+  const filteredMembers = members.filter(
+    (m) =>
+      !memberSearch ||
+      m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+      m.email.toLowerCase().includes(memberSearch.toLowerCase())
+  );
+  const filteredGroups = groups.filter((g) =>
+    g.name.toLowerCase().includes(groupSearch.toLowerCase())
+  );
+  const allGroupsChecked =
+    filteredGroups.length > 0 &&
+    filteredGroups.every((g) => selectedGroupIds.includes(g.id));
+  const toggleAllGroups = () =>
+    setSelectedGroupIds(
+      allGroupsChecked
+        ? selectedGroupIds.filter(
+            (id) => !filteredGroups.some((g) => g.id === id)
+          )
+        : [
+            ...new Set([
+              ...selectedGroupIds,
+              ...filteredGroups.map((g) => g.id),
+            ]),
+          ]
+    );
+  const toggleGroup = (id: string) =>
+    setSelectedGroupIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const allChecked =
+    filteredMembers.length > 0 &&
+    filteredMembers.every((m) => selectedMembers.includes(m.id));
+  const toggleAll = () =>
+    setSelectedMembers(
+      allChecked
+        ? selectedMembers.filter(
+            (id) => !filteredMembers.some((m) => m.id === id)
+          )
+        : [
+            ...new Set([
+              ...selectedMembers,
+              ...filteredMembers.map((m) => m.id),
+            ]),
+          ]
+    );
+  const toggle = (id: string) =>
+    setSelectedMembers((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent side="right" size="lg">
+        <SheetHeader>
+          <SheetTitle>Space Settings - {name}</SheetTitle>
+        </SheetHeader>
+        <div className="s-flex s-w-full s-flex-1 s-flex-col s-gap-5 s-overflow-hidden s-px-6 s-py-4">
+          {/* Name */}
+          <div className="s-flex s-w-full s-flex-col s-gap-2">
+            <Label>Name</Label>
+            <Input
+              value={spaceName}
+              onChange={(e) => setSpaceName(e.target.value)}
+            />
+            <Page.P variant="secondary" size="sm">
+              Space name must be unique
+            </Page.P>
+            <div className="s-flex s-justify-end">
+              <Button
+                variant="warning"
+                icon={Trash01}
+                label="Delete space"
+                size="sm"
+              />
+            </div>
+          </div>
+          <Page.Separator />
+          {/* Restricted Access */}
+          <div className="s-flex s-w-full s-flex-col s-gap-3">
+            <div className="s-flex s-items-center s-justify-between">
+              <span className="s-text-base s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                Restricted Access
+              </span>
+              <SliderToggle
+                selected={restrictedAccess}
+                onClick={() => setRestrictedAccess(!restrictedAccess)}
+              />
+            </div>
+            {restrictedAccess && (
+              <>
+                <Page.P variant="secondary" size="sm">
+                  Restricted access is active.
+                </Page.P>
+                <div className="s-w-fit">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        label={
+                          accessMode === "manual"
+                            ? "Manual access"
+                            : "Group access"
+                        }
+                        isSelect
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        label="Manual access"
+                        onClick={() => setAccessMode("manual")}
+                      />
+                      <DropdownMenuItem
+                        label="Group access"
+                        onClick={() => setAccessMode("group")}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                {accessMode === "manual" && (
+                  <div className="s-flex s-w-full s-flex-1 s-flex-col s-gap-2 s-overflow-hidden">
+                    <SearchInput
+                      name="space-member-search"
+                      placeholder="Search users..."
+                      value={memberSearch}
+                      onChange={setMemberSearch}
+                    />
+                    <div className="s-flex-1 s-overflow-auto">
+                      <table className="s-w-full">
+                        <thead>
+                          <tr className="s-border-b s-border-border dark:s-border-border-night">
+                            <th className="s-w-8 s-py-2 s-pr-4">
+                              <Checkbox
+                                checked={allChecked}
+                                onCheckedChange={toggleAll}
+                              />
+                            </th>
+                            <th className="s-w-full s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                              Name
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredMembers.map((m) => (
+                            <tr
+                              key={m.id}
+                              className="s-cursor-pointer s-border-b s-border-border dark:s-border-border-night last:s-border-0 hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                              onClick={() => toggle(m.id)}
+                            >
+                              <td className="s-py-3 s-pr-4">
+                                <Checkbox
+                                  checked={selectedMembers.includes(m.id)}
+                                  onCheckedChange={() => toggle(m.id)}
+                                />
+                              </td>
+                              <td className="s-py-3">
+                                <div className="s-flex s-items-center s-gap-2">
+                                  <Avatar
+                                    size="sm"
+                                    name={m.name}
+                                    visual={m.visual}
+                                  />
+                                  <div className="s-flex s-flex-col">
+                                    <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                                      {m.name}
+                                    </span>
+                                    <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                      {m.email}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                {accessMode === "group" && (
+                  <div className="s-flex s-w-full s-flex-1 s-flex-col s-gap-2 s-overflow-hidden">
+                    <SearchInput
+                      name="space-group-search"
+                      placeholder="Search groups..."
+                      value={groupSearch}
+                      onChange={setGroupSearch}
+                    />
+                    <div className="s-flex-1 s-overflow-auto">
+                      <table className="s-w-full">
+                        <thead>
+                          <tr className="s-border-b s-border-border dark:s-border-border-night">
+                            <th className="s-w-8 s-py-2 s-pr-4">
+                              <Checkbox
+                                checked={allGroupsChecked}
+                                onCheckedChange={toggleAllGroups}
+                              />
+                            </th>
+                            <th className="s-w-full s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                              Name
+                            </th>
+                            <th className="s-w-28 s-py-2 s-text-left s-text-xs s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                              Type
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredGroups.map((g) => (
+                            <tr
+                              key={g.id}
+                              className="s-cursor-pointer s-border-b s-border-border dark:s-border-border-night last:s-border-0 hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                              onClick={() => toggleGroup(g.id)}
+                            >
+                              <td className="s-py-3 s-pr-4">
+                                <Checkbox
+                                  checked={selectedGroupIds.includes(g.id)}
+                                  onCheckedChange={() => toggleGroup(g.id)}
+                                />
+                              </td>
+                              <td className="s-py-3">
+                                <div className="s-flex s-items-center s-gap-2">
+                                  <Users01 className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                                    {g.name}
+                                  </span>
+                                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                    {g.memberCount} members
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="s-py-3">
+                                <Chip
+                                  size="xs"
+                                  color={
+                                    g.type === "provisioned" ? "green" : "blue"
+                                  }
+                                  label={
+                                    g.type === "provisioned"
+                                      ? "Provisioned"
+                                      : "Manual"
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            onClick: onClose,
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "primary",
+            onClick: () => onSave(selectedMembers, selectedGroupIds),
+          }}
+        />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function SpacePage({
   name,
   isRestricted,
   role,
+  members,
+  groups,
 }: {
   name: string;
   isRestricted: boolean;
   role: Role;
+  members: MemberRow[];
+  groups: GroupRow[];
 }) {
   const [search, setSearch] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savedMembers, setSavedMembers] = useState<string[]>(
+    members.slice(0, 8).map((m) => m.id)
+  );
+  const [savedGroupIds, setSavedGroupIds] = useState<string[]>([]);
   const rows = SPACE_MOCK_DATA[name] ?? SPACE_MOCK_DATA.default;
   const filtered = rows.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())
@@ -2913,11 +3457,374 @@ function SpacePage({
           <SpaceIcon className="s-h-5 s-w-5 s-text-primary-400 dark:s-text-primary-500" />
           <Page.H variant="h3">{name}</Page.H>
         </div>
-        {canEdit && (
-          <Button icon={Plus} label="Add data" variant="primary" size="sm" />
-        )}
+        <div className="s-flex s-items-center s-gap-2">
+          <Button
+            icon={Settings01}
+            label="Space settings"
+            variant="outline"
+            size="sm"
+            onClick={() => setSettingsOpen(true)}
+          />
+          {canEdit && (
+            <Button icon={Plus} label="Add data" variant="primary" size="sm" />
+          )}
+        </div>
       </div>
       <DataTable data={filtered} columns={columns} />
+      <SpaceSettingsSheet
+        name={name}
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSave={(memberIds, groupIds) => {
+          setSavedMembers(memberIds);
+          setSavedGroupIds(groupIds);
+          setSettingsOpen(false);
+        }}
+        members={members}
+        groups={groups}
+        initialSelectedMembers={savedMembers}
+        initialSelectedGroupIds={savedGroupIds}
+      />
+    </Page>
+  );
+}
+
+// ─── Workspace Settings Page ──────────────────────────────────────────────────
+
+type PodAccessPolicy = "restricted_only" | "restricted_and_open";
+type PodFilesPolicy = "manual_allowed" | "manual_disabled";
+
+interface IntegrationRow {
+  id: string;
+  label: string;
+  description: string;
+  Logo: React.ComponentType<{ className?: string }>;
+  connected: boolean;
+  enabled: boolean;
+}
+
+const WORKSPACE_CAPABILITIES = [
+  {
+    id: "voice_transcription",
+    icon: Microphone01,
+    label: "Voice transcription",
+    description: "Allow voice transcription in Dust conversations",
+  },
+  {
+    id: "email_agents",
+    icon: Mail01,
+    label: "Email agents",
+    description:
+      "Allow workspace members to email agents at AGENT_NAME@dust.team",
+    beta: true,
+  },
+  {
+    id: "private_urls",
+    icon: Lock01,
+    label: "Private conversation URLs by default",
+    description:
+      "Restrict conversation URL access to participants only by default",
+  },
+  {
+    id: "mcp_server",
+    icon: Server01,
+    label: "MCP server",
+    description:
+      "Allow external MCP clients to connect to this workspace via https://dust.tt/mcp",
+    hasManage: true,
+  },
+  {
+    id: "audit_logs",
+    icon: LayerSingle,
+    label: "Audit Logs",
+    description:
+      "Emit audit events to WorkOS and expose the audit logs section in workspace access. Turning this off stops emission and hides the section.",
+  },
+] as const;
+
+const INITIAL_INTEGRATIONS: IntegrationRow[] = [
+  {
+    id: "slack",
+    label: "Slack Bot",
+    description: "Use Dust Agents in Slack with the Dust Slack app",
+    Logo: SlackLogo,
+    connected: true,
+    enabled: true,
+  },
+  {
+    id: "teams",
+    label: "Microsoft Teams Bot",
+    description: "Use Dust Agents in Teams with the Microsoft Teams Bot",
+    Logo: MicrosoftTeamsLogo,
+    connected: false,
+    enabled: false,
+  },
+  {
+    id: "discord",
+    label: "Discord Bot",
+    description: "Use Dust Agents in Discord with the Dust Discord Bot",
+    Logo: DiscordLogo,
+    connected: true,
+    enabled: true,
+  },
+];
+
+function WorkspaceSettingsPage({ role }: { role: Role }) {
+  const canEdit = role === "super_admin";
+  const [workspaceName, setWorkspaceName] = useState("Dust");
+  const [editingName, setEditingName] = useState(false);
+  const [podAccess, setPodAccess] = useState<PodAccessPolicy>(
+    "restricted_and_open"
+  );
+  const [podFiles, setPodFiles] = useState<PodFilesPolicy>("manual_allowed");
+  const [capabilities, setCapabilities] = useState<Record<string, boolean>>(
+    Object.fromEntries(WORKSPACE_CAPABILITIES.map((c) => [c.id, true]))
+  );
+  const [integrations, setIntegrations] =
+    useState<IntegrationRow[]>(INITIAL_INTEGRATIONS);
+
+  const podAccessOptions = [
+    { value: "restricted_only" as const, label: "Restricted Pods only" },
+    {
+      value: "restricted_and_open" as const,
+      label: "Restricted and open Pods",
+    },
+  ];
+  const podFilesOptions = [
+    { value: "manual_allowed" as const, label: "Manual updates allowed" },
+    { value: "manual_disabled" as const, label: "Manual updates disabled" },
+  ];
+
+  return (
+    <Page>
+      <Page.Header
+        title="Workspace Settings"
+        description="Configure your workspace preferences and integrations."
+        icon={Tool01}
+      />
+
+      {/* Workspace Name */}
+      <div className="s-flex s-w-full s-flex-col s-gap-2">
+        <div className="s-flex s-items-center s-justify-between">
+          <div className="s-flex s-flex-col s-gap-0.5">
+            <Page.H variant="h5">Workspace Name</Page.H>
+            {!editingName && (
+              <Page.P variant="secondary" size="sm">
+                {workspaceName}
+              </Page.P>
+            )}
+          </div>
+          {canEdit && !editingName && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Pencil01}
+              label="Edit"
+              onClick={() => setEditingName(true)}
+            />
+          )}
+        </div>
+        {editingName && (
+          <div className="s-flex s-items-center s-gap-2">
+            <Input
+              name="workspace-name"
+              value={workspaceName}
+              onChange={setWorkspaceName}
+              placeholder="Workspace name"
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              label="Save"
+              onClick={() => setEditingName(false)}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              label="Cancel"
+              onClick={() => setEditingName(false)}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Capabilities */}
+      <Page.Vertical gap="sm">
+        <Page.H variant="h5">Capabilities</Page.H>
+        <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+          {/* Pod access policy */}
+          <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+            <div className="s-flex s-items-center s-gap-3">
+              <IntersectDust className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <div className="s-flex s-items-baseline s-gap-2">
+                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  Pod access policy
+                </span>
+                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Control whether Pods can be restricted only or restricted and
+                  open.
+                </span>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={IntersectDust}
+                  label={
+                    podAccessOptions.find((o) => o.value === podAccess)!.label
+                  }
+                  isSelect
+                  disabled={!canEdit}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {podAccessOptions.map((o) => (
+                  <DropdownMenuItem
+                    key={o.value}
+                    label={o.label}
+                    onClick={() => setPodAccess(o.value)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Pod files policy */}
+          <div className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3">
+            <div className="s-flex s-items-center s-gap-3">
+              <Folder className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <div className="s-flex s-items-baseline s-gap-2">
+                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  Pod files policy
+                </span>
+                <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Control whether members can manually add files to Pods.
+                </span>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Folder}
+                  label={
+                    podFilesOptions.find((o) => o.value === podFiles)!.label
+                  }
+                  isSelect
+                  disabled={!canEdit}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {podFilesOptions.map((o) => (
+                  <DropdownMenuItem
+                    key={o.value}
+                    label={o.label}
+                    onClick={() => setPodFiles(o.value)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Toggle capabilities */}
+          {WORKSPACE_CAPABILITIES.map((cap) => {
+            const Icon = cap.icon;
+            return (
+              <div
+                key={cap.id}
+                className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
+              >
+                <div className="s-flex s-items-center s-gap-3">
+                  <Icon className="s-h-4 s-w-4 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                  <div className="s-flex s-items-baseline s-gap-2">
+                    <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                      {cap.label}
+                    </span>
+                    {"beta" in cap && cap.beta && (
+                      <Chip label="Beta" size="xs" color="warning" />
+                    )}
+                    <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      {cap.description}
+                    </span>
+                  </div>
+                </div>
+                <div className="s-flex s-shrink-0 s-items-center s-gap-2">
+                  {"hasManage" in cap && cap.hasManage && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={Settings01}
+                      label="Manage"
+                      disabled={!canEdit}
+                    />
+                  )}
+                  <SliderToggle
+                    selected={capabilities[cap.id]}
+                    onClick={() =>
+                      canEdit &&
+                      setCapabilities((prev) => ({
+                        ...prev,
+                        [cap.id]: !prev[cap.id],
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Page.Vertical>
+
+      {/* Integrations */}
+      <Page.Vertical gap="sm">
+        <Page.H variant="h5">Integrations</Page.H>
+        <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+          {integrations.map((integration) => (
+            <div
+              key={integration.id}
+              className="s-flex s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
+            >
+              <div className="s-flex s-items-center s-gap-3">
+                <integration.Logo className="s-h-5 s-w-5 s-shrink-0" />
+                <div className="s-flex s-items-baseline s-gap-2">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    {integration.label}
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {integration.description}
+                  </span>
+                </div>
+              </div>
+              <div className="s-flex s-shrink-0 s-items-center s-gap-2">
+                {integration.connected && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label="Reconnect"
+                    disabled={!canEdit}
+                  />
+                )}
+                <SliderToggle
+                  selected={integration.enabled}
+                  onClick={() =>
+                    canEdit &&
+                    setIntegrations((prev) =>
+                      prev.map((i) =>
+                        i.id === integration.id
+                          ? { ...i, enabled: !i.enabled }
+                          : i
+                      )
+                    )
+                  }
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Page.Vertical>
     </Page>
   );
 }
@@ -4785,8 +5692,9 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
     items: [
       { id: "people", label: "People", icon: Users01 },
       { id: "identity", label: "Identity & provisioning", icon: Fingerprint04 },
-      { id: "capabilities", label: "Governance", icon: Toggle01Left },
       { id: "workspace", label: "Workspace Settings", icon: Tool01 },
+      { id: "capabilities", label: "Governance", icon: Toggle01Left },
+      { id: "model_providers", label: "Model Providers", icon: Brain },
       { id: "usage", label: "Usage", icon: PieChart01 },
       { id: "analytics", label: "Analytics", icon: BarChart01 },
       { id: "billing", label: "Billing", icon: CreditCard01 },
@@ -4828,8 +5736,31 @@ export default function AdminGovernanceV2() {
   } | null>(null);
   const [members, setMembers] = useState<MemberRow[]>(INITIAL_MEMBERS);
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const handleCreateGroup = () => {
+    if (!newGroupName.trim()) return;
+    setGroups([
+      ...groups,
+      {
+        id: `g${Date.now()}`,
+        name: newGroupName.trim(),
+        memberCount: 0,
+        type: "manual" as const,
+      },
+    ]);
+    setNewGroupName("");
+    setCreateGroupOpen(false);
+  };
   const [governance, setGovernance] =
     useState<GovernanceSetting[]>(INITIAL_GOVERNANCE);
+  const [frameSharing, setFrameSharing] = useState<FrameVisibilitySetting[]>(
+    FRAME_VISIBILITY_OPTIONS.map((o) => ({
+      ...o,
+      scope: "everyone" as GovernanceScope,
+      groups: [],
+    }))
+  );
   const [providers, setProviders] = useState<ProviderDef[]>(INITIAL_PROVIDERS);
   const [connections, setConnections] = useState<ConnectionRow[]>([
     ...INITIAL_CONNECTIONS,
@@ -5031,6 +5962,8 @@ export default function AdminGovernanceV2() {
                 RESTRICTED_SPACES_NO_ACCESS.includes(selectedSpace)
               }
               role={role}
+              members={members}
+              groups={GROUPS}
             />
           ) : selectedConnectionId ? (
             <ConnectionDetailPage
@@ -5076,6 +6009,7 @@ export default function AdminGovernanceV2() {
             onNavigate={(page) => setActivePage(page as AdminPage)}
             defaultTab="members"
             onTabChange={() => {}}
+            onCreateGroup={() => setCreateGroupOpen(true)}
           />
         ) : effectivePage === "capabilities" ? (
           <GovernancePage
@@ -5084,8 +6018,16 @@ export default function AdminGovernanceV2() {
             setSettings={setGovernance}
             groups={groups}
             onNavigateToGroups={() => setActivePage("people" as AdminPage)}
+            onCreateGroup={() => setCreateGroupOpen(true)}
+            frameSharing={frameSharing}
+            setFrameSharing={setFrameSharing}
+          />
+        ) : effectivePage === "model_providers" ? (
+          <ModelProvidersPage
+            role={role}
             providers={providers}
             setProviders={setProviders}
+            groups={groups}
           />
         ) : effectivePage === "identity" ? (
           <IdentityPage role={role} />
@@ -5096,11 +6038,7 @@ export default function AdminGovernanceV2() {
         ) : effectivePage === "usage" ? (
           <UsagePage role={role} members={members} setMembers={setMembers} />
         ) : effectivePage === "workspace" ? (
-          <PlaceholderPage
-            title="Workspace Settings"
-            description="Configure your workspace preferences."
-            icon={Tool01}
-          />
+          <WorkspaceSettingsPage role={role} />
         ) : effectivePage === "api_keys" ? (
           <PlaceholderPage
             title="API Keys"
@@ -5189,6 +6127,45 @@ export default function AdminGovernanceV2() {
           maxSidebarWidth={340}
         />
       </div>
+      <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
+        <SheetContent side="right" size="lg">
+          <SheetHeader>
+            <SheetTitle>New group</SheetTitle>
+          </SheetHeader>
+          <div className="s-flex s-flex-col s-gap-4 s-flex-1 s-overflow-auto s-px-6 s-py-4">
+            <Page.Vertical gap="xs">
+              <Label>Group name</Label>
+              <Input
+                placeholder="e.g. Engineering Team"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+              />
+            </Page.Vertical>
+            <Page.Vertical gap="xs">
+              <Label>Add members</Label>
+              <SearchInput
+                name="search"
+                placeholder="Search by name or email"
+                value=""
+                onChange={() => {}}
+              />
+            </Page.Vertical>
+          </div>
+          <SheetFooter
+            leftButtonProps={{
+              label: "Cancel",
+              onClick: () => setCreateGroupOpen(false),
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: "Create group",
+              onClick: handleCreateGroup,
+              variant: "primary",
+              disabled: !newGroupName.trim(),
+            }}
+          />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
