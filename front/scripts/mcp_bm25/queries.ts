@@ -1430,6 +1430,32 @@ export const QUERIES: LabeledQuery[] = [
     expected: "http_client.send_request",
   },
 
+  // --- common_utilities ---
+  {
+    query: "pick a random number between 1 and 100",
+    expected: "common_utilities.generate_random_number",
+  },
+  {
+    query: "give me a random decimal between 0 and 1",
+    expected: "common_utilities.generate_random_float",
+  },
+  {
+    query: "pause for 5 seconds before continuing",
+    expected: "common_utilities.wait",
+  },
+  {
+    query: "what is the current date and time right now",
+    expected: "common_utilities.get_current_time",
+  },
+  {
+    query: "calculate 15 percent of 240",
+    expected: "common_utilities.math_operation",
+  },
+  {
+    query: "rename this conversation to something descriptive",
+    expected: "common_utilities.set_conversation_title",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",

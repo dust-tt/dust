@@ -14,6 +14,7 @@
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
+import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
@@ -192,6 +193,7 @@ const SERVERS: ServerEntry[] = [
     name: HTTP_CLIENT_TOOL_NAME,
     tools: HTTP_CLIENT_SERVER.tools.filter((t) => t.name === "send_request"),
   },
+  { name: "common_utilities", tools: COMMON_UTILITIES_SERVER.tools },
 ];
 
 function out(line: string): void {
