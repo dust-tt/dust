@@ -1027,6 +1027,16 @@ export const QUERIES: LabeledQuery[] = [
     maxRank: 4,
   },
 
+  // --- workday ---
+  {
+    query: "list workers from Workday",
+    expected: "workday.get_workers",
+  },
+  {
+    query: "get employees in Workday",
+    expected: "workday.get_workers",
+  },
+
   // --- sound_studio ---
   {
     query: "generate a sound effect from a text description",
