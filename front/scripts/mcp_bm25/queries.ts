@@ -894,6 +894,20 @@ export const QUERIES: LabeledQuery[] = [
     expected: "pod_manager.add_message_to_conversation",
   },
 
+  // --- vanta ---
+  {
+    query: "show all security controls in my Vanta account",
+    expected: "vanta.list_controls",
+  },
+  {
+    query: "show controls and links attached to a Vanta document",
+    expected: "vanta.list_document_resources",
+  },
+  {
+    query: "what are the current risks in Vanta",
+    expected: "vanta.list_risks",
+  },
+
   // --- workspace_analytics ---
   {
     query: "which agents are used most in the workspace",
