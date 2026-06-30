@@ -12,6 +12,7 @@
 // Usage: npx tsx scripts/mcp_bm25/run.ts   (from the front/ directory)
 
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
@@ -146,6 +147,7 @@ const SERVERS: ServerEntry[] = [
     name: "workspace_analytics",
     tools: WORKSPACE_ANALYTICS_SERVER.tools,
   },
+  { name: "ashby", tools: ASHBY_SERVER.tools },
   {
     name: "web_search_&_browse",
     tools: WEB_SEARCH_BROWSE_SERVER.tools,
