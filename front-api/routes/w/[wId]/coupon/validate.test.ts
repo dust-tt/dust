@@ -100,6 +100,63 @@ describe("GET /api/w/:wId/coupon/validate", () => {
     expect((await response.json()).error.type).toBe("coupon_not_redeemable");
   });
 
+  it("returns 400 for a seat coupon when context=credits", async () => {
+    const coupon = await CouponFactory.create({
+      code: "SEATONLY",
+      discountType: "seat",
+    });
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const response = await validateCoupon(workspace, {
+      code: coupon.code,
+      context: "credits",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("coupon_not_redeemable");
+  });
+
+  it("returns 200 for a credits coupon when context=credits", async () => {
+    const coupon = await CouponFactory.create({
+      code: "CREDITS5000",
+      discountType: "credit_pool_top_up",
+      amount: 5000,
+    });
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const response = await validateCoupon(workspace, {
+      code: coupon.code,
+      context: "credits",
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.coupon.discountType).toBe("credit_pool_top_up");
+    expect(data.coupon.amount).toBe(5000);
+  });
+
+  it("returns 400 for a credits coupon in the default (subscription) context", async () => {
+    const coupon = await CouponFactory.create({
+      code: "CREDITSONLY",
+      discountType: "credit_pool_top_up",
+    });
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const response = await validateCoupon(workspace, { code: coupon.code });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("coupon_not_redeemable");
+  });
+
   it("returns 400 when coupon already redeemed by this workspace", async () => {
     const coupon = await CouponFactory.create({ code: "ALREADYUSED" });
     const { workspace, auth } = await createPrivateApiMockRequest({
