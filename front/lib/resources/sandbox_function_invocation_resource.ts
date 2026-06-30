@@ -1,0 +1,78 @@
+import type { Authenticator } from "@app/lib/auth";
+import { BaseResource } from "@app/lib/resources/base_resource";
+import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { makeSId } from "@app/lib/resources/string_ids";
+import type { ModelId } from "@app/types/shared/model_id";
+import { Err, type Result } from "@app/types/shared/result";
+import type { Attributes, Transaction } from "sequelize";
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface SandboxFunctionInvocationResource
+  extends ReadonlyAttributesType<SandboxFunctionInvocationModel> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunctionInvocationModel> {
+  static model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel> =
+    SandboxFunctionInvocationModel;
+
+  readonly sandboxFunction: SandboxFunctionResource;
+
+  constructor(
+    model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel>,
+    blob: Attributes<SandboxFunctionInvocationModel>,
+    { sandboxFunction }: { sandboxFunction: SandboxFunctionResource }
+  ) {
+    super(model, blob);
+    this.sandboxFunction = sandboxFunction;
+  }
+
+  get sId(): string {
+    return SandboxFunctionInvocationResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("sandbox_function_invocation", { id, workspaceId });
+  }
+
+  static async makeNew(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+    },
+    transaction?: Transaction
+  ): Promise<SandboxFunctionInvocationResource> {
+    const invocation = await this.model.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sandboxFunctionId: sandboxFunction.id,
+        status: "created",
+      },
+      { transaction }
+    );
+
+    return new this(this.model, invocation.get(), { sandboxFunction });
+  }
+
+  async delete(
+    _auth: Authenticator,
+    _options: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    return new Err(
+      new Error("Sandbox function invocations cannot be deleted yet.")
+    );
+  }
+}

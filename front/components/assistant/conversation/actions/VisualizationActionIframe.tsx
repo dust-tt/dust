@@ -7,7 +7,7 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
   SandboxFunctionInvocationType,
-} from "@app/types/api/sandbox/functions";
+} from "@app/types/api/sandbox_functions";
 import type {
   CommandResultMap,
   EditTextFn,
