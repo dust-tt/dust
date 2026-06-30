@@ -42,6 +42,7 @@ import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadat
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
@@ -120,6 +121,10 @@ const SERVERS: ServerEntry[] = [
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
   { name: "salesloft", tools: SALESLOFT_SERVER.tools },
   { name: "slab", tools: SLAB_SERVER.tools },
+  { name: "sound_studio", tools: SOUND_STUDIO_SERVER.tools },
+  { name: "speech_generator", tools: SPEECH_GENERATOR_SERVER.tools },
+  { name: "statuspage", tools: STATUSPAGE_SERVER.tools },
+  { name: "ukg_ready", tools: UKG_READY_SERVER.tools },
   { name: "interactive_content", tools: INTERACTIVE_CONTENT_SERVER.tools },
   { name: "snowflake", tools: SNOWFLAKE_SERVER.tools },
   {
