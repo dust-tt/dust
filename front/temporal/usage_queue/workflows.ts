@@ -1,10 +1,18 @@
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/usage_queue/activities";
-import { syncMetronomeSeatCountSignal } from "@app/temporal/usage_queue/signals";
+import {
+  reconcileApiKeyCreditStateSignal,
+  syncMetronomeSeatCountSignal,
+} from "@app/temporal/usage_queue/signals";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 const METRONOME_SEAT_COUNT_DEBOUNCE_MS = 15 * 1000;
+
+// Debounce the per-API-key reconcile after usage is emitted: gives Metronome
+// time to ingest the just-emitted events, and coalesces bursts of messages on
+// the same key into a single reconcile.
+const API_KEY_CREDIT_STATE_RECONCILE_DEBOUNCE_MS = 15 * 1000;
 
 const { recordUsageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
@@ -27,6 +35,12 @@ const { syncMetronomeSeatCountActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
+const { reconcileApiKeyCreditStateActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "5 minutes",
+});
+
 export async function updateWorkspaceUsageWorkflow(workspaceId: string) {
   // Sleep for one hour before computing usage.
   await sleep(60 * 60 * 1000);
@@ -47,6 +61,23 @@ export async function syncMetronomeSeatCountWorkflow(
     await sleep(METRONOME_SEAT_COUNT_DEBOUNCE_MS);
     pendingSync = false;
     await syncMetronomeSeatCountActivity(workspaceId);
+  }
+}
+
+export async function reconcileApiKeyCreditStateWorkflow(
+  workspaceId: string,
+  keyId: number
+): Promise<void> {
+  let pendingReconcile = true;
+
+  setHandler(reconcileApiKeyCreditStateSignal, () => {
+    pendingReconcile = true;
+  });
+
+  while (pendingReconcile) {
+    await sleep(API_KEY_CREDIT_STATE_RECONCILE_DEBOUNCE_MS);
+    pendingReconcile = false;
+    await reconcileApiKeyCreditStateActivity(workspaceId, keyId);
   }
 }
 

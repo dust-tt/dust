@@ -6,11 +6,16 @@ import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
 import {
   makeMetronomeSeatCountSyncWorkflowId,
   makeMetronomeUsageEventsWorkflowId,
+  makeReconcileApiKeyCreditStateWorkflowId,
   makeTrackProgrammaticUsageWorkflowId,
 } from "@app/temporal/usage_queue/helpers";
-import { syncMetronomeSeatCountSignal } from "@app/temporal/usage_queue/signals";
+import {
+  reconcileApiKeyCreditStateSignal,
+  syncMetronomeSeatCountSignal,
+} from "@app/temporal/usage_queue/signals";
 import {
   emitMetronomeUsageEventsWorkflow,
+  reconcileApiKeyCreditStateWorkflow,
   syncMetronomeSeatCountWorkflow,
   trackProgrammaticUsageWorkflow,
   updateWorkspaceUsageWorkflow,
@@ -209,6 +214,48 @@ export async function launchMetronomeSeatCountSyncWorkflow({
         error: e,
       },
       "[Metronome] Failed to signal seat count sync workflow"
+    );
+    return new Err(normalizeError(e));
+  }
+}
+
+// Debounced per-API-key credit-state reconcile. signalWithStart on a stable
+// per-(workspace, key) workflow id coalesces repeated triggers within the
+// debounce window into a single reconcile run.
+export async function launchReconcileApiKeyCreditStateWorkflow({
+  workspaceId,
+  keyId,
+}: {
+  workspaceId: string;
+  keyId: number;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeReconcileApiKeyCreditStateWorkflowId({
+    workspaceId,
+    keyId,
+  });
+
+  try {
+    await client.workflow.signalWithStart(reconcileApiKeyCreditStateWorkflow, {
+      args: [workspaceId, keyId],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      signal: reconcileApiKeyCreditStateSignal,
+      signalArgs: undefined,
+      memo: {
+        workspaceId,
+      },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        workspaceId,
+        keyId,
+        error: e,
+      },
+      "[Metronome ApiKeyCap] Failed to signal reconcile workflow"
     );
     return new Err(normalizeError(e));
   }
