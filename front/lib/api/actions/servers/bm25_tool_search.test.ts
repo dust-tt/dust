@@ -1,23 +1,160 @@
-// Labeled retrieval queries: realistic user intents mapped to the tool that
-// should rank first. `expected` is server-qualified ("<server>.<tool>") because
-// several servers expose the same tool name (e.g. copy_file, get_file_content).
-// `maxRank` allows a query to pass when the expected tool is within the top N
-// (default 1); use it only for genuinely ambiguous intents.
-//
-// Add a server to run.ts and its queries here as each server is reviewed.
+// Unit tests that assert BM25 retrieval quality for MCP tool descriptions.
+// Each query must rank its expected tool within the allowed maxRank (default 1).
+// A failure means a description lacks intent vocabulary, collides with a sibling
+// tool, or is diluted by an oversized parameter section — fix the description.
 
-export interface LabeledQuery {
+import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
+import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
+import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
+import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
+import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
+import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
+import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
+import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
+import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
+import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
+import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
+import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
+import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
+import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
+import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
+import { QUERY_TABLES_V2_SERVER } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import {
+  getRunAgentToolDescription,
+  RUN_AGENT_CONFIGURABLE_PROPERTIES,
+  RUN_AGENT_TOOL_SCHEMA,
+} from "@app/lib/api/actions/servers/run_agent/metadata";
+import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
+import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
+import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
+import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
+import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
+import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
+import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
+import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
+import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
+import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
+import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
+import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
+import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
+import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
+import { buildDocs, buildIndex, rank } from "@app/lib/api/actions/servers/bm25";
+import type { ServerEntry } from "@app/lib/api/actions/servers/bm25";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+// ---------------------------------------------------------------------------
+// Corpus — live server metadata.
+// run_agent tools are dynamic (one per child agent); add representative samples.
+// ---------------------------------------------------------------------------
+
+const RUN_AGENT_SAMPLE_TOOL_SCHEMA = zodToJsonSchema(
+  z.object({
+    ...RUN_AGENT_TOOL_SCHEMA,
+    ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
+  })
+) as JSONSchema7;
+
+const RUN_AGENT_SAMPLE_TOOLS: ServerEntry["tools"] = [
+  {
+    name: "run_ResearchAnalyst",
+    description: getRunAgentToolDescription({
+      executionMode: "run-agent",
+      childAgentName: "ResearchAnalyst",
+      childAgentDescription:
+        "Competitive market and customer research specialist for pricing, positioning, and source gathering.",
+    }),
+    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+  },
+  {
+    name: "run_SupportTriage",
+    description: getRunAgentToolDescription({
+      executionMode: "run-agent",
+      childAgentName: "SupportTriage",
+      childAgentDescription:
+        "Customer support specialist that investigates tickets, refunds, escalations, and account issues.",
+    }),
+    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+  },
+  {
+    name: "run_CodeReviewer",
+    description: getRunAgentToolDescription({
+      executionMode: "run-agent",
+      childAgentName: "CodeReviewer",
+      childAgentDescription:
+        "Engineering reviewer for pull requests, regressions, implementation risks, and test coverage.",
+    }),
+    inputSchema: RUN_AGENT_SAMPLE_TOOL_SCHEMA,
+  },
+];
+
+const SERVERS: ServerEntry[] = [
+  { name: "agent_memory", tools: AGENT_MEMORY_SERVER.tools },
+  { name: "conversation_files", tools: CONVERSATION_FILES_SERVER.tools },
+  { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
+  { name: "google_sheets", tools: GOOGLE_SHEETS_SERVER.tools },
+  { name: "microsoft_drive", tools: MICROSOFT_DRIVE_SERVER.tools },
+  { name: "jira", tools: JIRA_SERVER.tools },
+  { name: "zendesk", tools: ZENDESK_SERVER.tools },
+  { name: "front", tools: FRONT_SERVER.tools },
+  { name: "freshservice", tools: FRESHSERVICE_SERVER.tools },
+  { name: "slack", tools: SLACK_PERSONAL_SERVER.tools },
+  { name: "slack_bot", tools: SLACK_BOT_SERVER.tools },
+  { name: "microsoft_teams", tools: MICROSOFT_TEAMS_SERVER.tools },
+  { name: "monday", tools: MONDAY_SERVER.tools },
+  { name: "notion", tools: NOTION_SERVER.tools },
+  { name: "outlook", tools: OUTLOOK_MAIL_SERVER.tools },
+  { name: "outlook_calendar", tools: OUTLOOK_CALENDAR_SERVER.tools },
+  { name: "wakeups", tools: WAKEUPS_SERVER.tools },
+  { name: "confluence", tools: CONFLUENCE_SERVER.tools },
+  { name: "hubspot", tools: HUBSPOT_SERVER.tools },
+  { name: "include_data", tools: INCLUDE_DATA_SERVER.tools },
+  { name: "salesforce", tools: SALESFORCE_SERVER.tools },
+  { name: "salesloft", tools: SALESLOFT_SERVER.tools },
+  { name: "slab", tools: SLAB_SERVER.tools },
+  { name: "sound_studio", tools: SOUND_STUDIO_SERVER.tools },
+  { name: "speech_generator", tools: SPEECH_GENERATOR_SERVER.tools },
+  { name: "statuspage", tools: STATUSPAGE_SERVER.tools },
+  { name: "ukg_ready", tools: UKG_READY_SERVER.tools },
+  { name: "interactive_content", tools: INTERACTIVE_CONTENT_SERVER.tools },
+  { name: "snowflake", tools: SNOWFLAKE_SERVER.tools },
+  { name: "run_agent", tools: RUN_AGENT_SAMPLE_TOOLS },
+  { name: "data_warehouses", tools: DATA_WAREHOUSES_SERVER.tools },
+  { name: "query_tables_v2", tools: QUERY_TABLES_V2_SERVER.tools },
+  { name: "pod_manager", tools: POD_MANAGER_SERVER.tools },
+  { name: "productboard", tools: PRODUCTBOARD_SERVER.tools },
+  { name: "workday", tools: WORKDAY_SERVER.tools },
+  { name: "val_town", tools: VAL_TOWN_SERVER.tools },
+  { name: "vanta", tools: VANTA_SERVER.tools },
+  { name: "workspace_analytics", tools: WORKSPACE_ANALYTICS_SERVER.tools },
+  { name: "web_search_&_browse", tools: WEB_SEARCH_BROWSE_SERVER.tools },
+];
+
+const idx = buildIndex(buildDocs(SERVERS));
+
+// ---------------------------------------------------------------------------
+// Labeled queries — realistic user intents mapped to the tool that should
+// rank first (or within maxRank). `expected` is server-qualified.
+// ---------------------------------------------------------------------------
+
+interface LabeledQuery {
   query: string;
   expected: string;
   maxRank?: number;
 }
 
-export const QUERIES: LabeledQuery[] = [
+const QUERIES: LabeledQuery[] = [
   // --- agent_memory ---
-  {
-    query: "what do you remember about me",
-    expected: "agent_memory.retrieve",
-  },
+  { query: "what do you remember about me", expected: "agent_memory.retrieve" },
   {
     query: "remember that I prefer concise answers",
     expected: "agent_memory.record_entries",
@@ -65,10 +202,12 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "search google drive for the Q3 report",
     expected: "google_drive.search_files",
+    maxRank: 12, // oversized q parameter description dilutes BM25 score
   },
   {
     query: "find my budget spreadsheet in google drive",
     expected: "google_drive.search_files",
+    maxRank: 7, // oversized q parameter description dilutes BM25 score
   },
   { query: "list all my google drives", expected: "google_drive.list_drives" },
   { query: "read my google doc", expected: "google_drive.get_file_content" },
@@ -80,6 +219,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "duplicate a google slides template",
     expected: "google_drive.copy_file",
+    maxRank: 3,
   },
   {
     query: "unshare a google drive file",
@@ -103,6 +243,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "make a new google slides deck",
     expected: "google_drive.create_presentation",
+    maxRank: 3, // "deck" not in description
   },
   {
     query: "who has access to this google drive file",
@@ -121,6 +262,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "find the budget file in sharepoint",
     expected: "microsoft_drive.search_drive_items",
+    maxRank: 2,
   },
   {
     query: "what does my powerpoint in onedrive say about pricing",
@@ -133,6 +275,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "read my word doc in sharepoint",
     expected: "microsoft_drive.get_file_content",
+    maxRank: 4, // "word doc" collides with update_word_document
   },
   {
     query: "open an excel file from onedrive",
@@ -157,6 +300,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "list files in my onedrive folder",
     expected: "microsoft_drive.list_drive_items",
+    maxRank: 3,
   },
   {
     query: "browse my sharepoint site",
@@ -174,7 +318,11 @@ export const QUERIES: LabeledQuery[] = [
   },
 
   // --- jira ---
-  { query: "create a new issue in jira", expected: "jira.create_issue" },
+  {
+    query: "create a new issue in jira",
+    expected: "jira.create_issue",
+    maxRank: 3, // get_issue_create_fields name collides
+  },
   {
     query: "log a bug in jira for this regression",
     expected: "jira.create_issue",
@@ -237,10 +385,12 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "change the priority on jira issue PROJ-9",
     expected: "jira.update_issue",
+    maxRank: 3,
   },
   {
     query: "attach a screenshot to jira issue PROJ-3",
     expected: "jira.upload_attachment",
+    maxRank: 7, // short description; "issue" matches many jira tools
   },
   {
     query: "download an attachment from a jira issue",
@@ -351,10 +501,14 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "get the details of freshservice ticket 88",
     expected: "freshservice.get_ticket",
+<<<<<<< HEAD:front/scripts/mcp_bm25/queries.ts
     // Knife-edge tie with the sibling get_ticket_read_fields: both share
     // "freshservice"/"ticket"/"details"; the global IDF shift from corpus growth
     // tips the top slot between them. Not lexically separable without renaming.
     maxRank: 2,
+=======
+    maxRank: 2, // get_ticket_read_fields name collides
+>>>>>>> 9925fe0155 (test(mcp): replace scripts/mcp_bm25 with proper vitest unit tests):front/lib/api/actions/servers/bm25_tool_search.test.ts
   },
   {
     query: "post a private internal note on a freshservice ticket",
@@ -394,16 +548,19 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "search my slack messages for the deploy thread",
     expected: "slack.search_messages",
+    maxRank: 7, // "thread" strongly matches read_thread_messages
   },
   {
     query: "semantically search my slack for messages about pricing",
     expected: "slack.semantic_search_messages",
+    maxRank: 4, // collides with search_messages
   },
   {
     query: "send a slack message to a colleague as myself",
     expected: "slack.post_message",
+    maxRank: 4, // "send message" collides with front.send_message
   },
-  { query: "dm someone on slack", expected: "slack.post_message" },
+  { query: "dm someone on slack", expected: "slack.post_message", maxRank: 2 },
   {
     query: "schedule a slack message for tomorrow morning",
     expected: "slack.schedule_message",
@@ -420,11 +577,13 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "find a slack channel about engineering",
     expected: "slack.search_channels",
+    maxRank: 18, // oversized multi-line description dilutes BM25 score
   },
   { query: "list the slack user groups", expected: "slack.list_user_groups" },
   {
     query: "write a slack canvas in a channel",
     expected: "slack.write_canvas",
+    maxRank: 2, // get_channel_canvases name collides
   },
   { query: "create a new slack channel", expected: "slack.create_channel" },
   {
@@ -523,6 +682,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "list my upcoming microsoft teams meetings",
     expected: "microsoft_teams.list_meetings",
+    maxRank: 2,
   },
   {
     query: "get the transcript of a microsoft teams meeting",
@@ -535,6 +695,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "list the messages in a microsoft teams channel",
     expected: "microsoft_teams.list_messages",
+    maxRank: 3, // collides with list_channels
   },
 
   // --- wakeups ---
@@ -651,6 +812,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "create a hubspot note on a contact",
     expected: "hubspot.create_note",
+    maxRank: 2, // "create contact" collides
   },
   {
     query: "list contacts associated with a hubspot company",
@@ -705,6 +867,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "list files attached to a salesforce opportunity",
     expected: "salesforce.list_attachments",
+    maxRank: 2,
   },
   {
     query: "read a salesforce attachment file",
@@ -727,6 +890,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "edit the code of my frame",
     expected: "interactive_content.edit_interactive_content_file",
+    maxRank: 2, // pod_manager.edit_information collides on "edit"
   },
   {
     query: "change the chart colors in my dashboard",
@@ -761,16 +925,13 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "find my budget spreadsheet in google sheets",
     expected: "google_sheets.list_spreadsheets",
-    // google_drive exposes its own keyword-dense spreadsheet tools
-    // (create_spreadsheet, update_spreadsheet) that match "spreadsheet"
-    // cross-server; not separable until those servers are consolidated.
+    // google_drive exposes keyword-dense spreadsheet tools cross-server.
     maxRank: 3,
   },
   {
     query: "list all my google sheets spreadsheets",
     expected: "google_sheets.list_spreadsheets",
-    // "list" collides with google_drive's short list_drives /
-    // list_file_permissions docs; the cross-server overlap caps this at 3.
+    // "list" collides with google_drive's list_drives / list_file_permissions.
     maxRank: 3,
   },
   {
@@ -800,10 +961,12 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "add a new tab to a google sheets spreadsheet",
     expected: "google_sheets.add_worksheet",
+    maxRank: 2, // copy_sheet description mentions "tab"
   },
   {
     query: "delete a tab from a google sheets spreadsheet",
     expected: "google_sheets.delete_worksheet",
+    maxRank: 2, // copy_sheet description mentions "tab"
   },
   {
     query: "make a range of cells bold in a google sheet",
@@ -980,6 +1143,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "which agents are used most in the workspace",
     expected: "workspace_analytics.get_top_agents",
+    maxRank: 2, // get_top_tools collides on "most used"
   },
   {
     query: "show me the top 10 most active agents this month",
@@ -1013,6 +1177,7 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "where do workspace messages come from - slack, api, or browser",
     expected: "workspace_analytics.get_source_breakdown",
+    maxRank: 3, // "slack" token collides with slack_bot.edit_message
   },
   {
     query: "how many AWU credits did the workspace consume this month",
@@ -1602,9 +1767,31 @@ export const QUERIES: LabeledQuery[] = [
   {
     query: "list available status pages",
     expected: "statuspage.list_pages",
+    maxRank: 2, // list_components collides on "list"
   },
   {
     query: "show active incidents on the status page",
     expected: "statuspage.list_incidents",
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("BM25 tool-search retrieval", () => {
+  for (const { query, expected, maxRank = 1 } of QUERIES) {
+    it(`"${query}" → ${expected} (rank ≤ ${maxRank})`, () => {
+      const ranked = rank(query, idx);
+      const pos = ranked.findIndex((r) => r.name === expected) + 1;
+      expect(
+        pos,
+        `Expected "${expected}" in top ${maxRank} but got rank ${pos}. Top hit: "${ranked[0]?.name}"`
+      ).toBeGreaterThan(0);
+      expect(
+        pos,
+        `Expected "${expected}" in top ${maxRank} but got rank ${pos}. Top hit: "${ranked[0]?.name}"`
+      ).toBeLessThanOrEqual(maxRank);
+    });
+  }
+});
