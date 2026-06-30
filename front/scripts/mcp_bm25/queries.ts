@@ -1420,6 +1420,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "github.list_pull_requests",
   },
 
+  // --- http_client ---
+  {
+    query: "call an external REST API endpoint with an HTTP request",
+    expected: "http_client.send_request",
+  },
+  {
+    query: "send a POST request to a URL with a JSON body and custom headers",
+    expected: "http_client.send_request",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
