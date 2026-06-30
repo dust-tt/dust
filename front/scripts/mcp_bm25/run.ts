@@ -27,6 +27,7 @@ import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interac
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
+import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
@@ -118,6 +119,7 @@ const SERVERS: ServerEntry[] = [
   { name: "slack", tools: SLACK_PERSONAL_SERVER.tools },
   { name: "slack_bot", tools: SLACK_BOT_SERVER.tools },
   { name: "microsoft_teams", tools: MICROSOFT_TEAMS_SERVER.tools },
+  { name: "notion", tools: NOTION_SERVER.tools },
   { name: "outlook", tools: OUTLOOK_MAIL_SERVER.tools },
   { name: "outlook_calendar", tools: OUTLOOK_CALENDAR_SERVER.tools },
   { name: "wakeups", tools: WAKEUPS_SERVER.tools },
