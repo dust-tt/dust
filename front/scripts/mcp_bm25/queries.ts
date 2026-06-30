@@ -1027,6 +1027,16 @@ export const QUERIES: LabeledQuery[] = [
     maxRank: 4,
   },
 
+  // --- sound_studio ---
+  {
+    query: "generate a sound effect from a text description",
+    expected: "sound_studio.generate_sound_effects",
+  },
+  {
+    query: "create a looping background sound effect",
+    expected: "sound_studio.generate_sound_effects",
+  },
+
   // --- speech_generator ---
   {
     query: "transcribe an audio file to text",
