@@ -19,8 +19,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.41";
-const DSBX_CLI_VERSION = "0.1.28";
+const DUST_BASE_IMAGE_VERSION = "0.8.42";
+const DSBX_CLI_VERSION = "0.1.29";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -338,8 +338,14 @@ SHELLEOF`,
         description: "PowerPoint generation library",
         runtime: "node",
       },
+      {
+        name: "zod",
+        version: "4.4.3",
+        description: "Schema validation (sandbox function contracts)",
+        runtime: "node",
+      },
     ],
-    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1" }
+    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3" }
   )
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
