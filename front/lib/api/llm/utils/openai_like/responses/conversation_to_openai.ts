@@ -6,8 +6,7 @@ import {
 } from "@app/lib/api/llm/clients/openai/types";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import {
-  extractEncryptedContentFromMetadata,
-  extractIdFromMetadata,
+  parseReasoningMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import { config } from "@app/lib/api/regions/config";
@@ -87,8 +86,7 @@ function toAssistantInputItem(
       }
 
       const reasoning = content.value.reasoning;
-      const id = extractIdFromMetadata(content.value.metadata);
-      const encryptedContent = extractEncryptedContentFromMetadata(
+      const { id, encryptedContent } = parseReasoningMetadata(
         content.value.metadata
       );
       return {

@@ -50,7 +50,10 @@ export type BaseAssistantReasoningMessage = {
   role: "assistant";
   type: "reasoning";
   content: { value: string };
+  // The original reasoning item id, used to key the replayed item.
   signature?: string;
+  // OpenAI encrypted reasoning content, resent alongside the id on replay.
+  encryptedContent?: string;
 };
 
 export type BaseAssistantToolCallRequestMessage = {
