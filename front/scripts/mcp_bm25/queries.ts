@@ -894,6 +894,20 @@ export const QUERIES: LabeledQuery[] = [
     expected: "pod_manager.add_message_to_conversation",
   },
 
+  // --- val_town ---
+  {
+    query: "create a new Val Town project for a scheduled script",
+    expected: "val_town.create_val",
+  },
+  {
+    query: "list Val Town projects in my account",
+    expected: "val_town.list_vals",
+  },
+  {
+    query: "read the content of a file in Val Town",
+    expected: "val_town.get_file_content",
+  },
+
   // --- vanta ---
   {
     query: "show all security controls in my Vanta account",

@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   create_val: {
     description:
-      "Create a new val (project) in Val Town: a serverless TypeScript/JavaScript container that can hold HTTP endpoints, scripts, email handlers, or scheduled tasks. Use create_file to add files to the val.",
+      "Create a new val (project) in Val Town: a serverless TypeScript/JavaScript function for HTTP endpoints, scripts, email handlers, or scheduled tasks. Use create_file to add files to the val.",
     schema: {
       name: z
         .string()
@@ -155,7 +155,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
     },
   },
   delete_file: {
-    description: "Delete a specific file from a val using the Val Town API",
+    description:
+      "Delete or remove a specific file from a val using the Val Town API",
     schema: {
       valId: z.string().describe("The ID of the val containing the file"),
       filePath: z
@@ -170,7 +171,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   update_file_content: {
     description:
-      "Update the content of a specific file in a val. Note: To change file type (e.g., to HTTP), use the file_update tool instead.",
+      "Update the code or content of a specific file in a Val Town val. Use write_file to change the file type, name, or path.",
     schema: {
       valId: z.string().describe("The ID of the val containing the file"),
       filePath: z
@@ -189,7 +190,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   write_file: {
     description:
-      "Write content to files and update file metadata. Use this to add content, change file type, rename files, or move files. For HTTP type: return value from serve handler must be a response or a promise resolving to a response.",
+      "Write, rename, or move files in a Val Town val. Set content, change the file type (HTTP, email, interval, script), rename a file, or move it to a new directory.",
     schema: {
       valId: z.string().describe("The ID of the val containing the file"),
       filePath: z
