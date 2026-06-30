@@ -367,9 +367,17 @@ function warnTemporalWorkflowChanges(files: string[]) {
     `Temporal workflow/activity files have been modified:
 ${files.map((f) => `    - \`${f}\``).join("\n")}
 
-    **IMPORTANT**: Risk of non-deterministic errors. Workflows replay their history on resume, so changing workflow logic or renaming/reordering activities can crash in-flight workflows.
+    **IMPORTANT**: Renaming activity functions can cause non-deterministic errors in Temporal workflows.
 
-    Use Temporal patching/versioning for workflow logic changes, and add new activities instead of renaming existing ones. Adding new workflows/activities or fixing bugs within them is safe.`
+    Running workflows may still reference the old activity names, which will cause failures when they try to execute.
+
+    Best practices:
+    - **DO NOT** rename existing activity functions
+    - **DO** create new activities with new names if you need different behavior
+    - **DO** use activity versioning patterns if you must change activity signatures
+    - **DO** ensure all running workflows complete before removing old activities
+
+    If you're only adding new activities or fixing bugs within existing ones, this warning can be ignored.`
   );
 }
 
