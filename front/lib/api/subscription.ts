@@ -19,6 +19,7 @@ import { CREDIT_PRICED_FREE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -49,9 +50,9 @@ export async function isMetronomeBillingEnabled(
  * - Unpauses all connectors (including webcrawler connectors)
  * - Re-enables all triggers that point to non-archived agents
  */
-export async function activateCreditPricedFreePlan(
+async function provisionCreditPricedFreePlan(
   auth: Authenticator,
-  countryCode?: string
+  { user, countryCode }: { user?: UserResource; countryCode?: string }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const lightWorkspace = renderLightWorkspaceType({ workspace: owner });
@@ -88,17 +89,18 @@ export async function activateCreditPricedFreePlan(
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  const user = auth.getNonNullableUser();
-  const seatResult = await updateMembershipSeatAndTrack({
-    user,
-    workspace: lightWorkspace,
-    newSeatType: "free",
-    author: "no-author",
-  });
-  if (seatResult.isErr()) {
-    throw new Error(
-      `Failed to update user to free seat: ${seatResult.error.type}`
-    );
+  if (user) {
+    const seatResult = await updateMembershipSeatAndTrack({
+      user,
+      workspace: lightWorkspace,
+      newSeatType: "free",
+      author: "no-author",
+    });
+    if (seatResult.isErr()) {
+      throw new Error(
+        `Failed to update user to free seat: ${seatResult.error.type}`
+      );
+    }
   }
 
   const contractResult = await provisionMetronomeContract({
@@ -135,6 +137,28 @@ export async function activateCreditPricedFreePlan(
 
   await invalidateContractCache(owner.sId);
   await restoreWorkspaceAfterSubscription(auth);
+}
+
+// Called during normal user signup (/trial/start). Provisions the Metronome
+// contract and assigns a "free" seat to the workspace creator.
+export async function activateCreditPricedFreePlan(
+  auth: Authenticator,
+  countryCode?: string
+): Promise<void> {
+  await provisionCreditPricedFreePlan(auth, {
+    user: auth.getNonNullableUser(),
+    countryCode,
+  });
+}
+
+// Called during workspace creation via the Poke plugin. No user is present yet
+// (the workspace was just created and no member has joined), so seat assignment
+// is skipped. Invited users receive a seat type through the membership flow.
+export async function activateCreditPricedFreePlanForWorkspace(
+  auth: Authenticator,
+  countryCode?: string
+): Promise<void> {
+  await provisionCreditPricedFreePlan(auth, { countryCode });
 }
 
 export async function restoreWorkspaceAfterSubscription(auth: Authenticator) {
