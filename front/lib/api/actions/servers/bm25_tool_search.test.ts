@@ -1536,6 +1536,30 @@ const QUERIES: LabeledQuery[] = [
     expected: "databricks.list_warehouses",
   },
 
+  // --- data_sources_file_system ---
+  {
+    query: "read a connected data source document by its nodeId",
+    expected: "data_sources_file_system.cat",
+  },
+  {
+    query: "browse the folders and pages inside a connected data source",
+    expected: "data_sources_file_system.list",
+  },
+  {
+    query:
+      "semantically search connected data sources for content about a topic",
+    expected: "data_sources_file_system.semantic_search",
+  },
+  {
+    query: "find a wiki page in a data source by part of its title",
+    expected: "data_sources_file_system.find",
+  },
+  {
+    query:
+      "show the breadcrumb ancestor path of a node in the data source tree",
+    expected: "data_sources_file_system.locate_in_tree",
+  },
+
   // --- cross-server (no platform named) ---
   {
     query: "create a support ticket",
