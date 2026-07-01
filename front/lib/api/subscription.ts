@@ -3,7 +3,7 @@ import { getDataSources } from "@app/lib/api/data_sources";
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
-import { floorToHourISO } from "@app/lib/metronome/client";
+import { SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
@@ -56,7 +56,7 @@ async function provisionCreditPricedFreePlan(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const lightWorkspace = renderLightWorkspaceType({ workspace: owner });
-  const now = new Date(floorToHourISO(new Date()));
+  const now = new Date();
 
   const currency = getBillingCurrencyForCountry(countryCode ?? "US", true);
   const packageAlias = resolvePackageAliasForCurrency(
@@ -114,6 +114,13 @@ async function provisionCreditPricedFreePlan(
     swapAt: "current-hour",
     enableStripeBilling: false,
     planCode: CREDIT_PRICED_FREE_PLAN_CODE,
+    // We create the subscription row ourselves right below via
+    // `createSubscriptionFromCheckout`. Stamp the contract so the
+    // contract.start webhook skips its own subscription swap instead of
+    // racing with this synchronous write (see the custom field's doc comment).
+    additionalCustomFields: {
+      [SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY]: "true",
+    },
   });
   if (contractResult.isErr()) {
     throw new Error(
