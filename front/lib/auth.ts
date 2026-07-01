@@ -37,8 +37,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import type { Permission } from "@app/types/permissions";
-import { hasPermission } from "@app/types/permissions";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
@@ -61,7 +59,7 @@ import type {
   RoleType,
   WorkspaceType,
 } from "@app/types/user";
-import { isAdmin, isBuilder, isUser } from "@app/types/user";
+import { isAdmin, isBuilder, isBusinessAdmin, isUser } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import memoizer from "lru-memoizer";
@@ -1069,12 +1067,12 @@ export class Authenticator {
     return isBuilder(this.workspace());
   }
 
-  isAdmin(): boolean {
-    return isAdmin(this.workspace());
+  isBusinessAdmin(): boolean {
+    return isBusinessAdmin(this.workspace());
   }
 
-  hasPermission(permission: Permission): boolean {
-    return hasPermission(this.role(), permission);
+  isAdmin(): boolean {
+    return isAdmin(this.workspace());
   }
 
   isSystemKey(): boolean {

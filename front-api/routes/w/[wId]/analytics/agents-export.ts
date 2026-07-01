@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/analytics/agents_export";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { stringify } from "csv-stringify/sync";
@@ -21,7 +21,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureHasPermission("workspace:view_analytics"),
+  ensureIsBusinessAdmin(),
   validate("query", QuerySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

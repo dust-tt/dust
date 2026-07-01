@@ -18,8 +18,8 @@ import { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import {
-  ensureHasPermission,
   ensureIsAdmin,
+  ensureIsBusinessAdmin,
 } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -46,7 +46,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureHasPermission("workspace:view_analytics"),
+  ensureIsBusinessAdmin(),
   async (ctx): HandlerResult<GetSubscriptionsResponseBody> => {
     const auth = ctx.get("auth");
 

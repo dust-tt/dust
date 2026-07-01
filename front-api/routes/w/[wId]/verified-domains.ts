@@ -1,7 +1,7 @@
 import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/lib/api/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
@@ -11,7 +11,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureHasPermission("workspace:manage_members"),
+  ensureIsBusinessAdmin(),
   async (ctx): HandlerResult<GetWorkspaceVerifiedDomainsResponseBody> => {
     const auth = ctx.get("auth");
 
