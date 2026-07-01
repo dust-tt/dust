@@ -206,6 +206,15 @@ export const USAGE_TYPE_FREE = "free";
 // Must be registered in Metronome before it can be stamped.
 export const HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY = "HUBSPOT_DEAL_ID";
 
+// Custom field key stamped on a (future-dated) contract by the legacy → Business
+// migration. Its presence tells the `contract.start` webhook to, at activation
+// time, convert the workspace's remaining convertible legacy credits to AWU and
+// grant the per-user free AWU bonus. The value is the free AWU granted per
+// workspace member (a stringified integer). Must be registered in Metronome
+// before it can be stamped.
+export const LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY =
+  "DUST_LEGACY_CREDIT_MIGRATION";
+
 // Suffix appended to the annual variant of each seat product name in
 // Metronome (e.g. "Pro Seat (Yearly)"). Used by the setup script when
 // declaring products and by the UI to strip the suffix from displayed seat
