@@ -402,10 +402,10 @@
   /* === Structural & surfaces === */
 
   /* Backgrounds */
-  --color-app-background: var(--color-gray-900);
+  --color-app-background: var(--color-gray-950);
   --color-background: var(--color-gray-950);
-  --color-panel-background: var(--color-gray-950);
-  --color-muted-background: var(--color-gray-900);
+  --color-panel-background: var(--color-gray-900);
+  --color-muted-background: var(--color-gray-800);
 
   /* Surfaces */
   --color-muted: var(--color-gray-950);
