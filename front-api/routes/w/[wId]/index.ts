@@ -198,6 +198,10 @@ const WorkspaceAuditLogsUpdateBodySchema = z.object({
   disableAuditLogs: z.boolean(),
 });
 
+const WorkspaceSlackPersonalFooterRemovalUpdateBodySchema = z.object({
+  slackPersonalAllowFooterRemoval: z.boolean(),
+});
+
 // A null value clears the workspace-wide default agent (falls back to @dust).
 const WorkspaceDefaultAgentUpdateBodySchema = z.object({
   workspaceDefaultAgentId: z.string().nullable(),
@@ -229,6 +233,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
+  WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
 ]);
 
 const app = workspaceApp();
@@ -696,6 +701,14 @@ app.post(
         ...(owner.metadata ?? {}),
         workspaceDefaultAgentId,
       };
+    } else if ("slackPersonalAllowFooterRemoval" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        slackPersonalAllowFooterRemoval: body.slackPersonalAllowFooterRemoval,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
     } else if ("domainUpdates" in body) {
       for (const update of body.domainUpdates) {
         const updateResult = await workspace.updateDomainAutoJoinEnabled({

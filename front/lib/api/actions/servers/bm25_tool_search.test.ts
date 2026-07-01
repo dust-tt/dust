@@ -407,7 +407,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "send a slack message to a colleague as myself",
     expected: "slack.post_message",
-    maxRank: 5,
+    maxRank: 6,
   },
   {
     query: "dm someone on slack",
