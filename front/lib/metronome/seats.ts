@@ -1330,6 +1330,7 @@ export async function syncSeatCount({
         WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
       ]);
 
+    // TODO(pricing): Remove this + planCode param once we have no more shadow legacy contracts
     const legacy = !isCreditPricedPlanPrefix(planCode);
 
     // userSId → current seat type (the seat they are on right now).
