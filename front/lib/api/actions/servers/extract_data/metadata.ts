@@ -77,9 +77,7 @@ function makeBaseExtractSchema({
       ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]
       : DynamicJsonSchemaSchema,
     timeFrame: isTimeFrameConfigured
-      ? ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
-        ].optional()
+      ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]
       : DynamicTimeFrameSchema,
   };
 }

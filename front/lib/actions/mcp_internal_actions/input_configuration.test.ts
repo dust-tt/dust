@@ -1112,6 +1112,7 @@ describe("extract_data configured inputs", () => {
     const hiddenSchema = hideInternalConfiguration(inputSchema);
     expect(hiddenSchema.properties).not.toHaveProperty("dataSources");
     expect(hiddenSchema.properties).not.toHaveProperty("jsonSchema");
+    expect(hiddenSchema.properties).not.toHaveProperty("timeFrame");
 
     const config = createBasicMCPConfiguration({
       jsonSchema,
