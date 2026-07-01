@@ -2,13 +2,13 @@
 parser shared by the inspect scripts (used by `pptx_inspect --qa`). No fixtures
 — just strings. Run directly (`python test_utils.py`) or under pytest.
 
-Lives in soffice_tests/ (sibling of soffice/), which getLocalDirContent never
-copies into the sandbox image; it adds soffice/ to sys.path to import the module.
+Lives in soffice/tests/, a subdir getLocalDirContent skips: it copies only the
+regular files directly in soffice/ (never recursing), so tests never ship in the image. It adds soffice/ to sys.path to import the module.
 """
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "soffice"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import utils as U  # noqa: E402
 

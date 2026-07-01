@@ -8,7 +8,7 @@ Run directly (`python test_typography.py`) or under pytest.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "soffice"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pptx import Presentation  # noqa: E402
 from pptx.dml.color import RGBColor  # noqa: E402
