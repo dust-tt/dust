@@ -18,6 +18,7 @@ import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_uti
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
+import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
@@ -196,6 +197,7 @@ const SERVERS: ServerEntry[] = [
   },
   { name: "common_utilities", tools: COMMON_UTILITIES_SERVER.tools },
   { name: "exa_people_and_company", tools: EXA_SERVER.tools },
+  { name: "databricks", tools: DATABRICKS_SERVER.tools },
 ];
 
 function out(line: string): void {
