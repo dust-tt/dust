@@ -22,7 +22,6 @@ export const SEARCH_TOOLS_METADATA = createToolsRecord({
     description: SEARCH_TOOL_DESCRIPTION,
     schema: SearchWithDataSourcesInputSchema.shape,
     stake: "never_ask" as const,
-    eager: true,
     displayLabels: {
       running: "Searching data sources",
       done: "Search data sources",
