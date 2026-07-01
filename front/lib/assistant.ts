@@ -1,4 +1,9 @@
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedPlanPrefix,
+  isDustCompanyPlan,
+  isEnterprisePlanPrefix,
+  isUpgraded,
+} from "@app/lib/plans/plan_codes";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -7,6 +12,17 @@ import type {
 import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+
+// TODO(fabien): replace this check with `plan.hasAdvancedModelAccess` once
+// all plans have been configured via Poke.
+export function isPlanForAdvancedModels(plan: PlanType | null): boolean {
+  return (
+    plan !== null &&
+    (isEnterprisePlanPrefix(plan.code) ||
+      isCreditPricedPlanPrefix(plan.code) ||
+      isDustCompanyPlan(plan.code))
+  );
+}
 
 // Returns true if the model is available to the workspace for build.
 export function isModelAvailable(
@@ -41,7 +57,7 @@ export function isModelAvailable(
 
   const { plansWithAdvancedModels, featureFlag } = m.availableIfOneOf;
 
-  if (plansWithAdvancedModels === true && plan?.hasAdvancedModelAccess) {
+  if (plansWithAdvancedModels === true && isPlanForAdvancedModels(plan)) {
     return true;
   }
 
