@@ -19,7 +19,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.45";
+// const DUST_BASE_IMAGE_VERSION = "0.8.45";
+const DUST_BASE_IMAGE_VERSION = "jd-slope";
 const DSBX_CLI_VERSION = "0.1.32";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
@@ -610,11 +611,21 @@ SHELLEOF`,
   .registerTool({
     name: "pptx_inspect",
     description:
-      "Inspect .pptx structure: slides, layouts, shapes, text, charts, tables, embedded media. Use before editing a deck to map layouts and shape positions. --render rasterizes slides to JPEG via soffice + pdftoppm for visual QA",
+      "Inspect .pptx structure: slides, layouts, shapes, text, charts, tables, embedded media. Use before editing a deck to map layouts and shape positions. The per-slide view shows each text box's paragraph skeleton (slots p[i] with empty spacer paragraphs surfaced and per-paragraph colour) and lints with [!] blockers (overflow, edge bleed, distorted images where box ratio != native ratio, low-res images, stacked/coincident boxes) and [i] advisories (partial overlap with inches-to-separate, underfilled/off-centre text, tight margins, vertical anchor). --text tags each line with its shape #id and flags repeated template scaffolding. --render rasterizes each slide AND overlays every shape's bounding box (labeled #id just outside it), shading peer-overlap regions red and noting decorative marker runs (checkmarks/icons) left with no text row beside them — the core visual-QA signal for overflow/overlap/distortion/stranded-markers (use --no-boxes for a clean render). --compare FILE audits an edited deck against its source/template (orphaned slide parts, dropped media/fonts, stripped imagery, layout collapse, over-density, structural tally, content-slot fidelity — text written into the template's spacer paragraphs — and a shape-retention [i] advisory when a cloned slide kept under ~60% of its exemplar's shapes) and prints a [QA: PASS/FAIL] verdict — the authoritative structural gate before delivery",
     usage:
-      "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--render] [--max-shapes N] [--offset N]",
+      "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--render [--no-boxes]] [--compare FILE] [--max-shapes N] [--offset N]",
     returns:
-      "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings. --render prints one absolute JPEG path per slide",
+      "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' then 'p[i]: <text>' per paragraph (empty spacer slots shown), with [!] blockers and [i] advisories inline. --text tags lines with shape #id (for render readback) and flags repeated scaffolding. Layouts/media views emit format-specific listings. --render writes a labeled bounding-box overlay (slide-NNN-boxes.png; #id outside each box) per slide with a pixel-metrics digest of peer overlaps and unaligned marker runs. --compare prints a template-fidelity audit ending in a [QA: PASS/FAIL] verdict",
+    runtime: "system",
+  })
+  // --- pptx_slides: safe slide-level structural edits ---
+  .registerTool({
+    name: "pptx_slides",
+    description:
+      "Duplicate, move, or delete .pptx slides without corrupting the package — shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+    usage:
+      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
+    returns: "A one-line summary of the change and the deck's new slide count",
     runtime: "system",
   })
   // --- pptx_slides: safe slide-level structural edits ---
