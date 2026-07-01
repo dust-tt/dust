@@ -75,6 +75,7 @@ type CachedGroup = {
   kind: GroupKind;
   workspaceId: ModelId;
   workOSGroupId: string | null;
+  poolCapAwuCredits: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -129,6 +130,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: g.kind,
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
+      poolCapAwuCredits: g.poolCapAwuCredits,
       createdAt: g.createdAt.getTime(),
       updatedAt: g.updatedAt.getTime(),
     }));
@@ -168,6 +170,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: data.kind,
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
+      poolCapAwuCredits: data.poolCapAwuCredits,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     });
@@ -2108,6 +2111,20 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  // Per-group usage spend limit (excluding seat allowance), applied per member.
+  // Pass null to clear the cap.
+  async updatePoolCap(
+    auth: Authenticator,
+    poolCapAwuCredits: number | null
+  ): Promise<Result<undefined, Error>> {
+    if (!auth.canAdministrate(this.requestedPermissions())) {
+      return new Err(new Error("Only admins can update group spend limits."));
+    }
+
+    await this.update({ poolCapAwuCredits });
+    return new Ok(undefined);
+  }
+
   // Deletion
 
   async delete(
@@ -2380,6 +2397,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: this.workspaceId,
       kind: this.kind,
       memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
+      poolCapAwuCredits: this.poolCapAwuCredits,
     };
   }
 
@@ -2392,6 +2410,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: this.workspaceId,
       kind: this.kind,
       memberCount,
+      poolCapAwuCredits: this.poolCapAwuCredits,
     };
   }
 }
