@@ -80,6 +80,7 @@ import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
+import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -1547,17 +1548,10 @@ export async function processMetronomeWebhook({
 
       const activeSubscription =
         await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-      if (!activeSubscription) {
-        logger.warn(
-          { contractId, customerId, workspaceId: workspace.sId },
-          "[Metronome Webhook] contract.start: no active subscription"
-        );
-        break;
-      }
 
       // Idempotency: re-deliveries land here with the active subscription
       // already pointing at the new contract.
-      if (activeSubscription.metronomeContractId === contractId) {
+      if (activeSubscription?.metronomeContractId === contractId) {
         logger.info(
           { contractId, workspaceId: workspace.sId },
           "[Metronome Webhook] contract.start: subscription already swapped, skipping"
@@ -1577,7 +1571,8 @@ export async function processMetronomeWebhook({
         pendingSubscription &&
         pendingSubscription.status === "created_backend_only"
       ) {
-        const previousPlanCode = activeSubscription.getPlan().code;
+        const previousPlanCode =
+          activeSubscription?.getPlan().code ?? FREE_NO_PLAN_CODE;
         // `activatePending` flushes the contract cache itself.
         await pendingSubscription.activatePending();
         const auth = await Authenticator.internalAdminForWorkspace(
@@ -1617,7 +1612,7 @@ export async function processMetronomeWebhook({
       // which also lack a delivery config, are not mistaken for shadows).
       const startedContractIsShadow =
         !contractResult.value.customer_billing_provider_configuration &&
-        !!activeSubscription.stripeSubscriptionId;
+        !!activeSubscription?.stripeSubscriptionId;
       if (startedContractIsShadow) {
         logger.info(
           {
@@ -1630,14 +1625,27 @@ export async function processMetronomeWebhook({
         break;
       }
 
-      // End the current subscription as `ended_backend_only` and create
-      // a new active subscription on the target plan + new contract.
-      const legacyPreviousPlanCode = activeSubscription.getPlan().code;
-      // `swapMetronomeContract` flushes the contract cache itself.
-      await activeSubscription.swapMetronomeContract({
-        metronomeContractId: contractId,
-        planCode: targetPlan.code,
-      });
+      // Swap the active subscription onto the new contract, or — when the
+      // workspace has NO active subscription (e.g. it was cancelled and the
+      // `customer.subscription.deleted` webhook already ended the sub and
+      // scheduled a scrub, and this `contract.start` is the re-registration) —
+      // create the new subscription. Either way `restoreWorkspaceAfterSubscription`
+      // below cancels any scheduled scrub.
+      const previousPlanCode =
+        activeSubscription?.getPlan().code ?? FREE_NO_PLAN_CODE;
+      if (activeSubscription) {
+        // `swapMetronomeContract` flushes the contract cache itself.
+        await activeSubscription.swapMetronomeContract({
+          metronomeContractId: contractId,
+          planCode: targetPlan.code,
+        });
+      } else {
+        await SubscriptionResource.createActiveMetronomeSubscription({
+          workspaceModelId: workspace.id,
+          planCode: targetPlan.code,
+          metronomeContractId: contractId,
+        });
+      }
 
       // Cancel any scheduled scrub workflow, unpause connectors, re-enable
       // triggers. Idempotent — safe to call regardless of prior state.
@@ -1646,7 +1654,7 @@ export async function processMetronomeWebhook({
       emitSubscriptionChangedAuditEvent({
         auth,
         planCode: targetPlan.code,
-        previousPlanCode: legacyPreviousPlanCode,
+        previousPlanCode,
         metronomeContractId: contractId,
       });
 

@@ -1298,6 +1298,51 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   }
 
   /**
+   * Create a new active subscription on a Metronome contract + plan when the
+   * workspace currently has NO active subscription — e.g. it was cancelled
+   * (subscription ended) and is now re-subscribing as a new contract starts.
+   * Mirrors the creation half of `swapMetronomeContract` with no prior
+   * subscription to end. The new subscription is Metronome-billed (no Stripe).
+   */
+  static async createActiveMetronomeSubscription({
+    workspaceModelId,
+    planCode,
+    metronomeContractId,
+  }: {
+    workspaceModelId: ModelId;
+    planCode: string;
+    metronomeContractId: string;
+  }): Promise<SubscriptionResource> {
+    const newPlan = await SubscriptionResource.findPlanOrThrow(planCode);
+
+    const created = await withTransaction(async (t) => {
+      const subscription = await SubscriptionResource.makeNew(
+        {
+          sId: generateRandomModelSId(),
+          workspaceId: workspaceModelId,
+          planId: newPlan.id,
+          status: "active",
+          trialing: false,
+          startDate: new Date(),
+          endDate: null,
+          stripeSubscriptionId: null,
+          metronomeContractId,
+        },
+        renderPlanFromModel({ plan: newPlan }),
+        t
+      );
+      invalidateCacheAfterCommit(t, () =>
+        SubscriptionResource.invalidateContractCacheByWorkspaceModelId(
+          workspaceModelId
+        )
+      );
+      return subscription;
+    });
+    await SubscriptionResource.invalidateSubscriptionCache(workspaceModelId);
+    return created;
+  }
+
+  /**
    * Flip this pending (created_backend_only) subscription to active, while
    * ending whatever active subscription currently holds the workspace's seat.
    * Mirrors `swapMetronomeContract` but for the pre-provisioned pending-row
