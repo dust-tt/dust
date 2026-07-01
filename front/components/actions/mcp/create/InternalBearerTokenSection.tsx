@@ -23,7 +23,11 @@ export function InternalBearerTokenSection({
         <Label htmlFor="bearerToken">{label}</Label>
         <Tooltip
           trigger={
-            <Icon visual={InfoCircle} size="xs" className="text-gray-400" />
+            <Icon
+              visual={InfoCircle}
+              size="xs"
+              className="text-muted-foreground"
+            />
           }
           label={tooltip}
         />

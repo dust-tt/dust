@@ -222,7 +222,7 @@ export function SpaceWebsiteForm({
       <Page.Layout direction="vertical" gap="md">
         <Page.H variant="h3">Name</Page.H>
         {webCrawlerConfiguration ? (
-          <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+          <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
             <AlertCircle />
             Website name cannot be changed.
           </p>

@@ -104,7 +104,7 @@ export const OTHER_LABEL = {
 export const UNKNOWN_LABEL = {
   key: "unknown",
   label: "Unknown",
-  color: "text-gray-400",
+  color: "text-muted-foreground",
 };
 
 export const FEEDBACK_DISTRIBUTION_PALETTE = {

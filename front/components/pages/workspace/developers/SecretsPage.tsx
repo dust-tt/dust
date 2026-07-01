@@ -175,7 +175,7 @@ export function SecretsPage() {
                 })
               }
             />
-            <p className="text-xs text-gray-500"></p>
+            <p className="text-xs text-muted-foreground"></p>
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{

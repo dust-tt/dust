@@ -425,7 +425,7 @@ export function CheckoutPage() {
   return (
     <main className="flex h-screen overflow-hidden">
       {/* Left pane: order summary + coupon */}
-      <div className="flex w-1/2 flex-col gap-14 overflow-y-auto bg-gray-50 p-24">
+      <div className="flex w-1/2 flex-col gap-14 overflow-y-auto bg-muted-background p-24">
         <div>
           <Icon visual={DustLogoSquare} size="lg" />
         </div>

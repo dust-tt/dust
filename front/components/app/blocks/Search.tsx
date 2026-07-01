@@ -114,7 +114,7 @@ export default function Search({
       onBlockNew={onBlockNew}
     >
       <div className="flex w-full flex-col gap-4">
-        <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+        <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
           <div className="flex flex-initial">provider:</div>
           {/* Owner has zero search providers */}
           {!isProvidersLoading &&
@@ -134,7 +134,7 @@ export default function Search({
                       className={classNames(
                         "inline-flex items-center rounded-md py-1 text-sm font-normal",
                         "border px-3",
-                        "border-white text-gray-300"
+                        "border-white text-muted-foreground"
                       )}
                     >
                       Provider not available

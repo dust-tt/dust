@@ -264,7 +264,7 @@ function BaseSearchInputWithPopover<T>(
               <div className="flex flex-1 items-center gap-2">
                 {stickyTopContent}
                 {displayItemCount && items.length > 0 && (
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-muted-foreground">
                     {items.length} search results
                     {totalItems && ` (out of ${totalItems})`}.
                   </span>

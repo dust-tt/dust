@@ -53,7 +53,10 @@ export function seatTypeAvatarColors(seatType: string) {
         iconColor: "text-green-600",
       };
     default:
-      return { backgroundColor: "bg-gray-100", iconColor: "text-gray-600" };
+      return {
+        backgroundColor: "bg-muted",
+        iconColor: "text-muted-foreground",
+      };
   }
 }
 

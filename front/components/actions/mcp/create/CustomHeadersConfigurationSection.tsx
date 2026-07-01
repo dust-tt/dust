@@ -47,7 +47,7 @@ export function CustomHeadersConfigurationSection({
                   <Icon
                     visual={InfoCircle}
                     size="xs"
-                    className="text-gray-400"
+                    className="text-muted-foreground"
                   />
                 }
                 label="Custom headers can be added for advanced networking such as firewalls."

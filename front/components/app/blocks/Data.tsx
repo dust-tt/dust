@@ -67,12 +67,12 @@ export default function Data({
       canUseCache={false}
     >
       <div className="flex flex-col sm:flex-row">
-        <div className="flex flex-row items-center text-sm font-medium leading-8 text-gray-700">
+        <div className="flex flex-row items-center text-sm font-medium leading-8 text-foreground">
           <Label>Dataset</Label>
           {block.spec.dataset_id && block.spec.hash ? (
             <div className="flex items-center">
               {block.spec.dataset_id}
-              <div className="ml-1 text-gray-400">
+              <div className="ml-1 text-muted-foreground">
                 ({block.spec.hash.slice(-7)})
               </div>
             </div>
@@ -98,7 +98,7 @@ export default function Data({
           )}
         </div>
         {/*
-        <div className="flex flex-row items-center space-x-2 text-sm font-medium text-gray-700 leading-8">
+        <div className="flex flex-row items-center space-x-2 text-sm font-medium text-foreground leading-8">
           <div className="flex flex-initial">version:</div>
           <div className="flex flex-1 font-normal">latest</div>
         </div>
