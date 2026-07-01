@@ -44,7 +44,7 @@ export function buildCacheKeyPattern(
 }
 
 export const WORKSPACE_CACHE_KEY_VERSION = 2;
-export const SUBSCRIPTION_CACHE_KEY_VERSION = 1;
+export const SUBSCRIPTION_CACHE_KEY_VERSION = 2;
 
 export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
   {
