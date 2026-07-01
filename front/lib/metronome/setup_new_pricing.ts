@@ -53,7 +53,6 @@ import {
   BUSINESS_EUR_PACKAGE_ALIAS,
   BUSINESS_USD_PACKAGE_ALIAS,
   DEFAULT_AWU_EXCESS_RECURRING_AMOUNT,
-  DEPRECATED_FREE_PACKAGE_ALIAS,
 } from "@app/lib/metronome/types";
 
 export const NEW_METRICS: MetricDef[] = [
@@ -688,19 +687,6 @@ export function getNewPackages(): PackageDef[] {
           product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           price: CP_MAX_SEAT_COST_YEARLY * 12,
         },
-        { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
-      ]),
-      ...BILLING_CYCLE_CONFIG,
-    },
-    // Free plan — entitles only the Free Seat.
-    {
-      name: "Free plan",
-      aliases: [{ name: DEPRECATED_FREE_PACKAGE_ALIAS }],
-      rate_card_name: "Free plan",
-      subscriptions: ALL_SEAT_SUBSCRIPTIONS,
-      scheduled_charges_on_usage_invoices: "ALL",
-      recurring_credits: getAllSeatRecurringCredits(),
-      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
         { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
       ...BILLING_CYCLE_CONFIG,
