@@ -1,5 +1,5 @@
-import type { Authenticator } from "@app/lib/auth";
 import { isAdvancedModel as isAdvancedModelConfig } from "@app/lib/assistant";
+import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
