@@ -173,18 +173,18 @@
   --color-primary-light: var(--color-primary-600);
   --color-primary-dark: var(--color-primary-950);
   --color-primary-muted: var(--color-primary-500);
-  --color-primary-50: var(--color-gray-50);
-  --color-primary-100: var(--color-gray-100);
-  --color-primary-150: var(--color-gray-150);
-  --color-primary-200: var(--color-gray-200);
-  --color-primary-300: var(--color-gray-300);
-  --color-primary-400: var(--color-gray-400);
-  --color-primary-500: var(--color-gray-500);
-  --color-primary-600: var(--color-gray-600);
-  --color-primary-700: var(--color-gray-700);
-  --color-primary-800: var(--color-gray-800);
-  --color-primary-900: var(--color-gray-900);
-  --color-primary-950: var(--color-gray-950);
+  --color-primary-50: var(--color-stone-50);
+  --color-primary-100: var(--color-stone-100);
+  --color-primary-150: var(--color-stone-150);
+  --color-primary-200: var(--color-stone-200);
+  --color-primary-300: var(--color-stone-300);
+  --color-primary-400: var(--color-stone-400);
+  --color-primary-500: var(--color-stone-500);
+  --color-primary-600: var(--color-stone-600);
+  --color-primary-700: var(--color-stone-700);
+  --color-primary-800: var(--color-stone-800);
+  --color-primary-900: var(--color-stone-900);
+  --color-primary-950: var(--color-stone-950);
 
   /* highlight */
   --color-highlight: var(--color-highlight-500);
@@ -319,18 +319,18 @@
   --color-primary-light: var(--color-primary-700);
   --color-primary-dark: var(--color-primary-900);
   --color-primary-muted: var(--color-primary-500);
-  --color-primary-50: var(--color-gray-950);
-  --color-primary-100: var(--color-gray-900);
-  --color-primary-150: var(--color-gray-900);
-  --color-primary-200: var(--color-gray-800);
-  --color-primary-300: var(--color-gray-700);
-  --color-primary-400: var(--color-gray-600);
-  --color-primary-500: var(--color-gray-500);
-  --color-primary-600: var(--color-gray-400);
-  --color-primary-700: var(--color-gray-300);
-  --color-primary-800: var(--color-gray-200);
-  --color-primary-900: var(--color-gray-100);
-  --color-primary-950: var(--color-gray-100);
+  --color-primary-50: var(--color-stone-950);
+  --color-primary-100: var(--color-stone-900);
+  --color-primary-150: var(--color-stone-900);
+  --color-primary-200: var(--color-stone-800);
+  --color-primary-300: var(--color-stone-700);
+  --color-primary-400: var(--color-stone-600);
+  --color-primary-500: var(--color-stone-500);
+  --color-primary-600: var(--color-stone-400);
+  --color-primary-700: var(--color-stone-300);
+  --color-primary-800: var(--color-stone-200);
+  --color-primary-900: var(--color-stone-100);
+  --color-primary-950: var(--color-stone-100);
 
   /* highlight */
   --color-highlight: var(--color-highlight-500);
