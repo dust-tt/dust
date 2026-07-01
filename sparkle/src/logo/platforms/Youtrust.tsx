@@ -7,7 +7,7 @@ const SvgYoutrust = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox="0 0 210 210"
+    viewBox="40 40 130 130"
     {...props}
   >
     <path fill="#CEFF8F" d="M0 0h210v210H0z" />
