@@ -134,7 +134,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .default(true)
         .describe(
-          "Whether to append a 'Sent via [AgentName] on Dust' attribution footer to the message. Defaults to true. Set to false only when explicitly instructed to omit the attribution."
+          "Include the 'Sent via [AgentName] on Dust' footer. Set to false only when explicitly asked to omit it."
         ),
     },
     stake: "medium",
@@ -189,7 +189,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .default(true)
         .describe(
-          "Whether to append a 'Sent via [AgentName] on Dust' attribution footer to the scheduled message. Defaults to true. Set to false only when explicitly instructed to omit the attribution."
+          "Include the 'Sent via [AgentName] on Dust' footer. Set to false only when explicitly asked to omit it."
         ),
     },
     stake: "medium",
