@@ -1,5 +1,6 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
 import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import { toggleScopeEntity } from "@app/components/workspace/analytics/analyticsFilter";
 import { WorkspaceAgentCreditsTable } from "@app/components/workspace/analytics/WorkspaceAgentCreditsTable";
@@ -130,6 +131,7 @@ export function AnalyticsPage() {
         <SafeSuspense fallback={<ChartFallback />}>
           <WorkspaceSkillUsageChart workspaceId={owner.sId} period={period} />
         </SafeSuspense>
+        <AnalyticsExportPanel workspaceId={owner.sId} />
       </div>
     </Page.Vertical>
   );
