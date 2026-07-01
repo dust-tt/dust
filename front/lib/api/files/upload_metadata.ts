@@ -1,9 +1,12 @@
-import { shouldStampSandboxRawDelimited } from "@app/lib/api/files/sandbox_raw";
 import { shouldSkipDataSourceIndexing } from "@app/lib/api/files/should_skip_indexing";
 import type {
   AllSupportedFileContentType,
   FileUseCase,
   FileUseCaseMetadata,
+} from "@app/types/files";
+import {
+  allowsSandboxRawUpload,
+  getFileFormatCategory,
 } from "@app/types/files";
 
 export function buildEffectiveUseCaseMetadata({
@@ -23,20 +26,23 @@ export function buildEffectiveUseCaseMetadata({
     contentType,
     fileName,
   });
-  const isSandboxRawDelimited = shouldStampSandboxRawDelimited({
-    contentType,
-    flags,
-    useCase,
-  });
+  const category = getFileFormatCategory(contentType);
+  const isSandboxRaw =
+    category !== null &&
+    allowsSandboxRawUpload({
+      category,
+      hasSandboxTools: flags.hasSandboxTools,
+      useCase,
+    });
 
-  if (!skipDataSourceIndexing && !isSandboxRawDelimited) {
+  if (!skipDataSourceIndexing && !isSandboxRaw) {
     return providedMetadata;
   }
 
   return {
     ...(providedMetadata ?? {}),
     ...(skipDataSourceIndexing ? { skipDataSourceIndexing: true } : {}),
-    ...(isSandboxRawDelimited
+    ...(isSandboxRaw
       ? {
           skipDataSourceIndexing: true,
           skipFileProcessing: true,

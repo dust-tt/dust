@@ -282,6 +282,10 @@ export const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
+export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+
+// Large delimited files (CSV/XLSX) are mounted into the sandbox and read as-is by the agent's code
+// rather than loaded into its context, so they can be much larger than regular uploads.
 export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
   FileFormatCategory,
   number
@@ -290,7 +294,38 @@ export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
   delimited: 350 * 1024 * 1024,
 };
 
-export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+// Whether an upload is stored as a raw sandbox file: kept as-is with no upload-time processing
+// (no Tika extraction / image resize) and not indexed. Always requires sandbox tools.
+//  - conversation: large delimited files are served raw to the sandbox instead of indexed as tables.
+export function allowsSandboxRawUpload({
+  category,
+  hasSandboxTools,
+  useCase,
+}: {
+  category: FileFormatCategory;
+  hasSandboxTools: boolean;
+  useCase: FileUseCase;
+}): boolean {
+  if (!hasSandboxTools) {
+    return false;
+  }
+
+  switch (useCase) {
+    case "conversation":
+      return category === "delimited";
+    case "avatar":
+    case "tool_output":
+    case "upsert_document":
+    case "folders_document":
+    case "upsert_table":
+    case "project_context":
+    case "skill_attachment":
+    case "workspace_branding":
+      return false;
+    default:
+      assertNever(useCase);
+  }
+}
 
 export function resolveMaxFileSizes({
   hasSandboxTools,

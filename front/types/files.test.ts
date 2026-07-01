@@ -1,4 +1,5 @@
 import {
+  allowsSandboxRawUpload,
   authorizedFileAccessEntrySchema,
   ensureFileSize,
   getAuthorizedFileRefLabel,
@@ -11,6 +12,50 @@ import {
   sandboxFunctionContentType,
 } from "@app/types/files";
 import { describe, expect, it } from "vitest";
+
+describe("allowsSandboxRawUpload", () => {
+  it("allows delimited conversation files only when sandbox tools are present", () => {
+    expect(
+      allowsSandboxRawUpload({
+        category: "delimited",
+        hasSandboxTools: true,
+        useCase: "conversation",
+      })
+    ).toBe(true);
+
+    expect(
+      allowsSandboxRawUpload({
+        category: "delimited",
+        hasSandboxTools: false,
+        useCase: "conversation",
+      })
+    ).toBe(false);
+  });
+
+  it("does not apply to non-delimited categories in sandbox conversations", () => {
+    for (const category of ["image", "data", "code", "audio"] as const) {
+      expect(
+        allowsSandboxRawUpload({
+          category,
+          hasSandboxTools: true,
+          useCase: "conversation",
+        })
+      ).toBe(false);
+    }
+  });
+
+  it("does not apply outside of conversations", () => {
+    for (const useCase of ["upsert_table", "skill_attachment"] as const) {
+      expect(
+        allowsSandboxRawUpload({
+          category: "delimited",
+          hasSandboxTools: true,
+          useCase,
+        })
+      ).toBe(false);
+    }
+  });
+});
 
 describe("resolveMaxFileSizes", () => {
   it("raises the delimited limit only for sandbox conversations", () => {
@@ -33,6 +78,14 @@ describe("resolveMaxFileSizes", () => {
         hasSandboxTools: true,
         useCase: "upsert_table",
       }).delimited
+    ).toBe(50 * 1024 * 1024);
+
+    // Only delimited is raised: other categories keep the default even in a sandbox conversation.
+    expect(
+      resolveMaxFileSizes({
+        hasSandboxTools: true,
+        useCase: "conversation",
+      }).code
     ).toBe(50 * 1024 * 1024);
   });
 
