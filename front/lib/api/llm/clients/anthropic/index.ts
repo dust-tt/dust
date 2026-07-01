@@ -248,11 +248,9 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     // Build the tools once so the system prompt can be derived from what is
     // actually sent: the tool search instruction is added only when the search
     // tool is present in this request.
-    const tools = toToolsParam(
-      specifications,
-      forceToolCall,
-      toolSearchEnabled ?? false
-    );
+    const tools = toToolsParam(specifications, forceToolCall, {
+      toolSearchEnabled: toolSearchEnabled ?? false,
+    });
 
     // TODO(tool-search): remove this rollout log once the eager set is validated.
     if (toolSearchEnabled) {

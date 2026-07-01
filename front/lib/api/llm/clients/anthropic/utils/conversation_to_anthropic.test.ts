@@ -32,7 +32,7 @@ const baseSpec: AgentActionSpecification = {
 
 describe("toTool", () => {
   it("defers a non-eager tool when tool search is enabled", () => {
-    const tool = toTool(baseSpec, true);
+    const tool = toTool(baseSpec, { toolSearchEnabled: true });
 
     expect(tool.defer_loading).toBe(true);
     expect(tool.name).toBe("do_thing");
@@ -40,13 +40,16 @@ describe("toTool", () => {
   });
 
   it("keeps an eager tool in the prefix when tool search is enabled", () => {
-    const tool = toTool({ ...baseSpec, eager: true }, true);
+    const tool = toTool(
+      { ...baseSpec, eager: true },
+      { toolSearchEnabled: true }
+    );
 
     expect(tool.defer_loading).toBeUndefined();
   });
 
   it("never defers when tool search is disabled", () => {
-    const tool = toTool(baseSpec, false);
+    const tool = toTool(baseSpec, { toolSearchEnabled: false });
 
     expect(tool.defer_loading).toBeUndefined();
   });
@@ -57,7 +60,7 @@ describe("toToolsParam", () => {
     const tools = toToolsParam(
       [hotSpec, { ...hotSpec, name: "hot2" }],
       undefined,
-      true
+      { toolSearchEnabled: true }
     );
 
     expect(tools).toHaveLength(2);
@@ -65,14 +68,18 @@ describe("toToolsParam", () => {
   });
 
   it("does not defer anything when tool search is disabled", () => {
-    const tools = toToolsParam([hotSpec, coldSpec], undefined, false);
+    const tools = toToolsParam([hotSpec, coldSpec], undefined, {
+      toolSearchEnabled: false,
+    });
 
     expect(tools).toHaveLength(2);
     expect(tools.some((t) => t.type === TOOL_SEARCH_TYPE)).toBe(false);
   });
 
   it("prepends the search tool when at least one tool is deferred", () => {
-    const tools = toToolsParam([hotSpec, coldSpec], undefined, true);
+    const tools = toToolsParam([hotSpec, coldSpec], undefined, {
+      toolSearchEnabled: true,
+    });
 
     expect(tools).toHaveLength(3);
     expect(tools[0].type).toBe(TOOL_SEARCH_TYPE);
@@ -82,7 +89,9 @@ describe("toToolsParam", () => {
   it("un-defers a force-called tool so no search tool is needed", () => {
     // The only deferrable tool is force-called, so after un-deferring it nothing
     // remains deferred and the search tool must not be injected.
-    const tools = toToolsParam([coldSpec], "cold", true);
+    const tools = toToolsParam([coldSpec], "cold", {
+      toolSearchEnabled: true,
+    });
 
     expect(tools).toHaveLength(1);
     expect(tools.some((t) => t.type === TOOL_SEARCH_TYPE)).toBe(false);
@@ -93,7 +102,9 @@ describe("toToolsParam", () => {
     const tools = toToolsParam(
       [coldSpec, { ...coldSpec, name: "cold2" }],
       "cold",
-      true
+      {
+        toolSearchEnabled: true,
+      }
     );
 
     // cold2 is still deferred, so the search tool is present...
@@ -112,19 +123,27 @@ describe("toToolsParam", () => {
 describe("includesToolSearchTool", () => {
   it("is false when every tool is eager", () => {
     expect(
-      includesToolSearchTool(toToolsParam([hotSpec], undefined, true))
+      includesToolSearchTool(
+        toToolsParam([hotSpec], undefined, { toolSearchEnabled: true })
+      )
     ).toBe(false);
   });
 
   it("is true when a deferred tool prepends the search tool", () => {
     expect(
-      includesToolSearchTool(toToolsParam([hotSpec, coldSpec], undefined, true))
+      includesToolSearchTool(
+        toToolsParam([hotSpec, coldSpec], undefined, {
+          toolSearchEnabled: true,
+        })
+      )
     ).toBe(true);
   });
 
   it("is false when the only deferrable tool is force-called", () => {
-    expect(includesToolSearchTool(toToolsParam([coldSpec], "cold", true))).toBe(
-      false
-    );
+    expect(
+      includesToolSearchTool(
+        toToolsParam([coldSpec], "cold", { toolSearchEnabled: true })
+      )
+    ).toBe(false);
   });
 });

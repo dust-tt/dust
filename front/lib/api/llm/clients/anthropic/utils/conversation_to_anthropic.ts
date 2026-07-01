@@ -281,7 +281,7 @@ export async function toMessage(
 
 export function toTool(
   tool: AgentActionSpecification,
-  toolSearchEnabled: boolean
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
 ): Tool {
   return {
     name: tool.name,
@@ -309,10 +309,10 @@ export function toTool(
 export function toToolsParam(
   specifications: AgentActionSpecification[],
   forceToolCall: string | undefined,
-  toolSearchEnabled: boolean
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
 ) {
   const tools = specifications.map((spec) => {
-    const tool = toTool(spec, toolSearchEnabled);
+    const tool = toTool(spec, { toolSearchEnabled });
     if (tool.defer_loading && spec.name === forceToolCall) {
       return { ...tool, defer_loading: false };
     }
