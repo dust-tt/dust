@@ -1638,8 +1638,8 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listForAgentLoop — pod default skill injection", () => {
-    it("injects a pod's default skills into enabledSkills", async () => {
+  describe("listForAgentLoop — pod default skills", () => {
+    it("exposes a pod's default skills as equipped", async () => {
       const { authenticator, workspace, user } = testContext;
 
       const space = await SpaceFactory.project(workspace, user.id);
@@ -1664,15 +1664,17 @@ describe("SkillResource", () => {
         spaceId: space.id,
       });
 
-      const { enabledSkills } = await SkillResource.listForAgentLoop(
-        authenticator,
-        { agentConfiguration: agent, conversation }
-      );
+      const { enabledSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(authenticator, {
+          agentConfiguration: agent,
+          conversation,
+        });
 
-      expect(enabledSkills.map((s) => s.sId)).toContain(defaultSkill.sId);
+      expect(equippedSkills.map((s) => s.sId)).toContain(defaultSkill.sId);
+      expect(enabledSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
     });
 
-    it("does not inject pod defaults into a non-pod conversation", async () => {
+    it("does not expose pod defaults in a non-pod conversation", async () => {
       const { authenticator, workspace } = testContext;
 
       const space = await SpaceFactory.project(workspace);
@@ -1690,10 +1692,49 @@ describe("SkillResource", () => {
         authenticator,
         { name: "Non-pod Agent" }
       );
-      // No spaceId => isPodConversation() is false => no injection.
+      // No spaceId => isPodConversation() is false => not exposed.
       const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [],
+      });
+
+      const { enabledSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(authenticator, {
+          agentConfiguration: agent,
+          conversation,
+        });
+
+      expect(equippedSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
+      expect(enabledSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
+    });
+
+    it("moves a pod default into enabledSkills once the agent enables it", async () => {
+      const { authenticator, workspace, user } = testContext;
+
+      const space = await SpaceFactory.project(workspace, user.id);
+      const defaultSkill = await SkillFactory.create(authenticator, {
+        name: "Pod Default Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pod Agent" }
+      );
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+        spaceId: space.id,
+      });
+
+      await defaultSkill.enableForAgent(authenticator, {
+        agentConfiguration: agent,
+        conversation,
       });
 
       const { enabledSkills } = await SkillResource.listForAgentLoop(
@@ -1701,10 +1742,10 @@ describe("SkillResource", () => {
         { agentConfiguration: agent, conversation }
       );
 
-      expect(enabledSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
+      expect(enabledSkills.map((s) => s.sId)).toContain(defaultSkill.sId);
     });
 
-    it("dedups a skill that is both a pod default and conversation-enabled", async () => {
+    it("does not duplicate a pod default that is also an agent skill", async () => {
       const { authenticator, workspace, user } = testContext;
 
       const space = await SpaceFactory.project(workspace, user.id);
@@ -1722,24 +1763,20 @@ describe("SkillResource", () => {
         authenticator,
         { name: "Pod Agent" }
       );
+      await skill.addToAgent(authenticator, agent);
+
       const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [],
         spaceId: space.id,
       });
 
-      const upsertResult = await skill.upsertToConversation(authenticator, {
-        conversationId: conversation.id,
-        enabled: true,
-      });
-      expect(upsertResult.isOk()).toBe(true);
-
-      const { enabledSkills } = await SkillResource.listForAgentLoop(
+      const { equippedSkills } = await SkillResource.listForAgentLoop(
         authenticator,
         { agentConfiguration: agent, conversation }
       );
 
-      expect(enabledSkills.filter((s) => s.sId === skill.sId)).toHaveLength(1);
+      expect(equippedSkills.filter((s) => s.sId === skill.sId)).toHaveLength(1);
     });
   });
 

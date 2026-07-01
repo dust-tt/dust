@@ -880,7 +880,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchActiveByIdsForAgentLoop(
     auth: Authenticator,
     sIds: string[],
-    agentLoopData?: AgentLoopExecutionData
+    agentLoopData?: AgentLoopExecutionData,
+    {
+      withInstructions = true,
+      withTools = true,
+    }: { withInstructions?: boolean; withTools?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -896,6 +900,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           sId: globalSkillIds,
           status: "active",
         },
+        withInstructions,
+        withTools,
       },
       { agentLoopData }
     );
@@ -1464,10 +1470,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       auth,
       [spaceModelId]
     );
+
     return this.fetchActiveByIdsForAgentLoop(
       auth,
       projectMetadata?.defaultSkillIds ?? [],
-      agentLoopData
+      agentLoopData,
+      { withInstructions: false, withTools: false }
     );
   }
 
@@ -1488,7 +1496,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const { agentConfiguration, conversation } = params;
     const agentLoopData = "userMessage" in params ? params : undefined;
 
-    const conversationEnabledSkillsRaw = await this.listEnabledByConversation(
+    const conversationEnabledSkills = await this.listEnabledByConversation(
       auth,
       {
         conversation,
@@ -1500,16 +1508,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       auth,
       { conversation, agentLoopData }
     );
-
-    const conversationEnabledById = new Map(
-      conversationEnabledSkillsRaw.map((s) => [s.sId, s])
-    );
-    for (const skill of podDefaultSkills) {
-      if (!conversationEnabledById.has(skill.sId)) {
-        conversationEnabledById.set(skill.sId, skill);
-      }
-    }
-    const conversationEnabledSkills = [...conversationEnabledById.values()];
 
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
@@ -1602,13 +1600,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentEquippedSkillIds = new Set(
       [...agentEquippedSkills, ...autoEquippedSkills].map((s) => s.sId)
     );
-    const discoveredSkills = discoverableSkills.filter(
+    const podEquippedSkills = podDefaultSkills.filter(
       (s) => !agentEquippedSkillIds.has(s.sId)
+    );
+    const equippedSkillIds = new Set([
+      ...agentEquippedSkillIds,
+      ...podEquippedSkills.map((s) => s.sId),
+    ]);
+    const discoveredSkills = discoverableSkills.filter(
+      (s) => !equippedSkillIds.has(s.sId)
     );
 
     const equippedSkills = removeNulls([
       ...agentEquippedSkills.sort(sortByName),
       ...autoEquippedSkills.sort(sortByName),
+      ...podEquippedSkills.sort(sortByName),
       ...discoveredSkills.sort(sortByName),
     ]);
 

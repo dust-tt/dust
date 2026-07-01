@@ -98,20 +98,20 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
 
   static async removeSkillFromAllDefaultSkills(
     auth: Authenticator,
-    skillSId: string,
+    skillId: string,
     transaction?: Transaction
   ): Promise<void> {
     await ProjectMetadataModel.update(
       {
         defaultSkillsIds: fn(
           "nullif",
-          fn("array_remove", col("defaultSkillsIds"), skillSId),
+          fn("array_remove", col("defaultSkillsIds"), skillId),
           literal("'{}'")
         ),
       },
       {
         where: {
-          defaultSkillsIds: { [Op.contains]: [skillSId] },
+          defaultSkillsIds: { [Op.contains]: [skillId] },
           workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
