@@ -59,13 +59,9 @@ interface RecipientRowProps {
 
 function RecipientRow({ label, value }: RecipientRowProps) {
   return (
-    <div className="flex gap-2 border-b border-border px-4 py-2 dark:border-border-night">
-      <span className="shrink-0 text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {label}
-      </span>
-      <span className="wrap-break-word text-sm text-foreground dark:text-foreground-night">
-        {value}
-      </span>
+    <div className="flex gap-2 border-b border-border px-4 py-2">
+      <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
+      <span className="wrap-break-word text-sm text-foreground">{value}</span>
     </div>
   );
 }
@@ -119,7 +115,7 @@ export function GmailSendMailValidation({
   };
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-md dark:border-border-night dark:bg-background-night">
+    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-md">
       <div className="bg-gray-900 px-4 py-2.5">
         <span className="text-sm font-medium text-white">
           {isReply ? "Reply" : "New Message"}
@@ -129,21 +125,21 @@ export function GmailSendMailValidation({
       {recipientRows.map(({ label, value }) => (
         <RecipientRow key={label} label={label} value={value} />
       ))}
-      <div className="border-b border-border px-4 py-2 dark:border-border-night">
+      <div className="border-b border-border px-4 py-2">
         <input
           {...register("subject")}
           disabled={isSubmitting || isReply}
           placeholder="Subject"
-          className="w-full border-none bg-transparent p-0 text-sm text-foreground outline-none focus:ring-0 placeholder:text-muted-foreground disabled:cursor-not-allowed dark:text-foreground-night dark:placeholder:text-muted-foreground-night"
+          className="w-full border-none bg-transparent p-0 text-sm text-foreground outline-none focus:ring-0 placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
         {errors.subject && (
-          <p className="mt-1 text-xs text-warning-800 dark:text-warning-800-night">
+          <p className="mt-1 text-xs text-warning-800">
             {errors.subject.message}
           </p>
         )}
       </div>
 
-      <div className="h-64 w-full overflow-auto whitespace-pre-wrap wrap-break-word px-4 py-3 text-sm text-foreground dark:text-foreground-night">
+      <div className="h-64 w-full overflow-auto whitespace-pre-wrap wrap-break-word px-4 py-3 text-sm text-foreground">
         {originalBody}
       </div>
 
@@ -153,7 +149,7 @@ export function GmailSendMailValidation({
         </div>
       )}
 
-      <div className="flex items-center gap-3 border-t border-border px-4 py-2.5 dark:border-border-night">
+      <div className="flex items-center gap-3 border-t border-border px-4 py-2.5">
         <Button
           label="Send"
           variant="highlight"
