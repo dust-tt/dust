@@ -7,6 +7,7 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
+import { getAdvancedModelAccessErrorForAgentConfiguration } from "@app/lib/advanced_models/access";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
@@ -222,6 +223,23 @@ export async function runModel(
     return null;
   }
 
+  const featureFlags = await getFeatureFlags(auth);
+
+  if (step === 0) {
+    const accessError = await getAdvancedModelAccessErrorForAgentConfiguration(
+      auth,
+      {
+        agentName: agentConfiguration.name,
+        model,
+        featureFlags,
+      }
+    );
+    if (accessError) {
+      await publishAgentError(accessError);
+      return null;
+    }
+  }
+
   const {
     enabledSkills,
     systemSkills,
@@ -365,7 +383,6 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const featureFlags = await getFeatureFlags(auth);
   const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
