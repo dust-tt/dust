@@ -261,10 +261,7 @@ app.use(
 );
 app.route("/trial-message-usage", trialMessageUsage);
 
-app.use(
-  "/coupon/validate/*",
-  workspaceAuth({ doesNotRequireCanUseProduct: true })
-);
+app.use("/coupon/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 app.route("/coupon", coupon);
 
 app.use("/trial/start/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
