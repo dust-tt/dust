@@ -46,7 +46,6 @@ export * from "./sync_metronome_seats";
 export * from "./toggle_auto_create_space";
 export * from "./toggle_disable_manual_invitations";
 export * from "./toggle_feature_flag";
-export * from "./toggle_slack_personal_footer_removal";
 export * from "./trigger_free_credit_segment_grant";
 export * from "./upgrade_downgrade";
 export * from "./upgrade_to_business_plan";
