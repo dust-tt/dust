@@ -136,7 +136,7 @@ export async function listPodsForScope(
       },
     });
 
-    const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+    const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
       auth,
       page.spaces.map((space) => space.id)
     );
@@ -177,7 +177,7 @@ export async function listNonArchivedMemberSpacesWithMetadata(
   metadataMap: Map<number, ProjectMetadataResource>;
 }> {
   const memberSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-  const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+  const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
     auth,
     memberSpaces.map((s) => s.id)
   );
@@ -200,7 +200,7 @@ export async function enrichProjectsWithMetadata(
 
   const spaceIds = spaces.map((s) => s.id);
 
-  const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+  const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
     auth,
     spaceIds
   );
@@ -233,7 +233,7 @@ export async function listAllProjectsWithAdminMetadata(
 ): Promise<ProjectWithAdminMetadata[]> {
   const projectSpaces = await SpaceResource.listProjectSpaces(auth);
 
-  const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+  const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
     auth,
     projectSpaces.map((s) => s.id)
   );

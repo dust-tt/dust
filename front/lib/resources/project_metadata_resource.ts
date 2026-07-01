@@ -4,11 +4,12 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { PodMetadataType } from "@app/types/project_metadata";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { col, fn, literal, Op } from "sequelize";
 
@@ -76,17 +77,31 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       return null;
     }
 
-    const resources = await this.fetchBySpaceIds(auth, [space.id]);
+    const resources = await this.fetchBySpaceModelIds(auth, [space.id]);
     return resources.length > 0 ? resources[0] : null;
   }
 
+  // Fetches by space string identifiers, resolving them to model ids internally so callers
+  // don't have to deal with the conversion. Unresolvable sIds are ignored.
   static async fetchBySpaceIds(
     auth: Authenticator,
-    spaceIds: number[]
+    spaceIds: string[]
+  ): Promise<ProjectMetadataResource[]> {
+    const spaceModelIds = removeNulls(spaceIds.map(getResourceIdFromSId));
+    if (spaceModelIds.length === 0) {
+      return [];
+    }
+
+    return this.fetchBySpaceModelIds(auth, spaceModelIds);
+  }
+
+  static async fetchBySpaceModelIds(
+    auth: Authenticator,
+    spaceModelIds: number[]
   ): Promise<ProjectMetadataResource[]> {
     const models = await ProjectMetadataModel.findAll({
       where: {
-        spaceId: spaceIds,
+        spaceId: spaceModelIds,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });

@@ -1414,25 +1414,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       conversation,
+      agentConfiguration,
       agentLoopData,
       transaction,
     }: {
       conversation: ConversationWithoutContentType;
+      agentConfiguration?: AgentConfigurationType;
       agentLoopData?: AgentLoopExecutionData;
       transaction?: Transaction;
     }
   ): Promise<SkillResource[]> {
-    const { agentConfiguration } = agentLoopData ?? {};
+    const resolvedAgentConfiguration =
+      agentConfiguration ?? agentLoopData?.agentConfiguration;
     const workspace = auth.getNonNullableWorkspace();
 
     const conversationSkills = await ConversationSkillModel.findAll({
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        ...(agentConfiguration
+        ...(resolvedAgentConfiguration
           ? {
               [Op.or]: [
-                { agentConfigurationId: agentConfiguration.sId },
+                { agentConfigurationId: resolvedAgentConfiguration.sId },
                 { agentConfigurationId: null },
               ],
             }
@@ -1461,14 +1464,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [];
     }
 
-    const spaceModelId = getResourceIdFromSId(conversation.spaceId);
-    if (spaceModelId === null) {
-      return [];
-    }
-
     const [projectMetadata] = await ProjectMetadataResource.fetchBySpaceIds(
       auth,
-      [spaceModelId]
+      [conversation.spaceId]
     );
 
     return this.fetchActiveByIdsForAgentLoop(
@@ -1494,12 +1492,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     equippedSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
+    // Light type-guard to check whether we have a full AgentLoopExecutionData.
     const agentLoopData = "userMessage" in params ? params : undefined;
 
     const conversationEnabledSkills = await this.listEnabledByConversation(
       auth,
       {
         conversation,
+        agentConfiguration,
         agentLoopData,
       }
     );
