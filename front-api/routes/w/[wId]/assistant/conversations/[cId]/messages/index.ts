@@ -152,6 +152,31 @@ const app = workspaceApp();
  *                       type: string
  *               skipToolsValidation:
  *                 type: boolean
+ *               modelSelection:
+ *                 type: object
+ *                 description: Optional per-message model override from the input-bar model picker. Either a tier or an explicit model pick.
+ *                 oneOf:
+ *                   - type: object
+ *                     required: [type, tier]
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                         enum: [tier]
+ *                       tier:
+ *                         type: string
+ *                         enum: [fast, balanced, powerful]
+ *                   - type: object
+ *                     required: [type, providerId, modelId]
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                         enum: [model]
+ *                       providerId:
+ *                         type: string
+ *                       modelId:
+ *                         type: string
+ *                       reasoningEffort:
+ *                         type: string
  *     responses:
  *       200:
  *         description: Successfully posted message
@@ -253,7 +278,7 @@ app.post(
     const user = auth.getNonNullableUser();
     const { cId: conversationId } = ctx.req.valid("param");
 
-    const { content, context, mentions, skipToolsValidation } =
+    const { content, context, mentions, skipToolsValidation, modelSelection } =
       ctx.req.valid("json");
 
     if (context.clientSideMCPServerIds) {
@@ -384,6 +409,7 @@ app.post(
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
       },
       skipToolsValidation: skipToolsValidation ?? false,
+      modelSelection,
     });
 
     if (messageRes.isErr()) {

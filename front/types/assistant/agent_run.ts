@@ -324,8 +324,22 @@ export async function getAgentLoopDataWithAuth(
     return new Err(new Error(`Agent configuration not found ${agentId}`));
   }
 
-  const { model: agentModel, ...agentConfigurationWithoutModel } =
+  const { model: agentConfigModel, ...agentConfigurationWithoutModel } =
     agentConfiguration;
+
+  // Apply the per-message model override from the input-bar picker, if any. This
+  // is the single choke point every downstream consumer reads for the run model
+  // (run_model, prompt commands, ...). Temperature and other model settings are
+  // inherited from the agent's configuration; only provider/model/effort change.
+  const { requestedModel } = agentMessage;
+  const agentModel = requestedModel
+    ? {
+        ...agentConfigModel,
+        providerId: requestedModel.providerId,
+        modelId: requestedModel.modelId,
+        reasoningEffort: requestedModel.reasoningEffort,
+      }
+    : agentConfigModel;
 
   const model = getSupportedModelConfig(agentModel);
 

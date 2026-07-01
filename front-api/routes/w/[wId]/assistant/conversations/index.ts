@@ -403,6 +403,7 @@ app.post(
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
         },
         skipToolsValidation: skipToolsValidation ?? false,
+        modelSelection: message.modelSelection,
       });
       if (messageRes.isErr()) {
         return apiError(ctx, messageRes.error);

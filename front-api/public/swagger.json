@@ -7680,6 +7680,60 @@
                   },
                   "skipToolsValidation": {
                     "type": "boolean"
+                  },
+                  "modelSelection": {
+                    "type": "object",
+                    "description": "Optional per-message model override from the input-bar model picker. Either a tier or an explicit model pick.",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "type",
+                          "tier"
+                        ],
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "tier"
+                            ]
+                          },
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "fast",
+                              "balanced",
+                              "powerful"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "type",
+                          "providerId",
+                          "modelId"
+                        ],
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "model"
+                            ]
+                          },
+                          "providerId": {
+                            "type": "string"
+                          },
+                          "modelId": {
+                            "type": "string"
+                          },
+                          "reasoningEffort": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
                   }
                 }
               }
@@ -10534,6 +10588,32 @@
             "type": "number",
             "nullable": true,
             "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+          },
+          "requestedModel": {
+            "type": "object",
+            "nullable": true,
+            "description": "Per-message model override from the input-bar model picker. Null when the agent ran its configured model.",
+            "properties": {
+              "tier": {
+                "type": "string",
+                "nullable": true,
+                "enum": [
+                  "fast",
+                  "balanced",
+                  "powerful"
+                ],
+                "description": "The abstract tier the user picked, or null for an explicit (\"advanced\") model pick."
+              },
+              "providerId": {
+                "type": "string"
+              },
+              "modelId": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            }
           }
         }
       },

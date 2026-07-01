@@ -4,6 +4,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
+import { requestedAgentModelFromColumns } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -35,6 +36,7 @@ import type {
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
+import type { RequestedAgentModel } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -263,6 +265,10 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
+          // Per-message model override (input-bar picker), already resolved to a
+          // concrete model. Applied to every agent message created here. Null
+          // when the agents run their configured models.
+          requestedModel?: RequestedAgentModel | null;
         };
     transaction?: Transaction;
   }
@@ -286,6 +292,9 @@ export const createAgentMessages = async (
     case "retry":
       {
         const agentConfiguration = metadata.agentMessage.configuration;
+        // Preserve the per-message model override so a retry re-runs on the same
+        // picked model rather than falling back to the agent's configured one.
+        const retriedModel = metadata.agentMessage.requestedModel;
         const agentMessageRow = await AgentMessageModel.create(
           {
             status: "created",
@@ -293,6 +302,10 @@ export const createAgentMessages = async (
             agentConfigurationVersion: agentConfiguration.version,
             workspaceId: owner.id,
             skipToolsValidation: metadata.agentMessage.skipToolsValidation,
+            requestedModelTier: retriedModel?.tier ?? null,
+            requestedProviderId: retriedModel?.providerId ?? null,
+            requestedModelId: retriedModel?.modelId ?? null,
+            requestedReasoningEffort: retriedModel?.reasoningEffort ?? null,
           },
           { transaction }
         );
@@ -453,6 +466,12 @@ export const createAgentMessages = async (
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
                 skipToolsValidation: metadata.skipToolsValidation,
+                requestedModelTier: metadata.requestedModel?.tier ?? null,
+                requestedProviderId:
+                  metadata.requestedModel?.providerId ?? null,
+                requestedModelId: metadata.requestedModel?.modelId ?? null,
+                requestedReasoningEffort:
+                  metadata.requestedModel?.reasoningEffort ?? null,
               },
               { transaction }
             );
@@ -553,6 +572,7 @@ export const createAgentMessages = async (
             richMentions: [],
             reactions: [],
             costCredits: null,
+            requestedModel: requestedAgentModelFromColumns(agentMessageRow),
           };
         }
       }
