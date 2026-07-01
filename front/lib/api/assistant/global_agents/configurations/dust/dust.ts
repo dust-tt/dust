@@ -48,6 +48,7 @@ import {
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
@@ -570,6 +571,17 @@ export function _getDustAntHighGlobalAgent(
     name: "dust-ant-high",
     preferredModelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustAntSonnetEdgeGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE,
+    name: "dust-ant-sonnet-edge",
+    preferredModelConfiguration: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
   });
 }
 
