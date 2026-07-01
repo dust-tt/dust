@@ -262,21 +262,21 @@
   --color-app-background: oklch(98.56% 0.0017 67.8);
   --color-background: oklch(100% 0 0);
   --color-panel-background: oklch(100% 0 0);
-  --color-muted-background: var(--color-gray-50);
+  --color-muted-background: var(--color-stone-50);
 
   /* Surfaces */
-  --color-muted: var(--color-gray-50);
-  --color-hover: var(--color-gray-100);
-  --color-faint: var(--color-gray-400);
+  --color-muted: var(--color-stone-50);
+  --color-hover: var(--color-stone-100);
+  --color-faint: var(--color-stone-400);
 
   /* Text */
-  --color-foreground: var(--color-gray-950);
-  --color-muted-foreground: var(--color-gray-600);
+  --color-foreground: var(--color-stone-950);
+  --color-muted-foreground: var(--color-stone-600);
   --color-foreground-warning: var(--color-rose-500);
 
   /* Borders */
-  --color-border: var(--color-gray-100);
-  --color-border-dark: var(--color-gray-150);
+  --color-border: var(--color-stone-100);
+  --color-border-dark: var(--color-stone-150);
   --color-border-focus: var(--color-blue-400);
   --color-border-warning: var(--color-rose-200);
 
@@ -289,7 +289,7 @@
   --color-sidebar-primary: oklch(26.85% 0.0063 34.3);
 
   /* Separators */
-  --color-separator: var(--color-gray-100);
+  --color-separator: var(--color-stone-100);
 
   /* === Brand === */
 
@@ -402,37 +402,37 @@
   /* === Structural & surfaces === */
 
   /* Backgrounds */
-  --color-app-background: var(--color-gray-900);
-  --color-background: var(--color-gray-950);
-  --color-panel-background: var(--color-gray-950);
-  --color-muted-background: var(--color-gray-900);
+  --color-app-background: var(--color-stone-900);
+  --color-background: var(--color-stone-950);
+  --color-panel-background: var(--color-stone-950);
+  --color-muted-background: var(--color-stone-900);
 
   /* Surfaces */
-  --color-muted: var(--color-gray-950);
-  --color-hover: var(--color-gray-800);
-  --color-faint: var(--color-gray-600);
+  --color-muted: var(--color-stone-950);
+  --color-hover: var(--color-stone-800);
+  --color-faint: var(--color-stone-600);
 
   /* Text */
-  --color-foreground: var(--color-gray-200);
-  --color-muted-foreground: var(--color-gray-400);
+  --color-foreground: var(--color-stone-200);
+  --color-muted-foreground: var(--color-stone-400);
   --color-foreground-warning: var(--color-rose-500);
 
   /* Borders */
-  --color-border: var(--color-gray-800);
-  --color-border-dark: var(--color-gray-700);
+  --color-border: var(--color-stone-800);
+  --color-border-dark: var(--color-stone-700);
   --color-border-focus: var(--color-blue-600);
   --color-border-warning: var(--color-rose-800);
 
   /* Focus rings */
-  --color-ring: var(--color-gray-700);
+  --color-ring: var(--color-stone-700);
   --color-ring-warning: var(--color-rose-800);
 
   /* Sidebar */
-  --color-sidebar-foreground: var(--color-gray-800);
+  --color-sidebar-foreground: var(--color-stone-800);
   --color-sidebar-primary: oklch(86.87% 0.0043 56.37);
 
   /* Separators */
-  --color-separator: var(--color-gray-800);
+  --color-separator: var(--color-stone-800);
 }
 
 
