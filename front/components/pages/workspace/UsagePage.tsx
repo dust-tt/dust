@@ -10,12 +10,17 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
+import {
+  EditAdvancedModelsModal,
+  type EditAdvancedModelsTarget,
+} from "@app/components/workspace/EditAdvancedModelsModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
+import { AdvancedModelsSettingsCard } from "@app/components/workspace/usage/AdvancedModelsSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
@@ -27,6 +32,7 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { buildAdvancedModelDisplayNameMap } from "@app/lib/client/advanced_models";
 import { formatCredits } from "@app/lib/client/credits";
 import {
   isCreditPricedFreePlan,
@@ -35,6 +41,12 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import {
+  useAdvancedModels,
+  useGroupAllowedAdvancedModels,
+  useUserAllowedAdvancedModels,
+  useWorkspaceAllowedAdvancedModels,
+} from "@app/lib/swr/advanced_models";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
@@ -212,6 +224,8 @@ export function UsagePage() {
   );
   const [editSpendLimitMember, setEditSpendLimitMember] =
     useState<MemberUsageType | null>(null);
+  const [editAdvancedModelsTarget, setEditAdvancedModelsTarget] =
+    useState<EditAdvancedModelsTarget | null>(null);
   const [
     totalAllowedUsagePendingMemberIds,
     setTotalAllowedUsagePendingMemberIds,
@@ -228,6 +242,7 @@ export function UsagePage() {
   // Admin-only Requests tab: pending member-initiated upgrade requests, resolved
   // by approving (via the seat / spend-limit modals) or denying.
   const isWorkspaceAdmin = isAdmin(owner);
+  const modelsPickerEnabled = hasFeature("models_picker") && isWorkspaceAdmin;
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
@@ -281,6 +296,23 @@ export function UsagePage() {
     (member: MemberUsageType) => {
       setPendingApproveRequestId(null);
       setEditSpendLimitMember(member);
+    },
+    []
+  );
+  const handleEditAdvancedModelsFromTable = useCallback(
+    (member: MemberUsageType) => {
+      setEditAdvancedModelsTarget({
+        scope: "user",
+        userId: member.sId,
+        name: member.name,
+        image: member.image,
+      });
+    },
+    []
+  );
+  const handleEditWorkspaceAdvancedModels = useCallback(
+    (target: Extract<EditAdvancedModelsTarget, { scope: "workspace" }>) => {
+      setEditAdvancedModelsTarget(target);
     },
     []
   );
@@ -417,10 +449,75 @@ export function UsagePage() {
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
-    disabled: !isWorkspaceAdmin || !pricingGroupsEnabled,
+    disabled:
+      !isWorkspaceAdmin || (!pricingGroupsEnabled && !modelsPickerEnabled),
   });
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
+
+  const { models: advancedModelsCatalog } = useAdvancedModels({
+    owner,
+    disabled: !modelsPickerEnabled,
+  });
+  const { users: userAllowedAdvancedModels } = useUserAllowedAdvancedModels({
+    owner,
+    disabled: !modelsPickerEnabled,
+  });
+  const { groups: groupAllowedAdvancedModels } = useGroupAllowedAdvancedModels({
+    owner,
+    disabled: !modelsPickerEnabled,
+  });
+  const { models: workspaceAllowedAdvancedModels } =
+    useWorkspaceAllowedAdvancedModels({
+      owner,
+      disabled: !modelsPickerEnabled,
+    });
+  const advancedModelDisplayNameByKey = useMemo(
+    () => buildAdvancedModelDisplayNameMap(advancedModelsCatalog),
+    [advancedModelsCatalog]
+  );
+  const userAllowedAdvancedModelsByUserId = useMemo(() => {
+    const map: Record<
+      string,
+      (typeof userAllowedAdvancedModels)[number]["models"]
+    > = {};
+    for (const entry of userAllowedAdvancedModels) {
+      map[entry.userId] = entry.models;
+    }
+    return map;
+  }, [userAllowedAdvancedModels]);
+  const groupAdvancedModelsByGroupId = useMemo(() => {
+    const map: Record<
+      string,
+      (typeof groupAllowedAdvancedModels)[number]["models"]
+    > = {};
+    for (const entry of groupAllowedAdvancedModels) {
+      map[entry.groupId] = entry.models;
+    }
+    return map;
+  }, [groupAllowedAdvancedModels]);
+  const groupNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of groups) {
+      map.set(group.name, group.sId);
+    }
+    return map;
+  }, [groups]);
+
+  const handleEditGroupAdvancedModels = useCallback(() => {
+    if (!groupFilter) {
+      return;
+    }
+    const group = groups.find((g) => g.sId === groupFilter);
+    if (!group) {
+      return;
+    }
+    setEditAdvancedModelsTarget({
+      scope: "group",
+      groupId: group.sId,
+      name: group.name,
+    });
+  }, [groupFilter, groups]);
 
   // Cross-page selection for batch actions on the members table. Resets when the
   // filter identity changes (the "all matching" set is no longer the same).
@@ -723,12 +820,19 @@ export function UsagePage() {
       isRefreshing={isMembersUsageRefreshing}
       readOnly={isReadOnly}
       showSpendLimit={!isFreePlanWorkspace}
+      showAdvancedModelsColumn={modelsPickerEnabled}
+      userAllowedAdvancedModelsByUserId={userAllowedAdvancedModelsByUserId}
+      groupAdvancedModelsByGroupId={groupAdvancedModelsByGroupId}
+      workspaceAllowedAdvancedModels={workspaceAllowedAdvancedModels}
+      groupNameToId={groupNameToId}
+      advancedModelDisplayNameByKey={advancedModelDisplayNameByKey}
       totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
       seatChangePendingMemberIds={seatChangePendingMemberIds}
       isSeatBased={isSeatBased}
       onChangeSeat={handleChangeSeatFromTable}
       onRemoveSeat={onRemoveSeat}
       onEditSpendLimit={handleEditSpendLimitFromTable}
+      onEditAdvancedModels={handleEditAdvancedModelsFromTable}
       pagination={pagination}
       setPagination={setPagination}
       totalRowCount={totalMembersUsage}
@@ -880,7 +984,7 @@ export function UsagePage() {
                     <ButtonsSwitchList
                       size="xs"
                       defaultValue="members"
-                      onValueChange={(v) =>
+                      onValueChange={(v: string) =>
                         setMembersTab(v === "requests" ? "requests" : "members")
                       }
                     >
@@ -899,6 +1003,15 @@ export function UsagePage() {
                     {membersTab === "members" && (
                       <div className="flex flex-row items-center gap-2">
                         {groupsFilterDropdown}
+                        {modelsPickerEnabled && groupFilter && (
+                          <Button
+                            label="Edit group advanced models"
+                            variant="outline"
+                            size="sm"
+                            disabled={isReadOnly}
+                            onClick={handleEditGroupAdvancedModels}
+                          />
+                        )}
                         {seatFilterDropdown}
                       </div>
                     )}
@@ -948,6 +1061,15 @@ export function UsagePage() {
                 readOnly={isReadOnly}
                 hasPool={hasPool}
               />
+              {modelsPickerEnabled && (
+                <AdvancedModelsSettingsCard
+                  owner={owner}
+                  readOnly={isReadOnly}
+                  onEditWorkspaceAdvancedModels={
+                    handleEditWorkspaceAdvancedModels
+                  }
+                />
+              )}
               <LockedSection
                 locked={!isAwuPoolSummaryLoading && !hasPool}
                 className="flex flex-col gap-10"
@@ -1007,6 +1129,13 @@ export function UsagePage() {
         onClose={() => setIsBulkSpendLimitOpen(false)}
         memberCount={selection.selectedCount}
         onValidate={handleBulkSpendLimitValidate}
+      />
+      <EditAdvancedModelsModal
+        isOpen={editAdvancedModelsTarget !== null}
+        onClose={() => setEditAdvancedModelsTarget(null)}
+        owner={owner}
+        target={editAdvancedModelsTarget}
+        readOnly={isReadOnly}
       />
     </>
   );
