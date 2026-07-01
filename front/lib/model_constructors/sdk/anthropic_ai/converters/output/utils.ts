@@ -127,6 +127,12 @@ export type BlockState =
       toolId: string;
     };
 
+type PendingToolSearchBlock = {
+  toolUseId: string;
+  event: ProviderPassthroughEvent;
+  delayedEvents: ModelResponseEvent[];
+};
+
 // The per-signal leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
 // every composite uses it.
@@ -775,10 +781,45 @@ export async function* rawOutputToEvents(
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let blockState: BlockState | null = null;
+  let pendingToolSearchBlock: PendingToolSearchBlock | null = null;
   let tokenUsage: MessageDeltaUsage | null = null;
   // The per-TTL cache-creation breakdown is only emitted on `message_start`;
   // capture it so the trailing `message_delta` usage can be split by TTL.
   let cacheCreation: CacheCreation | null = null;
+
+  const emitOrDelayForPendingToolSearch = (
+    events: ModelResponseEvent[]
+  ): ModelResponseEvent[] => {
+    if (pendingToolSearchBlock !== null) {
+      pendingToolSearchBlock.delayedEvents.push(...events);
+      return [];
+    }
+
+    return events;
+  };
+
+  const matchPendingToolSearchBlock = (
+    toolUseId: string,
+    resultEvents: ModelResponseEvent[]
+  ): ModelResponseEvent[] => {
+    const pending = pendingToolSearchBlock;
+    if (pending === null || pending.toolUseId !== toolUseId) {
+      return [];
+    }
+
+    pendingToolSearchBlock = null;
+    return [pending.event, ...resultEvents, ...pending.delayedEvents];
+  };
+
+  const flushPendingToolSearchBlock = (): ModelResponseEvent[] => {
+    if (pendingToolSearchBlock === null) {
+      return [];
+    }
+
+    const pending = pendingToolSearchBlock;
+    pendingToolSearchBlock = null;
+    return pending.delayedEvents;
+  };
 
   while (true) {
     let result: IteratorResult<RawMessageStreamEvent>;
@@ -804,8 +845,12 @@ export async function* rawOutputToEvents(
           blockState.toolName,
           invalidJson
         );
-        aggregated.push(ev);
-        yield ev;
+        for (const outputEvent of emitOrDelayForPendingToolSearch([ev])) {
+          if (outputEvent.type === "tool_call") {
+            aggregated.push(outputEvent);
+          }
+          yield outputEvent;
+        }
         blockState = null;
         break;
       }
@@ -838,8 +883,14 @@ export async function* rawOutputToEvents(
           metadata,
           converters
         );
-        outputEvents = events;
         blockState = nextState;
+        outputEvents =
+          event.content_block.type === "tool_search_tool_result"
+            ? matchPendingToolSearchBlock(
+                event.content_block.tool_use_id,
+                events
+              )
+            : events;
         break;
       }
       case "content_block_delta": {
@@ -854,14 +905,28 @@ export async function* rawOutputToEvents(
         break;
       }
       case "content_block_stop": {
+        const stoppedBlockState = blockState;
         const [events, nextState] = contentBlockStopToEvents(
           event,
           blockState,
           metadata,
           converters
         );
-        outputEvents = events;
         blockState = nextState;
+        if (stoppedBlockState?.type === "tool_search") {
+          const serverEvent = events[0];
+          pendingToolSearchBlock =
+            serverEvent?.type === "provider_passthrough"
+              ? {
+                  toolUseId: stoppedBlockState.toolId,
+                  event: serverEvent,
+                  delayedEvents: [],
+                }
+              : null;
+          outputEvents = [];
+        } else {
+          outputEvents = emitOrDelayForPendingToolSearch(events);
+        }
         break;
       }
       case "message_delta": {
@@ -891,6 +956,17 @@ export async function* rawOutputToEvents(
       }
       yield outputEvent;
     }
+  }
+
+  for (const outputEvent of flushPendingToolSearchBlock()) {
+    if (
+      outputEvent.type === "text" ||
+      outputEvent.type === "reasoning" ||
+      outputEvent.type === "tool_call"
+    ) {
+      aggregated.push(outputEvent);
+    }
+    yield outputEvent;
   }
 
   if (tokenUsage !== null) {

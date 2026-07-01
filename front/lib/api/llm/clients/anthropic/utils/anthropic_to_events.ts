@@ -46,6 +46,17 @@ const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
 const INVALID_JSON_MARKER = "JSON: ";
 const INVALID_TOOL_JSON_NEEDLE = "Unable to parse tool parameter JSON";
 
+type PendingToolSearchBlock = {
+  toolUseId: string;
+  event: ProviderPassthroughEvent;
+  delayedEvents: LLMEvent[];
+};
+
+type StreamStateContainer = {
+  state: StreamState;
+  pendingToolSearchBlock: PendingToolSearchBlock | null;
+};
+
 // Extract the prompt-cache diagnostics reason from a message_start, when the
 // request opted into diagnostics (beta header + `diagnostics.previous_message_id`).
 // `diagnostics` is null when there was nothing to compare or no divergence.
@@ -69,7 +80,10 @@ export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
-  const stateContainer: { state: StreamState } = { state: null };
+  const stateContainer: StreamStateContainer = {
+    state: null,
+    pendingToolSearchBlock: null,
+  };
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
   const aggregate = new SuccessAggregate();
   // Accumulate token usage to return later
@@ -123,12 +137,22 @@ export async function* streamLLMEvents(
         invalidJson,
         metadata,
       });
-      aggregate.add(ev);
-      yield ev;
+      for (const outputEvent of emitOrDelayForPendingToolSearch(
+        stateContainer,
+        [ev]
+      )) {
+        aggregate.add(outputEvent);
+        yield outputEvent;
+      }
       stateContainer.state = null;
     } else {
       throw err;
     }
+  }
+
+  for (const ev of flushPendingToolSearchBlock(stateContainer, metadata)) {
+    aggregate.add(ev);
+    yield ev;
   }
 
   yield tokenUsage(tokenUsageAccumulator, metadata);
@@ -145,7 +169,7 @@ export async function* streamLLMEvents(
 
 function* handleMessageStreamEvent(
   messageStreamEvent: BetaRawMessageStreamEvent,
-  stateContainer: { state: StreamState },
+  stateContainer: StreamStateContainer,
   metadata: LLMClientMetadata,
   tokenUsageAccumulator: Required<TokenUsage>
 ): Generator<LLMEvent> {
@@ -215,7 +239,7 @@ function* handleMessageStreamEvent(
 
 function* handleContentBlockStart(
   event: Extract<BetaRawMessageStreamEvent, { type: "content_block_start" }>,
-  stateContainer: { state: StreamState },
+  stateContainer: StreamStateContainer,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   assert(
@@ -278,12 +302,17 @@ function* handleContentBlockStart(
         content: event.content_block.content,
         logFields: metadata,
       });
-      yield providerPassthrough(
-        {
-          type: "tool_search_tool_result",
-          tool_use_id: event.content_block.tool_use_id,
-          content: event.content_block.content,
-        },
+      yield* matchPendingToolSearchBlock(
+        stateContainer,
+        event.content_block.tool_use_id,
+        providerPassthrough(
+          {
+            type: "tool_search_tool_result",
+            tool_use_id: event.content_block.tool_use_id,
+            content: event.content_block.content,
+          },
+          metadata
+        ),
         metadata
       );
       return;
@@ -316,7 +345,7 @@ function* handleContentBlockStart(
 
 function* handleContentBlockDelta(
   event: Extract<BetaRawMessageStreamEvent, { type: "content_block_delta" }>,
-  stateContainer: { state: StreamState },
+  stateContainer: StreamStateContainer,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   validateContentBlockIndex(stateContainer.state, event);
@@ -361,7 +390,7 @@ function* handleContentBlockDelta(
 
 function* handleContentBlockStop(
   event: Extract<MessageStreamEvent, { type: "content_block_stop" }>,
-  stateContainer: { state: StreamState },
+  stateContainer: StreamStateContainer,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   // A null state here means the block's content_block_start was ignored (e.g.
@@ -371,15 +400,18 @@ function* handleContentBlockStop(
     return;
   }
   validateContentBlockIndex(stateContainer.state, event);
+  const events: LLMEvent[] = [];
   switch (stateContainer.state.accumulatorType) {
     case "text":
-      yield textGenerated(stateContainer.state.accumulator, metadata);
+      events.push(textGenerated(stateContainer.state.accumulator, metadata));
       break;
     case "reasoning":
-      yield reasoningGenerated(
-        stateContainer.state.accumulator,
-        metadata,
-        stateContainer.state.signature ?? ""
+      events.push(
+        reasoningGenerated(
+          stateContainer.state.accumulator,
+          metadata,
+          stateContainer.state.signature ?? ""
+        )
       );
       break;
     case "tool_use": {
@@ -404,20 +436,24 @@ function* handleContentBlockStop(
             },
             `Tool input failed JSON validation, wrapping as INVALID_JSON tool call. Invalid JSON: ${input}`
           );
-          yield toolCallWithInvalidJson({
-            ...stateContainer.state.toolInfo,
-            invalidJson: input,
-            metadata,
-          });
+          events.push(
+            toolCallWithInvalidJson({
+              ...stateContainer.state.toolInfo,
+              invalidJson: input,
+              metadata,
+            })
+          );
           break;
         }
       }
 
-      yield toolCall({
-        ...stateContainer.state.toolInfo,
-        input,
-        metadata,
-      });
+      events.push(
+        toolCall({
+          ...stateContainer.state.toolInfo,
+          input,
+          metadata,
+        })
+      );
       break;
     }
 
@@ -428,23 +464,79 @@ function* handleContentBlockStop(
         tags: toolSearchTags(metadata),
         logFields: metadata,
       });
-      // Replay the server_tool_use block verbatim so interleaved thinking
-      // signatures stay valid, falling back to an empty input if the query
-      // failed to parse.
+      // Replay the server_tool_use block only if Anthropic also returns its
+      // matching tool_search_tool_result. Without the result, replaying the
+      // orphaned server block makes the next request invalid.
       const parsedInput = safeParseJSON(stateContainer.state.accumulator);
-      yield providerPassthrough(
-        {
-          type: "server_tool_use",
-          id: stateContainer.state.toolId,
-          name: stateContainer.state.toolName,
-          input: parsedInput.isOk() ? parsedInput.value : {},
-        },
-        metadata
-      );
-      break;
+      stateContainer.pendingToolSearchBlock = {
+        toolUseId: stateContainer.state.toolId,
+        event: providerPassthrough(
+          {
+            type: "server_tool_use",
+            id: stateContainer.state.toolId,
+            name: stateContainer.state.toolName,
+            input: parsedInput.isOk() ? parsedInput.value : {},
+          },
+          metadata
+        ),
+        delayedEvents: [],
+      };
+      stateContainer.state = null;
+      return;
     }
   }
   stateContainer.state = null;
+  yield* emitOrDelayForPendingToolSearch(stateContainer, events);
+}
+
+function* matchPendingToolSearchBlock(
+  stateContainer: StreamStateContainer,
+  toolUseId: string,
+  resultEvent: ProviderPassthroughEvent,
+  metadata: LLMClientMetadata
+): Generator<LLMEvent> {
+  const pending = stateContainer.pendingToolSearchBlock;
+  if (pending === null || pending.toolUseId !== toolUseId) {
+    logger.warn(
+      { toolUseId, ...metadata },
+      "Dropping unmatched Anthropic tool search result."
+    );
+    return;
+  }
+
+  stateContainer.pendingToolSearchBlock = null;
+  yield pending.event;
+  yield resultEvent;
+  yield* pending.delayedEvents;
+}
+
+function* emitOrDelayForPendingToolSearch(
+  stateContainer: StreamStateContainer,
+  events: LLMEvent[]
+): Generator<LLMEvent> {
+  if (stateContainer.pendingToolSearchBlock !== null) {
+    stateContainer.pendingToolSearchBlock.delayedEvents.push(...events);
+    return;
+  }
+
+  yield* events;
+}
+
+function* flushPendingToolSearchBlock(
+  stateContainer: StreamStateContainer,
+  metadata: LLMClientMetadata
+): Generator<LLMEvent> {
+  if (stateContainer.pendingToolSearchBlock === null) {
+    return;
+  }
+
+  const pending = stateContainer.pendingToolSearchBlock;
+  stateContainer.pendingToolSearchBlock = null;
+  logger.warn(
+    { ...metadata },
+    "Dropping unmatched Anthropic tool search server block."
+  );
+  yield* pending.delayedEvents;
 }
 
 // StatsD tags for the tool search counter, derived from this client's metadata.

@@ -257,6 +257,80 @@ describe("streamLLMEvents", () => {
       },
     });
   });
+
+  it("should drop an unmatched server-side tool search block", async () => {
+    const events: BetaRawMessageStreamEvent[] = [
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: { type: "text", text: "", citations: [] },
+      },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "text_delta", text: "I'll do both." },
+      },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "content_block_start",
+        index: 1,
+        content_block: {
+          type: "tool_use",
+          id: "toolu_01CAL",
+          name: "calendar__create_event",
+          input: {},
+        },
+      },
+      {
+        type: "content_block_delta",
+        index: 1,
+        delta: {
+          type: "input_json_delta",
+          partial_json: '{"title":"Test","when":"tomorrow at 10am"}',
+        },
+      },
+      { type: "content_block_stop", index: 1 },
+      {
+        type: "content_block_start",
+        index: 2,
+        content_block: {
+          type: "server_tool_use",
+          id: "srvtoolu_01SEARCH",
+          name: "tool_search_tool_bm25",
+          input: {},
+        },
+      },
+      {
+        type: "content_block_delta",
+        index: 2,
+        delta: {
+          type: "input_json_delta",
+          partial_json: '{"query":"Slack post message channel","limit":5}',
+        },
+      },
+      { type: "content_block_stop", index: 2 },
+    ];
+
+    const result = [];
+    for await (const event of streamLLMEvents(
+      createAsyncGenerator(events),
+      metadata
+    )) {
+      result.push(event);
+    }
+
+    expect(
+      result
+        .filter(
+          (e) => e.type === "provider_passthrough" || e.type === "tool_call"
+        )
+        .map((e) =>
+          e.type === "provider_passthrough"
+            ? (e.content.block as { type: string }).type
+            : e.type
+        )
+    ).toEqual(["tool_call"]);
+  });
 });
 
 describe("batchResultToLLMEvents", () => {

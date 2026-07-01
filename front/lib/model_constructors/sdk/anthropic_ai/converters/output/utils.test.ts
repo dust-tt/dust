@@ -1268,6 +1268,85 @@ describe("rawOutputToEvents", () => {
     });
   });
 
+  it("drops an unmatched server-side tool search block", async () => {
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf([
+          {
+            type: "content_block_start",
+            index: 0,
+            content_block: { type: "text", text: "", citations: [] },
+          } as RawMessageStreamEvent,
+          {
+            type: "content_block_delta",
+            index: 0,
+            delta: { type: "text_delta", text: "I'll do both." },
+          } as RawMessageStreamEvent,
+          { type: "content_block_stop", index: 0 } as RawMessageStreamEvent,
+          {
+            type: "content_block_start",
+            index: 1,
+            content_block: {
+              type: "tool_use",
+              id: "toolu_01CAL",
+              name: "calendar__create_event",
+              input: {},
+            },
+          } as RawMessageStreamEvent,
+          {
+            type: "content_block_delta",
+            index: 1,
+            delta: {
+              type: "input_json_delta",
+              partial_json: '{"title":"Test","when":"tomorrow at 10am"}',
+            },
+          } as RawMessageStreamEvent,
+          { type: "content_block_stop", index: 1 } as RawMessageStreamEvent,
+          {
+            type: "content_block_start",
+            index: 2,
+            content_block: {
+              type: "server_tool_use",
+              id: "srvtoolu_01SEARCH",
+              name: "tool_search_tool_bm25",
+              input: {},
+            },
+          } as RawMessageStreamEvent,
+          {
+            type: "content_block_delta",
+            index: 2,
+            delta: {
+              type: "input_json_delta",
+              partial_json: '{"query":"Slack post message channel","limit":5}',
+            },
+          } as RawMessageStreamEvent,
+          { type: "content_block_stop", index: 2 } as RawMessageStreamEvent,
+          {
+            type: "message_delta",
+            delta: { stop_reason: "tool_use", stop_sequence: null },
+            usage: tokenUsage,
+          } as RawMessageStreamEvent,
+          { type: "message_stop" } as RawMessageStreamEvent,
+        ]),
+        metadata,
+        realConverters
+      )
+    );
+
+    expect(
+      events
+        .filter(
+          (event) =>
+            event.type === "provider_passthrough" || event.type === "tool_call"
+        )
+        .map((event) =>
+          event.type === "provider_passthrough"
+            ? (event.content.block as { type: string }).type
+            : event.type
+        )
+    ).toEqual(["tool_call"]);
+  });
+
   it("omits the token_usage event when no message_delta carried usage", async () => {
     const events = await collect(
       rawOutputToEvents(
