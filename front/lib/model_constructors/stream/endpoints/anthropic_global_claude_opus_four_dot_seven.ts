@@ -11,7 +11,6 @@ import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 export class AnthropicGlobalClaudeOpusFourDotSevenStream extends WithAnthropicClaudeOpusFourDotSevenConfig(
   AnthropicStream
 ) {
-  // https://platform.claude.com/docs/en/about-claude/pricing (verify before launch).
   static readonly tokenPricing = {
     cacheCreated: 6.25,
     // 5m cache write = 1.25x base input; 1h cache write = 2x base input.
