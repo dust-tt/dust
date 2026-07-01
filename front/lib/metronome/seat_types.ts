@@ -218,9 +218,6 @@ export function getDefaultSeatTypeForContract(
     // and free = 0 on a hybrid contract).
     .sort((a, b) => a.awu - b.awu || a.seatType.localeCompare(b.seatType));
 
-  // `pro`, `pro_yearly`, `workspace`, and `workspace_yearly` are eligible for
-  // auto-assignment. `max` / `max_yearly` must still be assigned manually. They
-  // are never handed out automatically to new joiners.
   const AUTO_ASSIGNABLE: ReadonlySet<MembershipSeatType> = new Set([
     "pro",
     "pro_yearly",
