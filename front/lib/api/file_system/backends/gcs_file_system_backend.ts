@@ -197,6 +197,21 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         return false;
       }
 
+      // Hide files inside a hidden ("."-prefixed, non-tool-outputs) directory
+      // below the listed prefix. Listing is recursive, so the folder filter
+      // below (which only hides the dot-directory *entry*) is not enough on its
+      // own — without this, e.g. pptx/docx QA renders under .pptx_render/ /
+      // .docx_render/ would still surface. Computed relative to the listed
+      // prefix, so listing a hidden directory directly still returns its files.
+      const relDirs = f.name.slice(gcsPrefix.length).split("/").slice(0, -1);
+      if (
+        relDirs.some(
+          (seg) => seg.startsWith(".") && seg !== TOOL_OUTPUTS_FOLDER_NAME
+        )
+      ) {
+        return false;
+      }
+
       if (includeProcessed) {
         return true;
       }

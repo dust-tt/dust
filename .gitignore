@@ -42,3 +42,9 @@ thoughts/*
 # Storybook static build output
 **/storybook-static/
 
+# Local pptx test decks dropped at the repo root during pptx tooling work
+/*.pptx
+
+# Sandbox provider build scratch dirs
+/front/lib/api/sandbox/providers/sandbox-build-*/
+
