@@ -6,7 +6,6 @@ import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 export class GoogleAiStudioGlobalGeminiThreeDotOneProStream extends WithGoogleAiStudioGeminiThreeDotOneProConfig(
   GoogleAiStudioStream
 ) {
-  // https://ai.google.dev/gemini-api/docs/pricing (verify before launch).
   //TODO(new-llm): implement progressive token billing
   static readonly tokenPricing = {
     cacheCreated: 4.5,

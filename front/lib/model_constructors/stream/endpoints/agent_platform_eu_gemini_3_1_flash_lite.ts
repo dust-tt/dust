@@ -6,7 +6,6 @@ import { EUROPE } from "@app/lib/model_constructors/types/regions";
 export class AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream extends WithGoogleAiStudioGeminiThreeDotOneFlashLiteConfig(
   AgentPlatformGoogleStream
 ) {
-  // https://cloud.google.com/vertex-ai/generative-ai/pricing (verify before launch).
   static readonly tokenPricing = {
     cacheCreated: 1.0,
     cacheHit: 0.025,

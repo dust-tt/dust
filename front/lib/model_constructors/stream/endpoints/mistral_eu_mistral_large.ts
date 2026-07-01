@@ -6,7 +6,6 @@ import { EUROPE } from "@app/lib/model_constructors/types/regions";
 export class MistralEuropeMistralLargeStream extends WithMistralLargeConfig(
   MistralStream
 ) {
-  // https://mistral.ai/pricing (verify before launch).
   static readonly tokenPricing = {
     standardInput: 2.0,
     standardOutput: 6.0,
