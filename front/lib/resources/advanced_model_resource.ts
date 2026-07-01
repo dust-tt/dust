@@ -1,3 +1,7 @@
+import {
+  type ResolvedAllowedAdvancedModels,
+  resolveAllowedAdvancedModels,
+} from "@app/lib/advanced_models/resolve_allowed";
 import { isAdvancedModel as isAdvancedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -29,6 +33,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
+import { Op } from "sequelize";
 
 export class AdvancedModelResource {
   private static assertIsAdmin(auth: Authenticator): void {
@@ -396,8 +401,114 @@ export class AdvancedModelResource {
     this.assertIsAdmin(auth);
 
     const workspace = auth.getNonNullableWorkspace();
+    return this.loadWorkspaceAllowedAdvancedModels(workspace.id);
+  }
+
+  static async resolveAllowedAdvancedModels(
+    auth: Authenticator,
+    {
+      user,
+      groupIds: explicitGroupIds,
+    }: {
+      user?: UserResource | null;
+      groupIds?: ModelId[];
+    } = {}
+  ): Promise<ResolvedAllowedAdvancedModels> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    let groupIds = explicitGroupIds;
+    if (groupIds === undefined && user) {
+      groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
+        user,
+        workspace,
+      });
+    }
+    groupIds = groupIds ?? [];
+
+    const [workspaceAllowedAdvancedModels, groupModelsByGroupId, userModels] =
+      await Promise.all([
+        this.loadWorkspaceAllowedAdvancedModels(workspace.id),
+        groupIds.length > 0
+          ? this.loadGroupAllowedAdvancedModelsByGroupId({
+              workspaceId: workspace.id,
+              groupIds,
+            })
+          : Promise.resolve(new Map<ModelId, AllowedAdvancedModelType[]>()),
+        user
+          ? this.loadUserAllowedAdvancedModels({
+              workspaceId: workspace.id,
+              userId: user.id,
+            })
+          : Promise.resolve([]),
+      ]);
+
+    const groupAllowedAdvancedModelsList = groupIds.map(
+      (groupId) => groupModelsByGroupId.get(groupId) ?? []
+    );
+
+    return resolveAllowedAdvancedModels({
+      workspaceAllowedAdvancedModels,
+      groupAllowedAdvancedModelsList,
+      userAllowedAdvancedModels: userModels,
+    });
+  }
+
+  private static async loadWorkspaceAllowedAdvancedModels(
+    workspaceId: ModelId
+  ): Promise<AllowedAdvancedModelType[]> {
     const rows = await WorkspaceAllowedAdvancedModel.findAll({
-      where: { workspaceId: workspace.id },
+      where: { workspaceId },
+    });
+
+    return rows.flatMap((row) => {
+      const model = this.parseAllowedAdvancedModelRow(row);
+      return model ? [model] : [];
+    });
+  }
+
+  private static async loadGroupAllowedAdvancedModelsByGroupId({
+    workspaceId,
+    groupIds,
+  }: {
+    workspaceId: ModelId;
+    groupIds: ModelId[];
+  }): Promise<Map<ModelId, AllowedAdvancedModelType[]>> {
+    const rows = await GroupAllowedAdvancedModel.findAll({
+      where: {
+        workspaceId,
+        groupId: {
+          [Op.in]: groupIds,
+        },
+      },
+    });
+
+    const modelsByGroupId = new Map<ModelId, AllowedAdvancedModelType[]>();
+    for (const row of rows) {
+      const model = this.parseAllowedAdvancedModelRow(row);
+      if (!model) {
+        continue;
+      }
+
+      const models = modelsByGroupId.get(row.groupId) ?? [];
+      models.push(model);
+      modelsByGroupId.set(row.groupId, models);
+    }
+
+    return modelsByGroupId;
+  }
+
+  private static async loadUserAllowedAdvancedModels({
+    workspaceId,
+    userId,
+  }: {
+    workspaceId: ModelId;
+    userId: ModelId;
+  }): Promise<AllowedAdvancedModelType[]> {
+    const rows = await UserAllowedAdvancedModel.findAll({
+      where: {
+        workspaceId,
+        userId,
+      },
     });
 
     return rows.flatMap((row) => {

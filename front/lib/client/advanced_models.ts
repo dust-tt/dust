@@ -1,11 +1,14 @@
+import {
+  advancedModelKey,
+  type ResolvedAllowedAdvancedModels,
+  resolveAllowedAdvancedModels,
+} from "@app/lib/advanced_models/resolve_allowed";
 import type {
   AdvancedModelType,
   AllowedAdvancedModelType,
 } from "@app/types/api/advanced_models";
 
-export function advancedModelKey(model: AllowedAdvancedModelType): string {
-  return `${model.providerId}:${model.modelId}`;
-}
+export { advancedModelKey };
 
 export function isSameAdvancedModel(
   a: AllowedAdvancedModelType,
@@ -14,10 +17,7 @@ export function isSameAdvancedModel(
   return a.providerId === b.providerId && a.modelId === b.modelId;
 }
 
-export type ResolvedAdvancedModelsForUser = {
-  models: AllowedAdvancedModelType[];
-  hasUserLevelOverride: boolean;
-};
+export type ResolvedAdvancedModelsForUser = ResolvedAllowedAdvancedModels;
 
 export function resolveAdvancedModelsForUser({
   userId,
@@ -35,31 +35,20 @@ export function resolveAdvancedModelsForUser({
   workspaceAllowedAdvancedModels: AllowedAdvancedModelType[];
 }): ResolvedAdvancedModelsForUser {
   const userModels = userAllowedAdvancedModelsByUserId[userId] ?? [];
-  const hasUserLevelOverride = userModels.length > 0;
 
-  const modelsByKey = new Map<string, AllowedAdvancedModelType>();
-
-  const addModels = (models: AllowedAdvancedModelType[]) => {
-    for (const model of models) {
-      modelsByKey.set(advancedModelKey(model), model);
-    }
-  };
-
-  addModels(workspaceAllowedAdvancedModels);
-
-  for (const groupName of groupNames) {
+  const groupAllowedAdvancedModelsList = groupNames.map((groupName) => {
     const groupId = groupNameToId.get(groupName);
-    if (groupId) {
-      addModels(groupAdvancedModelsByGroupId[groupId] ?? []);
+    if (!groupId) {
+      return [];
     }
-  }
+    return groupAdvancedModelsByGroupId[groupId] ?? [];
+  });
 
-  addModels(userModels);
-
-  return {
-    models: [...modelsByKey.values()],
-    hasUserLevelOverride,
-  };
+  return resolveAllowedAdvancedModels({
+    workspaceAllowedAdvancedModels,
+    groupAllowedAdvancedModelsList,
+    userAllowedAdvancedModels: userModels,
+  });
 }
 
 export function getAdvancedModelDisplayNames({
