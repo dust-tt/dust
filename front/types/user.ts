@@ -249,6 +249,25 @@ export function isAdmin(
   }
 }
 
+export function isBusinessAdmin(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "admin" } {
+  if (!owner) {
+    return false;
+  }
+  switch (owner.role) {
+    case "admin":
+    case "business_admin":
+      return true;
+    case "builder":
+    case "user":
+    case "none":
+      return false;
+    default:
+      assertNever(owner.role);
+  }
+}
+
 export function isBuilder(
   owner: WorkspaceType | null
 ): owner is WorkspaceType & { role: "builder" | "admin" } {
