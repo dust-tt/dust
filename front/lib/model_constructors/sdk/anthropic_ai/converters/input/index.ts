@@ -97,6 +97,7 @@ export function WithAnthropicAIInputConverter<
         forceTool,
         toolSearchEnabled: toolSearchEnabled ?? false,
       });
+
       const system = this.systemMessagesToSystemParam(conversation.system);
 
       return {
