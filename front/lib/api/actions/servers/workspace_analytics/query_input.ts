@@ -13,7 +13,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export const MAX_QUERY_WINDOW_DAYS = 100;
 
 export const DEFAULT_RESULTS = 25;
-export const MAX_RESULTS = 100;
+export const MAX_RESULTS = 1000;
 
 // Credit timeseries breakdowns keep a small number of series and fold the
 // remainder into an "other" group, so a stacked chart stays readable.
