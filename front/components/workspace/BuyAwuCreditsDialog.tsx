@@ -570,7 +570,7 @@ export function BuyAwuCreditsDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner size="lg" />
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Applying coupon...
             </p>
           </div>
@@ -580,10 +580,10 @@ export function BuyAwuCreditsDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
-              <p className="text-lg font-medium text-foreground dark:text-foreground-night">
+              <p className="text-lg font-medium text-foreground">
                 Coupon applied!
               </p>
-              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <p className="mt-1 text-sm text-muted-foreground">
                 <span className="font-semibold">
                   {formatCredits(bonusCredits)} credits
                 </span>{" "}
@@ -597,10 +597,10 @@ export function BuyAwuCreditsDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
-              <p className="text-lg font-medium text-foreground dark:text-foreground-night">
+              <p className="text-lg font-medium text-foreground">
                 Couldn't apply coupon
               </p>
-              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {couponError}
               </p>
             </div>
@@ -609,14 +609,14 @@ export function BuyAwuCreditsDialog({
       default:
         return (
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p className="text-sm text-muted-foreground">
               Have a coupon code? Enter it below to add free credits to your
               Workspace Credits Pool.
             </p>
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="couponCode"
-                className="text-sm font-medium text-foreground dark:text-foreground-night"
+                className="text-sm font-medium text-foreground"
               >
                 Coupon code
               </label>
@@ -636,7 +636,7 @@ export function BuyAwuCreditsDialog({
                     className="w-48"
                   />
                   {couponError && (
-                    <span className="text-xs text-warning-500 dark:text-warning-500-night">
+                    <span className="text-xs text-warning-500">
                       {couponError}
                     </span>
                   )}
@@ -653,7 +653,7 @@ export function BuyAwuCreditsDialog({
             </div>
 
             {couponState === "checked" && checkedCoupon && (
-              <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4 dark:bg-muted-background-night">
+              <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
                 <SummaryRow label="Coupon" value={checkedCoupon.code} dimmed />
                 {currentTotalPoolCredits !== undefined && (
                   <SummaryRow
@@ -897,7 +897,7 @@ export function BuyAwuCreditsDialog({
   const renderBuyTabBody = () => {
     if (purchaseState === "idle" && buyPendingBlock) {
       return (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p className="text-sm text-muted-foreground">
           You have pending credit purchases awaiting payment. Please complete
           your pending payment before making a new purchase or{" "}
           <a
@@ -912,7 +912,7 @@ export function BuyAwuCreditsDialog({
     }
     if (purchaseState === "idle" && buyExhaustedBlock) {
       return (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p className="text-sm text-muted-foreground">
           You've reached your credit limit for this billing cycle. It resets at
           the start of your next billing cycle. If you need additional credits
           before then, please{" "}
