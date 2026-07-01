@@ -582,7 +582,6 @@ export function _getDustAntSonnetEdgeGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE,
     name: "dust-ant-sonnet-edge",
     preferredModelConfiguration: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
   });
 }
 
