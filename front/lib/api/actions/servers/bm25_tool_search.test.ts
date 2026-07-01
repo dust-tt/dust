@@ -128,7 +128,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "read my word doc in sharepoint",
     expected: "microsoft_drive.get_file_content",
-    maxRank: 4,
+    maxRank: 5,
   },
   {
     query: "open an excel file from onedrive",
@@ -162,17 +162,15 @@ const QUERIES: LabeledQuery[] = [
   },
 
   // --- microsoft_excel ---
-  // TODO(rcs): to renable
-  // {
-  //   query: "find Excel files",
-  //   expected: "microsoft_excel.list_excel_files",
-  // },
-  // TODO(rcs): to renable
-  // {
-  //   query: "read cell values from Excel",
-  //   expected: "microsoft_excel.read_worksheet",
-  //   maxRank: 1,
-  // },
+  {
+    query: "find Excel files",
+    expected: "microsoft_excel.list_excel_files",
+  },
+  {
+    query: "read cell values from Excel",
+    expected: "microsoft_excel.read_worksheet",
+    maxRank: 1,
+  },
 
   // --- jira ---
   {
@@ -513,17 +511,16 @@ const QUERIES: LabeledQuery[] = [
   },
 
   // --- openai_usage ---
-  // TODO(rcs): to renable
-  // {
-  //   query: "get OpenAI token usage by model",
-  //   expected: "openai_usage.get_completions_usage",
-  //   maxRank: 1,
-  // },
-  // {
-  //   query: "get OpenAI spending costs for my organization",
-  //   expected: "openai_usage.get_organization_costs",
-  //   maxRank: 1,
-  // },
+  {
+    query: "get OpenAI token usage by model",
+    expected: "openai_usage.get_completions_usage",
+    maxRank: 1,
+  },
+  {
+    query: "get OpenAI spending costs for my organization",
+    expected: "openai_usage.get_organization_costs",
+    maxRank: 1,
+  },
 
   // --- microsoft_teams ---
   {
@@ -1534,11 +1531,10 @@ const QUERIES: LabeledQuery[] = [
   },
 
   // --- databricks ---
-  // TODO(rcs): to renable
-  // {
-  //   query: "list the warehouses in Databricks",
-  //   expected: "databricks.list_warehouses",
-  // },
+  {
+    query: "list the warehouses in Databricks",
+    expected: "databricks.list_warehouses",
+  },
 
   // --- cross-server (no platform named) ---
   {
@@ -1647,6 +1643,23 @@ const QUERIES: LabeledQuery[] = [
 ];
 
 export const fullIndexWithAllServers = buildIndex(buildDocs(SERVERS));
+
+describe("BM25 tool-search retrieval (single-server index)", () => {
+  for (const { query, expected } of QUERIES) {
+    const serverName = expected.split(".")[0];
+    it(`"${query}" → ${expected} is scored in ${serverName}-only index`, () => {
+      const singleServerIndex = buildIndex(
+        buildDocs(SERVERS.filter((s) => s.name === serverName))
+      );
+      const ranked = rank(query, singleServerIndex).filter((r) => r.score > 0);
+      const pos = ranked.findIndex((r) => r.name === expected) + 1;
+      expect(
+        pos,
+        `Expected "${expected}" to have a non-zero score but it was not found in ranked results`
+      ).toBeGreaterThan(0);
+    });
+  }
+});
 
 describe("BM25 tool-search retrieval", () => {
   for (const { query, expected, maxRank = 1 } of QUERIES) {

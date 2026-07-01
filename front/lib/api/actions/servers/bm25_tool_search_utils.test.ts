@@ -6,6 +6,7 @@ import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_uti
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
+import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
@@ -30,9 +31,11 @@ import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interac
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { LUMA_SERVER } from "@app/lib/api/actions/servers/luma/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
+import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
@@ -183,4 +186,7 @@ export const SERVERS: ServerEntry[] = [
   },
   { name: "common_utilities", tools: COMMON_UTILITIES_SERVER.tools },
   { name: "exa_people_and_company", tools: EXA_SERVER.tools },
+  { name: "microsoft_excel", tools: MICROSOFT_EXCEL_SERVER.tools },
+  { name: "openai_usage", tools: OPENAI_USAGE_SERVER.tools },
+  { name: "databricks", tools: DATABRICKS_SERVER.tools },
 ];
