@@ -14,6 +14,10 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
 
   // Group ID on workOS, unique across all directories.
   declare workOSGroupId: string | null;
+
+  // Per-group usage spend limit (excluding seat allowance), applied per member.
+  // null means the group carries no cap (falls back to the workspace default).
+  declare poolCapAwuCredits: CreationOptional<number | null>;
 }
 
 GroupModel.init(
@@ -38,6 +42,10 @@ GroupModel.init(
     },
     workOSGroupId: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    poolCapAwuCredits: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
   },

@@ -622,6 +622,41 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("updatePoolCap", () => {
+    it("persists a cap and clears it with null", async () => {
+      const regularGroup = await GroupResource.makeNew({
+        name: "Pool Cap Group",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      expect(regularGroup.poolCapAwuCredits).toBeNull();
+
+      const setResult = await regularGroup.updatePoolCap(authenticator, 5000);
+      expect(setResult.isOk()).toBe(true);
+
+      const afterSet = await GroupResource.fetchById(
+        authenticator,
+        regularGroup.sId
+      );
+      if (afterSet.isErr()) {
+        throw afterSet.error;
+      }
+      expect(afterSet.value.poolCapAwuCredits).toBe(5000);
+
+      const clearResult = await regularGroup.updatePoolCap(authenticator, null);
+      expect(clearResult.isOk()).toBe(true);
+
+      const afterClear = await GroupResource.fetchById(
+        authenticator,
+        regularGroup.sId
+      );
+      if (afterClear.isErr()) {
+        throw afterClear.error;
+      }
+      expect(afterClear.value.poolCapAwuCredits).toBeNull();
+    });
+  });
+
   describe("listWorkspaceGroupsFromKey", () => {
     it("system key: populates cache on first call and serves from cache on second", async () => {
       const key = await KeyFactory.system(systemGroup);
