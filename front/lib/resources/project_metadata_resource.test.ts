@@ -256,5 +256,29 @@ describe("ProjectMetadataResource", () => {
       );
       expect(deleted).toBeNull();
     });
+
+    it("removes default skill mappings when the custom skill is deleted", async () => {
+      const { workspace: skillWorkspace, authenticator } =
+        await createResourceTest({ role: "admin" });
+      const space = await SpaceFactory.project(skillWorkspace);
+      const skill = await SkillFactory.create(authenticator, { name: "A" });
+
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(authenticator, [skill]);
+
+      const result = await skill.delete(authenticator);
+      expect(result.isOk()).toBe(true);
+
+      const reloaded = await ProjectMetadataResource.fetchBySpace(
+        authenticator,
+        space
+      );
+      expect(reloaded!.defaultSkillIds).toEqual([]);
+      expect(reloaded!.defaultSkillsIds).toBeNull();
+    });
   });
 });

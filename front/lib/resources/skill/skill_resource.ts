@@ -35,6 +35,7 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
@@ -69,6 +70,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
   SkillReinforcementMode,
   SkillSourceMetadata,
@@ -878,7 +880,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchActiveByIdsForAgentLoop(
     auth: Authenticator,
     sIds: string[],
-    agentLoopData: AgentLoopExecutionData
+    agentLoopData?: AgentLoopExecutionData,
+    {
+      withInstructions = true,
+      withTools = true,
+    }: { withInstructions?: boolean; withTools?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -894,6 +900,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           sId: globalSkillIds,
           status: "active",
         },
+        withInstructions,
+        withTools,
       },
       { agentLoopData }
     );
@@ -1406,25 +1414,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     {
       conversation,
+      agentConfiguration,
       agentLoopData,
       transaction,
     }: {
       conversation: ConversationWithoutContentType;
+      agentConfiguration?: AgentConfigurationType;
       agentLoopData?: AgentLoopExecutionData;
       transaction?: Transaction;
     }
   ): Promise<SkillResource[]> {
-    const { agentConfiguration } = agentLoopData ?? {};
+    const resolvedAgentConfiguration =
+      agentConfiguration ?? agentLoopData?.agentConfiguration;
     const workspace = auth.getNonNullableWorkspace();
 
     const conversationSkills = await ConversationSkillModel.findAll({
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        ...(agentConfiguration
+        ...(resolvedAgentConfiguration
           ? {
               [Op.or]: [
-                { agentConfigurationId: agentConfiguration.sId },
+                { agentConfigurationId: resolvedAgentConfiguration.sId },
                 { agentConfigurationId: null },
               ],
             }
@@ -1439,10 +1450,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  /**
-   * List skills for the agent loop, returning system skills, enabled skills, and
-   * equipped skills.
-   */
+  static async listPodDefaultSkillsForConversation(
+    auth: Authenticator,
+    {
+      conversation,
+      agentLoopData,
+    }: {
+      conversation: ConversationWithoutContentType;
+      agentLoopData?: AgentLoopExecutionData;
+    }
+  ): Promise<SkillResource[]> {
+    if (!isPodConversation(conversation)) {
+      return [];
+    }
+
+    const [projectMetadata] = await ProjectMetadataResource.fetchBySpaceIds(
+      auth,
+      [conversation.spaceId]
+    );
+
+    return this.fetchActiveByIdsForAgentLoop(
+      auth,
+      projectMetadata?.defaultSkillIds ?? [],
+      agentLoopData,
+      { withInstructions: false, withTools: false }
+    );
+  }
+
   static async listForAgentLoop(
     auth: Authenticator,
     params:
@@ -1465,9 +1499,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       auth,
       {
         conversation,
+        agentConfiguration,
         agentLoopData,
       }
     );
+
+    const podDefaultSkills = await this.listPodDefaultSkillsForConversation(
+      auth,
+      { conversation, agentLoopData }
+    );
+
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration,
@@ -1559,13 +1600,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentEquippedSkillIds = new Set(
       [...agentEquippedSkills, ...autoEquippedSkills].map((s) => s.sId)
     );
-    const discoveredSkills = discoverableSkills.filter(
+    const podEquippedSkills = podDefaultSkills.filter(
       (s) => !agentEquippedSkillIds.has(s.sId)
+    );
+    const equippedSkillIds = new Set([
+      ...agentEquippedSkillIds,
+      ...podEquippedSkills.map((s) => s.sId),
+    ]);
+    const discoveredSkills = discoverableSkills.filter(
+      (s) => !equippedSkillIds.has(s.sId)
     );
 
     const equippedSkills = removeNulls([
       ...agentEquippedSkills.sort(sortByName),
       ...autoEquippedSkills.sort(sortByName),
+      ...podEquippedSkills.sort(sortByName),
       ...discoveredSkills.sort(sortByName),
     ]);
 
@@ -3165,7 +3214,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        // Delete the GroupSkillModel entry and the associated editor group.
+        await ProjectMetadataResource.removeSkillFromAllDefaultSkills(
+          auth,
+          this.sId,
+          transaction
+        );
+
         await GroupSkillModel.destroy({
           where: whereWorkspaceIdAndSkillId,
           transaction,

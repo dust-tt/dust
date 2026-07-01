@@ -5,6 +5,7 @@ import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -1634,6 +1635,148 @@ describe("SkillResource", () => {
       );
 
       expect(skills).toEqual([]);
+    });
+  });
+
+  describe("listForAgentLoop — pod default skills", () => {
+    it("exposes a pod's default skills as equipped", async () => {
+      const { authenticator, workspace, user } = testContext;
+
+      const space = await SpaceFactory.project(workspace, user.id);
+      const defaultSkill = await SkillFactory.create(authenticator, {
+        name: "Pod Default Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pod Agent" }
+      );
+
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+        spaceId: space.id,
+      });
+
+      const { enabledSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(authenticator, {
+          agentConfiguration: agent,
+          conversation,
+        });
+
+      expect(equippedSkills.map((s) => s.sId)).toContain(defaultSkill.sId);
+      expect(enabledSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
+    });
+
+    it("does not expose pod defaults in a non-pod conversation", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const space = await SpaceFactory.project(workspace);
+      const defaultSkill = await SkillFactory.create(authenticator, {
+        name: "Pod Default Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Non-pod Agent" }
+      );
+      // No spaceId => isPodConversation() is false => not exposed.
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const { enabledSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(authenticator, {
+          agentConfiguration: agent,
+          conversation,
+        });
+
+      expect(equippedSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
+      expect(enabledSkills.map((s) => s.sId)).not.toContain(defaultSkill.sId);
+    });
+
+    it("moves a pod default into enabledSkills once the agent enables it", async () => {
+      const { authenticator, workspace, user } = testContext;
+
+      const space = await SpaceFactory.project(workspace, user.id);
+      const defaultSkill = await SkillFactory.create(authenticator, {
+        name: "Pod Default Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pod Agent" }
+      );
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+        spaceId: space.id,
+      });
+
+      await defaultSkill.enableForAgent(authenticator, {
+        agentConfiguration: agent,
+        conversation,
+      });
+
+      const { enabledSkills } = await SkillResource.listForAgentLoop(
+        authenticator,
+        { agentConfiguration: agent, conversation }
+      );
+
+      expect(enabledSkills.map((s) => s.sId)).toContain(defaultSkill.sId);
+    });
+
+    it("does not duplicate a pod default that is also an agent skill", async () => {
+      const { authenticator, workspace, user } = testContext;
+
+      const space = await SpaceFactory.project(workspace, user.id);
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Shared Skill",
+      });
+      const metadata = await ProjectMetadataResource.makeNew(
+        authenticator,
+        space,
+        { description: "d" }
+      );
+      await metadata.setDefaultSkills(authenticator, [skill]);
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Pod Agent" }
+      );
+      await skill.addToAgent(authenticator, agent);
+
+      const conversation = await ConversationFactory.create(authenticator, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+        spaceId: space.id,
+      });
+
+      const { equippedSkills } = await SkillResource.listForAgentLoop(
+        authenticator,
+        { agentConfiguration: agent, conversation }
+      );
+
+      expect(equippedSkills.filter((s) => s.sId === skill.sId)).toHaveLength(1);
     });
   });
 
