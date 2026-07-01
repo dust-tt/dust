@@ -8,6 +8,10 @@ import {
   ConfigurableToolInputJSONSchemas,
   ConfigurableToolInputSchemas,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  EXTRACT_DATA_MAIN_TOOL_NAME,
+  makeExtractDataToolsMetadata,
+} from "@app/lib/api/actions/servers/extract_data/metadata";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { isJSONSchemaObject } from "@app/lib/utils/json_schemas";
@@ -1084,6 +1088,75 @@ describe("JSON_SCHEMA mime type", () => {
         },
       },
     });
+  });
+});
+
+describe("extract_data configured inputs", () => {
+  it("hides and injects a pre-configured JSON schema", () => {
+    const jsonSchema = {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const },
+      },
+      required: ["name"],
+    };
+    const metadata = makeExtractDataToolsMetadata({
+      areTagsDynamic: false,
+      isJsonSchemaConfigured: true,
+      isTimeFrameConfigured: true,
+    });
+    const inputSchema = zodToJsonSchema(
+      z.object(metadata[EXTRACT_DATA_MAIN_TOOL_NAME].schema)
+    ) as JSONSchema;
+
+    const hiddenSchema = hideInternalConfiguration(inputSchema);
+    expect(hiddenSchema.properties).not.toHaveProperty("dataSources");
+    expect(hiddenSchema.properties).not.toHaveProperty("jsonSchema");
+
+    const config = createBasicMCPConfiguration({
+      jsonSchema,
+      timeFrame: {
+        duration: 7,
+        unit: "day",
+      },
+      inputSchema,
+    });
+
+    const result = augmentInputsWithConfiguration({
+      owner: mockWorkspace,
+      rawInputs: { objective: "Extract legal indicators" },
+      actionConfiguration: config,
+    });
+
+    expect(result).toEqual({
+      objective: "Extract legal indicators",
+      dataSources: [],
+      jsonSchema: {
+        ...jsonSchema,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA,
+      },
+      timeFrame: {
+        duration: 7,
+        unit: "day",
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
+      },
+    });
+  });
+
+  it("keeps the JSON schema model-fillable when not pre-configured", () => {
+    const metadata = makeExtractDataToolsMetadata({
+      areTagsDynamic: false,
+      isJsonSchemaConfigured: false,
+      isTimeFrameConfigured: false,
+    });
+    const inputSchema = zodToJsonSchema(
+      z.object(metadata[EXTRACT_DATA_MAIN_TOOL_NAME].schema)
+    ) as JSONSchema;
+
+    const hiddenSchema = hideInternalConfiguration(inputSchema);
+
+    expect(hiddenSchema.properties).toHaveProperty("jsonSchema");
+    expect(hiddenSchema.required).toContain("jsonSchema");
   });
 });
 

@@ -5,6 +5,10 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isLightServerSideMCPToolConfiguration,
+  isServerSideMCPServerConfiguration,
+} from "@app/lib/actions/types/guards";
 import type { ProcessActionOutputsType } from "@app/lib/api/actions/servers/extract_data/helpers";
 import {
   generateProcessToolOutput,
@@ -12,17 +16,69 @@ import {
   getPromptForProcessDustApp,
 } from "@app/lib/api/actions/servers/extract_data/helpers";
 import {
-  EXTRACT_DATA_BASE_TOOLS_METADATA,
-  EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA,
+  EXTRACT_DATA_MAIN_TOOL_NAME,
+  makeExtractDataBaseToolsMetadata,
+  makeExtractDataToolsWithTagsMetadata,
 } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { processDataSources } from "@app/lib/api/assistant/process_data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
+import {
+  isJSONSchemaObject,
+  validateJsonSchema,
+} from "@app/lib/utils/json_schemas";
 import { Err, Ok } from "@app/types/shared/result";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+
+function hasConfiguredJsonSchema(toolContext?: ToolContextType) {
+  if (
+    toolContext?.listToolsContext &&
+    isServerSideMCPServerConfiguration(
+      toolContext.listToolsContext.agentActionConfiguration
+    )
+  ) {
+    return (
+      toolContext.listToolsContext.agentActionConfiguration.jsonSchema !== null
+    );
+  }
+
+  if (
+    toolContext?.runContext &&
+    isLightServerSideMCPToolConfiguration(
+      toolContext.runContext.toolConfiguration
+    )
+  ) {
+    return toolContext.runContext.toolConfiguration.jsonSchema !== null;
+  }
+
+  return false;
+}
+
+function hasConfiguredTimeFrame(toolContext?: ToolContextType) {
+  if (
+    toolContext?.listToolsContext &&
+    isServerSideMCPServerConfiguration(
+      toolContext.listToolsContext.agentActionConfiguration
+    )
+  ) {
+    return (
+      toolContext.listToolsContext.agentActionConfiguration.timeFrame !== null
+    );
+  }
+
+  if (
+    toolContext?.runContext &&
+    isLightServerSideMCPToolConfiguration(
+      toolContext.runContext.toolConfiguration
+    )
+  ) {
+    return toolContext.runContext.toolConfiguration.timeFrame !== null;
+  }
+
+  return false;
+}
 
 // Create tools with access to auth via closure
 export function createExtractDataTools(
@@ -32,6 +88,8 @@ export function createExtractDataTools(
   const areTagsDynamic = toolContext
     ? shouldAutoGenerateTags(toolContext)
     : false;
+  const isJsonSchemaConfigured = hasConfiguredJsonSchema(toolContext);
+  const isTimeFrameConfigured = hasConfiguredTimeFrame(toolContext);
 
   async function extractFunction({
     dataSources,
@@ -159,23 +217,33 @@ export function createExtractDataTools(
   }
 
   if (!areTagsDynamic) {
+    const toolsMetadata = makeExtractDataBaseToolsMetadata({
+      isJsonSchemaConfigured,
+      isTimeFrameConfigured,
+    });
+
     // Return base tools without tags
-    const handlers: ToolHandlers<typeof EXTRACT_DATA_BASE_TOOLS_METADATA> = {
-      extract_information_from_documents: async (params, _extra) => {
+    const handlers: ToolHandlers<typeof toolsMetadata> = {
+      [EXTRACT_DATA_MAIN_TOOL_NAME]: async (params) => {
         return extractFunction(params);
       },
     };
-    return buildTools(EXTRACT_DATA_BASE_TOOLS_METADATA, handlers);
+    return buildTools(toolsMetadata, handlers);
   }
 
+  const toolsMetadata = makeExtractDataToolsWithTagsMetadata({
+    isJsonSchemaConfigured,
+    isTimeFrameConfigured,
+  });
+
   // Return tools with tags support
-  const handlers: ToolHandlers<typeof EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA> = {
-    extract_information_from_documents: async (params, _extra) => {
+  const handlers: ToolHandlers<typeof toolsMetadata> = {
+    [EXTRACT_DATA_MAIN_TOOL_NAME]: async (params) => {
       return extractFunction(params);
     },
-    find_tags: async ({ query, dataSources }, _extra) => {
+    find_tags: async ({ query, dataSources }) => {
       return executeFindTags(auth, query, dataSources);
     },
   };
-  return buildTools(EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA, handlers);
+  return buildTools(toolsMetadata, handlers);
 }
