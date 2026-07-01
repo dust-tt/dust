@@ -101,6 +101,38 @@ export function getInvalidToolJsonMessage(err: unknown): string | null {
   return null;
 }
 
+// The SDK surfaces a malformed tool-call JSON as a raw `JSON.parse` SyntaxError,
+// either bare or as the `cause` of an AnthropicError. `partialParse` tolerates
+// truncation and only throws on genuinely malformed input, so this is always bad
+// model output, never a transport cut.
+function isBareToolJsonParseError(err: unknown): boolean {
+  if (err instanceof SyntaxError) {
+    return true;
+  }
+  return (
+    err instanceof AnthropicError &&
+    "cause" in err &&
+    err.cause instanceof SyntaxError
+  );
+}
+
+// The raw malformed tool JSON when a stream aborted on a tool-call parse
+// failure, or null if unrelated. When the SDK embeds it in the error message
+// (after `JSON: `) we use that; otherwise we recover from the buffer accumulated
+// so far, which is enough for the agent loop to re-sample.
+function invalidToolJsonFromStreamError(
+  err: unknown,
+  accumulator: string
+): string | null {
+  const wrapped = getInvalidToolJsonMessage(err);
+  if (wrapped !== null) {
+    return wrapped.slice(
+      wrapped.lastIndexOf(INVALID_JSON_MARKER) + INVALID_JSON_MARKER.length
+    );
+  }
+  return isBareToolJsonParseError(err) ? accumulator : null;
+}
+
 // Cursor for the content block being streamed; deltas accumulate here until
 // `content_block_stop` flushes it as an event.
 export type BlockState =
@@ -901,29 +933,27 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
-      // On invalid tool JSON aborting the stream, if a tool_use block is in
-      // progress, recover by emitting a tool_call wrapping the invalid JSON so
-      // the agent loop can send it back and let the model self-correct.
-      const invalidJsonMessage = getInvalidToolJsonMessage(err);
-      if (
-        invalidJsonMessage !== null &&
-        blockState !== null &&
-        blockState.type === "tool_use"
-      ) {
-        const invalidJson = invalidJsonMessage.slice(
-          invalidJsonMessage.lastIndexOf(INVALID_JSON_MARKER) +
-            INVALID_JSON_MARKER.length
+      // Invalid tool-call JSON aborts the stream while the tool_use block is
+      // still open. Recover by emitting a tool_call wrapping the raw JSON so the
+      // agent loop can hand it back and let the model self-correct, instead of
+      // surfacing a terminal error.
+      if (blockState !== null && blockState.type === "tool_use") {
+        const invalidJson = invalidToolJsonFromStreamError(
+          err,
+          blockState.accumulator
         );
-        const ev = converters.invalidJsonToolCallToToolCallEvent(
-          metadata,
-          blockState.toolId,
-          blockState.toolName,
-          invalidJson
-        );
-        aggregated.push(ev);
-        yield ev;
-        blockState = null;
-        break;
+        if (invalidJson !== null) {
+          const ev = converters.invalidJsonToolCallToToolCallEvent(
+            metadata,
+            blockState.toolId,
+            blockState.toolName,
+            invalidJson
+          );
+          aggregated.push(ev);
+          yield ev;
+          blockState = null;
+          break;
+        }
       }
       // Everything leaving the endpoint is an event: map any other SDK error to
       // a unified error event and terminate the stream rather than throwing.
