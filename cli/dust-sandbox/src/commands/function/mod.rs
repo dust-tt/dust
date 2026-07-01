@@ -18,6 +18,7 @@ pub use get::cmd_function_get;
 pub use run::cmd_function_run;
 
 const FUNCTIONS_DIR_ENV: &str = "DUST_FUNCTIONS_DIR";
+const FUNCTION_WORKING_DIR_ENV: &str = "DUST_FUNCTION_WORKING_DIR";
 
 /// The image's global npm modules (NPM_CONFIG_PREFIX=/opt/npm-global), holding the external
 /// packages (zod and the curated `npm install -g` set) that function bundles leave as imports
@@ -37,6 +38,7 @@ const RUNNER_JS: &str = include_str!("../../../functions-runner/runner.js");
 /// `dsbx healthcheck`'s nftables rules force through the egress proxy). Untrusted
 /// function code must run as this user too.
 const AGENT_USER: &str = "agent-proxied";
+const DEFAULT_FUNCTION_WORKING_DIR: &str = "/home/agent";
 
 #[derive(Subcommand)]
 pub enum FunctionCommand {
@@ -83,10 +85,11 @@ fn running_as_root() -> bool {
 /// downgraded to the `agent-proxied` user whenever `dsbx` runs privileged: the
 /// child is launched via `runuser`, which resolves that user's uid/gid/
 /// supplementary groups and drops privileges before exec — so `dsbx` needs no
-/// unsafe privilege-dropping syscalls. The bundle is run in place from
-/// `$DUST_FUNCTIONS_DIR` (an agent-readable mount), so there is no staging; the
-/// only thing the dropped child can't otherwise read is the embedded-runner temp
-/// file (created by root, 0600), which is made readable for it.
+/// unsafe privilege-dropping syscalls. The bundle is imported from its absolute
+/// path in `$DUST_FUNCTIONS_DIR` (an agent-readable mount), but Bun is launched
+/// from a local working directory instead of the gcsfuse-backed mount. The only
+/// thing the dropped child can't otherwise read is the embedded-runner temp file
+/// (created by root, 0600), which is made readable for it.
 pub(crate) async fn spawn_function(
     subcommand: &str,
     name: &str,
@@ -94,14 +97,12 @@ pub(crate) async fn spawn_function(
     capture_stdout: bool,
 ) -> Result<(i32, Option<String>)> {
     let handler = resolve_existing(name)?;
-    // The function runs with $DUST_FUNCTIONS_DIR as its working directory (the
-    // parent of the resolved bundle), not wherever dsbx was invoked from.
-    let functions_dir = handler.parent().map(Path::to_path_buf);
     let runner = ensure_runner()?;
     let as_agent = running_as_root();
+    let function_working_dir = function_working_dir();
 
     if as_agent {
-        // The bundle is read in place from the agent-readable mount; no staging.
+        // The bundle is imported in place from the agent-readable mount; no staging.
         // Only the embedded-runner temp file (created by root, 0600) must be made
         // readable by the dropped agent-proxied child.
         set_mode(&runner, 0o644)
@@ -139,9 +140,7 @@ pub(crate) async fn spawn_function(
             Stdio::inherit()
         })
         .stderr(Stdio::inherit());
-    if let Some(dir) = &functions_dir {
-        cmd.current_dir(dir);
-    }
+    cmd.current_dir(function_working_dir);
 
     let mut child = cmd
         .spawn()
@@ -236,6 +235,18 @@ fn harness_node_path() -> String {
         }
         _ => FUNCTIONS_GLOBAL_NODE_MODULES.to_string(),
     }
+}
+
+/// Cwd for `dsbx function run|get`.
+///
+/// The handler itself is still imported by absolute path from
+/// `$DUST_FUNCTIONS_DIR`, but keeping the process cwd off the gcsfuse-backed
+/// mount avoids slow Bun filesystem probing against the mount.
+fn function_working_dir() -> PathBuf {
+    std::env::var_os(FUNCTION_WORKING_DIR_ENV)
+        .filter(|dir| !dir.is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_FUNCTION_WORKING_DIR))
 }
 
 /// Set a path's permission bits (used to make the runner temp file readable by
@@ -393,5 +404,37 @@ mod tests {
         let _guard = ENV_LOCK.lock().unwrap();
         std::env::remove_var(FUNCTIONS_DIR_ENV);
         assert!(resolve_existing("../escape").is_err());
+    }
+
+    #[test]
+    fn uses_default_function_working_dir() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let original_working_dir = std::env::var_os(FUNCTION_WORKING_DIR_ENV);
+
+        std::env::remove_var(FUNCTION_WORKING_DIR_ENV);
+        assert_eq!(
+            function_working_dir(),
+            PathBuf::from(DEFAULT_FUNCTION_WORKING_DIR)
+        );
+
+        if let Some(original_working_dir) = original_working_dir {
+            std::env::set_var(FUNCTION_WORKING_DIR_ENV, original_working_dir);
+        }
+    }
+
+    #[test]
+    fn allows_function_working_dir_override() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let original_working_dir = std::env::var_os(FUNCTION_WORKING_DIR_ENV);
+        let working_dir = tempfile::tempdir().expect("working dir tempdir");
+
+        std::env::set_var(FUNCTION_WORKING_DIR_ENV, working_dir.path());
+        assert_eq!(function_working_dir(), working_dir.path());
+
+        if let Some(original_working_dir) = original_working_dir {
+            std::env::set_var(FUNCTION_WORKING_DIR_ENV, original_working_dir);
+        } else {
+            std::env::remove_var(FUNCTION_WORKING_DIR_ENV);
+        }
     }
 }
