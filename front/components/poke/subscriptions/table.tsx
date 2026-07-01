@@ -386,8 +386,6 @@ export function ActiveSubscriptionTable({
                 owner={owner}
                 subscription={subscription}
                 programmaticUsageConfig={programmaticUsageConfig}
-                hasMetronomeBillingFeature={hasMetronomeBillingFeature}
-                stripeCustomerId={stripeCustomerId}
               />
             )}
           </div>
@@ -591,16 +589,12 @@ interface UpgradeDowngradeModalProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
-  hasMetronomeBillingFeature: boolean;
-  stripeCustomerId: string | null;
 }
 
 function UpgradeDowngradeModal({
   owner,
   subscription,
   programmaticUsageConfig,
-  hasMetronomeBillingFeature,
-  stripeCustomerId,
 }: UpgradeDowngradeModalProps) {
   const router = useAppRouter();
   const { plans } = usePokePlans();
@@ -688,8 +682,6 @@ function UpgradeDowngradeModal({
                 owner={owner}
                 subscription={subscription}
                 programmaticUsageConfig={programmaticUsageConfig}
-                hasMetronomeBillingFeature={hasMetronomeBillingFeature}
-                stripeCustomerId={stripeCustomerId}
               />
             </div>
             {isProPlanPrefix(subscription.plan.code) && (
