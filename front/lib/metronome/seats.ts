@@ -319,20 +319,51 @@ const PROMOTABLE_SEAT_TYPES: ReadonlySet<MembershipSeatType> = new Set([
   "workspace_yearly",
 ]);
 
+/**
+ * Promote `none` seat types onto paid seats the contract bills.
+ *
+ * `forceSeatType` (used by a legacy contract migration) preempts the committed
+ * placement entirely: when set — and the contract bills it — EVERY `none` member
+ * is moved straight onto it. This is how a migration puts all seat-less members
+ * on a paid seat (e.g. `pro`), regardless of any committed allocation the
+ * contract might have.
+ *
+ * Without `forceSeatType`, `none` members are placed into committed paid seats
+ * (`minSeats > 0`) with spare capacity, in ascending tier order — a committed
+ * seat is billed whether or not it is assigned, so filling it adds no cost. This
+ * committed promotion is all-or-nothing: if a `none` member can't be placed, no
+ * member is promoted (the input is returned unchanged), so we never bill a
+ * partial set.
+ */
 export function promoteNoneSeatTypesForContract({
   contract,
   productSeatTypes,
   seatTypes,
   seatLimits,
+  forceSeatType,
 }: {
   contract: CachedContract;
   productSeatTypes: Map<string, MembershipSeatType>;
   seatTypes: MembershipSeatType[];
   seatLimits?: Map<MembershipSeatType, SeatLimit>;
+  // Seat type to force every `none` member onto, preempting the committed-seat
+  // placement below. Used by the legacy→Business migration to put `workspace`/
+  // `none` members on `pro`. Ignored unless the contract bills it.
+  forceSeatType?: MembershipSeatType;
 }): MembershipSeatType[] {
-  const committedPaidSeatTypes = [
-    ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
-  ]
+  const onContract = new Set(
+    getSeatSubscriptionsFromContract(contract, productSeatTypes).keys()
+  );
+
+  // A forced seat preempts committed placement: move every `none` straight onto
+  // it, provided the contract bills it.
+  if (forceSeatType && onContract.has(forceSeatType)) {
+    return seatTypes.map((seatType) =>
+      seatType === "none" ? forceSeatType : seatType
+    );
+  }
+
+  const committedPaidSeatTypes = [...onContract]
     .filter(
       (seatType) =>
         PROMOTABLE_SEAT_TYPES.has(seatType) &&
@@ -397,6 +428,12 @@ export function promoteNoneSeatTypesForContract({
  * `promoteNoneSeatTypesForContract`): a committed seat is billed whether or not
  * it is assigned, so filling it with an otherwise seat-less member adds no cost.
  *
+ * When `promoteNoneSeatType` is set, every member that would otherwise stay on
+ * `none` is instead forced onto that seat type (provided the new contract bills
+ * it) — this preempts the committed-spare promotion above. It is how a legacy
+ * contract migration puts every member on a paid seat (e.g. `pro` for a monthly
+ * switch, `pro_yearly` for a yearly one).
+ *
  * No-op for memberships already on a covered seat type. A membership with no
  * resolvable `UserResource` is logged and skipped; a DB error while applying a
  * change throws (internal error → 500), so the operator knows the remap was
@@ -409,6 +446,7 @@ export async function remapMembershipSeatTypesForContract({
   swapAt,
   startingAt,
   contract,
+  promoteNoneSeatType,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -416,6 +454,10 @@ export async function remapMembershipSeatTypesForContract({
   swapAt: "current-hour" | "next-hour";
   startingAt: Date;
   contract?: CachedContract;
+  // Seat type that every `none` member is forced onto, preempting the
+  // committed-spare promotion (see `promoteNoneSeatTypesForContract`). Used by
+  // the legacy→Business migration to force `workspace`/`none` members onto `pro`.
+  promoteNoneSeatType?: MembershipSeatType;
 }): Promise<Result<undefined, Error>> {
   let resolvedContract: CachedContract;
   if (contract) {
@@ -522,6 +564,7 @@ export async function remapMembershipSeatTypesForContract({
     productSeatTypes,
     seatTypes: remapTargets.map((t) => t.baseTarget),
     seatLimits,
+    forceSeatType: promoteNoneSeatType,
   });
 
   for (const [
