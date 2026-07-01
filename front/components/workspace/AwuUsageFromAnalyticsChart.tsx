@@ -12,6 +12,15 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
+import {
+  isScopeDimension,
+  removeScopeEntity,
+  SCOPE_DIMENSION_LABEL,
+  SCOPE_DIMENSIONS,
+  scopeFilterToIds,
+  toggleScopeEntity,
+} from "@app/components/workspace/analytics/analyticsFilter";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
@@ -19,6 +28,7 @@ import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
 import {
   Button,
+  Chip,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -31,21 +41,30 @@ import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 interface AwuUsageFromAnalyticsChartProps {
   workspaceId: string;
   period: ObservabilityTimeRangeType;
+  filter: AnalyticsFilter;
+  onFilterChange: (next: AnalyticsFilter) => void;
 }
 
 export type Granularity = "day" | "week" | "month";
 export type AnalyticsGroupBy = "usage_type" | "agent" | "user" | "origin";
 
-const GROUP_BY_OPTIONS: {
-  value: AnalyticsGroupBy | undefined;
-  label: string;
-}[] = [
+type GroupByOption = { value: AnalyticsGroupBy | undefined; label: string };
+
+const GROUP_BY_OPTIONS: GroupByOption[] = [
   { value: undefined, label: "Total" },
   { value: "usage_type", label: "By Usage Type" },
   { value: "agent", label: "By Agent" },
   { value: "user", label: "By User" },
   { value: "origin", label: "By Source" },
 ];
+
+// "By User" is redundant when the chart is already scoped to a single user.
+const PERSONAL_GROUP_BY_OPTIONS: GroupByOption[] = GROUP_BY_OPTIONS.filter(
+  (o) => o.value !== "user"
+);
+
+// Personal usage chart covers a fixed trailing window (no period selector).
+const PERSONAL_USAGE_DAYS = 30;
 
 const GRANULARITY_OPTIONS: { value: Granularity; label: string }[] = [
   { value: "day", label: "Daily" },
@@ -95,6 +114,338 @@ export interface BaseAwuUsageFromAnalyticsChartProps {
   days: number;
   // Base URL for the CSV export endpoint (without query params).
   exportUrlPrefix: string;
+  // Available group-by options; defaults to the full workspace-wide list.
+  groupByOptions?: GroupByOption[];
+  // Sticky per-dimension scope filter. When set, the chart is restricted to the
+  // selected entities and a removable chip is shown per selection. Legend clicks
+  // in a scope-dimension groupBy (agent/user/origin) toggle the matching
+  // selection when onFilterChange is provided.
+  filter?: AnalyticsFilter;
+  onFilterChange?: (next: AnalyticsFilter) => void;
+}
+
+interface UsageChartControlsProps {
+  granularity: Granularity;
+  setGranularity: (v: Granularity) => void;
+  groupBy: AnalyticsGroupBy | undefined;
+  onGroupByChange: (v: AnalyticsGroupBy | undefined) => void;
+  groupByCount: number;
+  onGroupByCountChange: (v: number) => void;
+  groupByOptions: GroupByOption[];
+  filter?: AnalyticsFilter;
+  onFilterChange?: (next: AnalyticsFilter) => void;
+  hasDrilldown: boolean;
+  onClearDrilldown: () => void;
+  csvDownload: ReturnType<typeof useDownloadCsv>;
+}
+
+function UsageChartControls({
+  granularity,
+  setGranularity,
+  groupBy,
+  onGroupByChange,
+  groupByCount,
+  onGroupByCountChange,
+  groupByOptions,
+  filter,
+  onFilterChange,
+  hasDrilldown,
+  onClearDrilldown,
+  csvDownload,
+}: UsageChartControlsProps) {
+  return (
+    <div className="flex items-center gap-2">
+      {filter &&
+        onFilterChange &&
+        SCOPE_DIMENSIONS.flatMap((dimension) =>
+          (filter[dimension] ?? []).map((entity) => (
+            <Chip
+              key={`${dimension}:${entity.id}`}
+              size="xs"
+              label={`${SCOPE_DIMENSION_LABEL[dimension]}: ${entity.name}`}
+              onRemove={() =>
+                onFilterChange(removeScopeEntity(filter, dimension, entity.id))
+              }
+            />
+          ))
+        )}
+      {hasDrilldown && (
+        <Button
+          label="Clear filters"
+          size="xs"
+          variant="ghost"
+          onClick={onClearDrilldown}
+        />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={
+              GRANULARITY_OPTIONS.find((o) => o.value === granularity)?.label ??
+              "Daily"
+            }
+            size="xs"
+            variant="outline"
+            isSelect
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {GRANULARITY_OPTIONS.map((o) => (
+            <DropdownMenuItem
+              key={o.value}
+              label={o.label}
+              onClick={() => setGranularity(o.value)}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={
+              groupByOptions.find((o) => o.value === groupBy)?.label ?? "Total"
+            }
+            size="xs"
+            variant="outline"
+            isSelect
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {groupByOptions.map((o) => (
+            <DropdownMenuItem
+              key={o.value ?? "total"}
+              label={o.label}
+              onClick={() => onGroupByChange(o.value)}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {groupBy && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              label={`Top ${groupByCount}`}
+              size="xs"
+              variant="outline"
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {TOP_K_OPTIONS.map((value) => (
+              <DropdownMenuItem
+                key={value}
+                label={`Top ${value}`}
+                onClick={() => onGroupByCountChange(value)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      <CsvDownloadButton {...csvDownload} />
+    </div>
+  );
+}
+
+interface UsageChartBarsProps {
+  chartData: { timestamp: number; [key: string]: number }[];
+  visibleKeys: string[];
+  allKeys: string[];
+  groupBy: AnalyticsGroupBy | undefined;
+  groups: { groupKey: string; name: string }[];
+  granularity: Granularity;
+  // Injected by the parent ResponsiveContainer (via cloneElement) and forwarded
+  // to BarChart. Without forwarding, BarChart has no dimensions and renders
+  // blank.
+  width?: number;
+  height?: number;
+}
+
+function UsageChartBars({
+  chartData,
+  visibleKeys,
+  allKeys,
+  groupBy,
+  groups,
+  granularity,
+  width,
+  height,
+}: UsageChartBarsProps) {
+  return (
+    <BarChart
+      data={chartData}
+      width={width}
+      height={height}
+      margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+    >
+      <CartesianGrid vertical={false} className="stroke-border" />
+      <XAxis
+        dataKey="timestamp"
+        type="category"
+        className="text-xs text-muted-foreground"
+        tickLine={true}
+        axisLine={false}
+        tickMargin={8}
+        minTickGap={16}
+        tickFormatter={(value) => formatTimestamp(value, granularity)}
+      />
+      <YAxis
+        className="text-xs text-muted-foreground"
+        tickLine={false}
+        axisLine={false}
+        tickMargin={8}
+        tickFormatter={(value) => formatCreditsCompact(value)}
+      />
+      <Tooltip
+        content={(props: TooltipContentProps<number, string>) => (
+          <CreditTooltip
+            {...props}
+            groupBy={groupBy}
+            groups={groups}
+            granularity={granularity}
+          />
+        )}
+        cursor={false}
+        wrapperStyle={{ outline: "none" }}
+        contentStyle={{
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          boxShadow: "none",
+        }}
+      />
+      {visibleKeys.map((groupKey) => (
+        <Bar
+          key={groupKey}
+          dataKey={groupKey}
+          stackId="usage"
+          fill="currentColor"
+          className={getColorClassName(groupBy, groupKey, allKeys)}
+        />
+      ))}
+    </BarChart>
+  );
+}
+
+interface UseUsageLegendItemsParams {
+  groups: { groupKey: string; name: string }[];
+  groupBy: AnalyticsGroupBy | undefined;
+  allKeys: string[];
+  effectiveEnabledKeys: string[] | null;
+  toggleGroup: (key: string) => void;
+  filter?: AnalyticsFilter;
+  onFilterChange?: (next: AnalyticsFilter) => void;
+}
+
+function useUsageLegendItems({
+  groups,
+  groupBy,
+  allKeys,
+  effectiveEnabledKeys,
+  toggleGroup,
+  filter,
+  onFilterChange,
+}: UseUsageLegendItemsParams): LegendItem[] {
+  const scopeDimension =
+    isScopeDimension(groupBy) && filter && onFilterChange ? groupBy : null;
+
+  return useMemo(
+    () =>
+      groups.map((group) => {
+        let label = group.name;
+        if (group.groupKey === "others") {
+          label = OTHER_LABEL.label;
+        }
+        const canFilter =
+          !!groupBy &&
+          group.groupKey !== "others" &&
+          group.groupKey !== "total";
+        const colorClassName = getColorClassName(
+          groupBy,
+          group.groupKey,
+          allKeys
+        );
+
+        if (canFilter && scopeDimension && filter && onFilterChange) {
+          const selected = filter[scopeDimension] ?? [];
+          const isSelected = selected.some((e) => e.id === group.groupKey);
+          return {
+            key: group.groupKey,
+            label,
+            colorClassName,
+            onClick: () =>
+              onFilterChange(
+                toggleScopeEntity(filter, scopeDimension, {
+                  id: group.groupKey,
+                  name: group.name,
+                })
+              ),
+            isActive: selected.length === 0 || isSelected,
+          };
+        }
+
+        return {
+          key: group.groupKey,
+          label,
+          colorClassName,
+          onClick: canFilter ? () => toggleGroup(group.groupKey) : undefined,
+          isActive:
+            !effectiveEnabledKeys ||
+            effectiveEnabledKeys.includes(group.groupKey),
+        };
+      }),
+    [
+      groups,
+      groupBy,
+      allKeys,
+      effectiveEnabledKeys,
+      toggleGroup,
+      scopeDimension,
+      filter,
+      onFilterChange,
+    ]
+  );
+}
+
+interface BuildExportUrlParams {
+  exportUrlPrefix: string;
+  days: number;
+  granularity: Granularity;
+  groupBy: AnalyticsGroupBy | undefined;
+  groupByCount: number;
+  filter?: AnalyticsFilter;
+  effectiveEnabledKeys: string[] | null;
+}
+
+function buildExportUrl({
+  exportUrlPrefix,
+  days,
+  granularity,
+  groupBy,
+  groupByCount,
+  filter,
+  effectiveEnabledKeys,
+}: BuildExportUrlParams): string {
+  const exportParams = new URLSearchParams({
+    days: days.toString(),
+    granularity,
+    format: "csv",
+  });
+  if (groupBy) {
+    exportParams.set("groupBy", groupBy);
+    exportParams.set("groupByCount", groupByCount.toString());
+  }
+  // Mirror the sticky scope filter so the export matches the chart.
+  if (filter) {
+    const ids = scopeFilterToIds(filter);
+    if (Object.keys(ids).length > 0) {
+      exportParams.set("filter", JSON.stringify(ids));
+    }
+  }
+  // Mirror the legend drilldown: export only the series currently shown.
+  if (effectiveEnabledKeys) {
+    exportParams.set("series", effectiveEnabledKeys.join(","));
+  }
+  return `${exportUrlPrefix}?${exportParams.toString()}`;
 }
 
 export function BaseAwuUsageFromAnalyticsChart({
@@ -109,6 +460,9 @@ export function BaseAwuUsageFromAnalyticsChart({
   setGroupByCount,
   days,
   exportUrlPrefix,
+  groupByOptions = GROUP_BY_OPTIONS,
+  filter,
+  onFilterChange,
 }: BaseAwuUsageFromAnalyticsChartProps) {
   // Legend-driven drilldown: when non-null, only these series are shown.
   const [enabledKeys, setEnabledKeys] = useState<string[] | null>(null);
@@ -155,29 +509,15 @@ export function BaseAwuUsageFromAnalyticsChart({
     [points]
   );
 
-  const legendItems: LegendItem[] = useMemo(
-    () =>
-      groups.map((group) => {
-        let label = group.name;
-        if (group.groupKey === "others") {
-          label = OTHER_LABEL.label;
-        }
-        const canFilter =
-          !!groupBy &&
-          group.groupKey !== "others" &&
-          group.groupKey !== "total";
-        return {
-          key: group.groupKey,
-          label,
-          colorClassName: getColorClassName(groupBy, group.groupKey, allKeys),
-          onClick: canFilter ? () => toggleGroup(group.groupKey) : undefined,
-          isActive:
-            !effectiveEnabledKeys ||
-            effectiveEnabledKeys.includes(group.groupKey),
-        };
-      }),
-    [groups, groupBy, allKeys, effectiveEnabledKeys, toggleGroup]
-  );
+  const legendItems = useUsageLegendItems({
+    groups,
+    groupBy,
+    allKeys,
+    effectiveEnabledKeys,
+    toggleGroup,
+    filter,
+    onFilterChange,
+  });
 
   const visibleKeys = useMemo(
     () =>
@@ -187,21 +527,16 @@ export function BaseAwuUsageFromAnalyticsChart({
     [allKeys, effectiveEnabledKeys]
   );
 
-  const exportParams = new URLSearchParams({
-    days: days.toString(),
-    granularity,
-    format: "csv",
-  });
-  if (groupBy) {
-    exportParams.set("groupBy", groupBy);
-    exportParams.set("groupByCount", groupByCount.toString());
-  }
-  // Mirror the legend drilldown: export only the series currently shown.
-  if (effectiveEnabledKeys) {
-    exportParams.set("series", effectiveEnabledKeys.join(","));
-  }
   const csvDownload = useDownloadCsv({
-    url: `${exportUrlPrefix}?${exportParams.toString()}`,
+    url: buildExportUrl({
+      exportUrlPrefix,
+      days,
+      granularity,
+      groupBy,
+      groupByCount,
+      filter,
+      effectiveEnabledKeys,
+    }),
     filename: `dust_credit_usage_last_${days}_days.csv`,
     disabled: isAwuUsageLoading || !!isAwuUsageError || chartData.length === 0,
   });
@@ -215,140 +550,33 @@ export function BaseAwuUsageFromAnalyticsChart({
         chartData.length === 0 ? "No usage data for this period." : undefined
       }
       additionalControls={
-        <div className="flex items-center gap-2">
-          {effectiveEnabledKeys && (
-            <Button
-              label="Clear filters"
-              size="xs"
-              variant="ghost"
-              onClick={() => setEnabledKeys(null)}
-            />
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={
-                  GRANULARITY_OPTIONS.find((o) => o.value === granularity)
-                    ?.label ?? "Daily"
-                }
-                size="xs"
-                variant="outline"
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {GRANULARITY_OPTIONS.map((o) => (
-                <DropdownMenuItem
-                  key={o.value}
-                  label={o.label}
-                  onClick={() => setGranularity(o.value)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={
-                  GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label ??
-                  "Total"
-                }
-                size="xs"
-                variant="outline"
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {GROUP_BY_OPTIONS.map((o) => (
-                <DropdownMenuItem
-                  key={o.value ?? "total"}
-                  label={o.label}
-                  onClick={() => handleGroupByChange(o.value)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {groupBy && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  label={`Top ${groupByCount}`}
-                  size="xs"
-                  variant="outline"
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {TOP_K_OPTIONS.map((value) => (
-                  <DropdownMenuItem
-                    key={value}
-                    label={`Top ${value}`}
-                    onClick={() => handleGroupByCountChange(value)}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <CsvDownloadButton {...csvDownload} />
-        </div>
+        <UsageChartControls
+          granularity={granularity}
+          setGranularity={setGranularity}
+          groupBy={groupBy}
+          onGroupByChange={handleGroupByChange}
+          groupByCount={groupByCount}
+          onGroupByCountChange={handleGroupByCountChange}
+          groupByOptions={groupByOptions}
+          filter={filter}
+          onFilterChange={onFilterChange}
+          hasDrilldown={!!effectiveEnabledKeys}
+          onClearDrilldown={() => setEnabledKeys(null)}
+          csvDownload={csvDownload}
+        />
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
       isAllowFullScreen
     >
-      <BarChart
-        data={chartData}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
-        <CartesianGrid
-          vertical={false}
-          className="stroke-border dark:stroke-border-night"
-        />
-        <XAxis
-          dataKey="timestamp"
-          type="category"
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={true}
-          axisLine={false}
-          tickMargin={8}
-          minTickGap={16}
-          tickFormatter={(value) => formatTimestamp(value, granularity)}
-        />
-        <YAxis
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          tickFormatter={(value) => formatCreditsCompact(value)}
-        />
-        <Tooltip
-          content={(props: TooltipContentProps<number, string>) => (
-            <CreditTooltip
-              {...props}
-              groupBy={groupBy}
-              groups={groups}
-              granularity={granularity}
-            />
-          )}
-          cursor={false}
-          wrapperStyle={{ outline: "none" }}
-          contentStyle={{
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            boxShadow: "none",
-          }}
-        />
-        {visibleKeys.map((groupKey) => (
-          <Bar
-            key={groupKey}
-            dataKey={groupKey}
-            stackId="usage"
-            fill="currentColor"
-            className={getColorClassName(groupBy, groupKey, allKeys)}
-          />
-        ))}
-      </BarChart>
+      <UsageChartBars
+        chartData={chartData}
+        visibleKeys={visibleKeys}
+        allKeys={allKeys}
+        groupBy={groupBy}
+        groups={groups}
+        granularity={granularity}
+      />
     </ChartContainer>
   );
 }
@@ -356,6 +584,8 @@ export function BaseAwuUsageFromAnalyticsChart({
 export function AwuUsageFromAnalyticsChart({
   workspaceId,
   period,
+  filter,
+  onFilterChange,
 }: AwuUsageFromAnalyticsChartProps) {
   const [granularity, setGranularity] = useState<Granularity>("day");
   const [groupBy, setGroupBy] = useState<AnalyticsGroupBy | undefined>(
@@ -370,6 +600,7 @@ export function AwuUsageFromAnalyticsChart({
       groupByCount,
       granularity,
       days: period,
+      filter: scopeFilterToIds(filter),
     });
 
   return (
@@ -385,6 +616,57 @@ export function AwuUsageFromAnalyticsChart({
       setGroupByCount={setGroupByCount}
       days={period}
       exportUrlPrefix={`/api/w/${workspaceId}/analytics/awu-usage-analytics`}
+      filter={filter}
+      onFilterChange={onFilterChange}
+    />
+  );
+}
+
+interface MyAwuUsageFromAnalyticsChartProps {
+  workspaceId: string;
+  disabled?: boolean;
+}
+
+// Personal credit usage chart scoped to the authenticated user. Same chart as
+// the workspace-wide analytics one, but fetches from the user-scoped endpoint so
+// any member can track their own usage.
+export function MyAwuUsageFromAnalyticsChart({
+  workspaceId,
+  disabled,
+}: MyAwuUsageFromAnalyticsChartProps) {
+  const [granularity, setGranularity] = useState<Granularity>("day");
+  const [groupBy, setGroupBy] = useState<AnalyticsGroupBy | undefined>(
+    undefined
+  );
+  const [groupByCount, setGroupByCount] = useState<number>(5);
+
+  const exportUrlPrefix = `/api/w/${workspaceId}/credits/my-usage-analytics`;
+
+  const { awuUsageData, isAwuUsageLoading, isAwuUsageError } =
+    useAwuUsageFromAnalytics({
+      workspaceId,
+      groupBy,
+      groupByCount,
+      granularity,
+      days: PERSONAL_USAGE_DAYS,
+      disabled,
+      urlPrefix: exportUrlPrefix,
+    });
+
+  return (
+    <BaseAwuUsageFromAnalyticsChart
+      awuUsageData={awuUsageData}
+      isAwuUsageLoading={isAwuUsageLoading}
+      isAwuUsageError={!!isAwuUsageError}
+      granularity={granularity}
+      setGranularity={setGranularity}
+      groupBy={groupBy}
+      setGroupBy={setGroupBy}
+      groupByCount={groupByCount}
+      setGroupByCount={setGroupByCount}
+      days={PERSONAL_USAGE_DAYS}
+      exportUrlPrefix={exportUrlPrefix}
+      groupByOptions={PERSONAL_GROUP_BY_OPTIONS}
     />
   );
 }

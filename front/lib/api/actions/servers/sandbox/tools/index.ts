@@ -40,7 +40,7 @@ import {
   wrapCommandWithCapture,
 } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
-import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -240,8 +240,8 @@ export async function createSandboxTools(
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
-  // The add_egress_domain tool requires both sandbox tools and the
-  // per-workspace setting that admins toggle on top of them.
+  // The add_egress_domain tool requires Computer access and the
+  // per-workspace setting that admins toggle on top of it.
   const flags = await getFeatureFlags(auth);
   if (
     isComputerFeatureEnabled(flags) &&
@@ -320,7 +320,7 @@ export async function runSandboxBashTool(
     : null;
   const isResumeMode = resumeExecId !== null;
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
@@ -484,9 +484,9 @@ export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  // Defense-in-depth: createSandboxTools already filters this tool out when the
-  // sandbox tools flag is off, so this metadata-only check is enough
-  // to reject any caller that bypasses tool-list filtering.
+  // Defense-in-depth: createSandboxTools already filters this tool out when
+  // the workspace setting is off, so this metadata-only check is enough to
+  // reject any caller that bypasses tool-list filtering.
   if (!isSandboxAgentEgressRequestsAllowed(auth)) {
     return new Err(
       new MCPError(
@@ -500,7 +500,7 @@ export async function addEgressDomainTool(
     return new Err(new MCPError("No conversation context available."));
   }
 
-  const ensureResult = await ensureSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }

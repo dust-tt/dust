@@ -180,6 +180,14 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 3.75,
     cache_read_input_tokens: 0.3,
   },
+  // TODO(2026-08-31): intro pricing ends; revert to standard rates
+  // (input 3.0, output 15.0, cache_creation 3.75, cache_read 0.3).
+  "claude-sonnet-5": {
+    input: 2.0,
+    output: 10.0,
+    cache_creation_input_tokens: 2.5,
+    cache_read_input_tokens: 0.2,
+  },
   "claude-3-opus-20240229": {
     input: 15.0,
     output: 75.0,

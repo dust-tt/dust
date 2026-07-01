@@ -100,7 +100,7 @@ export function registerConversationsListTool(server: McpServer) {
       }
 
       const result =
-        await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+        await ConversationResource.listPrivateConversationsForUserPaginated(
           auth,
           {
             limit: LIST_CONVERSATIONS_PAGE_SIZE,

@@ -40,7 +40,7 @@ export const BINARY_FORMATS: OutputFormatType[] = [
 export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
   get_supported_source_formats_for_output_format: {
     description:
-      "Get a list of source formats supported for a target output format.",
+      "List which input source formats can be converted into a given target output format.",
     schema: {
       output_format: z.enum(OUTPUT_FORMATS).describe("The format to check."),
     },
@@ -51,7 +51,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
     },
   },
   convert_file_format: {
-    description: "Converts a file from one format to another.",
+    description:
+      "Convert an existing conversation file into another format, for example turn a document into a PDF.",
     schema: {
       file_name: z
         .string()
@@ -79,7 +80,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
     },
   },
   generate_file: {
-    description: "Generate a file with some content.",
+    description:
+      "Generate a new file by writing provided text or content out as a document.",
     schema: {
       file_name: z
         .string()

@@ -53,6 +53,10 @@ export type FileUseCaseMetadata = {
   skipFileProcessing?: boolean;
   // Which branding asset this file was uploaded for (workspace_branding use case only).
   asset?: string;
+  // Root scoped path of a published Frame's source tree in the mount (interactive content
+  // only). Set when the frame has been published: its presence means a built bundle exists
+  // (stored as the processed version) and records where to re-read sources on republish.
+  frameBundleRootPath?: string;
 };
 
 export function isConversationFileUseCase(
@@ -278,6 +282,11 @@ export const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
+export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+
+// Conversations: large delimited files (CSV/XLSX) are mounted into the sandbox and read as-is by
+// the agent's code rather than loaded into its context, so they can be much larger than regular
+// uploads.
 export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
   FileFormatCategory,
   number
@@ -286,7 +295,49 @@ export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
   delimited: 350 * 1024 * 1024,
 };
 
-export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+// Skill attachments: tabular files (CSV/XLSX -> delimited) AND documents (PDF/DOCX/PPTX -> data)
+// are mounted into the sandbox and read as-is, so both categories can be much larger than regular
+// uploads.
+export const MAX_FILE_SIZES_LARGE_SKILL: Record<FileFormatCategory, number> = {
+  ...MAX_FILE_SIZES_DEFAULT,
+  delimited: 350 * 1024 * 1024,
+  data: 350 * 1024 * 1024,
+};
+
+// Whether an upload is stored as a raw sandbox file: kept as-is with no upload-time processing
+// (no Tika extraction / image resize) and not indexed. Always requires sandbox tools.
+//  - conversation: large delimited files are served raw to the sandbox instead of indexed as tables;
+//  - skill_attachment: delimited tables and data documents (PDF/DOCX/PPTX) are mounted raw.
+export function allowsSandboxRawUpload({
+  category,
+  hasSandboxTools,
+  useCase,
+}: {
+  category: FileFormatCategory;
+  hasSandboxTools: boolean;
+  useCase: FileUseCase;
+}): boolean {
+  if (!hasSandboxTools) {
+    return false;
+  }
+
+  switch (useCase) {
+    case "conversation":
+      return category === "delimited";
+    case "skill_attachment":
+      return category === "delimited" || category === "data";
+    case "avatar":
+    case "tool_output":
+    case "upsert_document":
+    case "folders_document":
+    case "upsert_table":
+    case "project_context":
+    case "workspace_branding":
+      return false;
+    default:
+      assertNever(useCase);
+  }
+}
 
 export function resolveMaxFileSizes({
   hasSandboxTools,
@@ -295,9 +346,26 @@ export function resolveMaxFileSizes({
   hasSandboxTools: boolean;
   useCase: FileUseCase;
 }): Record<FileFormatCategory, number> {
-  const eligible = hasSandboxTools && useCase === "conversation";
+  if (!hasSandboxTools) {
+    return MAX_FILE_SIZES_DEFAULT;
+  }
 
-  return eligible ? MAX_FILE_SIZES_LARGE_DELIMITED : MAX_FILE_SIZES_DEFAULT;
+  switch (useCase) {
+    case "conversation":
+      return MAX_FILE_SIZES_LARGE_DELIMITED;
+    case "skill_attachment":
+      return MAX_FILE_SIZES_LARGE_SKILL;
+    case "avatar":
+    case "tool_output":
+    case "upsert_document":
+    case "folders_document":
+    case "upsert_table":
+    case "project_context":
+    case "workspace_branding":
+      return MAX_FILE_SIZES_DEFAULT;
+    default:
+      return assertNever(useCase);
+  }
 }
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {

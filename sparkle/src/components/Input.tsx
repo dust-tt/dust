@@ -25,30 +25,30 @@ const INPUT_STATES = ["error", "disabled", "default"];
 type InputStateType = (typeof INPUT_STATES)[number];
 
 const messageVariantStyles: Record<MessageStatus, string> = {
-  info: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-  default: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-  error: "s-text-foreground-warning dark:s-text-foreground-warning-night",
+  info: "text-muted-foreground",
+  default: "text-muted-foreground",
+  error: "text-foreground-warning",
 };
 
 const stateVariantStyles: Record<InputStateType, string> = {
   default: cn(
-    "s-border-border dark:s-border-border-night",
-    "s-ring-highlight/0 dark:s-ring-highlight-night/0",
-    "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
-    "focus-visible:s-outline-none focus-visible:s-ring-2",
-    "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50"
+    "border-border",
+    "ring-highlight/0",
+    "focus-visible:border-border-focus",
+    "focus-visible:outline-hidden focus-visible:ring-2",
+    "focus-visible:ring-highlight/20"
   ),
   disabled: cn(
-    "disabled:s-cursor-not-allowed",
-    "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night",
-    "disabled:s-border-border dark:disabled:s-border-border-night"
+    "disabled:cursor-not-allowed",
+    "disabled:text-muted-foreground",
+    "disabled:border-border"
   ),
   error: cn(
-    "s-border-border-warning/40 dark:s-border-border-warning-night/60",
-    "s-ring-warning/0 dark:s-ring-warning-night/0",
-    "focus-visible:s-border-border-warning dark:focus-visible:s-border-border-warning-night",
-    "focus-visible:s-outline-none focus-visible:s-ring-2",
-    "focus-visible:s-ring-warning/10 dark:focus-visible:s-ring-warning/30"
+    "border-border-warning/40",
+    "ring-warning/0",
+    "focus-visible:border-border-warning",
+    "focus-visible:outline-hidden focus-visible:ring-2",
+    "focus-visible:ring-warning/10"
   ),
 };
 
@@ -63,12 +63,12 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "dark:s-text-primary-50",
-    "s-text-sm s-rounded-xl s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
-    "s-bg-background dark:s-bg-background-night",
-    "s-border focus-visible:s-ring",
-    "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
+    "text-sm rounded-xl flex h-9 w-full px-3 py-1.5",
+    "text-foreground",
+    "bg-background",
+    "border border-border focus-visible:ring",
+    "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
+    "placeholder:text-muted-foreground"
   ),
   {
     variants: {
@@ -102,19 +102,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ? "disabled"
           : "default";
     return (
-      <div className={cn("s-flex s-flex-col s-gap-1", containerClassName)}>
+      <div className={cn("flex flex-col gap-1", containerClassName)}>
         {label && (
-          <Label htmlFor={props.name} className="s-mb-1">
+          <Label htmlFor={props.name} className="mb-1">
             {label}
           </Label>
         )}
         <input
           ref={ref}
-          className={cn(
-            "s-ring-inset",
-            inputStyleClasses({ state }),
-            className
-          )}
+          className={cn("ring-inset", inputStyleClasses({ state }), className)}
           data-1p-ignore={props.type !== "password"}
           value={value ?? undefined}
           disabled={disabled}
@@ -123,7 +119,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {message && (
           <div
             className={cn(
-              "s-flex s-items-center s-gap-1 s-text-xs",
+              "flex items-center gap-1 text-xs",
               messageVariant({ status: messageStatus })
             )}
           >

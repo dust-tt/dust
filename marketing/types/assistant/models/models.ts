@@ -164,6 +164,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "anthropic",
   },
   {
+    modelId: "claude-sonnet-5",
+    displayName: "Claude Sonnet 5",
+    providerId: "anthropic",
+  },
+  {
     modelId: "claude-3-opus-20240229",
     displayName: "Claude 3 Opus",
     providerId: "anthropic",

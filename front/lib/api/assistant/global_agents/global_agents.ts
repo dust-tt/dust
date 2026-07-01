@@ -8,6 +8,7 @@ import {
   _getClaude4_5HaikuGlobalAgent,
   _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
+  _getClaude5SonnetGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
 import {
   _getArchivedBrowserSummaryAgent,
@@ -30,10 +31,12 @@ import {
   _getDustGlobalAgent,
   _getDustGoogGlobalAgent,
   _getDustGoogHighGlobalAgent,
+  _getDustGoogLiteGlobalAgent,
   _getDustGoogMediumGlobalAgent,
   _getDustGoogProGlobalAgent,
   _getDustGoogProHighGlobalAgent,
   _getDustGoogProMediumGlobalAgent,
+  _getDustHaikuGlobalAgent,
   _getDustHighGlobalAgent,
   _getDustHighOmittedGlobalAgent,
   _getDustKimiGlobalAgent,
@@ -53,6 +56,7 @@ import {
   _getDustOaiGlobalAgent,
   _getDustOaiHighGlobalAgent,
   _getDustOaiMediumGlobalAgent,
+  _getDustOaiNanoHighGlobalAgent,
   _getDustOmittedGlobalAgent,
   _getDustPistacheGlobalAgent,
   _getDustPistacheHighGlobalAgent,
@@ -201,6 +205,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.DUST_GOOG]: {
     injectsMemory: true,
     injectsToolsets: true,
@@ -214,6 +224,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_GOOG_LITE]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -262,6 +278,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_HAIKU]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -621,6 +643,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.CLAUDE_5_SONNET]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: {
     injectsMemory: false,
     injectsToolsets: false,
@@ -821,6 +849,13 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.O3:
       agentConfiguration = _getO3GlobalAgent({
+        auth,
+        settings,
+        mcpServerViews,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_5_SONNET:
+      agentConfiguration = _getClaude5SonnetGlobalAgent({
         auth,
         settings,
         mcpServerViews,
@@ -1032,6 +1067,15 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_HAIKU:
+      agentConfiguration = _getDustHaikuGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_KIMI:
       agentConfiguration = _getDustKimiGlobalAgent(auth, {
         settings,
@@ -1203,6 +1247,15 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
+      agentConfiguration = _getDustOaiNanoHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_GOOG:
       agentConfiguration = _getDustGoogGlobalAgent(auth, {
         settings,
@@ -1223,6 +1276,15 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_HIGH:
       agentConfiguration = _getDustGoogHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_GOOG_LITE:
+      agentConfiguration = _getDustGoogLiteGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         mcpServerViews,
@@ -1423,6 +1485,7 @@ function getGlobalAgent({
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
 const RETIRED_GLOBAL_AGENTS_SID = [
+  GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
@@ -1553,6 +1616,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
     GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_HAIKU,
     GLOBAL_AGENTS_SID.DUST_EDGE,
     GLOBAL_AGENTS_SID.DUST_KIMI,
     GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
@@ -1571,9 +1635,11 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_OAI,
     GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+    GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH,
     GLOBAL_AGENTS_SID.DUST_GOOG,
     GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
+    GLOBAL_AGENTS_SID.DUST_GOOG_LITE,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH,

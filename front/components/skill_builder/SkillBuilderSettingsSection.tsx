@@ -30,17 +30,15 @@ export function SkillBuilderSettingsSection({
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <h2 className="heading-lg text-foreground dark:text-foreground-night">
-          Skill settings
-        </h2>
+        <h2 className="heading-lg text-foreground">Skill settings</h2>
         {githubSkillFolderUrl && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <span>This skill was originally imported from</span>
             <LinkWrapper
               href={githubSkillFolderUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground hover:underline dark:hover:text-foreground-night"
+              className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
             >
               <span>GitHub</span>
               <Icon visual={LinkExternal01} size="xs" />
@@ -57,7 +55,7 @@ export function SkillBuilderSettingsSection({
       </div>
       <SkillBuilderUserFacingDescriptionSection />
       <div className="flex flex-col space-y-3">
-        <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
+        <Label className="text-base font-semibold text-foreground">
           Editors
         </Label>
         <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
@@ -66,7 +64,7 @@ export function SkillBuilderSettingsSection({
       </div>
       {hasSelfImprovingSkills && (
         <div className="space-y-3">
-          <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
+          <Label className="text-base font-semibold text-foreground">
             Self Improvement
           </Label>
           <SkillBuilderEnableSuggestionsSection

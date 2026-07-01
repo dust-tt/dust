@@ -282,7 +282,7 @@ export const AshbyOpeningLatestVersionSchema = z
     id: z.string(),
     identifier: z.string().optional(),
     description: z.string().nullish(),
-    authorId: z.string().optional(),
+    authorId: z.string().nullish(),
     createdAt: z.string().optional(),
     teamId: z.string().nullish(),
     jobIds: z.array(z.string()).optional(),

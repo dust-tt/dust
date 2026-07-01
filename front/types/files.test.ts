@@ -1,4 +1,5 @@
 import {
+  allowsSandboxRawUpload,
   authorizedFileAccessEntrySchema,
   ensureFileSize,
   getAuthorizedFileRefLabel,
@@ -11,6 +12,80 @@ import {
   sandboxFunctionContentType,
 } from "@app/types/files";
 import { describe, expect, it } from "vitest";
+
+describe("allowsSandboxRawUpload", () => {
+  it("allows delimited conversation files only when sandbox tools are present", () => {
+    expect(
+      allowsSandboxRawUpload({
+        category: "delimited",
+        hasSandboxTools: true,
+        useCase: "conversation",
+      })
+    ).toBe(true);
+
+    expect(
+      allowsSandboxRawUpload({
+        category: "delimited",
+        hasSandboxTools: false,
+        useCase: "conversation",
+      })
+    ).toBe(false);
+  });
+
+  it("does not apply to non-delimited categories in sandbox conversations", () => {
+    for (const category of ["image", "data", "code", "audio"] as const) {
+      expect(
+        allowsSandboxRawUpload({
+          category,
+          hasSandboxTools: true,
+          useCase: "conversation",
+        })
+      ).toBe(false);
+    }
+  });
+
+  it("allows delimited and data skill attachments only when sandbox tools are present", () => {
+    for (const category of ["delimited", "data"] as const) {
+      expect(
+        allowsSandboxRawUpload({
+          category,
+          hasSandboxTools: true,
+          useCase: "skill_attachment",
+        })
+      ).toBe(true);
+
+      expect(
+        allowsSandboxRawUpload({
+          category,
+          hasSandboxTools: false,
+          useCase: "skill_attachment",
+        })
+      ).toBe(false);
+    }
+  });
+
+  it("does not apply to image/code/audio skill attachments", () => {
+    for (const category of ["image", "code", "audio"] as const) {
+      expect(
+        allowsSandboxRawUpload({
+          category,
+          hasSandboxTools: true,
+          useCase: "skill_attachment",
+        })
+      ).toBe(false);
+    }
+  });
+
+  it("does not apply to other use cases (e.g. upsert_table)", () => {
+    expect(
+      allowsSandboxRawUpload({
+        category: "delimited",
+        hasSandboxTools: true,
+        useCase: "upsert_table",
+      })
+    ).toBe(false);
+  });
+});
 
 describe("resolveMaxFileSizes", () => {
   it("raises the delimited limit only for sandbox conversations", () => {
@@ -34,6 +109,37 @@ describe("resolveMaxFileSizes", () => {
         useCase: "upsert_table",
       }).delimited
     ).toBe(50 * 1024 * 1024);
+
+    // Only delimited is raised: other categories keep the default even in a sandbox conversation.
+    expect(
+      resolveMaxFileSizes({
+        hasSandboxTools: true,
+        useCase: "conversation",
+      }).code
+    ).toBe(50 * 1024 * 1024);
+  });
+
+  it("raises delimited and data limits for skill attachments with sandbox tools", () => {
+    const sizes = resolveMaxFileSizes({
+      hasSandboxTools: true,
+      useCase: "skill_attachment",
+    });
+
+    // CSV/XLSX (delimited) and PPTX/PDF/DOCX (data) can be large for skills.
+    expect(sizes.delimited).toBe(350 * 1024 * 1024);
+    expect(sizes.data).toBe(350 * 1024 * 1024);
+    // Images stay at the default limit.
+    expect(sizes.image).toBe(20 * 1024 * 1024);
+  });
+
+  it("keeps skill attachments at the default limit without sandbox tools", () => {
+    const sizes = resolveMaxFileSizes({
+      hasSandboxTools: false,
+      useCase: "skill_attachment",
+    });
+
+    expect(sizes.delimited).toBe(50 * 1024 * 1024);
+    expect(sizes.data).toBe(50 * 1024 * 1024);
   });
 
   it("enforces the resolved per-file limit", () => {

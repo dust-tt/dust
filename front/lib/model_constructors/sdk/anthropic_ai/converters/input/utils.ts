@@ -1,5 +1,6 @@
 import type {
   CacheControlEphemeral,
+  ContentBlockParam,
   ImageBlockParam,
   MessageParam,
   OutputConfig,
@@ -14,6 +15,7 @@ import type {
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
+import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
@@ -23,6 +25,7 @@ import type {
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   BaseAssistantMessage,
+  BaseAssistantProviderPassthroughMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
@@ -34,6 +37,7 @@ import type {
   CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provider_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -83,6 +87,9 @@ export interface MessageBlockConverters {
   assistantToolCallRequestToToolUseBlock(
     message: BaseAssistantToolCallRequestMessage
   ): ToolUseBlockParam;
+  assistantProviderPassthroughMessageToBlocks(
+    message: BaseAssistantProviderPassthroughMessage
+  ): MessageParam["content"];
 }
 
 // -- Small, reusable building blocks --
@@ -208,6 +215,20 @@ export function assistantToolCallRequestToToolUseBlock(
   };
 }
 
+export function assistantProviderPassthroughMessageToBlocks(
+  message: BaseAssistantProviderPassthroughMessage
+): MessageParam["content"] {
+  // Replay the provider's own tool-search blocks verbatim so interleaved
+  // thinking signatures stay valid. Skip blocks tagged for another provider or
+  // that fail to parse.
+  if (message.content.provider !== ANTHROPIC_PROVIDER_ID) {
+    return [];
+  }
+
+  const parsed = parseAnthropicToolSearchBlock(message.content.block);
+  return parsed ? [parsed] : [];
+}
+
 // -- Composite message converters (depend on the leaf converters) --
 
 export async function userImageMessageToImageBlock(
@@ -274,16 +295,26 @@ export function assistantMessageToContentBlocks(
       return converters.assistantReasoningMessageToThinkingBlocks(message);
     case "tool_call_request":
       return [converters.assistantToolCallRequestToToolUseBlock(message)];
+    case "provider_passthrough":
+      return converters.assistantProviderPassthroughMessageToBlocks(message);
     default:
       assertNever(message);
   }
 }
 
-export function conversationToMessages(
+function contentToBlocks(
+  content: MessageParam["content"]
+): ContentBlockParam[] {
+  return typeof content === "string"
+    ? [{ type: "text", text: content }]
+    : content;
+}
+
+export async function conversationToMessages(
   conversation: BaseConversation,
   converters: MessageBlockConverters
 ): Promise<MessageParam[]> {
-  return concurrentExecutor(
+  const messages = await concurrentExecutor(
     conversation.messages,
     async (message): Promise<MessageParam> => {
       switch (message.role) {
@@ -303,6 +334,26 @@ export function conversationToMessages(
     },
     { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
   );
+
+  // Anthropic rejects consecutive same-role messages, so merge them: one
+  // logical turn arrives split into a message per content block (e.g. text +
+  // image).
+  return messages.reduce<MessageParam[]>((merged, message) => {
+    const previous = merged[merged.length - 1];
+    if (previous && previous.role === message.role) {
+      return [
+        ...merged.slice(0, -1),
+        {
+          ...previous,
+          content: [
+            ...contentToBlocks(previous.content),
+            ...contentToBlocks(message.content),
+          ],
+        },
+      ];
+    }
+    return [...merged, message];
+  }, []);
 }
 
 export function systemMessagesToSystemParam(
@@ -415,7 +466,7 @@ export const reasoningToThinkingConfig: ReasoningToThinkingConfig = (
 
   return {
     output_config: { effort: effortToAnthropicEffort(reasoning.effort) },
-    thinking: { type: "adaptive" },
+    thinking: { type: "adaptive", display: "summarized" },
   };
 };
 

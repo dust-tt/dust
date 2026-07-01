@@ -171,7 +171,7 @@ export function ProcessingMethodSection() {
     <div className="mt-2 flex flex-col space-y-4">
       <div>
         <h3 className="mb-2 text-lg font-semibold">Knowledge lookup method</h3>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-sm text-muted-foreground">
           Sets the approach for finding and retrieving information from your
           data sources. Need help? Check our{" "}
           <Hoverable
@@ -226,7 +226,7 @@ export function ProcessingMethodSection() {
         </DropdownMenu>
       </div>
 
-      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <span className="text-sm text-muted-foreground">
         {mcpServerView?.server.description}
       </span>
 

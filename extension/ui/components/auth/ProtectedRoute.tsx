@@ -43,8 +43,7 @@ export const ProtectedRoute = () => {
       <div
         className={cn(
           "flex h-screen items-center justify-center",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <Spinner />
@@ -56,8 +55,7 @@ export const ProtectedRoute = () => {
     <div
       className={cn(
         "flex h-screen flex-col gap-2 overflow-y-auto",
-        "bg-background text-foreground",
-        "dark:bg-background-night dark:text-foreground-night"
+        "bg-background text-foreground"
       )}
     >
       <ExtensionQuickActionsProvider owner={workspace}>

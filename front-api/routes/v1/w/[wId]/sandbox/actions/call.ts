@@ -1,3 +1,4 @@
+import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import logger from "@app/logger/logger";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
@@ -11,9 +12,7 @@ type CallSandboxToolResponse = {
   actionId: string;
 };
 
-// Mounted at /api/v1/w/:wId/sandbox/actions/call. sandboxAuth is applied by
-// the parent sandbox sub-app, so ctx.get("auth") and ctx.get("sandboxClaims")
-// are always available here.
+// Mounted at /api/v1/w/:wId/sandbox/actions/call.
 const app = sandboxApp();
 
 /**
@@ -26,6 +25,15 @@ app.post(
   async (ctx): HandlerResult<CallSandboxToolResponse> => {
     const auth = ctx.get("auth");
     const claims = ctx.get("sandboxClaims");
+    if (!isSandboxExecTokenPayload(claims)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "This sandbox token cannot access sandbox actions.",
+        },
+      });
+    }
 
     const {
       serverViewId,

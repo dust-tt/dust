@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const MONDAY_TOOLS_METADATA = createToolsRecord({
   get_boards: {
     description:
-      "Lists all accessible boards in Monday.com workspace. Returns up to 100 boards.",
+      "List all accessible boards in Monday.com workspace. Returns up to 100 boards.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -17,7 +17,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   get_board_items: {
     description:
-      "Retrieves items from a specific Monday.com board. Returns up to 100 items.",
+      "Retrieve items from a specific Monday.com board. Returns up to 100 items.",
     schema: {
       boardId: z.string().describe("The board ID to retrieve items from"),
     },
@@ -29,7 +29,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   get_item_details: {
     description:
-      "Retrieves detailed information about a specific Monday.com item",
+      "Retrieve detailed information about a specific Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to retrieve details for"),
     },
@@ -41,7 +41,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   search_items: {
     description:
-      "Searches for items in Monday.com with advanced filtering options. Returns up to 100 items.",
+      "Search for items in Monday.com with advanced filtering options. Returns up to 100 items.",
     schema: {
       query: z
         .string()
@@ -78,7 +78,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_items_by_column_value: {
-    description: "Retrieves items from a board by column value",
+    description: "Retrieve items from a board by column value",
     schema: {
       boardId: z.string().describe("The board ID to search in"),
       columnId: z.string().describe("The column ID to filter by"),
@@ -91,7 +91,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   find_user_by_name: {
-    description: "Finds a Monday.com user by name",
+    description: "Find a Monday.com user by name",
     schema: {
       name: z.string().describe("The name of the user to find"),
     },
@@ -103,7 +103,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   get_board_values: {
     description:
-      "Retrieves detailed information about a Monday.com board including columns and groups",
+      "Retrieve detailed information about a Monday.com board including columns and groups",
     schema: {
       boardId: z.string().describe("The board ID to retrieve details for"),
     },
@@ -114,7 +114,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_column_values: {
-    description: "Retrieves column values for a specific item and column",
+    description: "Retrieve column values for a specific item and column",
     schema: {
       boardId: z.string().describe("The board ID containing the item"),
       itemId: z.string().describe("The item ID to get column values from"),
@@ -127,7 +127,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_file_column_values: {
-    description: "Retrieves file column values for a specific item and column",
+    description: "Retrieve file column values for a specific item and column",
     schema: {
       itemId: z.string().describe("The item ID to get file column values from"),
       columnId: z
@@ -142,7 +142,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   get_group_details: {
     description:
-      "Retrieves details about a specific group in a Monday.com board",
+      "Retrieve details about a specific group in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID containing the group"),
       groupId: z.string().describe("The group ID to retrieve details for"),
@@ -154,7 +154,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_subitem_values: {
-    description: "Retrieves subitems for a specific Monday.com item",
+    description: "Retrieve subitems for a specific Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to retrieve subitems for"),
     },
@@ -165,7 +165,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_user_details: {
-    description: "Retrieves details about a specific Monday.com user",
+    description: "Retrieve details about a specific Monday.com user",
     schema: {
       userId: z.string().describe("The user ID to retrieve details for"),
     },
@@ -177,7 +177,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   get_activity_logs: {
     description:
-      "Retrieves activity logs for a board. Useful for tracking pipeline velocity and user actions.",
+      "Retrieve activity logs for a board. Useful for tracking pipeline velocity and user actions.",
     schema: {
       boardId: z
         .string()
@@ -203,7 +203,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   get_board_analytics: {
     description:
-      "Retrieves analytics and statistics for a board including item counts by status, group, and assignee. Useful for CRM reporting.",
+      "Retrieve analytics and statistics for a board including item counts by status, group, and assignee. Useful for CRM reporting.",
     schema: {
       boardId: z.string().describe("The board ID to retrieve analytics for"),
     },
@@ -214,7 +214,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_item: {
-    description: "Creates a new item in a Monday.com board",
+    description: "Create a new item in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID to create the item in"),
       itemName: z.string().describe("The name of the new item"),
@@ -236,7 +236,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   update_item: {
-    description: "Updates column values of an existing Monday.com item",
+    description: "Update column values of an existing Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to update"),
       columnValues: z
@@ -252,7 +252,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   update_item_name: {
-    description: "Updates the name of a Monday.com item",
+    description: "Update the name of a Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to update"),
       name: z.string().describe("The new name for the item"),
@@ -264,7 +264,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_update: {
-    description: "Adds an update (comment) to a Monday.com item",
+    description: "Add an update (comment) to a Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to add the update to"),
       body: z.string().describe("The content of the update/comment"),
@@ -276,7 +276,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_board: {
-    description: "Creates a new board in Monday.com",
+    description: "Create a new board in Monday.com",
     schema: {
       boardName: z.string().describe("The name of the new board"),
       boardKind: z
@@ -299,7 +299,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_column: {
-    description: "Creates a new column in a Monday.com board",
+    description: "Create a new column in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID to create the column in"),
       title: z.string().describe("The title of the new column"),
@@ -318,7 +318,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_group: {
-    description: "Creates a new group in a Monday.com board",
+    description: "Create a new group in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID to create the group in"),
       groupName: z.string().describe("The name of the new group"),
@@ -334,7 +334,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_subitem: {
-    description: "Creates a new subitem for a Monday.com item",
+    description: "Create a new subitem for a Monday.com item",
     schema: {
       parentItemId: z.string().describe("The parent item ID"),
       itemName: z.string().describe("The name of the new subitem"),
@@ -350,7 +350,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   update_subitem: {
-    description: "Updates column values of a Monday.com subitem",
+    description: "Update column values of a Monday.com subitem",
     schema: {
       subitemId: z.string().describe("The subitem ID to update"),
       columnValues: z
@@ -364,7 +364,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   duplicate_group: {
-    description: "Duplicates a group in a Monday.com board",
+    description: "Duplicate a group in a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID containing the group"),
       groupId: z.string().describe("The group ID to duplicate"),
@@ -384,7 +384,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   upload_file_to_column: {
-    description: "Uploads a file to a Monday.com column",
+    description: "Upload a file to a Monday.com column",
     schema: {
       itemId: z.string().describe("The item ID to upload the file to"),
       columnId: z.string().describe("The column ID to upload the file to"),
@@ -397,7 +397,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   delete_item: {
-    description: "Deletes a Monday.com item",
+    description: "Delete a Monday.com item",
     schema: {
       itemId: z.string().describe("The item ID to delete"),
     },
@@ -408,7 +408,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
     },
   },
   delete_group: {
-    description: "Deletes a group from a Monday.com board",
+    description: "Delete a group from a Monday.com board",
     schema: {
       boardId: z.string().describe("The board ID containing the group"),
       groupId: z.string().describe("The group ID to delete"),
@@ -421,7 +421,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   move_item_to_board: {
     description:
-      "Moves an item from one board to another. Useful for converting leads to opportunities in CRM workflows.",
+      "Move an item from one board to another. Useful for converting leads to opportunities in CRM workflows.",
     schema: {
       itemId: z.string().describe("The item ID to move"),
       targetBoardId: z
@@ -450,7 +450,7 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
   },
   create_multiple_items: {
     description:
-      "Creates multiple items in one or more boards in a single operation. Useful for bulk importing leads or opportunities.",
+      "Create multiple items in one or more boards in a single operation. Useful for bulk importing leads or opportunities.",
     schema: {
       items: z
         .array(

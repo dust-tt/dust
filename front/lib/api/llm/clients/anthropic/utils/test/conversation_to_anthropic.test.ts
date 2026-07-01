@@ -3,6 +3,7 @@ import { conversationMessages } from "@app/lib/api/llm/clients/anthropic/utils/t
 import { reasoningConversationMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/conversation_messages/reasoning";
 import { inputMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_input";
 import { reasoningInputMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_input/reasoning";
+import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import { describe, expect, it, vi } from "vitest";
 
@@ -209,6 +210,107 @@ describe("toMessage", () => {
           },
         ],
       });
+    });
+  });
+
+  describe("provider passthrough (tool search blocks)", () => {
+    const serverToolUseBlock = {
+      type: "server_tool_use",
+      id: "srvtoolu_1",
+      name: "tool_search_tool_bm25",
+      input: { query: "create github issue" },
+    };
+    const toolSearchResultBlock = {
+      type: "tool_search_tool_result",
+      tool_use_id: "srvtoolu_1",
+      content: {
+        type: "tool_search_tool_search_result",
+        tool_references: [
+          { type: "tool_reference", tool_name: "github__create_issue" },
+        ],
+      },
+    };
+
+    const assistantMessage: ModelMessageTypeMultiActionsWithoutContentFragment =
+      {
+        role: "assistant",
+        name: "agent",
+        contents: [
+          { type: "text_content", value: "Let me find a tool." },
+          {
+            type: "provider_passthrough",
+            value: { provider: "anthropic", block: serverToolUseBlock },
+          },
+          {
+            type: "provider_passthrough",
+            value: { provider: "anthropic", block: toolSearchResultBlock },
+          },
+          {
+            type: "function_call",
+            value: {
+              id: "toolu_1",
+              name: "github__create_issue",
+              arguments: "{}",
+            },
+          },
+        ],
+      };
+
+    it("replays anthropic passthrough blocks verbatim, in order", async () => {
+      const result = await toMessage(assistantMessage, {
+        isFirst: false,
+        omittedThinking: false,
+      });
+
+      expect(result.content).toEqual([
+        { type: "text", text: "Let me find a tool." },
+        serverToolUseBlock,
+        toolSearchResultBlock,
+        {
+          type: "tool_use",
+          id: "toolu_1",
+          name: "github__create_issue",
+          input: {},
+        },
+      ]);
+    });
+
+    it("skips passthrough blocks tagged for another provider", async () => {
+      const result = await toMessage(
+        {
+          role: "assistant",
+          name: "agent",
+          contents: [
+            { type: "text_content", value: "hello" },
+            {
+              type: "provider_passthrough",
+              value: { provider: "openai", block: serverToolUseBlock },
+            },
+          ],
+        },
+        { isFirst: false, omittedThinking: false }
+      );
+
+      expect(result.content).toEqual([{ type: "text", text: "hello" }]);
+    });
+
+    it("drops passthrough blocks when thinking is omitted", async () => {
+      // With thinking omitted there are no signatures to protect, so the server
+      // blocks must not be sent orphaned from their thinking.
+      const result = await toMessage(assistantMessage, {
+        isFirst: false,
+        omittedThinking: true,
+      });
+
+      expect(result.content).toEqual([
+        { type: "text", text: "Let me find a tool." },
+        {
+          type: "tool_use",
+          id: "toolu_1",
+          name: "github__create_issue",
+          input: {},
+        },
+      ]);
     });
   });
 });

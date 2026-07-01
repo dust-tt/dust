@@ -14,7 +14,7 @@ import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations"
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
-import { usePodMetadata } from "@app/lib/swr/pods";
+import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type {
@@ -120,6 +120,11 @@ export function PodConversationsTab({
     hasPodDefaultAgentFeature: hasFeature("pod_default_agent"),
   });
 
+  const { defaultSkills, isDefaultSkillsLoading } = usePodDefaultSkills({
+    owner,
+    podId: podInfo.sId,
+  });
+
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
 
   const noConversationsForFilterMessage = useMemo(() => {
@@ -193,9 +198,8 @@ export function PodConversationsTab({
             <div className="flex items-center gap-2">
               <h2
                 className={cn(
-                  "heading-2xl text-foreground dark:text-foreground-night",
-                  podInfo.archivedAt &&
-                    "text-muted-foreground dark:text-muted-foreground-night"
+                  "heading-2xl text-foreground",
+                  podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
                 {greeting}
@@ -222,6 +226,8 @@ export function PodConversationsTab({
                 placeholder={`Get work done in ${podInfo.name}`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
+                defaultSkills={defaultSkills}
+                isDefaultSkillsLoading={isDefaultSkillsLoading}
               />
             ) : (
               <PodJoinCTA
@@ -279,18 +285,18 @@ export function PodConversationsTab({
                         return (
                           <div
                             className={cn(
-                              "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
-                              selected && "bg-gray-100 dark:bg-gray-700"
+                              "cursor-pointer px-3 py-2 hover:bg-primary-50",
+                              selected && "bg-primary-100"
                             )}
                             onClick={() => navigateToConversation(conversation)}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1 truncate">
-                                <div className="text-sm font-medium text-foreground dark:text-foreground-night">
+                                <div className="text-sm font-medium text-foreground">
                                   {conversationLabel}
                                 </div>
                               </div>
-                              <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                              <div className="shrink-0 text-xs text-muted-foreground">
                                 {time}
                               </div>
                             </div>

@@ -1183,6 +1183,64 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
+  static async listGroupNamesByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+    groupKinds = ["regular", "provisioned"],
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+    groupKinds?: Exclude<GroupKind, "system">[];
+  }): Promise<Map<ModelId, string[]>> {
+    const result = new Map<ModelId, string[]>();
+    if (userModelIds.length === 0) {
+      return result;
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+    if (memberships.length === 0) {
+      return result;
+    }
+
+    const groupModelIds = [...new Set(memberships.map((m) => m.groupId))];
+    const groups = await GroupModel.findAll({
+      where: {
+        id: groupModelIds,
+        workspaceId: workspace.id,
+        kind: groupKinds,
+      },
+    });
+    const nameByGroupId = new Map(groups.map((g) => [g.id, g.name]));
+
+    for (const m of memberships) {
+      const name = nameByGroupId.get(m.groupId);
+      if (!name) {
+        continue;
+      }
+      const existing = result.get(m.userId);
+      if (existing) {
+        existing.push(name);
+      } else {
+        result.set(m.userId, [name]);
+      }
+    }
+
+    for (const names of result.values()) {
+      names.sort((a, b) => a.localeCompare(b));
+    }
+
+    return result;
+  }
+
   static async getMemberCountsForGroups(
     auth: Authenticator,
     groups: GroupResource[]

@@ -65,13 +65,11 @@ export function PlanCard({
   // The "free" seat maps to the muted bar track, which matches the card
   // background (invisible in dark mode), so use a contrasting neutral instead.
   const iconBackgroundClass =
-    seatType === "free"
-      ? "bg-muted dark:bg-muted-night"
-      : getSeatBarClasses(seatType).track;
+    seatType === "free" ? "bg-muted" : getSeatBarClasses(seatType).track;
   const iconColorClass = getSeatIconColorClass(seatType);
 
   return (
-    <div className="flex w-full flex-col rounded-2xl border border-border bg-background p-6 dark:border-border-night dark:bg-muted-background-night">
+    <div className="flex w-full flex-col rounded-2xl border border-border bg-background p-6">
       <div className="flex items-center gap-2">
         <div
           className={cn(
@@ -81,22 +79,16 @@ export function PlanCard({
         >
           <Icon visual={icon} size="sm" className={iconColorClass} />
         </div>
-        <span className="text-lg font-semibold text-foreground dark:text-foreground-night">
-          {name}
-        </span>
+        <span className="text-lg font-semibold text-foreground">{name}</span>
       </div>
 
       <div className="mt-6 flex items-baseline gap-2">
-        <span className="text-4xl font-bold text-foreground dark:text-foreground-night">
-          {credits}
-        </span>
-        <span className="whitespace-nowrap text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-4xl font-bold text-foreground">{credits}</span>
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
           {creditsLabel}
         </span>
       </div>
-      <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {priceLabel}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{priceLabel}</p>
 
       <ul className="mt-6 flex flex-col gap-3">
         {features.map((feature) => (
@@ -106,9 +98,7 @@ export function PlanCard({
               size="sm"
               className="mt-0.5 text-primary-500"
             />
-            <span className="text-sm text-foreground dark:text-foreground-night">
-              {feature}
-            </span>
+            <span className="text-sm text-foreground">{feature}</span>
           </li>
         ))}
       </ul>
@@ -116,7 +106,7 @@ export function PlanCard({
       <div className="mt-auto flex flex-col items-center gap-2 pt-12">
         {action}
         {footnote && (
-          <p className="text-center text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-center text-xs text-muted-foreground">
             {footnote}
           </p>
         )}
@@ -131,11 +121,25 @@ interface BillingPeriodSwitchProps {
   size?: React.ComponentProps<typeof ButtonsSwitchList>["size"];
 }
 
+const CHIP_SIZE_FOR_SWITCH: Record<
+  "xs" | "sm" | "md",
+  React.ComponentProps<typeof Chip>["size"]
+> = {
+  xs: "mini",
+  sm: "xs",
+  md: "sm",
+};
+
 export function BillingPeriodSwitch({
   defaultValue = "monthly",
   onValueChange,
   size,
 }: BillingPeriodSwitchProps) {
+  const chipSize =
+    size && size in CHIP_SIZE_FOR_SWITCH
+      ? CHIP_SIZE_FOR_SWITCH[size as keyof typeof CHIP_SIZE_FOR_SWITCH]
+      : "xs";
+
   return (
     <ButtonsSwitchList
       defaultValue={defaultValue}
@@ -149,7 +153,7 @@ export function BillingPeriodSwitch({
         value="yearly"
         label="Yearly"
         className="flex-row-reverse"
-        icon={<Chip size="xs" color="blue" label="Save 20%" />}
+        icon={<Chip size={chipSize} color="blue" label="Save 20%" />}
       />
     </ButtonsSwitchList>
   );

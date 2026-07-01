@@ -37,10 +37,7 @@ export function MessageEmojiPicker({
           size="xmini"
           icon={FaceSmile}
           isSelect
-          className={cn(
-            "text-muted-foreground dark:text-muted-foreground-night",
-            className
-          )}
+          className={cn("text-muted-foreground", className)}
         />
       </PopoverTrigger>
       <PopoverContent fullWidth>

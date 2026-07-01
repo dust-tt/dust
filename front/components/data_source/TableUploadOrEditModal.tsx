@@ -433,7 +433,7 @@ export const TableUploadOrEditModal = ({
                           <AlertCircle />
                           Warning: Large file (5MB+)
                         </div>
-                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="text-sm font-normal text-muted-foreground">
                           This file is large and may take a while to upload.
                         </div>
                       </div>

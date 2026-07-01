@@ -143,11 +143,16 @@ struct ConversationsResponse: Decodable {
 
 extension Notification.Name {
     static let conversationTitleDidChange = Notification.Name("ConversationTitleDidChange")
+    static let conversationDidMarkRead = Notification.Name("ConversationDidMarkRead")
 }
 
 enum ConversationTitleNotification {
     static let conversationIdKey = "conversationId"
     static let titleKey = "title"
+}
+
+enum ConversationReadNotification {
+    static let conversationIdKey = "conversationId"
 }
 
 extension [Conversation] {
@@ -173,6 +178,32 @@ final class ConversationTitleObserver {
 
             Task { @MainActor in
                 onTitleChange(conversationId, title)
+            }
+        }
+    }
+
+    deinit {
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+}
+
+final class ConversationReadObserver {
+    private var observer: NSObjectProtocol?
+
+    init(onMarkRead: @escaping @MainActor (_ conversationId: String) -> Void) {
+        self.observer = NotificationCenter.default.addObserver(
+            forName: .conversationDidMarkRead,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let conversationId = notification
+                .userInfo?[ConversationReadNotification.conversationIdKey] as? String
+            else { return }
+
+            Task { @MainActor in
+                onMarkRead(conversationId)
             }
         }
     }

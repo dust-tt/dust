@@ -13,6 +13,7 @@ import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import {
@@ -190,6 +191,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/claude_avatar_full.png",
       };
+    case GLOBAL_AGENTS_SID.CLAUDE_5_SONNET:
+      return {
+        sId: GLOBAL_AGENTS_SID.CLAUDE_5_SONNET,
+        name: "claude-sonnet",
+        description: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.description,
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+      };
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
       return {
         sId: GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
@@ -320,6 +329,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
         name: "dust-oai-high",
         description: "Same as dust-oai but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH,
+        name: "dust-oai-nano-high",
+        description:
+          "Same as dust but running GPT-5.4 Nano with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_NEXT:
@@ -502,6 +519,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-goog but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_GOOG_LITE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG_LITE,
+        name: "dust-goog-lite",
+        description: "Same as dust but running Gemini 3.1 Flash Lite.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
@@ -558,6 +582,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         name: "dust-ant-high-omitted",
         description:
           "Same as dust-ant-high but with omitted reasoning summaries.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_HAIKU:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_HAIKU,
+        name: "dust-haiku",
+        description: "Same as dust but running Claude 4.5 Haiku.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_KIMI:

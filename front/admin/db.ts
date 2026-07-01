@@ -121,10 +121,13 @@ import {
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import {
-  ConversationSandboxModel,
   SandboxModel,
+  SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -171,6 +174,7 @@ export function loadAllModels() {
     KeyModel,
     FileModel,
     SandboxFunctionModel,
+    SandboxFunctionInvocationModel,
     ShareableFileModel,
     AuthorizedFileAccessModel,
     SharingGrantModel,
@@ -257,7 +261,7 @@ export function loadAllModels() {
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
     SandboxModel,
-    ConversationSandboxModel,
+    SandboxOwnerModel,
     ConversationBranchModel,
     ConversationForkModel,
     ProjectTaskModel,

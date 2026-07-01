@@ -80,7 +80,7 @@ export const SLAB_TOOLS_METADATA = createToolsRecord({
   },
   get_topics: {
     description:
-      "Retrieve all topics for navigation and organization understanding.",
+      "Retrieve all Slab topics for navigation and organization understanding.",
     schema: {},
     stake: "never_ask",
     displayLabels: {

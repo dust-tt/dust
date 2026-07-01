@@ -215,9 +215,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
     const versionParam = ctx.req.query("version");
+    // Default to the frame's renderable version (a published frame serves its built bundle);
+    // non-frame files and unpublished frames resolve to "original". An explicit ?version wins.
     const version = isValidViewVersion(versionParam)
       ? versionParam
-      : "original";
+      : file.getRenderableVersion();
 
     const readStream = file.getReadStream({ auth, version });
     return new Response(readableToReadableStream(readStream), {

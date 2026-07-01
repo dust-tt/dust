@@ -72,6 +72,31 @@ export function getPodFilesBasePath({
 }
 
 /**
+ * Dedicated prefix for published sandbox function bundles, separate from the R/W pod files prefix.
+ * `front` is the sole writer here, via the GCS API. The invocation path later mounts this prefix
+ * read-only into sandboxes as DUST_FUNCTIONS_DIR, so a function can be executed but never
+ * overwritten by a sandbox.
+ */
+export function getPodSandboxFunctionsBasePath({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/sandbox-functions/`;
+}
+
+/**
+ * Absolute in-sandbox path the pod's published bundles are mounted at. Pod-scoped like the
+ * `/files/pod-<id>` files mount, so one sandbox could carry several pods' functions without
+ * collision.
+ */
+export function getPodSandboxFunctionsMountPoint(podId: string): string {
+  return `/sandbox-functions/pods/${podId}`;
+}
+
+/**
  * Given a mount file path like "w/.../files/report.pdf",
  * returns "w/.../files/report.processed.pdf".
  * For files without extension: "w/.../files/Makefile" -> "w/.../files/Makefile.processed".

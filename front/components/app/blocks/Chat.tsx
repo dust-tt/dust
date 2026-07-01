@@ -419,8 +419,8 @@ export default function Chat({
                           className={classNames(
                             "rounded-lg",
                             isResponseFormatJsonValid
-                              ? "bg-muted-background dark:bg-muted-background-night"
-                              : "border-2 border-red-500 bg-muted-background dark:bg-muted-background-night"
+                              ? "bg-muted-background"
+                              : "border-2 border-red-500 bg-muted-background"
                           )}
                           style={{
                             fontSize: 13,
@@ -452,7 +452,7 @@ export default function Chat({
                 onChange={(e) => handleInstructionsChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                className="rounded-lg bg-muted-background"
                 style={{
                   fontSize: 13,
                   fontFamily:
@@ -476,7 +476,7 @@ export default function Chat({
                 onChange={(e) => handleMessagesCodeChange(e.target.value)}
                 padding={15}
                 minHeight={80}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                className="rounded-lg bg-muted-background"
                 style={{
                   fontSize: 12,
                   fontFamily:
@@ -504,7 +504,7 @@ export default function Chat({
                       }
                       padding={15}
                       minHeight={80}
-                      className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                      className="rounded-lg bg-muted-background"
                       style={{
                         fontSize: 12,
                         fontFamily:

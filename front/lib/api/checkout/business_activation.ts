@@ -213,7 +213,7 @@ export async function createPaymentGatedBusinessActivation({
     if (!found) {
       return new Err({ type: "invalid_coupon" });
     }
-    const validation = found.validateRedemption();
+    const validation = found.validateRedemptionForContext("subscription");
     if (validation.isErr()) {
       return new Err({ type: "invalid_coupon" });
     }

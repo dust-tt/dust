@@ -9,8 +9,6 @@ describe("sandboxSkill", () => {
   it("includes dsbx tools instructions and manifest entry when sandbox is enabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
-
     const instructions = await sandboxSkill.fetchInstructions(auth, {
       spaceIds: [],
     });
@@ -22,7 +20,6 @@ describe("sandboxSkill", () => {
   it("hides dsbx tools instructions and manifest entry when computer is disabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
     const instructions = await sandboxSkill.fetchInstructions(auth, {
@@ -36,8 +33,6 @@ describe("sandboxSkill", () => {
   it("instructs the model to analyze mounted tabular files with code", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
-
     const instructions = await sandboxSkill.fetchInstructions(auth, {
       spaceIds: [],
     });
@@ -49,8 +44,6 @@ describe("sandboxSkill", () => {
 
   it("documents DSEC HTTPS secret handling and trust-store footguns", async () => {
     const { authenticator: auth } = await createResourceTest({});
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const instructions = await sandboxSkill.fetchInstructions(auth, {
       spaceIds: [],
@@ -73,8 +66,6 @@ describe("sandboxSkill", () => {
   it("points at `dsbx env` for env-var discovery", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
-
     const instructions = await sandboxSkill.fetchInstructions(auth, {
       spaceIds: [],
     });
@@ -89,8 +80,6 @@ describe("sandboxSkill", () => {
       workspace,
       user,
     } = await createResourceTest({});
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const restrictedInstructions = await sandboxSkill.fetchInstructions(auth, {
       spaceIds: [],

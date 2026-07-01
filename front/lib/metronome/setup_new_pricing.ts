@@ -596,6 +596,7 @@ export function getNewPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
       // Enterprise contracts are yearly-only: only the annual seats are entitled.
+      // The free starter seat is entitled by default.
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_USD_ID, [
         {
           product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
@@ -605,6 +606,7 @@ export function getNewPackages(): PackageDef[] {
           product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           price: (CP_ENTERPRISE_BASIS + CP_MAX_SEAT_COST_YEARLY) * 12 * 100,
         },
+        { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
       ...BILLING_CYCLE_CONFIG,
     },
@@ -616,6 +618,7 @@ export function getNewPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
       // Enterprise contracts are yearly-only: only the annual seats are entitled.
+      // The free starter seat is entitled by default.
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
         {
           product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
@@ -625,6 +628,7 @@ export function getNewPackages(): PackageDef[] {
           product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
           price: (CP_ENTERPRISE_BASIS + CP_MAX_SEAT_COST_YEARLY) * 12,
         },
+        { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
       ]),
       ...BILLING_CYCLE_CONFIG,
     },

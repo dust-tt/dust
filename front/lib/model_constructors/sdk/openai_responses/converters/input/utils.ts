@@ -112,7 +112,8 @@ export function assistantReasoningMessageToInputItems(
 ): ResponseInputItem[] {
   // The Responses API keys a replayed reasoning item by its original id, which
   // we carry in `signature`; drop unsigned items (mirrors dropping unsigned
-  // Anthropic thinking blocks).
+  // Anthropic thinking blocks). The region guard for `encryptedContent` lives in
+  // the transition layer, where region config is available.
   if (!message.signature) {
     return [];
   }
@@ -123,6 +124,9 @@ export function assistantReasoningMessageToInputItems(
       summary: message.content.value
         ? [{ type: "summary_text", text: message.content.value }]
         : [],
+      ...(message.encryptedContent
+        ? { encrypted_content: message.encryptedContent }
+        : {}),
     },
   ];
 }
@@ -167,6 +171,9 @@ export function assistantMessageToInputItems(
       return converters.assistantReasoningMessageToInputItems(message);
     case "tool_call_request":
       return [converters.assistantToolCallRequestToInputItem(message)];
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Skip.
+      return [];
     default:
       assertNever(message);
   }

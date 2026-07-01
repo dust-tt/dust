@@ -23,8 +23,10 @@ import {
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,
+  ErrorType,
   ModelResponseEvent,
   NonDeltaResponseEvent,
+  ProviderPassthroughEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
   ResponseIdEvent,
@@ -40,6 +42,7 @@ import {
   assertNever,
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
@@ -98,6 +101,38 @@ export function getInvalidToolJsonMessage(err: unknown): string | null {
   return null;
 }
 
+// The SDK surfaces a malformed tool-call JSON as a raw `JSON.parse` SyntaxError,
+// either bare or as the `cause` of an AnthropicError. `partialParse` tolerates
+// truncation and only throws on genuinely malformed input, so this is always bad
+// model output, never a transport cut.
+function isBareToolJsonParseError(err: unknown): boolean {
+  if (err instanceof SyntaxError) {
+    return true;
+  }
+  return (
+    err instanceof AnthropicError &&
+    "cause" in err &&
+    err.cause instanceof SyntaxError
+  );
+}
+
+// The raw malformed tool JSON when a stream aborted on a tool-call parse
+// failure, or null if unrelated. When the SDK embeds it in the error message
+// (after `JSON: `) we use that; otherwise we recover from the buffer accumulated
+// so far, which is enough for the agent loop to re-sample.
+function invalidToolJsonFromStreamError(
+  err: unknown,
+  accumulator: string
+): string | null {
+  const wrapped = getInvalidToolJsonMessage(err);
+  if (wrapped !== null) {
+    return wrapped.slice(
+      wrapped.lastIndexOf(INVALID_JSON_MARKER) + INVALID_JSON_MARKER.length
+    );
+  }
+  return isBareToolJsonParseError(err) ? accumulator : null;
+}
+
 // Cursor for the content block being streamed; deltas accumulate here until
 // `content_block_stop` flushes it as an event.
 export type BlockState =
@@ -122,6 +157,8 @@ export type BlockState =
       accumulator: string;
       type: "tool_search";
       toolName: string;
+      // The server_tool_use block id, needed to replay the block verbatim.
+      toolId: string;
     };
 
 // The per-signal leaf converters. Composites below take an object satisfying
@@ -170,6 +207,10 @@ export interface OutputEventConverters {
     name: string,
     invalidJson: string
   ): ToolCallEvent;
+  serverToolBlockToProviderPassthroughEvent(
+    metadata: EndpointMetadata,
+    block: unknown
+  ): ProviderPassthroughEvent;
   messageDeltaUsageToTokenUsageEvent(
     metadata: EndpointMetadata,
     usage: MessageDeltaUsage,
@@ -282,6 +323,17 @@ export function invalidJsonToolCallToToolCallEvent(
   };
 }
 
+export function serverToolBlockToProviderPassthroughEvent(
+  metadata: EndpointMetadata,
+  block: unknown
+): ProviderPassthroughEvent {
+  return {
+    type: "provider_passthrough",
+    content: { provider: metadata.providerId, block },
+    metadata,
+  };
+}
+
 export function messageDeltaUsageToTokenUsageEvent(
   metadata: EndpointMetadata,
   usage: MessageDeltaUsage,
@@ -383,7 +435,9 @@ function apiErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: APIError
 ): ErrorEvent {
-  const status = error.status;
+  // Mid-stream SSE `error` events surface as an `APIError` with no HTTP status;
+  // the old router defaulted those to 500, so mirror that here.
+  const status = error.status ?? 500;
   switch (status) {
     case 400:
     case 422:
@@ -475,15 +529,127 @@ export function streamErrorToErrorEvent(
     case "api":
       return apiErrorToErrorEvent(metadata, classified.error);
     case "unknown":
-      return buildErrorEvent({
-        metadata,
-        type: "unknown_error",
-        message: `Unknown error from Anthropic`,
-        originalError: error,
-      });
+      return bareStreamErrorToErrorEvent(metadata, error);
     default:
       assertNever(classified);
   }
+}
+
+// Errors that are neither an `APIError` nor an `APIConnectionError` reach here —
+// most commonly a mid-stream connection drop the SDK rewraps as a bare
+// `AnthropicError`. The old router classified these by substring-matching the
+// message (its `categorizeLLMError`), which kept transient failures retryable
+// instead of collapsing them into a terminal unknown_error. We replicate that
+// here verbatim for migration parity (see CODING_RULES GEN1); revisit once the
+// old router is fully retired. The new `ErrorType` union has no
+// `terminated_error`/`context_length_exceeded`, so those map to the closest
+// retryability-equivalent type (network_error / invalid_request_error).
+function bareStreamErrorToErrorEvent(
+  metadata: EndpointMetadata,
+  error: unknown
+): ErrorEvent {
+  const message = normalizeError(error).message;
+  const lower = message.toLowerCase();
+
+  const build = (type: ErrorType, text: string): ErrorEvent =>
+    buildErrorEvent({ metadata, type, message: text, originalError: error });
+
+  if (lower.includes("terminated") || lower.includes("other side closed")) {
+    return build(
+      "network_error",
+      `Connection to Anthropic terminated: ${message}`
+    );
+  }
+  if (
+    lower.includes("rate limit") ||
+    lower.includes("quota exceeded") ||
+    lower.includes("too many requests")
+  ) {
+    return build(
+      "rate_limit_error",
+      `Rate limit exceeded for Anthropic/${metadata.modelId}: ${message}`
+    );
+  }
+  if (
+    lower.includes("overloaded") ||
+    lower.includes("capacity") ||
+    lower.includes("service unavailable")
+  ) {
+    return build("overloaded_error", `Anthropic is overloaded: ${message}`);
+  }
+  if (
+    lower.includes("context") ||
+    lower.includes("token limit") ||
+    lower.includes("context window") ||
+    lower.includes("too large")
+  ) {
+    return build(
+      "invalid_request_error",
+      `Context length exceeded for Anthropic/${metadata.modelId}: ${message}`
+    );
+  }
+  if (
+    lower.includes("unauthorized") ||
+    lower.includes("authentication") ||
+    lower.includes("api key")
+  ) {
+    return build(
+      "authentication_error",
+      `Authentication failed for Anthropic: ${message}`
+    );
+  }
+  if (lower.includes("forbidden") || lower.includes("permission")) {
+    return build(
+      "permission_error",
+      `Permission denied for Anthropic: ${message}`
+    );
+  }
+  if (lower.includes("not found")) {
+    return build(
+      "not_found_error",
+      `Resource not found for Anthropic: ${message}`
+    );
+  }
+  if (
+    lower.includes("invalid request") ||
+    lower.includes("bad request") ||
+    lower.includes("validation error")
+  ) {
+    return build(
+      "invalid_request_error",
+      `Invalid request to Anthropic: ${message}`
+    );
+  }
+  if (
+    lower.includes("network") ||
+    lower.includes("connection") ||
+    lower.includes("econnrefused") ||
+    lower.includes("enotfound") ||
+    lower.includes("etimedout")
+  ) {
+    return build(
+      "network_error",
+      `Network error connecting to Anthropic: ${message}`
+    );
+  }
+  if (lower.includes("timeout") || lower.includes("timed out")) {
+    return build("timeout_error", `Request to Anthropic timed out: ${message}`);
+  }
+  if (
+    lower.includes("stream") ||
+    lower.includes("streaming") ||
+    lower.includes("interrupted")
+  ) {
+    return build("stream_error", `Stream error from Anthropic: ${message}`);
+  }
+  if (
+    lower.includes("internal server error") ||
+    lower.includes("server error")
+  ) {
+    return build("server_error", `Server error from Anthropic: ${message}`);
+  }
+
+  return build("unknown_error", `Unknown error from Anthropic: ${message}`);
 }
 
 // -- Composite state machine: depends on the leaf converters --
@@ -522,8 +688,8 @@ export function contentBlockStartToEvents(
       ];
 
     case "server_tool_use":
-      // The only server tool we enable is tool search. Track its state so the
-      // query deltas accumulate, then log the query at content_block_stop.
+      // The only server tool we enable is tool search. Accumulate the query
+      // deltas, then emit the block as passthrough at content_block_stop.
       return [
         [],
         {
@@ -531,17 +697,27 @@ export function contentBlockStartToEvents(
           accumulator: "",
           type: "tool_search",
           toolName: block.name,
+          toolId: block.id,
         },
       ];
 
     case "tool_search_tool_result":
-      // The discovered tool references arrive inline here (no deltas), so log
-      // them now. State stays null and the matching stop is a no-op.
+      // Discovered references arrive inline (no deltas). Emit a passthrough for
+      // verbatim replay and log them. State stays null, so the stop is a no-op.
       logToolSearchResult({
         content: block.content,
         logFields: toolSearchLogFields(metadata),
       });
-      return [[], null];
+      return [
+        [
+          converters.serverToolBlockToProviderPassthroughEvent(metadata, {
+            type: "tool_search_tool_result",
+            tool_use_id: block.tool_use_id,
+            content: block.content,
+          }),
+        ],
+        null,
+      ];
 
     // Block types we don't surface: redacted thinking, other server tools, and
     // their result / container blocks. Listed explicitly so the default stays
@@ -678,7 +854,7 @@ export function contentBlockStopToEvents(
       ];
     }
 
-    case "tool_search":
+    case "tool_search": {
       logToolSearchQuery({
         rawInput: block.accumulator,
         toolName: block.toolName,
@@ -689,7 +865,22 @@ export function contentBlockStopToEvents(
         ],
         logFields: toolSearchLogFields(metadata),
       });
-      return [[], null];
+      // Replay the server_tool_use block verbatim so interleaved thinking
+      // signatures stay valid, falling back to an empty input if the query
+      // failed to parse.
+      const parsedInput = safeParseJSON(block.accumulator);
+      return [
+        [
+          converters.serverToolBlockToProviderPassthroughEvent(metadata, {
+            type: "server_tool_use",
+            id: block.toolId,
+            name: block.toolName,
+            input: parsedInput.isOk() ? parsedInput.value : {},
+          }),
+        ],
+        null,
+      ];
+    }
 
     default:
       assertNever(block);
@@ -742,29 +933,27 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
-      // On invalid tool JSON aborting the stream, if a tool_use block is in
-      // progress, recover by emitting a tool_call wrapping the invalid JSON so
-      // the agent loop can send it back and let the model self-correct.
-      const invalidJsonMessage = getInvalidToolJsonMessage(err);
-      if (
-        invalidJsonMessage !== null &&
-        blockState !== null &&
-        blockState.type === "tool_use"
-      ) {
-        const invalidJson = invalidJsonMessage.slice(
-          invalidJsonMessage.lastIndexOf(INVALID_JSON_MARKER) +
-            INVALID_JSON_MARKER.length
+      // Invalid tool-call JSON aborts the stream while the tool_use block is
+      // still open. Recover by emitting a tool_call wrapping the raw JSON so the
+      // agent loop can hand it back and let the model self-correct, instead of
+      // surfacing a terminal error.
+      if (blockState !== null && blockState.type === "tool_use") {
+        const invalidJson = invalidToolJsonFromStreamError(
+          err,
+          blockState.accumulator
         );
-        const ev = converters.invalidJsonToolCallToToolCallEvent(
-          metadata,
-          blockState.toolId,
-          blockState.toolName,
-          invalidJson
-        );
-        aggregated.push(ev);
-        yield ev;
-        blockState = null;
-        break;
+        if (invalidJson !== null) {
+          const ev = converters.invalidJsonToolCallToToolCallEvent(
+            metadata,
+            blockState.toolId,
+            blockState.toolName,
+            invalidJson
+          );
+          aggregated.push(ev);
+          yield ev;
+          blockState = null;
+          break;
+        }
       }
       // Everything leaving the endpoint is an event: map any other SDK error to
       // a unified error event and terminate the stream rather than throwing.
@@ -925,17 +1114,23 @@ export function messageToEvents(
         events.push(event);
         break;
       }
-      // Block types we don't surface: redacted thinking, server tools, and
-      // their result / container blocks. Listed explicitly so the default
-      // stays exhaustive.
-      case "redacted_thinking":
       case "server_tool_use":
+      case "tool_search_tool_result":
+        // Replay tool-search blocks verbatim so interleaved thinking signatures
+        // stay valid.
+        events.push(
+          converters.serverToolBlockToProviderPassthroughEvent(metadata, block)
+        );
+        break;
+      // Block types we don't surface: redacted thinking, other server tools, and
+      // their result / container blocks. Listed explicitly so the default stays
+      // exhaustive.
+      case "redacted_thinking":
       case "web_search_tool_result":
       case "web_fetch_tool_result":
       case "code_execution_tool_result":
       case "bash_code_execution_tool_result":
       case "text_editor_code_execution_tool_result":
-      case "tool_search_tool_result":
       case "container_upload":
         break;
       default:

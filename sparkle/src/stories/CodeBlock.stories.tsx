@@ -56,7 +56,7 @@ const meta: Meta<typeof CodeBlock> = {
   },
   decorators: [
     (Story) => (
-      <div className="s-bg-background s-p-4 dark:s-bg-background-night">
+      <div className="bg-background p-4">
         <Story />
       </div>
     ),
@@ -158,8 +158,8 @@ export default Counter;`,
 export const CSSBlock: Story = {
   args: {
     children: `.code-block {
-  background-color: var(--s-muted);
-  border: 1px solid var(--s-border);
+  background-color: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 1rem;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
@@ -183,8 +183,8 @@ export const CSSBlock: Story = {
 
 @media (prefers-color-scheme: dark) {
   .code-block {
-    background-color: var(--s-muted-night);
-    border-color: var(--s-border-night);
+    background-color: var(--color-gray-950);
+    border-color: var(--color-gray-800);
   }
 }`,
     className: "language-css",

@@ -81,6 +81,9 @@ function toAssistantMessages(
       case "error":
         assistantContent.push(content.value.message);
         break;
+      case "provider_passthrough":
+        // Opaque block owned by another provider. Skip.
+        break;
       default:
         assertNever(content);
     }

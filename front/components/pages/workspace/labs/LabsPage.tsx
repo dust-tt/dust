@@ -12,14 +12,7 @@ import {
 } from "@app/lib/auth/AuthContext";
 import type { LabsFeatureItemType } from "@app/types/labs";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import {
-  Beaker02,
-  CodeSquare01,
-  ContextItem,
-  Eye,
-  Icon,
-  Page,
-} from "@dust-tt/sparkle";
+import { Beaker02, ContextItem, Eye, Icon, Page } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 const LABS_FEATURES: LabsFeatureItemType[] = [
@@ -31,16 +24,6 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: Eye,
     description:
       "Receive meeting minutes processed by email automatically and store them in a Dust Folder.",
-  },
-  {
-    id: "mcp_actions",
-    label: "MCP Actions Dashboard",
-    featureFlag: "labs_mcp_actions_dashboard",
-    visibleWithoutAccess: false,
-    icon: CodeSquare01,
-    description:
-      "Monitor and track MCP (Model Context Protocol) actions executed by your agents.",
-    onlyAdminCanManage: true,
   },
 ];
 

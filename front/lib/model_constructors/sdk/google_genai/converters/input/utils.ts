@@ -17,7 +17,7 @@ import type {
 } from "@app/lib/model_constructors/types/input/messages";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isRecord } from "@app/types/shared/utils/general";
+import { isRecord, removeNulls } from "@app/types/shared/utils/general";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type {
@@ -207,7 +207,7 @@ async function userMessageToContent(
 function assistantMessageToContent(
   message: BaseAssistantMessage,
   converters: ContentBlockConverters
-): Content {
+): Content | null {
   switch (message.type) {
     case "text":
       return {
@@ -224,6 +224,9 @@ function assistantMessageToContent(
         role: "model",
         parts: [converters.assistantToolCallRequestToPart(message)],
       };
+    case "provider_passthrough":
+      // Opaque block owned by another provider. Dropped at the loop, not sent.
+      return null;
     default:
       assertNever(message);
   }
@@ -235,21 +238,23 @@ export async function conversationToContents(
 ): Promise<Content[]> {
   // User messages may fan out to external image fetches, so convert with
   // bounded concurrency instead of an unbounded `Promise.all` ([BACK7]).
-  const contents = await concurrentExecutor(
-    conversation.messages,
-    (message) => {
-      switch (message.role) {
-        case "user":
-          return userMessageToContent(message, converters);
-        case "assistant":
-          return Promise.resolve(
-            assistantMessageToContent(message, converters)
-          );
-        default:
-          assertNever(message);
-      }
-    },
-    { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
+  const contents = removeNulls(
+    await concurrentExecutor(
+      conversation.messages,
+      (message) => {
+        switch (message.role) {
+          case "user":
+            return userMessageToContent(message, converters);
+          case "assistant":
+            return Promise.resolve(
+              assistantMessageToContent(message, converters)
+            );
+          default:
+            assertNever(message);
+        }
+      },
+      { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
+    )
   );
 
   // Merge consecutive same-role turns into a single Content. This serves two
@@ -282,13 +287,16 @@ export async function conversationToContents(
 export function systemMessagesToSystemInstruction(
   system: SystemTextMessage[],
   converters: ContentBlockConverters
-): Content | undefined {
+): Part | undefined {
   if (system.length === 0) {
     return undefined;
   }
+  // Single `{ text }` part, matching legacy (not a `{ role, parts }` Content).
   return {
-    role: "user",
-    parts: system.map((message) => converters.systemMessageToPart(message)),
+    text: system
+      .map((message) => converters.systemMessageToPart(message).text ?? "")
+      .filter(Boolean)
+      .join("\n"),
   };
 }
 

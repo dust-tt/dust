@@ -102,7 +102,7 @@ export function TaskMetadataTooltip({
   const label = (
     <div className="flex flex-col gap-1">
       {isAssistantWorkInProgress && (
-        <div className="text-xs font-medium text-foreground dark:text-foreground-night">
+        <div className="text-xs font-medium text-foreground">
           An agent is working on this task.
         </div>
       )}
@@ -120,7 +120,7 @@ export function TaskMetadataTooltip({
         </div>
       )}
       {task.agentSuggestionStatus === "pending" ? (
-        <div className="break-all font-mono text-[11px] tabular-nums text-muted-foreground dark:text-muted-foreground-night">
+        <div className="break-all font-mono text-[11px] tabular-nums text-muted-foreground">
           ID: {task.sId}
         </div>
       ) : null}
@@ -195,9 +195,7 @@ export function TaskSources({
     <span
       className={cn(
         "hidden text-xs md:block",
-        isDone
-          ? "text-faint dark:text-faint-night line-through"
-          : "text-muted-foreground dark:text-muted-foreground-night"
+        isDone ? "text-faint line-through" : "text-muted-foreground"
       )}
     >
       From{" "}
@@ -302,13 +300,13 @@ export function TaskAssigneeHeader({
                 size="xxs"
                 isRounded
                 visual={null}
-                className="bg-background dark:bg-background-night"
+                className="bg-background"
               />
             )}
           </span>
         }
       />
-      <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+      <span className="text-sm font-medium text-muted-foreground">
         {displayName}
         {user !== null && isYou ? " (you)" : ""}
       </span>

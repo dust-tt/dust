@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { getAskUserQuestionServer } from "@app/lib/api/assistant/jit/ask_user_question";
 import { getCommonUtilitiesServer } from "@app/lib/api/assistant/jit/common_utilities";
 import {
   getConversationFilesServer,
@@ -20,6 +21,7 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const ALWAYS_PREFETCHED_MCP_SERVERS: AutoInternalMCPServerNameType[] = [
+  "ask_user_question",
   "common_utilities",
   "files",
   "schedules_management",
@@ -68,6 +70,13 @@ async function getUnconditionalJITServers(
     autoInternalViews
   );
   servers.push(filesServer);
+
+  const askUserQuestionServer = getAskUserQuestionServer(
+    agentConfiguration,
+    conversation,
+    autoInternalViews
+  );
+  servers.push(askUserQuestionServer);
 
   return removeNulls(servers);
 }

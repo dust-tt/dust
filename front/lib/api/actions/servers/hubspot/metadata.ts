@@ -65,7 +65,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   // Read operations
   get_object_properties: {
     description:
-      "Lists all available properties for a Hubspot object. When creatableOnly is true, returns only properties that can be modified through forms (excludes hidden, calculated, read-only and file upload fields).",
+      "List all available properties for a Hubspot object. When creatableOnly is true, returns only properties that can be modified through forms (excludes hidden, calculated, read-only and file upload fields).",
     schema: {
       objectType: z.enum(ALL_OBJECTS),
       creatableOnly: z.boolean().optional(),
@@ -77,7 +77,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_object_by_email: {
-    description: `Retrieves a Hubspot object using an email address. Supports ${ALL_OBJECTS.join(", ")}.`,
+    description: `Retrieve a Hubspot object using an email address. Supports ${ALL_OBJECTS.join(", ")}.`,
     schema: {
       objectType: z.enum(ALL_OBJECTS),
       email: z.string().describe("The email address of the object."),
@@ -90,7 +90,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   list_owners: {
     description:
-      "Lists all owners (users) in the HubSpot account with their IDs, names, and email addresses. " +
+      "List all owners (users) in the HubSpot account with their IDs, names, and email addresses. " +
       "Use this to find owner IDs for get_user_activity calls when you want to get activity for other users. " +
       "For your own activity, use get_current_user_id instead.",
     schema: {},
@@ -102,7 +102,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   search_owners: {
     description:
-      "Searches for specific owners (users) in the HubSpot account by email, name, ID, or user ID. " +
+      "Search for specific owners (users) in the HubSpot account by email, name, ID, or user ID. " +
       "Supports partial matching for names and emails, and exact matching for IDs. " +
       "Use this to find owner information when you have partial details about a user.",
     schema: {
@@ -195,7 +195,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_meeting: {
-    description: "Retrieves a Hubspot meeting (engagement) by its ID.",
+    description: "Retrieve a Hubspot meeting (engagement) by its ID.",
     schema: {
       meetingId: z
         .string()
@@ -208,7 +208,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   get_file_public_url: {
-    description: "Retrieves a publicly available URL for a file in HubSpot.",
+    description: "Retrieve a publicly available URL for a file in HubSpot.",
     schema: {
       fileId: z.string().describe("The ID of the file."),
     },
@@ -220,7 +220,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_associated_meetings: {
     description:
-      "Retrieves meetings associated with a specific object (contact, company, or deal).",
+      "Retrieve meetings associated with a specific object (contact, company, or deal).",
     schema: {
       fromObjectType: z
         .enum(["contacts", "companies", "deals"])
@@ -264,7 +264,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   export_crm_objects_csv: {
     description:
-      "Exports CRM objects of a given type to CSV, with filters, property selection, and row limits. The resulting file is available for table queries.",
+      "Export CRM objects of a given type to CSV, with filters, property selection, and row limits. The resulting file is available for table queries.",
     schema: {
       objectType: z.enum(searchableObjectTypes),
       propertiesToExport: z
@@ -287,7 +287,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_hubspot_link: {
     description:
-      "Purpose: Generates HubSpot UI links for different pages based on object types and IDs. " +
+      "Generate HubSpot UI links for different pages based on object types and IDs. " +
       "Supports both index pages (lists of objects) and record pages (specific object details). " +
       "Prerequisites: Use the hubspot-get-portal-id tool to get the PortalId and UiDomain. " +
       "Usage Guidance: Use to generate links to HubSpot UI pages when users need to reference specific HubSpot records. " +
@@ -305,7 +305,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_hubspot_portal_id: {
     description:
-      "Gets the current user's portal ID. To use before calling get_hubspot_link",
+      "Get the current user's portal ID. To use before calling get_hubspot_link",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -315,7 +315,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   list_associations: {
     description:
-      "Lists all associations for a given HubSpot object (e.g., list all contacts associated with a company).",
+      "List all associations for a given HubSpot object (e.g., list all contacts associated with a company).",
     schema: {
       objectType: z
         .enum(["contacts", "companies", "deals"])
@@ -347,7 +347,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_user_activity: {
     description:
-      "Comprehensively retrieves user activity across ALL HubSpot engagement types (tasks, notes, meetings, calls, emails) " +
+      "Retrieve comprehensive user activity across ALL HubSpot engagement types (tasks, notes, meetings, calls, emails) " +
       "for any time period. Solves the problem of getting complete user activity data by automatically trying multiple " +
       "owner property variations and gracefully handling object types that don't support owner filtering. " +
       "Perfect for queries like 'show my activity for the last week' or 'what did I do this month'. " +
@@ -387,7 +387,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   // Marketing email operations
   list_marketing_emails: {
     description:
-      "Lists marketing emails from HubSpot. Supports filtering by state (e.g., DRAFT, PUBLISHED, AUTOMATED) and pagination. " +
+      "List marketing emails from HubSpot. Supports filtering by state (e.g., DRAFT, PUBLISHED, AUTOMATED) and pagination. " +
       "Returns email name, subject, state, publish date, and other metadata.",
     schema: {
       limit: z
@@ -414,7 +414,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_marketing_email: {
     description:
-      "Retrieves a single marketing email by its ID. Returns full email details including name, subject, state, content, and metadata.",
+      "Retrieve a single marketing email by its ID. Returns full email details including name, subject, state, content, and metadata.",
     schema: {
       emailId: z
         .string()
@@ -428,7 +428,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   get_marketing_email_statistics: {
     description:
-      "Retrieves deliverability statistics histogram for a marketing email (open rates, click rates, bounces, unsubscribes, etc.). " +
+      "Retrieve deliverability statistics histogram for a marketing email (open rates, click rates, bounces, unsubscribes, etc.). " +
       "Provides time-bucketed data for analyzing email performance over time.",
     schema: {
       emailId: z
@@ -449,7 +449,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   list_email_events: {
     description:
-      "Lists email events (deliveries, opens, clicks, bounces, unsubscribes, etc.) from HubSpot. " +
+      "List email events (deliveries, opens, clicks, bounces, unsubscribes, etc.) from HubSpot. " +
       "Supports filtering by event type, campaign ID, and time range. " +
       "Event types include: SENT, DELIVERED, OPEN, CLICK, BOUNCE, DEFERRED, DROPPED, STATUSCHANGE, SPAMREPORT, UNBOUNCE.",
     schema: {
@@ -493,7 +493,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   list_email_campaigns: {
     description:
-      "Lists email campaigns from HubSpot. Returns campaign IDs and basic metadata. " +
+      "List email campaigns from HubSpot. Returns campaign IDs and basic metadata. " +
       "Use get_email_campaign to get full details including deliverability counters for a specific campaign.",
     schema: {
       limit: z
@@ -531,8 +531,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
 
   // Create operations
   create_contact: {
-    description:
-      "Creates a new contact in Hubspot, with optional associations.",
+    description: "Create a new contact in Hubspot, with optional associations.",
     schema: {
       properties: z
         .record(z.string())
@@ -549,8 +548,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_company: {
-    description:
-      "Creates a new company in Hubspot, with optional associations.",
+    description: "Create a new company in Hubspot, with optional associations.",
     schema: {
       properties: z
         .record(z.string())
@@ -567,7 +565,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_deal: {
-    description: "Creates a new deal in Hubspot, with optional associations.",
+    description: "Create a new deal in Hubspot, with optional associations.",
     schema: {
       properties: z
         .record(z.string())
@@ -585,7 +583,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   create_lead: {
     description:
-      "Creates a new lead in Hubspot (as a Deal), with optional associations. Ensure properties correctly define it as a lead.",
+      "Create a new lead in Hubspot (as a Deal), with optional associations. Ensure properties correctly define it as a lead.",
     schema: {
       properties: z
         .record(z.string())
@@ -604,7 +602,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_task: {
-    description: "Creates a new task in Hubspot, with optional associations.",
+    description: "Create a new task in Hubspot, with optional associations.",
     schema: {
       properties: z
         .record(z.string())
@@ -623,7 +621,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_note: {
-    description: "Creates a new note in Hubspot, with optional associations.",
+    description: "Create a new note in Hubspot, with optional associations.",
     schema: {
       properties: z
         .object({
@@ -652,7 +650,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   create_communication: {
     description:
-      "Creates a new communication (WhatsApp, LinkedIn, SMS) in Hubspot. Requires hs_communication_channel_type in properties.",
+      "Create a new communication (WhatsApp, LinkedIn, SMS) in Hubspot. Requires hs_communication_channel_type in properties.",
     schema: {
       properties: z
         .record(z.any())
@@ -671,7 +669,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   create_meeting: {
     description:
-      "Creates a new meeting in Hubspot. Meeting details are in properties.",
+      "Create a new meeting in Hubspot. Meeting details are in properties.",
     schema: {
       properties: z
         .record(z.any())
@@ -690,7 +688,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   create_association: {
     description:
-      "Creates an association between two existing HubSpot objects (e.g., associate a contact with a company).",
+      "Create an association between two existing HubSpot objects (e.g., associate a contact with a company).",
     schema: {
       fromObjectType: z
         .enum(["contacts", "companies", "deals"])
@@ -710,7 +708,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
 
   // Update operations
   update_contact: {
-    description: "Updates properties of a HubSpot contact by ID.",
+    description: "Update properties of a HubSpot contact by ID.",
     schema: {
       contactId: z.string().describe("The ID of the contact to update."),
       properties: z
@@ -726,7 +724,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   update_company: {
-    description: "Updates properties of a HubSpot company by ID.",
+    description: "Update properties of a HubSpot company by ID.",
     schema: {
       companyId: z.string().describe("The ID of the company to update."),
       properties: z
@@ -742,7 +740,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   update_deal: {
-    description: "Updates properties of a HubSpot deal by ID.",
+    description: "Update properties of a HubSpot deal by ID.",
     schema: {
       dealId: z.string().describe("The ID of the deal to update."),
       properties: z
@@ -758,7 +756,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
   },
   remove_association: {
-    description: "Removes an association between two HubSpot objects.",
+    description: "Remove an association between two HubSpot objects.",
     schema: {
       fromObjectType: z
         .enum(["contacts", "companies", "deals"])

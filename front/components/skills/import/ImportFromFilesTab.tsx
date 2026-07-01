@@ -141,7 +141,7 @@ function SkillFileDropzone({
       className={cn(
         "relative flex flex-col items-center gap-3 overflow-hidden rounded-xl",
         "border-2 border-dashed border-border bg-muted-background px-4 py-6",
-        "transition-colors dark:border-border-night dark:bg-muted-background-night"
+        "transition-colors"
       )}
       onDragOver={(e) => {
         e.preventDefault();
@@ -166,13 +166,11 @@ function SkillFileDropzone({
       {isLoading ? (
         <>
           <Spinner size="md" />
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Uploading files...
-          </p>
+          <p className="text-sm text-muted-foreground">Uploading files...</p>
         </>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             Drag and drop or click to upload
           </p>
           <input

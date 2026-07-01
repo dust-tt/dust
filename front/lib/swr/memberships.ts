@@ -223,6 +223,71 @@ function membersUsageUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/members-usage`;
 }
 
+function bulkSpendLimitUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/members/bulk-spend-limit`;
+}
+
+type BulkSpendLimitSelectionBody =
+  | { mode: "ids"; userIds: string[] }
+  | {
+      mode: "all";
+      filter: { seatType?: string; groupId?: string; search?: string };
+      excludeUserIds: string[];
+    };
+
+const BulkSetUserSpendLimitResponseSchema = z.object({
+  workflowId: z.string(),
+  memberCount: z.number().int(),
+});
+
+export function useBulkSetUserSpendLimit({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doBulkSetSpendLimit = useCallback(
+    async ({
+      selection,
+      limit,
+    }: {
+      selection: BulkSpendLimitSelectionBody;
+      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+    }): Promise<{ workflowId: string; memberCount: number } | null> => {
+      const res = await clientFetch(bulkSpendLimitUrl(workspaceId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selection, limit }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to update spend limit",
+          description: error?.error?.message ?? "An unexpected error occurred.",
+        });
+        return null;
+      }
+
+      const body = BulkSetUserSpendLimitResponseSchema.parse(await res.json());
+      sendNotification({
+        type: "success",
+        title: "Updating spend limit",
+        description:
+          limit.kind === "limited"
+            ? `Applying a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} members.`
+            : `Removing the spend limit for ${body.memberCount.toLocaleString("en-US")} members.`,
+      });
+      return body;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doBulkSetSpendLimit };
+}
+
 export async function invalidateMembersUsage(
   workspaceId: string
 ): Promise<void> {
@@ -240,6 +305,7 @@ export function useMembersUsage({
   orderColumn,
   orderDirection,
   seatType,
+  groupId,
   disabled,
 }: {
   workspaceId: string;
@@ -249,6 +315,7 @@ export function useMembersUsage({
   orderColumn?: "name" | "email" | "consumedAwuCredits";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType | "none";
+  groupId?: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -276,14 +343,18 @@ export function useMembersUsage({
   if (seatType) {
     searchParams.set("seatType", seatType);
   }
+  if (groupId) {
+    searchParams.set("groupId", groupId);
+  }
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `${membersUsageUrl(workspaceId)}?${searchParams.toString()}`,
     membersUsageFetcher,
     {
       keepPreviousData: true,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      dedupingInterval: 60_000,
       disabled,
     }
   );
@@ -291,8 +362,10 @@ export function useMembersUsage({
   return {
     membersUsage: data?.members ?? emptyArray(),
     isMembersUsageLoading: !error && !data && !disabled,
+    isMembersUsageRefreshing: isLoading && !!data && !disabled,
     isMembersUsageError: !!error,
     totalMembersUsage: data?.total ?? 0,
+    mutateMembersUsage: mutate,
   };
 }
 

@@ -44,11 +44,9 @@ const SampleSidebar = ({
   onToggle?: () => void;
   isCollapsed?: boolean;
 }) => (
-  <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
-    <div className="s-flex s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-px-3 s-py-2 dark:s-border-border-night">
-      <div className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-        Sidebar
-      </div>
+  <div className="flex h-full flex-col border-r border-border bg-muted-background">
+    <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+      <div className="text-sm font-semibold text-foreground">Sidebar</div>
       {onToggle && (
         <Button
           variant="ghost-secondary"
@@ -58,15 +56,15 @@ const SampleSidebar = ({
         />
       )}
     </div>
-    <ScrollArea className="s-flex-1">
+    <ScrollArea className="flex-1">
       <ScrollBar orientation="vertical" size="minimal" />
-      <div className="s-p-2">
+      <div className="p-2">
         <SearchInput
           name="search"
           value=""
           onChange={() => {}}
           placeholder="Search..."
-          className="s-mb-2"
+          className="mb-2"
         />
         <NavigationList>
           <NavigationListItem label="Inbox" />
@@ -82,24 +80,20 @@ const SampleSidebar = ({
 
 // Sample content
 const SampleContent = () => (
-  <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
-    <div className="s-border-b s-border-border s-p-4 dark:s-border-border-night">
-      <h1 className="s-heading-xl s-text-foreground dark:s-text-foreground-night">
-        Main Content
-      </h1>
-      <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+  <div className="flex h-full w-full flex-col bg-background">
+    <div className="border-b border-border p-4">
+      <h1 className="heading-xl text-foreground">Main Content</h1>
+      <p className="text-sm text-muted-foreground">
         This is the main content area. Resize the sidebar by dragging the
         handle.
       </p>
     </div>
-    <div className="s-flex-1 s-overflow-y-auto s-p-4">
-      <div className="s-space-y-4">
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="space-y-4">
         {Array.from({ length: 10 }).map((_, i) => (
-          <Card key={i} className="s-p-4">
-            <h2 className="s-heading-lg s-mb-2 s-text-foreground dark:s-text-foreground-night">
-              Card {i + 1}
-            </h2>
-            <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <Card key={i} className="p-4">
+            <h2 className="heading-lg mb-2 text-foreground">Card {i + 1}</h2>
+            <p className="text-sm text-muted-foreground">
               This is card content {i + 1}. The sidebar can be resized, toggled,
               and will reveal on hover when collapsed.
             </p>
@@ -114,7 +108,7 @@ export const Default = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="s-h-[600px] s-w-full">
+    <div className="h-[600px] w-full">
       <SidebarLayout
         sidebar={<SampleSidebar />}
         content={<SampleContent />}
@@ -138,11 +132,9 @@ const ComplexSidebar = ({
   onSearchChange: (value: string) => void;
   onNavigate: (item: string) => void;
 }) => (
-  <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
-    <div className="s-flex s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-px-3 s-py-2 dark:s-border-border-night">
-      <div className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-        Navigation
-      </div>
+  <div className="flex h-full flex-col border-r border-border bg-muted-background">
+    <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+      <div className="text-sm font-semibold text-foreground">Navigation</div>
       {onToggle && (
         <Button
           variant="ghost-secondary"
@@ -152,15 +144,15 @@ const ComplexSidebar = ({
         />
       )}
     </div>
-    <ScrollArea className="s-flex-1">
+    <ScrollArea className="flex-1">
       <ScrollBar orientation="vertical" size="minimal" />
-      <div className="s-p-3">
+      <div className="p-3">
         <SearchInput
           name="search"
           value={searchValue}
           onChange={onSearchChange}
           placeholder="Search..."
-          className="s-mb-3"
+          className="mb-3"
         />
         <NavigationList>
           <NavigationListItem
@@ -178,7 +170,7 @@ const ComplexSidebar = ({
           />
           <NavigationListItem label="Help" onClick={() => onNavigate("Help")} />
         </NavigationList>
-        <div className="s-mt-4 s-border-t s-border-border s-pt-4 dark:s-border-border-night">
+        <div className="mt-4 border-t border-border pt-4">
           <NavigationList>
             <NavigationListItem
               label="Recent"
@@ -201,29 +193,27 @@ const ComplexSidebar = ({
 
 // Complex content component
 const ComplexContent = ({ selectedItem }: { selectedItem: string | null }) => (
-  <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background">
-    <div className="s-border-b s-border-border s-p-6 dark:s-border-border-night">
-      <h1 className="s-heading-2xl s-mb-2 s-text-foreground dark:s-text-foreground-night">
+  <div className="flex h-full w-full flex-col bg-background">
+    <div className="border-b border-border p-6">
+      <h1 className="heading-2xl mb-2 text-foreground">
         Complex Layout Example
       </h1>
-      <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground">
         This example demonstrates a more realistic sidebar layout with
         navigation items and content cards.
         {selectedItem && (
-          <span className="s-ml-2 s-font-semibold s-text-foreground dark:s-text-foreground-night">
+          <span className="ml-2 font-semibold text-foreground">
             Selected: {selectedItem}
           </span>
         )}
       </p>
     </div>
-    <div className="s-flex-1 s-overflow-y-auto s-p-6">
-      <div className="s-grid s-grid-cols-1 s-gap-4 md:s-grid-cols-2 lg:s-grid-cols-3">
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 12 }).map((_, i) => (
-          <Card key={i} className="s-p-4">
-            <h3 className="s-heading-md s-mb-2 s-text-foreground dark:s-text-foreground-night">
-              Project {i + 1}
-            </h3>
-            <p className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <Card key={i} className="p-4">
+            <h3 className="heading-md mb-2 text-foreground">Project {i + 1}</h3>
+            <p className="text-xs text-muted-foreground">
               Description for project {i + 1}. This card demonstrates how
               content flows in the main area.
             </p>
@@ -249,7 +239,7 @@ export const ComplexExample = () => {
   };
 
   return (
-    <div className="s-h-[700px] s-w-full">
+    <div className="h-[700px] w-full">
       <SidebarLayout
         ref={sidebarLayoutRef}
         sidebar={

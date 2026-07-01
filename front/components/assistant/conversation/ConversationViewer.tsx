@@ -339,10 +339,6 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const isMobile = useIsMobile();
-  const isMobileRef = useRef(isMobile);
-  useEffect(() => {
-    isMobileRef.current = isMobile;
-  }, [isMobile]);
   const isAutoScrollEnabledRef = useRef(true);
   const prevScrollLocationRef = useRef({
     scrollHeight: 0,
@@ -595,10 +591,8 @@ export const ConversationViewer = ({
 
   // Sync the virtuoso ref with the side panel context.
   const {
-    closePanel,
     data: panelData,
     currentPanel,
-    openPanel,
     setVirtuosoMsg,
   } = useConversationSidePanelContext();
 
@@ -731,19 +725,6 @@ export const ConversationViewer = ({
   );
 
   const eventIds = useRef<string[]>([]);
-
-  // Whether we have already auto-opened the plan panel for this conversation, so we open it once
-  // (on the first non-closed plan update) rather than on every edit. ConversationViewer is keyed
-  // on conversationId by its parent, so the ref is naturally reset on conversation switch.
-  const planAutoOpenedRef = useRef(false);
-
-  // `onEventCallback` is bound by `useConversationEvents` once at mount and does not re-subscribe
-  // on identity changes (see useEventSource intentional behavior). Any state read from the
-  // closure would go stale, so we mirror `currentPanel` into a ref.
-  const currentPanelRef = useRef(currentPanel);
-  useEffect(() => {
-    currentPanelRef.current = currentPanel;
-  }, [currentPanel]);
 
   // Only conversation related events are handled here.
   const onEventCallback = useCallback(
@@ -1058,25 +1039,24 @@ export const ConversationViewer = ({
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
           case "plan_updated": {
+            // The acting client already updates via the per-message plan tool action; this handles
+            // cross-client propagation (e.g. another viewer) and is a backstop. PlanCard opens/closes
+            // the panel in reaction to the content change.
             const planKey = planFileKey({
               workspaceId: owner.sId,
               conversationId: event.conversationId,
             });
-            void handlePlanUpdatedEvent(event, {
-              isMobile: isMobileRef.current,
-              isPlanPanelOpen: currentPanelRef.current === "plan",
-              autoOpenedRef: planAutoOpenedRef,
-              // Cache-only write (revalidate: false): resolves without a fetch, cannot reject.
+            handlePlanUpdatedEvent(event, {
+              // Close is authoritative: write null directly (no fetch, cannot reject).
               writeClosedToCache: () =>
                 void mutate<GetConversationPlanModeResponseBody>(
                   planKey,
                   { content: null },
                   { revalidate: false }
                 ),
-              revalidate: () =>
-                mutate<GetConversationPlanModeResponseBody>(planKey),
-              openPlanPanel: () => openPanel({ type: "plan" }),
-              closePanel,
+              // SWR owns request ordering, so a revalidation that resolves after a later close is
+              // discarded.
+              revalidatePlan: () => void mutate(planKey),
             });
             break;
           }
@@ -1106,7 +1086,6 @@ export const ConversationViewer = ({
       }
     },
     [
-      closePanel,
       conversationId,
       debouncedMarkAsRead,
       mutateContextUsage,
@@ -1116,7 +1095,6 @@ export const ConversationViewer = ({
       mutateConversations,
       mutateMessages,
       mutateWakeUps,
-      openPanel,
       owner.sId,
       user.sId,
     ]

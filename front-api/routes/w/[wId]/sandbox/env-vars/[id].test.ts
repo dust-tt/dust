@@ -1,5 +1,4 @@
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -23,18 +22,12 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 async function setupTest({
   role = "admin",
-  withFeatureFlags = true,
 }: {
   role?: MembershipRoleType;
-  withFeatureFlags?: boolean;
 } = {}) {
   const { workspace, auth, ...rest } = await createPrivateApiMockRequest({
     role,
   });
-
-  if (withFeatureFlags) {
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
-  }
 
   return { workspace, auth, ...rest };
 }

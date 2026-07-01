@@ -7,6 +7,7 @@ import {
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -395,6 +396,13 @@ async function executeToolStreaming(
         await ConversationResource.markAsActionRequired(auth, {
           conversation,
         });
+
+        if (!conversation.actionRequired) {
+          notifyManualActionRequired(auth, {
+            conversationId: conversation.sId,
+            actionId: action.sId,
+          });
+        }
 
         return { deferredEvents };
 

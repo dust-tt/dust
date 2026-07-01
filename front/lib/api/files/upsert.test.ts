@@ -642,7 +642,7 @@ describe("isFileTypeUpsertableForUseCase", () => {
     expect(
       isFileTypeUpsertableForUseCase({
         contentType: sandboxFunctionContentType,
-        useCase: "conversation",
+        useCase: "project_context",
       })
     ).toBe(false);
   });

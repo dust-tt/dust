@@ -1,13 +1,5 @@
-import { Authenticator } from "@app/lib/auth";
-import {
-  buildConversationSearchDocument,
-  deleteConversationDocument,
-  indexConversationDocument,
-} from "@app/lib/conversation_search";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -83,81 +75,5 @@ export async function indexUserSearchActivity({
         );
       }
     }
-  }
-}
-
-export async function indexConversationEsActivity({
-  conversationId,
-  workspaceId,
-}: {
-  conversationId: string;
-  workspaceId: string;
-}): Promise<void> {
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    logger.warn(
-      { conversationId, workspaceId },
-      "[conversation_search] Workspace not found, likely scrubbed"
-    );
-    return;
-  }
-
-  // `dangerouslyRequestAllGroups` is required so the indexer can read conversations
-  // whose `spaceId` or `requestedSpaceIds` reference a restricted project space. Without
-  // it the auth only carries the global group, `canRead` rejects those conversations,
-  // and `fetchById` returns `null` — which would cause the activity to drop the doc.
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
-    dangerouslyRequestAllGroups: true,
-  });
-
-  // fetchById excludes deleted conversations (no includeDeleted flag), so null covers both
-  // hard-deleted (scrubbed) and soft-deleted cases. Both should be removed from the index.
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId,
-    { includeForkingData: true }
-  );
-
-  if (!conversation) {
-    const deleteResult = await deleteConversationDocument({
-      workspaceId,
-      conversationId,
-    });
-    if (deleteResult.isErr() && deleteResult.error.statusCode !== 404) {
-      logger.error(
-        { conversationId, workspaceId, error: deleteResult.error },
-        "[conversation_search] Failed to delete conversation document"
-      );
-      throw new Error(
-        `Failed to delete conversation ${conversationId} from ES: ${deleteResult.error.message}`
-      );
-    }
-    return;
-  }
-
-  const participantUserIds =
-    await conversation.listParticipantsForConversation();
-
-  const nextWakeUp = await WakeUpResource.nextActiveWakeUpForConversation(
-    auth,
-    conversation
-  );
-
-  const document = buildConversationSearchDocument(
-    auth,
-    conversation,
-    participantUserIds,
-    nextWakeUp
-  );
-
-  const indexResult = await indexConversationDocument(document);
-  if (indexResult.isErr()) {
-    logger.error(
-      { conversationId, workspaceId, error: indexResult.error },
-      "[conversation_search] Failed to index conversation document"
-    );
-    throw new Error(
-      `Failed to index conversation ${conversationId}: ${indexResult.error.message}`
-    );
   }
 }

@@ -219,9 +219,9 @@ const FILES_TOOLS_COMMON_METADATA = {
   },
   [FILES_GREP_ACTION_NAME]: {
     description:
-      "Search a text file for lines matching a regular expression. " +
-      "Returns matching lines with their line numbers. " +
-      `Use the line numbers with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to read surrounding context. ` +
+      "Search a text file for lines matching a regular expression pattern. " +
+      "Returns each matching line with its number, which you can pass to " +
+      `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to read surrounding context. ` +
       `Results are capped at ${GREP_MATCHES_MAX} matches.`,
     schema: {
       path: z

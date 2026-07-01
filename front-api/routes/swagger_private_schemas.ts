@@ -1382,6 +1382,52 @@
  *         userId:
  *           type: string
  *           description: sId of the user who owns the wake-up.
+ *     PrivateSandboxFunctionInvocationEvent:
+ *       type: object
+ *       description: Server-Sent Event for sandbox function invocation streaming. Discriminated on the `type` field.
+ *       discriminator:
+ *         propertyName: type
+ *       oneOf:
+ *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationCreatedEvent'
+ *         - $ref: '#/components/schemas/PrivateSandboxFunctionInvocationResultEvent'
+ *     PrivateSandboxFunctionInvocationCreatedEvent:
+ *       type: object
+ *       required: [type, created, invocation]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [sandbox_function_invocation_created]
+ *         created:
+ *           type: integer
+ *         invocation:
+ *           type: object
+ *           required: [sId, functionId, status, createdAt]
+ *           properties:
+ *             sId:
+ *               type: string
+ *             functionId:
+ *               type: string
+ *             status:
+ *               type: string
+ *               enum: [created]
+ *             createdAt:
+ *               type: string
+ *               format: date-time
+ *     PrivateSandboxFunctionInvocationResultEvent:
+ *       type: object
+ *       required: [type, created, invocationId, functionId, result]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [sandbox_function_invocation_result]
+ *         created:
+ *           type: integer
+ *         invocationId:
+ *           type: string
+ *         functionId:
+ *           type: string
+ *         result:
+ *           description: Result returned by the sandbox function.
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.

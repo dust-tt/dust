@@ -19,8 +19,8 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     className={cn(
-      "s-fixed s-inset-0 s-z-50 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
-      "s-bg-muted-foreground/75 dark:s-bg-muted-background-night/75",
+      "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "bg-muted-foreground/75 dark:bg-muted-background/75",
       className
     )}
     {...props}
@@ -36,19 +36,19 @@ const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl"] as const;
 type DialogHeightType = (typeof DIALOG_HEIGHTS)[number];
 
 const sizeClasses: Record<DialogSizeType, string> = {
-  md: "sm:s-max-w-md",
-  lg: "sm:s-max-w-xl",
-  xl: "sm:s-max-w-3xl",
-  "2xl": "sm:s-max-w-5xl",
-  full: "sm:s-max-w-full sm:s-h-full",
-  fit: "sm:s-max-w-[90vw] s-w-fit",
+  md: "sm:max-w-md",
+  lg: "sm:max-w-xl",
+  xl: "sm:max-w-3xl",
+  "2xl": "sm:max-w-5xl",
+  full: "sm:max-w-full sm:h-full",
+  fit: "sm:max-w-[90vw] w-fit",
 };
 
 const heightClasses: Record<DialogHeightType, string> = {
-  md: "sm:s-h-md",
-  lg: "sm:s-h-lg",
-  xl: "sm:s-h-xl",
-  "2xl": "sm:s-h-2xl",
+  md: "sm:h-md",
+  lg: "sm:h-lg",
+  xl: "sm:h-xl",
+  "2xl": "sm:h-2xl",
 };
 
 const DIALOG_VARIANTS = ["default", "command"] as const;
@@ -56,23 +56,21 @@ type DialogVariantType = (typeof DIALOG_VARIANTS)[number];
 
 const variantClasses: Record<DialogVariantType, string> = {
   default: cn(
-    "s-top-[50%] s-translate-y-[-50%] s-duration-200",
-    "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
-    "data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
-    "data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95",
-    "data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%]",
-    "data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%]"
+    "top-[50%] translate-y-[-50%] duration-200",
+    "data-[state=open]:animate-in data-[state=closed]:animate-out",
+    "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+    "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
   ),
-  command: "s-top-[20%]",
+  command: "top-[20%]",
 };
 
 const dialogVariants = cva(
   cn(
-    "s-fixed s-left-[50%] s-z-50 s-overflow-hidden s-translate-x-[-50%]",
-    "s-rounded-2xl s-flex s-flex-col s-w-full s-max-w-[calc(100vw-2rem)] s-border s-border s-shadow-lg s-sm:rounded-lg",
-    "s-bg-background dark:s-bg-background-night",
-    "s-border-border dark:s-border-border-night",
-    "s-max-h-[90vh]"
+    "fixed left-[50%] z-50 overflow-hidden translate-x-[-50%]",
+    "rounded-2xl flex flex-col w-full max-w-[calc(100vw-2rem)] border border shadow-lg",
+    "bg-background",
+    "border-border",
+    "max-h-[90vh]"
   ),
   {
     variants: {
@@ -168,14 +166,14 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "s-sticky s-top-0 s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-bg-background s-px-5 s-pt-4 s-text-left dark:s-bg-background-night",
+      "sticky top-0 z-50 flex flex-none flex-col gap-0 bg-background px-5 pt-4 text-left",
       className
     )}
     {...props}
   >
     {children}
     {!hideButton && (
-      <DialogClose asChild className="s-absolute s-right-3 s-top-3">
+      <DialogClose asChild className="absolute right-3 top-3">
         <Button icon={XClose} variant={buttonVariant} size={buttonSize} />
       </DialogClose>
     )}
@@ -192,16 +190,14 @@ const DialogContainer = ({
   fixedContent,
   className,
 }: DialogContainerProps) => {
-  const contentStyles = cn(
-    "s-copy-base s-break-words s-px-5 s-py-4 s-text-foreground dark:s-text-foreground-night"
-  );
+  const contentStyles = cn("copy-base break-words px-5 py-4 text-foreground");
 
   const scrollableContent = (
-    <ScrollArea className="s-w-full s-flex-grow">
+    <ScrollArea className="w-full flex-grow">
       <div
         className={cn(
           contentStyles,
-          "s-relative s-flex s-flex-col s-gap-2 s-text-left",
+          "relative flex flex-col gap-2 text-left",
           className
         )}
       >
@@ -212,8 +208,8 @@ const DialogContainer = ({
 
   if (fixedContent) {
     return (
-      <div className="s-flex s-flex-grow s-flex-col s-overflow-hidden">
-        <div className={cn(contentStyles, "s-flex-none")}>{fixedContent}</div>
+      <div className="flex flex-grow flex-col overflow-hidden">
+        <div className={cn(contentStyles, "flex-none")}>{fixedContent}</div>
         <Separator />
         {scrollableContent}
       </div>
@@ -238,10 +234,10 @@ const DialogFooter = ({
   dialogCloseClassName,
   ...props
 }: DialogFooterProps) => (
-  <div className="s-flex s-flex-none s-flex-col s-gap-0">
+  <div className="flex flex-none flex-col gap-0">
     <div
       className={cn(
-        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-pb-3 s-pt-2",
+        "flex flex-none flex-row justify-end gap-2 px-3 pb-3 pt-2",
         className
       )}
       {...props}
@@ -274,14 +270,14 @@ const DialogTitle = React.forwardRef<
     visual?: React.ReactNode;
   }
 >(({ className, visual, children, ...props }, ref) => (
-  <div className="s-flex s-flex-row s-items-center s-gap-2 s-pt-1">
+  <div className="flex flex-row items-center gap-2 pt-1">
     {visual}
     <DialogPrimitive.Title
       ref={ref}
       className={cn(
-        "s-heading-lg",
-        "s-min-w-0 s-break-words",
-        "s-text-foreground dark:s-text-foreground-night",
+        "heading-lg",
+        "min-w-0 break-words",
+        "text-foreground",
         className
       )}
       {...props}
@@ -298,11 +294,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn(
-      "s-copy-sm",
-      "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      className
-    )}
+    className={cn("copy-sm", "text-muted-foreground", className)}
     {...props}
   />
 ));

@@ -62,9 +62,11 @@ export enum GLOBAL_AGENTS_SID {
   DUST_OAI = "dust-oai",
   DUST_OAI_MEDIUM = "dust-oai-medium",
   DUST_OAI_HIGH = "dust-oai-high",
+  DUST_OAI_NANO_HIGH = "dust-oai-nano-high",
   DUST_GOOG = "dust-goog",
   DUST_GOOG_MEDIUM = "dust-goog-medium",
   DUST_GOOG_HIGH = "dust-goog-high",
+  DUST_GOOG_LITE = "dust-goog-lite",
   DUST_GOOG_PRO = "dust-goog-pro",
   DUST_GOOG_PRO_MEDIUM = "dust-goog-pro-medium",
   DUST_GOOG_PRO_HIGH = "dust-goog-pro-high",
@@ -94,6 +96,7 @@ export enum GLOBAL_AGENTS_SID {
   DUST_ANT_HIGH = "dust-ant-high",
   DUST_ANT_MEDIUM_OMITTED = "dust-ant-medium-omitted",
   DUST_ANT_HIGH_OMITTED = "dust-ant-high-omitted",
+  DUST_HAIKU = "dust-haiku",
   DUST_KIMI = "dust-kimi",
   DUST_KIMI_MEDIUM = "dust-kimi-medium",
   DUST_KIMI_HIGH = "dust-kimi-high",
@@ -130,6 +133,7 @@ export enum GLOBAL_AGENTS_SID {
   O3_MINI = "o3-mini",
   O3 = "o3",
   CLAUDE_4_5_HAIKU = "claude-4.5-haiku",
+  CLAUDE_5_SONNET = "claude-5-sonnet",
   CLAUDE_4_5_SONNET = "claude-4.5-sonnet",
   CLAUDE_4_SONNET = "claude-4-sonnet",
   CLAUDE_3_OPUS = "claude-3-opus",
@@ -200,6 +204,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.O3_MINI:
     case GLOBAL_AGENTS_SID.O3:
       return "OpenAI";
+    case GLOBAL_AGENTS_SID.CLAUDE_5_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU:
@@ -219,7 +224,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
   GLOBAL_AGENTS_SID.DEEP_DIVE,
-  GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_5_SONNET,
   GLOBAL_AGENTS_SID.GPT5,
   GLOBAL_AGENTS_SID.GEMINI_PRO,
   GLOBAL_AGENTS_SID.MISTRAL_LARGE,

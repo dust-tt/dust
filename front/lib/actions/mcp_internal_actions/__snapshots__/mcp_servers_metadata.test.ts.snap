@@ -327,6 +327,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "edit_interactive_content_file": "never_ask",
     "export_interactive_content_file": "never_ask",
     "get_interactive_content_file_share_url": "never_ask",
+    "publish_interactive_content_file": "never_ask",
     "rename_interactive_content_file": "never_ask",
     "retrieve_interactive_content_file": "never_ask",
     "revert_interactive_content_file": "never_ask",
@@ -576,6 +577,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "bash": "never_ask",
     "describe_toolset": "never_ask",
   },
+  "sandbox_functions": {
+    "get": "never_ask",
+    "list": "never_ask",
+    "publish": "low",
+  },
   "schedules_management": {
     "create_schedule": "high",
     "disable_schedule": "high",
@@ -704,6 +710,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "web_search_&_browse": {
     "webbrowser": "never_ask",
     "websearch": "never_ask",
+  },
+  "workday": {
+    "get_workers": "never_ask",
   },
   "workspace_analytics": {
     "get_agent_details": "never_ask",

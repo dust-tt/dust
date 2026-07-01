@@ -280,7 +280,7 @@ function AgentActionsPanelContent({
     messageStreamState?.streaming.actionProgress ?? new Map();
   const pendingToolCalls = messageStreamState?.streaming.pendingToolCalls ?? [];
   return (
-    <div className="flex h-full flex-col bg-background dark:bg-background-night">
+    <div className="flex h-full flex-col bg-background">
       <AgentActionsPanelHeader
         closeIcon={closeIcon}
         title="Breakdown of the tools used"
@@ -357,7 +357,7 @@ function AgentActionsPanelContent({
         </div>
       </div>
       {(skills.length > 0 || tools.length > 0) && (
-        <div className="flex flex-col gap-4 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
+        <div className="flex flex-col gap-4 border-t border-separator bg-background p-4">
           <span className="text-semibold text-sm">Enabled capabilities</span>
           <div className="flex flex-wrap items-center gap-1">
             {skills.map((skill) => (
@@ -450,16 +450,14 @@ function AgentSingleActionPanel({
         onClose={onClose}
       >
         <div className="flex items-center justify-center">
-          <span className="text-muted-foreground dark:text-muted-foreground-night">
-            Nothing to display.
-          </span>
+          <span className="text-muted-foreground">Nothing to display.</span>
         </div>
       </AgentActionsPanelHeader>
     );
   }
 
   return (
-    <div className="flex h-panel flex-col bg-panel-background dark:bg-panel-background-night">
+    <div className="flex h-panel flex-col bg-panel-background">
       <AgentActionsPanelHeader
         title="Tool detail"
         closeIcon={closeIcon}
@@ -536,9 +534,7 @@ export function AgentActionsPanelForMessage({
         onClose={onClose}
       >
         <div className="flex items-center justify-center">
-          <span className="text-muted-foreground dark:text-muted-foreground-night">
-            Nothing to display.
-          </span>
+          <span className="text-muted-foreground">Nothing to display.</span>
         </div>
       </AgentActionsPanelHeader>
     );

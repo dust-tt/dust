@@ -73,6 +73,10 @@ export const RESOURCES_PREFIX = {
   // Project metadata.
   project_metadata: "pmd",
 
+  // Sandbox functions.
+  sandbox_function: "sfn",
+  sandbox_function_invocation: "sfi",
+
   // Academy quiz attempts.
   academy_quiz_attempt: "aqz",
   academy_chapter_visit: "acv",

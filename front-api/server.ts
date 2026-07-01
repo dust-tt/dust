@@ -1,4 +1,5 @@
 import "./lib/tracer-config";
+import "./lib/instrumentation-config";
 
 import { Server } from "node:http";
 import { performance } from "node:perf_hooks";

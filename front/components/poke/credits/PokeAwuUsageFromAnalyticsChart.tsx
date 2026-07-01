@@ -3,6 +3,8 @@ import type {
   Granularity,
 } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
 import { BaseAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
+import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
+import { scopeFilterToIds } from "@app/components/workspace/analytics/analyticsFilter";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { usePokeAwuUsageFromAnalytics } from "@app/poke/swr/credits";
 import type { WorkspaceType } from "@app/types/user";
@@ -22,6 +24,7 @@ export function PokeAwuUsageFromAnalyticsChart({
     undefined
   );
   const [groupByCount, setGroupByCount] = useState<number>(5);
+  const [filter, setFilter] = useState<AnalyticsFilter>({});
 
   const now = new Date();
   const { cycleStart } = getBillingCycleFromDay(
@@ -41,6 +44,7 @@ export function PokeAwuUsageFromAnalyticsChart({
       groupByCount,
       granularity,
       days,
+      filter: scopeFilterToIds(filter),
     });
 
   return (
@@ -56,6 +60,8 @@ export function PokeAwuUsageFromAnalyticsChart({
       setGroupByCount={setGroupByCount}
       days={days}
       exportUrlPrefix={`/api/poke/workspaces/${owner.sId}/analytics/awu-usage-analytics`}
+      filter={filter}
+      onFilterChange={setFilter}
     />
   );
 }

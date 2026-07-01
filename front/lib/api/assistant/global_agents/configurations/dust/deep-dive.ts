@@ -439,10 +439,7 @@ export function _getDeepDiveGlobalAgent(
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
-  const {
-    run_agent: runAgentMCPServerView,
-    ask_user_question: askUserQuestionMCPServerView,
-  } = mcpServerViews;
+  const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(auth, { featureFlags, excludeProviders });
 
@@ -577,27 +574,6 @@ export function _getDeepDiveGlobalAgent(
     });
   }
 
-  if (askUserQuestionMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DEEP_DIVE + "-ask-user-question",
-      type: "mcp_server_configuration",
-      name: "ask_user_question",
-      description: "Ask the user a question with multiple-choice options.",
-      mcpServerViewId: askUserQuestionMCPServerView.sId,
-      internalMCPServerId: askUserQuestionMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    });
-  }
-
   // Fix the action ids.
   actions.forEach((action, i) => {
     action.id = -i;
@@ -611,9 +587,9 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
-    // The "sandbox" (Computer) skill is auto-equipped for all agents when the
-    // `sandbox_tools` feature flag is on (see SkillResource.listForAgentLoop),
-    // so it no longer needs to be listed here.
+    // The "sandbox" (Computer) skill is auto-equipped for all agents unless
+    // the workspace has disabled Computer, so it no longer needs to be listed
+    // here.
     skills: ["frames", "discover_skills", "skill-authoring"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };

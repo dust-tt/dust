@@ -54,7 +54,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     };
 
     return (
-      <div className={cn("s-relative", className)}>
+      <div className={cn("relative", className)}>
         <Input
           type="text"
           name={name}
@@ -70,9 +70,9 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           disabled={disabled}
           ref={ref}
         />
-        <div className="s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-1">
+        <div className="absolute inset-y-0 right-0 flex items-center pr-1">
           {isLoading ? (
-            <div className="s-px-1">
+            <div className="px-1">
               <Spinner size="xs" />
             </div>
           ) : value ? (
@@ -85,16 +85,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           ) : (
             <div
               className={cn(
-                "s-px-2",
-                disabled
-                  ? "s-text-muted-foreground dark:s-text-muted-foreground-night"
-                  : "s-text-foreground dark:s-text-foreground-night"
+                "px-2",
+                disabled ? "text-muted-foreground" : "text-foreground"
               )}
             >
               <Icon
                 visual={SearchMd}
                 size="xs"
-                className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+                className="text-muted-foreground"
               />
             </div>
           )}
@@ -128,10 +126,10 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
 };
 
 const MAX_HEIGHT_CLASSES = {
-  sm: "s-max-h-48",
-  md: "s-max-h-72",
-  lg: "s-max-h-96",
-  xl: "s-max-h-[40rem]",
+  sm: "max-h-48",
+  md: "max-h-72",
+  lg: "max-h-96",
+  xl: "max-h-[40rem]",
 } as const;
 
 function BaseSearchInputWithPopover<T>(
@@ -218,7 +216,7 @@ function BaseSearchInputWithPopover<T>(
       <PopoverTrigger asChild>
         <SearchInput
           ref={ref}
-          className={cn("s-w-full", className)}
+          className={cn("w-full", className)}
           value={value}
           onChange={(newValue) => {
             onChange?.(newValue);
@@ -235,9 +233,9 @@ function BaseSearchInputWithPopover<T>(
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-lg dark:s-bg-background-night",
+          "w-(--radix-popover-trigger-width) rounded-lg border border-border bg-background shadow-lg",
           availableHeight &&
-            "s-max-h-[var(--radix-popover-content-available-height)] s-overflow-hidden",
+            "max-h-(--radix-popover-content-available-height) overflow-hidden",
           contentClassName
         )}
         sideOffset={0}
@@ -252,21 +250,21 @@ function BaseSearchInputWithPopover<T>(
       >
         <div
           className={cn(
-            "s-flex s-flex-col s-overflow-hidden s-rounded-lg",
-            availableHeight && "s-max-h-full"
+            "flex flex-col overflow-hidden rounded-lg",
+            availableHeight && "max-h-full"
           )}
         >
           {showHeader && (
             <div
               className={cn(
-                "s-z-10 s-flex s-shrink-0 s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-bg-background s-p-2 dark:s-border-border-night dark:s-bg-background-night"
+                "z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-background p-2"
               )}
               onMouseDown={(e) => e.preventDefault()}
             >
-              <div className="s-flex s-flex-1 s-items-center s-gap-2">
+              <div className="flex flex-1 items-center gap-2">
                 {stickyTopContent}
                 {displayItemCount && items.length > 0 && (
-                  <span className="s-text-sm s-text-gray-500">
+                  <span className="text-sm text-gray-500">
                     {items.length} search results
                     {totalItems && ` (out of ${totalItems})`}.
                   </span>
@@ -285,14 +283,14 @@ function BaseSearchInputWithPopover<T>(
           )}
           <ScrollArea
             className={cn(
-              "s-flex s-min-h-0 s-flex-1 s-flex-col",
+              "flex min-h-0 flex-1 flex-col",
               availableHeight
-                ? "s-max-h-[calc(var(--radix-popover-content-available-height)-12px)]"
+                ? "max-h-[calc(var(--radix-popover-content-available-height)-12px)]"
                 : MAX_HEIGHT_CLASSES[maxHeight]
             )}
             hideScrollBar
           >
-            <div role="listbox" className="s-flex s-flex-col">
+            <div role="listbox" className="flex flex-col">
               {items.length > 0 ? (
                 items.map((item, index) => (
                   <div
@@ -307,28 +305,28 @@ function BaseSearchInputWithPopover<T>(
                   </div>
                 ))
               ) : isLoading ? (
-                <div className="s-flex s-justify-center s-py-8">
+                <div className="flex justify-center py-8">
                   <Spinner variant="dark" size="md" />
                 </div>
               ) : (
-                <div className="s-p-4 s-text-center s-text-sm s-italic s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="p-4 text-center text-sm italic text-muted-foreground">
                   {noResults ?? ""}
                 </div>
               )}
             </div>
-            <ScrollBar className="s-py-0" />
+            <ScrollBar className="py-0" />
           </ScrollArea>
           {showBottom && (
             <div
               className={cn(
-                "s-z-10 s-hidden s-shrink-0 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-bg-background s-p-2 dark:s-border-border-night dark:s-bg-background-night sm:s-flex"
+                "z-10 hidden shrink-0 items-center justify-between gap-2 border-t border-border bg-background p-2 sm:flex"
               )}
             >
               {stickyBottomContent}
             </div>
           )}
           {contentMessage && (
-            <div className="s-p-1">
+            <div className="p-1">
               <ContentMessage {...contentMessage} />
             </div>
           )}

@@ -28,74 +28,43 @@ export const CHIP_COLORS = [
 
 type ChipColorType = (typeof CHIP_COLORS)[number];
 
-const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
+const chipVariants = cva("inline-flex box-border items-center", {
   variants: {
     size: {
-      mini: "s-rounded-md s-min-h-5 s-text-xs s-font-medium s-px-1.5 s-py-1 s-gap-0.5",
-      xs: "s-rounded-lg s-min-h-7 s-heading-xs s-px-3 s-gap-1",
-      sm: "s-rounded-xl s-min-h-9 s-heading-sm s-px-4 s-gap-1.5",
+      mini: "rounded-md min-h-5 text-xs font-medium px-1.5 py-1 gap-0.5",
+      xs: "rounded-lg min-h-7 heading-xs px-3 gap-1",
+      sm: "rounded-xl min-h-9 heading-sm px-4 gap-1.5",
     },
     color: {
-      primary: cn(
-        "s-bg-muted-background s-border-border",
-        "s-text-primary-900",
-        "dark:s-bg-muted-background-night dark:s-border-border-night",
-        "dark:s-text-primary-900-night"
-      ),
+      primary: cn("bg-muted-background border-border", "text-primary-900"),
       highlight: cn(
-        "s-bg-highlight-100 s-border-highlight-200",
-        "s-text-highlight-900",
-        "dark:s-bg-highlight-100-night dark:s-border-highlight-200-night",
-        "dark:s-text-highlight-900-night"
+        "bg-highlight-100 border-highlight-200",
+        "text-highlight-900"
       ),
-      success: cn(
-        "s-bg-success-100 s-border-success-200",
-        "s-text-success-900",
-        "dark:s-bg-success-100-night dark:s-border-success-200-night",
-        "dark:s-text-success-900-night"
-      ),
-      info: cn(
-        "s-bg-info-100 s-border-info-200",
-        "s-text-info-900",
-        "dark:s-bg-info-100-night dark:s-border-info-200-night",
-        "dark:s-text-info-900-night"
-      ),
-      warning: cn(
-        "s-bg-warning-100 s-border-warning-200",
-        "s-text-warning-900",
-        "dark:s-bg-warning-100-night dark:s-border-warning-200-night",
-        "dark:s-text-warning-900-night"
-      ),
+      success: cn("bg-success-100 border-success-200", "text-success-900"),
+      info: cn("bg-info-100 border-info-200", "text-info-900"),
+      warning: cn("bg-warning-100 border-warning-200", "text-warning-900"),
+      // The raw palette scales (green/blue/rose/golden) are not redefined in
+      // the `.dark` block (unlike the semantic scales above), so they need
+      // explicit dark variants to flip. The dark shades mirror the inverted
+      // mapping the v3 `-night` shades used (e.g. green-100 -> green-900).
       green: cn(
-        "s-bg-green-100 s-border-green-200",
-        "s-text-green-900",
-        "dark:s-bg-green-100-night dark:s-border-green-200-night",
-        "dark:s-text-green-900-night"
+        "bg-green-100 border-green-200 text-green-900",
+        "dark:bg-green-900 dark:border-green-800 dark:text-green-100"
       ),
       blue: cn(
-        "s-bg-blue-100 s-border-blue-200",
-        "s-text-blue-900",
-        "dark:s-bg-blue-100-night dark:s-border-blue-200-night",
-        "dark:s-text-blue-900-night"
+        "bg-blue-100 border-blue-200 text-blue-900",
+        "dark:bg-blue-900 dark:border-blue-800 dark:text-blue-100"
       ),
       rose: cn(
-        "s-bg-rose-100 s-border-rose-200",
-        "s-text-rose-900",
-        "dark:s-bg-rose-100-night dark:s-border-rose-200-night",
-        "dark:s-text-rose-900-night"
+        "bg-rose-100 border-rose-200 text-rose-900",
+        "dark:bg-rose-900 dark:border-rose-800 dark:text-rose-100"
       ),
       golden: cn(
-        "s-bg-golden-100 s-border-golden-200",
-        "s-text-golden-900",
-        "dark:s-bg-golden-100-night dark:s-border-golden-200-night",
-        "dark:s-text-golden-900-night"
+        "bg-golden-100 border-golden-200 text-golden-900",
+        "dark:bg-golden-900 dark:border-golden-800 dark:text-golden-100"
       ),
-      white: cn(
-        "s-border s-bg-white s-border-border",
-        "s-text-primary-900",
-        "dark:s-bg-background-night dark:s-border-border-night",
-        "dark:s-text-primary-900-night"
-      ),
+      white: cn("border bg-background border-border", "text-primary-900"),
     },
   },
   defaultVariants: {
@@ -106,45 +75,35 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
 
 const closeIconVariants: Record<ChipColorType, string> = {
   primary: cn(
-    "s-text-primary-700 hover:s-text-primary-500 active:s-text-primary-950",
-    "dark:s-text-primary-700-night dark:hover:s-text-primary-500-night dark:active:s-text-primary-950-night"
+    "text-primary-700 hover:text-primary-500 active:text-primary-950"
   ),
   highlight: cn(
-    "s-text-highlight-900 hover:s-text-highlight-700 active:s-text-highlight-950",
-    "dark:s-text-highlight-900-night dark:hover:s-text-highlight-700-night dark:active:s-text-highlight-950-night"
+    "text-highlight-900 hover:text-highlight-700 active:text-highlight-950"
   ),
   success: cn(
-    "s-text-success-900 hover:s-text-success-700 active:s-text-success-950",
-    "dark:s-text-success-900-night dark:hover:s-text-success-700-night dark:active:s-text-success-950-night"
+    "text-success-900 hover:text-success-700 active:text-success-950"
   ),
   warning: cn(
-    "s-text-warning-900 hover:s-text-warning-700 active:s-text-warning-950",
-    "dark:s-text-warning-900-night dark:hover:s-text-warning-700-night dark:active:s-text-warning-950-night"
+    "text-warning-900 hover:text-warning-700 active:text-warning-950"
   ),
-  info: cn(
-    "s-text-info-900 hover:s-text-info-700 active:s-text-info-950",
-    "dark:s-text-info-900-night dark:hover:s-text-info-700-night dark:active:s-text-info-950-night"
-  ),
+  info: cn("text-info-900 hover:text-info-700 active:text-info-950"),
   green: cn(
-    "s-text-green-900 hover:s-text-green-700 active:s-text-green-950",
-    "dark:s-text-green-900-night dark:hover:s-text-green-700-night dark:active:s-text-green-950-night"
+    "text-green-900 hover:text-green-700 active:text-green-950",
+    "dark:text-green-100 dark:hover:text-green-300 dark:active:text-green-50"
   ),
   blue: cn(
-    "s-text-blue-900 hover:s-text-blue-700 active:s-text-blue-950",
-    "dark:s-text-blue-900-night dark:hover:s-text-blue-700-night dark:active:s-text-blue-950-night"
+    "text-blue-900 hover:text-blue-700 active:text-blue-950",
+    "dark:text-blue-100 dark:hover:text-blue-300 dark:active:text-blue-50"
   ),
   rose: cn(
-    "s-text-rose-900 hover:s-text-rose-700 active:s-text-rose-950",
-    "dark:s-text-rose-900-night dark:hover:s-text-rose-700-night dark:active:s-text-rose-950-night"
+    "text-rose-900 hover:text-rose-700 active:text-rose-950",
+    "dark:text-rose-100 dark:hover:text-rose-300 dark:active:text-rose-50"
   ),
   golden: cn(
-    "s-text-golden-900 hover:s-text-golden-700 active:s-text-golden-950",
-    "dark:s-text-golden-900-night dark:hover:s-text-golden-700-night dark:active:s-text-golden-950-night"
+    "text-golden-900 hover:text-golden-700 active:text-golden-950",
+    "dark:text-golden-100 dark:hover:text-golden-300 dark:active:text-golden-50"
   ),
-  white: cn(
-    "s-text-primary-700 hover:s-text-primary-500 active:s-text-primary-950",
-    "dark:s-text-primary-700-night dark:hover:s-text-primary-500-night dark:active:s-text-primary-950-night"
-  ),
+  white: cn("text-primary-700 hover:text-primary-500 active:text-primary-950"),
 };
 
 interface ChipInternalButtonProps {
@@ -163,9 +122,9 @@ const ChipButton = React.forwardRef<HTMLButtonElement, ChipInternalButtonProps>(
       onClick={onClick}
       aria-label={ariaLabel}
       className={cn(
-        "s-rounded-md s-p-0.5",
-        "s-transition-colors s-duration-200",
-        "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring",
+        "rounded-md p-0.5",
+        "transition-colors duration-200",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         className
       )}
     >
@@ -226,7 +185,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         className={cn(
           chipVariants({ size, color }),
           className,
-          onClick && "s-cursor-pointer"
+          onClick && "cursor-pointer"
         )}
         aria-label={label}
         ref={ref}
@@ -251,9 +210,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           />
         )}
         {label && (
-          <span
-            className={cn("s-grow s-truncate", onClick && "s-cursor-pointer")}
-          >
+          <span className={cn("grow truncate", onClick && "cursor-pointer")}>
             {isBusy ? (
               <AnimatedText variant={color}>{label}</AnimatedText>
             ) : (
@@ -265,7 +222,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           <ChipButton
             icon={XClose}
             size={size === "sm" ? "sm" : "xs"}
-            className={cn("-s-mr-1", closeIconVariants[color || "primary"])}
+            className={cn("-mr-1", closeIconVariants[color || "primary"])}
             aria-label="Remove"
             onClick={(e) => {
               e.preventDefault();

@@ -32,7 +32,8 @@
     { "name": "plan_mode", "id": 1032 },
     { "name": "files", "id": 1033 },
     { "name": "skill_authoring", "id": 1034 },
-    { "name": "workspace_analytics", "id": 1035 }
+    { "name": "workspace_analytics", "id": 1035 },
+    { "name": "sandbox_functions", "id": 1037 }
   ],
   "manual": [
     { "name": "github", "id": 1 },
@@ -76,6 +77,7 @@
     { "name": "front", "id": 1018 },
     { "name": "poke", "id": 1027 },
     { "name": "clari_copilot", "id": 1030 },
-    { "name": "exa_people_and_company", "id": 1036 }
+    { "name": "exa_people_and_company", "id": 1036 },
+    { "name": "workday", "id": 1038 }
   ]
 }

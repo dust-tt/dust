@@ -140,9 +140,8 @@ export function AdvancedSettings() {
               onChange={(e) => setTempResponseFormat(e.target.value)}
               minHeight={400}
               className={cn(
-                "rounded-lg bg-slate-100 dark:bg-slate-100-night",
-                validationError &&
-                  "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
+                "rounded-lg bg-primary-100",
+                validationError && "border-2 border-red-500 bg-primary-100"
               )}
               style={{
                 fontSize: 13,

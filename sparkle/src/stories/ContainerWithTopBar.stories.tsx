@@ -32,7 +32,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const MockToolbar = () => (
-  <div className="s-flex s-items-center s-gap-1 s-px-3 s-py-2">
+  <div className="flex items-center gap-1 px-3 py-2">
     <Button
       icon={Bold01}
       size="icon"
@@ -58,7 +58,7 @@ export const Default: Story = {
   args: {
     topBar: <MockToolbar />,
     children: (
-      <div className="s-p-4 s-text-sm s-text-muted-foreground">
+      <div className="p-4 text-sm text-muted-foreground">
         Focus inside the container to see the focus ring.
       </div>
     ),
@@ -70,7 +70,7 @@ export const WithError: Story = {
     topBar: <MockToolbar />,
     error: true,
     children: (
-      <div className="s-p-4 s-text-sm s-text-muted-foreground">
+      <div className="p-4 text-sm text-muted-foreground">
         Error state: border turns warning color.
       </div>
     ),

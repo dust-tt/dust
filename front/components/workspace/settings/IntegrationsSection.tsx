@@ -29,7 +29,7 @@ export function IntegrationsSection({
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Integrations</Page.H>
       <ContextItem.List>
-        <div className="h-full border-b border-border dark:border-border-night" />
+        <div className="h-full border-b border-border" />
         <BotToggle
           owner={owner}
           botDataSource={slackBotDataSource}

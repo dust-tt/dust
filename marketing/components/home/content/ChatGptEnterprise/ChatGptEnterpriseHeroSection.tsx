@@ -130,7 +130,7 @@ export function ChatGptEnterpriseHeroSection({
                 <div className="relative flex items-center justify-center">
                   <div className="absolute right-full mr-1 flex flex-col gap-1.5 opacity-80">
                     <motion.div
-                      className="h-1 w-10 rounded-full bg-gradient-to-l from-[#1C91FF] to-transparent"
+                      className="h-1 w-10 rounded-full bg-linear-to-l from-[#1C91FF] to-transparent"
                       animate={{
                         opacity: [0.3, 1, 0.3],
                         scaleX: [0.6, 1.2, 0.6],
@@ -139,7 +139,7 @@ export function ChatGptEnterpriseHeroSection({
                       style={{ originX: 1 }}
                     />
                     <motion.div
-                      className="ml-auto h-1 w-6 rounded-full bg-gradient-to-l from-[#FFAA0D] to-transparent"
+                      className="ml-auto h-1 w-6 rounded-full bg-linear-to-l from-[#FFAA0D] to-transparent"
                       animate={{
                         opacity: [0.3, 1, 0.3],
                         scaleX: [0.5, 1.3, 0.5],

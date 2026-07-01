@@ -145,7 +145,7 @@ const PLANS: Plan[] = [
     ctaStyle: "primary",
     featured: true,
     highlights: [
-      "20+ frontier models — GPT-5, Claude, Gemini, Mistral, DeepSeek",
+      "20+ frontier models — GPT, Claude, Gemini, Mistral, DeepSeek",
       "Custom agents with your skills, knowledge & tools",
       "Multi-agent workflows on schedules & triggers",
       "Connect Slack, Notion, GitHub, Drive + 20 more — or any tool via MCP",
@@ -179,7 +179,7 @@ const COMPARISON: ComparisonSectionData[] = [
     rows: [
       {
         feature:
-          "20+ frontier models (GPT-5, Claude, Gemini, Mistral, DeepSeek) + multi-modal input",
+          "20+ frontier models (GPT, Claude, Gemini, Mistral, DeepSeek) + multi-modal input",
         featureShort: "20+ frontier models + multi-modal input",
         business: true,
         enterprise: true,

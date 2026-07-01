@@ -52,7 +52,7 @@ export function TrialPage() {
                 title="Get started for free"
                 icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
               />
-              <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+              <p className="-mt-4 text-muted-foreground">
                 No credit card required · No time limit
               </p>
 
@@ -64,9 +64,7 @@ export function TrialPage() {
                       size="sm"
                       className="text-primary-500"
                     />
-                    <span className="text-foreground dark:text-foreground-night">
-                      {feature}
-                    </span>
+                    <span className="text-foreground">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -99,16 +97,14 @@ export function TrialPage() {
               title="Start your free trial"
               icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
             />
-            <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+            <p className="-mt-4 text-muted-foreground">
               No credit card required
             </p>
             <ul className="flex flex-col gap-4">
               {legacyFeatures.map((feature, index) => (
                 <li key={index} className="flex items-center gap-3">
                   <Icon visual={Check} size="sm" className="text-primary-500" />
-                  <span className="text-foreground dark:text-foreground-night">
-                    {feature}
-                  </span>
+                  <span className="text-foreground">{feature}</span>
                 </li>
               ))}
             </ul>

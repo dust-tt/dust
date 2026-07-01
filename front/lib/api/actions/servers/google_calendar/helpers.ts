@@ -138,6 +138,40 @@ export async function getCalendarClient(authInfo?: AuthInfo) {
   });
 }
 
+function isValidTimeZone(timezone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function normalizeTimezone(
+  timezone: string | null | undefined
+): string | null {
+  if (!timezone) {
+    return null;
+  }
+
+  if (isValidTimeZone(timezone)) {
+    return timezone;
+  }
+
+  const offsetMatch = timezone
+    .trim()
+    .match(/^(?:GMT|UTC)\s*([+-])(\d{1,2})(?::?(\d{2}))?$/i);
+  if (offsetMatch) {
+    const [, sign, hours, minutes = "00"] = offsetMatch;
+    const candidate = `${sign}${hours.padStart(2, "0")}:${minutes}`;
+    if (isValidTimeZone(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 export function getUserTimezone(
   agentLoopContext?: AgentLoopContextType
 ): string | null {
@@ -162,7 +196,7 @@ export function getUserTimezone(
         userMessage.context &&
         "timezone" in userMessage.context
       ) {
-        return userMessage.context.timezone;
+        return normalizeTimezone(userMessage.context.timezone);
       }
     }
   }

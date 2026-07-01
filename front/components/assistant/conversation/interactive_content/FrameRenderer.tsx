@@ -154,18 +154,24 @@ export function FrameRenderer({
       newText,
       oldText,
       targetFileId,
+      source,
     }: {
       newText: string;
       oldText: string;
       targetFileId?: string;
+      source?: string;
     }) => {
       try {
+        // Location-based edits address the published entry Frame (the clicked bundle); the source
+        // path inside `source` resolves within its build root. Legacy context edits route to the
+        // nested target file.
+        const editFileId = source ? fileId : (targetFileId ?? fileId);
         const response = await clientFetch(
-          `/api/w/${owner.sId}/files/${targetFileId ?? fileId}/edit-text`,
+          `/api/w/${owner.sId}/files/${editFileId}/edit-text`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ oldText, newText }),
+            body: JSON.stringify({ oldText, newText, source }),
           }
         );
 
@@ -436,6 +442,7 @@ export function FrameRenderer({
                 identifier: `viz-${fileId}`,
               }}
               key={`viz-${fileId}`}
+              frameFileId={fileId}
               conversationId={conversation?.sId ?? null}
               isEditable={true}
               spaceId={frameSpaceId ?? undefined}
@@ -486,7 +493,7 @@ function PreviewActionButtons({
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
   return (
-    <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
+    <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-background p-1 shadow-md">
       {clientType !== "extension" && (
         <Tooltip
           label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}

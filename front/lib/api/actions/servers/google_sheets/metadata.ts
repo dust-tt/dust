@@ -9,13 +9,13 @@ export const GOOGLE_SHEETS_TOOL_NAME = "google_sheets" as const;
 export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
   list_spreadsheets: {
     description:
-      "List Google Sheets spreadsheets accessible by the user from both personal drive and shared drives. Supports pagination and search.",
+      "Search for and list your Google Sheets spreadsheets by name, across your personal and shared drives, to find a spreadsheet when you do not know its ID.",
     schema: {
       nameFilter: z
         .string()
         .optional()
         .describe(
-          "The text to search for in file names. Uses Google Drive's 'contains' operator which is case-insensitive and performs prefix matching only. For example, searching 'hello' will match 'HelloWorld' but not 'WorldHello'."
+          "Text to search for in spreadsheet names (case-insensitive prefix match)."
         ),
       pageToken: z.string().optional().describe("Page token for pagination."),
       pageSize: z
@@ -45,7 +45,7 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
   },
   get_worksheet: {
     description:
-      "Get data from a specific worksheet in a Google Sheets spreadsheet.",
+      "Read the cell values from a range in a Google Sheets worksheet (tab), returning the data found in the given A1 range.",
     schema: {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
       range: z
@@ -193,7 +193,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
   },
   format_cells: {
-    description: "Apply formatting to cells in a Google Sheets spreadsheet.",
+    description:
+      "Apply formatting to a range of cells in a Google Sheets worksheet, such as bold or italic text, font size, background color, and horizontal alignment.",
     schema: {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
       sheetId: z.number().describe("The ID of the worksheet to format."),
@@ -236,7 +237,7 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
   },
   copy_sheet: {
     description:
-      "Copy a sheet from one Google Sheets spreadsheet to another spreadsheet.",
+      "Copy a worksheet (tab) from one Google Sheets spreadsheet into another.",
     schema: {
       sourceSpreadsheetId: z
         .string()

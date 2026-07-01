@@ -66,6 +66,7 @@ import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
+import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
@@ -807,6 +808,7 @@ export async function postUserMessage(
         api_error: {
           type: "invalid_request_error",
           message: "The model is not supported.",
+          model: agentConfig.model,
         },
       });
     }
@@ -2546,6 +2548,20 @@ async function checkMessagesLimit(
 
     // Programmatic monthly cap: block programmatic calls when the cap is reached.
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+      // Per-API-key credit cap: block when this key's credit state is "capped"
+      // (driven by the Metronome per-key cap alert / reconcile).
+      const key = auth.key();
+      if (key && (await isApiKeyCapped(owner.sId, key.id))) {
+        return new Err({
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
+          },
+        });
+      }
+
       const programmaticBlocked = await isProgrammaticApiBlocked(owner.sId);
       if (programmaticBlocked) {
         return new Err({

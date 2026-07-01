@@ -9,6 +9,7 @@ import {
 import { writeSandboxEnvManifestFile } from "@app/lib/api/sandbox/env_manifest";
 import { SANDBOX_AGENT_PROXIED_UID } from "@app/lib/api/sandbox/image/types";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import {
   type RootCommand,
   renderRootCommand,
@@ -312,12 +313,13 @@ export async function checkEgressForwarderHealth(
 // the network policy chosen in getSandboxImage().
 export async function prepareSandboxEgressBeforeMount(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
+  { runtimeOwner }: { runtimeOwner: SandboxRuntimeOwner }
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
     return teardownInSandboxEgressRedirect(auth, sandbox);
   }
-  return setupEgressForwarder(auth, sandbox);
+  return setupEgressForwarder(auth, sandbox, { runtimeOwner });
 }
 
 // Egress check that runs after GCS mounts on every exec: in prod, verifies
@@ -327,7 +329,10 @@ export async function prepareSandboxEgressBeforeMount(
 export async function ensureSandboxEgressOnExec(
   auth: Authenticator,
   sandbox: SandboxResource,
-  { wokeFromSleep }: { wokeFromSleep: boolean }
+  {
+    runtimeOwner,
+    wokeFromSleep,
+  }: { runtimeOwner: SandboxRuntimeOwner; wokeFromSleep: boolean }
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
     if (wokeFromSleep) {
@@ -345,7 +350,10 @@ export async function ensureSandboxEgressOnExec(
       },
       "Sandbox woke from sleep, re-running full egress setup"
     );
-    return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+    return setupEgressForwarder(auth, sandbox, {
+      restartExisting: true,
+      runtimeOwner,
+    });
   }
 
   const healthResult = await checkEgressForwarderHealth(auth, sandbox);
@@ -364,7 +372,10 @@ export async function ensureSandboxEgressOnExec(
       { ...baseLogContext, event: "egress.health_fail" },
       "Sandbox egress forwarder port not listening, restarting"
     );
-    return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+    return setupEgressForwarder(auth, sandbox, {
+      restartExisting: true,
+      runtimeOwner,
+    });
   }
 
   if (!resolverOk || !nftablesOk) {
@@ -472,7 +483,10 @@ async function writeEgressTokenFile(
 export async function setupEgressForwarder(
   auth: Authenticator,
   sandbox: SandboxResource,
-  { restartExisting = false }: { restartExisting?: boolean } = {}
+  {
+    restartExisting = false,
+    runtimeOwner,
+  }: { restartExisting?: boolean; runtimeOwner: SandboxRuntimeOwner }
 ): Promise<Result<void, Error>> {
   const logContext = {
     event: "egress.setup",
@@ -526,7 +540,7 @@ export async function setupEgressForwarder(
 
   const manifestWriteResult = await traceSandboxStartupPhase(
     "egress.write_manifest",
-    () => writeSandboxEnvManifestFile(auth, sandbox)
+    () => writeSandboxEnvManifestFile(auth, sandbox, runtimeOwner)
   );
   if (manifestWriteResult.isErr()) {
     return manifestWriteResult;

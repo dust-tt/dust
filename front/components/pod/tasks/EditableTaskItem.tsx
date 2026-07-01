@@ -90,7 +90,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
     isStarting;
 
   return (
-    <div className="group/task flex items-start gap-3 rounded-md p-1 transition-colors duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night">
+    <div className="group/task flex items-start gap-3 rounded-md p-1 transition-colors duration-200 hover:bg-muted-background">
       <div className="mt-0.5 shrink-0">
         <Checkbox
           size="xs"
@@ -114,9 +114,8 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
               disabled={isStarting}
               className={cn(
                 TASK_TEXTAREA_FIELD_CLASS,
-                isDone && "text-faint line-through dark:text-faint-night",
-                isNewlyDone &&
-                  "rounded bg-warning-100/40 dark:bg-warning-100-night/30"
+                isDone && "text-faint line-through",
+                isNewlyDone && "rounded bg-warning-100/40"
               )}
               {...inlineEdit.textareaHandlers}
             />
@@ -138,11 +137,8 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                   className={cn(
                     "min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 transition-colors duration-300",
                     typing.isAnimating && "absolute inset-0",
-                    isDone
-                      ? "text-faint dark:text-faint-night line-through"
-                      : "text-foreground dark:text-foreground-night",
-                    isNewlyDone &&
-                      "rounded bg-warning-100/40 dark:bg-warning-100-night/30",
+                    isDone ? "text-faint line-through" : "text-foreground",
+                    isNewlyDone && "rounded bg-warning-100/40",
                     inlineEdit.showSavedPulse && "animate-saved-pulse",
                     canEdit && "cursor-pointer"
                   )}
@@ -212,7 +208,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                   />
                   <ConversationSidebarStatusDot
                     status={conversationDotStatus}
-                    className="pointer-events-none absolute -right-0.5 -top-0.5 m-0 ring-2 ring-background dark:ring-background-night"
+                    className="pointer-events-none absolute -right-0.5 -top-0.5 m-0 ring-2 ring-background"
                   />
                 </div>
               }

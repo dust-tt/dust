@@ -42,14 +42,12 @@ export function SkillBuilderIsDefaultSection() {
     <>
       <div className="flex items-center gap-2">
         <SliderToggle selected={isDefault} onClick={handleToggle} size="xs" />
-        <span className="text-sm text-foreground dark:text-foreground-night">
+        <span className="text-sm text-foreground">
           Allow agents to discover this skill
         </span>
         <Tooltip
           label="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
-          trigger={
-            <InfoCircle className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
-          }
+          trigger={<InfoCircle className="text-muted-foreground h-4 w-4" />}
         />
       </div>
       <Dialog
@@ -69,7 +67,7 @@ export function SkillBuilderIsDefaultSection() {
                 <span className="font-semibold">Discover Skills</span>&nbsp;
                 will be able to find and enable it on their own.
               </DialogDescription>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
                 <li>
                   This will expose the skill to your entire workspace through
                   the Discover Skills skill.

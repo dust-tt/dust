@@ -83,7 +83,7 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
     },
   },
   [SNOWFLAKE_QUERY_TOOL_NAME]: {
-    description: `Execute a read-only SQL query against Snowflake. Only SELECT queries are allowed; write operations are not permitted. Before writing a query, use ${SNOWFLAKE_LIST_DATABASES_TOOL_NAME}, ${SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME}, ${SNOWFLAKE_LIST_TABLES_TOOL_NAME}, and ${SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME} (or ${SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME} for semantic views) to explore the schema.`,
+    description: `Execute a read-only SQL SELECT query against Snowflake to analyze data, answer questions, calculate metrics such as revenue, or retrieve rows. Write operations are not permitted. Before writing a query, use ${SNOWFLAKE_LIST_DATABASES_TOOL_NAME}, ${SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME}, ${SNOWFLAKE_LIST_TABLES_TOOL_NAME}, and ${SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME} (or ${SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME} for semantic views) to explore the schema when database, schema, table, view, or column names are unknown.`,
     schema: {
       sql: z
         .string()

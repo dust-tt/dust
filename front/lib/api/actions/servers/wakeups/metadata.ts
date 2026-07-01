@@ -10,8 +10,8 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
   schedule_wakeup: {
     description:
       "Schedule a wake-up that posts a user message at a future time to re-invoke " +
-      "the agent. Use this to check back on something later, remind the user, poll until a " +
-      "condition is met or schedule recurring work. The `when` field accepts three formats: " +
+      "the agent. Useful for requests to check back on something later, remind the user, poll " +
+      "until a condition is met, or schedule recurring work. The `when` field accepts three formats: " +
       '(1) relative duration like "in 2h", "in 30m", "in 1d";\n' +
       '(2) absolute ISO 8601 timestamp like "2026-04-16T16:00:00Z";\n' +
       '(3) 5-field cron expression like "0 9 * * MON-FRI". (# and L are not supported).\n' +
@@ -49,9 +49,10 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
   },
   list_wakeups: {
     description:
-      "List wake-ups with their status, schedule, and reason. " +
-      "Useful for checking what's already scheduled before creating a new wake-up, or for " +
-      "finding the wake-up ID needed to cancel a wake-up.",
+      "List wake-ups and reminders with their status, schedule, and reason, including " +
+      "pending reminders and already-fired, cancelled, or expired wake-ups. Useful for checking " +
+      "what's already scheduled before creating a new wake-up, or for finding the wake-up ID " +
+      "needed to cancel a wake-up.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -61,8 +62,10 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
   },
   cancel_wakeup: {
     description:
-      "Cancel a previously scheduled wake-up by ID. " +
-      "Cancelling an already-fired, cancelled, or expired wake-up is a no-op.",
+      "Cancel or stop a previously scheduled wake-up or reminder by ID. " +
+      "Useful for requests to stop a reminder set earlier, remove a scheduled follow-up, or cancel " +
+      "a wake-up. Cancelling an already-fired, cancelled, or expired wake-up " +
+      "is a no-op.",
     schema: {
       wakeUpId: z
         .string()

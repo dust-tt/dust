@@ -6,7 +6,9 @@ import {
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
+  creditsExhaustedMessage,
   finalizeCancellation,
+  finalizeCreditStop,
   finalizeGracefulStop,
   finalizeInterruption,
   notifyWorkflowError,
@@ -109,6 +111,26 @@ export async function finalizeCancelledAgentLoopActivity(
       agentLoopArgs,
       "Agent execution was cancelled."
     ),
+  ]);
+}
+
+export async function finalizeCreditStoppedAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  await finalizeCreditStop(authType, agentLoopArgs);
+
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  await Promise.all([
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+    }),
+    sendEmailReplyOnError(auth, agentLoopArgs, creditsExhaustedMessage(auth)),
   ]);
 }
 

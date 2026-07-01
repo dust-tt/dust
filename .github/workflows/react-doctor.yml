@@ -3,8 +3,6 @@ name: React Doctor
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-  push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -19,6 +17,9 @@ concurrency:
 jobs:
   react-doctor:
     runs-on: ubuntu-latest
+    # Skip when the PR carries the `disable-react-doctor` label. On push events
+    # there are no PR labels, so `contains` is false and the job still runs.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'disable-react-doctor') }}
     steps:
       - uses: actions/checkout@v5
         with:

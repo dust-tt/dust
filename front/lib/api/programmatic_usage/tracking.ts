@@ -79,7 +79,10 @@ export async function checkProgrammaticUsageLimits(
     );
   }
 
-  // Then check per-key cap (not applicable to credit-priced/Metronome plans).
+  // Then check per-key cap (legacy plans only — ES usage tally). Credit-priced
+  // plans enforce the per-key credit cap in the message gate (conversation.ts /
+  // the front-api conversations route), where the credit-priced branch lives;
+  // this function is only reached on the legacy branch.
   const plan = auth.subscription()?.plan;
   if (!plan || !isCreditPricedPlan(plan)) {
     const keyCapReached = await hasKeyReachedUsageCap(auth);

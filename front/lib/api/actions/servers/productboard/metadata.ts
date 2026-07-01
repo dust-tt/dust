@@ -210,16 +210,6 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
         .array(z.string().email())
         .optional()
         .describe("Filter by owner emails"),
-      timeframe_start_date: z
-        .string()
-        .optional()
-        .describe(
-          "Filter by timeframe start date (ISO date format YYYY-MM-DD)"
-        ),
-      timeframe_end_date: z
-        .string()
-        .optional()
-        .describe("Filter by timeframe end date (ISO date format YYYY-MM-DD)"),
       fields: z
         .enum(["all", "default"])
         .optional()

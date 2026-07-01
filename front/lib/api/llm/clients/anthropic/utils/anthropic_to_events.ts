@@ -9,6 +9,7 @@ import type {
   Message,
   MessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
 import { validateContentBlockIndex } from "@app/lib/api/llm/clients/anthropic/utils/predicates";
 import type { StreamState } from "@app/lib/api/llm/clients/anthropic/utils/types";
 import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
@@ -16,6 +17,7 @@ import type {
   CacheMissReason,
   LLMEvent,
   LLMOutputItem,
+  ProviderPassthroughEvent,
   ReasoningDeltaEvent,
   ReasoningGeneratedEvent,
   TextDeltaEvent,
@@ -230,7 +232,8 @@ function* handleContentBlockStart(
         accumulatorType: blockType === "text" ? "text" : "reasoning",
       };
       return;
-    case "tool_use": {
+
+    case "tool_use":
       stateContainer.state = {
         currentBlockIndex: event.index,
         accumulator: "",
@@ -250,7 +253,7 @@ function* handleContentBlockStart(
         metadata,
       };
       return;
-    }
+
     case "redacted_thinking":
       // "Redacted thinking" provides no actionable information, as everything is encrypted
       return;
@@ -264,16 +267,25 @@ function* handleContentBlockStart(
         accumulator: "",
         accumulatorType: "tool_search",
         toolName: event.content_block.name,
+        toolId: event.content_block.id,
       };
       return;
 
     case "tool_search_tool_result":
-      // The discovered tool references arrive inline in this block (no deltas),
-      // so log them here. State stays null and the matching stop is a no-op.
+      // Emit a passthrough so the block replays verbatim, and log the discovered
+      // references. State stays null, so the matching stop is a no-op.
       logToolSearchResult({
         content: event.content_block.content,
         logFields: metadata,
       });
+      yield providerPassthrough(
+        {
+          type: "tool_search_tool_result",
+          tool_use_id: event.content_block.tool_use_id,
+          content: event.content_block.content,
+        },
+        metadata
+      );
       return;
 
     case "web_search_tool_result":
@@ -289,6 +301,7 @@ function* handleContentBlockStart(
     case "fallback":
       // We don't use these Anthropic tools
       return;
+
     default:
       // New content block types may appear (e.g. via a new beta) before the
       // SDK types and this client are updated. Ignore rather than crash.
@@ -408,14 +421,28 @@ function* handleContentBlockStop(
       break;
     }
 
-    case "tool_search":
+    case "tool_search": {
       logToolSearchQuery({
         rawInput: stateContainer.state.accumulator,
         toolName: stateContainer.state.toolName,
         tags: toolSearchTags(metadata),
         logFields: metadata,
       });
+      // Replay the server_tool_use block verbatim so interleaved thinking
+      // signatures stay valid, falling back to an empty input if the query
+      // failed to parse.
+      const parsedInput = safeParseJSON(stateContainer.state.accumulator);
+      yield providerPassthrough(
+        {
+          type: "server_tool_use",
+          id: stateContainer.state.toolId,
+          name: stateContainer.state.toolName,
+          input: parsedInput.isOk() ? parsedInput.value : {},
+        },
+        metadata
+      );
       break;
+    }
   }
   stateContainer.state = null;
 }
@@ -529,6 +556,20 @@ function textGenerated(
     content: {
       text,
     },
+    metadata,
+  };
+}
+
+// Wraps an Anthropic tool-search block (server_tool_use or
+// tool_search_tool_result) for verbatim round-trip. The block is opaque to the
+// generic pipeline and only re-typed by the Anthropic replay path.
+function providerPassthrough(
+  block: unknown,
+  metadata: LLMClientMetadata
+): ProviderPassthroughEvent {
+  return {
+    type: "provider_passthrough",
+    content: { provider: ANTHROPIC_PROVIDER_ID, block },
     metadata,
   };
 }

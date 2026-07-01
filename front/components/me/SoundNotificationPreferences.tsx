@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -126,98 +127,82 @@ export function SoundNotificationPreferences({
   };
 
   return (
-    <div className="rounded-xl border border-border dark:border-border-night">
-      <div className="flex items-center p-4">
-        <div className="flex flex-1 flex-col">
-          <span className="heading-sm text-foreground dark:text-foreground-night">
-            Manual actions sound notification
-          </span>
-          <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-            Play a sound when a manual action is required
-          </span>
-        </div>
-        <SliderToggle
-          selected={enabledField.value}
-          disabled={disabled}
-          onClick={() => {
-            const next = !enabledField.value;
-            enabledField.onChange(next);
-            if (
-              next &&
-              typeof Notification !== "undefined" &&
-              Notification.permission === "default"
-            ) {
-              void Notification.requestPermission();
-            }
-          }}
-        />
-      </div>
-
-      <div className="border-t border-border dark:border-border-night" />
-
-      <div className="flex items-center p-4">
-        <div className="flex flex-1 flex-col">
-          <span
-            className={cn(
-              "heading-sm",
-              enabledField.value
-                ? "text-foreground dark:text-foreground-night"
-                : "text-faint dark:text-faint-night"
-            )}
-          >
-            Customize sound notification
-          </span>
-          <span
-            className={cn(
-              "copy-sm",
-              enabledField.value
-                ? "text-muted-foreground dark:text-muted-foreground-night"
-                : "text-faint dark:text-faint-night"
-            )}
-          >
-            Choose the sound you prefer
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="xs"
-                label={soundField.value}
-                isSelect
-                disabled={disabled || !enabledField.value}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortal={false}>
-              {SOUND_NOTIFICATION_OPTIONS.map((sound) => (
-                <DropdownMenuItem
-                  key={sound}
-                  label={sound}
-                  onClick={() => soundField.onChange(sound)}
-                  endComponent={
-                    soundField.value === sound ? (
-                      <Icon
-                        visual={Check}
-                        size="xs"
-                        className="text-muted-foreground dark:text-muted-foreground-night"
-                      />
-                    ) : undefined
-                  }
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="xs"
-            label="Play"
-            className="text-highlight-500 dark:text-highlight-500-night"
-            onClick={handlePlay}
-            disabled={disabled || !enabledField.value}
+    <SettingsList>
+      <SettingsList.Row
+        title="Agent waiting sound alert"
+        description="Play a sound when an agent needs your input to continue"
+        action={
+          <SliderToggle
+            selected={enabledField.value}
+            disabled={disabled}
+            onClick={() => {
+              const next = !enabledField.value;
+              enabledField.onChange(next);
+              if (
+                next &&
+                typeof Notification !== "undefined" &&
+                Notification.permission === "default"
+              ) {
+                void Notification.requestPermission();
+              }
+            }}
           />
-        </div>
-      </div>
-    </div>
+        }
+      />
+
+      <SettingsList.Row
+        title={
+          <span className={cn(!enabledField.value && "text-faint")}>
+            Notification sound
+          </span>
+        }
+        description={
+          <span className={cn(!enabledField.value && "text-faint")}>
+            Pick your alert sound
+          </span>
+        }
+        action={
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={soundField.value}
+                  isSelect
+                  disabled={disabled || !enabledField.value}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortal={false}>
+                {SOUND_NOTIFICATION_OPTIONS.map((sound) => (
+                  <DropdownMenuItem
+                    key={sound}
+                    label={sound}
+                    onClick={() => soundField.onChange(sound)}
+                    endComponent={
+                      soundField.value === sound ? (
+                        <Icon
+                          visual={Check}
+                          size="xs"
+                          className="text-muted-foreground"
+                        />
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              variant="ghost"
+              size="sm"
+              label="Play"
+              className="text-highlight-500"
+              onClick={handlePlay}
+              disabled={disabled || !enabledField.value}
+            />
+          </div>
+        }
+      />
+    </SettingsList>
   );
 }

@@ -6,6 +6,11 @@ interface GetFileParams {
   fileId: string;
 }
 
+interface CallFunctionParams {
+  functionIdOrSlug: string;
+  input?: unknown;
+}
+
 interface SetContentHeightParams {
   height: number;
 }
@@ -25,10 +30,14 @@ interface EditTextParams {
   oldText: string;
   newText: string;
   targetFileId?: string;
+  // Clicked element's `data-source` ("<relPath>:<line>:<col>") for location-based edits on a
+  // published (bundled) Frame. When set, oldText/newText are the visible (trimmed) text.
+  source?: string;
 }
 
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
+  callFunction: CallFunctionParams;
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
@@ -44,6 +53,7 @@ export type VisualizationRPCCommand = keyof VisualizationRPCRequestMap;
 // Command results.
 
 export interface CommandResultMap {
+  callFunction: { result: unknown; error?: string };
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };

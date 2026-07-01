@@ -14,13 +14,16 @@ import {
   updateMetronomeCreditEndDate,
 } from "@app/lib/metronome/client";
 import {
+  AWU_PRIORITY_PURCHASED_COMMIT,
   CURRENCY_TO_CREDIT_TYPE_ID,
+  getCreditTypeAwuId,
+  getProductFreeCreditId,
   getProductSeatSubscriptionCreditsId,
   SEAT_PRIORITY_COUPON_CREDIT,
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
-import { SEAT_TAG } from "@app/lib/metronome/setup_common";
+import { SEAT_TAG, USAGE_TAG } from "@app/lib/metronome/setup_common";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import type {
   CouponResource,
@@ -100,6 +103,8 @@ function getApplicableProductTagsForDiscountType(
   switch (discountType) {
     case "seat":
       return [SEAT_TAG];
+    case "credit_pool_top_up":
+      return [USAGE_TAG];
     default:
       return assertNever(discountType);
   }
@@ -161,6 +166,146 @@ export async function createCouponCredit({
   return new Ok(result.value !== null ? [result.value.id] : []);
 }
 
+// Default access window for a bonus AWU credit grant when the coupon does not
+// specify a duration. Mirrors the one-year access of a purchased Top-Up commit.
+const CREDITS_COUPON_DEFAULT_DURATION_MONTHS = 12;
+
+// Grant the bonus AWU credits of a "credit_pool_top_up" coupon as a free credit
+// on the workspace's Metronome customer. Mirrors the free-credit grant path of
+// the `grant-awu-credits` poke plugin: AWU credit type, "usage" tag,
+// purchased-commit priority. For "credit_pool_top_up" coupons, `coupon.amount`
+// is the number of AWU credits to grant directly (AWU is currency-independent).
+async function createCreditsCouponCredit({
+  metronomeCustomerId,
+  coupon,
+  redemptionId,
+  redeemedAt,
+}: {
+  metronomeCustomerId: string;
+  coupon: CouponResource;
+  redemptionId: string;
+  redeemedAt: Date;
+}): Promise<Result<string[], Error>> {
+  const durationMonths =
+    coupon.durationMonths ?? CREDITS_COUPON_DEFAULT_DURATION_MONTHS;
+
+  const result = await createMetronomeCredit({
+    metronomeCustomerId,
+    productId: getProductFreeCreditId(),
+    creditTypeId: getCreditTypeAwuId(),
+    amount: coupon.amount,
+    startingAt: floorToHourISO(redeemedAt),
+    endingBefore: ceilToHourISO(addMonths(redeemedAt, durationMonths)),
+    name: `Coupon: ${coupon.code}`,
+    idempotencyKey: `coupon-credits-${redemptionId}-0`,
+    priority: AWU_PRIORITY_PURCHASED_COMMIT,
+    applicableProductTags:
+      getApplicableProductTagsForDiscountType("credit_pool_top_up"),
+  });
+
+  if (result.isErr()) {
+    return new Err(result.error);
+  }
+
+  return new Ok(result.value !== null ? [result.value.id] : []);
+}
+
+export type RedeemCreditsCouponError =
+  | { code: "workspace_not_on_metronome" }
+  | { code: "coupon_validation_failed"; reason: CouponValidationError };
+
+// Redeem a "credit_pool_top_up" coupon as a standalone, synchronous action (the "Use
+// coupon" Top-Up tab): no payment is involved, the coupon simply grants free
+// AWU credits to the workspace pool. Mirrors `redeemCoupon` (the subscription
+// path) end-to-end: validate → check for an existing redemption → create the
+// pending redemption (incrementing the count) → grant the credit → mark active.
+// On a Metronome failure the pending redemption is rolled back so the count is
+// released (safe here because, unlike a payment-gated flow, nothing has been
+// charged).
+export async function redeemCreditsCoupon(
+  auth: Authenticator,
+  { coupon }: { coupon: CouponResource }
+): Promise<Result<CouponRedemptionResource, RedeemCreditsCouponError | Error>> {
+  const validation = coupon.validateRedemptionForContext("credits");
+  if (validation.isErr()) {
+    return new Err({
+      code: "coupon_validation_failed",
+      reason: validation.error,
+    });
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return new Err({ code: "workspace_not_on_metronome" });
+  }
+
+  const existingRedemption =
+    await CouponRedemptionResource.findActiveOrPendingByCouponAndWorkspace(
+      auth,
+      { coupon }
+    );
+  if (existingRedemption) {
+    return new Err({
+      code: "coupon_validation_failed",
+      reason: { code: "already_redeemed" },
+    });
+  }
+
+  const pendingResult = await CouponRedemptionResource.createPending(auth, {
+    coupon,
+  });
+  if (pendingResult.isErr()) {
+    return new Err(pendingResult.error);
+  }
+  const redemption = pendingResult.value;
+
+  const creditResult = await createCreditsCouponCredit({
+    metronomeCustomerId,
+    coupon,
+    redemptionId: redemption.sId,
+    redeemedAt: redemption.redeemedAt,
+  });
+
+  if (creditResult.isErr()) {
+    logger.error(
+      {
+        err: creditResult.error,
+        couponId: coupon.sId,
+        workspaceId: workspace.sId,
+      },
+      "[Metronome] Failed to create credits coupon credit — rolling back redemption"
+    );
+    const rollbackResult = await redemption.rollback(coupon);
+    if (rollbackResult.isErr()) {
+      logger.error(
+        {
+          err: rollbackResult.error,
+          couponId: coupon.sId,
+          workspaceId: workspace.sId,
+        },
+        "[Metronome] Failed to create credits coupon credit - failed to rollback coupon redemption"
+      );
+    }
+    return new Err(creditResult.error);
+  }
+
+  await redemption.markActive(creditResult.value);
+
+  void emitAuditLogEvent({
+    auth,
+    action: "coupon.redeemed",
+    targets: [buildAuditLogTarget("workspace", workspace)],
+    metadata: {
+      code: coupon.code,
+      redemption_id: redemption.sId,
+      amount: String(coupon.amount),
+    },
+  });
+
+  return new Ok(redemption);
+}
+
 export async function endCouponCredit({
   metronomeCustomerId,
   metronomeCreditIds,
@@ -200,7 +345,7 @@ export async function redeemCoupon(
     metronomePackageAlias?: string;
   }
 ): Promise<Result<CouponRedemptionResource, RedeemCouponError | Error>> {
-  const validation = coupon.validateRedemption();
+  const validation = coupon.validateRedemptionForContext("subscription");
   if (validation.isErr()) {
     return new Err({
       code: "coupon_validation_failed",

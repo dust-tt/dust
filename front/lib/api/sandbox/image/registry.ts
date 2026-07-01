@@ -19,8 +19,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.37";
-const DSBX_CLI_VERSION = "0.1.26";
+const DUST_BASE_IMAGE_VERSION = "0.8.45";
+const DSBX_CLI_VERSION = "0.1.32";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
 // list must not silently change this user's UID.
@@ -28,6 +28,9 @@ const AGENT_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
+// Modern x86_64 build (requires AVX2). Switch to the baseline variant if a
+// future sandbox CPU lacks it.
+const BUN_VERSION = "1.3.14";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
@@ -335,8 +338,14 @@ SHELLEOF`,
         description: "PowerPoint generation library",
         runtime: "node",
       },
+      {
+        name: "zod",
+        version: "4.4.3",
+        description: "Schema validation (sandbox function contracts)",
+        runtime: "node",
+      },
     ],
-    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1" }
+    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3" }
   )
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
@@ -370,6 +379,20 @@ SHELLEOF`,
     returns: "Summary of applied changes (A/M/D per file)",
     runtime: "system",
     profile: "openai",
+  })
+  .runCmd(
+    `curl -fsSL https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip -o /tmp/bun.zip && ` +
+      `curl -fsSL https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/SHASUMS256.txt -o /tmp/bun-checksums.txt && ` +
+      "grep 'bun-linux-x64.zip' /tmp/bun-checksums.txt | awk '{print $1 \"  /tmp/bun.zip\"}' | sha256sum -c - && " +
+      "unzip -j /tmp/bun.zip bun-linux-x64/bun -d /tmp && " +
+      "mv /tmp/bun /opt/bin/bun && " +
+      "chown root:root /opt/bin/bun && chmod 755 /opt/bin/bun",
+    { user: "root" }
+  )
+  .registerTool({
+    name: "bun",
+    description: "Fast JavaScript/TypeScript runtime and package manager",
+    runtime: "node",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })
   // Core: compiled dust-tools binary + shared shell infra

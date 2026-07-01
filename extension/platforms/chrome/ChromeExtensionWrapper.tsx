@@ -40,8 +40,7 @@ export const ChromeExtensionWrapper = ({
       <div
         className={cn(
           "flex h-screen flex-col gap-2 p-4",
-          "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "bg-background text-foreground"
         )}
       >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">

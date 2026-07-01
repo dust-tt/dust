@@ -15,6 +15,7 @@ import {
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
 import { CUSTOM_ANTHROPIC_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -34,6 +35,7 @@ export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
   // Custom Anthropic models (generated at build time from GCS)
   ...CUSTOM_ANTHROPIC_MODEL_IDS,
 ] as const;
@@ -87,6 +89,9 @@ const STATIC_ANTHROPIC_MODEL_CONFIGS: Partial<
   [CLAUDE_SONNET_4_6_MODEL_ID]: {
     overwrites: THINKING_OVERWRITES,
   },
+  [CLAUDE_SONNET_5_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+  },
 };
 
 export function overwriteLLMParameters(
@@ -114,6 +119,7 @@ export const isAnthropicWhitelistedModelId = (
 export const VERTEX_MODEL_ID_MAP: Partial<Record<ModelIdType, string>> = {
   [CLAUDE_4_5_SONNET_20250929_MODEL_ID]: "claude-sonnet-4-5@20250929",
   [CLAUDE_SONNET_4_6_MODEL_ID]: "claude-sonnet-4-6",
+  [CLAUDE_SONNET_5_MODEL_ID]: "claude-sonnet-5",
   [CLAUDE_OPUS_4_6_MODEL_ID]: "claude-opus-4-6",
   [CLAUDE_OPUS_4_7_MODEL_ID]: "claude-opus-4-7",
   [CLAUDE_OPUS_4_8_MODEL_ID]: "claude-opus-4-8",

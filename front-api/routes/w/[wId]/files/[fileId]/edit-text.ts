@@ -1,4 +1,5 @@
 import { editClientExecutableFile } from "@app/lib/api/files/client_executable";
+import { editFrameTextAtSource } from "@app/lib/api/viz/edit_frame_text";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -14,6 +15,9 @@ import { z } from "zod";
 const EditTextRequestBodySchema = z.object({
   newText: z.string(),
   oldText: z.string().min(1, "oldText must be a non-empty string"),
+  // When set ("<relPath>:<line>:<col>"), edit the Frame's source by location and rebuild the
+  // bundle, instead of the legacy context-string match against the rendered code.
+  source: z.string().optional(),
 });
 
 const ParamsSchema = z.object({
@@ -82,7 +86,29 @@ app.post(
       });
     }
 
-    const { oldText, newText } = ctx.req.valid("json");
+    const { oldText, newText, source } = ctx.req.valid("json");
+
+    // Location-based edit (published frames): route the edit to the source file by location and
+    // rebuild the bundle.
+    if (source) {
+      const editResult = await editFrameTextAtSource(auth, {
+        file,
+        source,
+        oldText,
+        newText,
+      });
+      if (editResult.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: editResult.error.message,
+          },
+        });
+      }
+
+      return ctx.json({ success: true });
+    }
 
     const editResult = await editClientExecutableFile(auth, {
       fileId,

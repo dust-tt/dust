@@ -22,7 +22,7 @@ export function LessonLink({
   return (
     <LinkWrapper
       href={`/academy/lessons/${slug}`}
-      className="my-6 block rounded-xl border border-highlight/20 bg-gradient-to-r from-highlight/5 to-highlight/10 p-6 transition-all hover:border-highlight/40 hover:from-highlight/10 hover:to-highlight/15"
+      className="my-6 block rounded-xl border border-highlight/20 bg-linear-to-r from-highlight/5 to-highlight/10 p-6 transition-all hover:border-highlight/40 hover:from-highlight/10 hover:to-highlight/15"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-2">

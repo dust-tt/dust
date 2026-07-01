@@ -3416,7 +3416,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ],
       where: {
         workspaceId: workspace.id,
-        customSkillId: { [Op.in]: [...skillsById.keys()] },
+        customSkillId: {
+          [Op.ne]: null,
+          [Op.in]: [...skillsById.keys()],
+        },
       },
     });
 

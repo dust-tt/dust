@@ -513,11 +513,11 @@ export function EnvironmentSection() {
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <pre
                       title={envVar.name}
-                      className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
+                      className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
                     >
                       {envVar.name}
                     </pre>
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    <div className="text-xs text-muted-foreground">
                       Updated{" "}
                       {timeAgoFrom(envVar.updatedAt, { useLongFormat: true })}{" "}
                       ago by {updatedBy}
@@ -603,7 +603,7 @@ export function EnvironmentSection() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex flex-col">
                       <Label>HTTPS secret</Label>
-                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      <span className="text-xs text-muted-foreground">
                         Keep the value out of the Computer environment.
                       </span>
                     </div>
@@ -646,7 +646,7 @@ export function EnvironmentSection() {
                 <Label htmlFor="sandbox-env-var-name">Name</Label>
                 <div className="relative">
                   <span
-                    className="pointer-events-none absolute left-3 top-0 flex h-9 select-none items-center text-sm text-muted-foreground dark:text-muted-foreground-night"
+                    className="pointer-events-none absolute left-3 top-0 flex h-9 select-none items-center text-sm text-muted-foreground"
                     aria-hidden="true"
                     title={`The ${namePrefix} prefix is reserved and cannot be removed.`}
                   >
@@ -723,8 +723,8 @@ export function EnvironmentSection() {
                 <div
                   className={
                     valueMessage.isError
-                      ? "text-xs text-foreground-warning dark:text-foreground-warning-night"
-                      : "text-xs text-muted-foreground dark:text-muted-foreground-night"
+                      ? "text-xs text-foreground-warning"
+                      : "text-xs text-muted-foreground"
                   }
                 >
                   {valueMessage.message}

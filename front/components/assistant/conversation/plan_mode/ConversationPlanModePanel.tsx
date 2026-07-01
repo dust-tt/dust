@@ -32,11 +32,11 @@ export function ConversationPlanModePanel({
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-panel flex-col">
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+            <span className="truncate text-sm font-semibold text-foreground">
               Plan: {title}
             </span>
           </div>
@@ -48,13 +48,13 @@ export function ConversationPlanModePanel({
           />
         </div>
       </AppLayoutTitle>
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {isPlanLoading && !content ? (
           <div className="flex h-full items-center justify-center">
             <Spinner />
           </div>
         ) : !content ? (
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm text-muted-foreground">
             No active plan for this conversation.
           </div>
         ) : (

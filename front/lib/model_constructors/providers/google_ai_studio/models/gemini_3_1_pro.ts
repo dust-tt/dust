@@ -10,12 +10,16 @@ import { z } from "zod";
 
 const DEFAULT_REASONING_EFFORT = "high";
 
-// Pro supports the low/medium/high thinking levels (no `minimal`) and strongly
-// recommends `temperature: 1`, so we coerce temperature to 1.
+// `none` maps to the minimum thinking budget (no "off" level on Gemini 3).
+const GEMINI_3_1_PRO_REASONING_EFFORTS = [
+  "none",
+  ...GEMINI_PRO_SUPPORTED_REASONING_EFFORTS,
+] as const;
+
 const configSchema = googleAiStudioConfigSchema.extend({
   reasoning: z
     .object({
-      effort: z.enum(GEMINI_PRO_SUPPORTED_REASONING_EFFORTS),
+      effort: z.enum(GEMINI_3_1_PRO_REASONING_EFFORTS),
     })
     .default({ effort: DEFAULT_REASONING_EFFORT }),
 });

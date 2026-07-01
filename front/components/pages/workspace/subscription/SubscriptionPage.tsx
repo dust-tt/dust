@@ -659,7 +659,6 @@ export function SubscriptionPage() {
                       <Page.H variant="h5">Choose a plan</Page.H>
                       <BillingPeriodSwitch
                         defaultValue={billingPeriod}
-                        size="xs"
                         onValueChange={setBillingPeriod}
                       />
                     </div>
@@ -682,7 +681,6 @@ export function SubscriptionPage() {
                       {!isWorkspaceWhitelistedBusinessPlan && (
                         <BillingPeriodSwitch
                           defaultValue={billingPeriod}
-                          size="xs"
                           onValueChange={setBillingPeriod}
                         />
                       )}

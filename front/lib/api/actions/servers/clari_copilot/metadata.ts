@@ -7,9 +7,10 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
   search_calls: {
     description:
-      "Search Clari Copilot calls with optional filters. " +
-      "Returns calls that have finished processing (transcript available). " +
-      "Use get_call_details to fetch the full transcript and AI summary for a specific call.",
+      "Search and list Clari Copilot sales calls, filtering by account or company " +
+      "name, participant email, or date range. " +
+      "Returns matching sales calls that have finished processing (transcript available). " +
+      "Use get_call_details to fetch the AI summary and transcript for one specific call.",
     schema: {
       from_date: z
         .string()

@@ -164,6 +164,7 @@ const API_ERROR_TYPES = [
   "elasticsearch_error",
   // Skills
   "skill_not_found",
+  "sandbox_function_not_found",
   // Projects
   "project_metadata_not_found",
   // Suggestions

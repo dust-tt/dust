@@ -150,11 +150,7 @@ export function PodTaskStartWorkingDropdown({
 
   const startRedirectMenuItems = useMemo((): DropdownMenuItemProps[] => {
     const check = (
-      <Icon
-        size="xs"
-        visual={Check}
-        className="text-muted-foreground dark:text-muted-foreground-night"
-      />
+      <Icon size="xs" visual={Check} className="text-muted-foreground" />
     );
     return [
       {
@@ -253,10 +249,10 @@ export function PodTaskStartWorkingDropdown({
                     type="button"
                     aria-label={`Selected agent: ${selectedStartAgent?.name ?? "Agent"}`}
                     className={cn(
-                      "inline-flex box-border max-w-full min-w-0 items-center rounded-lg h-7 heading-xs px-2 gap-1.5 text-primary-900 dark:text-primary-900-night transition-colors duration-200",
+                      "inline-flex box-border max-w-full min-w-0 items-center rounded-lg h-7 heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
                       agentsLoading
                         ? "opacity-50 pointer-events-none"
-                        : "cursor-pointer hover:bg-muted-background dark:hover:bg-muted-background-night"
+                        : "cursor-pointer hover:bg-muted-background"
                     )}
                   >
                     {selectedStartAgent ? (
@@ -275,7 +271,7 @@ export function PodTaskStartWorkingDropdown({
                         tooltipTriggerAsChild
                         trigger={
                           <span
-                            className="flex items-center text-warning dark:text-warning-night"
+                            className="flex items-center text-warning"
                             onPointerDown={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -294,7 +290,7 @@ export function PodTaskStartWorkingDropdown({
                     <Icon
                       visual={ChevronDown}
                       size="xs"
-                      className="-mr-1 text-faint dark:text-faint-night"
+                      className="-mr-1 text-faint"
                     />
                   </button>
                 }

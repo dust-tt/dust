@@ -90,9 +90,7 @@ export function ProviderConfigurationContextItem({
         }
       >
         <ContextItem.Description>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {description}
-          </span>
+          <span className="text-sm text-muted-foreground">{description}</span>
         </ContextItem.Description>
 
         {apiKey && isHealthy === false && (
@@ -108,7 +106,7 @@ export function ProviderConfigurationContextItem({
         )}
 
         {apiKey && (
-          <div className="font-mono text-lg mt-4 text-foreground dark:text-foreground-night truncate">
+          <div className="font-mono text-lg mt-4 text-foreground truncate">
             {apiKey}
           </div>
         )}

@@ -68,6 +68,7 @@ import {
   SANDBOX_MCP_REQUEST_TIMEOUT_MS,
   SANDBOX_SERVER,
 } from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
@@ -89,6 +90,7 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
 import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
@@ -208,6 +210,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "user_mentions",
   "val_town",
   "vanta",
+  "workday",
   "front",
   "web_search_&_browse",
   "zendesk",
@@ -220,6 +223,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "pod_tasks",
   "poke",
   "sandbox",
+  "sandbox_functions",
   "ask_user_question",
   "wakeups",
   "plan_mode",
@@ -1046,6 +1050,19 @@ export const INTERNAL_MCP_SERVERS = {
     // timeout returns captured output before this MCP deadline aborts the call.
     timeoutMs: SANDBOX_MCP_REQUEST_TIMEOUT_MS,
   },
+  sandbox_functions: {
+    id: 1037,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_functions");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SANDBOX_FUNCTIONS_SERVER,
+  },
   user_mentions: {
     id: 1026,
     availability: "auto_hidden_builder",
@@ -1070,7 +1087,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   ask_user_question: {
     id: 1028,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
@@ -1161,6 +1178,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: EXA_SERVER,
+  },
+  workday: {
+    id: 1038,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("workday_mcp"),
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKDAY_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

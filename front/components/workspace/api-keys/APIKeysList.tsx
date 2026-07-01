@@ -19,6 +19,7 @@ type APIKeysListProps = {
   onRevoke: (key: KeyType) => Promise<void>;
   onEditCap: (key: KeyType) => void;
   showLegacyUsdMonthlyCap: boolean;
+  showCreditMonthlyCap: boolean;
 };
 
 const getKeySpaces = (
@@ -56,9 +57,10 @@ export const APIKeysList = ({
   onRevoke,
   onEditCap,
   showLegacyUsdMonthlyCap,
+  showCreditMonthlyCap,
 }: APIKeysListProps) => {
   return (
-    <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
+    <div className="space-y-4 divide-y divide-primary-200">
       <ul role="list" className="pt-4">
         {sortBy(keys, (key) => key.status[0] + key.name).map((key) => (
           <li key={key.secret} className="px-2 py-4">
@@ -66,10 +68,10 @@ export const APIKeysList = ({
               <div className="flex items-center">
                 <div className="flex flex-col">
                   <div className="flex flex-row">
-                    <div className="my-auto mr-2 mt-0.5 flex flex-shrink-0">
+                    <div className="mr-2 mt-0.5 flex w-16 flex-shrink-0 flex-col items-start gap-0.5">
                       <p
                         className={cn(
-                          "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                          "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                           key.status === "active"
                             ? "bg-green-100 text-green-800"
                             : "bg-gray-100 text-gray-800"
@@ -77,12 +79,17 @@ export const APIKeysList = ({
                       >
                         {key.status === "active" ? "active" : "revoked"}
                       </p>
+                      {showCreditMonthlyCap && key.creditState === "capped" && (
+                        <p className="inline-flex rounded-full bg-red-100 px-2 text-xs font-semibold leading-5 text-red-800">
+                          capped
+                        </p>
+                      )}
                     </div>
                     <div className="dd-privacy-mask">
                       <p
                         className={cn(
                           "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Name: <strong>{key.name ?? "Unnamed"}</strong>
@@ -90,7 +97,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Domain: <strong>{config.getApiBaseUrl()}</strong>
@@ -98,7 +105,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Spaces:{" "}
@@ -109,7 +116,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "truncate font-mono text-sm",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Scope: <strong>{formatKeyScope(key.role)}</strong>
@@ -118,7 +125,7 @@ export const APIKeysList = ({
                         <p
                           className={cn(
                             "truncate font-mono text-sm",
-                            "text-muted-foreground dark:text-muted-foreground-night"
+                            "text-muted-foreground"
                           )}
                         >
                           Monthly cap:{" "}
@@ -129,11 +136,26 @@ export const APIKeysList = ({
                           </strong>
                         </p>
                       )}
+                      {showCreditMonthlyCap && (
+                        <p
+                          className={cn(
+                            "truncate font-mono text-sm",
+                            "text-muted-foreground dark:text-muted-foreground-night"
+                          )}
+                        >
+                          Monthly credit cap:{" "}
+                          <strong>
+                            {key.monthlyCapAwuCredits !== null
+                              ? `${key.monthlyCapAwuCredits} credits`
+                              : "Unlimited"}
+                          </strong>
+                        </p>
+                      )}
                       <pre className="text-sm">{key.secret}</pre>
                       <p
                         className={cn(
                           "front-normal text-xs",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         Created {key.creator ? `by ${key.creator} ` : ""}
@@ -145,7 +167,7 @@ export const APIKeysList = ({
                       <p
                         className={cn(
                           "front-normal text-xs",
-                          "text-muted-foreground dark:text-muted-foreground-night"
+                          "text-muted-foreground"
                         )}
                       >
                         {key.lastUsedAt ? (
@@ -166,7 +188,7 @@ export const APIKeysList = ({
               </div>
               {key.status === "active" ? (
                 <div className="flex gap-2">
-                  {showLegacyUsdMonthlyCap && (
+                  {(showLegacyUsdMonthlyCap || showCreditMonthlyCap) && (
                     <Button
                       variant="outline"
                       disabled={isRevoking || isGenerating}

@@ -93,7 +93,7 @@ export function LandingEmailSignup({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={placeholder}
-              className="w-full flex-1 rounded-xl border-2 border-white/20 bg-white px-4 py-3.5 text-base text-gray-700 placeholder-gray-400 shadow-lg outline-none focus:border-white/40 focus:ring-0"
+              className="w-full flex-1 rounded-xl border-2 border-white/20 bg-white px-4 py-3.5 text-base text-gray-700 placeholder-gray-400 shadow-lg outline-hidden focus:border-white/40 focus:ring-0"
               disabled={isLoading}
             />
             <button
@@ -113,7 +113,7 @@ export function LandingEmailSignup({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={placeholder}
-              className="flex-1 border-none bg-transparent px-3 py-2 text-base text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+              className="flex-1 border-none bg-transparent px-3 py-2 text-base text-gray-700 placeholder-gray-400 outline-hidden focus:ring-0"
               disabled={isLoading}
             />
             <button

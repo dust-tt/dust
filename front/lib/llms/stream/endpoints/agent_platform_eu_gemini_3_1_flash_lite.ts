@@ -5,14 +5,7 @@ import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/mo
 export class DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream extends WithDustGoogleAiStudioGeminiThreeDotOneFlashLiteConfig(
   AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream
 ) {
-  static readonly endpointFilter = {
-    or: [
-      {
-        featureFlags: { contains: "use_vertex_for_supported_models" as const },
-      },
-      { isCreditPriced: { eq: true } },
-    ],
-  };
+  static readonly endpointFilter = {};
 }
 
 defineDustStreamEndpoint(

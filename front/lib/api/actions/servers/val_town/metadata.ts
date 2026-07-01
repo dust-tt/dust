@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   create_val: {
     description:
-      "Creates a new val (project) in Val Town: a serverless TypeScript/JavaScript container that can hold HTTP endpoints, scripts, email handlers, or scheduled tasks. Use create_file to add files to the val.",
+      "Create a new val (project) in Val Town: a serverless TypeScript/JavaScript function for HTTP endpoints, scripts, email handlers, or scheduled tasks. Use create_file to add files to the val.",
     schema: {
       name: z
         .string()
@@ -42,7 +42,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   get_val: {
     description:
-      "Gets a specific Val Town val (serverless script or project) by its ID, including its files and metadata.",
+      "Get a specific Val Town val (serverless script or project) by its ID, including its files and metadata.",
     schema: {
       valId: z.string().describe("The ID of the val to retrieve"),
     },
@@ -54,7 +54,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   list_vals: {
     description:
-      "Lists Val Town vals (serverless TypeScript/JavaScript functions and projects) available to the user's account.",
+      "List Val Town vals (serverless TypeScript/JavaScript functions and projects) available to the user's account.",
     schema: {
       limit: z
         .number()
@@ -84,7 +84,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   search_vals: {
     description:
-      "Searches for Val Town vals (serverless scripts and projects) by name, description, or code content.",
+      "Search for Val Town vals (serverless scripts and projects) by name, description, or code content.",
     schema: {
       query: z.string().describe("Search query to find vals"),
       limit: z
@@ -111,7 +111,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   list_val_files: {
     description:
-      "Lists all files in a specific Val Town val (serverless project).",
+      "List all files in a specific Val Town val (serverless project).",
     schema: {
       valId: z.string().describe("The ID of the val to list files for"),
       path: z
@@ -141,7 +141,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   get_file_content: {
     description:
-      "Gets the content of a specific file in a val using the Val Town API",
+      "Get the content of a specific file in a val using the Val Town API",
     schema: {
       valId: z.string().describe("The ID of the val containing the file"),
       filePath: z
@@ -155,7 +155,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
     },
   },
   delete_file: {
-    description: "Deletes a specific file from a val using the Val Town API",
+    description:
+      "Delete or remove a specific file from a val using the Val Town API",
     schema: {
       valId: z.string().describe("The ID of the val containing the file"),
       filePath: z
@@ -170,7 +171,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   update_file_content: {
     description:
-      "Updates the content of a specific file in a val. Note: To change file type (e.g., to HTTP), use the file_update tool instead.",
+      "Update the code or content of a specific file in a Val Town val. Use write_file to change the file type, name, or path.",
     schema: {
       valId: z.string().describe("The ID of the val containing the file"),
       filePath: z
@@ -189,7 +190,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   write_file: {
     description:
-      "The primary function for writing content to files and updating file metadata. Use this to add content, change file type, rename files, or move files. For HTTP type: return value from serve handler must be a response or a promise resolving to a response.",
+      "Write, rename, or move files in a Val Town val. Set content, change the file type (HTTP, email, interval, script), rename a file, or move it to a new directory.",
     schema: {
       valId: z.string().describe("The ID of the val containing the file"),
       filePath: z
@@ -218,7 +219,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   create_file: {
     description:
-      "Creates a new empty file in an existing val. Use write_file to add content and set the file type.",
+      "Create a new empty file in an existing val. Use write_file to add content and set the file type.",
     schema: {
       valId: z.string().describe("The ID of the val to create the file in"),
       filePath: z
@@ -233,7 +234,7 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
   },
   call_http_endpoint: {
     description:
-      "Runs an HTTP val endpoint by getting the file's endpoint link and making a request to it",
+      "Run an HTTP val endpoint by getting the file's endpoint link and making a request to it",
     schema: {
       valId: z.string().describe("The ID of the val containing the file"),
       filePath: z
