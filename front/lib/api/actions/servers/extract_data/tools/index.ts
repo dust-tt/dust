@@ -139,6 +139,9 @@ export function createExtractDataTools(
       );
     }
 
+    // If jsonSchema was pre-configured by the user, it has an additional
+    // mimeType property, as is convention. Remove it before validating the
+    // schema and passing it to the LLM.
     const jsonSchemaForExtraction =
       "mimeType" in jsonSchema
         ? Object.fromEntries(
@@ -146,6 +149,8 @@ export function createExtractDataTools(
           )
         : jsonSchema;
 
+    // Similarly, if timeFrame was pre-configured by the user, it has an
+    // additional mimeType property. Remove it before using it for extraction.
     const timeFrameForExtraction =
       timeFrame && "mimeType" in timeFrame
         ? {
