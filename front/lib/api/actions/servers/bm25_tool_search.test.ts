@@ -1648,6 +1648,24 @@ const QUERIES: LabeledQuery[] = [
 
 export const fullIndexWithAllServers = buildIndex(buildDocs(SERVERS));
 
+describe("BM25 tool-search retrieval (single-server index)", () => {
+  it('"what do you remember about me" → agent_memory.retrieve ranks #1 when only agent_memory is indexed', () => {
+    const serverName = "agent_memory";
+    const query = "what do you remember about me";
+    const expected = "agent_memory.retrieve";
+
+    const singleServerIndex = buildIndex(
+      buildDocs(SERVERS.filter((s) => s.name === serverName))
+    );
+    const ranked = rank(query, singleServerIndex);
+    const pos = ranked.findIndex((r) => r.name === expected) + 1;
+    expect(
+      pos,
+      `Expected "${expected}" at rank 1 but got rank ${pos}. Top hit: "${ranked[0]?.name}"`
+    ).toBe(1);
+  });
+});
+
 describe("BM25 tool-search retrieval", () => {
   for (const { query, expected, maxRank = 1 } of QUERIES) {
     it(`"${query}" → ${expected} (rank ≤ ${maxRank})`, () => {
