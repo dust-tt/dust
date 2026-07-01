@@ -64,8 +64,17 @@ export const LiBlock = memo(
   ({ children, className }: LiBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
     const textSize = forcedTextSize ?? markdownParagraphSize;
+    const isTaskListItem = className?.includes("task-list-item");
     return (
-      <li className={cn(liBlockVariants(), textColor, textSize, className)}>
+      <li
+        className={cn(
+          liBlockVariants(),
+          isTaskListItem && "list-none",
+          textColor,
+          textSize,
+          className
+        )}
+      >
         {children}
       </li>
     );
