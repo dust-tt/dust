@@ -59,7 +59,7 @@ function getDialogTitle(target: EditAdvancedModelsTarget): string {
     case "workspace":
       return "Workspace advanced models";
     default:
-      assertNever(target.scope);
+      return assertNever(target);
   }
 }
 
@@ -72,7 +72,7 @@ function getDialogDescription(target: EditAdvancedModelsTarget): string {
     case "workspace":
       return "Choose which advanced models are available to everyone in this workspace.";
     default:
-      assertNever(target.scope);
+      return assertNever(target);
   }
 }
 
@@ -152,7 +152,7 @@ export function EditAdvancedModelsModal({
       case "workspace":
         return workspaceAllowedAdvancedModels;
       default:
-        assertNever(target.scope);
+        return assertNever(target);
     }
   }, [
     target,
@@ -178,7 +178,7 @@ export function EditAdvancedModelsModal({
       case "workspace":
         return isWorkspaceAllowedAdvancedModelsLoading;
       default:
-        assertNever(target.scope);
+        return assertNever(target);
     }
   }, [
     target,
@@ -199,7 +199,7 @@ export function EditAdvancedModelsModal({
       case "workspace":
         return isWorkspaceAllowedAdvancedModelsError;
       default:
-        assertNever(target.scope);
+        return assertNever(target);
     }
   }, [
     target,
@@ -258,7 +258,7 @@ export function EditAdvancedModelsModal({
               : await removeWorkspaceAllowedAdvancedModel(model);
             break;
           default:
-            assertNever(target.scope);
+            return assertNever(target);
         }
         if (!ok) {
           return;
