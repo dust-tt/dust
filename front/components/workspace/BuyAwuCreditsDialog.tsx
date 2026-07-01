@@ -21,7 +21,10 @@ import {
 import { useValidateCoupon } from "@app/lib/swr/workspaces";
 import type { CouponType } from "@app/types/coupon";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import {
   Button,
   CheckCircle,
@@ -105,6 +108,269 @@ function SummaryRow({ label, value, dimmed = false }: SummaryRowProps) {
   );
 }
 
+interface UseCouponTabProps {
+  workspaceId: string;
+  currentTotalPoolCredits?: number;
+  // Closes the whole dialog.
+  onClose: () => void;
+  // Notifies the parent (e.g. to refresh the pool) once credits are granted.
+  onSuccess?: () => void;
+}
+
+// The "Use coupon" tab: a standalone, synchronous flow — enter a code, Check it
+// to preview the bonus, then Apply to grant the free credits. Owns its own
+// state, independent of the "Buy credits" payment flow.
+function UseCouponTab({
+  workspaceId,
+  currentTotalPoolCredits,
+  onClose,
+  onSuccess,
+}: UseCouponTabProps) {
+  const [couponInput, setCouponInput] = useState<string>("");
+  const [checkedCoupon, setCheckedCoupon] = useState<CouponType | null>(null);
+  const [couponState, setCouponState] = useState<CouponState>("idle");
+  const [couponError, setCouponError] = useState<string>("");
+  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
+  const { validateCoupon } = useValidateCoupon({ workspaceId });
+  const { redeemCreditsCoupon } = useRedeemCreditsCoupon({ workspaceId });
+
+  // For a "credits" coupon, `amount` is the number of bonus AWU credits granted.
+  const bonusCredits = checkedCoupon?.amount ?? 0;
+
+  // "Check" button: validate the code as a "credits" coupon and surface the
+  // bonus it would grant before the user commits.
+  const handleCheckCoupon = useCallback(async () => {
+    const code = couponInput.trim();
+    if (!code) {
+      return;
+    }
+    setCouponError("");
+    setIsCheckingCoupon(true);
+    try {
+      const result = await validateCoupon(code, "credits");
+      if (!result.ok) {
+        setCheckedCoupon(null);
+        setCouponState("idle");
+        setCouponError(result.message);
+        return;
+      }
+      setCheckedCoupon(result.coupon);
+      setCouponState("checked");
+    } finally {
+      setIsCheckingCoupon(false);
+    }
+  }, [couponInput, validateCoupon]);
+
+  // "Apply" button: actually redeem the checked coupon and grant the credits.
+  const handleRedeemCoupon = useCallback(async () => {
+    if (!checkedCoupon) {
+      return;
+    }
+    setCouponState("redeeming");
+    const result = await redeemCreditsCoupon(checkedCoupon.code);
+    switch (result.status) {
+      case "success":
+        setCouponState("success");
+        onSuccess?.();
+        break;
+      case "error":
+        setCouponError(result.message);
+        setCouponState("error");
+        break;
+      default:
+        assertNeverAndIgnore(result);
+    }
+  }, [checkedCoupon, redeemCreditsCoupon, onSuccess]);
+
+  const resetCouponInput = useCallback(() => {
+    setCheckedCoupon(null);
+    setCouponState("idle");
+    setCouponInput("");
+    setCouponError("");
+  }, []);
+
+  switch (couponState) {
+    case "redeeming":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Spinner size="lg" />
+              <p className="text-sm text-muted-foreground">
+                Applying coupon...
+              </p>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            rightButtonProps={{
+              label: "Applying...",
+              variant: "primary",
+              disabled: true,
+            }}
+          />
+        </>
+      );
+    case "success":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Icon
+                visual={CheckCircle}
+                size="lg"
+                className="text-success-500"
+              />
+              <div className="text-center">
+                <p className="text-lg font-medium text-foreground">
+                  Coupon applied!
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  <span className="font-semibold">
+                    {formatCredits(bonusCredits)} credits
+                  </span>{" "}
+                  have been added to your pool.
+                </p>
+              </div>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            rightButtonProps={{
+              label: "Close",
+              variant: "primary",
+              onClick: onClose,
+            }}
+          />
+        </>
+      );
+    case "error":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Icon visual={XCircle} size="lg" className="text-warning-500" />
+              <div className="text-center">
+                <p className="text-lg font-medium text-foreground">
+                  Couldn't apply coupon
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {couponError}
+                </p>
+              </div>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: onClose,
+            }}
+            rightButtonProps={{
+              label: "Try again",
+              variant: "primary",
+              onClick: resetCouponInput,
+            }}
+          />
+        </>
+      );
+    case "idle":
+    case "checked":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-muted-foreground">
+                Have a coupon code? Enter it below to add free credits to your
+                Workspace Credits Pool.
+              </p>
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="couponCode"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Coupon code
+                </label>
+                <div className="flex items-start gap-2">
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      id="couponCode"
+                      placeholder="Enter code"
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value);
+                        setCouponError("");
+                        setCheckedCoupon(null);
+                        setCouponState("idle");
+                      }}
+                      isError={!!couponError}
+                      className="w-48"
+                    />
+                    {couponError && (
+                      <span className="text-xs text-warning-500">
+                        {couponError}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    label="Check"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCheckCoupon}
+                    disabled={!couponInput.trim() || isCheckingCoupon}
+                    isLoading={isCheckingCoupon}
+                  />
+                </div>
+              </div>
+
+              {couponState === "checked" && checkedCoupon && (
+                <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
+                  <SummaryRow
+                    label="Coupon"
+                    value={checkedCoupon.code}
+                    dimmed
+                  />
+                  {currentTotalPoolCredits !== undefined && (
+                    <SummaryRow
+                      label="Current Credits Pool"
+                      value={<CreditValue credits={currentTotalPoolCredits} />}
+                      dimmed
+                    />
+                  )}
+                  <SummaryRow
+                    label="Bonus Credits"
+                    value={<CreditValue credits={bonusCredits} />}
+                    dimmed
+                  />
+                  <div className="py-1" />
+                  {currentTotalPoolCredits !== undefined && (
+                    <SummaryRow
+                      label="New Credits Pool"
+                      value={
+                        <CreditValue
+                          credits={currentTotalPoolCredits + bonusCredits}
+                        />
+                      }
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          </DialogContainer>
+          <DialogFooter>
+            <Button label="Cancel" variant="outline" onClick={onClose} />
+            <Button
+              label="Apply coupon"
+              variant="primary"
+              onClick={handleRedeemCoupon}
+              disabled={couponState !== "checked"}
+            />
+          </DialogFooter>
+        </>
+      );
+    default:
+      return assertNever(couponState);
+  }
+}
+
 interface BuyAwuCreditsDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -134,18 +400,7 @@ export function BuyAwuCreditsDialog({
   const [purchaseStartedAtMs, setPurchaseStartedAtMs] = useState<number | null>(
     null
   );
-  // "Use coupon" tab state (independent of the "Buy credits" tab).
-  const [couponInput, setCouponInput] = useState<string>("");
-  const [checkedCoupon, setCheckedCoupon] = useState<CouponType | null>(null);
-  const [couponState, setCouponState] = useState<CouponState>("idle");
-  const [couponError, setCouponError] = useState<string>("");
-  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const { purchaseAwuCredits } = useAwuPurchase({ workspaceId });
-  const { validateCoupon } = useValidateCoupon({ workspaceId });
-  const { redeemCreditsCoupon } = useRedeemCreditsCoupon({ workspaceId });
-
-  // For a "credits" coupon, `amount` is the number of bonus AWU credits granted.
-  const bonusCredits = checkedCoupon?.amount ?? 0;
 
   // Poll the payment-gated commit status only while waiting on the webhook
   // outcome. The Metronome -> Stripe payment is async, so the dialog can't
@@ -186,64 +441,8 @@ export function BuyAwuCreditsDialog({
     setPurchaseState("idle");
     setErrorMessage("");
     setPurchaseStartedAtMs(null);
-    setCouponInput("");
-    setCheckedCoupon(null);
-    setCouponState("idle");
-    setCouponError("");
     onClose();
   }, [onClose]);
-
-  // "Check" button: validate the code as a "credits" coupon and surface the
-  // bonus it would grant before the user commits.
-  const handleCheckCoupon = useCallback(async () => {
-    const code = couponInput.trim();
-    if (!code) {
-      return;
-    }
-    setCouponError("");
-    setIsCheckingCoupon(true);
-    try {
-      const result = await validateCoupon(code, "credits");
-      if (!result.ok) {
-        setCheckedCoupon(null);
-        setCouponState("idle");
-        setCouponError(result.message);
-        return;
-      }
-      setCheckedCoupon(result.coupon);
-      setCouponState("checked");
-    } finally {
-      setIsCheckingCoupon(false);
-    }
-  }, [couponInput, validateCoupon]);
-
-  // "Apply" button: actually redeem the checked coupon and grant the credits.
-  const handleRedeemCoupon = useCallback(async () => {
-    if (!checkedCoupon) {
-      return;
-    }
-    setCouponState("redeeming");
-    const result = await redeemCreditsCoupon(checkedCoupon.code);
-    switch (result.status) {
-      case "success":
-        setCouponState("success");
-        onPurchaseSuccess?.();
-        break;
-      case "error":
-        setCouponError(result.message);
-        setCouponState("error");
-        break;
-      default:
-        assertNeverAndIgnore(result);
-    }
-  }, [checkedCoupon, redeemCreditsCoupon, onPurchaseSuccess]);
-
-  const resetCouponInput = useCallback(() => {
-    setCheckedCoupon(null);
-    setCouponState("idle");
-    setCouponInput("");
-    setCouponError("");
-  }, []);
 
   const currency = awuPurchaseInfo?.canPurchase
     ? awuPurchaseInfo.currency
@@ -564,183 +763,6 @@ export function BuyAwuCreditsDialog({
     }
   };
 
-  const renderCouponContent = () => {
-    switch (couponState) {
-      case "redeeming":
-        return (
-          <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Spinner size="lg" />
-            <p className="text-sm text-muted-foreground">
-              Applying coupon...
-            </p>
-          </div>
-        );
-      case "success":
-        return (
-          <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
-            <div className="text-center">
-              <p className="text-lg font-medium text-foreground">
-                Coupon applied!
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                <span className="font-semibold">
-                  {formatCredits(bonusCredits)} credits
-                </span>{" "}
-                have been added to your pool.
-              </p>
-            </div>
-          </div>
-        );
-      case "error":
-        return (
-          <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircle} size="lg" className="text-warning-500" />
-            <div className="text-center">
-              <p className="text-lg font-medium text-foreground">
-                Couldn't apply coupon
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {couponError}
-              </p>
-            </div>
-          </div>
-        );
-      default:
-        return (
-          <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Have a coupon code? Enter it below to add free credits to your
-              Workspace Credits Pool.
-            </p>
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="couponCode"
-                className="text-sm font-medium text-foreground"
-              >
-                Coupon code
-              </label>
-              <div className="flex items-start gap-2">
-                <div className="flex flex-col gap-1">
-                  <Input
-                    id="couponCode"
-                    placeholder="Enter code"
-                    value={couponInput}
-                    onChange={(e) => {
-                      setCouponInput(e.target.value);
-                      setCouponError("");
-                      setCheckedCoupon(null);
-                      setCouponState("idle");
-                    }}
-                    isError={!!couponError}
-                    className="w-48"
-                  />
-                  {couponError && (
-                    <span className="text-xs text-warning-500">
-                      {couponError}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  label="Check"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCheckCoupon}
-                  disabled={!couponInput.trim() || isCheckingCoupon}
-                  isLoading={isCheckingCoupon}
-                />
-              </div>
-            </div>
-
-            {couponState === "checked" && checkedCoupon && (
-              <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
-                <SummaryRow label="Coupon" value={checkedCoupon.code} dimmed />
-                {currentTotalPoolCredits !== undefined && (
-                  <SummaryRow
-                    label="Current Credits Pool"
-                    value={<CreditValue credits={currentTotalPoolCredits} />}
-                    dimmed
-                  />
-                )}
-                <SummaryRow
-                  label="Bonus Credits"
-                  value={<CreditValue credits={bonusCredits} />}
-                  dimmed
-                />
-                <div className="py-1" />
-                {currentTotalPoolCredits !== undefined && (
-                  <SummaryRow
-                    label="New Credits Pool"
-                    value={
-                      <CreditValue
-                        credits={currentTotalPoolCredits + bonusCredits}
-                      />
-                    }
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        );
-    }
-  };
-
-  const renderCouponFooter = () => {
-    switch (couponState) {
-      case "redeeming":
-        return (
-          <DialogFooter
-            rightButtonProps={{
-              label: "Applying...",
-              variant: "primary",
-              disabled: true,
-            }}
-          />
-        );
-      case "success":
-        return (
-          <DialogFooter
-            rightButtonProps={{
-              label: "Close",
-              variant: "primary",
-              onClick: resetModalStateAndClose,
-            }}
-          />
-        );
-      case "error":
-        return (
-          <DialogFooter
-            leftButtonProps={{
-              label: "Close",
-              variant: "outline",
-              onClick: resetModalStateAndClose,
-            }}
-            rightButtonProps={{
-              label: "Try again",
-              variant: "primary",
-              onClick: resetCouponInput,
-            }}
-          />
-        );
-      default:
-        return (
-          <DialogFooter>
-            <Button
-              label="Cancel"
-              variant="outline"
-              onClick={resetModalStateAndClose}
-            />
-            <Button
-              label="Apply coupon"
-              variant="primary"
-              onClick={handleRedeemCoupon}
-              disabled={couponState !== "checked"}
-            />
-          </DialogFooter>
-        );
-    }
-  };
-
   if (isAwuPurchaseInfoLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -989,8 +1011,12 @@ export function BuyAwuCreditsDialog({
               {renderBuyTabFooter()}
             </TabsContent>
             <TabsContent value="coupon">
-              <DialogContainer>{renderCouponContent()}</DialogContainer>
-              {renderCouponFooter()}
+              <UseCouponTab
+                workspaceId={workspaceId}
+                currentTotalPoolCredits={currentTotalPoolCredits}
+                onClose={resetModalStateAndClose}
+                onSuccess={onPurchaseSuccess}
+              />
             </TabsContent>
           </Tabs>
         )}
