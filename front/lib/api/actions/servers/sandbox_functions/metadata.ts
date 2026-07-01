@@ -72,6 +72,31 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
       done: "Published sandbox function",
     },
   },
+  call: {
+    description:
+      "Call a sandbox function published in the current pod by its slug, passing its input " +
+      "payload, and get back the function's output. Use the get tool first to see the function's " +
+      "input schema. Input is validated inside the sandbox.",
+    schema: {
+      slug: z
+        .string()
+        .min(1)
+        .describe(
+          "The slug of the sandbox function to call, as shown by the list tool."
+        ),
+      input: z
+        .record(z.unknown())
+        .optional()
+        .describe(
+          "The function's input payload as a JSON object, matching its input schema (see the get tool)."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Calling sandbox function...",
+      done: "Called sandbox function",
+    },
+  },
 });
 
 export const SANDBOX_FUNCTIONS_SERVER = {
