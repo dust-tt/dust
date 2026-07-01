@@ -541,6 +541,15 @@ export default function SwitchContractDialog({
           DEFAULT_PERIODS_FOR_FREQUENCY[freq]
         );
       }
+      // A commitment can't be invoiced at a $0 rate — clear a stale commitment
+      // price left over from before the rate was zeroed out.
+      if (name?.startsWith("seats.") && name.endsWith(".rate")) {
+        const seatType = name.split(".")[1];
+        const rate = value.seats?.[seatType]?.rate ?? 0;
+        if (rate <= 0) {
+          form.setValue(`seats.${seatType}.commitmentPrice`, undefined);
+        }
+      }
     });
     return unsubscribe;
   }, [form]);
@@ -1117,11 +1126,13 @@ export default function SwitchContractDialog({
                               hideLabel
                               type="number"
                               placeholder={
-                                defaultCommitment !== null
-                                  ? String(defaultCommitment)
-                                  : "optional"
+                                rate <= 0
+                                  ? "n/a (rate is 0)"
+                                  : defaultCommitment !== null
+                                    ? String(defaultCommitment)
+                                    : "optional"
                               }
-                              disabled={!isSelected}
+                              disabled={!isSelected || rate <= 0}
                             />
                           </div>
                           <div className="flex-1">

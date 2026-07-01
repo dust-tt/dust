@@ -825,7 +825,6 @@ async function stepContractEdits({
       seat.selected &&
       pkgSeat != null &&
       pkgSeat.entitled &&
-      seat.rate > 0 &&
       rateNative !== pkgSeat.defaultRate;
     const needsDisable = !seat.selected && pkgSeat != null && pkgSeat.entitled;
     if (resolvedCurrency && pkgSeat && (needsEntitle || rateChanged)) {
