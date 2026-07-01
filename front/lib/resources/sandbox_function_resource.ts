@@ -343,6 +343,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
         sandboxFunction: this,
       });
+      await ensureResult.value.sandbox.updateLastActivityAt();
+
       const execId = generateExecId();
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox: ensureResult.value.sandbox,

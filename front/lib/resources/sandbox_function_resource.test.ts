@@ -4,6 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -48,6 +49,8 @@ const outputSchema: JSONSchema = {
   },
   required: ["commentId"],
 };
+
+const ONE_HOUR_MS = 60 * 60 * 1_000;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -396,6 +399,11 @@ describe("SandboxFunctionResource", () => {
       baseImage: "dust-base",
       version: "0.0.0-test",
     });
+    const staleLastActivityAt = new Date(Date.now() - ONE_HOUR_MS);
+    await SandboxModel.update(
+      { lastActivityAt: staleLastActivityAt },
+      { where: { id: sandbox.id } }
+    );
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
@@ -431,6 +439,12 @@ describe("SandboxFunctionResource", () => {
     });
     expect(invocation).not.toBeNull();
     expect(invocation?.status).toBe("created");
+    const refreshedSandbox = await SandboxModel.findOne({
+      where: { id: sandbox.id, workspaceId: workspace.id },
+    });
+    expect(refreshedSandbox?.lastActivityAt.getTime()).toBeGreaterThan(
+      staleLastActivityAt.getTime()
+    );
     expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space);
     expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
       authenticator,
