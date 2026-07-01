@@ -22,20 +22,15 @@ import type { Commit, Credit } from "@metronome/sdk/resources/shared";
 export const LEGACY_PRO_MONTHLY_PACKAGE_ALIAS = "legacy-pro-monthly";
 export const LEGACY_PRO_ANNUAL_PACKAGE_ALIAS = "legacy-pro-annual";
 export const LEGACY_BUSINESS_PACKAGE_ALIAS = "legacy-business";
-export const LEGACY_ENTERPRISE_PACKAGE_ALIAS = "legacy-enterprise";
 
 // EUR variants — same plans, billed in EUR for Eurozone/EEA/Switzerland customers.
 export const LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS = "legacy-pro-monthly-eur";
 export const LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS = "legacy-pro-annual-eur";
 export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
-export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
 // Aliases for new packages
 export const BUSINESS_USD_PACKAGE_ALIAS = "business-usd";
 export const BUSINESS_EUR_PACKAGE_ALIAS = "business-eur";
-// We now use directly the Business USD package for Free plan
-// to have access to all the seats for future upgrades
-export const DEPRECATED_FREE_PACKAGE_ALIAS = "free-plan";
 
 export type MetronomePackageTier = "free" | "pro" | "business" | "enterprise";
 
