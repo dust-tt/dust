@@ -1606,21 +1606,26 @@ export async function processMetronomeWebhook({
         break;
       }
 
-      // Legacy fallback: no pending row was staged. Only swap when the
-      // workspace is Metronome-only billed, or not billed at all. Shadow
-      // billed subscriptions (Stripe + Metronome) follow Stripe's signal,
-      // and pure Stripe subs have no Metronome contract at all.
-      if (
-        !activeSubscription.isMetronomeOnlyBilled &&
-        activeSubscription.isBilled
-      ) {
+      // No pending row was staged (e.g. an immediate switch). Swap the active
+      // subscription onto the new contract regardless of its current billing
+      // rail — switchContract is used this way routinely. The ONLY contract we
+      // must NOT swap onto is a shadow contract: a Metronome contract that runs
+      // in parallel to a Stripe subscription with no billing-provider delivery
+      // (Stripe owns billing). That is a property of the contract itself — it has
+      // no `customer_billing_provider_configuration` — and only applies while the
+      // workspace is still Stripe-billed (so free / Metronome-only contracts,
+      // which also lack a delivery config, are not mistaken for shadows).
+      const startedContractIsShadow =
+        !contractResult.value.customer_billing_provider_configuration &&
+        !!activeSubscription.stripeSubscriptionId;
+      if (startedContractIsShadow) {
         logger.info(
           {
             contractId,
             targetPlanCode,
             workspaceId: workspace.sId,
           },
-          "[Metronome Webhook] contract.start: subscription is not Metronome-only billed, leaving subscription alone"
+          "[Metronome Webhook] contract.start: shadow contract started, leaving subscription alone (Stripe drives billing)"
         );
         break;
       }
