@@ -808,6 +808,7 @@ export async function postUserMessage(
         api_error: {
           type: "invalid_request_error",
           message: "The model is not supported.",
+          model: agentConfig.model,
         },
       });
     }
