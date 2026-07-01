@@ -35,10 +35,12 @@ import {
 } from "@app/lib/metronome/workspace_credit_state_machine";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -114,7 +116,7 @@ type UserReconcileReport = {
   seatBalanceAwu: number | null;
   seatStartingBalanceAwu: number | null;
   effectiveCapAwuCredits: number | null;
-  capSource: "override" | "default" | "none";
+  capSource: "override" | "group" | "default" | "none";
   consumedAwuCredits: number | null;
 };
 
@@ -394,6 +396,14 @@ export async function reconcileUser({
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
+  const groupCapAwuCredits =
+    (
+      await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+        workspace: lightWorkspace,
+        userModelIds: [membership.userId],
+      })
+    ).get(membership.userId) ?? null;
+
   const liveResult = await fetchLiveUserCreditInputs({
     workspaceId: workspace.sId,
     userId,
@@ -401,6 +411,7 @@ export async function reconcileUser({
     // Pool-only values persisted in the DB; the live-inputs helper adds the
     // seat allowance back to get the total threshold.
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    groupCapAwuCredits,
     defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
     metronomeCustomerId,
     metronomeContractId,
@@ -567,6 +578,14 @@ export async function reconcileWorkspaceUserCreditStates({
   }
   const usageByUser = usageResult.value;
 
+  // Max group cap (pool-only) per member, fetched once to avoid an N+1. Users
+  // with no capped group are absent (they fall back to the workspace default).
+  const groupCapByUserModelId =
+    await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: memberships.map((m) => m.userId),
+    });
+
   // One UPDATE per drifting membership. Bounded by the workspace's seat count
   // and gated on the `continue` above, so steady-state writes are ~zero; even
   // the worst case (every seat drifting) is a small, infrequent loop on a
@@ -583,9 +602,18 @@ export async function reconcileWorkspaceUserCreditStates({
     // Cap + usage only apply to pool-limit seat types (pro/max/workspace),
     // matching fetchLiveUserCreditInputs. Free/none seats have no pool access —
     // their effective cap is null and near-limit uses the seat-balance path.
+    // Priority: per-user override > max group cap > workspace default (shared
+    // ladder).
+    const groupCapAwuCredits =
+      groupCapByUserModelId.get(membership.userId) ?? null;
+    const poolCapAwuCredits =
+      resolveEffectiveSpendLimitAwuCredits({
+        overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+        groupCapAwuCredits,
+        defaultAwuCredits: defaultPoolCapAwuCredits,
+      }) ?? defaultPoolCapAwuCredits;
     const effectiveCapAwuCredits = normalizedSeatType
-      ? (membership.poolCapOverrideAwuCredits ?? defaultPoolCapAwuCredits) +
-        (seatAllowances[normalizedSeatType] ?? 0)
+      ? poolCapAwuCredits + (seatAllowances[normalizedSeatType] ?? 0)
       : null;
     // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
     // seats read their per-user credit balance instead (not a seat balance).

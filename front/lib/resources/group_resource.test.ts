@@ -657,6 +657,54 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("listMaxPoolCapAwuCreditsByUserModelIdInWorkspace", () => {
+    it("returns the highest cap across a user's groups, ignoring uncapped groups and users", async () => {
+      const user2 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user2, { role: "user" });
+
+      const capped500 = await GroupResource.makeNew({
+        name: "Capped 500",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      await capped500.updatePoolCap(authenticator, 500);
+      await capped500.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+
+      const capped800 = await GroupResource.makeNew({
+        name: "Capped 800",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      await capped800.updatePoolCap(authenticator, 800);
+      await capped800.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+
+      // Uncapped group: user2 belongs only here, so they have no group cap.
+      const uncapped = await GroupResource.makeNew({
+        name: "Uncapped",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      await uncapped.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON(), user2.toJSON()],
+      });
+
+      const result =
+        await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+          workspace,
+          userModelIds: [user.id, user2.id],
+        });
+
+      // user is in both capped groups → the highest cap wins.
+      expect(result.get(user.id)).toBe(800);
+      // user2 is only in an uncapped group → absent (falls back to default).
+      expect(result.has(user2.id)).toBe(false);
+    });
+  });
+
   describe("listWorkspaceGroupsFromKey", () => {
     it("system key: populates cache on first call and serves from cache on second", async () => {
       const key = await KeyFactory.system(systemGroup);

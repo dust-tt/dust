@@ -28,6 +28,7 @@ import type {
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   AGENT_GROUP_PREFIX,
+  CAP_ELIGIBLE_GROUP_KINDS,
   GROUP_KINDS,
   isAgentEditorGroupKind,
   isSkillEditorGroupKind,
@@ -1239,6 +1240,65 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     for (const names of result.values()) {
       names.sort((a, b) => a.localeCompare(b));
+    }
+
+    return result;
+  }
+
+  // For each user, the highest per-group pool cap (excluding seat allowance)
+  // among the cap-eligible groups they belong to. Users with no capped group are
+  // absent from the map (the caller falls back to the workspace default). Used to
+  // resolve the "max(group caps)" term of a user's effective spend limit.
+  static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+    groupKinds = [...CAP_ELIGIBLE_GROUP_KINDS],
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+    groupKinds?: Exclude<GroupKind, "system">[];
+  }): Promise<Map<ModelId, number>> {
+    const result = new Map<ModelId, number>();
+    if (userModelIds.length === 0) {
+      return result;
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+    if (memberships.length === 0) {
+      return result;
+    }
+
+    const groupModelIds = [...new Set(memberships.map((m) => m.groupId))];
+    const groups = await GroupModel.findAll({
+      where: {
+        id: groupModelIds,
+        workspaceId: workspace.id,
+        kind: groupKinds,
+        poolCapAwuCredits: { [Op.ne]: null },
+      },
+    });
+    const capByGroupId = new Map(
+      groups.map((g) => [g.id, g.poolCapAwuCredits])
+    );
+
+    for (const m of memberships) {
+      const cap = capByGroupId.get(m.groupId);
+      if (cap === undefined || cap === null) {
+        continue;
+      }
+      const existing = result.get(m.userId);
+      if (existing === undefined || cap > existing) {
+        result.set(m.userId, cap);
+      }
     }
 
     return result;
