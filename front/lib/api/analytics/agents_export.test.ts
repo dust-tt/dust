@@ -1,8 +1,10 @@
 import type { AgentExportRow } from "@app/lib/api/analytics/agents_export";
 import {
+  AGENT_EXPORT_HEADERS,
   fetchAgentExportRows,
   toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
+import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -141,9 +143,9 @@ describe("toAgentExportCsvRow", () => {
     credits: 0,
   };
 
-  it('joins editorEmails with "; " for CSV output', () => {
+  it("joins editorEmails into a comma-separated string for CSV output", () => {
     expect(toAgentExportCsvRow(baseRow).editorEmails).toBe(
-      "a@dust.tt; b@dust.tt"
+      "a@dust.tt,b@dust.tt"
     );
   });
 
@@ -151,5 +153,10 @@ describe("toAgentExportCsvRow", () => {
     expect(
       toAgentExportCsvRow({ ...baseRow, editorEmails: [] }).editorEmails
     ).toBe("");
+  });
+
+  it("wraps the comma-separated editors in double quotes once serialized", () => {
+    const csv = rowsToCsv(AGENT_EXPORT_HEADERS, [toAgentExportCsvRow(baseRow)]);
+    expect(csv).toContain('"a@dust.tt,b@dust.tt"');
   });
 });
