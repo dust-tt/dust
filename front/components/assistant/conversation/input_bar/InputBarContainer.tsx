@@ -229,6 +229,19 @@ export interface InputBarContainerProps {
   user: UserType | null;
 }
 
+function hasActiveSelectionInEditor(
+  editorDom: HTMLElement | undefined
+): boolean {
+  const selection = window.getSelection();
+  return Boolean(
+    selection &&
+      !selection.isCollapsed &&
+      editorDom &&
+      selection.anchorNode &&
+      editorDom.contains(selection.anchorNode)
+  );
+}
+
 const InputBarContainer = ({
   allAgents,
   onEnterKeyDown,
@@ -1525,6 +1538,9 @@ const InputBarContainer = ({
         )}
         aria-hidden={isCompact}
         onClick={(e) => {
+          if (hasActiveSelectionInEditor(editorRef.current?.view.dom)) {
+            return;
+          }
           // If e.target is not a child of a div with class "tiptap", then focus on the editor
           if (
             !(e.target instanceof HTMLElement && e.target.closest(".tiptap"))
