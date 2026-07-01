@@ -59,7 +59,7 @@ function getDialogTitle(target: EditAdvancedModelsTarget): string {
     case "workspace":
       return "Workspace advanced models";
     default:
-      return assertNever(target);
+      assertNever(target.scope);
   }
 }
 
@@ -72,7 +72,7 @@ function getDialogDescription(target: EditAdvancedModelsTarget): string {
     case "workspace":
       return "Choose which advanced models are available to everyone in this workspace.";
     default:
-      return assertNever(target);
+      assertNever(target.scope);
   }
 }
 
@@ -152,7 +152,7 @@ export function EditAdvancedModelsModal({
       case "workspace":
         return workspaceAllowedAdvancedModels;
       default:
-        return assertNever(target);
+        assertNever(target.scope);
     }
   }, [
     target,
@@ -166,7 +166,7 @@ export function EditAdvancedModelsModal({
     [allowedModels]
   );
 
-  const isAllowedLoading = (() => {
+  const isAllowedLoading = useMemo(() => {
     if (!target) {
       return false;
     }
@@ -178,11 +178,16 @@ export function EditAdvancedModelsModal({
       case "workspace":
         return isWorkspaceAllowedAdvancedModelsLoading;
       default:
-        return assertNever(target);
+        assertNever(target.scope);
     }
-  })();
+  }, [
+    target,
+    isUserAllowedAdvancedModelsLoading,
+    isGroupAllowedAdvancedModelsLoading,
+    isWorkspaceAllowedAdvancedModelsLoading,
+  ]);
 
-  const isAllowedError = (() => {
+  const isAllowedError = useMemo(() => {
     if (!target) {
       return false;
     }
@@ -194,9 +199,14 @@ export function EditAdvancedModelsModal({
       case "workspace":
         return isWorkspaceAllowedAdvancedModelsError;
       default:
-        return assertNever(target);
+        assertNever(target.scope);
     }
-  })();
+  }, [
+    target,
+    isUserAllowedAdvancedModelsError,
+    isGroupAllowedAdvancedModelsError,
+    isWorkspaceAllowedAdvancedModelsError,
+  ]);
 
   const setModelPending = useCallback(
     (modelKey: string, isPending: boolean) => {
@@ -248,7 +258,7 @@ export function EditAdvancedModelsModal({
               : await removeWorkspaceAllowedAdvancedModel(model);
             break;
           default:
-            assertNever(target);
+            assertNever(target.scope);
         }
         if (!ok) {
           return;
