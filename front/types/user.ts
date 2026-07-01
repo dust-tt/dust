@@ -251,7 +251,7 @@ export function isAdmin(
 
 export function isBusinessAdmin(
   owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "admin" } {
+): owner is WorkspaceType & { role: "business_admin" | "admin" } {
   if (!owner) {
     return false;
   }
@@ -270,7 +270,7 @@ export function isBusinessAdmin(
 
 export function isBuilder(
   owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "builder" | "admin" } {
+): owner is WorkspaceType & { role: "builder" | "business_admin" | "admin" } {
   if (!owner) {
     return false;
   }
@@ -287,9 +287,9 @@ export function isBuilder(
   }
 }
 
-export function isUser(
-  owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "user" | "builder" | "admin" } {
+export function isUser(owner: WorkspaceType | null): owner is WorkspaceType & {
+  role: "user" | "builder" | "business_admin" | "admin";
+} {
   if (!owner) {
     return false;
   }

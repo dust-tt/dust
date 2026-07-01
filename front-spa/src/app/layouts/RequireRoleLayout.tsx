@@ -5,7 +5,7 @@ import {
   isAdmin,
   isBusinessAdmin,
   type RoleType,
-} from "@dust-tt/front/types/user.js";
+} from "@dust-tt/front/types/user";
 import { Outlet } from "react-router-dom";
 
 interface RequireRoleProps {
