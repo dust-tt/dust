@@ -130,6 +130,15 @@ export function createExtractDataTools(
       }
     }
 
+    if (!isJSONSchemaObject(jsonSchema)) {
+      return new Err(
+        new MCPError(
+          `Invalid jsonSchema: expected a valid JSON object but received ${Array.isArray(jsonSchema) ? "an array" : typeof jsonSchema}`,
+          { tracked: false }
+        )
+      );
+    }
+
     const jsonSchemaForExtraction =
       "mimeType" in jsonSchema
         ? Object.fromEntries(

@@ -121,6 +121,39 @@ describe("createExtractDataTools", () => {
     );
   });
 
+  it("returns a tool error when a stringified JSON schema is not an object", async () => {
+    const auth = {} as Authenticator;
+    const agentLoopContext = makeRunContext();
+    const tools = createExtractDataTools(auth, agentLoopContext);
+    const tool = tools.find((t) => t.name === EXTRACT_DATA_MAIN_TOOL_NAME);
+
+    expect(tool).toBeDefined();
+    if (!tool) {
+      throw new Error("Expected extract_data tool to be created.");
+    }
+
+    const result = await tool.handler(
+      {
+        dataSources: [],
+        objective: "Extract people names.",
+        jsonSchema: "5",
+      },
+      {
+        auth,
+        agentLoopContext,
+      } as Parameters<typeof tool.handler>[1]
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected extract_data tool to reject the schema.");
+    }
+    expect(result.error.message).toContain(
+      "Invalid jsonSchema: expected a valid JSON object"
+    );
+    expect(processDataSources).not.toHaveBeenCalled();
+  });
+
   it("strips configured-input metadata before validating and processing", async () => {
     const auth = {} as Authenticator;
     const agentLoopContext = makeRunContext();

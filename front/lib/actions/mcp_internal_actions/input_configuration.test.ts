@@ -973,7 +973,7 @@ describe("augmentInputsWithConfiguration", () => {
 
 describe("JSON_SCHEMA mime type", () => {
   it("should augment inputs with JSON schema configuration", () => {
-    // FAILS
+    // JSON_SCHEMA configuration is injected from the action configuration.
     const rawInputs = {};
     const jsonSchema = {
       type: "object" as const,
