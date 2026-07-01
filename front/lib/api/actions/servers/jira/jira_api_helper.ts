@@ -22,6 +22,7 @@ import type {
 import {
   isADFDocument,
   JiraAttachmentsResultSchema,
+  JiraBoardsResponseSchema,
   JiraCommentSchema,
   JiraCommentsListSchema,
   JiraCreateMetaSchema,
@@ -34,6 +35,7 @@ import {
   JiraProjectVersionSchema,
   JiraResourceSchema,
   JiraSearchResultSchema,
+  JiraSprintsResponseSchema,
   JiraTransitionIssueSchema,
   JiraTransitionsSchema,
   JiraUserInfoSchema,
@@ -98,6 +100,20 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
 
     if (!response.ok) {
       const errorBody = await response.text();
+      if (
+        endpoint.startsWith("/rest/agile/") &&
+        (response.status === 401 || response.status === 403) &&
+        errorBody.includes("scope")
+      ) {
+        const msg =
+          "MISSING_AGILE_SCOPES: This operation requires additional Jira permissions " +
+          "(Jira Software board and sprint scopes). " +
+          "To fix this, the workspace admin must disconnect and reconnect the Jira " +
+          "connection in workspace settings, or you must reconnect your personal Jira " +
+          "connection, so that the new permissions are granted.";
+        logger.error(`[JIRA MCP Server] ${msg}`);
+        return new Err(msg);
+      }
       const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
       logger.error(`[JIRA MCP Server] ${msg}`);
       return new Err(msg);
@@ -897,6 +913,53 @@ export async function updateIssue(
     ...responseData,
     browseUrl: `${resourceInfo.url}/browse/${issueKey}`,
   });
+}
+
+export async function getBoards(
+  baseUrl: string,
+  accessToken: string,
+  opts?: { projectKey?: string; boardType?: string }
+): Promise<
+  Result<z.infer<typeof JiraBoardsResponseSchema> | null, JiraErrorResult>
+> {
+  const params = new URLSearchParams();
+  if (opts?.projectKey) {
+    params.set("projectKeyOrId", opts.projectKey);
+  }
+  if (opts?.boardType) {
+    params.set("type", opts.boardType);
+  }
+  const query = params.toString();
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/agile/1.0/board${query ? `?${query}` : ""}`,
+      accessToken,
+    },
+    JiraBoardsResponseSchema,
+    { baseUrl }
+  );
+  return handleResults(result, null);
+}
+
+export async function getSprints(
+  baseUrl: string,
+  accessToken: string,
+  boardId: number,
+  state?: string
+): Promise<
+  Result<z.infer<typeof JiraSprintsResponseSchema> | null, JiraErrorResult>
+> {
+  const params = new URLSearchParams();
+  params.set("state", state ?? "active");
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/agile/1.0/board/${boardId}/sprint?${params.toString()}`,
+      accessToken,
+    },
+    JiraSprintsResponseSchema,
+    { baseUrl }
+  );
+  return handleResults(result, null);
 }
 
 type ResourceInfo = {

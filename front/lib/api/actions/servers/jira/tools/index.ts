@@ -10,6 +10,7 @@ import {
   deleteIssueLink,
   extractTextFromAttachment,
   getAttachmentContent,
+  getBoards,
   getConnectionInfo,
   getIssue,
   getIssueAttachments,
@@ -19,6 +20,7 @@ import {
   getProject,
   getProjects,
   getProjectVersions,
+  getSprints,
   getTransitions,
   listFieldSummaries,
   listUsers,
@@ -615,6 +617,74 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
             )
           );
         }
+      },
+      authInfo,
+    });
+  },
+
+  // Agile / Sprint tools
+  get_boards: async ({ projectKey, boardType }, { authInfo }) => {
+    return withAuth({
+      action: async (baseUrl, _resourceInfo, accessToken) => {
+        const result = await getBoards(baseUrl, accessToken, {
+          projectKey,
+          boardType,
+        });
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Error retrieving boards: ${result.error}`)
+          );
+        }
+        if (!result.value || result.value.values.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: "No boards found matching the specified criteria.",
+            },
+          ]);
+        }
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Found ${result.value.values.length} board(s)`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(result.value.values, null, 2),
+          },
+        ]);
+      },
+      authInfo,
+    });
+  },
+
+  get_sprints: async ({ boardId, state }, { authInfo }) => {
+    return withAuth({
+      action: async (baseUrl, _resourceInfo, accessToken) => {
+        const result = await getSprints(baseUrl, accessToken, boardId, state);
+        if (result.isErr()) {
+          return new Err(
+            new MCPError(`Error retrieving sprints: ${result.error}`)
+          );
+        }
+        if (!result.value || result.value.values.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `No ${state ?? "active"} sprints found for board ${boardId}.`,
+            },
+          ]);
+        }
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Found ${result.value.values.length} sprint(s)`,
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(result.value.values, null, 2),
+          },
+        ]);
       },
       authInfo,
     });

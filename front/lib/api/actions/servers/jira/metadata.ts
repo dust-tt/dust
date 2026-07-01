@@ -378,6 +378,57 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
+  // Agile / Sprint tools
+  get_boards: {
+    description:
+      "List Jira boards available in the instance, optionally filtered by project key or board type (scrum/kanban). Use this to discover board IDs before calling get_sprints.",
+    schema: {
+      projectKey: z
+        .string()
+        .optional()
+        .describe(
+          "Optional Jira project key (e.g., 'PROJ') to filter boards by project."
+        ),
+      boardType: z
+        .string()
+        .optional()
+        .describe(
+          "Optional board type filter. Known values: 'scrum', 'kanban'."
+        ),
+    },
+    stake: "never_ask" as const,
+    displayLabels: {
+      running: "Listing Jira boards",
+      done: "List Jira boards",
+    },
+  },
+
+  get_sprints: {
+    description:
+      "List sprints for a Jira board. Returns the numeric sprint ID, name, and dates. " +
+      "Use state='active' (default) to get the current sprint ID needed for move_issues_to_sprint. " +
+      "Requires a boardId — use get_boards first if you don't have one.",
+    schema: {
+      boardId: z
+        .number()
+        .int()
+        .positive()
+        .describe("The numeric ID of the Jira board (from get_boards)."),
+      state: z
+        .string()
+        .optional()
+        .default("active")
+        .describe(
+          "Sprint state filter. Known values: 'active' (default), 'future', 'closed'."
+        ),
+    },
+    stake: "never_ask" as const,
+    displayLabels: {
+      running: "Listing Jira sprints",
+      done: "List Jira sprints",
+    },
+  },
+
   upload_attachment: {
     description:
       "Attach a file to a Jira issue (upload). The file can come from the current Dust conversation or be provided as base64 data.",
