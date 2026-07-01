@@ -156,10 +156,14 @@ function getLocalDirContent(
     const full = path.join(dir, subdir);
     return new Map(
       fs
-        .readdirSync(full)
-        .map((filename) => [
-          filename,
-          fs.readFileSync(path.join(full, filename)),
+        .readdirSync(full, { withFileTypes: true })
+        // Only copy regular files. Running the Python tools locally drops a
+        // __pycache__/ directory in here; without this filter the build tries
+        // to readFileSync that directory and dies with EISDIR.
+        .filter((entry) => entry.isFile())
+        .map((entry) => [
+          entry.name,
+          fs.readFileSync(path.join(full, entry.name)),
         ])
     );
   };
@@ -611,6 +615,16 @@ SHELLEOF`,
       "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--render] [--max-shapes N] [--offset N]",
     returns:
       "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings. --render prints one absolute JPEG path per slide",
+    runtime: "system",
+  })
+  // --- pptx_slides: safe slide-level structural edits ---
+  .registerTool({
+    name: "pptx_slides",
+    description:
+      "Duplicate, move, or delete .pptx slides without corrupting the package — shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+    usage:
+      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
+    returns: "A one-line summary of the change and the deck's new slide count",
     runtime: "system",
   })
   // --- docx_inspect: structural inspection of .docx documents ---
