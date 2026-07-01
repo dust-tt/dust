@@ -381,7 +381,7 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
     expect(withoutOverride.hasUserLevelOverride).toBe(false);
   });
 
-  it("uses explicit groupIds instead of the user's groups when provided", async () => {
+  it("uses explicit groupModelIds instead of the user's groups when provided", async () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
@@ -416,7 +416,7 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
       userAuth,
       {
         user,
-        groupIds: [otherGroup.id],
+        groupModelIds: [otherGroup.id],
       }
     );
 

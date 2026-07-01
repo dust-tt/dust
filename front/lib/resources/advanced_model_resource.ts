@@ -408,42 +408,42 @@ export class AdvancedModelResource {
     auth: Authenticator,
     {
       user,
-      groupIds: explicitGroupIds,
+      groupModelIds: explicitGroupModelIds,
     }: {
       user?: UserResource | null;
-      groupIds?: ModelId[];
+      groupModelIds?: ModelId[];
     } = {}
   ): Promise<ResolvedAllowedAdvancedModels> {
     const workspace = auth.getNonNullableWorkspace();
 
-    let groupIds = explicitGroupIds;
-    if (groupIds === undefined && user) {
-      groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
+    let groupModelIds = explicitGroupModelIds;
+    if (groupModelIds === undefined && user) {
+      groupModelIds = await GroupResource.dangerouslyListUserGroupsForAuth({
         user,
         workspace,
       });
     }
-    groupIds = groupIds ?? [];
+    groupModelIds = groupModelIds ?? [];
 
     const [workspaceAllowedAdvancedModels, groupModelsByGroupId, userModels] =
       await Promise.all([
         this.loadWorkspaceAllowedAdvancedModels(workspace.id),
-        groupIds.length > 0
+        groupModelIds.length > 0
           ? this.loadGroupAllowedAdvancedModelsByGroupId({
               workspaceId: workspace.id,
-              groupIds,
+              groupModelIds,
             })
           : Promise.resolve(new Map<ModelId, AllowedAdvancedModelType[]>()),
         user
           ? this.loadUserAllowedAdvancedModels({
               workspaceId: workspace.id,
-              userId: user.id,
+              userModelId: user.id,
             })
           : Promise.resolve([]),
       ]);
 
-    const groupAllowedAdvancedModelsList = groupIds.map(
-      (groupId) => groupModelsByGroupId.get(groupId) ?? []
+    const groupAllowedAdvancedModelsList = groupModelIds.map(
+      (groupModelId) => groupModelsByGroupId.get(groupModelId) ?? []
     );
 
     return resolveAllowedAdvancedModels({
@@ -468,16 +468,16 @@ export class AdvancedModelResource {
 
   private static async loadGroupAllowedAdvancedModelsByGroupId({
     workspaceId,
-    groupIds,
+    groupModelIds,
   }: {
     workspaceId: ModelId;
-    groupIds: ModelId[];
+    groupModelIds: ModelId[];
   }): Promise<Map<ModelId, AllowedAdvancedModelType[]>> {
     const rows = await GroupAllowedAdvancedModel.findAll({
       where: {
         workspaceId,
         groupId: {
-          [Op.in]: groupIds,
+          [Op.in]: groupModelIds,
         },
       },
     });
@@ -499,15 +499,15 @@ export class AdvancedModelResource {
 
   private static async loadUserAllowedAdvancedModels({
     workspaceId,
-    userId,
+    userModelId,
   }: {
     workspaceId: ModelId;
-    userId: ModelId;
+    userModelId: ModelId;
   }): Promise<AllowedAdvancedModelType[]> {
     const rows = await UserAllowedAdvancedModel.findAll({
       where: {
         workspaceId,
-        userId,
+        userId: userModelId,
       },
     });
 
