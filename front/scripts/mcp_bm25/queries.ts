@@ -489,6 +489,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "outlook_calendar.check_availability",
   },
 
+  // --- openai_usage ---
+  {
+    query: "check OpenAI token usage by model",
+    expected: "openai_usage.get_completions_usage",
+  },
+  {
+    query: "get OpenAI spending costs breakdown",
+    expected: "openai_usage.get_organization_costs",
+  },
+
   // --- microsoft_teams ---
   {
     query: "search microsoft teams messages for the budget discussion",

@@ -47,6 +47,7 @@ import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_e
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
@@ -143,6 +144,7 @@ const SERVERS: ServerEntry[] = [
   { name: "notion", tools: NOTION_SERVER.tools },
   { name: "outlook", tools: OUTLOOK_MAIL_SERVER.tools },
   { name: "outlook_calendar", tools: OUTLOOK_CALENDAR_SERVER.tools },
+  { name: "openai_usage", tools: OPENAI_USAGE_SERVER.tools },
   { name: "wakeups", tools: WAKEUPS_SERVER.tools },
   { name: "confluence", tools: CONFLUENCE_SERVER.tools },
   { name: "hubspot", tools: HUBSPOT_SERVER.tools },
