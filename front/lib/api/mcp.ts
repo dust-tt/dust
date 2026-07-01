@@ -66,6 +66,10 @@ export type MCPToolType = {
   // Optional for remote MCP servers (external sources may not have this).
   // Mandatory for internal MCP servers (enforced via ServerMetadata type).
   displayLabels?: ToolDisplayLabels;
+  // When true, the tool is loaded upfront in the cached tools prefix instead of
+  // being deferred behind tool search. Absent for remote/client-side tools, which
+  // therefore default to deferred.
+  eager?: boolean;
 };
 
 export type MCPServerType = {

@@ -279,7 +279,10 @@ export async function toMessage(
   }
 }
 
-export function toTool(tool: AgentActionSpecification): Tool {
+export function toTool(
+  tool: AgentActionSpecification,
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
+): Tool {
   return {
     name: tool.name,
     description: tool.description,
@@ -290,25 +293,26 @@ export function toTool(tool: AgentActionSpecification): Tool {
     // See https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
     eager_input_streaming: true,
     input_schema: { ...tool.inputSchema, type: "object" },
-    // Deferred (cold) tools are kept out of the cached prefix and loaded on
-    // demand via the tool search tool. Only set when true so non-deferred tools
-    // serialize identically to before (stable prefix bytes).
-    ...(tool.deferLoading ? { defer_loading: true } : {}),
+    // Defer non-eager tools behind tool search when it is enabled: their schema
+    // is kept out of the cached prefix and loaded on demand. Eager tools (and
+    // every tool when tool search is off) stay in the prefix. Only set when true
+    // so non-deferred tools serialize identically (stable prefix bytes).
+    ...(toolSearchEnabled && !tool.eager ? { defer_loading: true } : {}),
   };
 }
 
-// Builds the Anthropic `tools` array from the agent's tool specifications.
-// Cold specs carry `deferLoading`, which toTool maps to `defer_loading`. When
-// any tool is deferred, the tool search tool is prepended so the model can
-// discover those tools on demand; otherwise the array is identical to before.
-// A force-called tool is never deferred, since the model cannot be forced to
-// call a tool it would first have to discover via search.
+// Builds the Anthropic `tools` array from the agent's tool specifications. When
+// tool search is enabled, non-eager specs are deferred and the tool search tool
+// is prepended so the model can discover them on demand. Otherwise the array is
+// identical to before. A force-called tool is never deferred, since the model
+// cannot be forced to call a tool it would first have to discover via search.
 export function toToolsParam(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
+  forceToolCall: string | undefined,
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
 ) {
   const tools = specifications.map((spec) => {
-    const tool = toTool(spec);
+    const tool = toTool(spec, { toolSearchEnabled });
     if (tool.defer_loading && spec.name === forceToolCall) {
       return { ...tool, defer_loading: false };
     }

@@ -14,6 +14,7 @@ export const SKILL_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       skillName: z.string().describe("The name of the skill to enable"),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Enabling skill",
       done: "Enable skill",

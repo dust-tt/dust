@@ -78,6 +78,7 @@ export function WithAnthropicAIInputConverter<
         temperature,
         reasoning,
         forceTool,
+        toolSearchEnabled,
         outputFormat,
       } = config;
 
@@ -92,7 +93,10 @@ export function WithAnthropicAIInputConverter<
       // Build the tools first so the prompt reflects what is actually sent: the
       // tool search instruction is appended only when the search tool is in the
       // request, as a trailing block outside the cached system prefix.
-      const anthropicTools = toolSpecsToAnthropicAITools(tools, { forceTool });
+      const anthropicTools = toolSpecsToAnthropicAITools(tools, {
+        forceTool,
+        toolSearchEnabled: toolSearchEnabled ?? false,
+      });
       const system = this.systemMessagesToSystemParam(conversation.system);
 
       return {

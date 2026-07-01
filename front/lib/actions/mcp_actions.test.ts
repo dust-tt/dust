@@ -8,6 +8,7 @@ import type {
 import {
   getToolExtraFields,
   listToolsForServerSideMCPServer,
+  makeServerSideMCPToolConfigurations,
   postProcessMCPToolResult,
   runToolCallWithDetachedSignal,
   tryCallMCPTool,
@@ -21,6 +22,7 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { ServerSideMCPToolTypeWithStakeAndRetryPolicy } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -987,5 +989,73 @@ describe("runToolCallWithDetachedSignal", () => {
     );
 
     expect(seen).toBe(false);
+  });
+});
+
+describe("makeServerSideMCPToolConfigurations eager flag", () => {
+  const config: ServerSideMCPServerConfigurationType = {
+    id: -1,
+    sId: generateRandomModelSId(),
+    type: "mcp_server_configuration",
+    name: "dummy_name",
+    description: "dummy_description",
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: "mcpServerId",
+    dustAppConfiguration: null,
+    internalMCPServerId: "internalMCPServerId",
+    secretName: null,
+    dustProject: null,
+  };
+
+  function makeTool(
+    name: string,
+    eager?: boolean
+  ): ServerSideMCPToolTypeWithStakeAndRetryPolicy {
+    return {
+      name,
+      description: `${name} description`,
+      inputSchema: { type: "object", properties: {} },
+      availability: "auto",
+      stakeLevel: "never_ask",
+      toolServerId: "toolServerId",
+      retryPolicy: "no_retry",
+      ...(eager ? { eager: true } : {}),
+    };
+  }
+
+  it("carries eager onto the tool configuration when set", () => {
+    const [tool] = makeServerSideMCPToolConfigurations(config, [
+      makeTool("eager_tool", true),
+    ]);
+
+    expect(tool.eager).toBe(true);
+  });
+
+  it("omits eager when the tool does not opt in", () => {
+    const [tool] = makeServerSideMCPToolConfigurations(config, [
+      makeTool("plain_tool"),
+    ]);
+
+    expect(tool.eager).toBeUndefined();
+  });
+
+  it("defers exactly the non-eager tools under the Anthropic client rule", () => {
+    // Mirrors the Anthropic client: defer_loading = toolSearchEnabled && !eager.
+    const tools = makeServerSideMCPToolConfigurations(config, [
+      makeTool("eager_tool", true),
+      makeTool("plain_tool"),
+    ]);
+
+    const toolSearchEnabled = true;
+    const deferred = tools
+      .filter((t) => toolSearchEnabled && !t.eager)
+      .map((t) => t.name);
+
+    expect(deferred).toEqual(["plain_tool"]);
   });
 });

@@ -238,6 +238,7 @@ export function makeServerSideMCPToolConfigurations(
     dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
+    ...(tool.eager && { eager: true }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }
@@ -270,6 +271,7 @@ function makeClientSideMCPToolConfigurations(
     argumentsRequiringApproval: tool.argumentsRequiringApproval,
     displayLabels: tool.displayLabels,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
+    ...(tool.eager && { eager: true }),
   }));
 }
 

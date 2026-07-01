@@ -10,6 +10,7 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
       "List the available toolsets with their names and descriptions. This is like using 'ls' in Unix.",
     schema: {},
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Listing tools",
       done: "List tools",
@@ -21,6 +22,7 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
       toolsetId: z.string().describe("The ID of the toolset to enable."),
     },
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Enabling tool",
       done: "Enabled tool",

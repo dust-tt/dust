@@ -61,6 +61,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       `Prefer this over '${FILESYSTEM_FIND_TOOL_NAME}' when you know what you're looking for conceptually but not the exact document title.`,
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
+    eager: true,
     displayLabels: {
       running: "Searching data sources",
       done: "Search data sources",

@@ -2,7 +2,6 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isHotMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
@@ -419,17 +418,13 @@ export async function runModel(
     renderEquippedSkillsUserMessage(equippedSkills),
   ]);
 
-  // Hot (default-attached) tools stay non-deferred so they form a stable,
-  // cacheable tools prefix. Cold tools are deferred behind Anthropic's tool
-  // search (when the flag is on) so mid-run additions append inline on discovery
-  // instead of mutating the prefix and busting the cache.
+  // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
+  // deferred behind tool search is an Anthropic-specific policy applied in the
+  // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
   const toolSearchEnabled = featureFlags.includes("anthropic_tool_search");
-  const specifications: AgentActionSpecification[] = [];
-  for (const a of availableActions) {
-    const deferLoading =
-      toolSearchEnabled && !isHotMCPServerName(a.mcpServerName);
-    specifications.push(buildToolSpecification(a, { deferLoading }));
-  }
+  const specifications: AgentActionSpecification[] = availableActions.map((a) =>
+    buildToolSpecification(a)
+  );
 
   // Count the number of tokens used by the functions presented to the model.
   // This is a rough estimate of the number of tokens.
@@ -625,6 +620,7 @@ export async function runModel(
     modelConversationRes,
     conversation,
     hasConditionalJITTools,
+    toolSearchEnabled,
     cacheDiagnosticsEnabled: featureFlags.includes(
       "anthropic_cache_diagnostics"
     ),

@@ -47,6 +47,9 @@ export interface ToolDefinition<
 > {
   name: TName;
   enableAlerting?: boolean;
+  // When true, the tool is kept in the cached tools prefix (loaded upfront)
+  // instead of being deferred behind tool search. Defaults to deferred.
+  eager?: boolean;
   description: string;
   schema: TSchema;
   stake: MCPToolStakeLevelType;

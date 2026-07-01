@@ -805,7 +805,7 @@ describe("toolSpecToAnthropicAITool", () => {
         required: ["q"],
       },
     };
-    expect(toolSpecToAnthropicAITool(tool)).toEqual({
+    expect(toolSpecToAnthropicAITool(tool, false)).toEqual({
       name: "search",
       description: "Search things",
       eager_input_streaming: true,
@@ -825,7 +825,39 @@ describe("toolSpecToAnthropicAITool", () => {
     };
     // The spread places inputSchema.type after the literal, so it wins; this
     // documents the merge order rather than asserting a guarantee.
-    expect(toolSpecToAnthropicAITool(tool).input_schema.type).toBe("string");
+    expect(toolSpecToAnthropicAITool(tool, false).input_schema.type).toBe(
+      "string"
+    );
+  });
+
+  it("defers a non-eager tool when tool search is enabled", () => {
+    const tool: ToolSpecification = {
+      name: "t",
+      description: "d",
+      inputSchema: {},
+    };
+    expect(toolSpecToAnthropicAITool(tool, true).defer_loading).toBe(true);
+  });
+
+  it("keeps an eager tool in the prefix when tool search is enabled", () => {
+    const tool: ToolSpecification = {
+      name: "t",
+      description: "d",
+      inputSchema: {},
+      eager: true,
+    };
+    expect(toolSpecToAnthropicAITool(tool, true).defer_loading).toBeUndefined();
+  });
+
+  it("never defers when tool search is disabled", () => {
+    const tool: ToolSpecification = {
+      name: "t",
+      description: "d",
+      inputSchema: {},
+    };
+    expect(
+      toolSpecToAnthropicAITool(tool, false).defer_loading
+    ).toBeUndefined();
   });
 });
 

@@ -796,6 +796,7 @@ export type DustToolMeta = {
   displayLabels?: ToolDisplayLabels;
   argumentsRequiringApproval?: string[];
   timeoutMs?: number;
+  eager?: boolean;
 };
 
 function isValidStake(value: unknown): value is MCPToolStakeLevelType {
@@ -846,6 +847,9 @@ export function getDustToolMeta(
   if (isValidTimeout(dust.timeoutMs)) {
     result.timeoutMs = dust.timeoutMs;
   }
+  if (typeof dust.eager === "boolean") {
+    result.eager = dust.eager;
+  }
 
   return Object.keys(result).length > 0 ? result : undefined;
 }
@@ -862,6 +866,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
       ...(dustMeta?.displayLabels
         ? { displayLabels: dustMeta.displayLabels }
         : {}),
+      ...(dustMeta?.eager ? { eager: true } : {}),
     };
   });
 }
