@@ -24,12 +24,11 @@ const configSchema = z.union([
       })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
     forceTool: z.undefined(),
-    // Reasoning requires temperature=1.
-    temperature: temperatureSchema.optional().transform(() => 1 as const),
+    temperature: temperatureSchema.optional().transform(() => undefined),
   }),
   baseConfig.extend({
     reasoning: z.object({ effort: z.literal("none") }),
-    temperature: temperatureSchema.optional().default(1),
+    temperature: temperatureSchema.optional().transform(() => undefined),
   }),
 ]);
 
