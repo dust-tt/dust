@@ -2,14 +2,16 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React, { useCallback, useEffect, useState } from "react";
 
 import { Play } from "../index_with_tw_base";
+import { Copyable, useCssVar, withThemedSurface } from "./foundations-helpers";
 
 const meta = {
   title: "Foundations/Motion",
+  decorators: [withThemedSurface],
   parameters: {
     layout: "centered",
     docs: {
       description: {
-        component: `Motion tokens as Tailwind utilities. Two decisions: **easing** (entering/exiting → ease-out, moving on screen → ease-in-out) and **duration** (bigger element → longer). Prefer the semantic aliases (\`s-ease-enter\`, \`s-duration-enter\`, …).`,
+        component: `Motion tokens as Tailwind utilities. Two decisions: **easing** (entering/exiting → ease-out, moving on screen → ease-in-out) and **duration** (bigger element → longer). Prefer the semantic aliases (\`ease-enter\`, \`duration-enter\`, …).`,
       },
     },
   },
@@ -188,13 +190,38 @@ const DURATION_GROUPS: MotionGroup[] = [
 
 function MotionRow({
   label,
-  easingClass = "ease-out-cubic",
+  easingClass,
   easingStyle,
-  durationClass = "duration-1000",
+  durationClass,
   circleClass = "bg-foreground",
   note,
   playSignal,
 }: MotionToken & { playSignal?: number }) {
+  const effectiveEasing = easingStyle ? "" : (easingClass ?? "ease-out-cubic");
+  const effectiveDuration = durationClass ?? "duration-1000";
+
+  // A row demoes either an easing or a duration. The other axis is a default.
+  const isDurationSubject =
+    durationClass !== undefined && easingClass === undefined && !easingStyle;
+  const copyValue = isDurationSubject ? durationClass : (easingClass ?? "");
+
+  // Resolve the token's live value: cubic-bezier for easings, ms for durations.
+  const easingValue = useCssVar(easingClass ? `--${easingClass}` : "");
+  const durationSuffix = durationClass?.startsWith("duration-")
+    ? durationClass.slice("duration-".length)
+    : "";
+  const durationIsNumeric = /^\d+$/.test(durationSuffix);
+  const durationVarValue = useCssVar(
+    durationIsNumeric ? "" : `--transition-duration-${durationSuffix}`
+  );
+  const resolvedValue = easingStyle
+    ? easingStyle
+    : isDurationSubject
+      ? durationIsNumeric
+        ? `${durationSuffix}ms`
+        : durationVarValue
+      : easingValue;
+
   const [animate, setAnimate] = useState(false);
   // Replay needs the box to snap back to the start without animating,
   // so the transition is disabled for the reset frame.
@@ -227,7 +254,25 @@ function MotionRow({
         <Play className="h-4 w-4" />
       </button>
       <div className="w-44 shrink-0">
-        <div className="font-mono text-xs text-foreground">{label}</div>
+        {copyValue ? (
+          <Copyable value={copyValue}>
+            <div className="font-mono text-xs text-foreground">{label}</div>
+            {resolvedValue && (
+              <div className="break-all font-mono text-[10px] text-muted-foreground">
+                {resolvedValue}
+              </div>
+            )}
+          </Copyable>
+        ) : (
+          <>
+            <div className="font-mono text-xs text-foreground">{label}</div>
+            {resolvedValue && (
+              <div className="break-all font-mono text-[10px] text-muted-foreground">
+                {resolvedValue}
+              </div>
+            )}
+          </>
+        )}
         {note && <div className="text-xs text-muted-foreground">{note}</div>}
       </div>
       <div className="relative h-10 w-full rounded-full bg-primary-100">
@@ -235,7 +280,7 @@ function MotionRow({
           className={`absolute top-2 h-6 w-6 rounded-full ${circleClass} ${
             resetting
               ? "transition-none"
-              : `transition-all ${easingStyle ? "" : easingClass} ${durationClass}`
+              : `transition-all ${effectiveEasing} ${effectiveDuration}`
           }`}
           style={{
             left: animate ? "calc(100% - 2rem)" : "0.5rem",

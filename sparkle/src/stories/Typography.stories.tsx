@@ -1,8 +1,14 @@
-// TextStyles.stories.tsx
+// Typography.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { cn } from "@sparkle/lib/utils";
+
+import {
+  Copyable,
+  useComputedStyle,
+  withThemedSurface,
+} from "./foundations-helpers";
 
 // Define the text sizes and weights
 const textSizes = {
@@ -66,10 +72,58 @@ const fontWeights = {
   bold: "font-bold",
 };
 
+// Readable line length per copy size, keyed by size token.
+const copyMaxWidth: Record<string, string> = {
+  xs: "20rem",
+  sm: "24rem",
+  base: "32rem",
+  lg: "40rem",
+  xl: "48rem",
+};
+
 const loremIpsum =
   "Geist. Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
 
 const copyLoremIpsum = `Geist. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`;
+
+const MEASURED = ["font-size", "line-height", "font-weight"] as const;
+
+// One type specimen: click the label to copy its utility class(es), and read
+// the live computed size / line-height / weight so the numbers never drift from
+// the compiled CSS.
+const TypeSpecimen = ({
+  label,
+  className,
+  sample,
+  style,
+}: {
+  label: string;
+  className: string;
+  sample: string;
+  style?: React.CSSProperties;
+}) => {
+  const ref = React.useRef<HTMLParagraphElement>(null);
+  const measured = useComputedStyle(ref, MEASURED);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <Copyable value={className}>
+          <span className="font-mono text-xs text-foreground">{label}</span>
+        </Copyable>
+        {measured["font-size"] && (
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {measured["font-size"]} / {measured["line-height"]} ·{" "}
+            {measured["font-weight"]}
+          </span>
+        )}
+      </div>
+      <p ref={ref} className={className} style={style}>
+        {sample}
+      </p>
+    </div>
+  );
+};
 
 interface TypographyProps {
   variant: "font-size" | "heading" | "heading-mono" | "copy";
@@ -87,22 +141,23 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
         >
           {Object.entries(textSizes).map(([sizeKey, sizeClass]) =>
             Object.entries(fontWeights).map(([weightKey, weightClass]) => (
-              <div
+              <TypeSpecimen
                 key={`${sizeKey}-${weightKey}`}
+                label={`${sizeKey} ${weightKey}`}
                 className={cn(sizeClass, weightClass)}
-              >
-                <div>{`${sizeKey} ${weightKey}`}</div>
-                <p>{loremIpsum}</p>
-              </div>
+                sample={loremIpsum}
+              />
             ))
           )}
         </div>
         <div className="mt-6 grid gap-16 bg-repeat py-8">
           {Object.entries(extraTextSizes).map(([sizeKey, sizeClass]) => (
-            <div key={sizeKey} className={cn(sizeClass, "font-medium")}>
-              <div>{`${sizeKey} medium`}</div>
-              <p>{loremIpsum}</p>
-            </div>
+            <TypeSpecimen
+              key={sizeKey}
+              label={`${sizeKey} medium`}
+              className={cn(sizeClass, "font-medium")}
+              sample={loremIpsum}
+            />
           ))}
         </div>
       </div>
@@ -112,70 +167,26 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
   if (variant === "copy") {
     return (
       <div className="space-y-12 bg-repeat py-8">
-        {Object.entries(copySizes).map(([sizeKey, copyClass]) => (
-          <div key={sizeKey} className="space-y-4">
-            <div className={copyClass}>
-              <div>{`Copy ${sizeKey}`}</div>
-              <div
-                className="mt-2"
-                style={{
-                  maxWidth:
-                    sizeKey === "xs"
-                      ? "20rem"
-                      : sizeKey === "sm"
-                        ? "24rem"
-                        : sizeKey === "base"
-                          ? "32rem"
-                          : sizeKey === "lg"
-                            ? "40rem"
-                            : "48rem",
-                }}
-              >
-                <p>{copyLoremIpsum}</p>
-              </div>
+        {Object.entries(copySizes).map(([sizeKey, copyClass]) => {
+          const maxWidth = copyMaxWidth[sizeKey] ?? "48rem";
+          return (
+            <div key={sizeKey} className="space-y-4">
+              {[
+                { suffix: "", modifier: "" },
+                { suffix: " Italic", modifier: "italic" },
+                { suffix: " Mono", modifier: "font-mono" },
+              ].map(({ suffix, modifier }) => (
+                <TypeSpecimen
+                  key={suffix || "regular"}
+                  label={`Copy ${sizeKey}${suffix}`}
+                  className={cn(copyClass, modifier)}
+                  sample={copyLoremIpsum}
+                  style={{ maxWidth }}
+                />
+              ))}
             </div>
-            <div className={cn(copyClass, "italic")}>
-              <div>{`Copy ${sizeKey} Italic`}</div>
-              <div
-                className="mt-2"
-                style={{
-                  maxWidth:
-                    sizeKey === "xs"
-                      ? "20rem"
-                      : sizeKey === "sm"
-                        ? "24rem"
-                        : sizeKey === "base"
-                          ? "32rem"
-                          : sizeKey === "lg"
-                            ? "40rem"
-                            : "48rem",
-                }}
-              >
-                <p>{copyLoremIpsum}</p>
-              </div>
-            </div>
-            <div className={cn(copyClass, "font-mono")}>
-              <div>{`Copy ${sizeKey} Mono`}</div>
-              <div
-                className="mt-2"
-                style={{
-                  maxWidth:
-                    sizeKey === "xs"
-                      ? "20rem"
-                      : sizeKey === "sm"
-                        ? "24rem"
-                        : sizeKey === "base"
-                          ? "32rem"
-                          : sizeKey === "lg"
-                            ? "40rem"
-                            : "48rem",
-                }}
-              >
-                <p>{copyLoremIpsum}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -184,10 +195,12 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
     return (
       <div className="space-y-8 bg-repeat py-8">
         {Object.entries(headingMonoSizes).map(([sizeKey, headingClass]) => (
-          <div key={sizeKey} className={headingClass}>
-            <div>{`Heading Mono ${sizeKey}`}</div>
-            <p>{loremIpsum}</p>
-          </div>
+          <TypeSpecimen
+            key={sizeKey}
+            label={`Heading Mono ${sizeKey}`}
+            className={headingClass}
+            sample={loremIpsum}
+          />
         ))}
       </div>
     );
@@ -196,10 +209,12 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
   return (
     <div className="space-y-8 bg-repeat py-8">
       {Object.entries(headingSizes).map(([sizeKey, headingClass]) => (
-        <div key={sizeKey} className={headingClass}>
-          <div>{`Heading ${sizeKey}`}</div>
-          <p>{loremIpsum}</p>
-        </div>
+        <TypeSpecimen
+          key={sizeKey}
+          label={`Heading ${sizeKey}`}
+          className={headingClass}
+          sample={loremIpsum}
+        />
       ))}
     </div>
   );
@@ -209,11 +224,12 @@ const meta: Meta<typeof Typography> = {
   title: "Foundations/Typography",
   component: Typography,
   tags: ["autodocs"],
+  decorators: [withThemedSurface],
   parameters: {
     layout: "padded",
     docs: {
       description: {
-        component: `The Sparkle type scale, rendered in Geist. Covers font sizes (\`text-xs\` to \`text-9xl\`) with weights, heading styles (\`heading-*\` and monospace \`heading-mono-*\`), and copy/body styles (\`copy-*\`, including italic and mono). Use the **variant** control to switch between the font-size, heading, heading-mono, and copy specimens, and reach for these utilities instead of ad-hoc font sizing.`,
+        component: `The Sparkle type scale, rendered in Geist. Covers font sizes (\`text-xs\` to \`text-9xl\`) with weights, heading styles (\`heading-*\` and monospace \`heading-mono-*\`), and copy/body styles (\`copy-*\`, including italic and mono). Use the **variant** control to switch between the font-size, heading, heading-mono, and copy specimens. Click any label to copy its utility class; the caption shows the live computed size / line-height / weight. Reach for these utilities instead of ad-hoc font sizing.`,
       },
     },
   },
