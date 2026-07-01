@@ -173,6 +173,88 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     ).toBe("free");
   });
 
+  it("auto-assigns workspace_yearly when committed slots remain (pooled enterprise)", () => {
+    const wsProductSeatTypes = new Map<string, MembershipSeatType>([
+      ["workspace-yearly-product", "workspace_yearly"],
+      ["free-product", "free"],
+    ]);
+    const wsContract = {
+      subscriptions: [
+        {
+          id: "sub_workspace_yearly",
+          subscription_rate: {
+            product: {
+              id: "workspace-yearly-product",
+              name: "Workspace (Yearly)",
+            },
+          },
+        },
+        {
+          id: "sub_free",
+          subscription_rate: { product: { id: "free-product", name: "Free" } },
+        },
+      ],
+      recurring_credits: [],
+      overrides: [
+        { entitled: true, product: { id: "workspace-yearly-product" } },
+        { entitled: true, product: { id: "free-product" } },
+      ],
+    } as unknown as CachedContract;
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 10, maxSeats: null }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = {
+      workspace_yearly: 4,
+    };
+    expect(
+      getDefaultSeatTypeForContract(wsContract, wsProductSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("workspace_yearly");
+  });
+
+  it("falls through to free once workspace_yearly committed slots are taken", () => {
+    const wsProductSeatTypes = new Map<string, MembershipSeatType>([
+      ["workspace-yearly-product", "workspace_yearly"],
+      ["free-product", "free"],
+    ]);
+    const wsContract = {
+      subscriptions: [
+        {
+          id: "sub_workspace_yearly",
+          subscription_rate: {
+            product: {
+              id: "workspace-yearly-product",
+              name: "Workspace (Yearly)",
+            },
+          },
+        },
+        {
+          id: "sub_free",
+          subscription_rate: { product: { id: "free-product", name: "Free" } },
+        },
+      ],
+      recurring_credits: [],
+      overrides: [
+        { entitled: true, product: { id: "workspace-yearly-product" } },
+        { entitled: true, product: { id: "free-product" } },
+      ],
+    } as unknown as CachedContract;
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 10, maxSeats: null }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = {
+      workspace_yearly: 10,
+    };
+    expect(
+      getDefaultSeatTypeForContract(wsContract, wsProductSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("free");
+  });
+
   it("legacy: no-seat-subscription contract returns none", () => {
     const legacyContract = {
       subscriptions: [],

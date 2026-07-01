@@ -168,11 +168,11 @@ function canAssignFreeSeat({
  *
  * The seat is chosen in three phases:
  *
- *  1. **Committed seats** — iterate `pro` and `pro_yearly` seat types ordered
- *     by AWU allowance ascending. For each type that has a committed allocation
- *     (`seatLimits.minSeats > 0`) with remaining slots (`assignedCount <
- *     minSeats`), assign it. Higher tiers (`max`, `workspace`, …) are never
- *     auto-assigned; they must be set manually.
+ *  1. **Committed seats** — iterate `pro`, `pro_yearly`, `workspace`, and
+ *     `workspace_yearly` seat types ordered by AWU allowance ascending. For each
+ *     type that has a committed allocation (`seatLimits.minSeats > 0`) with
+ *     remaining slots (`assignedCount < minSeats`), assign it. `max` /
+ *     `max_yearly` are never auto-assigned; they must be set manually.
  *
  *  2. **Free seat** — if `free` is on the contract and all of the following
  *     hold, assign `free`:
@@ -218,12 +218,14 @@ export function getDefaultSeatTypeForContract(
     // and free = 0 on a hybrid contract).
     .sort((a, b) => a.awu - b.awu || a.seatType.localeCompare(b.seatType));
 
-  // Only `pro` and `pro_yearly` are eligible for auto-assignment. Higher tiers
-  // (`max`, `max_yearly`, `workspace`, `workspace_yearly`) must be assigned
-  // manually; they are never handed out automatically to new joiners.
+  // `pro`, `pro_yearly`, `workspace`, and `workspace_yearly` are eligible for
+  // auto-assignment. `max` / `max_yearly` must still be assigned manually. They
+  // are never handed out automatically to new joiners.
   const AUTO_ASSIGNABLE: ReadonlySet<MembershipSeatType> = new Set([
     "pro",
     "pro_yearly",
+    "workspace",
+    "workspace_yearly",
   ]);
 
   // Phase 1: assign to the cheapest committed seat type with remaining slots.
