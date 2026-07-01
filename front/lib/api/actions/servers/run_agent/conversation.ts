@@ -253,6 +253,7 @@ export async function getOrCreateConversation(
     title: `run_agent ${mainAgent.name} > ${childAgentBlob.name}`,
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
+    spaceId: mainConversation.spaceId ?? undefined,
     message: {
       content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${queryWithFilePaths}`,
       mentions: [{ configurationId: childAgentId }],
