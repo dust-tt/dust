@@ -91,17 +91,11 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       },
     });
 
-    // Default skills ride along on each row (`defaultSkillsIds`), so no extra
-    // query is needed.
     return models.map((model) =>
       ProjectMetadataResource.fromModel(model, model.spaceId)
     );
   }
 
-  // Prune a skill's sId from every pod's inline default-skill list in the
-  // workspace. Default skills are stored as an sId array on `project_metadata`,
-  // so when a skill is deleted we strip its sId from the arrays that contain
-  // it via `array_remove`.
   static async removeSkillFromAllDefaultSkills(
     auth: Authenticator,
     skillSId: string,
@@ -109,8 +103,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
   ): Promise<void> {
     await ProjectMetadataModel.update(
       {
-        // Collapse to null (not an empty `{}` array) when this was the pod's last
-        // default skill, keeping the "no defaults" state consistent with setDefaultSkills.
         defaultSkillsIds: fn(
           "nullif",
           fn("array_remove", col("defaultSkillsIds"), skillSId),

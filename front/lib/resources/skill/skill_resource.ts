@@ -1441,10 +1441,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  /**
-   * Resolve a pod's default skills so they can be injected into the agent loop at
-   * runtime, treated exactly like manually-enabled conversation skills
-   */
   static async listPodDefaultSkillsForConversation(
     auth: Authenticator,
     {
@@ -1459,14 +1455,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [];
     }
 
-    // The conversation carries the space sId; decode it to `project_metadata.spaceId`.
     const spaceModelId = getResourceIdFromSId(conversation.spaceId);
     if (spaceModelId === null) {
       return [];
     }
 
-    // Default skills are stored inline as sIds; load them active for the agent
-    // loop exactly like manually-enabled conversation skills.
     const [projectMetadata] = await ProjectMetadataResource.fetchBySpaceIds(
       auth,
       [spaceModelId]
@@ -1478,10 +1471,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  /**
-   * List skills for the agent loop, returning system skills, enabled skills, and
-   * equipped skills.
-   */
   static async listForAgentLoop(
     auth: Authenticator,
     params:
@@ -1497,7 +1486,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     equippedSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
-    // Light type-guard to check whether we have a full AgentLoopExecutionData.
     const agentLoopData = "userMessage" in params ? params : undefined;
 
     const conversationEnabledSkillsRaw = await this.listEnabledByConversation(
@@ -1508,15 +1496,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     );
 
-    // Pod default skills are injected with the same algorithm as
-    // manually-added conversation skills — they join the conversation-enabled
-    // pool and flow through the enabled/equipped logic below unchanged.
     const podDefaultSkills = await this.listPodDefaultSkillsForConversation(
       auth,
       { conversation, agentLoopData }
     );
-    // Dedup by sId: a skill that is both a pod default and already enabled in the
-    // conversation must appear only once.
+
     const conversationEnabledById = new Map(
       conversationEnabledSkillsRaw.map((s) => [s.sId, s])
     );
@@ -3224,14 +3208,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        // Prune this skill from every pod's default-skill list.
         await ProjectMetadataResource.removeSkillFromAllDefaultSkills(
           auth,
           this.sId,
           transaction
         );
 
-        // Delete the GroupSkillModel entry and the associated editor group.
         await GroupSkillModel.destroy({
           where: whereWorkspaceIdAndSkillId,
           transaction,

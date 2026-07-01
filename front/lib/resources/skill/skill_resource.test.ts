@@ -1651,14 +1651,13 @@ describe("SkillResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills([defaultSkill]);
+      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
         { name: "Pod Agent" }
       );
-      // The conversation's spaceId is what makes isPodConversation() true and
-      // drives the pod-default resolution.
+
       const conversation = await ConversationFactory.create(authenticator, {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [],
@@ -1685,7 +1684,7 @@ describe("SkillResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills([defaultSkill]);
+      await metadata.setDefaultSkills(authenticator, [defaultSkill]);
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -1717,7 +1716,7 @@ describe("SkillResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills([skill]);
+      await metadata.setDefaultSkills(authenticator, [skill]);
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -1729,9 +1728,6 @@ describe("SkillResource", () => {
         spaceId: space.id,
       });
 
-      // Enable the same skill on the conversation (mirrors the input-bar adding
-      // a pod default as a conversation skill), so it is both a pod default and
-      // conversation-enabled.
       const upsertResult = await skill.upsertToConversation(authenticator, {
         conversationId: conversation.id,
         enabled: true,

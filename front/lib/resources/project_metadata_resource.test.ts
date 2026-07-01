@@ -268,11 +268,8 @@ describe("ProjectMetadataResource", () => {
         space,
         { description: "d" }
       );
-      await metadata.setDefaultSkills([skill]);
+      await metadata.setDefaultSkills(authenticator, [skill]);
 
-      // Default skills are stored inline as sIds in the `defaultSkillsIds`
-      // array. Deleting a skill scrubs its sId from every pod's array
-      // via `array_remove`, so the pinned default disappears.
       const result = await skill.delete(authenticator);
       expect(result.isOk()).toBe(true);
 
@@ -281,7 +278,6 @@ describe("ProjectMetadataResource", () => {
         space
       );
       expect(reloaded!.defaultSkillIds).toEqual([]);
-      // Removing the pod's last default skill collapses the column to null.
       expect(reloaded!.defaultSkillsIds).toBeNull();
     });
   });
