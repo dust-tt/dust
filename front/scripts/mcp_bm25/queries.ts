@@ -163,6 +163,16 @@ export const QUERIES: LabeledQuery[] = [
     expected: "microsoft_drive.list_drive_items",
   },
 
+  // --- microsoft_excel ---
+  {
+    query: "find Excel files in OneDrive",
+    expected: "microsoft_excel.list_excel_files",
+  },
+  {
+    query: "read cell values from an Excel worksheet",
+    expected: "microsoft_excel.read_worksheet",
+  },
+
   // --- jira ---
   { query: "create a new issue in jira", expected: "jira.create_issue" },
   {

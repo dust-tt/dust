@@ -36,6 +36,7 @@ import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interac
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { LUMA_SERVER } from "@app/lib/api/actions/servers/luma/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
+import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
@@ -123,6 +124,7 @@ const SERVERS: ServerEntry[] = [
   { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
   { name: "google_sheets", tools: GOOGLE_SHEETS_SERVER.tools },
   { name: "microsoft_drive", tools: MICROSOFT_DRIVE_SERVER.tools },
+  { name: "microsoft_excel", tools: MICROSOFT_EXCEL_SERVER.tools },
   { name: "jira", tools: JIRA_SERVER.tools },
   { name: "zendesk", tools: ZENDESK_SERVER.tools },
   { name: "front", tools: FRONT_SERVER.tools },
