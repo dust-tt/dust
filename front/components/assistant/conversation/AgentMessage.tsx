@@ -1299,7 +1299,6 @@ function AgentMessageContent({
       triggeringUser={triggeringUser}
       owner={owner}
       conversationId={conversationId}
-      messageId={sId}
       retryHandler={retryHandlerWithResetState}
     />
   ) : null;

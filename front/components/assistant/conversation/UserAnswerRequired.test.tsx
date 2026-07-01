@@ -15,6 +15,7 @@ import { UserAnswerRequired } from "./UserAnswerRequired";
 
 const removeCompletedActionMock = vi.fn();
 const answerQuestionMock = vi.fn();
+const retryHandlerMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({
@@ -221,8 +222,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction()}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -246,8 +246,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction()}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -275,8 +274,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction()}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -302,8 +300,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction()}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -329,8 +326,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction({ multiSelect: true })}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -369,8 +365,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction({ multiSelect: true })}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -411,8 +406,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction({ multiSelect: true })}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -433,8 +427,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction()}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -461,8 +454,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction({ multiSelect: true })}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 
@@ -495,8 +487,7 @@ describe("UserAnswerRequired", () => {
         blockedAction={makeBlockedAction({ multiSelect: true })}
         triggeringUser={null}
         owner={owner}
-        conversationId="conv_1"
-        messageId="msg_1"
+        retryHandler={retryHandlerMock}
       />
     );
 

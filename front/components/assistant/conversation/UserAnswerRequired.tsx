@@ -25,8 +25,7 @@ interface UserAnswerRequiredProps {
   };
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  conversationId: string;
-  messageId: string;
+  retryHandler: () => Promise<void>;
 }
 
 function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -47,8 +46,7 @@ export function UserAnswerRequired({
   blockedAction,
   triggeringUser,
   owner,
-  conversationId,
-  messageId,
+  retryHandler,
 }: UserAnswerRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
@@ -93,14 +91,20 @@ export function UserAnswerRequired({
     { isSkip = false }: { isSkip?: boolean } = {}
   ) {
     setIsSkipPending(isSkip);
+    // Submit against the action's own conversation/message: for a sub-agent
+    // question these are the child's ids (the action lives in the child
+    // conversation). For a direct question they equal the current conversation.
     const result = await answerQuestion({
-      conversationId,
-      messageId,
+      conversationId: blockedAction.conversationId,
+      messageId: blockedAction.messageId,
       actionId: blockedAction.actionId,
       answer,
     });
 
     if (result.success) {
+      // Resume the agent run. For a sub-agent question this also relaunches the
+      // blocked parent run (the child retry is a no-op once the answer is in).
+      await retryHandler();
       removeCompletedAction(blockedAction.actionId);
     }
 

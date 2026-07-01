@@ -1578,6 +1578,7 @@ const ToolAskUserQuestionEventSchema = ToolExecutionMetadataSchema.extend({
   configurationId: z.string(),
   conversationId: z.string(),
   created: z.number(),
+  isLastBlockingEventForStep: z.boolean().optional(),
   messageId: z.string(),
   question: UserQuestionItemSchema,
 });

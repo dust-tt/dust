@@ -11,7 +11,6 @@ interface BlockedActionProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   conversationId: string;
-  messageId: string;
   retryHandler: (params: {
     conversationId: string;
     messageId: string;
@@ -23,7 +22,6 @@ export function BlockedAction({
   triggeringUser,
   owner,
   conversationId,
-  messageId,
   retryHandler,
 }: BlockedActionProps) {
   switch (blockedAction.status) {
@@ -72,8 +70,12 @@ export function BlockedAction({
           blockedAction={blockedAction}
           triggeringUser={triggeringUser}
           owner={owner}
-          conversationId={conversationId}
-          messageId={messageId}
+          retryHandler={() =>
+            retryHandler({
+              conversationId: blockedAction.conversationId,
+              messageId: blockedAction.messageId,
+            })
+          }
         />
       );
 
