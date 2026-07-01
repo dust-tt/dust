@@ -1276,7 +1276,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           trialing: false,
           startDate: new Date(),
           endDate: null,
-          stripeSubscriptionId: this.stripeSubscriptionId,
+          stripeSubscriptionId: null,
           metronomeContractId,
         },
         renderPlanFromModel({ plan: newPlan }),
