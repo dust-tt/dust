@@ -7,7 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const EXA_TOOLS_METADATA = createToolsRecord({
   search_people: {
     description:
-      "Search for people by name, role, or company using Exa's people index. Use this to find LinkedIn profiles, professional backgrounds, or identify people at specific companies (e.g. 'CTO of Mistral AI', 'VP of Sales at French SaaS startups').",
+      "Find a person by name, job title, or employer using Exa's people directory. Looks up an individual's LinkedIn profile, professional background, and career history, or identifies who holds a given role at a specific company (e.g. 'CTO of Stripe', 'VP of Sales at French SaaS startups').",
     schema: {
       query: z
         .string()
@@ -42,7 +42,7 @@ export const EXA_TOOLS_METADATA = createToolsRecord({
   },
   search_companies: {
     description:
-      "Search for companies by name, industry, or criteria using Exa's company index. Use this to find company profiles, competitors, or market research (e.g. 'French AI startups', 'competitors of Notion').",
+      "Find a company, business, or startup by name, industry, or criteria using Exa's company directory. Looks up company profiles, identifies competitors, and surfaces firms matching a sector or market (e.g. 'French fintech startups', 'competitors of Notion').",
     schema: {
       query: z
         .string()
