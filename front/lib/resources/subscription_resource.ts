@@ -266,9 +266,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     SubscriptionResource.subscriptionCacheKeyResolver
   );
 
-  private static invalidateSubscriptionCache = async (
-    workspaceModelId: ModelId
-  ) => {
+  static invalidateSubscriptionCache = async (workspaceModelId: ModelId) => {
     logger.info(
       {
         workspaceModelId,
