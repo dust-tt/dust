@@ -351,11 +351,13 @@ export function CapabilitiesPicker({
           continue;
         }
 
+        const SkillAvatar = getSkillAvatarIcon(skill);
+
         items.push({
           kind: "skill",
           skill,
           id: `skills-picker-${skill.sId}`,
-          icon: getSkillAvatarIcon(skill),
+          icon: <SkillAvatar size="xs" />,
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
@@ -382,7 +384,7 @@ export function CapabilitiesPicker({
           kind: "tool",
           serverView,
           id: `capabilities-picker-${serverView.sId}`,
-          icon: () => getAvatar(serverView.server),
+          icon: getAvatar(serverView.server, "xs"),
           label,
           sortName: label.toLowerCase(),
           description,
@@ -415,7 +417,7 @@ export function CapabilitiesPicker({
           kind: "uninstalled_tool",
           server,
           id: `tools-to-install-${server.sId}`,
-          icon: () => getAvatar(server),
+          icon: getAvatar(server, "xs"),
           label,
           sortName: label.toLowerCase(),
           description,
