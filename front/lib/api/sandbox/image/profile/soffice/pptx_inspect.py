@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 import zipfile
 from pathlib import Path
@@ -19,6 +20,8 @@ import ooxml
 import render
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.enum.text import MSO_AUTO_SIZE
+from pptx.oxml.ns import qn
 from pptx.presentation import Presentation as PresentationType
 from pptx.shapes.base import BaseShape
 from pptx.slide import Slide
@@ -37,10 +40,44 @@ DEFAULT_MAX_SHAPES = 200
 EMU_PER_INCH = 914_400
 EDGE_EPSILON_EMU = 45_720  # 0.05" tolerance before flagging edge overflow.
 
+# Text-fit estimation. What decides whether text fits is the box geometry at
+# the chosen font size, not the word count — so we estimate how many characters
+# a box holds and surface it, to stop the agent sizing text blindly. It is a
+# rough ESTIMATE (real wrapping depends on glyph metrics / line spacing we don't
+# reproduce), so the overset warning only fires on GROSS overflow of a genuine
+# multi-line container, never on a box short enough to be a nominal-height label
+# (text overflows those by design) or one set to grow to fit its text.
+CHAR_WIDTH_EM = 0.5  # avg proportional Latin glyph advance, in em
+LINE_HEIGHT_FACTOR = 1.2  # typical single line height, in em
+TEXTBOX_MARGIN_W_IN = 0.2  # PowerPoint default internal left+right inset
+TEXTBOX_MARGIN_H_IN = 0.1  # PowerPoint default internal top+bottom inset
+OVERSET_TOLERANCE = 1.8  # flag only when text exceeds capacity by this factor
+FILL_FLOATING = 0.30  # text using less than this fraction of a real box "floats"
+
 # Glyphs commonly typed as manual bullets at the start of a paragraph. When
 # they appear inside a placeholder whose layout already renders a bullet,
 # the result is a doubled marker ("● • text"); see the bullet-glyph lint.
 BULLET_PREFIXES = ("•", "·", "*", "-", "–")
+
+# Drawing-namespace handles for detecting embedded images anywhere in a shape
+# subtree. A populated picture placeholder reports shape_type PLACEHOLDER (not
+# PICTURE), and a picture *fill* on an auto shape or the slide background is not
+# a picture shape at all — but all of them carry a populated <a:blip>.
+A_BLIP = qn("a:blip")
+R_EMBED = qn("r:embed")
+R_LINK = qn("r:link")
+P_BG = qn("p:bg")
+
+
+def _has_embedded_blip(element) -> bool:
+    """True if the element subtree contains a populated <a:blip> (an embedded or
+    linked image). Catches imagery that shape_type alone misses."""
+    if element is None:
+        return False
+    for blip in element.iter(A_BLIP):
+        if blip.get(R_EMBED) or blip.get(R_LINK):
+            return True
+    return False
 
 
 class SlideContext(NamedTuple):
@@ -49,7 +86,7 @@ class SlideContext(NamedTuple):
 
 USAGE = (
     "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] "
-    "[--render] [--max-shapes N] [--offset N]"
+    "[--render [--no-boxes]] [--compare FILE] [--max-shapes N] [--offset N]"
 )
 
 HELP_TEXT = (
@@ -62,24 +99,38 @@ HELP_TEXT = (
     "\n"
     "Options:\n"
     "  --slide N         Show one slide's shapes (1-indexed): kind, position,\n"
-    "                    size, text, formatting, placeholder type.\n"
+    "                    size, text, formatting, placeholder type, and a text-fit\n"
+    "                    estimate per text shape (holds~Nch@Spt / ~Nch/line@Spt),\n"
+    "                    with a [!] TEXT OVERSET flag when text won't fit the box.\n"
     "  --layouts         List slide masters and their layouts with placeholder slots,\n"
     "                    including each placeholder's resolved default typeface,\n"
     "                    size, weight, color, and alignment (from layout / master /\n"
     "                    theme inheritance).\n"
     "  --text            Extract readable text per slide (preserves slide/shape boundaries).\n"
     "  --media           List embedded media (images, audio, video) with file sizes.\n"
-    "  --render          Rasterize slides to JPEG (100 dpi) via LibreOffice + pdftoppm.\n"
-    "                    Outputs to /tmp/pptx_render/<deck>/slide-NNN.jpg and prints\n"
-    "                    one absolute path per slide. Combine with --slide N to\n"
-    "                    render just one slide for fast post-fix re-checks.\n"
+    "  --render          Rasterize slides via LibreOffice + pdftoppm AND overlay each\n"
+    "                    shape's exact bounding box (labeled '#id' just outside it,\n"
+    "                    text shapes tinted) so overflow, overlap, distorted images,\n"
+    "                    and stranded decorative markers are visible. A red wash\n"
+    "                    marks peer-overlap regions; a Pixel-metrics line notes\n"
+    "                    marker runs (checkmarks/icons) with no text row beside them.\n"
+    "                    Writes slide-NNN-boxes.png (one path per slide). Combine\n"
+    "                    with --slide N to re-render one slide after a fix. The\n"
+    "                    boxed render is the core visual-QA signal — always use it.\n"
+    "  --no-boxes        With --render: emit the clean JPEG only (no overlay).\n"
+    "  --compare FILE    Compare <file> (your edited output) against FILE (the\n"
+    "                    source/template): slide count, embedded media, embedded\n"
+    "                    fonts, imagery/layout/density, and per-shape content-slot\n"
+    "                    fidelity (text written into the template's spacer\n"
+    "                    paragraphs). Ends with a [QA: PASS/FAIL] verdict.\n"
     "  --max-shapes N    Maximum shapes to print in slide view (default 200).\n"
     "  --offset N        Skip first N shapes in slide view (default 0).\n"
     "\n"
     "Output (slide view, one shape per line, paragraphs indented):\n"
     "  <id>  <kind>  <left,top inWxinH>  [ph=<type>]  <summary>\n"
-    "    p<level>: <text>  [<font hints>]\n"
-    "Empty shapes are skipped; long text is ellipsized."
+    "    p[i]: <text>  [<font hints>]\n"
+    "Paragraphs are addressed by index p[i]; empty spacer paragraphs are shown\n"
+    "(trailing ones collapsed to a count); long text is ellipsized."
 )
 
 
@@ -154,6 +205,24 @@ def font_argb(run) -> Optional[str]:
     if rgb is None:
         return None
     return str(rgb).upper()
+
+
+def run_color_token(run) -> Optional[str]:
+    """A run's explicit color as a short token, or None when it inherits.
+    Explicit RGB -> "#RRGGBB"; theme/scheme color -> its scheme name (e.g.
+    "dk2"). Surfacing the scheme token (not just RGB) matters because a box's
+    paragraphs often carry a deliberate color pattern (white title, scheme-color
+    body) that is invisible if only literal RGB is reported."""
+    argb = font_argb(run)
+    if argb:
+        return "#" + (argb[2:] if len(argb) == 8 else argb)
+    font = getattr(run, "font", None)
+    color = getattr(font, "color", None) if font is not None else None
+    if color is None or getattr(color, "type", None) is None:
+        return None
+    theme = getattr(color, "theme_color", None)
+    name = getattr(theme, "name", None)
+    return name.lower() if isinstance(name, str) else None
 
 
 # ---------------------------------------------------------------------------
@@ -418,9 +487,9 @@ def font_hints(run) -> str:
         parts.append("italic")
     if getattr(font, "underline", None):
         parts.append("underline")
-    argb = font_argb(run)
-    if argb and argb not in ("000000", "FF000000"):
-        parts.append(f"color:{argb}")
+    token = run_color_token(run)
+    if token and token != "#000000":
+        parts.append(f"color:{token}")
     return ", ".join(parts)
 
 
@@ -445,25 +514,42 @@ def text_frame_lines(shape: BaseShape, indent: str = "  ") -> List[str]:
     if not shape.has_text_frame:
         return []
     is_placeholder = placeholder_type(shape) is not None
+    paras = list(shape.text_frame.paragraphs)
+    # Paragraphs are addressed by index (text_frame.paragraphs[i]), so label them
+    # p[i] — not by bullet level, which is not an address. Interleaved EMPTY
+    # paragraphs (spacer lines between content rows) are part of the box's
+    # skeleton: they dictate which slots new text must land in and which carry
+    # which styling, so surface them rather than dropping them. Trailing empties
+    # carry no skeleton signal, so collapse them to a single count.
+    last_content = -1
+    for i, p in enumerate(paras):
+        if flatten_text(p.text or "").strip():
+            last_content = i
     lines: List[str] = []
-    for paragraph in shape.text_frame.paragraphs:
+    for i, paragraph in enumerate(paras):
+        if i > last_content:
+            break
         text = flatten_text(paragraph.text or "").strip()
-        if not text:
-            continue
         level = paragraph.level or 0
         attrs: List[str] = []
+        if level:
+            attrs.append(f"L{level}")
         hints = paragraph_runs_summary(paragraph)
         if hints:
             attrs.append(hints)
         algn = paragraph_alignment(paragraph)
         if algn:
             attrs.append(f"algn={algn}")
-        if is_placeholder and _starts_with_bullet_glyph(text):
-            attrs.append("[!] manual bullet glyph in placeholder — remove")
-        line = f"{indent}p{level}: {ellipsize(text, TEXT_PREVIEW_LIMIT)}"
+        if text and is_placeholder and _starts_with_bullet_glyph(text):
+            attrs.append("[!] manual bullet glyph in placeholder")
+        body = ellipsize(text, TEXT_PREVIEW_LIMIT) if text else "(empty)"
+        line = f"{indent}p[{i}]: {body}"
         if attrs:
             line += f"  [{', '.join(attrs)}]"
         lines.append(line)
+    trailing = len(paras) - 1 - last_content
+    if last_content >= 0 and trailing > 0:
+        lines.append(f"{indent}p[{last_content + 1}..{len(paras) - 1}]: (empty x{trailing})")
     return lines
 
 
@@ -599,6 +685,8 @@ def count_shapes_by_kind(shapes: Iterable[BaseShape]) -> dict:
             counts["table"] += 1
         elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
             counts["pic"] += 1
+        elif _has_embedded_blip(getattr(shape, "_element", None)):
+            counts["pic"] += 1  # picture placeholder / picture-filled shape
         elif shape.has_text_frame and (shape.text_frame.text or "").strip():
             counts["text"] += 1
         else:
@@ -651,11 +739,104 @@ def _find_covering_shape(
     return None
 
 
+class FitEstimate(NamedTuple):
+    chars_per_line: int
+    capacity: Optional[int]  # total chars; None when height isn't a real constraint
+
+
+def _effective_font_size_pt(shape: BaseShape, layout_chain) -> Optional[float]:
+    """The size text in this shape renders at: an explicit run size if set,
+    else the placeholder's resolved layout default."""
+    if shape.has_text_frame:
+        for paragraph in shape.text_frame.paragraphs:
+            for run in paragraph.runs:
+                size = getattr(run.font, "size", None)
+                if size is not None:
+                    return size.pt
+    ph = placeholder_type(shape)
+    if ph and layout_chain is not None:
+        layout_xml, master_xml, theme_xml, clr_map, theme_colors = layout_chain
+        pf = getattr(shape, "placeholder_format", None)
+        idx = pf.idx if pf else None
+        defaults = resolve_placeholder_defaults(
+            layout_xml, master_xml, theme_xml, clr_map, theme_colors, idx, ph
+        )
+        size_pt = defaults.get("size_pt")
+        if size_pt:
+            return float(size_pt)
+    return None
+
+
+def _frame_text_len(shape: BaseShape) -> int:
+    if not shape.has_text_frame:
+        return 0
+    return sum(len(p.text or "") for p in shape.text_frame.paragraphs)
+
+
+def _fit_estimate(shape: BaseShape, size_pt: float) -> Optional[FitEstimate]:
+    if shape.width is None or shape.height is None or size_pt <= 0:
+        return None
+    w_in = shape.width / EMU_PER_INCH
+    h_in = shape.height / EMU_PER_INCH
+    char_w = size_pt * CHAR_WIDTH_EM / 72.0
+    line_h = size_pt * LINE_HEIGHT_FACTOR / 72.0
+    if char_w <= 0 or line_h <= 0:
+        return None
+    cpl = int(max(0.0, w_in - TEXTBOX_MARGIN_W_IN) / char_w)
+    lines = int(max(0.0, h_in - TEXTBOX_MARGIN_H_IN) / line_h)
+    if cpl < 1:
+        return None
+    # Height constrains only genuine multi-line containers; a box shorter than
+    # ~2 lines is a nominal-height label whose text overflows by design.
+    capacity = cpl * lines if lines >= 2 else None
+    return FitEstimate(cpl, capacity)
+
+
+def _grows_to_fit(shape: BaseShape) -> bool:
+    return (
+        shape.has_text_frame
+        and shape.text_frame.auto_size == MSO_AUTO_SIZE.SHAPE_TO_FIT_TEXT
+    )
+
+
+def _fit_tokens(shape: BaseShape, layout_chain) -> List[str]:
+    """A capacity annotation for any sized text shape, plus an overset marker
+    when text grossly exceeds a real container's estimated capacity."""
+    used = _frame_text_len(shape)
+    if used == 0:
+        return []
+    size_pt = _effective_font_size_pt(shape, layout_chain)
+    if size_pt is None:
+        return []
+    est = _fit_estimate(shape, size_pt)
+    if est is None:
+        return []
+    size_label = (
+        int(size_pt) if float(size_pt).is_integer() else round(size_pt, 1)
+    )
+    if est.capacity is None:
+        return [f"~{est.chars_per_line}ch/line@{size_label}pt"]
+    tokens = [f"holds~{est.capacity}ch@{size_label}pt"]
+    if not _grows_to_fit(shape):
+        if used > est.capacity * OVERSET_TOLERANCE:
+            tokens.append(
+                f"[!] text overset (est) — ~{used} chars; box holds "
+                f"~{est.capacity} at {size_label}pt"
+            )
+        elif used < est.capacity * FILL_FLOATING:
+            tokens.append(
+                f"[i] underfilled — ~{used} of ~{est.capacity}ch used"
+            )
+    return tokens
+
+
 def describe_shape(
     shape: BaseShape,
     *,
     ctx: Optional[SlideContext] = None,
     cover_candidates: Optional[List[CoverRect]] = None,
+    all_boxes: Optional[List[CoverRect]] = None,
+    layout_chain=None,
     indent: str = "",
 ) -> List[str]:
     kind = shape_kind(shape)
@@ -682,7 +863,9 @@ def describe_shape(
             # Cover detection doesn't translate into groups: children's
             # coordinates are group-local, and "siblings" inside the group
             # are typically arranged on purpose. Drop the candidate list.
-            sub_lines.extend(describe_shape(inner, ctx=ctx, indent="    "))
+            sub_lines.extend(
+                describe_shape(inner, ctx=ctx, layout_chain=layout_chain, indent="    ")
+            )
         if shape.has_text_frame:
             sub_lines.extend(text_frame_lines(shape, indent="  "))
     else:
@@ -696,11 +879,218 @@ def describe_shape(
 
     if summary:
         parts.append(summary)
-    for marker in _shape_warning_markers(shape, ph, ctx, cover_candidates):
+    # Vertical anchor (how text sits in its box): surfaced so floating text — a
+    # short string anchored top in a much taller box — is diagnosable alongside
+    # the boxed render. Explicit value when set; text boxes/auto shapes default
+    # to top; placeholders inherit (left unstated).
+    if kind != "group" and shape.has_text_frame:
+        has_text = any(
+            (p.text or "").strip() for p in shape.text_frame.paragraphs
+        )
+        if has_text:
+            va = getattr(shape.text_frame, "vertical_anchor", None)
+            va_name = getattr(va, "name", None)
+            if va_name:
+                parts.append(f"vanchor={va_name.lower()}")
+            elif not ph:
+                parts.append("vanchor=top")
+    for marker in _shape_warning_markers(
+        shape, ph, ctx, cover_candidates, all_boxes
+    ):
         parts.append(marker)
+    for token in _fit_tokens(shape, layout_chain):
+        parts.append(token)
 
     head = indent + "  ".join(parts).rstrip()
     return [head] + [indent + line for line in sub_lines]
+
+
+ASPECT_TOLERANCE = 1.18  # flag image stretch/squish beyond ~15%
+MIN_IMAGE_DPI = 70  # flag pictures displayed below this effective resolution
+# Overlap classification. Overlap is often intentional (a label on a photo, a
+# caption on a pill), so raw intersection is not a defect. We separate three
+# cases by per-box containment (intersection / each box's area):
+#   - both boxes >= STACKED_CONT covered  -> the boxes coincide (STACKED): a
+#     real bug (e.g. a title and body dropped at the same spot) -> [!] blocker.
+#   - one box >= CONTAINMENT_TAU inside the other -> foreground on background
+#     (caption on a photo, text on a pill): intentional -> suppressed.
+#   - otherwise, shallower-axis overlap >= PEER_PENETRATION_EMU -> a partial
+#     peer overlap: could be a designed overlay or an accidental collision, so
+#     it is surfaced as a quantitative [i] ADVISORY (judge it in the render),
+#     never a hard blocker — that would fail the template's own overlays.
+STACKED_CONT = 0.90  # both boxes >= this covered => effectively the same box
+CONTAINMENT_TAU = 0.85  # one box >= this fraction inside the other => fg/bg, ok
+PEER_PENETRATION_EMU = EMU_PER_INCH // 10  # 0.1" shallow-axis overlap to note it
+CENTER_OFFSET_EMU = int(EMU_PER_INCH * 0.2)  # inner box off-center beyond this => advisory
+SAFE_MARGIN_EMU = int(EMU_PER_INCH * 0.2)  # text crowding within this of an edge => advisory
+FULL_SPAN = 0.9  # a shape covering >= this fraction of a slide axis is a banner/background
+
+
+def _image_markers(shape: BaseShape) -> List[str]:
+    """Aspect-ratio distortion and low-resolution warnings for a picture (or a
+    populated picture placeholder). Distortion compares the display box ratio to
+    the image's crop-adjusted native ratio — squished/stretched photos read as
+    sloppy even when nothing overflows."""
+    image = getattr(shape, "image", None)
+    if image is None:
+        return []
+    size = getattr(image, "size", None)
+    if not (isinstance(size, tuple) and len(size) == 2):
+        return []
+    nat_w, nat_h = size
+    w, h = shape.width, shape.height
+    if not w or not h or nat_w <= 0 or nat_h <= 0:
+        return []
+    try:
+        cl = float(getattr(shape, "crop_left", 0) or 0)
+        cr = float(getattr(shape, "crop_right", 0) or 0)
+        ct = float(getattr(shape, "crop_top", 0) or 0)
+        cb = float(getattr(shape, "crop_bottom", 0) or 0)
+    except (TypeError, ValueError):
+        cl = cr = ct = cb = 0.0
+    vis_w = nat_w * max(1e-6, 1.0 - cl - cr)
+    vis_h = nat_h * max(1e-6, 1.0 - ct - cb)
+    nat_ratio = vis_w / vis_h
+    disp_ratio = w / h
+    markers: List[str] = []
+    if nat_ratio > 0:
+        rel = disp_ratio / nat_ratio
+        if rel > ASPECT_TOLERANCE or rel < 1 / ASPECT_TOLERANCE:
+            markers.append(
+                f"[!] image distorted — box {disp_ratio:.2f}:1 vs image native "
+                f"{nat_ratio:.2f}:1"
+            )
+    disp_w_in = w / EMU_PER_INCH
+    if disp_w_in > 0:
+        eff_dpi = vis_w / disp_w_in
+        if eff_dpi < MIN_IMAGE_DPI:
+            markers.append(
+                f"[!] low-res image — ~{int(eff_dpi)} dpi at display size"
+            )
+    return markers
+
+
+def _classify_overlap(a: Tuple[int, int, int, int],
+                      b: Tuple[int, int, int, int]):
+    """Classify the overlap of two (left, top, width, height) boxes.
+    Returns (kind, penetration_emu, axis):
+      - ("stacked", 0, "")     both boxes >= STACKED_CONT covered (coincide)
+      - ("contained", 0, "")   one box >= CONTAINMENT_TAU inside the other (fg/bg)
+      - ("peer", pen, axis)    partial overlap >= PEER_PENETRATION_EMU on the
+                               shallow axis (a designed overlay or a collision)
+      - (None, 0, "")          no/negligible overlap
+    Shared by the --slide text lint and the --render overlap shading so both
+    agree on what counts as a collision."""
+    al, at, aw, ah = a
+    bl, bt, bw, bh = b
+    if min(aw, ah, bw, bh) <= 0:
+        return (None, 0, "")
+    ix = min(al + aw, bl + bw) - max(al, bl)
+    iy = min(at + ah, bt + bh) - max(at, bt)
+    if ix <= 0 or iy <= 0:
+        return (None, 0, "")
+    inter = ix * iy
+    cont_a = inter / (aw * ah)
+    cont_b = inter / (bw * bh)
+    if min(cont_a, cont_b) >= STACKED_CONT:
+        return ("stacked", 0, "")
+    if max(cont_a, cont_b) >= CONTAINMENT_TAU:
+        return ("contained", 0, "")
+    if min(ix, iy) >= PEER_PENETRATION_EMU:
+        return ("peer", min(ix, iy), "horizontally" if ix < iy else "vertically")
+    return (None, 0, "")
+
+
+def _overlap_markers(
+    shape: BaseShape, all_boxes: Optional[List[CoverRect]]
+) -> List[str]:
+    """Flag this shape's overlaps quantitatively (each pair once, on the lower
+    shape id): stacked -> [!] blocker; partial peer overlap -> [i] advisory with
+    the inches to separate and the axis; containment (fg/bg) -> suppressed."""
+    if not all_boxes:
+        return []
+    left, top, width, height = shape.left, shape.top, shape.width, shape.height
+    if None in (left, top, width, height) or width <= 0 or height <= 0:
+        return []
+    out: List[str] = []
+    for oid, ol, ot, ow, oh in all_boxes:
+        if oid <= shape.shape_id or None in (ol, ot, ow, oh):
+            continue
+        kind, pen, axis = _classify_overlap(
+            (left, top, width, height), (ol, ot, ow, oh)
+        )
+        if kind == "stacked":
+            out.append(f"[!] stacked with shape #{oid} — boxes coincide")
+        elif kind == "peer":
+            out.append(
+                f"[i] overlaps shape #{oid} by {pen / EMU_PER_INCH:.2f}in {axis}"
+            )
+        elif kind == "contained":
+            # the smaller box sits inside the larger (fg/bg): note if the inner
+            # box is markedly off-centre (a number floating high in its card).
+            dx = abs((left + width / 2) - (ol + ow / 2))
+            dy = abs((top + height / 2) - (ot + oh / 2))
+            if max(dx, dy) >= CENTER_OFFSET_EMU:
+                off = "horizontally" if dx >= dy else "vertically"
+                out.append(
+                    f"[i] off-centre from shape #{oid} by "
+                    f"{max(dx, dy) / EMU_PER_INCH:.2f}in {off}"
+                )
+    return out
+
+
+# Text-row detection by horizontal EDGE density. A box that spans a gradient or
+# blob background has a constant colour-vs-median "ink" baseline that collapses
+# to one fake row, but glyph strokes still produce many sharp horizontal
+# transitions while smooth backgrounds produce ~none — so edge count separates
+# text from background regardless of contrast polarity or gradient. Returns each
+# detected line's vertical centre (px): the input for marker alignment.
+#
+# Per-row colour and contrast were tried here and dropped: legible white-on-brand
+# text over the template's gradient measures only ~1.4-3.0 (no threshold
+# separates intended low-contrast from broken), and the per-strip ink colour is
+# too noisy to judge colour uniformity. The deterministic `--compare` slot audit
+# catches the colour-mismatch defect at its source instead.
+TEXTROW_EDGE_DELTA = 60  # adjacent-sample manhattan diff that marks a glyph edge
+TEXTROW_X_STEP = 2  # sample every Nth column (speed; detection is robust to it)
+
+
+def _text_row_centers(
+    rgb_image, box_px: Tuple[float, float, float, float]
+) -> List[float]:
+    x0, y0, x1, y1 = (int(box_px[0]), int(box_px[1]),
+                      int(box_px[2]), int(box_px[3]))
+    x0, y0 = max(0, x0), max(0, y0)
+    x1, y1 = min(rgb_image.width, x1), min(rgb_image.height, y1)
+    if x1 - x0 < 6 or y1 - y0 < 6:
+        return []
+    px = rgb_image.load()
+    xs = list(range(x0, x1, TEXTROW_X_STEP))
+    edge_min = max(8, len(xs) // 15)  # text rows show many edges; background ~0-3
+
+    def edge_count(y):
+        line = [px[x, y] for x in xs]
+        return sum(
+            1 for a, b in zip(line, line[1:])
+            if abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2])
+            > TEXTROW_EDGE_DELTA
+        )
+
+    out: List[float] = []
+    group: List[int] = []
+
+    def flush():
+        if len(group) >= 2:  # a text line spans more than one pixel row
+            out.append((min(group) + max(group)) / 2.0)
+
+    for y in range(y0, y1):
+        if edge_count(y) >= edge_min:
+            group.append(y)
+        else:
+            flush()
+            group = []
+    flush()
+    return out
 
 
 def _shape_warning_markers(
@@ -708,6 +1098,7 @@ def _shape_warning_markers(
     ph: Optional[str],
     ctx: Optional[SlideContext],
     cover_candidates: Optional[List[CoverRect]] = None,
+    all_boxes: Optional[List[CoverRect]] = None,
 ) -> List[str]:
     markers: List[str] = []
     if ctx is not None:
@@ -719,10 +1110,33 @@ def _shape_warning_markers(
         )
         if None not in (left, top, width, height):
             if (
-                left + width > ctx.width_emu + EDGE_EPSILON_EMU
+                left < -EDGE_EPSILON_EMU
+                or top < -EDGE_EPSILON_EMU
+                or left + width > ctx.width_emu + EDGE_EPSILON_EMU
                 or top + height > ctx.height_emu + EDGE_EPSILON_EMU
             ):
                 markers.append("[!] extends past slide edge")
+            elif ctx.width_emu and ctx.height_emu and shape.has_text_frame and any(
+                (p.text or "").strip() for p in shape.text_frame.paragraphs
+            ):
+                # Text crowding a slide edge (advisory). Skip full-span banners,
+                # which legitimately bleed to the edge.
+                if (
+                    width < FULL_SPAN * ctx.width_emu
+                    and height < FULL_SPAN * ctx.height_emu
+                ):
+                    gap = min(
+                        left, top,
+                        ctx.width_emu - (left + width),
+                        ctx.height_emu - (top + height),
+                    )
+                    if 0 <= gap < SAFE_MARGIN_EMU:
+                        markers.append(
+                            f"[i] text {gap / EMU_PER_INCH:.2f}in from nearest "
+                            "slide edge"
+                        )
+    markers.extend(_image_markers(shape))
+    markers.extend(_overlap_markers(shape, all_boxes))
     if ph and shape.has_text_frame:
         has_text = any(
             (p.text or "").strip() for p in shape.text_frame.paragraphs
@@ -735,12 +1149,11 @@ def _shape_warning_markers(
             )
             if cover_id is not None:
                 markers.append(
-                    f"[!] EMPTY PLACEHOLDER COVERED BY shape #{cover_id} — "
-                    "delete the placeholder"
+                    f"[!] empty placeholder, covered by shape #{cover_id}"
                 )
             else:
                 markers.append(
-                    "[!] EMPTY PLACEHOLDER — will render layout prompt text"
+                    "[!] empty placeholder (renders the layout's prompt text)"
                 )
     return markers
 
@@ -978,6 +1391,7 @@ def find_slide(prs: PresentationType, idx: int) -> Slide:
 
 def print_slide(
     prs: PresentationType,
+    file_path: str,
     idx: int,
     offset: int,
     max_shapes: int,
@@ -1004,10 +1418,35 @@ def print_slide(
         height_emu=prs.slide_height or 0,
     )
     cover_candidates = _cover_candidates(shapes)
+    all_boxes: List[CoverRect] = [
+        (s.shape_id, s.left, s.top, s.width, s.height)
+        for s in shapes
+        if None not in (s.left, s.top, s.width, s.height)
+    ]
+
+    # Resolve the slide's layout chain once so fit estimates can use each
+    # placeholder's inherited font size. Parsed elements outlive the zip.
+    layout_chain = None
+    try:
+        zf: Optional[zipfile.ZipFile] = zipfile.ZipFile(file_path)
+    except (zipfile.BadZipFile, OSError):
+        zf = None
+    if zf is not None:
+        with zf:
+            layout_path = _layout_part_path(slide.slide_layout)
+            if layout_path:
+                layout_chain = _read_layout_chain(zf, layout_path)
+
     end = min(total, offset + max_shapes)
     for shape in shapes[offset:end]:
         lines.extend(
-            describe_shape(shape, ctx=ctx, cover_candidates=cover_candidates)
+            describe_shape(
+                shape,
+                ctx=ctx,
+                cover_candidates=cover_candidates,
+                all_boxes=all_boxes,
+                layout_chain=layout_chain,
+            )
         )
 
     if end < total:
@@ -1099,7 +1538,36 @@ def print_layouts(prs: PresentationType, file_path: str) -> str:
     return "\n".join(lines)
 
 
+# Text that looks like un-filled template scaffolding: bracketed/angled
+# prompts, lorem/placeholder fillers. Repeated-across-slides copy (e.g.
+# "Subject title", "Summary") is detected separately in print_text.
+_LEFTOVER_RE = re.compile(
+    r"^[\[<].*[\]>]$|lorem ipsum|^x{3,}$|click to add|<[^>]+>", re.IGNORECASE
+)
+
+
+def _is_leftover_suspect(text: str) -> bool:
+    t = text.strip()
+    return bool(t) and bool(_LEFTOVER_RE.search(t))
+
+
 def print_text(prs: PresentationType) -> str:
+    # Pass 1: find distinctive copy repeated across the deck — template
+    # scaffolding the author forgot to replace ("Subject title", "Summary",
+    # "Title of the slide"). Count total occurrences (catches repeats within a
+    # single slide too); require length >= 8 so content words ("Dust") don't trip.
+    repeat_counts: Dict[str, int] = {}
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            for raw in _shape_text_iter(shape):
+                t = flatten_text(raw).strip()
+                if len(t) >= 8:
+                    repeat_counts[t] = repeat_counts.get(t, 0) + 1
+    repeated = sorted(
+        (t for t, c in repeat_counts.items() if c >= 3),
+        key=lambda t: -repeat_counts[t],
+    )
+
     blocks: List[str] = []
     total_chars = 0
     for idx, slide in enumerate(prs.slides, start=1):
@@ -1115,7 +1583,7 @@ def print_text(prs: PresentationType) -> str:
                     f"  [notes] {ellipsize(notes, TEXT_PREVIEW_LIMIT)}")
         if slide_lines:
             title = slide_title(slide)
-            header = f"# Slide {idx}"
+            header = f"# Slide {idx} (words:{slide_word_count(slide)})"
             if title:
                 header += f': "{ellipsize(title, 60)}"'
             blocks.append(header)
@@ -1126,7 +1594,15 @@ def print_text(prs: PresentationType) -> str:
         return "[No text in deck]"
     if blocks and blocks[-1] == "":
         blocks.pop()
-    return f"[Text: {total_chars} chars across {len(prs.slides)} slides]\n\n" + "\n".join(blocks)
+    head = f"[Text: {total_chars} chars across {len(prs.slides)} slides | " \
+           "each line is tagged with its shape #id — match against --render box " \
+           "labels for readback]"
+    if repeated:
+        shown = ", ".join(
+            f'"{ellipsize(t, 30)}" x{repeat_counts[t]}' for t in repeated[:6]
+        )
+        head += f"\n[i] copy repeated 3+ times: {shown}"
+    return head + "\n\n" + "\n".join(blocks)
 
 
 def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
@@ -1136,9 +1612,10 @@ def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
         for inner in shape.shapes:
             lines.extend(_collect_text(inner, indent))
         return lines
+    sid = shape.shape_id
     if kind == "table":
         _, cell_lines = table_summary(shape)
-        lines.extend(cell_lines)
+        lines.extend(f"{indent}#{sid} {cl.strip()}" for cl in cell_lines)
         return lines
     if shape.has_text_frame:
         for paragraph in shape.text_frame.paragraphs:
@@ -1146,10 +1623,499 @@ def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
             if not text:
                 continue
             level = paragraph.level or 0
+            mark = " [leftover?]" if _is_leftover_suspect(text) else ""
             lines.append(
-                f"{indent}p{level}: {ellipsize(text, TEXT_PREVIEW_LIMIT)}"
+                f"{indent}#{sid} p{level}: "
+                f"{ellipsize(text, TEXT_PREVIEW_LIMIT)}{mark}"
             )
     return lines
+
+
+def _package_names(path: str, prefix: str) -> Optional[set]:
+    """Set of zip entry names under `prefix` (skipping directory entries),
+    or None if the file isn't a readable package."""
+    try:
+        zf = zipfile.ZipFile(path)
+    except (zipfile.BadZipFile, OSError):
+        return None
+    with zf:
+        return {
+            name
+            for name in zf.namelist()
+            if name.startswith(prefix) and not name.endswith("/")
+        }
+
+
+def _count_slides(path: str) -> int:
+    names = _package_names(path, "ppt/slides/slide") or set()
+    return sum(
+        1 for name in names if re.fullmatch(r"ppt/slides/slide\d+\.xml", name)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Template-fidelity audit (--compare).
+#
+# `--compare` is the authoritative structural QA gate. Beyond "did you drop
+# media/fonts" it answers "does this deck still respect the template, or did
+# you rebuild it as a wall of text on the template's background?" — the single
+# most common way template edits go wrong. Each threshold is tuned to flag the
+# rebuilt-as-text failure mode while leaving a faithful reskin alone.
+# ---------------------------------------------------------------------------
+
+# Template counts as image-rich above this fraction of slides carrying imagery.
+IMAGERY_RICH_TEMPLATE = 0.34
+# Flag when the output keeps less than this fraction of the template's per-slide
+# imagery rate (catches "stripped every picture", output rate 0).
+IMAGERY_STRIP_RATIO = 0.5
+# A "bare" slide has no imagery and no placeholders — content hand-drawn on an
+# empty canvas. Flag when bare slides exceed this fraction of the output...
+BARE_RATE = 0.34
+# ...and exceed the template's own bare-slide rate by this margin, so a template
+# that itself ships bare (shape-built) slides doesn't fail a faithful deck.
+BARE_MARGIN = 0.25
+# Per-slide content checks (imagery, bare-canvas) are skipped for tiny extracts:
+# a deck reduced to this many slides or fewer is a deliberate excerpt, not a
+# rebuild, and should not be judged for dropping the template's imagery.
+MIN_SLIDES_FOR_CONTENT_AUDIT = 2
+# Flag slides whose word count exceeds the template's max by more than this
+# factor (a little headroom so a slide a few words over isn't nagged).
+DENSITY_TOLERANCE = 1.15
+# Shape retention vs the cloned exemplar. Trimming surplus elements is expected
+# (legitimate clean-room decks bottom out around 0.79 kept), so the advisory
+# only fires well below that: a slide kept < this fraction AND dropped at least
+# SHAPE_DROP_MIN shapes has been gutted rather than adapted. Advisory, not a
+# blocker — heavy adaptation is sometimes the right call.
+SHAPE_RETENTION_FLOOR = 0.6
+SHAPE_DROP_MIN = 2
+
+
+def _imagery_in_shape(shape: BaseShape) -> int:
+    """Count pictures, charts, tables, and any image-bearing shape (a picture
+    placeholder or picture-filled auto shape), recursing into groups."""
+    kind = shape_kind(shape)
+    if kind == "group":
+        return sum(_imagery_in_shape(inner) for inner in shape.shapes)
+    if kind in ("pic", "chart", "table"):
+        return 1
+    if _has_embedded_blip(getattr(shape, "_element", None)):
+        return 1
+    return 0
+
+
+def _slide_bg_has_image(slide: Slide) -> bool:
+    """True if the slide sets its own picture background — a full-bleed image
+    that reads as imagery but is not a shape."""
+    bg = slide._element.cSld.find(P_BG)
+    return _has_embedded_blip(bg) if bg is not None else False
+
+
+class DeckFidelity(NamedTuple):
+    total: int  # slides in the slide list (what renders), not orphaned parts
+    imagery_slides: int
+    imagery_objs: int
+    bare_slides: int
+    layout_counts: Dict[str, int]
+    word_counts: List[int]
+
+
+def _deck_fidelity(prs: PresentationType) -> DeckFidelity:
+    """Per-deck structure used by the audit. python-pptx walks only the slide
+    list, so orphaned slide parts are correctly excluded here."""
+    layout_counts: Dict[str, int] = {}
+    word_counts: List[int] = []
+    imagery_slides = 0
+    imagery_objs = 0
+    bare_slides = 0
+    for slide in prs.slides:
+        name = slide.slide_layout.name or "?"
+        layout_counts[name] = layout_counts.get(name, 0) + 1
+        n = sum(_imagery_in_shape(s) for s in slide.shapes)
+        imagery_objs += n
+        has_imagery = n > 0 or _slide_bg_has_image(slide)
+        if has_imagery:
+            imagery_slides += 1
+        has_placeholder = any(
+            getattr(s, "is_placeholder", False) for s in slide.shapes
+        )
+        if not has_imagery and not has_placeholder:
+            bare_slides += 1
+        word_counts.append(slide_word_count(slide))
+    return DeckFidelity(
+        total=len(prs.slides),
+        imagery_slides=imagery_slides,
+        imagery_objs=imagery_objs,
+        bare_slides=bare_slides,
+        layout_counts=layout_counts,
+        word_counts=word_counts,
+    )
+
+
+def _listed_slide_count(path: str) -> Optional[int]:
+    """Slides referenced by presentation.xml's <p:sldIdLst> — what actually
+    renders — read without python-pptx, so the orphan check still works when a
+    deck fails to parse."""
+    try:
+        zf = zipfile.ZipFile(path)
+    except (zipfile.BadZipFile, OSError):
+        return None
+    with zf:
+        try:
+            pres = zf.read("ppt/presentation.xml").decode("utf-8", "ignore")
+        except KeyError:
+            return None
+    m = re.search(r"<[\w]*:?sldIdLst[\s>](.*?)</[\w]*:?sldIdLst>", pres, re.S)
+    if not m:
+        return None
+    return len(re.findall(r"<[\w]*:?sldId[\s>/]", m.group(1)))
+
+
+def _deck_structural_tally(path: str) -> Optional[Dict[str, int]]:
+    """Roll up per-slide structural issues across the deck: stacked boxes,
+    distorted images, and shapes off the slide. Informational at the deck level
+    (some may be inherited from the template), so the agent knows to look — the
+    per-slide --slide view is where each is judged and fixed."""
+    try:
+        prs = Presentation(path)
+    except Exception:  # noqa: BLE001
+        return None
+    sw, sh = prs.slide_width or 0, prs.slide_height or 0
+    stacked = distorted = off_slide = 0
+    for slide in prs.slides:
+        shapes = [
+            s for s in slide.shapes
+            if None not in (s.left, s.top, s.width, s.height)
+        ]
+        for i, a in enumerate(shapes):
+            if sw and sh and (
+                a.left < -EDGE_EPSILON_EMU or a.top < -EDGE_EPSILON_EMU
+                or a.left + a.width > sw + EDGE_EPSILON_EMU
+                or a.top + a.height > sh + EDGE_EPSILON_EMU
+            ):
+                off_slide += 1
+            if any("distorted" in m for m in _image_markers(a)):
+                distorted += 1
+            for b in shapes[i + 1:]:
+                kind, _, _ = _classify_overlap(
+                    (a.left, a.top, a.width, a.height),
+                    (b.left, b.top, b.width, b.height),
+                )
+                if kind == "stacked":
+                    stacked += 1
+    return {"stacked": stacked, "distorted": distorted, "off_slide": off_slide}
+
+
+def _content_slot_indices(shape: BaseShape) -> set:
+    """Indices of the non-empty paragraphs in a text frame — the slots that
+    actually carry content (vs the empty spacer paragraphs between them)."""
+    if not shape.has_text_frame:
+        return set()
+    return {
+        i
+        for i, p in enumerate(shape.text_frame.paragraphs)
+        if flatten_text(p.text or "").strip()
+    }
+
+
+def _filled_spacer_slots(out_shape: BaseShape, src_shape: BaseShape) -> set:
+    """Paragraph slots the output filled that are INTERIOR spacers in the
+    template — empty in the template and sitting between its content slots.
+    Writing here is the wrong-slot fill that breaks color (a new run inherits a
+    darker default) and strands the markers pinned to the content rows. Returns
+    empty unless the template box has a real skeleton (>=2 content slots), so a
+    plain placeholder or a box filled with fewer items than the template never
+    trips it."""
+    src_content = _content_slot_indices(src_shape)
+    if len(src_content) < 2:
+        return set()
+    lo, hi = min(src_content), max(src_content)
+    return {
+        i
+        for i in _content_slot_indices(out_shape)
+        if i not in src_content and lo < i < hi
+    }
+
+
+def _slot_audit(
+    file_path: str, source_path: str
+) -> List[Tuple[int, int, set, set]]:
+    """Per-slide, per-shape content-slot comparison against the template. Each
+    output slide is matched to the template slide it was cloned from by shape-id
+    overlap (ids survive cloning); shared text boxes are then checked for fills
+    that landed in the template's spacer paragraphs. Returns
+    (slide_no, shape_id, filled_spacers, template_content_slots)."""
+    try:
+        out_prs = Presentation(file_path)
+        src_prs = Presentation(source_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    src_slides = [
+        ({sh.shape_id for sh in s.shapes},
+         {sh.shape_id: sh for sh in s.shapes if sh.has_text_frame})
+        for s in src_prs.slides
+    ]
+    findings: List[Tuple[int, int, set, set]] = []
+    for out_no, out_slide in enumerate(out_prs.slides, start=1):
+        out_ids = {sh.shape_id for sh in out_slide.shapes}
+        best_map, best_overlap = None, 0
+        for ids, text_map in src_slides:
+            overlap = len(out_ids & ids)
+            if overlap > best_overlap:
+                best_overlap, best_map = overlap, text_map
+        # <2 shared ids => no template counterpart (e.g. a from-scratch slide);
+        # nothing to diff against.
+        if best_map is None or best_overlap < 2:
+            continue
+        for sh in out_slide.shapes:
+            src_sh = best_map.get(sh.shape_id) if sh.has_text_frame else None
+            if src_sh is None:
+                continue
+            spacers = _filled_spacer_slots(sh, src_sh)
+            if spacers:
+                findings.append(
+                    (out_no, sh.shape_id, spacers,
+                     _content_slot_indices(src_sh))
+                )
+    return findings
+
+
+def _drop_audit(
+    file_path: str, source_path: str
+) -> List[Tuple[int, int, int, int]]:
+    """Per-slide shape retention vs the exemplar each output slide was cloned
+    from (matched by shape-id overlap). Trimming surplus elements is expected;
+    dropping most of an exemplar's shapes means the wrong exemplar was chosen.
+    Returns (slide_no, src_slide_no, kept, dropped) for slides that dropped
+    >= SHAPE_DROP_MIN shapes AND kept < SHAPE_RETENTION_FLOOR of the exemplar."""
+    try:
+        out_prs = Presentation(file_path)
+        src_prs = Presentation(source_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    src_slides = [{sh.shape_id for sh in s.shapes} for s in src_prs.slides]
+    findings: List[Tuple[int, int, int, int]] = []
+    for out_no, out_slide in enumerate(out_prs.slides, start=1):
+        out_ids = {sh.shape_id for sh in out_slide.shapes}
+        best_i, best_overlap = None, 0
+        for i, ids in enumerate(src_slides):
+            overlap = len(out_ids & ids)
+            if overlap > best_overlap:
+                best_overlap, best_i = overlap, i
+        if best_i is None or best_overlap < 2:
+            continue
+        src_ids = src_slides[best_i]
+        kept = len(out_ids & src_ids)
+        dropped = len(src_ids - out_ids)
+        if dropped >= SHAPE_DROP_MIN and kept / len(src_ids) < SHAPE_RETENTION_FLOOR:
+            findings.append((out_no, best_i + 1, kept, dropped))
+    return findings
+
+
+def print_compare(file_path: str, source_path: str) -> str:
+    """Compare the edited deck (file_path) against its source/template
+    (source_path) and gate the result. Surfaces the regressions that mean the
+    deck no longer respects the template: orphaned slide parts (hand-deleted
+    instead of via pptx_slides), embedded media or fonts dropped, the template's
+    imagery stripped, slides collapsed onto one catch-all layout, or density
+    blown past the template's ceiling. Ends with a [QA: PASS/FAIL] verdict —
+    do not deliver until it reads PASS."""
+    out_media = _package_names(file_path, "ppt/media/")
+    src_media = _package_names(source_path, "ppt/media/")
+    out_fonts = _package_names(file_path, "ppt/fonts/")
+    src_fonts = _package_names(source_path, "ppt/fonts/")
+    if None in (out_media, src_media, out_fonts, src_fonts):
+        return "[Compare: could not read one of the files as a .pptx package]"
+
+    def delta(out_n: int, src_n: int) -> str:
+        d = out_n - src_n
+        return f"{d:+d}" if d else "0"
+
+    blockers = 0
+
+    # Parse each deck independently so one failing to parse doesn't silently
+    # blind the whole audit. python-pptx reads only the slide list; the zip may
+    # hold more parts.
+    def _fid(path: str) -> Optional[DeckFidelity]:
+        try:
+            return _deck_fidelity(Presentation(path))
+        except Exception:  # noqa: BLE001 - degrade visibly rather than crash
+            return None
+
+    out_fid = _fid(file_path)
+    src_fid = _fid(source_path)
+
+    out_zip = _count_slides(file_path)
+    src_zip = _count_slides(source_path)
+    out_listed = out_fid.total if out_fid else (_listed_slide_count(file_path) or out_zip)
+    src_listed = src_fid.total if src_fid else (_listed_slide_count(source_path) or src_zip)
+
+    lines = [
+        f"[Compare: {os.path.basename(file_path)}  vs source "
+        f"{os.path.basename(source_path)}]",
+        f"  slides:  {pad(str(out_listed), 4)} (source {src_listed})  "
+        f"{delta(out_listed, src_listed)}",
+    ]
+
+    # Orphaned slide parts: in the package but not in the slide list. This is
+    # the signature of deleting slides by hand (removing sldIds) instead of
+    # `pptx_slides --delete`, which would drop the parts and their media too.
+    orphans = out_zip - out_listed
+    if orphans > 0:
+        blockers += 1
+        lines.append(
+            f"  orphans: [!] {orphans} slide part(s) in the package but not in the "
+            "slide list (orphaned)"
+        )
+
+    # A deck we cannot parse cannot be audited — say so loudly and block, so a
+    # parse failure can never masquerade as a clean PASS.
+    if out_fid is None or src_fid is None:
+        blockers += 1
+        which = "the edited deck" if out_fid is None else "the template"
+        lines.append(
+            f"  audit:   [!] degraded — could not parse {which} with python-pptx; "
+            "imagery / bare-canvas / density not checked"
+        )
+
+    dropped_media = sorted(src_media - out_media)
+    lines.append(
+        f"  media:   {pad(str(len(out_media)), 4)} (source "
+        f"{len(src_media)})  {delta(len(out_media), len(src_media))}"
+    )
+    if dropped_media:
+        lines.append(
+            f"    {len(dropped_media)} media in source not in output:"
+        )
+        for name in dropped_media:
+            lines.append(f"      - {name[len('ppt/media/'):]}")
+
+    dropped_fonts = sorted(src_fonts - out_fonts)
+    lines.append(
+        f"  fonts:   {pad(str(len(out_fonts)), 4)} (source "
+        f"{len(src_fonts)})  {delta(len(out_fonts), len(src_fonts))}"
+    )
+    if dropped_fonts:
+        blockers += 1
+        lines.append(
+            f"    [!] {len(dropped_fonts)} embedded font part(s) in source not in "
+            "output:"
+        )
+        for name in dropped_fonts:
+            lines.append(f"      - {name[len('ppt/fonts/'):]}")
+
+    if out_fid and src_fid and out_fid.total and src_fid.total:
+        audit_content = out_fid.total > MIN_SLIDES_FOR_CONTENT_AUDIT
+
+        # Imagery: did the rendered slides keep the template's pictures/charts/
+        # tables, or get rebuilt as text on the background?
+        src_rate = src_fid.imagery_slides / src_fid.total
+        out_rate = out_fid.imagery_slides / out_fid.total
+        lines.append(
+            f"  imagery: pics/charts/tables on {out_fid.imagery_slides}/"
+            f"{out_fid.total} slides ({out_fid.imagery_objs} objects; template "
+            f"{src_fid.imagery_slides}/{src_fid.total})"
+        )
+        if audit_content and src_rate >= IMAGERY_RICH_TEMPLATE and out_rate < src_rate * IMAGERY_STRIP_RATIO:
+            blockers += 1
+            lines.append(
+                f"    [!] imagery below template — {out_fid.imagery_slides}/"
+                f"{out_fid.total} output slides carry images vs "
+                f"{src_fid.imagery_slides}/{src_fid.total} in the template"
+            )
+
+        # Bare canvas: slides hand-drawn with no template placeholders and no
+        # imagery — the signature of rebuilding on a blank layout. Judged
+        # relative to the template, since some templates ship shape-built slides.
+        out_bare = out_fid.bare_slides / out_fid.total
+        src_bare = src_fid.bare_slides / src_fid.total
+        lines.append(
+            f"  layouts: {len(out_fid.layout_counts)} used; "
+            f"{out_fid.bare_slides}/{out_fid.total} slides on an empty canvas "
+            f"(template {src_fid.bare_slides}/{src_fid.total})"
+        )
+        if audit_content and out_bare >= BARE_RATE and out_bare > src_bare + BARE_MARGIN:
+            blockers += 1
+            lines.append(
+                f"    [!] {out_fid.bare_slides}/{out_fid.total} slides have no "
+                f"placeholders and no imagery (template {src_fid.bare_slides}/"
+                f"{src_fid.total})"
+            )
+
+        # Density: the template's max words/slide is a hard ceiling.
+        if out_fid.word_counts and src_fid.word_counts:
+            ceiling = max(src_fid.word_counts)
+            out_max = max(out_fid.word_counts)
+            over = [
+                (i + 1, w)
+                for i, w in enumerate(out_fid.word_counts)
+                if w > ceiling * DENSITY_TOLERANCE
+            ]
+            lines.append(
+                f"  density: max {out_max} words/slide "
+                f"(template ceiling {ceiling})"
+            )
+            if over:
+                blockers += 1
+                listing = ", ".join(f"{i}({w})" for i, w in over)
+                lines.append(
+                    f"    [!] {len(over)} slide(s) over template ceiling of "
+                    f"{ceiling} words: {listing}"
+                )
+
+        # Per-slide structural issues, rolled up (informational — some may be
+        # inherited from the template; the per-slide view judges each).
+        tally = _deck_structural_tally(file_path)
+        if tally:
+            total = tally["stacked"] + tally["distorted"] + tally["off_slide"]
+            lines.append(
+                f"  shapes:  {total} structural issue(s) across slides — "
+                f"stacked:{tally['stacked']} distorted-img:{tally['distorted']} "
+                f"off-slide:{tally['off_slide']}"
+            )
+
+    # Content-slot fidelity: text written into the template's interior spacer
+    # paragraphs (the wrong-slot fill). Deterministic from the paragraph
+    # skeletons — no estimation — so it gates as a blocker.
+    slot_findings = _slot_audit(file_path, source_path)
+    if slot_findings:
+        lines.append(
+            f"  slots:   [!] {len(slot_findings)} text box(es) filled the "
+            "template's spacer paragraphs"
+        )
+        for slide_no, sid, spacers, content in slot_findings:
+            blockers += 1
+            filled = ", ".join(f"p[{i}]" for i in sorted(spacers))
+            slots = ", ".join(f"p[{i}]" for i in sorted(content))
+            lines.append(
+                f"    [!] slide {slide_no} #{sid}: filled spacer {filled}; "
+                f"template content slots {slots}"
+            )
+
+    # Shape retention: a cloned slide that dropped most of its exemplar's shapes
+    # has been gutted rather than adapted. Advisory ([i]), not a blocker —
+    # trimming surplus is expected and heavy adaptation is sometimes right.
+    drops = _drop_audit(file_path, source_path)
+    if drops:
+        lines.append(
+            f"  reuse:   [i] {len(drops)} slide(s) kept "
+            f"<{int(SHAPE_RETENTION_FLOOR * 100)}% of their exemplar's shapes"
+        )
+        for out_no, src_no, kept, dropped in drops:
+            lines.append(
+                f"    [i] slide {out_no} (from template slide {src_no}): "
+                f"kept {kept}, dropped {dropped} exemplar shape(s)"
+            )
+
+    lines.append("")
+    if blockers:
+        lines.append(
+            f"[QA: FAIL — {blockers} blocker{'s' if blockers != 1 else ''} "
+            "([!] above)]"
+        )
+    else:
+        lines.append("[QA: PASS]")
+
+    return "\n".join(lines)
 
 
 def print_media(path: str) -> str:
@@ -1172,10 +2138,193 @@ def print_media(path: str) -> str:
     return "\n".join(lines)
 
 
+# Distinct, high-contrast outline colors for the --boxes overlay (legible on
+# both light and dark slide backgrounds).
+_BOX_PALETTE = [
+    (255, 64, 64), (64, 160, 255), (0, 200, 120), (255, 170, 0),
+    (200, 80, 255), (0, 200, 200), (255, 90, 170), (150, 210, 0),
+]
+
+# Decorative row-markers (checkmarks, bullets, numbers, icons) are placed at
+# FIXED positions to sit beside specific text rows. When filled copy wraps, the
+# rendered rows drift off those positions and a marker strands in empty space —
+# a defect box-geometry can't see (the marker didn't move; the text reflowed).
+# Detect a marker as a small shape that forms a regular vertical run of >=3
+# beside a text box, then check each one has a rendered text row near it.
+MARKER_MAX_DIM_EMU = int(EMU_PER_INCH * 0.6)  # a row-marker is small both ways
+MARKER_X_TOL_EMU = int(EMU_PER_INCH * 0.15)  # same-column left tolerance
+MARKER_MIN_RUN = 3  # a run is at least this many aligned markers
+MARKER_PAIR_GAP_EMU = EMU_PER_INCH  # max horizontal gap to pair a run to a text box
+MARKER_ALIGN_TOL_IN = 0.15  # a marker within this of a text row counts as aligned
+
+
+def _marker_runs(shapes: List[BaseShape]) -> List[List[BaseShape]]:
+    """Group small decorative shapes into vertical runs (>=3 sharing a left
+    edge). Each run is returned sorted top-to-bottom."""
+    cands = sorted(
+        [
+            s for s in shapes
+            if shape_kind(s) in ("pic", "auto")
+            and s.width and s.height
+            and s.width <= MARKER_MAX_DIM_EMU and s.height <= MARKER_MAX_DIM_EMU
+        ],
+        key=lambda s: s.left,
+    )
+    runs: List[List[BaseShape]] = []
+    used = [False] * len(cands)
+    for i, s in enumerate(cands):
+        if used[i]:
+            continue
+        col = [s]
+        used[i] = True
+        for j in range(i + 1, len(cands)):
+            if not used[j] and abs(cands[j].left - s.left) <= MARKER_X_TOL_EMU:
+                col.append(cands[j])
+                used[j] = True
+        if len(col) >= MARKER_MIN_RUN:
+            runs.append(sorted(col, key=lambda s: s.top))
+    return runs
+
+
+def _pair_run_to_text(
+    run: List[BaseShape], text_shapes: List[BaseShape]
+) -> Optional[BaseShape]:
+    """The text box a marker run belongs to: the nearest text shape (within
+    MARKER_PAIR_GAP_EMU horizontally) whose vertical span overlaps the run."""
+    run_left = min(s.left for s in run)
+    run_right = max(s.left + s.width for s in run)
+    run_top = min(s.top for s in run)
+    run_bot = max(s.top + s.height for s in run)
+    best, best_gap = None, None
+    for t in text_shapes:
+        if min(run_bot, t.top + t.height) - max(run_top, t.top) <= 0:
+            continue  # no vertical overlap
+        if t.left >= run_right:
+            gap = t.left - run_right
+        elif t.left + t.width <= run_left:
+            gap = run_left - (t.left + t.width)
+        else:
+            gap = 0
+        if gap <= MARKER_PAIR_GAP_EMU and (best_gap is None or gap < best_gap):
+            best, best_gap = t, gap
+    return best
+
+
+def _annotate_boxes(
+    image_path: Path, slide: Slide, slide_w_emu: int, slide_h_emu: int
+):
+    """Overlay each top-level shape's exact bounding box on the slide image and
+    compute pixel metrics. Box positions are read from the file (exact even
+    though text is LibreOffice-rendered); the rest is measured on the rendered
+    pixels (colors/positions are faithful). Draws box outlines, an `#id` label
+    just OUTSIDE each box (detail goes to stdout, not onto the image), a tint on
+    text boxes, and a red wash over peer-overlap regions. Returns
+    (out_path, findings) where findings has keys: "overlaps" [(a, b, pen_in)] and
+    "markers" [(id, off_in)] (decorative markers in a run with no rendered text
+    row near them). None if the image is unreadable."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        return None
+    if not slide_w_emu or not slide_h_emu:
+        return None
+    try:
+        base = Image.open(image_path).convert("RGBA")
+    except (OSError, ValueError):
+        return None
+    width_px, height_px = base.size
+    sample = base.convert("RGB")  # clean pixels for metrics (before overlay)
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    try:
+        font = ImageFont.load_default()
+    except Exception:  # noqa: BLE001 - label font is optional
+        font = None
+
+    findings = {"overlaps": [], "markers": []}
+    ppi = width_px / (slide_w_emu / EMU_PER_INCH)
+
+    def to_px(sh):
+        return (
+            sh.left / slide_w_emu * width_px,
+            sh.top / slide_h_emu * height_px,
+            (sh.left + sh.width) / slide_w_emu * width_px,
+            (sh.top + sh.height) / slide_h_emu * height_px,
+        )
+
+    def has_text(sh):
+        return sh.has_text_frame and any(
+            (p.text or "").strip() for p in sh.text_frame.paragraphs
+        )
+
+    shapes = [
+        s for s in slide.shapes
+        if None not in (s.left, s.top, s.width, s.height)
+    ]
+
+    # Shade peer-overlap intersection regions (the "collision zones").
+    for i, a in enumerate(shapes):
+        for b in shapes[i + 1:]:
+            kind, pen, _ = _classify_overlap(
+                (a.left, a.top, a.width, a.height),
+                (b.left, b.top, b.width, b.height),
+            )
+            if kind != "peer":
+                continue
+            ax0, ay0, ax1, ay1 = to_px(a)
+            bx0, by0, bx1, by1 = to_px(b)
+            ix0, iy0 = max(ax0, bx0), max(ay0, by0)
+            ix1, iy1 = min(ax1, bx1), min(ay1, by1)
+            if ix1 > ix0 and iy1 > iy0:
+                draw.rectangle([ix0, iy0, ix1, iy1], fill=(255, 0, 0, 130))
+                findings["overlaps"].append(
+                    (a.shape_id, b.shape_id, pen / EMU_PER_INCH)
+                )
+
+    # Decorative-marker alignment: each marker in a run should have a rendered
+    # text row near it in the text box it pairs with. Detect each text box's row
+    # positions once, then check the runs against the box each pairs with.
+    text_shapes = [s for s in shapes if has_text(s)]
+    rows_by_id = {
+        s.shape_id: _text_row_centers(sample, to_px(s)) for s in text_shapes
+    }
+    for run in _marker_runs(shapes):
+        paired = _pair_run_to_text(run, text_shapes)
+        if paired is None:
+            continue  # standalone decoration, not row-markers
+        rows = rows_by_id.get(paired.shape_id) or []
+        if not rows:
+            continue
+        for m in run:
+            my = (m.top + m.height / 2) / slide_h_emu * height_px
+            nearest = min(abs(yc - my) for yc in rows)
+            if nearest / ppi > MARKER_ALIGN_TOL_IN:
+                findings["markers"].append((m.shape_id, nearest / ppi))
+
+    for i, shape in enumerate(shapes):
+        x0, y0, x1, y1 = to_px(shape)
+        color = _BOX_PALETTE[i % len(_BOX_PALETTE)]
+        if has_text(shape):
+            draw.rectangle([x0, y0, x1, y1], fill=color + (40,))
+        draw.rectangle([x0, y0, x1, y1], outline=color + (255,), width=3)
+        # Label OUTSIDE the box (above-left), so it never occludes content; the
+        # per-shape detail lives in the stdout digest, keyed by this #id.
+        ly = y0 - 13 if y0 >= 13 else y0 + 1
+        draw.text((x0, ly), f"#{shape.shape_id}", fill=color + (255,), font=font)
+
+    out_path = image_path.with_name(image_path.stem + "-boxes.png")
+    try:
+        Image.alpha_composite(base, overlay).convert("RGB").save(out_path)
+    except (OSError, ValueError):
+        return None
+    return out_path, findings
+
+
 def print_render(
     file_path: str,
     prs: PresentationType,
     slide_idx: Optional[int],
+    boxes: bool = True,
 ) -> str:
     total_slides = len(prs.slides)
     if slide_idx is not None and (slide_idx < 1 or slide_idx > total_slides):
@@ -1190,10 +2339,54 @@ def print_render(
         item_name="slide",
         item_idx=slide_idx,
     )
+
+    digest: List[str] = []  # per-slide quantitative findings (idx, text)
+    if boxes:
+        annotated: List[Path] = []
+        for p in rendered:
+            m = re.search(r"-(\d+)\.", p.name)
+            idx = int(m.group(1)) if m else None
+            res = None
+            if idx is not None and 1 <= idx <= total_slides:
+                res = _annotate_boxes(
+                    p, prs.slides[idx - 1],
+                    prs.slide_width or 0, prs.slide_height or 0,
+                )
+            if res:
+                ap, findings = res
+                annotated.append(ap)
+                markers = [
+                    f"#{sid} nearest text row {off:.2f}in"
+                    for sid, off in findings.get("markers", [])
+                ]
+                ov = [
+                    f"#{a}~#{b} {pen:.2f}in"
+                    for a, b, pen in findings["overlaps"]
+                ]
+                parts = []
+                if markers:
+                    parts.append("unaligned markers: " + ", ".join(markers))
+                if ov:
+                    parts.append("overlaps: " + ", ".join(ov))
+                if parts:
+                    digest.append(f"  slide {idx}: " + "; ".join(parts))
+            else:
+                annotated.append(p)
+        rendered = annotated
+
     plural = "" if len(rendered) == 1 else "s"
-    lines = [
-        f"[Rendered: {len(rendered)} slide{plural} | jpeg @ 100 dpi | {out_dir}]"
-    ]
+    kind = "jpeg + bbox overlay" if boxes else "jpeg @ 100 dpi"
+    lines = [f"[Rendered: {len(rendered)} slide{plural} | {kind} | {out_dir}]"]
+    if boxes:
+        lines.append(
+            "[Boxes: each rectangle is a shape's bounding box, labeled '#id' "
+            "just outside it. A red wash marks peer-overlap regions; an "
+            "unaligned-markers note means a decorative run (checkmarks/icons) "
+            "has no text row beside it. Read each slide image directly.]"
+        )
+        if digest:
+            lines.append("[Pixel metrics:]")
+            lines.extend(digest)
     for p in rendered:
         lines.append(str(p))
     return "\n".join(lines)
@@ -1211,6 +2404,11 @@ def main() -> int:
     parser.add_argument("--text", action="store_true")
     parser.add_argument("--media", action="store_true")
     parser.add_argument("--render", action="store_true")
+    # Boxes are ON by default for --render (the overlay is the core QA signal);
+    # --boxes is kept for back-compat, --no-boxes opts out to a clean render.
+    parser.add_argument("--boxes", action="store_true")
+    parser.add_argument("--no-boxes", action="store_true", dest="no_boxes")
+    parser.add_argument("--compare")
     parser.add_argument("--max-shapes", type=int, default=DEFAULT_MAX_SHAPES)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--help", "-h", action="store_true", dest="help_flag")
@@ -1235,6 +2433,9 @@ def main() -> int:
     if args.offset < 0:
         sys.stderr.write("Error: --offset must be >= 0\n")
         return 1
+    if args.compare is not None and not os.path.isfile(args.compare):
+        sys.stderr.write(f"Error: --compare file not found: {args.compare}\n")
+        return 1
 
     file_header = (
         f"[File: {os.path.basename(args.file)} | "
@@ -1243,16 +2444,22 @@ def main() -> int:
 
     if args.media:
         body = print_media(args.file)
+    elif args.compare is not None:
+        body = print_compare(args.file, args.compare)
     else:
         prs = Presentation(args.file)
         if args.render:
-            body = print_render(args.file, prs, args.slide)
+            body = print_render(
+                args.file, prs, args.slide, boxes=not args.no_boxes
+            )
         elif args.layouts:
             body = print_layouts(prs, args.file)
         elif args.text:
             body = print_text(prs)
         elif args.slide is not None:
-            body = print_slide(prs, args.slide, args.offset, args.max_shapes)
+            body = print_slide(
+                prs, args.file, args.slide, args.offset, args.max_shapes
+            )
         else:
             body = print_overview(prs, args.file)
 

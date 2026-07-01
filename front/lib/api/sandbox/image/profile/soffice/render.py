@@ -9,6 +9,16 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 
+def _pdf_is_fresh(pdf_path: Path, source_path: str) -> bool:
+    """True when a previously converted PDF can be reused: it exists and was
+    written strictly after the source file's last modification. Any edit bumps
+    the source mtime, so a stale PDF returns False and the caller reconverts.
+    Equal mtimes are treated as stale (prefer correctness over a reuse)."""
+    if not pdf_path.exists():
+        return False
+    return pdf_path.stat().st_mtime_ns > os.stat(source_path).st_mtime_ns
+
+
 def render_via_soffice(
     file_path: str,
     *,
@@ -34,22 +44,29 @@ def render_via_soffice(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     pdf_path = out_dir / f"{basename}.pdf"
-    soffice = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to", "pdf",
-            "--outdir", str(out_dir),
-            file_path,
-        ],
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    if soffice.returncode != 0 or not pdf_path.exists():
-        tail = (soffice.stderr or soffice.stdout or "").strip().splitlines()
-        msg = tail[-1] if tail else "soffice produced no output"
-        raise ValueError(f"pdf conversion failed: {msg}")
+    # soffice conversion (cold start + full-deck render) is the dominant cost
+    # and produces the whole deck's PDF no matter which page we want. The QA
+    # loop renders slides one at a time, so without caching an N-slide pass pays
+    # N conversions and blows the command timeout. Reuse the PDF while it is
+    # newer than the source; the item_idx-is-None path above already cleared
+    # out_dir, so full renders still reconvert from scratch.
+    if not _pdf_is_fresh(pdf_path, file_path):
+        soffice = subprocess.run(
+            [
+                "soffice",
+                "--headless",
+                "--convert-to", "pdf",
+                "--outdir", str(out_dir),
+                file_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if soffice.returncode != 0 or not pdf_path.exists():
+            tail = (soffice.stderr or soffice.stdout or "").strip().splitlines()
+            msg = tail[-1] if tail else "soffice produced no output"
+            raise ValueError(f"pdf conversion failed: {msg}")
 
     pdftoppm_args = ["pdftoppm", "-jpeg", "-r", "100"]
     if item_idx is not None:
@@ -83,5 +100,15 @@ def render_via_soffice(
         if src != target:
             src.rename(target)
         normalized.append(target)
-    normalized.sort()
+    # A stale padded variant (slide-8 vs slide-008 from an earlier run) can
+    # normalize onto the same name and be appended twice — de-dupe.
+    normalized = sorted(set(normalized))
+    # A single-slide render must return ONLY that slide. The output dir is not
+    # cleared for a single page (so post-fix re-checks are fast), which means
+    # the glob above also picks up siblings left by previous renders; keep just
+    # the page we rendered.
+    if item_idx is not None:
+        target = out_dir / f"{item_name}-{item_idx:03d}.jpg"
+        if target.exists():
+            normalized = [target]
     return out_dir, normalized
