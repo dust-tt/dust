@@ -17,9 +17,12 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import ooxml
+import pdf_text
 import render
+import render_publish
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.enum.text import MSO_AUTO_SIZE
 from pptx.presentation import Presentation as PresentationType
 from pptx.shapes.base import BaseShape
 from pptx.slide import Slide
@@ -80,8 +83,9 @@ DEFAULT_MAX_SHAPES = 200
 
 
 USAGE = (
-    "pptx_inspect <file> [--qa N[,N,...]] [--slide N] [--layouts] [--text] "
-    "[--media] [--render] [--compare FILE] [--max-shapes N] [--offset N]"
+    "pptx_inspect <file> [--qa N[,N,...]] [--slide N[,N,...]] [--layouts] [--text] "
+    "[--media] [--render] [--render-dir DIR] [--compare FILE] "
+    "[--max-shapes N] [--offset N]"
 )
 
 HELP_TEXT = (
@@ -97,23 +101,33 @@ HELP_TEXT = (
     "                    pattern (e.g. 2,5,7-9); QA-ing several at once shares a\n"
     "                    single render pass (the PDF is cached), so edit a batch of\n"
     "                    slides then QA them together rather than one call each.\n"
-    "                    Prints each slide's text (#id-tagged, to read back) AND the\n"
-    "                    boxed diagnostic render (slide-NNN-boxes.png; boxes labeled\n"
-    "                    '#id', red wash on peer-overlaps, a Pixel-metrics line for\n"
-    "                    marker runs with no text row beside them). The boxes live here.\n"
-    "  --slide N         Show one slide's shapes (1-indexed): kind, position,\n"
-    "                    size, text, formatting, placeholder type, and a text-fit\n"
-    "                    estimate per text shape (holds~Nch@Spt / ~Nch/line@Spt),\n"
-    "                    with a [!] TEXT OVERSET flag when text won't fit the box.\n"
+    "                    Prints each slide's #id-tagged text AND a boxed diagnostic\n"
+    "                    render (boxes labeled '#id', red wash where boxes overlap),\n"
+    "                    plus a collision check: a text-on-text overprint is\n"
+    "                    confirmed against the rendered PDF's word positions before\n"
+    "                    it is flagged [!] (= fix before delivery), so tight-but-\n"
+    "                    clear neighbours and box-only overlaps don't false-alarm.\n"
+    "                    The render is published to the conversation as a JPEG whose\n"
+    "                    path is printed per slide (a files__cat-readable image).\n"
+    "  --slide N[,N,...] Show one or more slides' shapes (1-indexed; takes a\n"
+    "                    pattern like 2,5,7-9). Per shape: kind, position, size,\n"
+    "                    text, formatting, placeholder type, and a text-fit\n"
+    "                    estimate (holds~Nch@Spt / ~Nch/line@Spt), with a [!] TEXT\n"
+    "                    OVERSET flag when text won't fit. Inspect every slide you\n"
+    "                    plan to edit in one call rather than one call each.\n"
     "  --layouts         List slide masters and their layouts with placeholder slots,\n"
     "                    including each placeholder's resolved default typeface,\n"
     "                    size, weight, color, and alignment (from layout / master /\n"
     "                    theme inheritance).\n"
     "  --text            Extract readable text per slide (preserves slide/shape boundaries).\n"
     "  --media           List embedded media (images, audio, video) with file sizes.\n"
-    "  --render          Rasterize slide(s) to a plain JPEG (no overlay) for a quick\n"
-    "                    visual look; combine with --slide N for one slide. For QA\n"
-    "                    use --qa instead — it adds the diagnostic boxes + readback.\n"
+    "  --render          Rasterize slide(s) to a plain JPEG (no overlay), published\n"
+    "                    to the conversation. Combine with --slide N[,N,...] to\n"
+    "                    render just those slides in one shared pass (the deck is\n"
+    "                    converted once, then cached); omit --slide for the whole\n"
+    "                    deck. For QA use --qa instead — it adds the boxes.\n"
+    "  --render-dir DIR  Base dir renders are published under, as\n"
+    "                    DIR/.pptx_render/<deck>/ (default: /files/conversation).\n"
     "  --compare FILE    Compare <file> (your edited output) against FILE (the\n"
     "                    source/template): slide count, embedded media, embedded\n"
     "                    fonts, imagery/layout/density, and per-shape content-slot\n"
@@ -616,6 +630,22 @@ def print_slide(
     return "\n".join(lines)
 
 
+def print_slides(
+    prs: PresentationType,
+    file_path: str,
+    slide_nos: List[int],
+    offset: int,
+    max_shapes: int,
+) -> str:
+    """Structural view of one or more slides (from a --slide N[,N,...] pattern),
+    one block per slide, so a whole batch can be inspected before editing in a
+    single call rather than one call each."""
+    return "\n\n".join(
+        print_slide(prs, file_path, idx, offset, max_shapes)
+        for idx in slide_nos
+    )
+
+
 def _layout_part_path(layout) -> Optional[str]:
     """Layout XML path inside the .pptx zip, e.g. 'ppt/slideLayouts/slideLayout3.xml'."""
     partname = getattr(getattr(layout, "part", None), "partname", None)
@@ -1034,10 +1064,163 @@ def print_media(path: str) -> str:
     return "\n".join(lines)
 
 
-# Distinct, high-contrast outline colors for the --boxes overlay (legible on
-# both light and dark slide backgrounds).
+# pptx QA / preview renders are published onto the conversation/pod mount
+# (where the model can open them with files__cat) under this dot-prefixed
+# subdir; the shared publish machinery lives in render_publish.
+_VIEW_SUBDIR = ".pptx_render"
+
+
+def _collect_tokens(shape: BaseShape) -> set:
+    """Comparison tokens of a shape's text (group child text folded in), used to
+    attribute a rendered PDF word back to its source shape."""
+    tokens: set = set()
+    if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        for child in shape.shapes:
+            tokens |= _collect_tokens(child)
+    elif getattr(shape, "has_text_frame", False):
+        for word in (shape.text_frame.text or "").split():
+            tok = pdf_text.norm_token(word)
+            if tok:
+                tokens.add(tok)
+    return tokens
+
+
+def _shape_text_label(shape: BaseShape) -> str:
+    """A short readable label for a text shape (first non-empty child for a
+    group), used in the collision digest's `#id "text"` references."""
+    if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        for child in shape.shapes:
+            label = _shape_text_label(child)
+            if label:
+                return label
+        return ""
+    if getattr(shape, "has_text_frame", False):
+        return ellipsize(flatten_text(shape.text_frame.text or "").strip(), 30)
+    return ""
+
+
+def _autofit_off(shape: BaseShape) -> bool:
+    """True when the shape explicitly won't auto-shrink its text (noAutofit) —
+    surfaced as a fix hint on the overflowing shape."""
+    return (
+        getattr(shape, "has_text_frame", False)
+        and shape.text_frame.auto_size == MSO_AUTO_SIZE.NONE
+    )
+
+
+def _text_shape_entries(slide: Slide):
+    """Per top-level text-bearing shape: (id, declared_box_emu, token_set, label,
+    autofit_off). Feeds the cross-shape overprint detector (id, box, tokens) and
+    the digest wording (label, autofit)."""
+    out = []
+    for sh in slide.shapes:
+        if None in (sh.left, sh.top, sh.width, sh.height):
+            continue
+        tokens = _collect_tokens(sh)
+        if not tokens:
+            continue
+        box = (sh.left, sh.top, sh.left + sh.width, sh.top + sh.height)
+        out.append((sh.shape_id, box, tokens, _shape_text_label(sh), _autofit_off(sh)))
+    return out
+
+
+def _slide_findings_lines(
+    slide: Slide,
+    idx: int,
+    findings: dict,
+    words: Optional[List[pdf_text.WordBox]],
+) -> List[str]:
+    """Format one slide's QA findings as a tiered, consequence-first block.
+
+    Collisions are read straight off the renderer's word positions (`words` from
+    the soffice PDF): a `[!]` fires when two DIFFERENT shapes' strongly-attributed
+    words overprint (`pdf_text.cross_shape_overprints`). Reading where the glyphs
+    actually landed — instead of estimating wrap from char counts or arguing about
+    box geometry — is what keeps false positives down: same-run overlaps
+    (superscripts, footnote markers, emoji) and box overlaps in empty space never
+    qualify. If the rendered text can't be read (text exported as curves), the box
+    overlaps fall back to `[i]` "couldn't confirm". Decorative-marker
+    misalignments are `[i]`; a clean slide says so."""
+    entries = _text_shape_entries(slide)
+    label = {e[0]: e[3] for e in entries}
+    autofit_off = {e[0]: e[4] for e in entries}
+
+    def q(sid: int) -> str:
+        lbl = label.get(sid)
+        return f'#{sid} "{lbl}"' if lbl else f"#{sid}"
+
+    severe: List[str] = []
+    advisory: List[str] = []
+    n_severe = 0
+
+    if words:
+        shapes = [(e[0], e[1], e[2]) for e in entries]
+        for c in pdf_text.cross_shape_overprints(words, shapes):
+            n_severe += 1
+            over, hit = c["over"], c["hit"]
+            if c["symmetric"]:
+                severe.append(
+                    f"  [!] text-on-text — {q(over)} and {q(hit)} overprint "
+                    f"(rendered \"{c['word_over']}\" lands on \"{c['word_hit']}\")."
+                )
+                severe.append(
+                    "      Possible fixes: separate the two boxes, or "
+                    "shrink/reposition one."
+                )
+            else:
+                shrink = (
+                    ", enable shrink-to-fit (it's set to no-autofit)"
+                    if autofit_off.get(over)
+                    else ""
+                )
+                severe.append(
+                    f"  [!] text-on-text — {q(over)} overflows its box onto "
+                    f"{q(hit)} (rendered \"{c['word_over']}\" sits on "
+                    f"\"{c['word_hit']}\")."
+                )
+                severe.append(
+                    f"      Possible fixes: shorten #{over}, lower its font "
+                    f"size{shrink}, or move #{hit} clear."
+                )
+    else:
+        # No extractable rendered text (e.g. text exported as curves): can't
+        # confirm against glyphs, so surface the box-overlap candidates for a
+        # manual look rather than confirming or silently clearing them.
+        for f in findings.get("overlaps", []):
+            if not f["text_on_text"]:
+                continue
+            advisory.append(
+                f"  [i] {q(f['over'])} and {q(f['hit'])} boxes overlap by "
+                f"{round(f['coverage'] * 100)}% — couldn't read the rendered "
+                "text to confirm; check the render."
+            )
+
+    for sid, off in findings.get("markers", []):
+        advisory.append(
+            f"  [i] {q(sid)} marker has no text row within {off:.2f}in — "
+            "check its alignment in the render."
+        )
+
+    if severe:
+        header = (
+            f"[!] slide {idx} — {n_severe} collision"
+            f"{'s' if n_severe != 1 else ''} "
+            f"(red wash in the slide {idx} render above):"
+        )
+        return [header] + severe + advisory
+    if advisory:
+        return [
+            f"[i] slide {idx} — {len(advisory)} item"
+            f"{'s' if len(advisory) != 1 else ''} to review:"
+        ] + advisory
+    return [f"[slide {idx}: no text collisions]"]
+
+
 def _boxed_render(
-    file_path: str, prs: PresentationType, slide_idx: Optional[int]
+    file_path: str,
+    prs: PresentationType,
+    slide_idx: Optional[int],
+    render_dir: str = "/files/conversation",
 ) -> str:
     """Render slide(s) with the bounding-box overlay + pixel-metrics digest —
     the diagnostic half of QA. Reached via --qa, not exposed on its own."""
@@ -1048,6 +1231,10 @@ def _boxed_render(
         item_name="slide",
         item_idx=slide_idx,
     )
+    # The soffice PDF (cached beside the rasters) carries the renderer's exact
+    # word positions; reading them lets the collision check confirm overprints
+    # against where glyphs actually landed rather than estimated box geometry.
+    pdf_path = out_dir / f"{out_dir.name}.pdf"
     digest: List[str] = []
     annotated: List[Path] = []
     for p in rendered:
@@ -1064,71 +1251,82 @@ def _boxed_render(
         if res:
             ap, findings = res
             annotated.append(ap)
-            markers = [
-                f"#{sid} nearest text row {off:.2f}in"
-                for sid, off in findings.get("markers", [])
-            ]
-            ov = [
-                f"#{a}~#{b} {pen:.2f}in"
-                for a, b, pen in findings["overlaps"]
-            ]
-            parts = []
-            if markers:
-                parts.append("unaligned markers: " + ", ".join(markers))
-            if ov:
-                parts.append("overlaps: " + ", ".join(ov))
-            if parts:
-                digest.append(f"  slide {idx}: " + "; ".join(parts))
+            words = pdf_text.page_word_boxes(pdf_path, idx)
+            digest.extend(
+                _slide_findings_lines(prs.slides[idx - 1], idx, findings, words)
+            )
         else:
             annotated.append(p)
-    plural = "" if len(annotated) == 1 else "s"
-    # How to read the overlay (boxes, tints, grown extents, red wash, marker
-    # notes) lives in the pptx skill's QA section, not re-emitted on every run.
-    lines = [
-        f"[Rendered: {len(annotated)} slide{plural} | jpeg + bbox overlay | "
-        f"{out_dir}]",
-    ]
+    basename = os.path.splitext(os.path.basename(file_path))[0]
+    published = render_publish.publish_renders(
+        basename, annotated, render_dir, _VIEW_SUBDIR
+    )
+    plural = "" if len(published) == 1 else "s"
+    lines = [f"[Rendered {len(published)} slide{plural}, bbox overlay:]"]
+    lines.extend(render_publish.render_view_lines(published))
     if digest:
-        lines.append("[Pixel metrics:]")
+        lines.append("[Collision check — [!] = fix before delivery:]")
         lines.extend(digest)
-    for p in annotated:
-        lines.append(str(p))
     return "\n".join(lines)
 
 
 def print_render(
-    file_path: str, prs: PresentationType, slide_idx: Optional[int]
+    file_path: str,
+    prs: PresentationType,
+    slide_nos: Optional[List[int]],
+    render_dir: str = "/files/conversation",
 ) -> str:
-    """Plain rasterized slide(s) — no overlay — for a quick visual look. The
-    boxed diagnostic render is part of --qa, not here."""
+    """Plain rasterized slide(s) — no overlay — for a quick visual look. Pass a
+    list of 1-based slide numbers (from a --slide N[,N,...] pattern) to rasterize
+    just those in one shared pass — the deck is converted to PDF once and the PDF
+    is reused across the slides — or None for the whole deck. The boxed diagnostic
+    render is part of --qa, not here."""
     total_slides = len(prs.slides)
-    if slide_idx is not None and (slide_idx < 1 or slide_idx > total_slides):
-        raise ValueError(
-            f"slide index out of range: {slide_idx} "
-            f"(deck has {total_slides} slides)"
+    rendered: List[Path] = []
+    if slide_nos is None:
+        _, rendered = render.render_via_soffice(
+            file_path,
+            out_root=Path("/tmp/pptx_render"),
+            item_name="slide",
+            item_idx=None,
         )
-    out_dir, rendered = render.render_via_soffice(
-        file_path,
-        out_root=Path("/tmp/pptx_render"),
-        item_name="slide",
-        item_idx=slide_idx,
+    else:
+        for idx in slide_nos:
+            if idx < 1 or idx > total_slides:
+                raise ValueError(
+                    f"slide index out of range: {idx} "
+                    f"(deck has {total_slides} slides)"
+                )
+            _, one = render.render_via_soffice(
+                file_path,
+                out_root=Path("/tmp/pptx_render"),
+                item_name="slide",
+                item_idx=idx,
+            )
+            rendered.extend(one)
+    basename = os.path.splitext(os.path.basename(file_path))[0]
+    published = render_publish.publish_renders(
+        basename, rendered, render_dir, _VIEW_SUBDIR
     )
-    plural = "" if len(rendered) == 1 else "s"
-    lines = [
-        f"[Rendered: {len(rendered)} slide{plural} | jpeg @ 100 dpi | {out_dir}]"
-    ]
-    for p in rendered:
-        lines.append(str(p))
+    plural = "" if len(published) == 1 else "s"
+    lines = [f"[Rendered {len(published)} slide{plural} @ 100 dpi:]"]
+    lines.extend(render_publish.render_view_lines(published))
     return "\n".join(lines)
 
 
-def print_qa(file_path: str, prs: PresentationType, slide_nos: List[int]) -> str:
+def print_qa(
+    file_path: str,
+    prs: PresentationType,
+    slide_nos: List[int],
+    render_dir: str = "/files/conversation",
+) -> str:
     """QA gate — run after a round of edits. Accepts one slide or several (a
     pattern like `2,5,7-9`); for each, bundles the slide's authoritative text
     (#id-tagged, to read back) with the boxed diagnostic render so they are
     checked together. QA-ing several slides at once shares a single soffice
     conversion (the PDF is cached after the first render), so batching the
-    changed slides is much faster than one call per slide."""
+    changed slides is much faster than one call per slide. Each slide's render is
+    published to the conversation (its scoped path is printed below the text)."""
     total_slides = len(prs.slides)
     for slide_idx in slide_nos:
         if slide_idx < 1 or slide_idx > total_slides:
@@ -1137,11 +1335,10 @@ def print_qa(file_path: str, prs: PresentationType, slide_nos: List[int]) -> str
                 f"(deck has {total_slides} slides)"
             )
     blocks = [
-        f"[QA slide {slide_idx} — read each #id's text below back against the "
-        "boxed render]\n\n"
+        f"[QA slide {slide_idx} — #id text + render path:]\n\n"
         + print_text(prs, slide_idx)
         + "\n\n"
-        + _boxed_render(file_path, prs, slide_idx)
+        + _boxed_render(file_path, prs, slide_idx, render_dir)
         for slide_idx in slide_nos
     ]
     return "\n\n".join(blocks)
@@ -1154,12 +1351,18 @@ def main() -> int:
         add_help=False,
     )
     parser.add_argument("file", nargs="?")
-    parser.add_argument("--slide", type=int)
+    parser.add_argument("--slide", metavar="N[,N,...]")
     parser.add_argument("--layouts", action="store_true")
     parser.add_argument("--text", action="store_true")
     parser.add_argument("--media", action="store_true")
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--qa", metavar="N[,N,...]")
+    parser.add_argument(
+        "--render-dir",
+        dest="render_dir",
+        metavar="DIR",
+        default="/files/conversation",
+    )
     parser.add_argument("--compare")
     parser.add_argument("--max-shapes", type=int, default=DEFAULT_MAX_SHAPES)
     parser.add_argument("--offset", type=int, default=0)
@@ -1201,16 +1404,20 @@ def main() -> int:
     else:
         prs = Presentation(args.file)
         if args.qa is not None:
-            body = print_qa(args.file, prs, parse_slide_patterns(args.qa))
+            body = print_qa(
+                args.file, prs, parse_slide_patterns(args.qa), args.render_dir
+            )
         elif args.render:
-            body = print_render(args.file, prs, args.slide)
+            slide_nos = parse_slide_patterns(args.slide) if args.slide else None
+            body = print_render(args.file, prs, slide_nos, args.render_dir)
         elif args.layouts:
             body = print_layouts(prs, args.file)
         elif args.text:
             body = print_text(prs)
         elif args.slide is not None:
-            body = print_slide(
-                prs, args.file, args.slide, args.offset, args.max_shapes
+            body = print_slides(
+                prs, args.file, parse_slide_patterns(args.slide),
+                args.offset, args.max_shapes,
             )
         else:
             body = print_overview(prs, args.file)

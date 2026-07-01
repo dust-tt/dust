@@ -186,6 +186,43 @@ def _pair_run_to_text(
     return best
 
 
+def _overlap_finding(
+    a: BaseShape,
+    b: BaseShape,
+    ea: BoxEmu,
+    eb: BoxEmu,
+    pen_emu: int,
+    kind: str,
+    a_text: bool,
+    b_text: bool,
+) -> Dict[str, object]:
+    """The structured record the QA digest tiers on. Captures which shape
+    overflowed onto which ("over" spilled onto "hit"), how much of the engulfed
+    box that covers ON the penetration axis — so the raw inches read back as a
+    percentage ("0.40in" -> "100% of #142's height") — the axis, and whether both
+    shapes carry text. Text-on-text is the loud, low-false-positive case."""
+    ix = min(ea[0] + ea[2], eb[0] + eb[2]) - max(ea[0], eb[0])
+    iy = min(ea[1] + ea[3], eb[1] + eb[3]) - max(ea[1], eb[1])
+    axis = "horizontally" if ix < iy else "vertically"
+    # For a spill, the overflower is the shape whose box grew past its declared
+    # bounds; "hit" is the neighbour it landed on. A plain peer overlap has no
+    # overflower, so keep document order (a is "over", b is "hit").
+    over, over_t, hit, hit_box, hit_t = a, a_text, b, eb, b_text
+    if kind == "spill" and ea == (a.left, a.top, a.width, a.height):
+        over, over_t, hit, hit_box, hit_t = b, b_text, a, ea, a_text
+    extent = hit_box[2] if axis == "horizontally" else hit_box[3]
+    coverage = min(1.0, pen_emu / extent) if extent else 0.0
+    return {
+        "over": over.shape_id,
+        "hit": hit.shape_id,
+        "kind": kind,
+        "axis": axis,
+        "pen_in": pen_emu / EMU_PER_INCH,
+        "coverage": coverage,
+        "text_on_text": bool(over_t and hit_t),
+    }
+
+
 def _annotate_boxes(
     image_path: Path,
     slide: Slide,
@@ -206,9 +243,11 @@ def _annotate_boxes(
     neighbour is caught (a containment that appears only after a box grows is
     spillover, not a designed fg/bg overlay, so it is surfaced not suppressed).
 
-    Returns (out_path, findings) where findings has keys: "overlaps"
-    [(a, b, pen_in)] and "markers" [(id, off_in)] (decorative markers in a run
-    with no rendered text row near them). None if the image is unreadable."""
+    Returns (out_path, findings) where findings has keys: "overlaps" (a list of
+    _overlap_finding dicts — which shape spilled onto which, the kind, axis,
+    coverage and text-on-text flag) and "markers" [(id, off_in)] (decorative
+    markers in a run with no rendered text row near them). None if the image is
+    unreadable."""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
@@ -285,7 +324,7 @@ def _annotate_boxes(
             ):
                 continue
             ea, eb = box_of(a), box_of(b)
-            flag, pen = _render_collision(declared(a), declared(b), ea, eb)
+            flag, pen, kind = _render_collision(declared(a), declared(b), ea, eb)
             if not flag:
                 continue
             ax0, ay0, ax1, ay1 = to_px_box(ea)
@@ -295,7 +334,9 @@ def _annotate_boxes(
             if ix1 > ix0 and iy1 > iy0:
                 draw.rectangle([ix0, iy0, ix1, iy1], fill=(255, 0, 0, 130))
                 findings["overlaps"].append(
-                    (a.shape_id, b.shape_id, pen / EMU_PER_INCH)
+                    _overlap_finding(
+                        a, b, ea, eb, pen, kind, has_text(a), has_text(b)
+                    )
                 )
 
     # Decorative-marker alignment: each marker in a run should have a rendered

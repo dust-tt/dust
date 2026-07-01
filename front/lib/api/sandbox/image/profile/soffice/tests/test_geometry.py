@@ -1,6 +1,9 @@
 """Tier-1 pure-logic tests for pptx_geometry: overlap classification, the
 text-fit estimate, and EMU conversion. No fixtures — tuples and a tiny fake
 shape. Run directly (`python test_geometry.py`) or under pytest.
+
+Lives in soffice/tests/, a subdir getLocalDirContent skips: it copies only the
+regular files directly in soffice/ (never recursing), so tests never ship in the image. It adds soffice/ to sys.path to import the module.
 """
 import sys
 from pathlib import Path
@@ -121,6 +124,24 @@ def test_extent_none_when_single_line_snug():
     assert G._text_extent_box(shape, 40.0) is None
 
 
+def test_extent_none_for_borderline_single_line():
+    # a 26-char title in a one-line box that the conservative (fit) width holds
+    # (~28ch/line @22pt in 4.6") is NOT grown, even though the wider extent width
+    # alone would wrap it — growing it would fabricate a spill onto a neighbour.
+    shape = FakeTextShape(2.7, 1.1, 4.6, 0.4, ["The multiplayer difference"])
+    assert G._text_extent_box(shape, 22.0) is None
+
+
+def test_extent_grows_clear_single_line_overflow():
+    # a 44-char title that overflows a one-line box even by the conservative
+    # width (~28ch/line @40pt in 8.0") is a genuine overflow and IS grown.
+    shape = FakeTextShape(
+        1.1, 2.2, 8.0, 0.8, ["Work doesn't just get done. It gets rewired."]
+    )
+    ext = G._text_extent_box(shape, 40.0)
+    assert ext is not None and ext[3] > shape.height
+
+
 def test_extent_none_when_text_fits():
     # two short paragraphs in a tall box that holds them: no growth.
     shape = FakeTextShape(1.0, 1.5, 8.0, 4.0, ["First line", "Second line"])
@@ -128,20 +149,20 @@ def test_extent_none_when_text_fits():
 
 
 def test_render_collision_peer_flags():
-    # a plain peer overlap (no extension) flags, as before.
-    flag, pen = G._render_collision(
+    # a plain peer overlap (no extension) flags as a "peer", as before.
+    flag, pen, kind = G._render_collision(
         box(0, 0, 2, 2), box(1.2, 0, 2, 2),
         box(0, 0, 2, 2), box(1.2, 0, 2, 2),
     )
-    assert flag and pen > 0
+    assert flag and pen > 0 and kind == "peer"
 
 
 def test_render_collision_designed_fg_bg_suppressed():
     # a small box inside a big one at BOTH declared and effective sizes is an
     # intentional overlay -> not a collision.
     big, small = box(0, 0, 10, 10), box(1, 1, 1, 1)
-    flag, _ = G._render_collision(big, small, big, small)
-    assert not flag
+    flag, _, kind = G._render_collision(big, small, big, small)
+    assert not flag and kind == ""
 
 
 def test_render_collision_overflow_spill_surfaced():
@@ -149,8 +170,8 @@ def test_render_collision_overflow_spill_surfaced():
     # and now covers most of short-wide b -> spillover, surfaced not suppressed.
     decl_a, decl_b = box(1, 1, 8, 1), box(0.5, 2.2, 9, 0.4)
     eff_a = box(1, 1, 8, 2)  # grew down past b
-    flag, pen = G._render_collision(decl_a, decl_b, eff_a, decl_b)
-    assert flag and pen > 0
+    flag, pen, kind = G._render_collision(decl_a, decl_b, eff_a, decl_b)
+    assert flag and pen > 0 and kind == "spill"
 
 
 def test_extent_middle_grows_down_not_symmetric():
