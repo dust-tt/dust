@@ -20,6 +20,7 @@ import { archiveMetronomeContract } from "@app/lib/metronome/client";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { Op } from "sequelize";
 
 import { makeScript } from "./helpers";
@@ -116,6 +117,7 @@ makeScript(
       // Clear the contractId from the DB so the subscription becomes Stripe-only.
       await sub.update({ metronomeContractId: null });
       await invalidateContractCache(workspaceId);
+      await SubscriptionResource.invalidateSubscriptionCache(sub.workspaceId);
 
       logger.info(
         { workspaceId, contractId },
