@@ -263,7 +263,7 @@ const ExploreMenuConfig: MenuConfig = {
       isExternal: true,
     },
     {
-      title: "Webinars",
+      title: "Online Events",
       href: "https://app.getcontrast.io/dust",
       isExternal: true,
     },
