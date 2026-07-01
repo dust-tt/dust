@@ -357,7 +357,7 @@ export function CheckoutPage() {
   };
 
   const handleApplyCoupon = handleCouponSubmit(async ({ couponCode }) => {
-    const result = await validateCoupon(couponCode.trim());
+    const result = await validateCoupon(couponCode.trim(), "subscription");
     if (!result.ok) {
       setCouponError("couponCode", { message: result.message });
       return;

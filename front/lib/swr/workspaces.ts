@@ -1413,13 +1413,14 @@ export function usePreparePayment({
 export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {
   const validateCoupon = useCallback(
     async (
-      code: string
+      code: string,
+      context: "subscription" | "credits"
     ): Promise<
       | { ok: true; coupon: GetCouponValidateResponseBody["coupon"] }
       | { ok: false; message: string }
     > => {
       const res = await clientFetch(
-        `/api/w/${workspaceId}/coupon/validate?code=${encodeURIComponent(code)}`
+        `/api/w/${workspaceId}/coupon/validate?code=${encodeURIComponent(code)}&context=${encodeURIComponent(context)}`
       );
       if (!res.ok) {
         const body = await res.json().catch(() => null);
