@@ -189,6 +189,18 @@ function apiInvalidToolJsonError(): APIError {
   );
 }
 
+// An AnthropicError carrying a native JSON.parse SyntaxError as its `cause`,
+// with a bare parse message (no `Unable to parse tool parameter JSON` needle or
+// embedded buffer) — how the SDK surfaces malformed tool JSON.
+function bareToolJsonParseError(): AnthropicError {
+  const syntaxError = new SyntaxError(
+    "Expected ',' or '}' after property value in JSON at position 4 (line 1 column 5)"
+  );
+  const err = new AnthropicError(syntaxError.message);
+  Object.defineProperty(err, "cause", { value: syntaxError });
+  return err;
+}
+
 describe("getInvalidToolJsonMessage", () => {
   it("extracts the message from a matching APIError", () => {
     expect(getInvalidToolJsonMessage(apiInvalidToolJsonError())).toBe(
@@ -1310,6 +1322,68 @@ describe("rawOutputToEvents", () => {
     expect(success).toMatchObject({
       content: { aggregated: [{ type: "tool_call" }] },
     });
+  });
+
+  it("recovers an in-progress tool call from the accumulator on a bare JSON parse error", async () => {
+    // The error carries no embedded JSON, so the recovered arguments must come
+    // from the accumulated buffer.
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf(
+          [
+            {
+              type: "content_block_start",
+              index: 0,
+              content_block: {
+                type: "tool_use",
+                id: "tu-1",
+                name: "search",
+                input: {},
+              },
+            } as RawMessageStreamEvent,
+            {
+              type: "content_block_delta",
+              index: 0,
+              delta: { type: "input_json_delta", partial_json: "{bad" },
+            } as RawMessageStreamEvent,
+          ],
+          bareToolJsonParseError()
+        ),
+        metadata,
+        realConverters
+      )
+    );
+
+    const toolCall = events.find((e) => e.type === "tool_call");
+    expect(toolCall).toMatchObject({
+      content: {
+        id: "tu-1",
+        name: "search",
+        arguments: { INVALID_JSON: "{bad" },
+      },
+    });
+    expect(events.some((e) => e.type === "error")).toBe(false);
+  });
+
+  it("surfaces a bare JSON parse error as an error event when no tool_use block is open", async () => {
+    // Without an in-progress tool_use block there is nothing to recover, so it
+    // must fall through to the unified error path rather than being swallowed.
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf(
+          [
+            {
+              type: "message_start",
+              message: { id: "msg_1" },
+            } as RawMessageStartEvent,
+          ],
+          bareToolJsonParseError()
+        ),
+        metadata,
+        realConverters
+      )
+    );
+    expect(events.map((e) => e.type)).toEqual(["response_id", "error"]);
   });
 
   it("omits the token_usage event when no message_delta carried usage", async () => {
