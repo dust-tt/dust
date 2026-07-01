@@ -8,13 +8,12 @@ export const MICROSOFT_EXCEL_SERVER_NAME = "microsoft_excel" as const;
 
 export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
   list_excel_files: {
-    description: "List Excel files (.xlsx, .xlsm) from SharePoint or OneDrive.",
+    description:
+      "List and find Excel files (.xlsx, .xlsm) accessible in your organization.",
     schema: {
       query: z
         .string()
-        .describe(
-          "Search query to find relevant files and content in OneDrive and SharePoint."
-        ),
+        .describe("Search query to filter Excel files by name or content."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -24,7 +23,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
   },
   get_worksheets: {
     description:
-      "Get a list of all worksheets (sheets/tabs) in an Excel workbook stored in SharePoint.",
+      "Get a list of all worksheets (sheets/tabs) in an Excel workbook.",
     schema: {
       itemId: z
         .string()
@@ -50,7 +49,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
   },
   read_worksheet: {
     description:
-      "Read data from an Excel file stored in SharePoint. Returns the cell values as CSV. Reads the used range by default; use the range parameter to read a specific subset.",
+      "Read cell values from an Excel worksheet. Returns data as CSV. Reads the used range by default; use the range parameter to read a specific subset.",
     schema: {
       itemId: z.string().describe("The ID of the Excel file to read from."),
       driveId: z
@@ -82,8 +81,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
   },
   write_worksheet: {
-    description:
-      "Write data to a specific range in an Excel worksheet stored in SharePoint.",
+    description: "Write data to a specific range in an Excel worksheet.",
     schema: {
       itemId: z.string().describe("The ID of the Excel file to write to."),
       driveId: z
@@ -121,8 +119,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_worksheet: {
-    description:
-      "Create a new worksheet (sheet/tab) in an Excel workbook stored in SharePoint.",
+    description: "Create a new worksheet (sheet/tab) in an Excel workbook.",
     schema: {
       itemId: z
         .string()
@@ -150,8 +147,7 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
   },
   clear_range: {
-    description:
-      "Clear data from a specific range in an Excel worksheet stored in SharePoint.",
+    description: "Clear data from a specific range in an Excel worksheet.",
     schema: {
       itemId: z
         .string()

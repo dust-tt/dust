@@ -129,7 +129,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   get_file_content: {
     description:
-      "Read, open, and retrieve the content of a file from Microsoft OneDrive or SharePoint (PowerPoint, Word, Excel, PDF, etc.). Uses driveId if provided, otherwise falls back to siteId.",
+      "Read, open, and retrieve the content of a file or document from Microsoft OneDrive or SharePoint (PowerPoint, Word, Excel, PDF, etc.). Uses driveId if provided, otherwise falls back to siteId.",
     schema: {
       itemId: z
         .string()
