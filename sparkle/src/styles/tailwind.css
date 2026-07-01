@@ -115,6 +115,15 @@
     min-width: 44px;
     z-index: 9999;
   }
+
+  /* Dark-mode panel elevation: a subtle drop shadow plus faint inset highlight
+     lines to lift panels off the app background. Light mode is unaffected. */
+  .dark .bg-panel-background {
+    box-shadow:
+      0 1px 1px -0.5px rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+      0 1px 0 0 rgba(255, 255, 255, 0.01) inset;
+  }
 }
 
 @layer utilities {
