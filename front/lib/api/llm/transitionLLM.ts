@@ -576,7 +576,8 @@ abstract class BaseTransition extends LLM {
     streamParameters: LLMStreamParameters,
     configSchema: BaseEndpointConfiguration["configSchema"]
   ): InputConfig {
-    const { specifications, forceToolCall } = streamParameters;
+    const { specifications, forceToolCall, toolSearchEnabled } =
+      streamParameters;
 
     return configSchema.parse({
       tools: specifications as ToolSpecification[],
@@ -588,6 +589,7 @@ abstract class BaseTransition extends LLM {
         ),
       },
       forceTool: forceToolCall,
+      toolSearchEnabled,
       outputFormat: parseResponseFormatSchema(
         this.responseFormat,
         this.metadata.clientId
