@@ -154,6 +154,7 @@ export const SOUND_NOTIFICATION_OPTIONS = [
   "Kalimba",
   "Marimba",
   "Tuba",
+  "Wizz",
 ] as const;
 
 export type SoundNotificationType = (typeof SOUND_NOTIFICATION_OPTIONS)[number];
