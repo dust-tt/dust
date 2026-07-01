@@ -43,6 +43,7 @@ import {
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
+  _getDustLightGlobalAgent,
   _getDustLionelGlobalAgent,
   _getDustLionelHighGlobalAgent,
   _getDustLionelMediumGlobalAgent,
@@ -291,6 +292,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_HAIKU]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_LIGHT]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -1092,6 +1099,15 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_LIGHT:
+      agentConfiguration = _getDustLightGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_KIMI:
       agentConfiguration = _getDustKimiGlobalAgent(auth, {
         settings,
@@ -1634,6 +1650,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
     GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE,
     GLOBAL_AGENTS_SID.DUST_HAIKU,
+    GLOBAL_AGENTS_SID.DUST_LIGHT,
     GLOBAL_AGENTS_SID.DUST_EDGE,
     GLOBAL_AGENTS_SID.DUST_KIMI,
     GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
