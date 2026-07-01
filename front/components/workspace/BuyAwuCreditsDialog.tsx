@@ -371,27 +371,29 @@ function UseCouponTab({
   }
 }
 
-interface BuyAwuCreditsDialogProps {
+interface BuyCreditsTabProps {
+  workspaceId: string;
+  awuPurchaseInfo: AwuPurchaseInfo | null;
+  currentTotalPoolCredits?: number;
   isOpen: boolean;
   onClose: () => void;
   onPurchaseSuccess?: () => void;
-  workspaceId: string;
-  awuPurchaseInfo: AwuPurchaseInfo | null;
-  isAwuPurchaseInfoLoading: boolean;
-  isAwuPurchaseInfoError: boolean;
-  currentTotalPoolCredits?: number;
+  // Reports whether a purchase is in flight so the parent can lock the tabs.
+  onInFlightChange: (inFlight: boolean) => void;
 }
 
-export function BuyAwuCreditsDialog({
+// The "Buy credits" tab: the payment-gated Top-Up flow. Owns its own purchase
+// state and status polling; renders its content + footer based on
+// `purchaseState` (plus the pending/exhausted buy-blocking states).
+function BuyCreditsTab({
+  workspaceId,
+  awuPurchaseInfo,
+  currentTotalPoolCredits,
   isOpen,
   onClose,
   onPurchaseSuccess,
-  workspaceId,
-  awuPurchaseInfo,
-  isAwuPurchaseInfoLoading,
-  isAwuPurchaseInfoError,
-  currentTotalPoolCredits,
-}: BuyAwuCreditsDialogProps) {
+  onInFlightChange,
+}: BuyCreditsTabProps) {
   const [amountInput, setAmountInput] = useState<string>("");
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -403,8 +405,8 @@ export function BuyAwuCreditsDialog({
   const { purchaseAwuCredits } = useAwuPurchase({ workspaceId });
 
   // Poll the payment-gated commit status only while waiting on the webhook
-  // outcome. The Metronome -> Stripe payment is async, so the dialog can't
-  // know success/failure from the POST response alone.
+  // outcome. The Metronome -> Stripe payment is async, so the tab can't know
+  // success/failure from the POST response alone.
   const { attempt, mutateAwuPurchaseStatus } = useAwuPurchaseStatus({
     workspaceId,
     disabled: !isOpen || purchaseState !== "processing",
@@ -436,13 +438,10 @@ export function BuyAwuCreditsDialog({
     }
   }, [attempt, purchaseState, purchaseStartedAtMs, onPurchaseSuccess]);
 
-  const resetModalStateAndClose = useCallback(() => {
-    setAmountInput("");
-    setPurchaseState("idle");
-    setErrorMessage("");
-    setPurchaseStartedAtMs(null);
-    onClose();
-  }, [onClose]);
+  // Let the parent lock the tab bar while a purchase is in flight.
+  useEffect(() => {
+    onInFlightChange(purchaseState !== "idle");
+  }, [purchaseState, onInFlightChange]);
 
   const currency = awuPurchaseInfo?.canPurchase
     ? awuPurchaseInfo.currency
@@ -495,6 +494,16 @@ export function BuyAwuCreditsDialog({
 
   const canPurchase = isValidAmount && !amountExceedsMax;
 
+  // Buy-only blocking states — they prevent buying but not coupon redemption,
+  // so they render inside this tab rather than replacing the whole dialog.
+  const buyPendingBlock =
+    !!awuPurchaseInfo &&
+    !awuPurchaseInfo.canPurchase &&
+    awuPurchaseInfo.reason === "pending_purchase";
+  const buyExhaustedBlock =
+    !!awuPurchaseInfo?.canPurchase &&
+    awuPurchaseInfo.remainingCycleCredits < MIN_AWU_PURCHASE_CREDITS;
+
   const handlePurchase = async () => {
     setPurchaseStartedAtMs(Date.now());
     setPurchaseState("processing");
@@ -516,194 +525,83 @@ export function BuyAwuCreditsDialog({
     }
   };
 
-  const renderContent = () => {
-    switch (purchaseState) {
-      case "processing":
-        return (
-          <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Spinner size="lg" />
-            <p className="text-sm text-muted-foreground">
-              Processing payment...
-            </p>
-            <p className="text-xs text-muted-foreground">
-              This may take a few seconds.
-            </p>
-          </div>
-        );
+  if (purchaseState === "idle" && buyPendingBlock) {
+    return (
+      <>
+        <DialogContainer>
+          <p className="text-sm text-muted-foreground">
+            You have pending credit purchases awaiting payment. Please complete
+            your pending payment before making a new purchase or{" "}
+            <a
+              href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
+              className="text-action-500 hover:underline"
+            >
+              contact support
+            </a>{" "}
+            to cancel your pending payments.
+          </p>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: "Manage invoices",
+            variant: "primary",
+            onClick: () => {
+              window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
+            },
+          }}
+        />
+      </>
+    );
+  }
 
-      case "success":
-        return (
-          <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
-            <div className="text-center">
-              <p className="text-lg font-medium text-foreground">
-                Credits purchased successfully!
+  if (purchaseState === "idle" && buyExhaustedBlock) {
+    return (
+      <>
+        <DialogContainer>
+          <p className="text-sm text-muted-foreground">
+            You've reached your credit limit for this billing cycle. It resets
+            at the start of your next billing cycle. If you need additional
+            credits before then, please{" "}
+            <a
+              href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
+              className="text-action-500 hover:underline"
+            >
+              contact support
+            </a>
+            .
+          </p>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: onClose,
+          }}
+        />
+      </>
+    );
+  }
+
+  switch (purchaseState) {
+    case "processing":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Spinner size="lg" />
+              <p className="text-sm text-muted-foreground">
+                Processing payment...
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Your credits are now available.
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                <span className="font-semibold">
-                  Invoice has been sent by email.
-                </span>
+              <p className="text-xs text-muted-foreground">
+                This may take a few seconds.
               </p>
             </div>
-          </div>
-        );
-
-      case "error":
-        return (
-          <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircle} size="lg" className="text-warning-500" />
-            <div className="text-center">
-              <p className="text-lg font-medium text-foreground">
-                Something went wrong
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {errorMessage}
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Please contact support if the issue persists.
-              </p>
-            </div>
-          </div>
-        );
-
-      default: {
-        return (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="amount"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Amount
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      {currencySymbol}
-                    </span>
-                    <Input
-                      id="amount"
-                      type="number"
-                      placeholder="0"
-                      value={amountInput}
-                      onChange={(e) => {
-                        setAmountInput(e.target.value);
-                      }}
-                      min="0"
-                      step="1"
-                      isError={amountExceedsMax && !!maxAmountFormatted}
-                      className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                  </div>
-                  {isValidAmount && (
-                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                      {formatCredits(addedCredits)} credits
-                    </span>
-                  )}
-                  <div className="ml-auto flex gap-2">
-                    {QUICK_SELECT_AMOUNTS.map((amount) => (
-                      <Button
-                        key={amount}
-                        label={`${currencySymbol}${amount}`}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setAmountWithClamp(amount)}
-                      />
-                    ))}
-                  </div>
-                </div>
-                {amountExceedsMax && maxAmountFormatted && (
-                  <p className="text-xs text-warning-500">
-                    Amount exceeds the {maxAmountFormatted} limit. Please{" "}
-                    <a
-                      href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
-                      className="underline"
-                    >
-                      contact support
-                    </a>
-                    .
-                  </p>
-                )}
-              </div>
-
-              {isValidAmount && !amountExceedsMax && (
-                <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
-                  <p className="font-semibold text-foreground">Summary</p>
-                  {currentTotalPoolCredits !== undefined && (
-                    <SummaryRow
-                      label="Current Credits Pool"
-                      value={<CreditValue credits={currentTotalPoolCredits} />}
-                      dimmed
-                    />
-                  )}
-                  <SummaryRow
-                    label="Added Credits"
-                    value={<CreditValue credits={addedCredits} />}
-                    dimmed
-                  />
-                  <div className="py-1" />
-                  {currentTotalPoolCredits !== undefined && (
-                    <SummaryRow
-                      label="New Credits Pool"
-                      value={
-                        <CreditValue
-                          credits={currentTotalPoolCredits + addedCredits}
-                        />
-                      }
-                    />
-                  )}
-                  <SummaryRow
-                    label="Cost (excl. tax)"
-                    value={`${currencySymbol}${formatCost(parsedAmount)}`}
-                  />
-                </div>
-              )}
-
-              {awuPurchaseInfo?.canPurchase &&
-                awuPurchaseInfo.paymentMethod && (
-                  <div className="flex flex-col gap-2">
-                    <p className="text-sm font-medium text-foreground">
-                      Payment method
-                    </p>
-                    <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {awuPurchaseInfo.paymentMethod.type === "card" ? (
-                          <CardBrandIcon
-                            brand={awuPurchaseInfo.paymentMethod.brand}
-                            width={38}
-                            height={24}
-                          />
-                        ) : null}
-                        <span className="text-sm font-medium">
-                          {formatPaymentMethodLabel(
-                            awuPurchaseInfo.paymentMethod
-                          )}
-                        </span>
-                      </div>
-                      <Button
-                        label="Change"
-                        variant="ghost"
-                        size="sm"
-                        href={`/w/${workspaceId}/subscription/manage`}
-                      />
-                    </div>
-                  </div>
-                )}
-            </div>
-          </div>
-        );
-      }
-    }
-  };
-
-  const renderFooter = () => {
-    switch (purchaseState) {
-      case "processing":
-        return (
+          </DialogContainer>
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
@@ -716,24 +614,66 @@ export function BuyAwuCreditsDialog({
               disabled: true,
             }}
           />
-        );
-      case "success":
-        return (
+        </>
+      );
+    case "success":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Icon
+                visual={CheckCircle}
+                size="lg"
+                className="text-success-500"
+              />
+              <div className="text-center">
+                <p className="text-lg font-medium text-foreground">
+                  Credits purchased successfully!
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your credits are now available.
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  <span className="font-semibold">
+                    Invoice has been sent by email.
+                  </span>
+                </p>
+              </div>
+            </div>
+          </DialogContainer>
           <DialogFooter
             rightButtonProps={{
               label: "Close",
               variant: "primary",
-              onClick: resetModalStateAndClose,
+              onClick: onClose,
             }}
           />
-        );
-      case "error":
-        return (
+        </>
+      );
+    case "error":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Icon visual={XCircle} size="lg" className="text-warning-500" />
+              <div className="text-center">
+                <p className="text-lg font-medium text-foreground">
+                  Something went wrong
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {errorMessage}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Please contact support if the issue persists.
+                </p>
+              </div>
+            </div>
+          </DialogContainer>
           <DialogFooter
             leftButtonProps={{
               label: "Close",
               variant: "outline",
-              onClick: resetModalStateAndClose,
+              onClick: onClose,
             }}
             rightButtonProps={{
               label: "Manage invoices",
@@ -743,15 +683,141 @@ export function BuyAwuCreditsDialog({
               },
             }}
           />
-        );
-      default:
-        return (
+        </>
+      );
+    case "idle":
+      return (
+        <>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="amount"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Amount
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        {currencySymbol}
+                      </span>
+                      <Input
+                        id="amount"
+                        type="number"
+                        placeholder="0"
+                        value={amountInput}
+                        onChange={(e) => {
+                          setAmountInput(e.target.value);
+                        }}
+                        min="0"
+                        step="1"
+                        isError={amountExceedsMax && !!maxAmountFormatted}
+                        className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                    </div>
+                    {isValidAmount && (
+                      <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                        {formatCredits(addedCredits)} credits
+                      </span>
+                    )}
+                    <div className="ml-auto flex gap-2">
+                      {QUICK_SELECT_AMOUNTS.map((amount) => (
+                        <Button
+                          key={amount}
+                          label={`${currencySymbol}${amount}`}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAmountWithClamp(amount)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {amountExceedsMax && maxAmountFormatted && (
+                    <p className="text-xs text-warning-500">
+                      Amount exceeds the {maxAmountFormatted} limit. Please{" "}
+                      <a
+                        href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
+                        className="underline"
+                      >
+                        contact support
+                      </a>
+                      .
+                    </p>
+                  )}
+                </div>
+
+                {isValidAmount && !amountExceedsMax && (
+                  <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
+                    <p className="font-semibold text-foreground">Summary</p>
+                    {currentTotalPoolCredits !== undefined && (
+                      <SummaryRow
+                        label="Current Credits Pool"
+                        value={
+                          <CreditValue credits={currentTotalPoolCredits} />
+                        }
+                        dimmed
+                      />
+                    )}
+                    <SummaryRow
+                      label="Added Credits"
+                      value={<CreditValue credits={addedCredits} />}
+                      dimmed
+                    />
+                    <div className="py-1" />
+                    {currentTotalPoolCredits !== undefined && (
+                      <SummaryRow
+                        label="New Credits Pool"
+                        value={
+                          <CreditValue
+                            credits={currentTotalPoolCredits + addedCredits}
+                          />
+                        }
+                      />
+                    )}
+                    <SummaryRow
+                      label="Cost (excl. tax)"
+                      value={`${currencySymbol}${formatCost(parsedAmount)}`}
+                    />
+                  </div>
+                )}
+
+                {awuPurchaseInfo?.canPurchase &&
+                  awuPurchaseInfo.paymentMethod && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Payment method
+                      </p>
+                      <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {awuPurchaseInfo.paymentMethod.type === "card" ? (
+                            <CardBrandIcon
+                              brand={awuPurchaseInfo.paymentMethod.brand}
+                              width={38}
+                              height={24}
+                            />
+                          ) : null}
+                          <span className="text-sm font-medium">
+                            {formatPaymentMethodLabel(
+                              awuPurchaseInfo.paymentMethod
+                            )}
+                          </span>
+                        </div>
+                        <Button
+                          label="Change"
+                          variant="ghost"
+                          size="sm"
+                          href={`/w/${workspaceId}/subscription/manage`}
+                        />
+                      </div>
+                    </div>
+                  )}
+              </div>
+            </div>
+          </DialogContainer>
           <DialogFooter>
-            <Button
-              label="Cancel"
-              variant="outline"
-              onClick={resetModalStateAndClose}
-            />
+            <Button label="Cancel" variant="outline" onClick={onClose} />
             <Button
               label={`Add ${formatCredits(addedCredits)} credits`}
               variant="primary"
@@ -759,9 +825,45 @@ export function BuyAwuCreditsDialog({
               disabled={!canPurchase}
             />
           </DialogFooter>
-        );
-    }
-  };
+        </>
+      );
+    default:
+      return assertNever(purchaseState);
+  }
+}
+
+interface BuyAwuCreditsDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onPurchaseSuccess?: () => void;
+  workspaceId: string;
+  awuPurchaseInfo: AwuPurchaseInfo | null;
+  isAwuPurchaseInfoLoading: boolean;
+  isAwuPurchaseInfoError: boolean;
+  currentTotalPoolCredits?: number;
+}
+
+export function BuyAwuCreditsDialog({
+  isOpen,
+  onClose,
+  onPurchaseSuccess,
+  workspaceId,
+  awuPurchaseInfo,
+  isAwuPurchaseInfoLoading,
+  isAwuPurchaseInfoError,
+  currentTotalPoolCredits,
+}: BuyAwuCreditsDialogProps) {
+  // Set by the "Buy credits" tab while a purchase is in flight
+  // (processing/success/error). Used to hide the tab bar so the user can't
+  // switch away mid-payment, and to ignore refreshed awuPurchaseInfo — the
+  // just-created Metronome commit would otherwise flip it to `pending_purchase`
+  // and bump the user off the success screen.
+  const [buyInFlight, setBuyInFlight] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setBuyInFlight(false);
+    onClose();
+  }, [onClose]);
 
   if (isAwuPurchaseInfoLoading) {
     return (
@@ -780,13 +882,7 @@ export function BuyAwuCreditsDialog({
     );
   }
 
-  // Once a purchase is in flight (processing / success / error), drive the
-  // dialog from local state and ignore the refreshed awuPurchaseInfo — the
-  // just-created Metronome commit would otherwise flip it to
-  // `pending_purchase` and bump the user off the success screen.
-  const isPurchaseInFlight = purchaseState !== "idle";
-
-  if (!isPurchaseInFlight && isAwuPurchaseInfoError) {
+  if (!buyInFlight && isAwuPurchaseInfoError) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
@@ -826,7 +922,7 @@ export function BuyAwuCreditsDialog({
 
   // Cannot purchase: legacy plan.
   if (
-    !isPurchaseInFlight &&
+    !buyInFlight &&
     awuPurchaseInfo &&
     !awuPurchaseInfo.canPurchase &&
     awuPurchaseInfo.reason === "legacy_plan"
@@ -866,7 +962,7 @@ export function BuyAwuCreditsDialog({
 
   // Cannot purchase: no Stripe customer.
   if (
-    !isPurchaseInFlight &&
+    !buyInFlight &&
     awuPurchaseInfo &&
     !awuPurchaseInfo.canPurchase &&
     awuPurchaseInfo.reason === "no_stripe_customer"
@@ -904,122 +1000,41 @@ export function BuyAwuCreditsDialog({
     );
   }
 
-  // Buy-credits states that only block buying (not coupon redemption). These
-  // render inside the "Buy credits" tab so the "Use coupon" tab stays usable.
-  const buyPendingBlock =
-    !isPurchaseInFlight &&
-    !!awuPurchaseInfo &&
-    !awuPurchaseInfo.canPurchase &&
-    awuPurchaseInfo.reason === "pending_purchase";
-  const buyExhaustedBlock =
-    !isPurchaseInFlight &&
-    !!awuPurchaseInfo?.canPurchase &&
-    awuPurchaseInfo.remainingCycleCredits < MIN_AWU_PURCHASE_CREDITS;
-
-  const renderBuyTabBody = () => {
-    if (purchaseState === "idle" && buyPendingBlock) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          You have pending credit purchases awaiting payment. Please complete
-          your pending payment before making a new purchase or{" "}
-          <a
-            href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
-            className="text-action-500 hover:underline"
-          >
-            contact support
-          </a>{" "}
-          to cancel your pending payments.
-        </p>
-      );
-    }
-    if (purchaseState === "idle" && buyExhaustedBlock) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          You've reached your credit limit for this billing cycle. It resets at
-          the start of your next billing cycle. If you need additional credits
-          before then, please{" "}
-          <a
-            href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
-            className="text-action-500 hover:underline"
-          >
-            contact support
-          </a>
-          .
-        </p>
-      );
-    }
-    return renderContent();
-  };
-
-  const renderBuyTabFooter = () => {
-    if (purchaseState === "idle" && buyPendingBlock) {
-      return (
-        <DialogFooter
-          leftButtonProps={{
-            label: "Close",
-            variant: "outline",
-            onClick: resetModalStateAndClose,
-          }}
-          rightButtonProps={{
-            label: "Manage invoices",
-            variant: "primary",
-            onClick: () => {
-              window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
-            },
-          }}
-        />
-      );
-    }
-    if (purchaseState === "idle" && buyExhaustedBlock) {
-      return (
-        <DialogFooter
-          leftButtonProps={{
-            label: "Close",
-            variant: "outline",
-            onClick: resetModalStateAndClose,
-          }}
-        />
-      );
-    }
-    return renderFooter();
-  };
-
-  // Buy or use a coupon. While a buy is in flight (processing/success/error) the
-  // tabs are hidden so the user can't switch away mid-payment.
+  // Buy or use a coupon. While a buy is in flight, the tab bar is hidden so the
+  // user can't switch away mid-payment (the active "buy" tab stays mounted).
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => !open && resetModalStateAndClose()}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Top-up</DialogTitle>
         </DialogHeader>
-        {isPurchaseInFlight ? (
-          <>
-            <DialogContainer>{renderContent()}</DialogContainer>
-            {renderFooter()}
-          </>
-        ) : (
-          <Tabs defaultValue="buy">
+        <Tabs defaultValue="buy">
+          {!buyInFlight && (
             <TabsList>
               <TabsTrigger value="buy" label="Buy credits" />
               <TabsTrigger value="coupon" label="Use coupon" />
             </TabsList>
-            <TabsContent value="buy">
-              <DialogContainer>{renderBuyTabBody()}</DialogContainer>
-              {renderBuyTabFooter()}
-            </TabsContent>
-            <TabsContent value="coupon">
-              <UseCouponTab
-                workspaceId={workspaceId}
-                currentTotalPoolCredits={currentTotalPoolCredits}
-                onClose={resetModalStateAndClose}
-                onSuccess={onPurchaseSuccess}
-              />
-            </TabsContent>
-          </Tabs>
-        )}
+          )}
+          <TabsContent value="buy">
+            <BuyCreditsTab
+              workspaceId={workspaceId}
+              awuPurchaseInfo={awuPurchaseInfo}
+              currentTotalPoolCredits={currentTotalPoolCredits}
+              isOpen={isOpen}
+              onClose={handleClose}
+              onPurchaseSuccess={onPurchaseSuccess}
+              onInFlightChange={setBuyInFlight}
+            />
+          </TabsContent>
+          <TabsContent value="coupon">
+            <UseCouponTab
+              workspaceId={workspaceId}
+              currentTotalPoolCredits={currentTotalPoolCredits}
+              onClose={handleClose}
+              onSuccess={onPurchaseSuccess}
+            />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
