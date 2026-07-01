@@ -58,7 +58,10 @@ export const UserQuestionSchema = z.object({
     .describe("The question text. Should be clear and specific."),
   options: z
     .array(UserQuestionOptionSchema)
-    .describe("The available choices (2 to 4 options)."),
+    .describe(
+      "The available choices (typically 2 to 4 options, too many options to " +
+        "choose from can be overwhelming for the user)."
+    ),
   multiSelect: z
     .boolean()
     .describe(
