@@ -584,6 +584,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
           "Same as dust-ant-high but with omitted reasoning summaries.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE,
+        name: "dust-ant-sonnet-edge",
+        description:
+          "Same as dust but running Claude Sonnet 5 to experiment internally.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_HAIKU:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_HAIKU,

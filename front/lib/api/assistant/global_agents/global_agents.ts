@@ -23,6 +23,7 @@ import {
   _getDustAntHighOmittedGlobalAgent,
   _getDustAntMediumGlobalAgent,
   _getDustAntMediumOmittedGlobalAgent,
+  _getDustAntSonnetEdgeGlobalAgent,
   _getDustDeepseekGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlmGlobalAgent,
@@ -278,6 +279,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -1067,6 +1074,15 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE:
+      agentConfiguration = _getDustAntSonnetEdgeGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_HAIKU:
       agentConfiguration = _getDustHaikuGlobalAgent(auth, {
         settings,
@@ -1616,6 +1632,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH,
     GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
     GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+    GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE,
     GLOBAL_AGENTS_SID.DUST_HAIKU,
     GLOBAL_AGENTS_SID.DUST_EDGE,
     GLOBAL_AGENTS_SID.DUST_KIMI,
