@@ -3,6 +3,7 @@ import type {
   AgentLoopBlockedToolExecution,
 } from "@app/lib/actions/mcp";
 import { useFetcher } from "@app/lib/swr/swr";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -50,8 +51,12 @@ export function useEditAndValidateAction({
         );
 
         return { success: true };
-      } catch {
-        onError("Failed to edit and approve action. Please try again.");
+      } catch (err) {
+        onError(
+          isAPIErrorResponse(err)
+            ? err.error.message
+            : "Failed to edit and approve action. Please try again."
+        );
         return { success: false };
       } finally {
         setIsEditingAndValidating(false);
