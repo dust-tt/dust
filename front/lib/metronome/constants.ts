@@ -75,6 +75,17 @@ export const PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY = "DUST_PAYMENT_GATE_TYPE";
 export const PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION =
   "subscription_activation";
 
+// Custom field stamped on contracts whose corresponding DB subscription row
+// is created synchronously by the calling code right after provisioning the
+// contract (e.g. `provisionCreditPricedFreePlan`), instead of relying on this
+// webhook to do it. Without this, the synchronous write and contract.start's
+// own subscription-swap logic can both read the workspace's active
+// subscription concurrently and each end it + insert a new active row,
+// leaving the workspace with two active subscriptions. The contract.start
+// webhook checks this field and skips its subscription swap entirely when set.
+export const SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY =
+  "DUST_SUBSCRIPTION_SWAP_INLINE";
+
 // Custom field stamped on every seat-style product (Workspace / Pro / Max /
 // Free / future seat tiers). Value is the membership seat type ("workspace"
 // | "pro" | "max" | "free"). Lets runtime code identify which subscription

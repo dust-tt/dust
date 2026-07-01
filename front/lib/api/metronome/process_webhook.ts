@@ -67,6 +67,7 @@ import {
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   PLAN_CODE_CUSTOM_FIELD_KEY,
+  SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
@@ -1530,6 +1531,22 @@ export async function processMetronomeWebhook({
         logger.info(
           { contractId, workspaceId: workspace.sId },
           "[Metronome Webhook] contract.start: payment-gated activation contract, skipping — payment_gate.payment_status will activate"
+        );
+        break;
+      }
+
+      // The calling code that provisioned this contract already created the
+      // workspace's DB subscription row synchronously (e.g.
+      // provisionCreditPricedFreePlan) to avoid racing with this webhook's
+      // own swap logic below — skip it entirely.
+      if (
+        contractResult.value.custom_fields?.[
+          SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY
+        ]
+      ) {
+        logger.info(
+          { contractId, workspaceId: workspace.sId },
+          "[Metronome Webhook] contract.start: subscription swap handled inline by caller, skipping"
         );
         break;
       }

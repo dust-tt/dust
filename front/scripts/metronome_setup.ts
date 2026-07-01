@@ -30,6 +30,7 @@ import {
   PROD_CREDIT_TYPE_AWU_ID,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
   STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY,
+  SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateProductSeatTypesCache } from "@app/lib/metronome/seat_types";
 import {
@@ -1449,6 +1450,10 @@ const CUSTOM_FIELD_KEYS: Array<{
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
   { entity: "contract", key: PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY },
+  {
+    entity: "contract",
+    key: SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
+  },
   { entity: "contract", key: HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY },
   // Stamped on individual contract_credit instances to identify excess
   // recurring credits ("excess") vs. workspace-pool credits ("pool"). Lets
