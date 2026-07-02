@@ -39,7 +39,10 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationVisibility,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
@@ -494,6 +497,54 @@ describe("ConversationResource", () => {
           fileCopyStatus: "pending",
         },
       });
+    });
+
+    it("tolerates both legacy and renamed visibilities when excluding test conversations", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const makeConvo = async (visibility: ConversationVisibility) =>
+        ConversationModel.create({
+          workspaceId: workspace.id,
+          sId: generateRandomModelSId(),
+          title: `visibility ${visibility}`,
+          visibility,
+          requestedSpaceIds: [],
+        });
+
+      const unlisted = await makeConvo("unlisted");
+      const visible = await makeConvo("visible");
+      const test = await makeConvo("test");
+      const hidden = await makeConvo("hidden");
+      const deleted = await makeConvo("deleted");
+
+      const ids = [unlisted.id, visible.id, test.id, hidden.id, deleted.id];
+
+      // Default: deleted is always excluded, everything else (including the
+      // legacy "test" and the renamed "hidden") is returned.
+      const fetchedDefault = await ConversationResource.fetchByModelIds(
+        auth,
+        ids
+      );
+      expect(new Set(fetchedDefault.map((c) => c.id))).toEqual(
+        new Set([unlisted.id, visible.id, test.id, hidden.id])
+      );
+
+      // excludeTest excludes both the legacy "test" and the renamed "hidden",
+      // and keeps both the legacy "unlisted" and the renamed "visible".
+      const fetchedExcludingTest = await ConversationResource.fetchByModelIds(
+        auth,
+        ids,
+        { excludeTest: true }
+      );
+      expect(new Set(fetchedExcludingTest.map((c) => c.id))).toEqual(
+        new Set([unlisted.id, visible.id])
+      );
     });
   });
 

@@ -53,6 +53,29 @@ export function normalizeConversationVisibility(
 }
 
 /**
+ * Translates an internal conversation visibility to the value exposed on the
+ * public API. During the "unlisted" -> "visible" / "test" -> "hidden" rename we
+ * keep the public wire contract on the legacy names so existing SDK clients are
+ * unaffected: "visible" is reported as "unlisted" and "hidden" as "test".
+ */
+export function toPublicConversationVisibility(
+  visibility: ConversationVisibility
+): ConversationPublicType["visibility"] {
+  switch (visibility) {
+    case "unlisted":
+    case "visible":
+      return "unlisted";
+    case "test":
+    case "hidden":
+      return "test";
+    case "deleted":
+      return "deleted";
+    default:
+      assertNever(visibility);
+  }
+}
+
+/**
  * Normalizes deprecated agent view values to their current equivalents.
  * The "workspace" view is deprecated and should be treated as "published".
  *
@@ -87,7 +110,7 @@ export function addBackwardCompatibleConversationWithoutContentFields(
     requestedGroupIds: [],
     // These properties are excluded from ConversationWithoutContentType used internally
     // but are still returned for the public API to stay backward compatible.
-    visibility: "unlisted" as ConversationVisibility, // Hardcoded as "deleted" conversations are not returned by the API
+    visibility: "unlisted", // Hardcoded as "deleted" conversations are not returned by the API
     owner: auth.getNonNullableWorkspace(),
   };
 }
@@ -116,6 +139,7 @@ export function addBackwardCompatibleConversationFields(
 ): ConversationPublicType {
   return {
     ...conversation,
+    visibility: toPublicConversationVisibility(conversation.visibility),
     requestedGroupIds: [],
     content: conversation.content.map((c) => {
       if (c.length === 0) {

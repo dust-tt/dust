@@ -452,17 +452,44 @@ export function isCompactionMessageType(
 
 /**
  * Visibility of a conversation.
- *  - 'unlisted' default value
+ *  - 'unlisted' / 'visible': default value, listed in the user's history.
  *  - 'deleted' conversations are soft-deleted and not visible to any user.
- *  - 'test' for conversations happening when a user 'tests' an agent not in their list using the "test" button: those conversations do not show in users' histories.
+ *  - 'test' / 'hidden' for conversations that do not show in users' histories:
+ *    conversations happening when a user 'tests' an agent not in their list
+ *    using the "test" button, and conversations created by the platform
+ *    (like the journal entry generation).
  *
- * :warning: test is also used for conversations created by the platform (like the journal entry generation)
- *
- * TODO:
- *  - rename unlisted to visible
- *  - test to hidden
+ * Migration in progress: 'unlisted' is being renamed to 'visible' and 'test'
+ * to 'hidden'. During the migration the union carries both the old and the new
+ * values so readers tolerate a mixed dataset; use the transitional
+ * `LISTED_CONVERSATION_VISIBILITIES` / `HIDDEN_CONVERSATION_VISIBILITIES`
+ * helpers below when querying. Once the backfill has run and old clients have
+ * cycled out, drop 'unlisted' and 'test' from the union.
  */
-export type ConversationVisibility = "unlisted" | "deleted" | "test";
+export type ConversationVisibility =
+  | "unlisted"
+  | "visible"
+  | "deleted"
+  | "test"
+  | "hidden";
+
+/**
+ * Transitional: visibilities that represent a normally-listed conversation.
+ * Collapses to `["visible"]` once the rename migration is complete.
+ */
+export const LISTED_CONVERSATION_VISIBILITIES = [
+  "unlisted",
+  "visible",
+] as const satisfies ConversationVisibility[];
+
+/**
+ * Transitional: visibilities that hide a conversation from users' histories.
+ * Collapses to `["hidden"]` once the rename migration is complete.
+ */
+export const HIDDEN_CONVERSATION_VISIBILITIES = [
+  "test",
+  "hidden",
+] as const satisfies ConversationVisibility[];
 
 export const CONVERSATION_URL_ACCESS_MODES = [
   "participants_only",

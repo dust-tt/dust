@@ -53,6 +53,8 @@ import {
   ConversationError,
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
+  HIDDEN_CONVERSATION_VISIBILITIES,
+  LISTED_CONVERSATION_VISIBILITIES,
 } from "@app/types/assistant/conversation";
 import {
   ACTIVE_WAKE_UP_STATUSES,
@@ -277,7 +279,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const excludedVisibilities: ConversationVisibility[] = ["deleted"];
 
     if (excludeTest) {
-      excludedVisibilities.push("test");
+      excludedVisibilities.push(...HIDDEN_CONVERSATION_VISIBILITIES);
     }
 
     const conversations = await this.model.findAll({
@@ -865,7 +867,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     // Test conversations are included by default. Use excludeTest to exclude them.
     if (options?.excludeTest) {
-      excludedVisibilities.push("test");
+      excludedVisibilities.push(...HIDDEN_CONVERSATION_VISIBILITIES);
     }
 
     if (excludedVisibilities.length > 0) {
@@ -1710,7 +1712,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           id: { [Op.in]: conversationIds },
           spaceId: { [Op.is]: null },
-          visibility: { [Op.eq]: "unlisted" },
+          visibility: { [Op.in]: LISTED_CONVERSATION_VISIBILITIES },
         },
       }
     );
@@ -1774,7 +1776,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
       id: { [Op.in]: conversationIds },
       spaceId: { [Op.is]: null },
-      visibility: { [Op.eq]: "unlisted" },
+      visibility: { [Op.in]: LISTED_CONVERSATION_VISIBILITIES },
       ...extraWhereClause,
     };
 
@@ -1946,7 +1948,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       {
         where: {
           spaceId: { [Op.in]: spaceIds },
-          visibility: { [Op.eq]: "unlisted" },
+          visibility: { [Op.in]: LISTED_CONVERSATION_VISIBILITIES },
         },
       }
     );
@@ -2022,7 +2024,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       {
         where: {
           spaceId: { [Op.eq]: spaceId },
-          visibility: { [Op.eq]: "unlisted" },
+          visibility: { [Op.in]: LISTED_CONVERSATION_VISIBILITIES },
         },
       }
     );

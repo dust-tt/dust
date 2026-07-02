@@ -187,7 +187,10 @@ const ConversationMetadataSchema = z.record(z.unknown());
 
 export const InternalPostConversationsRequestBodySchema = z.object({
   title: z.string().nullable(),
-  visibility: z.enum(["unlisted", "deleted", "test"]),
+  // During the visibility rename migration both old ("unlisted"/"test") and new
+  // ("visible"/"hidden") values are accepted. Collapse to the new values once the
+  // migration is complete.
+  visibility: z.enum(["unlisted", "visible", "deleted", "test", "hidden"]),
   spaceId: z.string().nullable(),
   message: MessageBaseSchema.nullable(),
   contentFragments: z.array(InternalPostContentFragmentRequestBodySchema),
