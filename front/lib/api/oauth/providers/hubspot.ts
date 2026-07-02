@@ -51,6 +51,7 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "crm.lists.write",
       "marketing-email",
       "content",
+      "tickets",
     ];
 
     const workspaceGrantedScopes = extraConfig?.workspace_granted_scopes;
