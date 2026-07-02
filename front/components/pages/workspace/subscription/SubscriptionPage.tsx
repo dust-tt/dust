@@ -473,32 +473,56 @@ export function SubscriptionPage() {
     : null;
 
   const migrationDate = (() => {
-    if (!isWorkspaceOnProPlan || !isMetronomeCheckout) {
+    if (!isWorkspaceOnProPlan || !isMetronomeCheckout || !perSeatPricing) {
       return null;
     }
-    if (!perSeatPricing) {
-      return null;
-    }
-    const periodEndMs = perSeatPricing.currentPeriodEndMs;
-    let d: Date;
+    // Rollout window [Jul 23, Aug 23) 2026 (UTC), matching the migration script.
+    const windowStartMs = Date.UTC(2026, 6, 23);
+    const windowEndMs = Date.UTC(2026, 7, 23);
+
+    let migrationMs: number;
     if (perSeatPricing.billingPeriod === "yearly") {
-      d = new Date(2026, 6, 23); // July 23, 2026
+      migrationMs = windowStartMs;
     } else {
-      if (periodEndMs === null) {
+      if (perSeatPricing.currentPeriodEndMs === null) {
         return null;
       }
-      d = new Date(periodEndMs);
-      const day = d.getDate();
-      d.setDate(1);
-      d.setMonth(d.getMonth() + 1);
-      const daysInMonth = new Date(
-        d.getFullYear(),
-        d.getMonth() + 1,
-        0
-      ).getDate();
-      d.setDate(Math.min(day, daysInMonth));
+      // Add `n` UTC months, clamping to the last day of the target month —
+      // same as the script's `addMonthsUTC`.
+      const addMonthsUTC = (ms: number, n: number): number => {
+        const d = new Date(ms);
+        const first = new Date(
+          Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1)
+        );
+        const ty = first.getUTCFullYear();
+        const tm = first.getUTCMonth();
+        const lastDay = new Date(Date.UTC(ty, tm + 1, 0)).getUTCDate();
+        return Date.UTC(
+          ty,
+          tm,
+          Math.min(d.getUTCDate(), lastDay),
+          d.getUTCHours(),
+          d.getUTCMinutes(),
+          d.getUTCSeconds()
+        );
+      };
+      // Roll the monthly renewal boundary forward until it lands in the window
+      // (do NOT unconditionally add a month) — same as `migrationDateInWindow`.
+      let ms = perSeatPricing.currentPeriodEndMs;
+      if (ms >= windowEndMs) {
+        return null;
+      }
+      let guard = 0;
+      while (ms < windowStartMs && guard < 24) {
+        ms = addMonthsUTC(ms, 1);
+        guard += 1;
+      }
+      if (ms < windowStartMs || ms >= windowEndMs) {
+        return null;
+      }
+      migrationMs = ms;
     }
-    return d.toLocaleDateString("en-US", {
+    return new Date(migrationMs).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
