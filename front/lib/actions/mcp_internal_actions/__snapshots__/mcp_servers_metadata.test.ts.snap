@@ -288,6 +288,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_meeting": "high",
     "create_note": "high",
     "create_task": "high",
+    "create_ticket": "high",
     "export_crm_objects_csv": "never_ask",
     "get_associated_meetings": "never_ask",
     "get_company": "never_ask",
