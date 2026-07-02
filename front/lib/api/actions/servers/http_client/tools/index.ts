@@ -4,7 +4,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   DEFAULT_TIMEOUT_MS,
@@ -33,9 +33,9 @@ const SAFE_RESPONSE_HEADERS = ["content-type", "content-length"];
 
 async function getBearerToken(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): Promise<string | null> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+  const toolConfig = toolContext?.runContext?.toolConfiguration;
   if (
     !toolConfig ||
     !isLightServerSideMCPToolConfiguration(toolConfig) ||
@@ -113,7 +113,7 @@ async function handleSendRequest(
     body?: string;
     timeout_ms?: number;
   },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ) {
   const timeoutMs = timeout_ms ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
@@ -121,7 +121,7 @@ async function handleSendRequest(
 
   const requestHeaders = validateAndSanitizeHeaders(headers);
 
-  const bearerToken = await getBearerToken(auth, agentLoopContext);
+  const bearerToken = await getBearerToken(auth, toolContext);
   if (bearerToken) {
     requestHeaders["Authorization"] = `Bearer ${bearerToken}`;
   }

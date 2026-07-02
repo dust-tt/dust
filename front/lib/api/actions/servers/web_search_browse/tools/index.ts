@@ -46,14 +46,14 @@ async function handleWebsearch(
   { query }: { query: string },
   extra: ToolHandlerExtra
 ) {
-  const { agentLoopContext } = extra;
-  if (!agentLoopContext?.runContext) {
+  const { toolContext } = extra;
+  if (!toolContext?.runContext) {
     return new Err(
       new MCPError("agentLoopRunContext is required where the tool is called.")
     );
   }
 
-  const agentLoopRunContext = agentLoopContext.runContext;
+  const agentLoopRunContext = toolContext.runContext;
 
   const { websearchResultCount, citationsOffset } =
     agentLoopRunContext.stepContext;
@@ -120,14 +120,14 @@ async function handleWebbrowser(
   },
   extra: ToolHandlerExtra
 ) {
-  const { agentLoopContext, auth } = extra;
-  if (!agentLoopContext?.runContext) {
+  const { toolContext, auth } = extra;
+  if (!toolContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const { toolConfiguration } = agentLoopContext.runContext;
+  const { toolConfiguration } = toolContext.runContext;
   const useSummarization =
     isLightServerSideMCPToolConfiguration(toolConfiguration) &&
     toolConfiguration.additionalConfiguration[USE_SUMMARY_SWITCH] === true;
@@ -161,7 +161,7 @@ async function handleWebbrowser(
   });
 
   if (useSummarization) {
-    const runCtx = agentLoopContext.runContext;
+    const runCtx = toolContext.runContext;
     const { citationsOffset, websearchResultCount } = runCtx.stepContext;
     const refs = getRefs().slice(
       citationsOffset,

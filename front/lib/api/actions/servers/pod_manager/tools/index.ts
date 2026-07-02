@@ -6,7 +6,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
@@ -99,13 +99,13 @@ function formatListedConversationWithoutMessages(
 
 export function createProjectManagerTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof POD_MANAGER_TOOLS_METADATA> = {
     add_content_node: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritablePodContext(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -195,7 +195,7 @@ export function createProjectManagerTools(
     remove_content_node: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritablePodContext(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -234,7 +234,7 @@ export function createProjectManagerTools(
     edit_information: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -323,7 +323,7 @@ export function createProjectManagerTools(
     [UPDATE_MEMBERS_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -469,7 +469,7 @@ export function createProjectManagerTools(
     get_information: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -541,7 +541,7 @@ export function createProjectManagerTools(
     [LIST_MEMBERS_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -942,7 +942,7 @@ export function createProjectManagerTools(
 
     retrieve_recent_documents: async (params) => {
       return withErrorHandling(async () => {
-        if (!agentLoopContext) {
+        if (!toolContext) {
           return new Err(
             new MCPError("No conversation context available", {
               tracked: false,
@@ -951,7 +951,7 @@ export function createProjectManagerTools(
         }
 
         const contextRes = await getPod(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -973,7 +973,7 @@ export function createProjectManagerTools(
           );
         }
 
-        if (!agentLoopContext?.runContext) {
+        if (!toolContext?.runContext) {
           throw new Error(
             "agentLoopRunContext is required where the tool is called"
           );
@@ -983,16 +983,15 @@ export function createProjectManagerTools(
           timeFrame: params.timeFrame,
           dataSources,
           nodeIds: params.nodeIds,
-          citationsOffset:
-            agentLoopContext.runContext.stepContext.citationsOffset,
-          retrievalTopK: agentLoopContext.runContext.stepContext.retrievalTopK,
+          citationsOffset: toolContext.runContext.stepContext.citationsOffset,
+          retrievalTopK: toolContext.runContext.stepContext.retrievalTopK,
         });
       }, "Failed to retrieve recent Pod documents");
     },
 
     [SEMANTIC_SEARCH_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
-        if (!agentLoopContext?.runContext) {
+        if (!toolContext?.runContext) {
           return new Err(
             new MCPError("No conversation context available", {
               tracked: false,
@@ -1002,7 +1001,7 @@ export function createProjectManagerTools(
 
         const scope = params.searchScope ?? "all";
         const contextRes = await getPod(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -1028,7 +1027,7 @@ export function createProjectManagerTools(
           relativeTimeFrame: params.relativeTimeFrame ?? "all",
           dataSources,
           nodeIds: params.nodeIds,
-          agentLoopContext,
+          toolContext,
         });
       }, "Failed to search Pod");
     },
@@ -1036,7 +1035,7 @@ export function createProjectManagerTools(
     create_conversation: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritablePodContext(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -1051,8 +1050,8 @@ export function createProjectManagerTools(
         let origin: UserMessageOrigin = "web";
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-        if (agentLoopContext?.runContext?.conversation?.content) {
-          const userMessage = agentLoopContext.runContext.conversation.content
+        if (toolContext?.runContext?.conversation?.content) {
+          const userMessage = toolContext.runContext.conversation.content
             .flat()
             .findLast(isUserMessageType);
           if (userMessage?.context) {
@@ -1063,10 +1062,10 @@ export function createProjectManagerTools(
 
         // Get agent configuration name & profile picture URL
         const agentName =
-          agentLoopContext?.runContext?.agentConfiguration?.name ?? "Agent";
+          toolContext?.runContext?.agentConfiguration?.name ?? "Agent";
 
         const agentProfilePictureUrl =
-          agentLoopContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
+          toolContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
 
         let mentions: { configurationId: string }[] = [];
         if (params.agentName) {
@@ -1146,7 +1145,7 @@ export function createProjectManagerTools(
     list_conversations: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -1294,7 +1293,7 @@ export function createProjectManagerTools(
     add_message_to_conversation: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritablePodContext(auth, {
-          agentLoopContext,
+          toolContext,
           dustPod: params.dustPod,
         });
         if (contextRes.isErr()) {
@@ -1306,8 +1305,7 @@ export function createProjectManagerTools(
         const owner = auth.getNonNullableWorkspace();
 
         const conversationId =
-          params.conversationId ??
-          agentLoopContext?.runContext?.conversation?.sId;
+          params.conversationId ?? toolContext?.runContext?.conversation?.sId;
 
         if (!conversationId) {
           return new Err(
@@ -1343,8 +1341,8 @@ export function createProjectManagerTools(
         let origin: UserMessageOrigin = "web";
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-        if (agentLoopContext?.runContext?.conversation?.content) {
-          const userMessage = agentLoopContext.runContext.conversation.content
+        if (toolContext?.runContext?.conversation?.content) {
+          const userMessage = toolContext.runContext.conversation.content
             .flat()
             .findLast(isUserMessageType);
           if (userMessage?.context) {
@@ -1354,9 +1352,9 @@ export function createProjectManagerTools(
         }
 
         const agentName =
-          agentLoopContext?.runContext?.agentConfiguration?.name ?? "Agent";
+          toolContext?.runContext?.agentConfiguration?.name ?? "Agent";
         const agentProfilePictureUrl =
-          agentLoopContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
+          toolContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
 
         let mentions: { configurationId: string }[] = [];
         if (params.agentName) {

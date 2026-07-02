@@ -142,9 +142,9 @@ async function catText(
 
 export async function catHandler(
   { path, offset, limit }: { path: string; offset?: number; limit?: number },
-  { auth, agentLoopContext }: ToolHandlerExtra
+  { auth, toolContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  const conversationRes = requireAgentLoopConversation({ toolContext });
   if (conversationRes.isErr()) {
     return conversationRes;
   }

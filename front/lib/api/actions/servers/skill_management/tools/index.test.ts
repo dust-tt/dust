@@ -108,7 +108,7 @@ describe("skill_management enable_skill tool", () => {
   } = {}) {
     return {
       auth,
-      agentLoopContext: {
+      toolContext: {
         runContext: {
           agentConfiguration,
           agentMessage,

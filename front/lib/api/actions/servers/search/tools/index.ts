@@ -8,7 +8,7 @@ import {
   applyNodeIdsFilterToCoreSearchArgs,
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopContextType, StepContext } from "@app/lib/actions/types";
+import type { StepContext, ToolContextType } from "@app/lib/actions/types";
 import {
   SEARCH_TOOL_METADATA_WITH_TAGS,
   SEARCH_TOOL_NAME,
@@ -43,7 +43,7 @@ export async function searchFunction(
     nodeIds,
     tagsIn,
     tagsNot,
-    agentLoopContext,
+    toolContext,
     stepContext,
   }: {
     query: string;
@@ -53,7 +53,7 @@ export async function searchFunction(
     nodeIds?: string[];
     tagsIn?: string[];
     tagsNot?: string[];
-    agentLoopContext?: AgentLoopContextType;
+    toolContext?: ToolContextType;
     stepContext?: StepContext;
   }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
@@ -62,14 +62,14 @@ export async function searchFunction(
   const credentials = await getLlmCredentials(auth);
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
-  if (!agentLoopContext?.runContext?.stepContext && !stepContext) {
+  if (!toolContext?.runContext?.stepContext && !stepContext) {
     throw new Error(
       "agentLoopRunContext.stepContext or stepContext is required where the tool is called."
     );
   }
 
   const { retrievalTopK, citationsOffset } =
-    agentLoopContext?.runContext?.stepContext ?? stepContext!;
+    toolContext?.runContext?.stepContext ?? stepContext!;
 
   // Get the core search args for each data source, fail if any of them are invalid.
   const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);
@@ -196,11 +196,11 @@ export async function searchFunction(
 }
 
 const handlers: ToolHandlers<typeof SEARCH_TOOLS_METADATA> = {
-  [SEARCH_TOOL_NAME]: (params, { auth, agentLoopContext }) =>
+  [SEARCH_TOOL_NAME]: (params, { auth, toolContext }) =>
     searchFunction(auth, {
       ...params,
       relativeTimeFrame: params.relativeTimeFrame ?? "all",
-      agentLoopContext,
+      toolContext,
     }),
 };
 

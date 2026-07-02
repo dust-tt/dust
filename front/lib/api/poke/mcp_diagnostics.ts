@@ -600,7 +600,7 @@ async function runConnectListToolsCheck(
 ): Promise<DiagnosticCheckResult> {
   const startedAt = Date.now();
 
-  const agentLoopContext =
+  const toolContext =
     connectionType === "personal"
       ? { runContext: {} as AgentLoopRunContextType }
       : undefined;
@@ -611,7 +611,7 @@ async function runConnectListToolsCheck(
       mcpServerId,
       oAuthUseCase,
     },
-    agentLoopContext,
+    toolContext,
   });
 
   if (connectRes.isErr()) {

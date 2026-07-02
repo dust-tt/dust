@@ -5,7 +5,7 @@ import type {
   DustPodConfigurationType,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
@@ -101,7 +101,7 @@ export async function buildProjectRetrieveDataSources(
 export async function getPod(
   auth: Authenticator,
   from:
-    | { agentLoopContext?: AgentLoopContextType }
+    | { toolContext?: ToolContextType }
     | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
@@ -142,9 +142,9 @@ export async function getPod(
   }
 
   // Otherwise, use the existing logic to get space from conversation context.
-  if ("agentLoopContext" in from && from.agentLoopContext) {
-    const { agentLoopContext } = from;
-    if (!agentLoopContext.runContext?.conversation) {
+  if ("toolContext" in from && from.toolContext) {
+    const { toolContext } = from;
+    if (!toolContext.runContext?.conversation) {
       return new Err(
         new MCPError("No conversation context available", { tracked: false })
       );
@@ -153,7 +153,7 @@ export async function getPod(
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(
         auth,
-        agentLoopContext.runContext.conversation.sId
+        toolContext.runContext.conversation.sId
       );
 
     if (conversationRes.isErr()) {
@@ -214,7 +214,7 @@ export function checkWritePermission(
 export async function getWritablePodContext(
   auth: Authenticator,
   from:
-    | { agentLoopContext?: AgentLoopContextType }
+    | { toolContext?: ToolContextType }
     | { dustPod?: DustPodConfigurationType }
 ): Promise<Result<PodContext, MCPError>> {
   const contextRes = await getPod(auth, from);

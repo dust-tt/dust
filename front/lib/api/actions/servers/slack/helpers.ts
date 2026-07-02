@@ -1,6 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   formatSlackMessageForLLM,
   renderFormattedMessage,
@@ -749,7 +749,7 @@ export async function executeListPublicChannels(
 
 export async function executePostMessage(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
+  toolContext: ToolContextType,
   {
     accessToken,
     to,
@@ -794,10 +794,10 @@ export async function executePostMessage(
     const agentUrl = getConversationRoute(
       auth.getNonNullableWorkspace().sId,
       "new",
-      `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
+      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
       config.getAppUrl()
     );
-    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
   } else {
     message = slackifyMarkdown(originalMessage);
   }
@@ -811,7 +811,7 @@ export async function executePostMessage(
     const fileResult = await getFileFromConversationAttachment(
       auth,
       fileId,
-      agentLoopContext
+      toolContext
     );
     if (fileResult.isErr()) {
       return new Err(
@@ -921,7 +921,7 @@ export async function executeUpdateMessage({
 
 export async function executeScheduleMessage(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType,
+  toolContext: ToolContextType,
   {
     accessToken,
     to,
@@ -949,10 +949,10 @@ export async function executeScheduleMessage(
     const agentUrl = getConversationRoute(
       auth.getNonNullableWorkspace().sId,
       "new",
-      `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
+      `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
       config.getAppUrl()
     );
-    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
+    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
   } else {
     message = slackifyMarkdown(originalMessage);
   }

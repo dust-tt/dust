@@ -95,10 +95,10 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
     }
   },
 
-  set_conversation_title: async ({ title }, { auth, agentLoopContext }) => {
+  set_conversation_title: async ({ title }, { auth, toolContext }) => {
     const conversation =
-      agentLoopContext?.runContext?.conversation ??
-      agentLoopContext?.listToolsContext?.conversation;
+      toolContext?.runContext?.conversation ??
+      toolContext?.listToolsContext?.conversation;
 
     if (!conversation) {
       return new Err(

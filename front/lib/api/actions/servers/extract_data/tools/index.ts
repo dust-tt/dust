@@ -4,7 +4,7 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import type { ProcessActionOutputsType } from "@app/lib/api/actions/servers/extract_data/helpers";
 import {
   generateProcessToolOutput,
@@ -27,10 +27,10 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 // Create tools with access to auth via closure
 export function createExtractDataTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ) {
-  const areTagsDynamic = agentLoopContext
-    ? shouldAutoGenerateTags(agentLoopContext)
+  const areTagsDynamic = toolContext
+    ? shouldAutoGenerateTags(toolContext)
     : false;
 
   async function extractFunction({
@@ -50,10 +50,10 @@ export function createExtractDataTools(
   }) {
     // Unwrap and prepare variables.
     assert(
-      agentLoopContext?.runContext,
+      toolContext?.runContext,
       "agentLoopContext is required to run the extract_data tool"
     );
-    const { agentConfiguration, conversation } = agentLoopContext.runContext;
+    const { agentConfiguration, conversation } = toolContext.runContext;
     const { model } = agentConfiguration;
 
     // Defensive handling: parse jsonSchema if it arrives as a JSON string.

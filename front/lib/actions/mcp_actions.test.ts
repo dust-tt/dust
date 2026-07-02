@@ -94,14 +94,14 @@ vi.mock(
       withToolResultProcessing: spy,
       registerTool: (
         auth: Parameters<typeof actual.registerTool>[0],
-        agentLoopContext: Parameters<typeof actual.registerTool>[1],
+        toolContext: Parameters<typeof actual.registerTool>[1],
         server: Parameters<typeof actual.registerTool>[2],
         tool: Parameters<typeof actual.registerTool>[3],
         opts: Parameters<typeof actual.registerTool>[4]
       ) => {
         actual.registerTool(
           auth,
-          agentLoopContext,
+          toolContext,
           server,
           {
             ...tool,
@@ -140,8 +140,7 @@ vi.mock("@app/lib/api/actions/servers/search/tools", async () => {
       mockSearchFunction({
         ...(params as object),
         auth: (extra as { auth?: unknown }).auth,
-        agentLoopContext: (extra as { agentLoopContext?: unknown })
-          .agentLoopContext,
+        toolContext: (extra as { toolContext?: unknown }).toolContext,
       }),
   };
   const handlersWithTags = {

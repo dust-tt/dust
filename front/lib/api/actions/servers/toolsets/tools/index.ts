@@ -20,9 +20,9 @@ import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
-  list: async (_, { auth, agentLoopContext }) => {
+  list: async (_, { auth, toolContext }) => {
     const mcpServerViewIdsFromAgentConfiguration =
-      agentLoopContext?.runContext?.agentConfiguration.actions
+      toolContext?.runContext?.agentConfiguration.actions
         .filter(isServerSideMCPServerConfiguration)
         .map((action) => action.mcpServerViewId) ?? [];
 
@@ -75,8 +75,8 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
     );
   },
 
-  enable: async ({ toolsetId }, { auth, agentLoopContext }) => {
-    const conversationId = agentLoopContext?.runContext?.conversation.sId;
+  enable: async ({ toolsetId }, { auth, toolContext }) => {
+    const conversationId = toolContext?.runContext?.conversation.sId;
     if (!conversationId) {
       return new Err(
         new MCPError("No active conversation context", { tracked: false })
@@ -108,7 +108,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
     );
 
     const agentConfigurationId =
-      agentLoopContext?.runContext?.agentConfiguration.sId;
+      toolContext?.runContext?.agentConfiguration.sId;
 
     const res = await api.postConversationTools({
       conversationId,
