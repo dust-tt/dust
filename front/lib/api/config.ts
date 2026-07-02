@@ -463,6 +463,16 @@ const config = {
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
   },
+  // Base URL of this process's own HTTP server, used by in-pod callers such as
+  // the profiler script to reach the server. Must mirror how front-api/server.ts
+  // binds: in Kubernetes HOSTNAME is the pod name (mapped to the pod IP), so the
+  // server does not listen on localhost.
+  getSelfServerBaseUrl: (): string => {
+    const hostname =
+      EnvironmentConfig.getOptionalEnvVariable("HOSTNAME") ?? "localhost";
+    const port = EnvironmentConfig.getOptionalEnvVariable("PORT") ?? "3000";
+    return `http://${hostname}:${port}`;
+  },
   getApolloApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("APOLLO_API_KEY");
   },

@@ -19,7 +19,7 @@ makeScript({}, async ({ execute }) => {
 
     // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
-      `http://localhost:3000/api/debug/profiler?secret=${debugProfilerSecret}`
+      `${config.getSelfServerBaseUrl()}/api/debug/profiler?secret=${debugProfilerSecret}`
     );
 
     if (!response.ok) {
