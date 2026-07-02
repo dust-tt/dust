@@ -163,6 +163,76 @@ describe("OpenAI reasoning round-trip — persisted metadata to Responses input"
   });
 });
 
+describe("convertToOldEvent — token_usage", () => {
+  it("sums the per-TTL cache-creation breakdown into cacheCreationTokens and keeps the split", () => {
+    expect(
+      convertToOldEvent(
+        {
+          type: "token_usage",
+          content: {
+            cacheCreated: 0,
+            longCacheCreated: 30_000,
+            shortCacheCreated: 5_000,
+            cacheHit: 20_000,
+            standardInput: 1_000,
+            standardOutput: 400,
+            reasoning: 100,
+          },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toEqual({
+      type: "token_usage",
+      content: {
+        inputTokens: 56_000,
+        outputTokens: 400,
+        reasoningTokens: 100,
+        totalTokens: 56_500,
+        cachedTokens: 20_000,
+        cacheCreationTokens: 35_000,
+        longCacheCreationTokens: 30_000,
+        shortCacheCreationTokens: 5_000,
+        uncachedInputTokens: 1_000,
+      },
+      metadata: llmMetadata,
+    });
+  });
+
+  it("keeps a flat cache-creation total without inventing a TTL split", () => {
+    expect(
+      convertToOldEvent(
+        {
+          type: "token_usage",
+          content: {
+            cacheCreated: 35_000,
+            longCacheCreated: 0,
+            shortCacheCreated: 0,
+            cacheHit: 20_000,
+            standardInput: 1_000,
+            standardOutput: 400,
+            reasoning: 0,
+          },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toEqual({
+      type: "token_usage",
+      content: {
+        inputTokens: 56_000,
+        outputTokens: 400,
+        reasoningTokens: 0,
+        totalTokens: 56_400,
+        cachedTokens: 20_000,
+        cacheCreationTokens: 35_000,
+        uncachedInputTokens: 1_000,
+      },
+      metadata: llmMetadata,
+    });
+  });
+});
+
 describe("convertToOldEvent", () => {
   it("forwards a provider_passthrough event with its content and the old metadata", () => {
     const event: ProviderPassthroughEvent = {

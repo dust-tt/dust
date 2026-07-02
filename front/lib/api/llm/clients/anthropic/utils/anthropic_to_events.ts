@@ -78,6 +78,8 @@ export async function* streamLLMEvents(
     outputTokens: 0,
     cachedTokens: 0,
     cacheCreationTokens: 0,
+    longCacheCreationTokens: 0,
+    shortCacheCreationTokens: 0,
     uncachedInputTokens: 0,
     totalTokens: 0,
     reasoningTokens: 0,
@@ -830,6 +832,10 @@ async function succeededMessageToEvents(
     outputTokens: usage.output_tokens - reasoningTokens,
     cachedTokens,
     cacheCreationTokens,
+    longCacheCreationTokens:
+      usage.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+    shortCacheCreationTokens:
+      usage.cache_creation?.ephemeral_5m_input_tokens ?? 0,
     uncachedInputTokens,
     totalTokens: inputTokens + usage.output_tokens,
     reasoningTokens,

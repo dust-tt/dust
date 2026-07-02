@@ -98,7 +98,13 @@ export type LLMOutputItem =
 // Completion results
 
 export interface TokenUsage {
+  // Total cache-write tokens across all cache retention durations.
   cacheCreationTokens?: number;
+  // Breakdown of cacheCreationTokens by cache retention duration, for
+  // providers that bill long-lived cache writes at a premium over short-lived
+  // ones. Absent when the provider only reports a flat total.
+  longCacheCreationTokens?: number;
+  shortCacheCreationTokens?: number;
   cachedTokens?: number;
   inputTokens: number;
   outputTokens: number;
