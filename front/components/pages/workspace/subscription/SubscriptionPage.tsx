@@ -601,25 +601,18 @@ export function SubscriptionPage() {
               )}
             </ContentMessage>
           )}
-          {scheduledMigrationLabel ? (
+          {(scheduledMigrationLabel ?? migrationDate) && !endDate ? (
             <ContentMessage
               title="Your plan is scheduled to migrate to the new credit-based pricing."
               variant="blue"
             >
               On{" "}
-              <span className="font-semibold">{scheduledMigrationLabel}</span>{" "}
+              <span className="font-semibold">
+                {scheduledMigrationLabel ?? migrationDate}
+              </span>{" "}
               your plan will move to the new credit-based pricing. To opt out,
               cancel your subscription below — it will then end at the end of
               your current billing period instead.
-            </ContentMessage>
-          ) : migrationDate && !endDate ? (
-            <ContentMessage
-              title="Your plan will be migrated to the new credit-based pricing."
-              variant="blue"
-            >
-              Your current plan will be automatically migrated to the new
-              credit-based pricing on{" "}
-              <span className="font-semibold">{migrationDate}</span>.
             </ContentMessage>
           ) : null}
           <>
