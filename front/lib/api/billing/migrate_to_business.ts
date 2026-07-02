@@ -260,11 +260,18 @@ export async function migrateWorkspaceToBusiness(
     migrateNow = false,
     migrateNextHour = false,
     execute,
+    skipCancellingSubscription = true,
   }: {
     deps: MigrationDeps;
     migrateNow?: boolean;
     migrateNextHour?: boolean;
     execute: boolean;
+    // Skip workspaces whose Stripe subscription is already scheduled to cancel
+    // (a leaving customer) — the default for the batch migration. `resume` sets
+    // this to false: it deliberately re-migrates a subscription the user had
+    // cancelled (the Stripe cancellation is rescheduled to the migration date by
+    // the switch).
+    skipCancellingSubscription?: boolean;
   }
 ): Promise<Result<MigrateToBusinessOutcome, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -381,6 +388,23 @@ export async function migrateWorkspaceToBusiness(
       )
     );
   }
+
+  // Don't migrate a subscription that is already scheduled to cancel (a leaving
+  // customer): starting a Business contract would hijack their cancellation —
+  // and for a yearly sub ending after the window it would pull the cancellation
+  // forward to the migration date. Skip; no pending contract is created.
+  if (
+    skipCancellingSubscription &&
+    (stripeSubscription.cancel_at_period_end ||
+      stripeSubscription.cancel_at !== null ||
+      stripeSubscription.status === "canceled")
+  ) {
+    return new Ok({
+      status: "skipped",
+      reason: "subscription is already scheduled to cancel",
+    });
+  }
+
   const stripeCustomerId = getCustomerId(stripeSubscription);
 
   const body = SwitchContractBodySchema.parse({

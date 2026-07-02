@@ -269,6 +269,9 @@ export async function resumeWorkspaceMigration(
   const migrateResult = await migrateWorkspaceToBusiness(auth, {
     deps: depsResult.value,
     execute: true,
+    // The subscription is in a cancelled state (that's what we're undoing) — the
+    // switch reschedules the Stripe cancellation to the migration date.
+    skipCancellingSubscription: false,
   });
   if (migrateResult.isErr()) {
     return new Err(
