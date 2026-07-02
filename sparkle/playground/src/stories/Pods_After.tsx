@@ -7,6 +7,8 @@ import {
   Breadcrumbs,
   Button,
   Card,
+  Hexagon01,
+  IntersectDust,
   MessageCircle01,
   MessageChatSquare,
   CheckCircle,
@@ -37,20 +39,22 @@ import {
   NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
+  NavTabPill,
+  NavTabPillList,
+  NavTabPillTrigger,
   Edit04,
   Planet,
   Plus,
-  PuzzlePiece01,
   ScrollArea,
   ScrollBar,
   SearchInput,
   SlackLogo,
-  SpaceClosed,
-  SpaceOpen,
+  Cube01,
+  CubeOutline,
   Star01,
   Trash01,
   Users01,
-  User01,
+  User03,
   XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -61,8 +65,14 @@ import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { FreeButtonSwitch } from "../components/FreeButtonSwitch";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxView } from "../components/InboxView";
-import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import {
+  type AgentSort,
+  type AgentType,
+  NewConversation,
+  NewConversationActionBar,
+  type WelcomeAgentTab,
+} from "../components/NewConversation";
 import {
   PanelLayout,
   PanelLayoutNav,
@@ -214,7 +224,9 @@ export default function Pods_After() {
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
   const [myPodActiveTab, setMyPodActiveTab] = useState("conversations");
-  const [inboxActiveTab, setInboxActiveTab] = useState("conversations");
+  const [inboxActiveTab, setInboxActiveTab] = useState<
+    "conversations" | "tasks"
+  >("conversations");
   const [podTabsBySpaceId, setPodTabsBySpaceId] = useState<
     Map<string, PodTabsState>
   >(new Map());
@@ -233,7 +245,14 @@ export default function Pods_After() {
     "chat"
   );
   const [searchText, setSearchText] = useState("");
-  const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
+  const [welcomeAgentTab, setWelcomeAgentTab] =
+    useState<WelcomeAgentTab>("favorites");
+  const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
+  const [welcomeAgentType, setWelcomeAgentType] = useState<AgentType>("all");
+  const [welcomeAgentCategory, setWelcomeAgentCategory] = useState<
+    string | null
+  >(null);
+  const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, SpaceNotificationPreference>>(new Map());
   const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
@@ -827,7 +846,7 @@ export default function Pods_After() {
       <NavigationListItem
         key={space.id}
         label={space.name}
-        icon={isRestricted ? SpaceOpen : SpaceClosed}
+        icon={isRestricted ? Cube01 : CubeOutline}
         selected={p2View.kind === "space" && p2View.spaceId === space.id}
         count={count}
         hasActivity={hasActivity}
@@ -1091,13 +1110,19 @@ export default function Pods_After() {
       );
     // welcome
     return (
-      <div className="flex h-full w-full items-center justify-center bg-background">
-        <div className="flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
-          <div className="heading-2xl text-foreground">{greeting}</div>
-          <InputBar placeholder="Ask a question" />
-          <div className="heading-lg text-foreground">Chat with…</div>
-        </div>
-      </div>
+      <NewConversation
+        greeting={greeting}
+        spaces={spaces}
+        agentTab={welcomeAgentTab}
+        onAgentTabChange={setWelcomeAgentTab}
+        agentSort={welcomeAgentSort}
+        onAgentSortChange={setWelcomeAgentSort}
+        agentType={welcomeAgentType}
+        onAgentTypeChange={setWelcomeAgentType}
+        agentCategory={welcomeAgentCategory}
+        onAgentCategoryChange={setWelcomeAgentCategory}
+        onToolbarPinnedChange={setIsWelcomeToolbarPinned}
+      />
     );
   })();
 
@@ -1208,7 +1233,7 @@ export default function Pods_After() {
       );
     if (p2View.kind === "inbox")
       return (
-        <FreeButtonSwitch
+        <FreeButtonSwitch<"conversations" | "tasks">
           value={inboxActiveTab}
           onValueChange={setInboxActiveTab}
           options={[
@@ -1233,6 +1258,29 @@ export default function Pods_After() {
           size="sm"
           hasLighterFont
         />
+      );
+    if (p2View.kind === "welcome")
+      return (
+        <div
+          className={
+            "w-full transition-opacity duration-200 " +
+            (isWelcomeToolbarPinned
+              ? "opacity-100"
+              : "opacity-0 pointer-events-none")
+          }
+          aria-hidden={!isWelcomeToolbarPinned}
+        >
+          <NewConversationActionBar
+            value={welcomeAgentTab}
+            onValueChange={setWelcomeAgentTab}
+            agentSort={welcomeAgentSort}
+            onAgentSortChange={setWelcomeAgentSort}
+            agentType={welcomeAgentType}
+            onAgentTypeChange={setWelcomeAgentType}
+            agentCategory={welcomeAgentCategory}
+            onAgentCategoryChange={setWelcomeAgentCategory}
+          />
+        </div>
       );
     return null;
   })();
@@ -1279,20 +1327,25 @@ export default function Pods_After() {
 
   // ── Sidebar (Nav) top bar ─────────────────────────────────────────────────
   const navTopBar = (
-    <FreeButtonSwitch<"chat" | "spaces" | "admin">
+    <NavTabPill
       value={activeTab}
-      onValueChange={setActiveTab}
-      options={[
-        { value: "chat", label: "Chat", icon: MessageChatSquare },
-        { value: "spaces", label: "Spaces", icon: Planet },
-        { value: "admin", icon: Settings01 },
-      ]}
-    />
+      onValueChange={(v) => setActiveTab(v as "chat" | "spaces" | "admin")}
+    >
+      <NavTabPillList>
+        <NavTabPillTrigger value="chat" icon={IntersectDust}>
+          Work
+        </NavTabPillTrigger>
+        <NavTabPillTrigger value="spaces" icon={Planet}>
+          Spaces
+        </NavTabPillTrigger>
+        <NavTabPillTrigger value="admin" icon={Hexagon01} />
+      </NavTabPillList>
+    </NavTabPill>
   );
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
   const navContent = (
-    <div className="flex min-h-0 flex-1 flex-col bg-muted-background">
+    <div className="flex min-h-0 flex-1 flex-col bg-app-background">
       {/* ── Chat tab ── */}
       {activeTab === "chat" && (
         <div className="flex min-h-0 flex-1 flex-col">
@@ -1308,9 +1361,8 @@ export default function Pods_After() {
               />
               <Button
                 variant="primary"
-                tooltip="New Conversation"
+                tooltip="New Conversation, Agent, Skill…"
                 size="sm"
-                icon={MessageCircle01}
                 label="New"
                 onClick={() => {
                   setP2View({ kind: "welcome" });
@@ -1319,90 +1371,6 @@ export default function Pods_After() {
                   setCameFromInbox(false);
                 }}
               />
-              <DropdownMenu
-                open={isAgentsDropdownOpen}
-                onOpenChange={setIsAgentsDropdownOpen}
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost-secondary"
-                    size="sm"
-                    icon={DotsHorizontal}
-                    aria-label="More options"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel label="Agents" />
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger
-                      icon={Plus}
-                      label="Build an agent"
-                    />
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem
-                        icon={Edit04}
-                        label="From scratch"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                      <DropdownMenuItem
-                        icon={Lightbulb04}
-                        label="Browse templates"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsAgentsDropdownOpen(false);
-                          setP2View({ kind: "templates" });
-                          setP3View(null);
-                        }}
-                      />
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuItem
-                    label="Manage agents"
-                    icon={UserSquare}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel label="Skills" />
-                  <DropdownMenuItem
-                    label="New skill"
-                    icon={Plus}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="Manage skills"
-                    icon={PuzzlePiece01}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel label="Conversations" />
-                  <DropdownMenuItem
-                    label="Clear conversation history"
-                    icon={Trash01}
-                    variant="warning"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
 
             <NavigationList className="px-2">
@@ -1422,7 +1390,7 @@ export default function Pods_After() {
                   />
                   <NavigationListItem
                     label="My Pod"
-                    icon={User01}
+                    icon={User03}
                     selected={p2View.kind === "myPod"}
                     onClick={() => {
                       setP2View({ kind: "myPod" });
@@ -1612,7 +1580,7 @@ export default function Pods_After() {
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={User01}
+              icon={User03}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

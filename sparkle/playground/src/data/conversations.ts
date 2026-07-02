@@ -567,6 +567,8 @@ Impact estimate:
 - Draft interaction states for desktop + mobile
 - Define the suggestion ranking rules
 - Partner with analytics on success metrics
+
+I based the discoverability estimate on :file[search-usability-audit.pdf]{type=pdf id=usability-audit}.
 `;
 
   const exampleLongRoadmap = `
@@ -590,6 +592,19 @@ Phase 3: Quality + performance
 Risks:
 - Suggestion relevance might lag without feedback loop
 - Mobile layout needs careful input sizing
+`;
+
+  // Demonstrates inline file inserts (the `:file[...]` directive): a
+  // deliverables list plus an in-sentence reference. Clicking a chip opens the
+  // preview sheet in ConversationView.
+  const exampleDeliverables = `
+I packaged everything from the search redesign review into three files:
+
+- **Design proposal:** :file[Search_Redesign_Proposal.docx]{type=doc id=search-proposal}
+- **Interaction spec:** :file[search-interaction-states.xlsx]{type=xlsx id=search-states}
+- **Summary notes:** :file[search_review_summary.md]{type=md id=search-summary}
+
+I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topnav-mockup} so you can reference it while reviewing. The full rationale lives in the proposal.
 `;
 
   // Conversation 1: Story-like assets
@@ -1275,6 +1290,26 @@ Each beat ~30 seconds. Ready for your review.`,
           backgroundColor: agent2.backgroundColor,
         },
       },
+    },
+    {
+      kind: "message",
+      id: "msg-2-8b",
+      timestamp: new Date(conv2Start.getTime() + 50 * 60 * 1000),
+      ownerId: agent2.id,
+      ownerType: "agent",
+      type: "agent",
+      group: {
+        id: "group-agent-review",
+        type: "agent",
+        name: agent2.name,
+        timestamp: "11:02",
+        completionStatus: "Completed in 24 sec",
+        avatar: {
+          emoji: agent2.emoji,
+          backgroundColor: agent2.backgroundColor,
+        },
+      },
+      markdown: exampleDeliverables,
     },
     {
       kind: "message",
