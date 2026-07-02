@@ -326,7 +326,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       );
     }
 
-    const existingSkill = await SkillResource.fetchBauth, trimmedName);
+    const existingSkill = await SkillResource.fetchByName(auth, trimmedName);
     if (existingSkill) {
       return new Err(
         new MCPError(`A skill with the name "${trimmedName}" already exists.`)
@@ -548,7 +548,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(new MCPError("Skill name cannot be empty."));
     }
 
-    const existingSkill = await SkillResource.fetchBauth, trimmedName);
+    const existingSkill = await SkillResource.fetchByName(auth, trimmedName);
     if (existingSkill && existingSkill.id !== skill.id) {
       return new Err(
         new MCPError(`A skill with the name "${trimmedName}" already exists.`)
