@@ -40,6 +40,7 @@ export const SALESLOFT_SERVER = {
     authorization: null,
     icon: "SalesloftLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesloft-mcp",
+    toolCategory: "advanced",
   },
   tools: Object.values(SALESLOFT_TOOLS_METADATA).map((t) => ({
     name: t.name,

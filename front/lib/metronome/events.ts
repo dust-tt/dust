@@ -1,7 +1,14 @@
 import {
+  getInternalMCPServerMetadata,
   type InternalMCPServerNameType,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPToolType } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  type InternalMCPServerDefinitionType,
+  TOOL_CATEGORIES,
+  type ToolCategory,
+} from "@app/lib/api/mcp";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
@@ -47,13 +54,12 @@ function truncatePropertyValue(value: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tool category mapping
+// Tool category and billing info
 // ---------------------------------------------------------------------------
-// Basic: 1 AWU
-// Advanced: 3 AWU
-export const TOOL_CATEGORIES = ["basic", "advanced"] as const;
+// basic: 1 AWU, advanced: 3 AWU; freeUsage overrides to 0 AWU regardless of category
 
-export type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+// Re-export from mcp so consumers can import from one place.
+export { TOOL_CATEGORIES, type ToolCategory } from "@app/lib/api/mcp";
 
 // AWU price per tool invocation by category (1 AWU = $0.01). Canonical source
 // for both the Tool Usage rate-card prices (scripts/metronome_setup.ts) and the
@@ -65,106 +71,29 @@ export const TOOL_CATEGORY_AWU_WEIGHTS: Record<ToolCategory, number> = {
 };
 
 export function isToolCategory(value: string): value is ToolCategory {
-  return value in TOOL_CATEGORY_AWU_WEIGHTS;
+  return TOOL_CATEGORIES.includes(value as ToolCategory);
 }
 
-// Exhaustive map — TypeScript will error if a new internal MCP server is added
-// without being categorized here.
-const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
-  // Set as basic but overridden as free
-  agent_memory: "basic",
-  agent_router: "basic",
-  common_utilities: "basic",
-  toolsets: "basic",
-
-  // Basic (1 AWU) — web search, orchestration, platform utilities.
-  "web_search_&_browse": "basic",
-  run_agent: "basic",
-  agent_sidekick_agent_state: "basic",
-  agent_sidekick_context: "basic",
-  run_dust_app: "basic",
-  user_mentions: "basic",
-  missing_action_catcher: "basic",
-  primitive_types_debugger: "basic",
-  jit_testing: "basic",
-  skill_authoring: "basic",
-  skill_management: "basic",
-  schedules_management: "basic",
-  pod_manager: "basic",
-  pod_tasks: "basic",
-  poke: "basic",
-  ask_user_question: "basic",
-  wakeups: "basic",
-  plan_mode: "basic",
-
-  // Advanced (3 AWU) — retrieval, MCP read/write, data warehouse, generation, sandbox
-  search: "advanced",
-  query_tables_v2: "advanced",
-  data_warehouses: "advanced",
-  data_sources_file_system: "advanced",
-  include_data: "advanced",
-  conversation_files: "advanced",
-  files: "advanced",
-  extract_data: "advanced",
-  http_client: "advanced",
-  sandbox: "advanced",
-  sandbox_functions: "advanced",
-  file_generation: "advanced",
-  image_generation: "advanced",
-  sound_studio: "advanced",
-  speech_generator: "advanced",
-  interactive_content: "advanced",
-  confluence: "advanced",
-  databricks: "advanced",
-  exa_people_and_company: "advanced",
-  fathom: "advanced",
-  freshservice: "advanced",
-  github: "advanced",
-  gmail: "advanced",
-  google_calendar: "advanced",
-  google_drive: "advanced",
-  google_sheets: "advanced",
-  hubspot: "advanced",
-  jira: "advanced",
-  luma: "advanced",
-  microsoft_drive: "advanced",
-  microsoft_excel: "advanced",
-  microsoft_teams: "advanced",
-  monday: "advanced",
-  notion: "advanced",
-  openai_usage: "advanced",
-  workspace_analytics: "advanced",
-  outlook_calendar: "advanced",
-  outlook: "advanced",
-  productboard: "advanced",
-  salesforce: "advanced",
-  salesloft: "advanced",
-  slab: "advanced",
-  slack: "advanced",
-  slack_bot: "advanced",
-  snowflake: "advanced",
-  statuspage: "advanced",
-  ukg_ready: "advanced",
-  val_town: "advanced",
-  vanta: "advanced",
-  workday: "advanced",
-  front: "advanced",
-  gong: "advanced",
-  zendesk: "advanced",
-  ashby: "advanced",
-  clari_copilot: "advanced",
-};
-
-function getToolCategory(internalMCPServerName: string | null): ToolCategory {
-  if (
-    !internalMCPServerName ||
-    !isInternalMCPServerName(internalMCPServerName)
-  ) {
-    // External MCP servers (user-configured remote servers) fall into advanced
-    // as "Custom MCP call".
-    return "advanced";
+export function getToolBillingInfo(
+  serverName: string | null,
+  toolName: string
+): { toolCategory: ToolCategory; freeUsage: boolean } {
+  if (!serverName || !isInternalMCPServerName(serverName)) {
+    // External MCP servers (user-configured remote servers) are always advanced.
+    return { toolCategory: "advanced", freeUsage: false };
   }
-  return TOOL_CATEGORY_MAP[internalMCPServerName];
+  const metadata = getInternalMCPServerMetadata(serverName);
+  // Both casts are safe: each metadata file satisfies ServerMetadata which uses InternalMCPToolType
+  // and InternalMCPServerDefinitionType. The narrow as-const type drops optional fields absent from
+  // that specific object, so we cast to access them uniformly.
+  const serverInfo = metadata.serverInfo as InternalMCPServerDefinitionType;
+  const tool = (metadata.tools as InternalMCPToolType[]).find(
+    (t) => t.name === toolName
+  );
+  return {
+    toolCategory: tool?.toolCategory ?? serverInfo.toolCategory,
+    freeUsage: tool?.freeUsage ?? serverInfo.freeUsage ?? false,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -175,15 +104,6 @@ function getToolCategory(internalMCPServerName: string | null): ToolCategory {
 // user-requested output).
 export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>(["agent_sidekick"]);
-
-// Internal MCP servers whose tool invocations are always free regardless of
-// the message-level usage type (platform plumbing, not user output).
-const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
-  "agent_memory",
-  "agent_router",
-  "common_utilities",
-  "toolsets",
-]);
 
 function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
   if (origin == null) {
@@ -203,25 +123,11 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
-// A tool invocation is always free (priced at 0 in the rate card) when its
-// internal MCP server is platform plumbing — see FREE_TOOL_SERVERS.
-function isFreeToolServer(
-  internalMCPServerName: InternalMCPServerNameType | null
-): boolean {
-  return (
-    internalMCPServerName !== null &&
-    FREE_TOOL_SERVERS.has(internalMCPServerName)
-  );
-}
-
 function getToolUsageType(
   baseUsageType: UsageType,
-  internalMCPServerName: InternalMCPServerNameType | null
+  freeUsage: boolean
 ): UsageType {
-  if (isFreeToolServer(internalMCPServerName)) {
-    return USAGE_TYPE_FREE;
-  }
-  return baseUsageType;
+  return freeUsage ? USAGE_TYPE_FREE : baseUsageType;
 }
 
 // ---------------------------------------------------------------------------
@@ -320,34 +226,39 @@ export function intelligenceAwuFromRunUsagesGroupedByRunKey(
 }
 
 // Tool (platform action) credits for a set of executed actions. Each action
-// costs a fixed number of credits depending on its category (basic = 1,
-// advanced = 3), except free tools (FREE_TOOL_SERVERS, e.g. agent_memory) which
-// are priced at 0 in the rate card and therefore contribute nothing. Callers
-// should pass only final-status actions (matching the usage_queue extraction)
-// so this equals the billed amount.
+// costs a fixed number of credits depending on its credit cost category
+// (free = 0, basic = 1, advanced = 3). Callers should pass only final-status
+// actions (matching the usage_queue extraction) so this equals the billed amount.
 export function toolAwuFromActions(
-  actions: { internalMCPServerName: InternalMCPServerNameType | null }[],
+  actions: {
+    internalMCPServerName: InternalMCPServerNameType | null;
+    toolName: string;
+  }[],
   contextOrigin: UserMessageOrigin | null
 ): number {
   return actions.reduce((total, action) => {
-    return (
-      total + toolAwuFromServerName(action.internalMCPServerName, contextOrigin)
-    );
+    return total + toolAwuFromAction(action, contextOrigin);
   }, 0);
 }
 
-export function toolAwuFromServerName(
-  internalMCPServerName: InternalMCPServerNameType | null,
+export function toolAwuFromAction(
+  action: {
+    toolName: string;
+    internalMCPServerName: InternalMCPServerNameType | null;
+  },
   contextOrigin: UserMessageOrigin | null
 ): number {
   if (isFreeOrigin(contextOrigin)) {
     return 0;
   }
-
-  if (isFreeToolServer(internalMCPServerName)) {
+  const { toolCategory, freeUsage } = getToolBillingInfo(
+    action.internalMCPServerName,
+    action.toolName
+  );
+  if (freeUsage) {
     return 0;
   }
-  return TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(internalMCPServerName)];
+  return TOOL_CATEGORY_AWU_WEIGHTS[toolCategory];
 }
 
 // ---------------------------------------------------------------------------
@@ -557,10 +468,11 @@ export function buildToolUseEvents({
   }
 
   return [...groups.values()].map(({ action, count, totalDurationMs }) => {
-    const effectiveUsageType = getToolUsageType(
-      usageType,
-      action.internalMCPServerName
+    const { toolCategory, freeUsage } = getToolBillingInfo(
+      action.internalMCPServerName,
+      action.toolName
     );
+    const effectiveUsageType = getToolUsageType(usageType, freeUsage);
     return {
       transaction_id: truncateTransactionId(
         `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
@@ -587,7 +499,7 @@ export function buildToolUseEvents({
         internal_mcp_server_name: truncatePropertyValue(
           action.internalMCPServerName ?? ""
         ),
-        tool_category: getToolCategory(action.internalMCPServerName),
+        tool_category: toolCategory,
         // Constant grouping key — used as presentation_group_key in Metronome to
         // aggregate all tool categories into a single "Tool Usage" invoice line.
         tool_group: "tools",

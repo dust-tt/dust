@@ -172,6 +172,7 @@ export const STATUSPAGE_SERVER = {
     authorization: null,
     icon: "StatuspageLogo",
     documentationUrl: "https://docs.dust.tt/docs/statuspage-mcp",
+    toolCategory: "advanced",
   },
   tools: Object.values(STATUSPAGE_TOOLS_METADATA).map((t) => ({
     name: t.name,

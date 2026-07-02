@@ -598,6 +598,7 @@ export const OUTLOOK_MAIL_SERVER = {
     },
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
+    toolCategory: "advanced",
   },
   tools: Object.values(OUTLOOK_TOOLS_METADATA).map((t) => ({
     name: t.name,

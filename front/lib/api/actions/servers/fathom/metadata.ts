@@ -108,6 +108,7 @@ export const FATHOM_SERVER = {
     },
     icon: "FathomLogo",
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(FATHOM_TOOLS_METADATA).map((t) => ({
     name: t.name,

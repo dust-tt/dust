@@ -67,6 +67,7 @@ export const SEARCH_SERVER = {
     icon: "ActionMagnifyingGlassIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(SEARCH_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -75,6 +75,7 @@ export const SCHEDULES_MANAGEMENT_SERVER = {
     authorization: null,
     icon: "ActionTimeIcon" as const,
     documentationUrl: null,
+    toolCategory: "basic",
   },
   tools: (
     Object.keys(

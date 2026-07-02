@@ -110,6 +110,7 @@ export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {
     icon: "ActionEmotionLaughIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "basic",
   },
   tools: Object.values(PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA).map((t) => ({
     name: t.name,

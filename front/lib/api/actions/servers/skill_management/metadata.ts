@@ -32,6 +32,7 @@ export const SKILL_MANAGEMENT_SERVER = {
     authorization: null,
     icon: "PuzzleIcon" as const,
     documentationUrl: null,
+    toolCategory: "basic",
   },
   tools: (
     Object.keys(SKILL_MANAGEMENT_TOOLS_METADATA) as SkillManagementToolKey[]

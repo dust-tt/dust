@@ -54,6 +54,7 @@ export const SOUND_STUDIO_SERVER = {
     authorization: null,
     icon: "ActionNoiseIcon",
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(SOUND_STUDIO_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -143,6 +143,7 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon",
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => ({
     name: t.name,

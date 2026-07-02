@@ -136,6 +136,7 @@ export const CONVERSATION_FILES_SERVER = {
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: ALL_CONVERSATION_FILES_TOOLS.map((t) => ({
     name: t.name,

@@ -265,6 +265,7 @@ export const WORKSPACE_ANALYTICS_SERVER = {
     icon: "ActionPieChartIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(WORKSPACE_ANALYTICS_TOOLS_METADATA).map((t) => ({
     name: t.name,

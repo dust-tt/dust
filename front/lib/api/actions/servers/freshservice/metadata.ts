@@ -696,6 +696,7 @@ export const FRESHSERVICE_SERVER = {
     },
     icon: "FreshserviceLogo",
     documentationUrl: "https://docs.dust.tt/docs/freshservice",
+    toolCategory: "advanced",
   },
   tools: Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => ({
     name: t.name,

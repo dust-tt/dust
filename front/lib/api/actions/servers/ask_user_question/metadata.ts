@@ -49,6 +49,7 @@ export const ASK_USER_QUESTION_SERVER = {
     icon: "ActionChatBubbleThoughtIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "basic",
   },
   tools: Object.values(ASK_USER_QUESTION_TOOLS_METADATA).map((t) => ({
     name: t.name,

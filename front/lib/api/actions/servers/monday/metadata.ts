@@ -489,6 +489,7 @@ export const MONDAY_SERVER = {
     },
     icon: "MondayLogo",
     documentationUrl: "https://docs.dust.tt/docs/monday",
+    toolCategory: "advanced",
   },
   tools: Object.values(MONDAY_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -38,6 +38,8 @@ export const TOOLSETS_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
+    toolCategory: "basic",
+    freeUsage: true,
   },
   tools: Object.values(TOOLSETS_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -553,6 +553,7 @@ export const AGENT_SIDEKICK_CONTEXT_SERVER = {
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
+    toolCategory: "basic",
   },
   tools: Object.values(AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA).map((t) => ({
     name: t.name,

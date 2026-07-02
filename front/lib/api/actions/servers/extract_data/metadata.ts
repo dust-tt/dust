@@ -187,6 +187,7 @@ export const EXTRACT_DATA_SERVER = {
     icon: "ActionScanIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(EXTRACT_DATA_BASE_TOOLS_METADATA).map((t) => ({
     name: t.name,

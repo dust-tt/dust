@@ -269,6 +269,7 @@ export const VAL_TOWN_SERVER = {
     authorization: null,
     icon: "ValTownLogo",
     documentationUrl: "https://docs.dust.tt/docs/val-town",
+    toolCategory: "advanced",
     developerSecretSelection: "required",
   },
   tools: Object.values(VAL_TOWN_TOOLS_METADATA).map((t) => ({

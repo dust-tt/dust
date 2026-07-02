@@ -53,6 +53,8 @@ export const AGENT_ROUTER_SERVER = {
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
+    toolCategory: "basic",
+    freeUsage: true,
   },
   tools: Object.values(AGENT_ROUTER_TOOLS_METADATA).map((t) => ({
     name: t.name,

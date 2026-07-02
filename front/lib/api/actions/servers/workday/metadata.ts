@@ -37,6 +37,7 @@ export const WORKDAY_SERVER = {
     },
     icon: "ActionTableIcon",
     documentationUrl: "https://docs.dust.tt/docs/workday",
+    toolCategory: "advanced",
   },
   tools: Object.values(WORKDAY_TOOLS_METADATA).map((t) => ({
     name: t.name,

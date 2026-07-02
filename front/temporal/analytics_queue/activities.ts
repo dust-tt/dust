@@ -20,7 +20,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {
   intelligenceAwuFromRunUsages,
-  toolAwuFromServerName,
+  toolAwuFromAction,
 } from "@app/lib/metronome/events";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
@@ -374,16 +374,17 @@ async function collectToolUsageFromMessage(
       mcpServerId ??
       "unknown";
 
+    const toolName =
+      actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
+      actionResource.functionCallName;
     const cost_awu = isToolExecutionStatusFinal(actionResource.status)
-      ? toolAwuFromServerName(internalMCPServerName, contextOrigin)
+      ? toolAwuFromAction({ toolName, internalMCPServerName }, contextOrigin)
       : 0;
 
     return {
       step_index: actionResource.stepContent.step,
       server_name: serverName,
-      tool_name:
-        actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
-        actionResource.functionCallName,
+      tool_name: toolName,
       mcp_server_configuration_sid:
         configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,

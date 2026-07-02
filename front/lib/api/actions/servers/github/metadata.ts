@@ -557,6 +557,7 @@ export const GITHUB_SERVER = {
     },
     icon: "GithubLogo",
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(GITHUB_TOOLS_METADATA).map((t) => ({
     name: t.name,

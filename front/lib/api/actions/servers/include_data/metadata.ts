@@ -69,6 +69,7 @@ export const INCLUDE_DATA_SERVER = {
     icon: "ActionTimeIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(INCLUDE_DATA_BASE_TOOLS_METADATA).map((t) => ({
     name: t.name,

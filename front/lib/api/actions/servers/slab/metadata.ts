@@ -110,6 +110,7 @@ export const SLAB_SERVER = {
     authorization: null,
     icon: "SlabLogo",
     documentationUrl: "https://docs.dust.tt/docs/slab-mcp",
+    toolCategory: "advanced",
   },
   tools: Object.values(SLAB_TOOLS_METADATA).map((t) => ({
     name: t.name,

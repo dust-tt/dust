@@ -107,6 +107,7 @@ export const PLAN_MODE_SERVER = {
     icon: "ActionDocumentTextIcon" as const,
     authorization: null,
     documentationUrl: null,
+    toolCategory: "basic",
   },
   tools: Object.values(PLAN_MODE_TOOLS_METADATA).map((t) => ({
     name: t.name,

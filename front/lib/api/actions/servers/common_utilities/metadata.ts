@@ -116,6 +116,8 @@ export const COMMON_UTILITIES_SERVER = {
     icon: "ActionAtomIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "basic",
+    freeUsage: true,
   },
   tools: Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => ({
     name: t.name,

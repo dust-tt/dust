@@ -89,6 +89,7 @@ export const WAKEUPS_SERVER = {
     authorization: null,
     icon: "ActionTimeIcon",
     documentationUrl: null,
+    toolCategory: "basic",
     displayedAs: "agent",
   },
   tools: Object.values(WAKEUPS_TOOLS_METADATA).map((t) => ({

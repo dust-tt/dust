@@ -156,6 +156,7 @@ export const ZENDESK_SERVER = {
     },
     icon: "ZendeskLogo",
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(ZENDESK_TOOLS_METADATA).map((t) => ({
     name: t.name,

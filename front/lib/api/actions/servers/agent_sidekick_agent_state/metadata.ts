@@ -17,18 +17,17 @@ export const AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-export const AGENT_SIDEKICK_AGENT_STATE_SERVER_INFO = {
-  name: "agent_sidekick_agent_state" as const,
-  version: "1.0.0",
-  description:
-    "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools.",
-  authorization: null,
-  icon: "ActionRobotIcon" as const,
-  documentationUrl: null,
-};
-
 export const AGENT_SIDEKICK_AGENT_STATE_SERVER = {
-  serverInfo: AGENT_SIDEKICK_AGENT_STATE_SERVER_INFO,
+  serverInfo: {
+    name: "agent_sidekick_agent_state",
+    version: "1.0.0",
+    description:
+      "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools.",
+    authorization: null,
+    icon: "ActionRobotIcon",
+    documentationUrl: null,
+    toolCategory: "basic",
+  },
   tools: Object.values(AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,

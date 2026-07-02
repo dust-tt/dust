@@ -293,6 +293,7 @@ export const GMAIL_SERVER = {
     },
     icon: "GmailLogo",
     documentationUrl: "https://docs.dust.tt/docs/gmail",
+    toolCategory: "advanced",
   },
   tools: Object.values(GMAIL_TOOLS_METADATA).map((t) => ({
     name: t.name,

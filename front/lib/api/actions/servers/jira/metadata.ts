@@ -389,6 +389,7 @@ export const JIRA_SERVER = {
     },
     icon: "JiraLogo",
     documentationUrl: "https://docs.dust.tt/docs/jira",
+    toolCategory: "advanced",
   },
   tools: Object.values(JIRA_TOOLS_METADATA).map((t) => ({
     name: t.name,

@@ -114,6 +114,8 @@ export const AGENT_MEMORY_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
+    toolCategory: "basic",
+    freeUsage: true,
   },
   tools: Object.values(AGENT_MEMORY_TOOLS_METADATA).map((t) => ({
     name: t.name,

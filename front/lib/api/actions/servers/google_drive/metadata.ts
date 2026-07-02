@@ -629,6 +629,7 @@ export function getGoogleDriveServerMetadata() {
       },
       icon: "DriveLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-drive",
+      toolCategory: "advanced",
     },
     tools: Object.values(ALL_TOOLS_METADATA).map((t) => ({
       name: t.name,

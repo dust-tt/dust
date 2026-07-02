@@ -118,6 +118,7 @@ export const FILE_GENERATION_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(FILE_GENERATION_TOOLS_METADATA).map((t) => ({
     name: t.name,

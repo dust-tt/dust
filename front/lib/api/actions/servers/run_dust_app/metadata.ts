@@ -36,6 +36,7 @@ export const RUN_DUST_APP_SERVER = {
     icon: "CommandLineIcon" as const,
     authorization: null,
     documentationUrl: null,
+    toolCategory: "basic",
   },
   tools: Object.values(RUN_DUST_APP_TOOLS_METADATA).map((t) => ({
     name: t.name,

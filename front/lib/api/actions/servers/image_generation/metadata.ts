@@ -90,6 +90,7 @@ export const IMAGE_GENERATION_SERVER = {
     authorization: null,
     icon: "ActionImageIcon",
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(IMAGE_GENERATION_TOOLS_METADATA).map((t) => ({
     name: t.name,

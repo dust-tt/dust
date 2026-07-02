@@ -170,6 +170,7 @@ export const CONFLUENCE_SERVER = {
     },
     icon: "ConfluenceLogo",
     documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
+    toolCategory: "advanced",
   },
   tools: Object.values(CONFLUENCE_TOOLS_METADATA).map((t) => ({
     name: t.name,

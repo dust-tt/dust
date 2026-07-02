@@ -109,6 +109,7 @@ export const SANDBOX_FUNCTIONS_SERVER = {
     icon: "CommandLineIcon",
     authorization: null,
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(SANDBOX_FUNCTIONS_TOOLS_METADATA).map((t) => ({
     name: t.name,

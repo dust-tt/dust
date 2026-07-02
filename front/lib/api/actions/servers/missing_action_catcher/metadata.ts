@@ -12,6 +12,7 @@ export const MISSING_ACTION_CATCHER_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
+    toolCategory: "basic",
   },
   // Tools are created dynamically at runtime based on the tool context.
   tools: [],

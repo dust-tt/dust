@@ -121,8 +121,11 @@ describe("toolAwuFromActions", () => {
     expect(
       toolAwuFromActions(
         [
-          { internalMCPServerName: "web_search_&_browse" }, // basic = 1
-          { internalMCPServerName: "search" }, // advanced = 3
+          {
+            toolName: "websearch",
+            internalMCPServerName: "web_search_&_browse",
+          }, // basic = 1
+          { toolName: "semantic_search", internalMCPServerName: "search" }, // advanced = 3
         ],
         TEST_CONTEXT_ORIGIN
       )
@@ -131,21 +134,24 @@ describe("toolAwuFromActions", () => {
 
   it("treats unknown / external servers as advanced (3)", () => {
     expect(
-      toolAwuFromActions([{ internalMCPServerName: null }], TEST_CONTEXT_ORIGIN)
+      toolAwuFromActions(
+        [{ toolName: "custom_tool", internalMCPServerName: null }],
+        TEST_CONTEXT_ORIGIN
+      )
     ).toBe(3);
   });
 
   it("does not charge for free tools (priced at 0 in the rate card)", () => {
-    // agent_memory is in FREE_TOOL_SERVERS — billed free, so contributes 0.
+    // agent_memory has toolCategory "basic" + freeUsage true — contributes 0.
     expect(
       toolAwuFromActions(
-        [{ internalMCPServerName: "agent_memory" }],
+        [{ toolName: "retrieve", internalMCPServerName: "agent_memory" }],
         TEST_CONTEXT_ORIGIN
       )
     ).toBe(0);
     expect(
       toolAwuFromActions(
-        [{ internalMCPServerName: "agent_memory" }],
+        [{ toolName: "record_entries", internalMCPServerName: "agent_memory" }],
         TEST_CONTEXT_ORIGIN
       )
     ).toBe(0);
@@ -156,7 +162,13 @@ describe("computeAgentMessageCredits", () => {
   it("sums intelligence and tool credits", () => {
     const credits = computeAgentMessageCredits({
       runUsages: [usage({ costMicroUsd: 8500 })], // 1 intelligence credit
-      actions: [{ internalMCPServerName: "search", status: "succeeded" }], // 3 tool credits
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "succeeded",
+        },
+      ], // 3 tool credits
       contextOrigin: TEST_CONTEXT_ORIGIN,
     });
     expect(credits).toBe(4);
@@ -165,7 +177,13 @@ describe("computeAgentMessageCredits", () => {
   it("ignores non-final actions", () => {
     const credits = computeAgentMessageCredits({
       runUsages: [],
-      actions: [{ internalMCPServerName: "search", status: "running" }],
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "running",
+        },
+      ],
       contextOrigin: TEST_CONTEXT_ORIGIN,
     });
     expect(credits).toBeNull();
@@ -184,7 +202,13 @@ describe("computeAgentMessageCredits", () => {
   it("costs 0 for free-origin usage (e.g. agent_sidekick), LLM and tools alike", () => {
     const credits = computeAgentMessageCredits({
       runUsages: [usage({ costMicroUsd: 8500 })], // would be 1 intelligence credit
-      actions: [{ internalMCPServerName: "search", status: "succeeded" }], // would be 3 tool credits
+      actions: [
+        {
+          toolName: "semantic_search",
+          internalMCPServerName: "search",
+          status: "succeeded",
+        },
+      ], // would be 3 tool credits
       contextOrigin: "agent_sidekick",
     });
     expect(credits).toBe(0);

@@ -196,6 +196,7 @@ export const UKG_READY_SERVER = {
     },
     icon: "UkgLogo",
     documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
+    toolCategory: "advanced",
   },
   tools: Object.values(UKG_READY_TOOLS_METADATA).map((t) => ({
     name: t.name,

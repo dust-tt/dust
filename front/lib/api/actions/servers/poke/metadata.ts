@@ -357,6 +357,7 @@ export const POKE_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
+    toolCategory: "basic",
   },
   tools: Object.values(POKE_TOOLS_METADATA).map((t) => ({
     name: t.name,

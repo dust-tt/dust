@@ -240,6 +240,7 @@ export const SPEECH_GENERATOR_SERVER = {
     authorization: null,
     icon: "ActionSpeakIcon",
     documentationUrl: null,
+    toolCategory: "advanced",
   },
   tools: Object.values(SPEECH_GENERATOR_TOOLS_METADATA).map((t) => ({
     name: t.name,

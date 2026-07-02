@@ -327,6 +327,7 @@ export const MICROSOFT_DRIVE_SERVER = {
       ],
     },
     documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
+    toolCategory: "advanced",
   },
   tools: Object.values(MICROSOFT_DRIVE_TOOLS_METADATA).map((t) => ({
     name: t.name,
