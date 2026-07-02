@@ -506,18 +506,47 @@ export function UsagePage() {
               excludeUserIds: descriptor.excludeUserIds,
             };
 
-      const body = await doBulkSetSpendLimit({
-        selection: selectionBody,
-        limit,
+      // Spin the affected rows while the update runs — the request returns
+      // once the bulk workflow has completed. For an "all matching" selection
+      // only the current page is visible, so spin its non-excluded rows.
+      const pendingMemberIds =
+        descriptor.mode === "ids"
+          ? descriptor.userIds
+          : pageItemIds.filter((id) => !descriptor.excludeUserIds.includes(id));
+      setTotalAllowedUsagePendingMemberIds((prev) => {
+        const next = new Set(prev);
+        pendingMemberIds.forEach((id) => next.add(id));
+        return next;
       });
-      if (!body) {
-        return false;
-      }
 
-      selection.clearSelection();
-      return true;
+      try {
+        const body = await doBulkSetSpendLimit({
+          selection: selectionBody,
+          limit,
+        });
+        if (!body) {
+          return false;
+        }
+
+        selection.clearSelection();
+        return true;
+      } finally {
+        setTotalAllowedUsagePendingMemberIds((prev) => {
+          const next = new Set(prev);
+          pendingMemberIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
     },
-    [selection, seatTypeFilter, groupFilter, searchTerm, doBulkSetSpendLimit]
+    [
+      selection,
+      seatTypeFilter,
+      groupFilter,
+      searchTerm,
+      doBulkSetSpendLimit,
+      pageItemIds,
+      setTotalAllowedUsagePendingMemberIds,
+    ]
   );
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
