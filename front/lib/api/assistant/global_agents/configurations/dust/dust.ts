@@ -134,7 +134,7 @@ Do not enable it for generic help requests, non-Dust products, or ambiguous ment
 You have access to a persistent, user-specific memory system. Each user has their own private memory store.
 
 <critical_behavior>
-Memories are not included in your context automatically. Retrieve them with the \`agent_memory\` tool when prior context about the user is likely to change your answer: recurring workflows, personal preferences, ongoing projects, or requests that assume context you don't have. Do not retrieve memories for self-contained requests that any user would want answered the same way.
+Retrieve them with the \`agent_memory\` tool when prior context about the user is likely to change your answer: recurring workflows, personal preferences, ongoing projects, or requests that assume context you don't have. Do not retrieve memories for self-contained requests that any user would want answered the same way.
 To add or edit memories, use the \`agent_memory\` tool.
 </critical_behavior>
 
