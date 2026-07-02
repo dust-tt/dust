@@ -102,7 +102,21 @@ export function useUpdateGroupSpendLimit({
         return null;
       }
 
-      const body = PutGroupSpendLimitResponseSchema.parse(await res.json());
+      const parsed = PutGroupSpendLimitResponseSchema.safeParse(
+        await res.json()
+      );
+      if (!parsed.success) {
+        await invalidateWorkspaceGroups(workspaceId);
+        await invalidateMembersUsage(workspaceId);
+        sendNotification({
+          type: "error",
+          title: "Group spend limit status unknown",
+          description:
+            "The update was submitted but the server response could not be read. The table has been refreshed with the current state.",
+        });
+        return null;
+      }
+      const body = parsed.data;
       let description: string;
       switch (limit.kind) {
         case "unlimited":

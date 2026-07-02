@@ -2,14 +2,13 @@ import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { buildCachedContractMock } from "@app/tests/utils/metronome_contracts";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { MembershipSeatType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import type { Subscription } from "@metronome/sdk/resources";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
@@ -39,22 +38,17 @@ vi.mock("@app/lib/metronome/seat_types", async () => {
   return {
     ...actual,
     getProductSeatTypes: vi.fn(),
-    getSeatSubscriptionsFromContract: vi.fn(),
-    getAwuAllocationForNormalizedSeatType: vi.fn(),
   };
 });
 
 const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const TEST_ALERT_ID = "alert_test_xxx";
 
-// Minimal fake contract with one pro seat subscription so the alert sync
-// resolves a single seat type with an 8000 AWU allowance.
-const FAKE_CONTRACT = {
-  id: "contract_xxx",
-  customer_id: TEST_METRONOME_CUSTOMER_ID,
-  rate_card_id: "rc_xxx",
-  subscriptions: [],
-} as unknown as planType.CachedContract;
+// Contract with one pro seat subscription carrying an 8000 AWU allowance —
+// the seat-type resolution runs against it for real, only the contract and
+// product fetches (cache/network) are mocked.
+const { contract: FAKE_CONTRACT, productSeatTypes: FAKE_PRODUCT_SEAT_TYPES } =
+  buildCachedContractMock({ seats: [{ seatType: "pro", awu: 8000 }] });
 
 async function makeMetronomeWorkspaceWithCustomer(): Promise<WorkspaceType> {
   return WorkspaceFactory.metronome({
@@ -77,11 +71,7 @@ function groupSpendLimitUrl(wId: string, groupId: string) {
   return `/api/w/${wId}/groups/${groupId}/spend_limit`;
 }
 
-function putLimit(
-  wId: string,
-  groupId: string,
-  body: Record<string, unknown>
-) {
+function putLimit(wId: string, groupId: string, body: Record<string, unknown>) {
   return honoApp.request(groupSpendLimitUrl(wId, groupId), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -105,18 +95,7 @@ beforeEach(() => {
 
   vi.mocked(planType.getActiveContract).mockResolvedValue(FAKE_CONTRACT);
   vi.mocked(seatTypes.getProductSeatTypes).mockResolvedValue(
-    new Map([["prod_pro", "pro"]])
-  );
-  vi.mocked(seatTypes.getSeatSubscriptionsFromContract).mockReturnValue(
-    new Map<MembershipSeatType, Subscription>([
-      [
-        "pro",
-        { subscription_rate: { product: { id: "prod_pro" } } } as Subscription,
-      ],
-    ])
-  );
-  vi.mocked(seatTypes.getAwuAllocationForNormalizedSeatType).mockReturnValue(
-    8000
+    FAKE_PRODUCT_SEAT_TYPES
   );
 });
 
@@ -139,7 +118,6 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       expect(response.status).toBe(403);
       expect((await response.json()).error.type).toBe("workspace_auth_error");
     });
-
   });
 
   describe("input validation", () => {
