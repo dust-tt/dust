@@ -556,6 +556,9 @@ export interface WorkspaceMetadata {
   allowReinforcementBatchMode?: boolean;
   privateConversationUrlsByDefault?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
+  // Enables SSO for the workspace even if its plan does not allow it
+  // (on-demand SSO activation, set via poke plugin).
+  allowSSO?: boolean;
   disableManualInvitations?: boolean;
   disableExtensionMcpTools?: boolean;
   dustMcpServerDisabled?: boolean;

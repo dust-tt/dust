@@ -1,4 +1,5 @@
 import WorkOSSSOConnection from "@app/components/workspace/sso/WorkOSSSOConnection";
+import { isSSOAllowedForWorkspace } from "@app/lib/plans/sso";
 import type { PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import type { Organization } from "@workos-inc/node";
@@ -14,7 +15,7 @@ export default function SSOConnection({
   owner,
   plan,
 }: SSOConnectionProps) {
-  if (!plan.limits.users.isSSOAllowed) {
+  if (!isSSOAllowedForWorkspace(owner, plan)) {
     return null;
   }
 

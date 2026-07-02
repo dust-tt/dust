@@ -8,6 +8,7 @@ import {
   generateWorkOSAdminPortalUrl,
   getWorkOSOrganizationSSOConnections,
 } from "@app/lib/api/workos/organization";
+import { isSSOAllowedForWorkspace } from "@app/lib/plans/sso";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -33,7 +34,7 @@ async function checkAccess(ctx: Context) {
   }
 
   const plan = auth.getNonNullablePlan();
-  if (!plan.limits.users.isSSOAllowed) {
+  if (!isSSOAllowedForWorkspace(workspace, plan)) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
