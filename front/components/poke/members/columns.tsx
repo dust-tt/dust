@@ -19,6 +19,10 @@ export type MemberDisplayType = {
   sId: string;
   origin?: MembershipOriginType;
   seatType?: MembershipSeatType;
+  // Upcoming seat change scheduled for a future date (e.g. flips at a pending
+  // contract start). `seatType` above stays the active seat.
+  scheduledSeatType?: MembershipSeatType | null;
+  scheduledSeatChangeAt?: number | null;
 };
 
 export function makeColumnsForMembers({
@@ -151,30 +155,49 @@ export function makeColumnsForMembers({
     cell: ({ row }) => {
       const member = row.original;
 
+      const scheduledChange =
+        member.scheduledSeatType &&
+        member.scheduledSeatType !== member.seatType ? (
+          <span className="text-xs text-gray-500">
+            {`→ ${member.scheduledSeatType}`}
+            {member.scheduledSeatChangeAt
+              ? ` on ${formatTimestampToFriendlyDate(member.scheduledSeatChangeAt)}`
+              : ""}
+          </span>
+        ) : null;
+
       if (readonly) {
-        return <span>{member.seatType ?? "-"}</span>;
+        return (
+          <div className="flex flex-col">
+            <span>{member.seatType ?? "-"}</span>
+            {scheduledChange}
+          </div>
+        );
       }
 
       return (
-        <select
-          className="rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
-          value={member.seatType ?? ""}
-          onChange={async (e) => {
-            await onUpdateMemberSeatType(
-              member,
-              e.target.value as MembershipSeatType
-            );
-          }}
-        >
-          <option value="" disabled>
-            -
-          </option>
-          {MEMBERSHIP_SEAT_TYPES.map((st) => (
-            <option key={st} value={st}>
-              {st}
+        <div className="flex flex-col gap-1">
+          <select
+            className="rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
+            value={member.seatType ?? ""}
+            onChange={async (e) => {
+              await onUpdateMemberSeatType(
+                member,
+                e.target.value as MembershipSeatType
+              );
+            }}
+          >
+            <option value="" disabled>
+              -
             </option>
-          ))}
-        </select>
+            {MEMBERSHIP_SEAT_TYPES.map((st) => (
+              <option key={st} value={st}>
+                {st}
+              </option>
+            ))}
+          </select>
+          {scheduledChange}
+        </div>
       );
     },
   });
