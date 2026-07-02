@@ -15,7 +15,7 @@ const meta = {
     layout: "centered",
     docs: {
       description: {
-        component: `The elevation scale: box shadows (\`shadow\` through \`shadow-2xl\`) for surfaces and drop shadows (\`drop-shadow-*\`) for irregular shapes. Apply these Tailwind utilities to convey elevation consistently, reserving larger shadows for higher, more transient surfaces like popovers and dialogs. Click a specimen to copy its class; the caption shows the live computed value. Specimens sit on a \`muted-background\` surface so elevation reads in both light and dark themes.`,
+        component: `The elevation scale: box shadows (\`shadow\` through \`shadow-2xl\`) for surfaces and drop shadows (\`drop-shadow-*\`) for irregular shapes. Apply these Tailwind utilities to convey elevation consistently, reserving larger shadows for higher, more transient surfaces like popovers and dialogs. In dark mode the surface tokens \`bg-panel-background\`, \`bg-overlay-background\`, and \`bg-modal-background\` carry built-in elevation shadows that override these utilities — see Surface Elevation below. Click a specimen to copy its class; the caption shows the live computed value. Specimens sit on a \`muted-background\` surface so elevation reads in both light and dark themes.`,
       },
     },
   },
@@ -31,11 +31,14 @@ const ShadowBox = ({
   label,
   shadowClass,
   measure,
+  surface = "bg-background",
 }: {
   label: string;
   shadowClass: string;
   // Which computed property carries the value for this kind of shadow.
   measure: "box-shadow" | "filter";
+  // The fill of the specimen box; surface-token specimens supply their own.
+  surface?: string;
 }) => {
   const ref = React.useRef<HTMLDivElement>(null);
   const measured = useComputedStyle(
@@ -47,7 +50,7 @@ const ShadowBox = ({
   return (
     <Copyable value={shadowClass} className="flex flex-col items-center gap-2">
       <div
-        className={`h-24 w-24 rounded-lg bg-background ${shadowClass}`}
+        className={`h-24 w-24 rounded-lg ${surface} ${shadowClass}`}
         ref={ref}
       />
       <div className="flex flex-col items-center">
@@ -89,6 +92,38 @@ export const BoxShadows: Story = {
             key={shadowClass}
             label={shadowClass}
             shadowClass={shadowClass}
+            measure="box-shadow"
+          />
+        ))}
+      </div>
+    </div>
+  ),
+};
+
+const elevatedSurfaces = [
+  "bg-panel-background",
+  "bg-overlay-background",
+  "bg-modal-background",
+] as const;
+
+export const SurfaceElevation: Story = {
+  render: () => (
+    <div className="rounded-xl bg-app-background p-8">
+      <h2 className="mb-2 text-xl font-semibold">Surface Elevation</h2>
+      <p className="mb-6 max-w-lg text-sm text-muted-foreground">
+        In dark mode these surface tokens carry built-in shadows (panel &lt;
+        overlay &lt; modal) that override shadow-* utilities on the same
+        element, and a surface nested inside the same surface casts none. In
+        light mode they are flat — pair them with the box shadows above. Toggle
+        the theme to compare.
+      </p>
+      <div className="flex flex-wrap gap-8">
+        {elevatedSurfaces.map((surfaceClass) => (
+          <ShadowBox
+            key={surfaceClass}
+            label={surfaceClass}
+            shadowClass={surfaceClass}
+            surface=""
             measure="box-shadow"
           />
         ))}

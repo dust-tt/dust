@@ -269,7 +269,11 @@ const structuralDescriptions: Record<string, string> = {
   "border-dark": "Higher-contrast border.",
   "border-focus": "Border color for focused elements.",
   "border-warning": "Border color for warning states.",
-  hover: "Background tint for hovered elements.",
+  hover: "Translucent tint for hovered elements — composites over any surface.",
+  selected:
+    "Translucent tint for selected elements — a stronger step than hover.",
+  loading:
+    "Translucent fill for skeleton placeholders (LoadingBlock) — reads on any surface.",
   ring: "Focus ring color.",
   "ring-warning": "Focus ring for warning states.",
   separator: "Divider line color.",
