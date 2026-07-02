@@ -1087,7 +1087,7 @@ export function createProjectManagerTools(
         // Create conversation in the project space
         const conversation = await createConversation(auth, {
           title: params.title,
-          visibility: "unlisted",
+          visibility: "visible",
           spaceId: pod.id,
         });
 

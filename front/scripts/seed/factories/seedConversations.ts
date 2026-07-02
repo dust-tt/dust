@@ -90,7 +90,7 @@ export async function seedConversations(
         {
           sId: conv.sId,
           title: conv.title,
-          visibility: "unlisted",
+          visibility: "visible",
           depth: 0,
           requestedSpaceIds: [],
         },

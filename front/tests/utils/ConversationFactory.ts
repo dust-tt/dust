@@ -38,7 +38,7 @@ export class ConversationFactory {
       conversationCreatedAt,
       requestedSpaceIds,
       spaceId,
-      visibility = "unlisted",
+      visibility = "visible",
       t,
     }: {
       agentConfigurationId: string;

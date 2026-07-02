@@ -3705,8 +3705,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     await this.update({ visibility: "deleted" });
   }
 
-  async updateVisibilityToUnlisted(auth: Authenticator) {
-    await this.update({ visibility: "unlisted" });
+  async updateVisibilityToVisible(auth: Authenticator) {
+    await this.update({ visibility: "visible" });
   }
 
   async updateRequirements(

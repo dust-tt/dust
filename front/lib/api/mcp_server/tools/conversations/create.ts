@@ -62,7 +62,7 @@ export function registerConversationsCreateTool(server: McpServer) {
       try {
         conversation = await createConversation(auth, {
           title,
-          visibility: "unlisted",
+          visibility: "visible",
           spaceId: resolvedSpaceModelId,
         });
       } catch (error) {

@@ -50,7 +50,7 @@ export function useCreateConversationWithMessage({
       skipToolsValidation = false,
       spaceId,
       title,
-      visibility = "unlisted",
+      visibility = "visible",
       deferMessage = false,
       onError,
     }: {

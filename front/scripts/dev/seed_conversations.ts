@@ -136,7 +136,7 @@ async function createConversation(
     {
       sId: generateRandomModelSId(),
       title: conv.title,
-      visibility: "unlisted",
+      visibility: "visible",
       depth: 0,
       requestedSpaceIds: conv.space ? [conv.space.id] : [],
       spaceId: conv.space?.id ?? null,

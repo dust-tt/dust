@@ -323,7 +323,7 @@ export async function createSkillSuggestionsConversation(
   const conversationTitle = `Reinforced suggestions for ${skillType.name} skill`;
   const conversation = await createConversation(auth, {
     title: conversationTitle,
-    visibility: "unlisted",
+    visibility: "visible",
     spaceId: null,
     metadata: {
       reinforcedSkillNotification: {

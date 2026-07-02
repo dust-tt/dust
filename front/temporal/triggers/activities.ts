@@ -50,7 +50,7 @@ async function createConversationForAgentConfiguration({
 }): Promise<Result<ConversationType, APIErrorWithContentfulStatusCode>> {
   const newConversation = await createConversation(auth, {
     title: null,
-    visibility: "unlisted",
+    visibility: "visible",
     triggerId: trigger.id,
     spaceId: null,
   });

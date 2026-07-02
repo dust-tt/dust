@@ -70,7 +70,7 @@ export async function writeBatchUserMessages(
     newMessages,
     existingConversationId,
     title,
-    visibility = "unlisted",
+    visibility = "visible",
     metadata = {},
     userContextUsername = "system",
     userContextOrigin,

@@ -167,7 +167,7 @@ export function mockConversation(
       metronomeCustomerId: null,
       regionalModelsOnly: false,
     },
-    visibility: "unlisted",
+    visibility: "visible",
     content: messages,
     isRunningAgentLoop: false,
   };

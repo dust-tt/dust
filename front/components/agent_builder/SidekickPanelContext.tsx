@@ -124,9 +124,8 @@ export const SidekickPanelProvider = ({
         // and doing so races with SSE setup.
         clientSideMCPServerIds: [],
       },
-      // TODO(sidekick 2026-01-23): same visibility as the 'Preview' tab conversation.
-      // We should rename it.
-      visibility: "test",
+      // Same visibility as the 'Preview' tab conversation.
+      visibility: "hidden",
       title: `Sidekick conversation (useCase: ${useCase}, agentId: ${targetAgentConfigurationId})`,
       metadata: {
         sidekickTargetAgentConfigurationId: targetAgentConfigurationId,

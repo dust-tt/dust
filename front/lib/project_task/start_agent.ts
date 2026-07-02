@@ -230,7 +230,7 @@ export async function startAgentForProjectTask(
   if (!conversationId) {
     conversation = await createConversation(auth, {
       title: `Task · ${task.text.slice(0, 80)}`,
-      visibility: "unlisted",
+      visibility: "visible",
       spaceId: space.id,
       metadata: {
         projectTaskId: task.sId,

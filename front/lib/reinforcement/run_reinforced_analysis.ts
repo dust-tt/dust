@@ -172,7 +172,7 @@ export function getReinforcedSkillsDefaultOptions(
   skillIds: string[]
 ) {
   return {
-    visibility: "test" as const,
+    visibility: "hidden" as const,
     metadata: getReinforcedSkillsMetadata(operationType, skillIds),
     userContextUsername: "reinforcement",
     userContextOrigin: "reinforcement" as const,

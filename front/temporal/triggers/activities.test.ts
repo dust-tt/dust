@@ -17,7 +17,7 @@ describe("wake-up activities", () => {
     });
     const conversation = await createConversation(authenticator, {
       title: null,
-      visibility: "unlisted",
+      visibility: "visible",
       spaceId: null,
     });
 

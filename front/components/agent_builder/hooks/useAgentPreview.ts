@@ -165,7 +165,7 @@ export function useDraftConversation({
 
       const result = await createConversationWithMessage({
         messageData,
-        visibility: "test",
+        visibility: "hidden",
       });
 
       if (result.isOk()) {

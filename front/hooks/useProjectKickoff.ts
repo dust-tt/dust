@@ -44,7 +44,7 @@ export function useProjectKickoff({
         origin: "project_kickoff",
       },
       spaceId: space.sId,
-      visibility: "unlisted",
+      visibility: "visible",
       title: `Kickoff: ${space.name}`,
     });
 

@@ -524,7 +524,7 @@ export async function processTranscriptActivity(
 
     const initialConversation = await createConversation(auth, {
       title: transcriptTitle,
-      visibility: "unlisted",
+      visibility: "visible",
       spaceId: null,
     });
 

@@ -36,20 +36,31 @@ import type {
 } from "@dust-tt/client";
 
 /**
- * Normalizes deprecated visibility values to their current equivalents.
- * The "workspace" visibility value is deprecated and should be treated as "unlisted".
+ * Normalizes a visibility value received from the public API into the value
+ * stored internally. The public API keeps accepting the legacy wire names
+ * ("workspace", "unlisted", "test") indefinitely for backward compatibility;
+ * this maps them onto the current internal names ("visible", "hidden").
  *
- * @param visibility - The visibility value (may be deprecated)
- * @returns The normalized visibility value (defaults to "unlisted" if undefined)
+ * @param visibility - The visibility value from the public API request (may be a legacy name)
+ * @returns The internal visibility value to store (defaults to "visible" if undefined)
  */
 export function normalizeConversationVisibility(
   visibility: ConversationVisibility | "workspace" | undefined
 ): ConversationVisibility {
-  // Temporary translation layer for deprecated "workspace" visibility.
-  if (visibility === "workspace") {
-    return "unlisted";
+  switch (visibility) {
+    case undefined:
+    case "workspace":
+    case "unlisted":
+      return "visible";
+    case "test":
+      return "hidden";
+    case "visible":
+    case "hidden":
+    case "deleted":
+      return visibility;
+    default:
+      return assertNever(visibility);
   }
-  return visibility ?? "unlisted";
 }
 
 /**

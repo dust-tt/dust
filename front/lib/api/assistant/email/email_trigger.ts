@@ -820,7 +820,7 @@ export async function triggerFromEmail(
   if (!conversation) {
     conversation = await createConversation(auth, {
       title: `Email: ${email.subject}`,
-      visibility: "unlisted",
+      visibility: "visible",
       spaceId: null,
     });
   }

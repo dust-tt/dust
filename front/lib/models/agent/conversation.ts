@@ -71,7 +71,7 @@ ConversationModel.init(
     visibility: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "unlisted",
+      defaultValue: "visible",
     },
     depth: {
       type: DataTypes.INTEGER,

@@ -1,6 +1,7 @@
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { assert, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
   isProgrammaticUsage: () => false,
@@ -85,5 +86,47 @@ describe("POST /api/v1/w/[wId]/assistant/conversations", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("normalizes legacy visibility values on write while preserving the wire contract", async () => {
+    const { workspace, key, auth } = await createPublicApiMockRequest();
+
+    const response = await postConversations(workspace, key, {
+      title: "Test conversation",
+      visibility: "test",
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    // The public wire contract is preserved: legacy "test" round-trips as "test".
+    expect(body.conversation.visibility).toBe("test");
+
+    // Internally, "test" is stored under its renamed value "hidden".
+    const stored = await ConversationResource.fetchById(
+      auth,
+      body.conversation.sId
+    );
+    assert(stored, "conversation not found");
+    expect(stored.visibility).toBe("hidden");
+  });
+
+  it('defaults new conversations to the renamed "visible" visibility', async () => {
+    const { workspace, key, auth } = await createPublicApiMockRequest();
+
+    const response = await postConversations(workspace, key, {
+      title: "Test conversation",
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    // The public wire contract is preserved: the default round-trips as "unlisted".
+    expect(body.conversation.visibility).toBe("unlisted");
+
+    const stored = await ConversationResource.fetchById(
+      auth,
+      body.conversation.sId
+    );
+    assert(stored, "conversation not found");
+    expect(stored.visibility).toBe("visible");
   });
 });

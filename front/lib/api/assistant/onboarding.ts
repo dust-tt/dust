@@ -558,7 +558,7 @@ export async function createOnboardingConversationIfNeeded(
 
   const conversation = await createConversation(auth, {
     title: "Welcome to Dust",
-    visibility: "unlisted",
+    visibility: "visible",
     spaceId: null,
   });
 
