@@ -72,6 +72,7 @@ export function isToolCategory(value: string): value is ToolCategory {
 // without being categorized here.
 const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   // Set as basic but overridden as free
+  user_analytics: "basic",
   agent_memory: "basic",
   agent_router: "basic",
   common_utilities: "basic",
