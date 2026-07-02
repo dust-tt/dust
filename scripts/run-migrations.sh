@@ -50,7 +50,7 @@ if [[ "$COMMAND" == "post-deploy" ]]; then
   echo "     • front-sse"
   echo ""
   read -r -p "   Have you deployed front and front-sse? [y/N] " confirm
-  if [[ "${confirm,,}" != "y" ]]; then
+  if [[ "$(printf '%s' "$confirm" | tr '[:upper:]' '[:lower:]')" != "y" ]]; then
     echo "❌ Aborted. Deploy front and front-sse first." >&2
     exit 1
   fi
