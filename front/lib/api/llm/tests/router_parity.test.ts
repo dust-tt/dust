@@ -29,7 +29,7 @@ import {
 import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
-import { GLOBAL } from "@app/lib/model_constructors/types/regions";
+import { GLOBAL, US } from "@app/lib/model_constructors/types/regions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { describe, expect, it, vi } from "vitest";
 
@@ -129,11 +129,13 @@ async function drain(gen: AsyncGenerator<unknown>): Promise<Error | undefined> {
   }
 }
 
-// Local parity only exercises global endpoints — the eu/Vertex path is not run
-// locally. Global agent-platform coverage can be added here once it exists.
+// Local parity only exercises endpoints hitting a provider's direct API — the
+// `global` (e.g. OpenAI) and `us` (Anthropic direct, Fireworks, Google AI
+// Studio, Together) paths. The eu/Vertex path is not run locally; agent-platform
+// coverage can be added here once it exists.
 const ENDPOINTS = Object.values(DUST_STREAM_ENDPOINTS)
   .map(readEndpointInfo)
-  .filter((endpoint) => endpoint.region === GLOBAL);
+  .filter((endpoint) => endpoint.region === GLOBAL || endpoint.region === US);
 const MATRIX = buildParityMatrix();
 
 describe.skipIf(process.env.RUN_LLM_TEST !== "true")(

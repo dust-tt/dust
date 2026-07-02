@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { AnthropicGlobalClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_seven";
+import { AnthropicUsClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_us_claude_opus_four_dot_seven";
 import {
   INPUT_CONFIGURATION_ERROR,
   SUCCESS,
@@ -10,7 +10,7 @@ import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
 const setup: StreamSetup = {
   createInstance: () =>
-    new AnthropicGlobalClaudeOpusFourDotSevenStream({
+    new AnthropicUsClaudeOpusFourDotSevenStream({
       ANTHROPIC_API_KEY: process.env.DUST_MANAGED_ANTHROPIC_API_KEY ?? "",
     }),
   // `null` runs the case with its default checkers; a checker array overrides
@@ -71,4 +71,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_opus_four_dot_seven.test.ts
-runStreamEndpointTests(AnthropicGlobalClaudeOpusFourDotSevenStream, setup);
+runStreamEndpointTests(AnthropicUsClaudeOpusFourDotSevenStream, setup);

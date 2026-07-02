@@ -1,13 +1,13 @@
 // @vitest-environment node
 
-import { AnthropicGlobalClaudeSonnetFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_sonnet_five";
+import { AnthropicUsClaudeSonnetFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_us_claude_sonnet_five";
 import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
 const setup: StreamSetup = {
   createInstance: () =>
-    new AnthropicGlobalClaudeSonnetFiveStream({
+    new AnthropicUsClaudeSonnetFiveStream({
       ANTHROPIC_API_KEY: process.env.DUST_MANAGED_ANTHROPIC_API_KEY ?? "",
     }),
   // `null` runs the case with its default checkers; a checker array overrides
@@ -66,4 +66,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_sonnet_five.test.ts
-runStreamEndpointTests(AnthropicGlobalClaudeSonnetFiveStream, setup);
+runStreamEndpointTests(AnthropicUsClaudeSonnetFiveStream, setup);

@@ -1,8 +1,8 @@
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
-import { DustAnthropicGlobalClaudeSonnetFourDotSixBatch } from "@app/lib/llms/batch/endpoints/anthropic_global_claude_sonnet_four_dot_six";
-import { DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_global_gemini_3_1_flash_lite";
-import { DustGoogleAiStudioGlobalGeminiThreeDotOneProBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_global_gemini_3_1_pro";
-import { DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_global_gemini_3_5_flash";
+import { DustAnthropicUsClaudeSonnetFourDotSixBatch } from "@app/lib/llms/batch/endpoints/anthropic_us_claude_sonnet_four_dot_six";
+import { DustGoogleAiStudioUsGeminiThreeDotOneFlashLiteBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_us_gemini_3_1_flash_lite";
+import { DustGoogleAiStudioUsGeminiThreeDotOneProBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_us_gemini_3_1_pro";
+import { DustGoogleAiStudioUsGeminiThreeDotFiveFlashBatch } from "@app/lib/llms/batch/endpoints/google_ai_studio_us_gemini_3_5_flash";
 import { DustMistralEuropeMistralMedium35Batch } from "@app/lib/llms/batch/endpoints/mistral_eu_mistral_medium_3_5";
 import { DustOpenAIResponsesGlobalGptFiveDotFiveBatch } from "@app/lib/llms/batch/endpoints/openai_responses_global_gpt_five_dot_five";
 import { isEndpointAvailable } from "@app/lib/llms/batch/utils/is_endpoint_available";
@@ -14,14 +14,14 @@ import type {
 import type { BatchEndpointId } from "@app/lib/model_constructors/batch";
 
 export const DUST_BATCH_ENDPOINTS = {
-  [DustAnthropicGlobalClaudeSonnetFourDotSixBatch.id]:
-    DustAnthropicGlobalClaudeSonnetFourDotSixBatch,
-  [DustGoogleAiStudioGlobalGeminiThreeDotOneProBatch.id]:
-    DustGoogleAiStudioGlobalGeminiThreeDotOneProBatch,
-  [DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashBatch.id]:
-    DustGoogleAiStudioGlobalGeminiThreeDotFiveFlashBatch,
-  [DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteBatch.id]:
-    DustGoogleAiStudioGlobalGeminiThreeDotOneFlashLiteBatch,
+  [DustAnthropicUsClaudeSonnetFourDotSixBatch.id]:
+    DustAnthropicUsClaudeSonnetFourDotSixBatch,
+  [DustGoogleAiStudioUsGeminiThreeDotOneProBatch.id]:
+    DustGoogleAiStudioUsGeminiThreeDotOneProBatch,
+  [DustGoogleAiStudioUsGeminiThreeDotFiveFlashBatch.id]:
+    DustGoogleAiStudioUsGeminiThreeDotFiveFlashBatch,
+  [DustGoogleAiStudioUsGeminiThreeDotOneFlashLiteBatch.id]:
+    DustGoogleAiStudioUsGeminiThreeDotOneFlashLiteBatch,
   [DustOpenAIResponsesGlobalGptFiveDotFiveBatch.id]:
     DustOpenAIResponsesGlobalGptFiveDotFiveBatch,
   [DustMistralEuropeMistralMedium35Batch.id]:

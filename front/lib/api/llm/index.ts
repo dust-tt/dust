@@ -49,6 +49,7 @@ import {
   EUROPE,
   GLOBAL,
   type Region,
+  US,
 } from "@app/lib/model_constructors/types/regions";
 import {
   isCreditPricedPlanPrefix,
@@ -299,7 +300,13 @@ function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
     return undefined;
   }
 
-  return { eq: EUROPE };
+  // `regionalModelsOnly` in the EU deployment: admit `eu` endpoints and
+  // `global` ones. `global` means the endpoint is served in-region everywhere
+  // it runs, e.g. OpenAI, whose client is pointed at OpenAI's EU base URL in
+  // the EU deployment, so data stays in the EU. US-only providers (Anthropic
+  // direct, Fireworks, Google AI Studio, Together) are tagged `us` and stay
+  // excluded.
+  return { in: [EUROPE, GLOBAL] };
 }
 
 function getProviderIdFilter(auth: Authenticator): ValueFilter<ProviderId> {
@@ -326,9 +333,13 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   };
 }
 
+// The endpoint region each deployment prefers. `global` endpoints (e.g. OpenAI)
+// are never a preferred region — they are picked only when no region-specific
+// endpoint exists for the model — so a model with both a `us` and an `eu`
+// endpoint routes to the in-region one.
 const REGION_MAPPING: Record<RegionType, Region> = {
   "europe-west1": EUROPE,
-  "us-central1": GLOBAL,
+  "us-central1": US,
 };
 
 // Selects the endpoint best matching the current region for the given model,

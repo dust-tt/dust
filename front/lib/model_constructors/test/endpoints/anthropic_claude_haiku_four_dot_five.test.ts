@@ -1,13 +1,13 @@
 // @vitest-environment node
 
-import { AnthropicGlobalClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_haiku_four_dot_five";
+import { AnthropicUsClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_us_claude_haiku_four_dot_five";
 import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
 const setup: StreamSetup = {
   createInstance: () =>
-    new AnthropicGlobalClaudeHaikuFourDotFiveStream({
+    new AnthropicUsClaudeHaikuFourDotFiveStream({
       ANTHROPIC_API_KEY: process.env.DUST_MANAGED_ANTHROPIC_API_KEY ?? "",
     }),
   // `null` runs the case with its default checkers; a checker array overrides
@@ -66,4 +66,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_haiku_four_dot_five.test.ts
-runStreamEndpointTests(AnthropicGlobalClaudeHaikuFourDotFiveStream, setup);
+runStreamEndpointTests(AnthropicUsClaudeHaikuFourDotFiveStream, setup);

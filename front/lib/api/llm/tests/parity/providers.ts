@@ -123,8 +123,8 @@ const anthropicProvider: ParityProvider = {
         `${params.modelId} is not a whitelisted Anthropic model.`
       );
     }
-    // Only global endpoints are exercised locally, so the legacy counterpart is
-    // always the direct Anthropic API (no Vertex).
+    // Only direct-API (`us`) endpoints are exercised locally, so the legacy
+    // counterpart is always the direct Anthropic API (no Vertex).
     return new AnthropicLLM(auth, {
       credentials: PARITY_CREDENTIALS,
       modelId: params.modelId,
@@ -158,8 +158,8 @@ const googleProvider: ParityProvider = {
         `${params.modelId} is not a whitelisted Google AI Studio model.`
       );
     }
-    // Only global endpoints are exercised locally, so the legacy counterpart is
-    // always the direct Google AI Studio API (no Vertex).
+    // Only direct-API (`us`) endpoints are exercised locally, so the legacy
+    // counterpart is always the direct Google AI Studio API (no Vertex).
     return new GoogleLLM(auth, {
       credentials: PARITY_CREDENTIALS,
       modelId: params.modelId,
