@@ -49,6 +49,10 @@ COPY /scripts/db /app/scripts/db
 # Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
 RUN npx esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap
 
+# Compile the profiler script so `npm run debug:profiler` runs a pre-built bundle
+# on production pods instead of transforming TypeScript at runtime.
+RUN npx esbuild scripts/debug/run_profiler.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/run_profiler.js --sourcemap
+
 # Copy front-api source (server.ts, app.ts, routes/, middleware/)
 WORKDIR /app/front-api
 COPY /front-api .
@@ -104,6 +108,8 @@ WORKDIR /app/front
 COPY --from=workers-build /app/front/dist ./dist
 # Ensure migrate.js is present (workers-build may clean dist before building)
 COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
+# Ensure run_profiler.js is present (workers-build may clean dist before building)
+COPY --from=base-deps /app/front/dist/run_profiler.js ./dist/run_profiler.js
 # Copy front's package.json and local node_modules (non-hoisted deps)
 COPY --from=base-deps /app/front/package.json ./package.json
 COPY --from=base-deps /app/front/node_modules ./node_modules
@@ -245,6 +251,8 @@ COPY --from=front-api-build /app/package-lock.json ./package-lock.json
 COPY --from=front-api-build /app/front ./front
 # Ensure migrate.js is present explicitly
 COPY --from=base-deps /app/front/dist/migrate.js ./front/dist/migrate.js
+# Ensure run_profiler.js is present explicitly (used by `npm run debug:profiler`).
+COPY --from=base-deps /app/front/dist/run_profiler.js ./front/dist/run_profiler.js
 # Shared migration tooling lives at the repo root; front-api/package.json runs `node ../scripts/db/run-migrate.cjs`.
 COPY --from=base-deps /app/scripts/db /app/scripts/db
 

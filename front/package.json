@@ -35,7 +35,7 @@
     "migration:check:post-deploy": "node ../scripts/db/run-migrate.cjs --command check-post-deploy --execute",
     "migration:mark:pre-deploy": "node ../scripts/db/run-migrate.cjs --command mark-pre-deploy --execute",
     "migration:mark:post-deploy": "node ../scripts/db/run-migrate.cjs --command mark-post-deploy --execute",
-    "debug:profiler": "node --import ./scripts/register-esbuild.mjs ./scripts/debug/run_profiler.ts",
+    "debug:profiler": "node ./scripts/debug/run-profiler.cjs",
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
   },
   "dependencies": {
