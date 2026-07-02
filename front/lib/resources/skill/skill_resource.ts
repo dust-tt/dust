@@ -2584,14 +2584,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           agentFacingDescription,
           userFacingDescription,
           instructions,
-          ...(instructionsHtml !== undefined
-            ? {
-                instructionsHtml:
-                  instructionsHtml !== undefined
-                    ? instructionsHtml
-                    : this.instructionsHtml,
-              }
-            : {}),
+          ...(instructionsHtml !== undefined ? { instructionsHtml  : {}),
           icon,
           requestedSpaceIds,
           editedBy,
