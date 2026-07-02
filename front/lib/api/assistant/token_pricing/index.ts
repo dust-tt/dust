@@ -48,6 +48,7 @@ export function computeTokensCostForUsageInMicroUsd({
   completionTokens,
   cachedTokens,
   cacheCreationTokens,
+  longCacheCreationTokens,
   isBatch = false,
   inferenceRegion = "global",
 }: {
@@ -56,6 +57,10 @@ export function computeTokensCostForUsageInMicroUsd({
   completionTokens: number;
   cachedTokens: number | null;
   cacheCreationTokens?: number | null;
+  // Portion of cacheCreationTokens written to a long-lived cache, for
+  // providers that bill those at a premium. The remainder is billed at the
+  // standard cache-write rate.
+  longCacheCreationTokens?: number | null;
   isBatch?: boolean;
   inferenceRegion?: InferenceRegionType;
 }): number {
@@ -66,16 +71,22 @@ export function computeTokensCostForUsageInMicroUsd({
   const pricing = regionalPricing ?? MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
 
   const cachedReadTokens = cachedTokens ?? 0;
-  const cacheWriteTokens = cacheCreationTokens ?? 0;
+  const longCacheWriteTokens = longCacheCreationTokens ?? 0;
+  const shortCacheWriteTokens =
+    (cacheCreationTokens ?? 0) - longCacheWriteTokens;
 
   const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
-  const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
+  const shortCacheWriteRate =
+    pricing.cache_creation_input_tokens ?? pricing.input;
+  const longCacheWriteRate =
+    pricing.long_cache_creation_input_tokens ?? shortCacheWriteRate;
 
   const basePromptCostMicroUsd = promptTokens * pricing.input;
   const cachedReadDeltaMicroUsd =
     cachedReadTokens * (cachedReadRate - pricing.input);
   const cacheWriteDeltaMicroUsd =
-    cacheWriteTokens * (cacheWriteRate - pricing.input);
+    shortCacheWriteTokens * (shortCacheWriteRate - pricing.input) +
+    longCacheWriteTokens * (longCacheWriteRate - pricing.input);
   const outputCostMicroUsd = completionTokens * pricing.output;
 
   const costMicroUsd =

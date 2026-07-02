@@ -4,7 +4,11 @@ import type { StaticModelIdType } from "@app/types/assistant/models/models";
 export type PricingEntry = {
   input: number;
   output: number;
+  // Cache write rate. For providers that bill by cache retention duration,
+  // this is the short-lived rate and long_cache_creation_input_tokens the
+  // long-lived one.
   cache_creation_input_tokens?: number;
+  long_cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 };
 
@@ -113,42 +117,49 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 15.0,
     output: 75.0,
     cache_creation_input_tokens: 18.75,
+    long_cache_creation_input_tokens: 30.0,
     cache_read_input_tokens: 1.5,
   },
   "claude-4-sonnet-20250514": {
     input: 3.0,
     output: 15.0,
     cache_creation_input_tokens: 3.75,
+    long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
   "claude-sonnet-4-5-20250929": {
     input: 3.0,
     output: 15.0,
     cache_creation_input_tokens: 3.75,
+    long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
   "claude-opus-4-5-20251101": {
     input: 5.0,
     output: 25.0,
     cache_creation_input_tokens: 6.25,
+    long_cache_creation_input_tokens: 10.0,
     cache_read_input_tokens: 0.5,
   },
   "claude-opus-4-6": {
     input: 5.0,
     output: 25.0,
     cache_creation_input_tokens: 6.25,
+    long_cache_creation_input_tokens: 10.0,
     cache_read_input_tokens: 0.5,
   },
   "claude-opus-4-7": {
     input: 5.0,
     output: 25.0,
     cache_creation_input_tokens: 6.25,
+    long_cache_creation_input_tokens: 10.0,
     cache_read_input_tokens: 0.5,
   },
   "claude-opus-4-8": {
     input: 5.0,
     output: 25.0,
     cache_creation_input_tokens: 6.25,
+    long_cache_creation_input_tokens: 10.0,
     cache_read_input_tokens: 0.5,
   },
   // https://platform.claude.com/docs/en/about-claude/models/overview
@@ -156,12 +167,14 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 10.0,
     output: 50.0,
     cache_creation_input_tokens: 12.5,
+    long_cache_creation_input_tokens: 20.0,
     cache_read_input_tokens: 1.0,
   },
   "claude-sonnet-4-6": {
     input: 3.0,
     output: 15.0,
     cache_creation_input_tokens: 3.75,
+    long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
   // https://platform.claude.com/docs/en/about-claude/pricing
@@ -171,48 +184,56 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 2.0,
     output: 10.0,
     cache_creation_input_tokens: 2.5,
+    long_cache_creation_input_tokens: 4.0,
     cache_read_input_tokens: 0.2,
   },
   "claude-3-opus-20240229": {
     input: 15.0,
     output: 75.0,
     cache_creation_input_tokens: 18.75,
+    long_cache_creation_input_tokens: 30.0,
     cache_read_input_tokens: 1.5,
   },
   "claude-3-5-sonnet-20240620": {
     input: 3.0,
     output: 15.0,
     cache_creation_input_tokens: 3.75,
+    long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
   "claude-3-5-sonnet-20241022": {
     input: 3.0,
     output: 15.0,
     cache_creation_input_tokens: 3.75,
+    long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
   "claude-3-7-sonnet-20250219": {
     input: 3.0,
     output: 15.0,
     cache_creation_input_tokens: 3.75,
+    long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
   "claude-3-haiku-20240307": {
     input: 0.25,
     output: 1.25,
     cache_creation_input_tokens: 0.3,
+    long_cache_creation_input_tokens: 0.5,
     cache_read_input_tokens: 0.03,
   },
   "claude-3-5-haiku-20241022": {
     input: 1.0,
     output: 5.0,
     cache_creation_input_tokens: 1.25,
+    long_cache_creation_input_tokens: 2.0,
     cache_read_input_tokens: 0.1,
   },
   "claude-haiku-4-5-20251001": {
     input: 1.0,
     output: 5.0,
     cache_creation_input_tokens: 1.25,
+    long_cache_creation_input_tokens: 2.0,
     cache_read_input_tokens: 0.1,
   },
   "mistral-large-latest": {
