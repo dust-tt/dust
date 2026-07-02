@@ -416,7 +416,7 @@
  *             tier:
  *               type: string
  *               nullable: true
- *               enum: [fast, balanced, powerful]
+ *               enum: [efficient, balanced, powerful]
  *               description: The abstract tier the user picked, or null for an explicit ("advanced") model pick.
  *             providerId:
  *               type: string

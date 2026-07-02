@@ -164,7 +164,7 @@ const app = workspaceApp();
  *                         enum: [tier]
  *                       tier:
  *                         type: string
- *                         enum: [fast, balanced, powerful]
+ *                         enum: [efficient, balanced, powerful]
  *                   - type: object
  *                     required: [type, providerId, modelId]
  *                     properties:

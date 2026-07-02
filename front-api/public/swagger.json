@@ -7701,7 +7701,7 @@
                           "tier": {
                             "type": "string",
                             "enum": [
-                              "fast",
+                              "efficient",
                               "balanced",
                               "powerful"
                             ]
@@ -10598,7 +10598,7 @@
                 "type": "string",
                 "nullable": true,
                 "enum": [
-                  "fast",
+                  "efficient",
                   "balanced",
                   "powerful"
                 ],
