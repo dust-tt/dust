@@ -247,13 +247,16 @@ export async function getStreamLLM(
   );
 
   if (featureFlags.includes("use_new_llm_router") && streamEndpointLLM) {
-    logger.info(
-      { modelId: llmParameters.modelId },
-      `Sending request to ${llmParameters.modelId} with new router`
-    );
-
     return streamEndpointLLM;
   }
+
+  logger.info(
+    {
+      modelId: llmParameters.modelId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    },
+    `Falling back to the old router for ${llmParameters.modelId}`
+  );
 
   const legacyLLM = await getLegacyLLM(auth, llmParameters);
 
