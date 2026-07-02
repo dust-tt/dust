@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -54,16 +53,9 @@ app.post(
       });
     }
 
-    // A workspace mid-migration (pending Business contract staged) gets the
-    // restricted portal so it can manage payment but not remove the scheduled
-    // cancellation. Opting out is done via our own Cancel action instead.
-    const pendingMigration =
-      await SubscriptionResource.fetchPendingByWorkspaceModelId(owner.id);
-
     const portalUrl = await createCustomerPortalSession({
       owner,
       subscription,
-      restrictSubscriptionManagement: pendingMigration !== null,
     });
     if (portalUrl) {
       return ctx.json({ portalUrl });

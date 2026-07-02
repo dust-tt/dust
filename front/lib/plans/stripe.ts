@@ -517,15 +517,9 @@ export async function ensureStripeCustomerDefaultPaymentMethod({
 export const createCustomerPortalSession = async ({
   owner,
   subscription,
-  restrictSubscriptionManagement = false,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  // When true, use the restricted portal configuration (payment method +
-  // invoices only, no subscription cancel/update) if one is configured. Used
-  // for workspaces mid-migration so they can't "un-cancel" the scheduled
-  // cancellation from the Stripe portal.
-  restrictSubscriptionManagement?: boolean;
 }): Promise<string | null> => {
   const stripe = getStripeClient();
 
@@ -542,14 +536,9 @@ export const createCustomerPortalSession = async ({
     );
   }
 
-  const restrictedConfigurationId =
-    config.getStripeRestrictedPortalConfigurationId();
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: stripeCustomerIdRes.value,
     return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription`,
-    ...(restrictSubscriptionManagement && restrictedConfigurationId
-      ? { configuration: restrictedConfigurationId }
-      : {}),
   });
 
   return portalSession.url;
