@@ -82,11 +82,16 @@ import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  resolveEffectiveSpendLimitAwuCredits,
+  resolveEffectiveSpendLimitSource,
+} from "@app/lib/spend_limits/effective";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchReconcileWorkspaceUserCreditStatesWorkflow } from "@app/temporal/metronome_events_queue/client";
@@ -625,12 +630,29 @@ async function handlePerUserSpendThresholdEvent({
     await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
       workspace.id
     );
+  // Max group cap (pool-only) across the user's groups; null when none carry a
+  // cap. Priority: per-user override > max group cap > workspace default (shared
+  // ladder).
+  const groupCapAwuCredits =
+    (
+      await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+        workspace: lightWorkspace,
+        userModelIds: [membership.userId],
+      })
+    ).get(membership.userId) ?? null;
+  const defaultPoolCapAwuCredits =
+    creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
   const poolCap =
-    membership.poolCapOverrideAwuCredits ??
-    creditUsageConfig?.defaultPoolCapAwuCredits ??
-    0;
-  const capSource =
-    membership.poolCapOverrideAwuCredits !== null ? "override" : "default";
+    resolveEffectiveSpendLimitAwuCredits({
+      overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+      groupCapAwuCredits,
+      defaultAwuCredits: defaultPoolCapAwuCredits,
+    }) ?? defaultPoolCapAwuCredits;
+  const capSource = resolveEffectiveSpendLimitSource({
+    overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    groupCapAwuCredits,
+    defaultAwuCredits: defaultPoolCapAwuCredits,
+  });
 
   let seatAllowance = 0;
   try {

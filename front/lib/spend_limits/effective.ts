@@ -1,33 +1,52 @@
 import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
-export type EffectiveSpendLimitSource = "override" | "default" | "none";
+export type EffectiveSpendLimitSource =
+  | "override"
+  | "group"
+  | "default"
+  | "none";
 
 export type SpendLimitAlertState = CustomerAlert["customer_status"];
 
+// Priority: per-user `override` > the highest of the user's `group` caps >
+// seat-type `default`. `groupCapAwuCredits` is the max cap across the groups the
+// user belongs to (null when none of them carry a cap). All three values must be
+// expressed in the same unit (all pool-only, or all pool + seat allowance).
 export function resolveEffectiveSpendLimitAwuCredits({
   overrideAwuCredits,
+  groupCapAwuCredits,
   defaultAwuCredits,
 }: {
   overrideAwuCredits: number | null;
+  groupCapAwuCredits: number | null;
   defaultAwuCredits: number | null;
 }): number | null {
   if (overrideAwuCredits !== null) {
     return overrideAwuCredits;
   }
+  if (groupCapAwuCredits !== null) {
+    return groupCapAwuCredits;
+  }
   return defaultAwuCredits;
 }
 
-// Where the effective spend limit comes from: a user-specific `override`, the
-// seat-type `default`, or `none` when neither is configured (unlimited).
+// Where the effective spend limit comes from: a user-specific `override`, a
+// `group` cap, the seat-type `default`, or `none` when nothing is configured
+// (unlimited).
 export function resolveEffectiveSpendLimitSource({
   overrideAwuCredits,
+  groupCapAwuCredits,
   defaultAwuCredits,
 }: {
   overrideAwuCredits: number | null;
+  groupCapAwuCredits: number | null;
   defaultAwuCredits: number | null;
 }): EffectiveSpendLimitSource {
   if (overrideAwuCredits !== null) {
     return "override";
+  }
+  if (groupCapAwuCredits !== null) {
+    return "group";
   }
   if (defaultAwuCredits !== null) {
     return "default";
