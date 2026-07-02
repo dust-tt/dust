@@ -880,6 +880,7 @@ function getGlobalAgent({
         auth,
         settings,
         mcpServerViews,
+        featureFlags,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET:
