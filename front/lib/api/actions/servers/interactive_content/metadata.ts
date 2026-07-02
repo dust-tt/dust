@@ -193,9 +193,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
       "Read back the current content of an existing Frame by its file ID. " +
-      "Use this to inspect a Frame you have previously created " +
-      `or edited. Use this tool before calling ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME} to ` +
-      "understand the current file state and identify the exact text to replace.",
+      "Use this to inspect a Frame you have previously created or edited, and to identify " +
+      "the exact text to replace before an edit.",
     schema: {
       file_id: z
         .string()

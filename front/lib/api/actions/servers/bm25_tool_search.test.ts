@@ -758,7 +758,9 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "edit the code of my frame",
     expected: "interactive_content.edit_interactive_content_file",
-    maxRank: 3, // pod_manager.edit_information and files__edit collides on "edit"
+    // pod_manager.edit_information and files.edit collide on "edit". The tool is deprecated
+    // (kept for conversations without the file system), so a low rank is acceptable.
+    maxRank: 4,
   },
   {
     query: "change the chart colors in my dashboard",

@@ -10,7 +10,10 @@ import {
   type ToolContextType,
 } from "@app/lib/actions/types";
 import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
-import { INTERACTIVE_CONTENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import {
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { fetchTemplateContent } from "@app/lib/api/actions/servers/interactive_content/template_utils";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import {
@@ -440,5 +443,19 @@ export async function createInteractiveContentTools(
     },
   };
 
-  return buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
+  const tools = buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
+
+  // Deprecated in favor of editing the Frame's mounted source by path with the files
+  // server, then publishing. Conversations without the file system (created before it
+  // defaulted on) have no path tools, so they keep the file-id edit tool.
+  const conversation =
+    toolContext?.runContext?.conversation ??
+    toolContext?.listToolsContext?.conversation;
+  if (conversation?.metadata?.useFileSystem === true) {
+    return tools.filter(
+      (tool) => tool.name !== EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+    );
+  }
+
+  return tools;
 }
