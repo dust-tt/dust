@@ -131,12 +131,12 @@ const NavigationListItem = React.forwardRef<
             aria-disabled={disabled}
             className={cn(
               "peer/menu-button",
-              "text-primary font-medium",
+              "text-muted-foreground font-medium",
               "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
               "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
               "data-[disabled]:pointer-events-none",
-              "hover:bg-hover",
-              selected && "bg-selected",
+              "hover:bg-hover hover:text-primary",
+              selected && "bg-selected text-primary",
               disabled && "pointer-events-none cursor-default opacity-50"
             )}
           >

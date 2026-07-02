@@ -58,13 +58,15 @@ export const menuStyleClasses = {
         variant: {
           default: cn(
             "p-2",
-            "hover:bg-hover",
+            "text-muted-foreground",
+            "hover:bg-hover hover:text-foreground",
             "focus:text-foreground",
             "focus:bg-hover"
           ),
           tags: cn(
             "p-0.5",
-            "hover:bg-hover",
+            "text-muted-foreground",
+            "hover:bg-hover hover:text-foreground",
             "focus:text-foreground",
             "focus:bg-hover"
           ),
