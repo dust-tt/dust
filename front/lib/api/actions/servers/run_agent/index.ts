@@ -139,7 +139,21 @@ async function checkChildAgentCanRun(
     variant: "extra_light",
   });
 
-  if (!childAgent || !canRunChildAgent(childAgent)) {
+  if (!childAgent) {
+    return new Err(makeChildAgentUnavailableError(childAgentName));
+  }
+
+  if (!canRunChildAgent(childAgent)) {
+    if (childAgent.status === "archived") {
+      return new Err(
+        new MCPError(
+          `Agent @${childAgentName} is archived and cannot be run. ` +
+            "Ask a workspace admin to unarchive it or update this Run Agent tool.",
+          { tracked: false }
+        )
+      );
+    }
+
     return new Err(makeChildAgentUnavailableError(childAgentName));
   }
 
@@ -796,10 +810,10 @@ function isRunAgentHandoffMode(toolContext?: ToolContextType): boolean {
  * leaked to the user which appears as acceptable given the proactive decision of a builder having
  * access to it to refer it from the parent agent more broadly shared.
  *
- * If the agent has been archived, this method will return null leading to the tool being displayed
- * to the model as not configured.
+ * If the agent has been archived, this method still returns its name so the tool and error message
+ * can point users to the agent they need to unarchive.
  */
-async function leakyGetAgentNameAndDescriptionForChildAgent(
+async function leakyGetAgentMetadataForChildAgent(
   auth: Authenticator,
   agentId: string
 ): Promise<{
@@ -825,9 +839,10 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
     where: {
       sId: agentId,
       workspaceId: owner.id,
-      status: "active",
+      status: ["active", "archived"],
     },
     attributes: ["name", "description"],
+    order: [["version", "DESC"]],
   });
 
   if (!agentConfiguration) {
@@ -871,14 +886,14 @@ async function createServer(
 
   let childAgentBlob: ChildAgentBlob | null = null;
   if (childAgentId) {
-    childAgentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
+    childAgentBlob = await leakyGetAgentMetadataForChildAgent(
       auth,
       childAgentId
     );
   }
 
-  // If we have no child ID (unexpected) or the child agent was archived, return a dummy server
-  // whose tool name and description informs the agent of the situation.
+  // If we have no child ID (unexpected) or the child agent cannot be found, return a dummy
+  // server whose tool name and description informs the agent of the situation.
   if (!childAgentBlob) {
     registerTool(
       auth,
@@ -887,8 +902,8 @@ async function createServer(
       {
         name: "run_agent_tool_not_available",
         description:
-          "No child agent configured for this tool, as the child agent was probably archived. " +
-          "Do not attempt to run the tool and warn the user instead.",
+          "No child agent configured for this tool, as the child agent may have been deleted or " +
+          "become unavailable. Do not attempt to run the tool and warn the user instead.",
         stake: "never_ask",
         displayLabels: {
           running: "No child agent configured",
@@ -905,9 +920,9 @@ async function createServer(
     return server;
   }
 
+  const toolName = `run_${childAgentBlob.name}`;
   const isHandoffConfiguration = isRunAgentHandoffMode(toolContext);
 
-  const toolName = `run_${childAgentBlob.name}`;
   const mentionChild = serializeMention({
     name: childAgentBlob.name,
     sId: childAgentId!, // We are sure childAgentId is *not* undefined here, as we check for childAgentBlob above
