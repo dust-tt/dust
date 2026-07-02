@@ -18,7 +18,6 @@ DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/<folder>/seed.ts --execute
 
 - `basics/` - Creates a custom agent with skills and sample conversations
 - `byok/` - Setup workspace to test Bring your own key
-- `extract_data/` - Creates a data source and an agent configured with the Extract Data tool
 - `reinforcement/` - Creates skills with conversations, feedbacks, Dust conversations with JIT skills for testing reinforcement
 - `sidekick/` - Creates agents and conversations for testing the agent builder sidekick feature
 - `triggers/` - Creates schedule triggers for basics agents
