@@ -1596,7 +1596,7 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("fetchActiveByIdsForAgentLoop", () => {
+  describe("fetchByIds", () => {
     it("filters code-defined skills disabled for the current agent loop", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
@@ -1623,14 +1623,17 @@ describe("SkillResource", () => {
         }
       );
 
-      const skills = await SkillResource.fetchActiveByIdsForAgentLoop(
+      const skills = await SkillResource.fetchByIds(
         testContext.authenticator,
         ["mention_users"],
         {
-          agentConfiguration: agent,
-          agentMessage,
-          conversation,
-          userMessage,
+          agentLoopData: {
+            agentConfiguration: agent,
+            agentMessage,
+            conversation,
+            userMessage,
+          },
+          onlyActive: true,
         }
       );
 
