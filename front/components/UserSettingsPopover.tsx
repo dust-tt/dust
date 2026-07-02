@@ -237,6 +237,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
                     memberUsageLimit={myUsage?.memberUsageLimit ?? null}
                     seatBalanceAwu={myUsage?.seatBalanceAwu ?? null}
                     effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
+                    spendLimitSource={myUsage?.spendLimitSource ?? "none"}
                     seatType={myUsage?.seatType ?? null}
                     isTotalAllowedUsagePending={false}
                   />
