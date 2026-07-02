@@ -862,7 +862,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     sIds: string[],
     {
       agentLoopData,
-      onlyActive = true,
+      onlyActive = false,
     }: { agentLoopData?: AgentLoopExecutionData; onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
