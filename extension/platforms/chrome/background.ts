@@ -94,14 +94,13 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
 /**
  * Listener for messages sent from external websites that are whitelisted on the manifest.
  * It allows to open the side panel and either navigate to an existing conversation
- * or create a new one with a pre-configured agent.
+ * or open a new one with a pre-selected agent.
  *
  * Accepted payloads:
  *   - { action: "openSidePanel", workspaceId, conversationId }
  *     Opens an existing conversation directly.
- *   - { action: "openSidePanel", workspaceId, agentId, spaceId? }
- *     Creates a new conversation with the given agent (and optional Pod space)
- *     server-side — bypassing browser CORS restrictions — then opens it.
+ *   - { action: "openSidePanel", workspaceId, agentId }
+ *     Opens a new conversation with the given agent pre-selected in the input bar.
  *
  * We return true to keep the message channel open for async response.
  */
@@ -131,77 +130,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
         .open({
           windowId: tabs[0].windowId,
         })
-        .then(async () => {
-          let conversationId: string = request.conversationId;
-
-          // If agentId is provided without a conversationId, create a new
-          // conversation server-side. The extension background script is not
-          // subject to CORS restrictions, so it can call the Dust API directly
-          // using the stored auth token.
-          if (!hasConversationId && hasAgentId) {
-            try {
-              const token = await platform.auth.getAccessToken();
-              const regionInfo =
-                await platform.auth.getRegionInfoFromStorage();
-
-              if (!token || !regionInfo) {
-                log(
-                  "[onMessageExternal] Missing auth token or region info."
-                );
-                return;
-              }
-
-              const body: Record<string, unknown> = {
-                title: null,
-                visibility: "unlisted",
-                message: null,
-                contentFragments: [],
-              };
-
-              if (
-                request.spaceId &&
-                typeof request.spaceId === "string"
-              ) {
-                body.spaceId = request.spaceId;
-              }
-
-              const res = await fetch(
-                `${regionInfo.url}/api/w/${request.workspaceId}/assistant/conversations`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                  },
-                  credentials: "omit",
-                  body: JSON.stringify(body),
-                }
-              );
-
-              if (!res.ok) {
-                log(
-                  "[onMessageExternal] Failed to create conversation:",
-                  res.status
-                );
-                return;
-              }
-
-              const data = await res.json();
-              conversationId = data.conversation?.sId;
-
-              if (!conversationId) {
-                log(
-                  "[onMessageExternal] Invalid conversation response:",
-                  data
-                );
-                return;
-              }
-            } catch (err) {
-              log("[onMessageExternal] Error creating conversation:", err);
-              return;
-            }
-          }
-
+        .then(() => {
           chrome.storage.local.get(
             ["extensionReady", "selectedWorkspace"],
             ({ extensionReady, selectedWorkspace }) => {
@@ -211,9 +140,11 @@ chrome.runtime.onMessageExternal.addListener((request) => {
               }
 
               const sendMessage = () => {
-                const params = JSON.stringify({
-                  conversationId,
-                });
+                const params = JSON.stringify(
+                  hasConversationId
+                    ? { conversationId: request.conversationId }
+                    : { agentId: request.agentId }
+                );
                 void chrome.runtime.sendMessage({
                   type: "EXT_ROUTE_CHANGE",
                   pathname: "/run",
