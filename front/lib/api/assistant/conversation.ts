@@ -569,9 +569,6 @@ export async function postUserMessage(
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
-    // Optional per-message model override from the input-bar model picker,
-    // resolved to a concrete model below and applied to every agent message
-    // created for this user message.
     modelSelection?: ModelSelectionType;
   }
 ): Promise<
