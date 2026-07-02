@@ -110,7 +110,8 @@ describe("setGroupSpendLimit", () => {
     const group = await GroupResource.makeNew({
       name: "Sales",
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "provisioned",
+      workOSGroupId: "fake-sales",
     });
 
     const result = await setGroupSpendLimit(auth, {
@@ -154,7 +155,8 @@ describe("setGroupSpendLimit", () => {
     const group = await GroupResource.makeNew({
       name: "Sales",
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "provisioned",
+      workOSGroupId: "fake-sales",
     });
     await group.updatePoolCap(auth, 25_000);
 
@@ -194,7 +196,8 @@ describe("setGroupSpendLimit", () => {
     const group = await GroupResource.makeNew({
       name: "Sales",
       workspaceId: workspace.id,
-      kind: "regular",
+      kind: "provisioned",
+      workOSGroupId: "fake-sales",
     });
 
     for (const awuCredits of [-1, 1_000_001, 1.5]) {
