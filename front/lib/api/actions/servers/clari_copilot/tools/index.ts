@@ -61,7 +61,8 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
     }
 
     const call = result.value;
-    const callToReturn = include_transcript
+    const shouldIncludeTranscript = include_transcript ?? true;
+    const callToReturn = shouldIncludeTranscript
       ? call
       : { ...call, transcript: undefined };
     return new Ok([
