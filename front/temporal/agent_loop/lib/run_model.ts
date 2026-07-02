@@ -9,7 +9,10 @@ import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/typ
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import {
+  renderConversationForModel,
+  renderMemoriesUserMessage,
+} from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import {
@@ -414,8 +417,16 @@ export async function runModel(
     hasSandboxTools,
     disableFormattingPrompt,
   });
+
+  const memories = await AgentMemoryResource.findByAgentConfigurationIdAndUser(
+    auth,
+    {
+      agentConfigurationId: agentConfiguration.sId,
+    }
+  );
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
+    renderMemoriesUserMessage(memories),
   ]);
 
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is

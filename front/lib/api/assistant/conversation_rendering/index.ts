@@ -4,7 +4,9 @@ import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -12,6 +14,7 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
+  UserMessageTypeModel,
 } from "@app/types/assistant/generation";
 import {
   isContentFragmentMessageTypeModel,
@@ -405,4 +408,31 @@ async function countTokensForMessages(
       tokenCount: count + additionalTokens[i],
     }))
   );
+}
+
+function formatMemory(memory: AgentMemoryResource): string {
+  return `- ${memory.content} (saved ${formatTimestampToFriendlyDate(new Date(memory.updatedAt).getTime(), "compactWithDay")}).`;
+}
+
+export function renderMemoriesUserMessage(
+  memories: AgentMemoryResource[]
+): UserMessageTypeModel | null {
+  const memoryList = memories.length
+    ? memories.map(formatMemory).join("\n")
+    : "No existing memories.";
+
+  return {
+    role: "user",
+    name: "system",
+    content: [
+      {
+        type: "text",
+        text: `<dust_system>
+  <existing_memories>
+    ${memoryList.trim()}
+  </existing_memories>
+</dust_system>>`,
+      },
+    ],
+  };
 }
