@@ -9,14 +9,14 @@ import {
 import { Outlet } from "react-router-dom";
 
 interface RequireRoleProps {
-  role: Extract<RoleType, "admin" | "business_admin">;
+  requiredRole: Extract<RoleType, "admin" | "business_admin">;
 }
 
-export function RequireRoleLayout({ role }: RequireRoleProps) {
+export function RequireRoleLayout({ requiredRole }: RequireRoleProps) {
   const { workspace } = useAuth();
 
   const hasRequiredRole =
-    role === "admin" ? isAdmin(workspace) : isBusinessAdmin(workspace);
+    requiredRole === "admin" ? isAdmin(workspace) : isBusinessAdmin(workspace);
 
   if (!hasRequiredRole) {
     return <Custom404 />;

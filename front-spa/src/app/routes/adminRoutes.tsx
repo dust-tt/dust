@@ -96,7 +96,7 @@ const BillingPage = withSuspense(
 export const adminRoutes: RouteObject[] = [
   {
     // Accessible to admins and business admins.
-    element: <RequireRoleLayout role="business_admin" />,
+    element: <RequireRoleLayout requiredRole="business_admin" />,
     children: [
       { path: "members", element: <MembersPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
@@ -104,7 +104,7 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     // Admin-only areas.
-    element: <RequireRoleLayout role="admin" />,
+    element: <RequireRoleLayout requiredRole="admin" />,
     children: [
       {
         path: "identity-and-provisioning",
