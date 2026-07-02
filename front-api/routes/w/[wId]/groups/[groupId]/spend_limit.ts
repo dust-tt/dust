@@ -77,6 +77,7 @@ function spendLimitErrorToApiError(
 // Mounted at /api/w/:wId/groups/:groupId/spend_limit.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.put(
   "/",
   validate("param", ParamsSchema),
