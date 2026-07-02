@@ -791,7 +791,7 @@ export function UserSettingsPopover({
           </nav>
 
           {/* Desktop: vertical sidebar */}
-          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-muted-background sm:flex">
+          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border sm:flex">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
                 <Button variant="ghost" size="mini" icon={XClose} />
