@@ -45,6 +45,10 @@ export const FIREWORKS_GLM_5P2_MODEL_ID =
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
   "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
 
+// Dummy model used for local/dev testing (static replies, simulated credit
+// consumption). Served by the in-process noop endpoint, not an external API.
+export const NOOP_MODEL_ID = "noop" as const;
+
 // Include a few examples for now
 export const MODEL_IDS = [
   GPT_5_5_MODEL_ID,
@@ -78,6 +82,7 @@ export const MODEL_IDS = [
   FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_GLM_5P2_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
+  NOOP_MODEL_ID,
 ] as const;
 
 export type ModelId = (typeof MODEL_IDS)[number];

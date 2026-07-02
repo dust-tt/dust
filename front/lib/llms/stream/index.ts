@@ -18,6 +18,7 @@ import { DustMistralEuropeCodestralStream } from "@app/lib/llms/stream/endpoints
 import { DustMistralEuropeMistralLargeStream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_large";
 import { DustMistralEuropeMistralMedium35Stream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_medium_3_5";
 import { DustMistralEuropeMistralSmallStream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_small";
+import { DustNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_global_noop";
 import { DustOpenAIResponsesEuropeGptFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five";
 import { DustOpenAIResponsesEuropeGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_dot_five";
 import { DustOpenAIResponsesEuropeGptFiveDotFourStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_dot_four";
@@ -80,6 +81,7 @@ export const DUST_STREAM_ENDPOINTS = {
   [DustMistralEuropeMistralMedium35Stream.id]:
     DustMistralEuropeMistralMedium35Stream,
   [DustMistralEuropeMistralSmallStream.id]: DustMistralEuropeMistralSmallStream,
+  [DustNoopGlobalNoopStream.id]: DustNoopGlobalNoopStream,
   [DustOpenAIResponsesEuropeGptFiveDotFiveStream.id]:
     DustOpenAIResponsesEuropeGptFiveDotFiveStream,
   [DustOpenAIResponsesEuropeGptFiveDotFourMiniStream.id]:

@@ -22,6 +22,7 @@ import { MistralEuropeCodestralStream } from "@app/lib/model_constructors/stream
 import { MistralEuropeMistralLargeStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_large";
 import { MistralEuropeMistralMedium35Stream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_medium_3_5";
 import { MistralEuropeMistralSmallStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_small";
+import { NoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_global_noop";
 import { OpenAIResponsesEuropeGptFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five";
 import { OpenAIResponsesEuropeGptFiveDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_five";
 import { OpenAIResponsesEuropeGptFiveDotFourStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_four";
@@ -60,6 +61,7 @@ import { MistralEuropeCodestralStreamSetup } from "@app/lib/model_constructors/t
 import { MistralEuropeMistralLargeStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_eu_mistral_large.test";
 import { MistralEuropeMistralMedium35StreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_eu_mistral_medium_3_5.test";
 import { MistralEuropeMistralSmallStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_eu_mistral_small.test";
+import { NoopGlobalNoopStreamSetup } from "@app/lib/model_constructors/test/endpoints/noop_global_noop.test";
 import { OpenAIResponsesEuropeGptFiveStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five.test";
 import { OpenAIResponsesEuropeGptFiveDotFiveStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_five.test";
 import { OpenAIResponsesEuropeGptFiveDotFourStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_four.test";
@@ -116,6 +118,7 @@ export const STREAM_ENDPOINT_SETUPS = {
   [MistralEuropeMistralMedium35Stream.id]:
     MistralEuropeMistralMedium35StreamSetup,
   [MistralEuropeMistralSmallStream.id]: MistralEuropeMistralSmallStreamSetup,
+  [NoopGlobalNoopStream.id]: NoopGlobalNoopStreamSetup,
   [OpenAIResponsesEuropeGptFiveDotFiveStream.id]:
     OpenAIResponsesEuropeGptFiveDotFiveStreamSetup,
   [OpenAIResponsesEuropeGptFiveDotFourMiniStream.id]:
