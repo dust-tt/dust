@@ -888,7 +888,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       { customSkillIds: [], globalSkillIds: [] }
     );
 
-    // When fetching by specific IDs, return skills regardless of status.
     return this.baseFetch(
       auth,
       {
