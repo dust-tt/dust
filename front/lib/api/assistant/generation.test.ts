@@ -1,7 +1,5 @@
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
-  globalAgentInjectsMemory,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
 } from "@app/lib/api/assistant/global_agents/global_agents";
@@ -11,7 +9,6 @@ import {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
-import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -452,49 +449,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
   });
 
-  it("should include memoriesContext in prompt output when provided", () => {
-    const memoriesContext =
-      "<existing_memories>\n- User prefers TypeScript (saved Jan 15, 2025).\n</existing_memories>";
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [],
-      enabledSkills: [],
-      equippedSkills: [],
-      memoriesContext,
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    expect(text).toContain("<existing_memories>");
-    expect(text).toContain("User prefers TypeScript");
-  });
-
-  it("should produce a valid prompt when memoriesContext is omitted", () => {
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [],
-      enabledSkills: [],
-      equippedSkills: [],
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    // Prompt works without memoriesContext (no crash, contains instructions).
-    expect(text).toContain("# INSTRUCTIONS");
-    expect(text).not.toContain("<existing_memories>");
-  });
-
   it("should keep equipped skills out of the system prompt", async () => {
     const equippedSkills = [
       await SkillFactory.create(authenticator1, {
@@ -632,77 +586,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("### SYSTEM SKILLS");
     expect(text).toContain(discoverSkills.instructions);
   });
-
-  it("should keep memory_guidelines in instructions but existing_memories in ephemeral tier for dust-like agents", () => {
-    const dustConfig = {
-      ...agentConfig1,
-      sId: GLOBAL_AGENTS_SID.DUST,
-      scope: "global" as const,
-      instructions: agentConfig1.instructions + "\n<memory_guidelines>\n",
-    };
-
-    const memoriesContext =
-      "<existing_memories>\n- Some memory (saved Jan 1, 2025).\n</existing_memories>";
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: dustConfig,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [],
-      enabledSkills: [],
-      equippedSkills: [],
-      memoriesContext,
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const { instructions, ephemeralContext } = normalizePrompt(sections);
-
-    // Dust-like agents: memory_guidelines are in instructions.
-    expect(instructions).toHaveLength(1);
-    expect(instructions[0].content).toContain("<memory_guidelines>");
-    expect(instructions[0].content).not.toContain("<existing_memories>");
-
-    // existing_memories should be in the ephemeral tier (per-user).
-    const memoriesSection = ephemeralContext.find((s) =>
-      s.content.includes("<existing_memories>")
-    );
-    expect(memoriesSection).toBeDefined();
-    expect(memoriesSection?.content).toContain("Some memory");
-  });
-});
-
-describe("globalAgentInjectsMemory", () => {
-  it("should return true for dust-like agents", () => {
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST)).toBe(true);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_EDGE)).toBe(true);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_QUICK)).toBe(true);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_OAI)).toBe(true);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_GOOG)).toBe(true);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT)).toBe(true);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH)).toBe(
-      true
-    );
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_CHAWI)).toBe(true);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_SOUPINOU)).toBe(
-      true
-    );
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_SUNDAE)).toBe(true);
-  });
-
-  it("should return false for non-dust global agents", () => {
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DEEP_DIVE)).toBe(false);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.GPT4)).toBe(false);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.HELPER)).toBe(false);
-    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.GEMINI_PRO)).toBe(false);
-  });
-
-  it("should return false for arbitrary non-global-agent strings", () => {
-    expect(globalAgentInjectsMemory("my-custom-agent")).toBe(false);
-    expect(globalAgentInjectsMemory("random-string")).toBe(false);
-    expect(globalAgentInjectsMemory("")).toBe(false);
-  });
 });
 
 describe("globalAgentInjectsUserContext", () => {
@@ -735,39 +618,5 @@ describe("globalAgentInjectsWorkspaceContext", () => {
     expect(
       globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DEEP_DIVE)
     ).toBe(false);
-  });
-});
-
-describe("buildMemoriesContext", () => {
-  it("should output 'No existing memories' for an empty array", async () => {
-    const result = buildMemoriesContext([]);
-
-    expect(result).toContain("<existing_memories>");
-    expect(result).toContain("</existing_memories>");
-    expect(result).toContain("No existing memories");
-  });
-
-  it("should include each memory's content and a saved date marker", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-
-    const memory1 = await AgentMemoryResource.makeNew(authenticator, {
-      agentConfigurationId: "test-agent",
-      content: "User is a backend engineer",
-      userId: null,
-    });
-    const memory2 = await AgentMemoryResource.makeNew(authenticator, {
-      agentConfigurationId: "test-agent",
-      content: "Prefers dark mode",
-      userId: null,
-    });
-
-    const result = buildMemoriesContext([memory1, memory2]);
-
-    expect(result).toContain("<existing_memories>");
-    expect(result).toContain("</existing_memories>");
-    expect(result).toContain("User is a backend engineer");
-    expect(result).toContain("Prefers dark mode");
-    // Each memory should have a "saved" date marker from formatTimestampToFriendlyDate.
-    expect(result).toContain("(saved ");
   });
 });

@@ -136,611 +136,509 @@ import {
 } from "@app/types/shared/feature_flags";
 
 // Exhaustive map of flags for each global agent. This is used to control which agents inject
-// per-user dynamic content (like memories) into the prompt context. This approach is not ideal but
-// allows us to move dynamic content out of instructions and into context sections, improving prompt
-// cache hit rates. Will be properly refactored if we manage to improve cache hit rates.
+// per-user dynamic content (like the user profile) into the prompt context. This approach is not
+// ideal but allows us to move dynamic content out of instructions and into context sections,
+// improving prompt cache hit rates. Will be properly refactored if we manage to improve cache hit
+// rates.
 const GLOBAL_AGENT_FLAGS: Record<
   GLOBAL_AGENTS_SID,
   {
-    injectsMemory: boolean;
     injectsToolsets: boolean;
     injectsUserContext: boolean;
     injectsWorkspaceContext: boolean;
   }
 > = {
   [GLOBAL_AGENTS_SID.DUST]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_OMITTED]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_HIGH_OMITTED]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_EDGE]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_QUICK]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_OAI]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_OAI_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_OAI_NANO_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_LITE]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_PRO]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE_LIGHT]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_HAIKU]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_LIGHT]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_KIMI]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_KIMI_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GLM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GLM_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GLM_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_MINIMAX]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_DEEPSEEK]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_NEXT]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_NEXT_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_CHAWI]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_SOUPINOU]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_SUNDAE]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_PISTACHE]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_CHALOM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_LIONEL]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH]: {
-    injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.HELPER]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DEEP_DIVE]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_TASK]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_PLANNING]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.SIDEKICK]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: true,
     injectsWorkspaceContext: true,
   },
   [GLOBAL_AGENTS_SID.REINFORCEMENT]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.ANALYST]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.SLACK]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GOOGLE_DRIVE]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.NOTION]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GITHUB]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.INTERCOM]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GPT35_TURBO]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GPT4]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GPT5]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GPT5_THINKING]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GPT5_NANO]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GPT5_MINI]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.O1]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.O1_MINI]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.O1_HIGH_REASONING]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.O3_MINI]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.O3]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.CLAUDE_4_5_HAIKU]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.CLAUDE_5_SONNET]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.CLAUDE_4_5_SONNET]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.CLAUDE_4_SONNET]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.CLAUDE_3_OPUS]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.CLAUDE_3_SONNET]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.MISTRAL_LARGE]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.MISTRAL_MEDIUM]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.MISTRAL_SMALL]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GEMINI_PRO]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.NOOP]: {
-    injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
 };
-
-export function globalAgentInjectsMemory(sId: string): boolean {
-  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsMemory;
-}
 
 export function globalAgentInjectsToolsets(sId: string): boolean {
   return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsToolsets;
@@ -757,11 +655,7 @@ export function globalAgentInjectsWorkspaceContext(sId: string): boolean {
 }
 
 export function isDustLikeAgent(sId: string): boolean {
-  return (
-    isGlobalAgentId(sId) &&
-    GLOBAL_AGENT_FLAGS[sId].injectsMemory &&
-    GLOBAL_AGENT_FLAGS[sId].injectsToolsets
-  );
+  return isGlobalAgentId(sId) && GLOBAL_AGENT_FLAGS[sId].injectsToolsets;
 }
 
 function getGlobalAgent({
