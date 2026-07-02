@@ -11,6 +11,7 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
+import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
@@ -836,6 +837,9 @@ export function UsagePage() {
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
+            {isWorkspaceAdmin && pricingGroupsEnabled && (
+              <TabsTrigger value="groups" label="Groups" />
+            )}
             <TabsTrigger value="settings" label="Settings" />
           </TabsList>
 
@@ -902,6 +906,12 @@ export function UsagePage() {
               )}
             </Page.Vertical>
           </TabsContent>
+
+          {isWorkspaceAdmin && pricingGroupsEnabled && (
+            <TabsContent value="groups">
+              <GroupsUsageTable owner={owner} readOnly={isReadOnly} />
+            </TabsContent>
+          )}
 
           <TabsContent value="settings">
             <div className="flex flex-col gap-10">
