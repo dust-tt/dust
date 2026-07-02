@@ -299,10 +299,14 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
     agentIds,
     variant,
     globalAgentContext,
+    dangerouslySkipSpacePermissionCheck = false,
   }: {
     agentIds: string[];
     variant: V;
     globalAgentContext?: GlobalAgentContext;
+    // Used in pods: Pod conversations are, by design, readable by anyone with read access to the pod's
+    // space (see front/lib/api/assistant/conversation/permissions.ts).
+    dangerouslySkipSpacePermissionCheck?: boolean;
   }
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
@@ -336,7 +340,8 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
       const allowedAgentModels = await filterAgentsByRequestedSpaces(
         auth,
-        agentModels
+        agentModels,
+        { dangerouslySkipSpacePermissionCheck }
       );
       workspaceAgents = await enrichAgentConfigurations(
         auth,
@@ -1927,14 +1932,18 @@ async function disableTriggersForNonEditors(
 
 export async function filterAgentsByRequestedSpaces(
   auth: Authenticator,
-  agents: AgentConfigurationModel[]
+  agents: AgentConfigurationModel[],
+  {
+    // Used in pods: Pod conversations are, by design, readable by anyone with read access to the pod's
+    // space (see front/lib/api/assistant/conversation/permissions.ts).
+    dangerouslySkipSpacePermissionCheck = false,
+  }: { dangerouslySkipSpacePermissionCheck?: boolean } = {}
 ) {
   const uniqSpaceIds = Array.from(
     new Set(agents.flatMap((agent) => agent.requestedSpaceIds))
   );
 
   const spaces = await SpaceResource.fetchByModelIds(auth, uniqSpaceIds);
-  const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
   // Filter out agents that reference missing/deleted spaces.
   // When a space is deleted, mcp actions are removed, and requestedSpaceIds are updated.
@@ -1942,6 +1951,16 @@ export async function filterAgentsByRequestedSpaces(
   const validAgents = agents.filter((c) =>
     c.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
   );
+
+  // Pod conversations are, by design, readable by anyone with read access to the pod's
+  // space (see front/lib/api/assistant/conversation/permissions.ts). Callers rendering
+  // messages that are already part of such a conversation's history can opt out of the
+  // per-agent space check: pod-level access already vouches for that history.
+  if (dangerouslySkipSpacePermissionCheck) {
+    return validAgents;
+  }
+
+  const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
   const allowedBySpaceIds = validAgents.filter((agent) =>
     auth.canRead(

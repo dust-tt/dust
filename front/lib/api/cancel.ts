@@ -72,7 +72,8 @@ export async function terminateMessageGeneration(
     messageRows,
     "full",
     null,
-    new Map()
+    new Map(),
+    !!conversation.spaceId
   );
 
   if (agentMessagesRes.isErr()) {

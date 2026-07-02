@@ -226,7 +226,10 @@ function renderUserMessage(
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: MessageModel[],
-  mentionsByMessageId?: Map<ModelId, MentionModel[]>
+  mentionsByMessageId: Map<ModelId, MentionModel[]> | undefined,
+  // Used in pods: Pod conversations are, by design, readable by anyone with read access to the pod's
+  // space (see front/lib/api/assistant/conversation/permissions.ts).
+  bypassAgentSpacePermissionCheck: boolean
 ): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
@@ -267,6 +270,7 @@ async function batchRenderUserMessages(
       ? await getAgentConfigurations(auth, {
           agentIds: agentConfigurationIds,
           variant: "extra_light",
+          dangerouslySkipSpacePermissionCheck: bypassAgentSpacePermissionCheck,
         })
       : [];
   const reactionsByMessageId = await getMessagesReactions(auth, {
@@ -345,7 +349,10 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   messages: MessageModel[],
   viewType: V,
   messagesWithToolOutputContent: Set<ModelId> | null = null,
-  mentionsByMessageId: Map<ModelId, MentionModel[]>
+  mentionsByMessageId: Map<ModelId, MentionModel[]>,
+  // Used in pods: Pod conversations are, by design, readable by anyone with read access to the pod's
+  // space (see front/lib/api/assistant/conversation/permissions.ts).
+  bypassAgentSpacePermissionCheck: boolean = false
 ): Promise<
   Result<
     V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
@@ -397,6 +404,8 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         ? getAgentConfigurations(auth, {
             agentIds: [...agentConfigurationIds],
             variant: "extra_light",
+            dangerouslySkipSpacePermissionCheck:
+              bypassAgentSpacePermissionCheck,
           })
         : [],
   ];
@@ -906,17 +915,26 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     }
   }
 
+  // Pod conversations are, by design, readable by anyone with read access to the pod's
+  // space (see front/lib/api/assistant/conversation/permissions.ts). `conversation` here
+  // was already fetched through a permission-checked path, so pod-level access to it also
+  // vouches for the agents mentioned in its history, even if those agents' own
+  // `requestedSpaceIds` still point at a different (e.g. private) space.
+  const bypassAgentSpacePermissionCheck = !!conversation.spaceId;
+
   const userMessages = await batchRenderUserMessages(
     auth,
     messages,
-    mentionsByMessageId
+    mentionsByMessageId,
+    bypassAgentSpacePermissionCheck // batchRenderUserMessages gets the agent configuration for agent mentions
   );
   const agentMessagesRes = await batchRenderAgentMessages(
     auth,
     messages,
     viewType,
     messagesWithToolOutputContent,
-    mentionsByMessageId
+    mentionsByMessageId,
+    bypassAgentSpacePermissionCheck
   );
 
   if (agentMessagesRes.isErr()) {

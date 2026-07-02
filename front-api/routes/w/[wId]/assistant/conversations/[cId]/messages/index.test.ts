@@ -1,8 +1,11 @@
+import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -43,6 +46,12 @@ function postMessage(
 function getTools(workspace: { sId: string }, conversationId: string) {
   return honoApp.request(
     `/api/w/${workspace.sId}/assistant/conversations/${conversationId}/tools`
+  );
+}
+
+function getMessages(workspace: { sId: string }, conversationId: string) {
+  return honoApp.request(
+    `/api/w/${workspace.sId}/assistant/conversations/${conversationId}/messages`
   );
 }
 
@@ -108,5 +117,118 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
     });
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("GET /api/w/:wId/assistant/conversations/:cId/messages", () => {
+  it("renders an agent message for a pod member even when the agent is restricted to a different space", async () => {
+    const {
+      workspace,
+      auth: creatorAuth,
+      user: creator,
+    } = await createPrivateApiMockRequest({ role: "admin" });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // A restricted space that only the conversation creator belongs to.
+    const privateSpace = await SpaceFactory.regular(workspace);
+    const privateSpaceGroup = privateSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    assert(privateSpaceGroup, "Private space group not found");
+    const addCreatorToPrivateSpaceRes =
+      await privateSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+        user: creator.toJSON(),
+      });
+    assert(addCreatorToPrivateSpaceRes.isOk());
+
+    // A Pod (project space) that the creator and a second, unrelated pod member
+    // both belong to.
+    const podSpace = await SpaceFactory.project(workspace, creator.id);
+    const podSpaceGroup = podSpace.groups.find((g) => g.kind === "regular");
+    assert(podSpaceGroup, "Pod space group not found");
+    const addCreatorToPodRes = await podSpaceGroup.dangerouslyAddMember(
+      internalAdminAuth,
+      { user: creator.toJSON() }
+    );
+    assert(addCreatorToPodRes.isOk());
+    await creatorAuth.refresh();
+
+    // An agent restricted to the private space, used in the conversation.
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      creatorAuth,
+      { requestedSpaceIds: [privateSpace.id] }
+    );
+
+    // A conversation living in the Pod (the state after being moved there),
+    // whose history includes a message from the private-space agent.
+    const conversation = await ConversationFactory.create(creatorAuth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+      spaceId: podSpace.id,
+    });
+
+    // A second pod member who is NOT a member of the private space.
+    const { user: podMember } = await createPrivateApiMockRequest({
+      workspace,
+      role: "user",
+    });
+    const addPodMemberRes = await podSpaceGroup.dangerouslyAddMember(
+      internalAdminAuth,
+      { user: podMember.toJSON() }
+    );
+    assert(addPodMemberRes.isOk());
+
+    // The conversation record itself is readable (this part already worked).
+    const conversationResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations/${conversation.sId}`
+    );
+    expect(conversationResponse.status).toBe(200);
+
+    // The bug: reading the message history 403'd because the agent's own
+    // `requestedSpaceIds` still pointed at the private space.
+    const messagesResponse = await getMessages(workspace, conversation.sId);
+    expect(messagesResponse.status).toBe(200);
+
+    const body = await messagesResponse.json();
+    const agentMessage = body.messages.find(
+      (m: { type: string }) => m.type === "agent_message"
+    );
+    assert(agentMessage, "Agent message missing from response");
+    expect(agentMessage.configuration.sId).toBe(agentConfig.sId);
+  });
+
+  it("still denies message access to a user with no access to the pod at all", async () => {
+    const {
+      workspace,
+      auth: creatorAuth,
+      user: creator,
+    } = await createPrivateApiMockRequest({ role: "admin" });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const podSpace = await SpaceFactory.project(workspace, creator.id);
+    const podSpaceGroup = podSpace.groups.find((g) => g.kind === "regular");
+    assert(podSpaceGroup, "Pod space group not found");
+    const addCreatorToPodRes = await podSpaceGroup.dangerouslyAddMember(
+      internalAdminAuth,
+      { user: creator.toJSON() }
+    );
+    assert(addCreatorToPodRes.isOk());
+    await creatorAuth.refresh();
+
+    const conversation = await ConversationFactory.create(creatorAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+      spaceId: podSpace.id,
+    });
+
+    // A workspace member who was never added to the Pod.
+    await createPrivateApiMockRequest({ workspace, role: "user" });
+
+    const messagesResponse = await getMessages(workspace, conversation.sId);
+    expect(messagesResponse.status).toBe(404);
   });
 });
