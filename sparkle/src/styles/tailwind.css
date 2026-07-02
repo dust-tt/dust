@@ -115,10 +115,14 @@
     min-width: 44px;
     z-index: 9999;
   }
+}
 
+@layer utilities {
   /* Dark-mode elevation: progressively stronger drop shadows plus faint inset
-     highlight lines, so each raised surface lifts off the one below it. Light
-     mode is unaffected. Ladder: panel < overlay < modal. */
+     highlight lines, so each raised surface lifts off the one below it. In the
+     utilities layer (and via .dark specificity) so they override the
+     components' own shadow-* utilities in dark mode; light mode keeps those.
+     Ladder: panel < overlay < modal. */
   .dark .bg-panel-background {
     box-shadow:
       0 1px 1px -0.5px rgba(0, 0, 0, 0.18),
@@ -144,9 +148,7 @@
       0 0 0 1px rgba(255, 255, 255, 0.04) inset,
       0 1px 0 0 rgba(255, 255, 255, 0.02) inset;
   }
-}
 
-@layer utilities {
   .scrollarea-viewport > div {
     /* Radix ScrollArea sets `display: table` inline on the viewport child;
        only !important overrides that third-party inline style. */
