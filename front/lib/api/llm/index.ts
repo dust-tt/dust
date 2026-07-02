@@ -391,7 +391,16 @@ function getStreamEndpointLLM(
     return null;
   }
 
-  return new StreamEndpointTransition(auth, llmParameters, endpoint);
+  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  const credentials = modelConfig?.useEapKey
+    ? withEapAnthropicKey(llmParameters.modelId, llmParameters.credentials)
+    : llmParameters.credentials;
+
+  return new StreamEndpointTransition(
+    auth,
+    { ...llmParameters, credentials },
+    endpoint
+  );
 }
 
 export async function getBatchEndpointLLM(
@@ -410,5 +419,14 @@ export async function getBatchEndpointLLM(
     return null;
   }
 
-  return new BatchEndpointTransition(auth, llmParameters, endpoint);
+  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  const credentials = modelConfig?.useEapKey
+    ? withEapAnthropicKey(llmParameters.modelId, llmParameters.credentials)
+    : llmParameters.credentials;
+
+  return new BatchEndpointTransition(
+    auth,
+    { ...llmParameters, credentials },
+    endpoint
+  );
 }
