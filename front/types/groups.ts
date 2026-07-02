@@ -37,10 +37,9 @@ export const GROUP_KINDS = [
 export type GroupKind = (typeof GROUP_KINDS)[number];
 
 // Group kinds that can carry a per-group usage spend limit and be surfaced in
-// the Usage > Groups admin table. Real user-facing groups only: "global" is the
-// whole workspace (that's the default), "system" is internal, and the
-// agent/skill/space editor groups are per-resource, not membership groups.
-export const CAP_ELIGIBLE_GROUP_KINDS = ["regular", "provisioned"] as const;
+// the Usage > Groups admin table. Only "provisioned" (SSO/SCIM directory)
+// groups.
+export const CAP_ELIGIBLE_GROUP_KINDS = ["provisioned"] as const;
 
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);

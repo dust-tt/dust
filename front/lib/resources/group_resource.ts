@@ -1246,17 +1246,16 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   // For each user, the highest per-group pool cap (excluding seat allowance)
-  // among the cap-eligible groups they belong to. Users with no capped group are
-  // absent from the map (the caller falls back to the workspace default). Used to
-  // resolve the "max(group caps)" term of a user's effective spend limit.
+  // among the cap-eligible (provisioned) groups they belong to. Users with no
+  // capped group are absent from the map (the caller falls back to the workspace
+  // default). Used to resolve the "max(group caps)" term of a user's effective
+  // spend limit.
   static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
     workspace,
     userModelIds,
-    groupKinds = [...CAP_ELIGIBLE_GROUP_KINDS],
   }: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
-    groupKinds?: Exclude<GroupKind, "system">[];
   }): Promise<Map<ModelId, number>> {
     const result = new Map<ModelId, number>();
     if (userModelIds.length === 0) {
@@ -1282,7 +1281,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         id: groupModelIds,
         workspaceId: workspace.id,
-        kind: groupKinds,
+        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
         poolCapAwuCredits: { [Op.ne]: null },
       },
     });
