@@ -859,7 +859,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async fetchByIds(
     auth: Authenticator,
-    sIds: string[]
+    sIds: string[],
+    {
+      agentLoopData,
+      onlyActive = true,
+    }: { agentLoopData?: AgentLoopExecutionData; onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -868,40 +872,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
 
     // When fetching by specific IDs, return skills regardless of status.
-    return this.baseFetch(auth, {
-      where: {
-        id: customSkillIds,
-        sId: globalSkillIds,
-        status: ["active", "archived", "suggested"],
-      },
-    });
-  }
-
-  static async fetchActiveByIdsForAgentLoop(
-    auth: Authenticator,
-    sIds: string[],
-    agentLoopData?: AgentLoopExecutionData,
-    {
-      withInstructions = true,
-      withTools = true,
-    }: { withInstructions?: boolean; withTools?: boolean } = {}
-  ): Promise<SkillResource[]> {
-    if (sIds.length === 0) {
-      return [];
-    }
-
-    const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
-
     return this.baseFetch(
       auth,
       {
         where: {
           id: customSkillIds,
           sId: globalSkillIds,
-          status: "active",
+          status: onlyActive ? ["active"] : ["active", "archived", "suggested"],
         },
-        withInstructions,
-        withTools,
       },
       { agentLoopData }
     );
