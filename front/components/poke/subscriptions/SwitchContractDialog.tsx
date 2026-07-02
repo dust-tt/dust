@@ -9,10 +9,7 @@ import { amountCents } from "@app/lib/metronome/amounts";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  CREDIT_PRICED_FREE_PLAN_CODE,
   isEnterprisePlanPrefix,
-  PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -20,7 +17,6 @@ import {
   usePokePlans,
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
-import assert from "@app/lib/utils/assert";
 import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { CreditUsageConfigurationSchema } from "@app/types/poke/credit_usage_configuration";
@@ -327,18 +323,13 @@ export default function SwitchContractDialog({
 
   // Split packages into Current vs Legacy sections (name contains "legacy",
   // case-insensitive). Each section preserves the lib-side sort order.
-  // Free-tier packages are currency-agnostic (price is 0) and surface
-  // regardless of the resolved Stripe currency.
   const packageGroups = useMemo(() => {
     const visible = metronomePackages.filter(
-      (p) => p.tier === "free" || p.currency === resolvedCurrency
+      (p) => p.currency === resolvedCurrency
     );
     const toOption = (p: (typeof visible)[number]) => ({
       value: p.id,
-      display:
-        p.tier === "free"
-          ? `${p.name} (${p.tier})`
-          : `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
+      display: `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
     });
     return [
       {
@@ -361,7 +352,6 @@ export default function SwitchContractDialog({
     [metronomePackages, selectedPackageId]
   );
   const selectedTier = selectedPackage?.tier ?? null;
-  const selectedName = selectedPackage?.name ?? null;
   const selectedSeats = useMemo(
     () => selectedPackage?.seats ?? [],
     [selectedPackage]
@@ -400,54 +390,39 @@ export default function SwitchContractDialog({
   }, [selectedSeats, form, resolvedCurrency]);
 
   // Clear a stale package selection when the resolved currency changes so a
-  // previously-picked package can't survive a currency switch silently. Free
-  // packages are currency-agnostic and exempt from this check.
+  // previously-picked package can't survive a currency switch silently.
   useEffect(() => {
     if (
       resolvedCurrency &&
       selectedPackage &&
-      selectedPackage.tier !== "free" &&
       selectedPackage.currency !== resolvedCurrency
     ) {
       form.setValue("metronomePackageId", "");
     }
   }, [resolvedCurrency, selectedPackage, form]);
 
-  // When the operator picks a package, derive (Pro/Business) or reset
+  // When the operator picks a package, derive (Business) or reset
   // (Enterprise) the plan code. The full list of ENT_* plans is offered for
-  // enterprise; pro/business map to a single plan code. PAYG is force-disabled
-  // for tiers that don't support it (currently: pro).
+  // enterprise; business maps to a single plan code. Both tiers use the same
+  // operator-chosen start moment.
   useEffect(() => {
-    if (selectedTier === "pro") {
-      if (isLegacyPackageName(selectedName ?? "")) {
-        form.setValue("planCode", PRO_PLAN_SEAT_29_CODE);
-      } else {
-        assert("There is no non-legacy pro plan");
-      }
-      form.setValue("startingAt", "");
-      form.setValue("startMode", "select");
-    } else if (selectedTier === "business") {
-      if (isLegacyPackageName(selectedName ?? "")) {
-        form.setValue("planCode", PRO_PLAN_SEAT_39_CODE);
-      } else {
-        form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
-      }
-      form.setValue("startingAt", "");
-      form.setValue("startMode", "select");
+    if (selectedTier === "business") {
+      form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
+      // Pay-as-you-go and top-up are not offered for business in this dialog.
+      form.setValue("paygEnabled", false);
+      form.setValue("topUpEnabled", false);
     } else if (selectedTier === "enterprise") {
       form.setValue("planCode", "");
+    }
+    if (selectedTier) {
       form.setValue("startingAt", defaultStartingAtUTC);
-      form.setValue("startMode", "select");
-    } else if (selectedTier === "free") {
-      form.setValue("planCode", CREDIT_PRICED_FREE_PLAN_CODE);
-      form.setValue("startingAt", "");
       form.setValue("startMode", "select");
     }
     if (selectedTier && !isPaygEligibleTier(selectedTier)) {
       form.setValue("paygEnabled", false);
       form.setValue("usageCapCredits", undefined);
     }
-  }, [selectedTier, selectedName, form, defaultStartingAtUTC]);
+  }, [selectedTier, form, defaultStartingAtUTC]);
 
   const startMode = form.watch("startMode");
   const startingAt = form.watch("startingAt");
@@ -566,9 +541,9 @@ export default function SwitchContractDialog({
           ? { hubspotDealId: trimmedHubspotDealId }
           : {}),
       };
-      // For free-tier switches, the operator can omit the Stripe customer —
-      // the resulting Metronome contract has no Stripe billing link. The
-      // collection method only matters when a Stripe customer is wired in.
+      // The operator can omit the Stripe customer — the resulting Metronome
+      // contract has no Stripe billing link. The collection method only
+      // matters when a Stripe customer is wired in.
       if (trimmedStripe) {
         cleaned.stripeCustomerId = trimmedStripe;
         cleaned.stripeCollectionMethod = values.stripeCollectionMethod;
@@ -633,17 +608,13 @@ export default function SwitchContractDialog({
           },
         };
       }
-      // Resolve the start moment for enterprise. "immediately" leaves
-      // `startingAt` unset so the server swaps at the current hour.
-      if (selectedTier === "enterprise") {
-        if (values.startMode === "retroactive_first_of_month") {
-          cleaned.startingAt = retroactiveFirstOfMonthISO;
-        } else if (values.startMode === "select" && values.startingAt) {
-          // datetime-local has no timezone — append Z to interpret as UTC.
-          cleaned.startingAt = new Date(
-            values.startingAt + ":00Z"
-          ).toISOString();
-        }
+      // Resolve the start moment. "immediately" leaves `startingAt` unset so
+      // the server swaps at the current hour.
+      if (values.startMode === "retroactive_first_of_month") {
+        cleaned.startingAt = retroactiveFirstOfMonthISO;
+      } else if (values.startMode === "select" && values.startingAt) {
+        // datetime-local has no timezone — append Z to interpret as UTC.
+        cleaned.startingAt = new Date(values.startingAt + ":00Z").toISOString();
       }
       // Seats: every seat the package knows about, each carrying its `selected`
       // state, so the server can entitle checked seats and disable unchecked
@@ -735,14 +706,7 @@ export default function SwitchContractDialog({
       };
       void submit();
     },
-    [
-      form,
-      owner.sId,
-      router,
-      selectedTier,
-      selectedSeats,
-      retroactiveFirstOfMonthISO,
-    ]
+    [form, owner.sId, router, selectedSeats, retroactiveFirstOfMonthISO]
   );
 
   return (
@@ -754,9 +718,8 @@ export default function SwitchContractDialog({
         <DialogHeader>
           <DialogTitle>Switch contract for {owner.name}</DialogTitle>
           <DialogDescription>
-            Pick the Metronome package and target plan. Enterprise packages
-            require a start time at least one hour in the future; Pro and
-            Business packages swap at the current hour.
+            Pick the Metronome package and target plan. Enterprise and Business
+            packages let you choose a start time.
           </DialogDescription>
         </DialogHeader>
         {isSubmitting ? (
@@ -888,6 +851,11 @@ export default function SwitchContractDialog({
                         mountPortalContainer={portalContainer}
                         options={enterprisePlanOptions}
                       />
+                    </>
+                  )}
+                  {(selectedTier === "enterprise" ||
+                    selectedTier === "business") && (
+                    <>
                       <Label className="text-sm">Start</Label>
                       <SelectField
                         control={form.control}
@@ -918,26 +886,22 @@ export default function SwitchContractDialog({
                       )}
                     </>
                   )}
-                  {(selectedTier === "pro" ||
-                    selectedTier === "business" ||
-                    selectedTier === "free") && (
+                  {selectedTier === "business" && (
                     <div className="col-span-2 text-sm text-muted-foreground">
                       Target plan:{" "}
                       <span className="font-mono">
                         {form.watch("planCode")}
-                      </span>{" "}
-                      — swap at the current hour, subscription flips
-                      synchronously.
+                      </span>
                     </div>
                   )}
                 </div>
-                {selectedTier && selectedTier !== "free" && (
+                {selectedTier && (
                   <div className="border-t pt-4">
                     <Label className="mb-3 block text-sm font-medium">
                       Credit configuration
                     </Label>
                     <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
-                      {paygEligible && (
+                      {paygEligible && selectedTier === "enterprise" && (
                         <>
                           <Label className="text-sm">Pay-as-you-go</Label>
                           <SliderToggle
@@ -1002,13 +966,17 @@ export default function SwitchContractDialog({
                           )
                         }
                       />
-                      <Label className="text-sm">Top-up (Enterprise)</Label>
-                      <SliderToggle
-                        selected={topUpEnabled}
-                        onClick={() =>
-                          form.setValue("topUpEnabled", !topUpEnabled)
-                        }
-                      />
+                      {selectedTier === "enterprise" && (
+                        <>
+                          <Label className="text-sm">Top-up (Enterprise)</Label>
+                          <SliderToggle
+                            selected={topUpEnabled}
+                            onClick={() =>
+                              form.setValue("topUpEnabled", !topUpEnabled)
+                            }
+                          />
+                        </>
+                      )}
                       <Label className="text-sm">
                         Auto invoice finalization
                       </Label>
@@ -1250,10 +1218,7 @@ export default function SwitchContractDialog({
                   type="submit"
                   variant="warning"
                   label="Switch"
-                  disabled={
-                    !selectedTier ||
-                    (selectedTier !== "free" && !resolvedCurrency)
-                  }
+                  disabled={!selectedTier || !resolvedCurrency}
                 />
               </DialogFooter>
             </form>
