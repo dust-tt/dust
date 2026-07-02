@@ -412,8 +412,17 @@ export function SubscriptionPage() {
         day: "numeric",
       })
     : null;
-  // The migration was cancelled (churning at period end) but the subscription
-  // hasn't ended yet — resume re-stages it.
+  // A legacy Pro workspace (Stripe-billed, not trialing, not already cancelled)
+  // can cancel at its current period end — whether or not a migration is
+  // scheduled. Cancellation via the Stripe portal is disabled, so this is the
+  // path out.
+  const canCancelSubscription =
+    isWorkspaceOnProPlan &&
+    !subscription.trialing &&
+    subscription.stripeSubscriptionId !== null &&
+    subscription.endDate === null;
+  // The subscription was cancelled (churning at period end) but hasn't ended
+  // yet — resume re-stages the migration.
   const canResumeMigration =
     isWorkspaceOnProPlan &&
     !pendingMigrationDate &&
@@ -424,7 +433,7 @@ export function SubscriptionPage() {
     if (
       !window.confirm(
         "Cancel your subscription? It will end at the end of your current " +
-          "billing period and will not migrate to the new pricing."
+          "billing period."
       )
     ) {
       return;
@@ -592,21 +601,7 @@ export function SubscriptionPage() {
                 <>
                   <Page.Horizontal gap="sm">
                     <Chip size="sm" color={chipColor} label={planLabel} />
-                    {!subscription.trialing &&
-                      subscription.stripeSubscriptionId && (
-                        <Button
-                          label="Manage my subscription"
-                          onClick={withTracking(
-                            TRACKING_AREAS.AUTH,
-                            "subscription_manage",
-                            () => {
-                              void handleGoToStripePortal();
-                            }
-                          )}
-                          variant="outline"
-                        />
-                      )}
-                    {scheduledMigrationLabel && (
+                    {canCancelSubscription && (
                       <Button
                         label="Cancel subscription"
                         variant="outline"

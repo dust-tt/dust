@@ -40,39 +40,25 @@ export class MigrationLifecycleError extends Error {
 }
 
 /**
- * User-facing cancel of a scheduled legacy → Business migration: the workspace
- * churns out at the end of its CURRENT billing period instead of being migrated.
+ * User-facing cancel of a legacy Pro subscription at the end of its CURRENT
+ * billing period. Works whether or not a migration is scheduled:
+ *  - always: move the Stripe cancellation to the current period end, end the
+ *    current Metronome shadow contract (if any) there too, and mark the local
+ *    subscription as canceled at that date;
+ *  - when a migration is pending: additionally unwind it — archive the pending
+ *    Business contract (so Business never starts), undo the staged seat remap,
+ *    and delete the pending subscription row.
  *
  * Unlike the poke `cancelPendingContract` (which *restores* the current contract
- * and keeps the workspace running), this is a real cancellation:
- *  - archive the pending Business contract (so Business never starts);
- *  - end the current Metronome shadow contract at the current period end;
- *  - move the Stripe cancellation to the current period end (≤ the scheduled
- *    migration date — earlier when the current period ends before the window);
- *  - delete the pending subscription row;
- *  - mark the local subscription as canceled at the current period end.
- *
- * Reversible only via `resumeWorkspaceMigration` (which re-stages the migration),
- * and only until the Stripe subscription actually ends — after that it's a
- * re-registration.
+ * and keeps the workspace running), this is a real cancellation. Reversible only
+ * via `resumeWorkspaceMigration` (which re-stages the migration), and only until
+ * the Stripe subscription actually ends — after that it's a re-registration.
  */
 export async function cancelMigratingWorkspaceSubscription(
   auth: Authenticator
 ): Promise<Result<{ endDate: Date }, MigrationLifecycleError>> {
   const workspace = auth.getNonNullableWorkspace();
   const { metronomeCustomerId } = workspace;
-
-  const pending = await SubscriptionResource.fetchPendingByWorkspaceModelId(
-    workspace.id
-  );
-  if (!pending) {
-    return new Err(
-      new MigrationLifecycleError(
-        "invalid_state",
-        "No scheduled migration to cancel for this workspace."
-      )
-    );
-  }
 
   const subscription = auth.subscriptionResource();
   if (!subscription?.stripeSubscriptionId) {
@@ -84,9 +70,16 @@ export async function cancelMigratingWorkspaceSubscription(
     );
   }
 
-  // The churn lands at the end of the current billing period. This is ≤ the
-  // scheduled migration date: equal when the current period ends inside the
-  // rollout window, earlier when it ends before the window opens.
+  // Cancellable whether or not a migration is scheduled: a workspace with a
+  // pending migration opts out (we unwind the pending contract below); one
+  // without simply cancels its legacy subscription at the current period end.
+  const pending = await SubscriptionResource.fetchPendingByWorkspaceModelId(
+    workspace.id
+  );
+
+  // The churn lands at the end of the current billing period. When a migration
+  // is pending this is ≤ the scheduled migration date (equal inside the rollout
+  // window, earlier before it opens).
   const pricing = await subscription.getPerSeatPricing();
   if (!pricing || pricing.currentPeriodEndMs === null) {
     return new Err(
@@ -98,31 +91,33 @@ export async function cancelMigratingWorkspaceSubscription(
   }
   const endDate = new Date(pricing.currentPeriodEndMs);
 
-  // 0. Undo the seat remap staged at the pending contract start (local,
-  //    idempotent — safe to re-run if a later step fails).
-  if (pending.startDate) {
-    await MembershipResource.cancelScheduledSeatChangesForWorkspaceAt({
-      workspace,
-      scheduledAt: pending.startDate,
-    });
-  }
+  const pendingContractId = pending?.metronomeContractId ?? null;
+  if (pending) {
+    // 0. Undo the seat remap staged at the pending contract start (local,
+    //    idempotent — safe to re-run if a later step fails).
+    if (pending.startDate) {
+      await MembershipResource.cancelScheduledSeatChangesForWorkspaceAt({
+        workspace,
+        scheduledAt: pending.startDate,
+      });
+    }
 
-  // 1. Archive the pending Business contract first. Metronome rejects editing
-  //    the current contract's end (step 2) while its RENEWAL successor has
-  //    finalized invoices; archiving with voidInvoices removes those.
-  const pendingContractId = pending.metronomeContractId;
-  if (pendingContractId && metronomeCustomerId) {
-    const archiveResult = await archiveMetronomeContract({
-      metronomeCustomerId,
-      contractId: pendingContractId,
-    });
-    if (archiveResult.isErr()) {
-      return new Err(
-        new MigrationLifecycleError(
-          "upstream_error",
-          `Failed to archive the pending Business contract: ${archiveResult.error.message}. No changes applied.`
-        )
-      );
+    // 1. Archive the pending Business contract first. Metronome rejects editing
+    //    the current contract's end (step 2) while its RENEWAL successor has
+    //    finalized invoices; archiving with voidInvoices removes those.
+    if (pendingContractId && metronomeCustomerId) {
+      const archiveResult = await archiveMetronomeContract({
+        metronomeCustomerId,
+        contractId: pendingContractId,
+      });
+      if (archiveResult.isErr()) {
+        return new Err(
+          new MigrationLifecycleError(
+            "upstream_error",
+            `Failed to archive the pending Business contract: ${archiveResult.error.message}. No changes applied.`
+          )
+        );
+      }
     }
   }
 
@@ -162,16 +157,18 @@ export async function cancelMigratingWorkspaceSubscription(
     );
   }
 
-  // 4. Delete the pending subscription row (so a later resume can re-stage a
-  //    fresh migration).
-  const deleteResult = await pending.delete(auth);
-  if (deleteResult.isErr()) {
-    return new Err(
-      new MigrationLifecycleError(
-        "upstream_error",
-        `Cancelled the migration but failed to delete the pending subscription row: ${deleteResult.error.message}.`
-      )
-    );
+  // 4. Delete the pending subscription row, if any (so a later resume can
+  //    re-stage a fresh migration).
+  if (pending) {
+    const deleteResult = await pending.delete(auth);
+    if (deleteResult.isErr()) {
+      return new Err(
+        new MigrationLifecycleError(
+          "upstream_error",
+          `Cancelled the migration but failed to delete the pending subscription row: ${deleteResult.error.message}.`
+        )
+      );
+    }
   }
 
   // 5. Mark the local subscription as canceled at the current period end so the
