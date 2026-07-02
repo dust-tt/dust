@@ -32,16 +32,14 @@ import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-function hasConfiguredJsonSchema(toolContext?: ToolContextType) {
+function getServerSideConfiguration(toolContext?: ToolContextType) {
   if (
     toolContext?.listToolsContext &&
     isServerSideMCPServerConfiguration(
       toolContext.listToolsContext.agentActionConfiguration
     )
   ) {
-    return (
-      toolContext.listToolsContext.agentActionConfiguration.jsonSchema !== null
-    );
+    return toolContext.listToolsContext.agentActionConfiguration;
   }
 
   if (
@@ -50,34 +48,10 @@ function hasConfiguredJsonSchema(toolContext?: ToolContextType) {
       toolContext.runContext.toolConfiguration
     )
   ) {
-    return toolContext.runContext.toolConfiguration.jsonSchema !== null;
+    return toolContext.runContext.toolConfiguration;
   }
 
-  return false;
-}
-
-function hasConfiguredTimeFrame(toolContext?: ToolContextType) {
-  if (
-    toolContext?.listToolsContext &&
-    isServerSideMCPServerConfiguration(
-      toolContext.listToolsContext.agentActionConfiguration
-    )
-  ) {
-    return (
-      toolContext.listToolsContext.agentActionConfiguration.timeFrame !== null
-    );
-  }
-
-  if (
-    toolContext?.runContext &&
-    isLightServerSideMCPToolConfiguration(
-      toolContext.runContext.toolConfiguration
-    )
-  ) {
-    return toolContext.runContext.toolConfiguration.timeFrame !== null;
-  }
-
-  return false;
+  return null;
 }
 
 // Create tools with access to auth via closure
@@ -88,8 +62,13 @@ export function createExtractDataTools(
   const areTagsDynamic = toolContext
     ? shouldAutoGenerateTags(toolContext)
     : false;
-  const isJsonSchemaConfigured = hasConfiguredJsonSchema(toolContext);
-  const isTimeFrameConfigured = hasConfiguredTimeFrame(toolContext);
+  const serverSideConfiguration = getServerSideConfiguration(toolContext);
+  const isJsonSchemaConfigured =
+    serverSideConfiguration !== null &&
+    serverSideConfiguration.jsonSchema !== null;
+  const isTimeFrameConfigured =
+    serverSideConfiguration !== null &&
+    serverSideConfiguration.timeFrame !== null;
 
   async function extractFunction({
     dataSources,

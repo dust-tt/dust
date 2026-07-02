@@ -173,17 +173,10 @@ export function makeExtractDataToolsMetadata({
   });
 }
 
-export const EXTRACT_DATA_BASE_TOOLS_METADATA =
-  makeExtractDataBaseToolsMetadata({
-    isJsonSchemaConfigured: false,
-    isTimeFrameConfigured: false,
-  });
-
-export const EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA =
-  makeExtractDataToolsWithTagsMetadata({
-    isJsonSchemaConfigured: false,
-    isTimeFrameConfigured: false,
-  });
+const EXTRACT_DATA_BASE_TOOLS_METADATA = makeExtractDataBaseToolsMetadata({
+  isJsonSchemaConfigured: false,
+  isTimeFrameConfigured: false,
+});
 
 // Server metadata - used in constants.ts
 export const EXTRACT_DATA_SERVER = {
