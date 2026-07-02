@@ -2,10 +2,7 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  DANGEROUSLY_UNBOUNDED_TEXT,
-  DataTypes,
-} from "@app/lib/resources/storage/data_types";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
@@ -58,11 +55,11 @@ ActivationRecommendationModel.init(
       defaultValue: "pending",
     },
     content: {
-      type: DANGEROUSLY_UNBOUNDED_TEXT,
+      type: DataTypes.STRING(4096),
       allowNull: false,
     },
     rationale: {
-      type: DANGEROUSLY_UNBOUNDED_TEXT,
+      type: DataTypes.STRING(4096),
       allowNull: false,
     },
     conversationModelId: {
