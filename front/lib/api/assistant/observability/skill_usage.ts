@@ -15,8 +15,12 @@ export type SkillUsagePoint = {
 };
 
 export type AvailableSkill = {
-  skillId: string | null;
   skillName: string;
+  totalExecutions: number;
+};
+
+export type AvailableSkillById = {
+  skillId: string;
   totalExecutions: number;
 };
 
@@ -65,13 +69,9 @@ type SkillBucket = {
   doc_count: number;
 };
 
-type SkillNameBucket = SkillBucket & {
-  skill_id?: estypes.AggregationsMultiBucketAggregateBase<SkillBucket>;
-};
-
 type SkillListAggs = {
   skills_nested: {
-    by_skill: estypes.AggregationsMultiBucketAggregateBase<SkillNameBucket>;
+    by_skill: estypes.AggregationsMultiBucketAggregateBase<SkillBucket>;
   };
 };
 
@@ -200,11 +200,6 @@ export async function fetchAvailableSkills(
             size: 100,
             order: { _count: "desc" },
           },
-          aggs: {
-            skill_id: {
-              terms: { field: "skills_used.skill_id", size: 1 },
-            },
-          },
         },
       },
     },
@@ -219,18 +214,55 @@ export async function fetchAvailableSkills(
     return new Err(new Error(result.error.message));
   }
 
-  const skillBuckets = bucketsToArray<SkillNameBucket>(
+  const skillBuckets = bucketsToArray<SkillBucket>(
     result.value.aggregations?.skills_nested?.by_skill?.buckets
   );
 
-  const skills: AvailableSkill[] = skillBuckets.map((bucket) => ({
-    skillId:
-      bucketsToArray<SkillBucket>(bucket.skill_id?.buckets)[0]?.key ?? null,
-    skillName: bucket.key,
-    totalExecutions: bucket.doc_count,
-  }));
+  return new Ok(
+    skillBuckets.map((bucket) => ({
+      skillName: bucket.key,
+      totalExecutions: bucket.doc_count,
+    }))
+  );
+}
 
-  return new Ok(skills);
+export async function fetchAvailableSkillsBySkillId(
+  baseQuery: estypes.QueryDslQueryContainer
+): Promise<Result<AvailableSkillById[], Error>> {
+  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
+    skills_nested: {
+      nested: { path: "skills_used" },
+      aggs: {
+        by_skill_id: {
+          terms: {
+            field: "skills_used.skill_id",
+            size: 100,
+            order: { _count: "desc" },
+          },
+        },
+      },
+    },
+  };
+
+  const result = await searchAnalytics<never, SkillIdListAggs>(baseQuery, {
+    aggregations: aggs,
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return new Err(new Error(result.error.message));
+  }
+
+  const skillBuckets = bucketsToArray<SkillBucket>(
+    result.value.aggregations?.skills_nested?.by_skill_id?.buckets
+  );
+
+  return new Ok(
+    skillBuckets.map((bucket) => ({
+      skillId: bucket.key,
+      totalExecutions: bucket.doc_count,
+    }))
+  );
 }
 
 export async function fetchUsedSkills(

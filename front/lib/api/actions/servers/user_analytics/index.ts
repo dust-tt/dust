@@ -8,7 +8,7 @@ import {
   USER_ANALYTICS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_analytics/metadata";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
+import { fetchAvailableSkillsBySkillId } from "@app/lib/api/assistant/observability/skill_usage";
 import {
   fetchAvailableTools,
   resolveToolDisplayNames,
@@ -28,18 +28,18 @@ const TOP_ITEMS_LIMIT = 100;
 
 async function resolveAccessibleSkillNames(
   auth: Authenticator,
-  rows: { skillId: string | null; skillName: string }[]
+  rows: { skillId: string }[]
 ): Promise<string[]> {
-  const ids = rows
-    .map((r) => r.skillId)
-    .filter((id): id is string => id !== null);
-  if (ids.length === 0) {
+  if (rows.length === 0) {
     return [];
   }
-  const resources = await SkillResource.fetchByIds(auth, ids);
+  const resources = await SkillResource.fetchByIds(
+    auth,
+    rows.map((r) => r.skillId)
+  );
   const byId = new Map(resources.map((s) => [s.sId, s]));
   return rows
-    .map((r) => (r.skillId ? byId.get(r.skillId)?.name : undefined))
+    .map((r) => byId.get(r.skillId)?.name)
     .filter((n): n is string => n !== undefined);
 }
 
@@ -65,7 +65,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
     });
 
     const [skillsResult, toolsResult] = await Promise.all([
-      fetchAvailableSkills(baseQuery),
+      fetchAvailableSkillsBySkillId(baseQuery),
       fetchAvailableTools(baseQuery),
     ]);
 
@@ -121,7 +121,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
 
     const [agentsResult, skillsResult] = await Promise.all([
       fetchTopAgents(auth, { days: DAYS, limit: TOP_ITEMS_LIMIT }),
-      fetchAvailableSkills(baseQuery),
+      fetchAvailableSkillsBySkillId(baseQuery),
     ]);
 
     const lines: string[] = [];
