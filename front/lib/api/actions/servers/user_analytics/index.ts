@@ -8,8 +8,7 @@ import {
   USER_ANALYTICS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_analytics/metadata";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
-import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
+import { fetchAvailableSkillsBySkillId } from "@app/lib/api/assistant/observability/skill_usage";
 import {
   fetchAvailableTools,
   resolveToolDisplayNames,
@@ -20,6 +19,7 @@ import {
   daysToInstantRange,
 } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Ok } from "@app/types/shared/result";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -47,31 +47,29 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       userIds: [user.sId],
     });
 
-    const [overviewResult, skillsResult, toolsResult] = await Promise.all([
-      fetchAgentOverview(baseQuery, DAYS),
-      fetchAvailableSkills(baseQuery),
+    const [skillsResult, toolsResult] = await Promise.all([
+      fetchAvailableSkillsBySkillId(baseQuery),
       fetchAvailableTools(baseQuery),
     ]);
 
     const lines: string[] = [];
 
-    if (overviewResult.isOk()) {
-      const { messageCount, conversationCount } = overviewResult.value;
-      if (messageCount > 0) {
-        lines.push(
-          `Total activity: ${messageCount} agent messages across ${conversationCount} conversations`
-        );
-      }
-    }
-
-    const topSkills = (skillsResult.isOk() ? skillsResult.value : []).slice(
+    const topSkillRows = (skillsResult.isOk() ? skillsResult.value : []).slice(
       0,
       TOP_ITEMS_LIMIT
     );
-    if (topSkills.length > 0) {
-      lines.push(
-        `Your top skills: ${topSkills.map((s) => s.skillName).join(", ")}`
+    if (topSkillRows.length > 0) {
+      const skillResources = await SkillResource.fetchByIds(
+        auth,
+        topSkillRows.map((s) => s.skillId)
       );
+      const skillById = new Map(skillResources.map((s) => [s.sId, s]));
+      const names = topSkillRows
+        .map((s) => skillById.get(s.skillId)?.name)
+        .filter((n): n is string => n !== undefined);
+      if (names.length > 0) {
+        lines.push(`Your top skills: ${names.join(", ")}`);
+      }
     }
 
     const topTools = (toolsResult.isOk() ? toolsResult.value : []).slice(
@@ -113,25 +111,12 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       endDate,
     });
 
-    const [overviewResult, agentsResult, skillsResult, toolsResult] =
-      await Promise.all([
-        fetchAgentOverview(baseQuery, DAYS),
-        fetchTopAgents(auth, { days: DAYS, limit: TOP_ITEMS_LIMIT }),
-        fetchAvailableSkills(baseQuery),
-        fetchAvailableTools(baseQuery),
-      ]);
+    const [agentsResult, skillsResult] = await Promise.all([
+      fetchTopAgents(auth, { days: DAYS, limit: TOP_ITEMS_LIMIT }),
+      fetchAvailableSkillsBySkillId(baseQuery),
+    ]);
 
     const lines: string[] = [];
-
-    if (overviewResult.isOk()) {
-      const { activeUsers, messageCount, conversationCount } =
-        overviewResult.value;
-      if (messageCount > 0) {
-        lines.push(
-          `Workspace overview: ${activeUsers} active users, ${messageCount} agent messages across ${conversationCount} conversations`
-        );
-      }
-    }
 
     const candidateAgents = (
       agentsResult.isOk() ? agentsResult.value : []
@@ -153,27 +138,22 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       );
     }
 
-    const topSkills = (skillsResult.isOk() ? skillsResult.value : []).slice(
+    const topSkillRows = (skillsResult.isOk() ? skillsResult.value : []).slice(
       0,
       TOP_ITEMS_LIMIT
     );
-    if (topSkills.length > 0) {
-      lines.push(
-        `Trending skills: ${topSkills.map((s) => s.skillName).join(", ")}`
+    if (topSkillRows.length > 0) {
+      const skillResources = await SkillResource.fetchByIds(
+        auth,
+        topSkillRows.map((s) => s.skillId)
       );
-    }
-
-    const topTools = (toolsResult.isOk() ? toolsResult.value : []).slice(
-      0,
-      TOP_ITEMS_LIMIT
-    );
-    if (topTools.length > 0) {
-      const resolved = await resolveToolDisplayNames(auth, topTools).catch(
-        () => topTools
-      );
-      lines.push(
-        `Trending tools: ${resolved.map((t) => t.displayName).join(", ")}`
-      );
+      const skillById = new Map(skillResources.map((s) => [s.sId, s]));
+      const names = topSkillRows
+        .map((s) => skillById.get(s.skillId)?.name)
+        .filter((n): n is string => n !== undefined);
+      if (names.length > 0) {
+        lines.push(`Trending skills: ${names.join(", ")}`);
+      }
     }
 
     if (lines.length === 0) {
