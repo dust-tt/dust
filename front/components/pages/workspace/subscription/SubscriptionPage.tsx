@@ -515,6 +515,11 @@ export function SubscriptionPage() {
 
   return (
     <>
+      {(isCancellingMigration || isResumingMigration) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/60">
+          <Spinner size="lg" />
+        </div>
+      )}
       {perSeatPricing && (
         <>
           <CancelFreeTrialDialog
