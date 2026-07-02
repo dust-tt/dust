@@ -7,7 +7,7 @@ import {
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/lib/api/users/spend_limit";
 import { hasFeatureFlag } from "@app/lib/auth";
-import { launchBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
+import { runBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -91,7 +91,7 @@ app.post(
       });
     }
 
-    const result = await launchBulkSetUserSpendLimitWorkflow({
+    const result = await runBulkSetUserSpendLimitWorkflow({
       workspaceId: auth.getNonNullableWorkspace().sId,
       actorUserId: auth.getNonNullableUser().sId,
       userIds,

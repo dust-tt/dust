@@ -274,12 +274,14 @@ export function useBulkSetUserSpendLimit({
       const body = BulkSetUserSpendLimitResponseSchema.parse(await res.json());
       sendNotification({
         type: "success",
-        title: "Updating spend limit",
+        title: "Spend limit updated",
         description:
           limit.kind === "limited"
-            ? `Applying a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} members.`
-            : `Removing the spend limit for ${body.memberCount.toLocaleString("en-US")} members.`,
+            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} members.`
+            : `Removed the spend limit for ${body.memberCount.toLocaleString("en-US")} members.`,
       });
+
+      await invalidateMembersUsage(workspaceId);
       return body;
     },
     [workspaceId, sendNotification]
