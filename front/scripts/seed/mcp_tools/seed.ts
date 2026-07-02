@@ -160,7 +160,7 @@ async function createAgentWithTool({
   );
   const existingAgent = existingAgents.find((a) => a.name === agent.agentName);
   if (existingAgent) {
-    return { agentSId: existingAgent.sId, actionSId: null };
+    return { agentId: existingAgent.sId, actionId: null };
   }
 
   const agentResult = await createAgentConfiguration(auth, {
@@ -216,8 +216,8 @@ async function createAgentWithTool({
   }
 
   return {
-    agentSId: agentResult.value.sId,
-    actionSId: actionResult.value.sId,
+    agentId: agentResult.value.sId,
+    actionId: actionResult.value.sId,
   };
 }
 
@@ -274,8 +274,8 @@ makeScript({}, async ({ execute }, logger) => {
     logger.info(
       {
         agentName: agent.agentName,
-        agentSId: result.agentSId,
-        actionSId: result.actionSId,
+        agentId: result.agentId,
+        actionId: result.actionId,
       },
       "MCP tools seed agent ready"
     );
