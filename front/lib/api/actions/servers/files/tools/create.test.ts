@@ -3,7 +3,6 @@ import type { ToolContextType } from "@app/lib/actions/types";
 import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -79,7 +78,6 @@ describe("createHandler", () => {
 
   it("overwrites an existing frame file, preserving its content type", async () => {
     const { auth, conversation } = await setupProjectConversation();
-    await FeatureFlagFactory.basic(auth, "frame_publish");
     fileStorageMock.setFileMetadata(() => ({
       contentType: "application/vnd.dust.frame",
       size: "100",
@@ -109,29 +107,4 @@ describe("createHandler", () => {
     );
   });
 
-  it("overwrites an existing frame file without frame_publish, pointing at the file-id edit tool", async () => {
-    const { auth, conversation } = await setupProjectConversation();
-    fileStorageMock.setFileMetadata(() => ({
-      contentType: "application/vnd.dust.frame",
-      size: "100",
-    }));
-
-    const result = await createHandler(
-      {
-        path: `conversation-${conversation.sId}/interactive.tsx`,
-        content: "export default function App() { return null; }",
-        content_type: "text/plain",
-      },
-      makeExtra(auth, conversation)
-    );
-
-    assert(result.isOk());
-    expect(result.value[0]).toMatchObject({
-      type: "text",
-      text: expect.stringContaining(
-        "interactive_content__edit_interactive_content_file"
-      ),
-    });
-    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
-  });
 });

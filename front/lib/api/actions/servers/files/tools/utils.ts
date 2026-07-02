@@ -166,25 +166,12 @@ export function frameFileEditRejectedError(): MCPError {
 
 /**
  * Notice appended after a write to a Frame source file on the mount. The mount write never
- * changes the rendered Frame directly: with frame_publish the model must publish to rebuild
- * it, without the flag the rendered Frame can only be updated through the file-id edit tool.
+ * changes the rendered Frame directly, the model must publish to rebuild it.
  */
-export function frameSourceUpdatedNotice({
-  hasFramePublishFF,
-}: {
-  hasFramePublishFF: boolean;
-}): string {
-  if (hasFramePublishFF) {
-    return (
-      "This updated the Frame's source only. The rendered Frame is unchanged until you " +
-      `publish it with \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`.`
-    );
-  }
-
+export function frameSourceUpdatedNotice(): string {
   return (
-    "This updated the Frame's source only and will not appear in the rendered Frame. " +
-    `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` to get the file id, ` +
-    `then \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to update the rendered Frame.`
+    "This updated the Frame's source only. The rendered Frame is unchanged until you " +
+    `publish it with \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`.`
   );
 }
 

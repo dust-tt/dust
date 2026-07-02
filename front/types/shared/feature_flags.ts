@@ -345,11 +345,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
     stage: "on_demand",
   },
-  frame_publish: {
-    description:
-      "Publish a Frame's edited source tree into a built bundle so model and live edits become the rendered, shareable Frame.",
-    stage: "dust_only",
-  },
   models_picker: {
     description:
       "Model picker in the conversation input bar: pick a model tier (Fast, Balanced, Powerful, Frontier) or a specific model.",

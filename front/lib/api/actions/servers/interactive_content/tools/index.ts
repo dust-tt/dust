@@ -24,7 +24,6 @@ import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot"
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -424,15 +423,5 @@ export async function createInteractiveContentTools(
     },
   };
 
-  const tools = buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
-
-  // Publishing a Frame's edited source tree into the rendered bundle is gated behind frame_publish.
-  const flags = await getFeatureFlags(auth);
-  if (flags.includes("frame_publish")) {
-    return tools;
-  }
-
-  return tools.filter(
-    (tool) => tool.name !== "publish_interactive_content_file"
-  );
+  return buildTools(INTERACTIVE_CONTENT_TOOLS_METADATA, handlers);
 }

@@ -3,7 +3,6 @@ import type { ToolContextType } from "@app/lib/actions/types";
 import { editHandler } from "@app/lib/api/actions/servers/files/tools/edit";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -117,9 +116,8 @@ describe("editHandler", () => {
     );
   });
 
-  it("appends a publish reminder when editing a Frame source with frame_publish enabled", async () => {
+  it("appends a publish reminder when editing a Frame source file", async () => {
     const { auth, conversation } = await setupProjectConversation();
-    await FeatureFlagFactory.basic(auth, "frame_publish");
     mockStoredFile(
       "export default function App() { return <h1>Old</h1>; }\n",
       "application/vnd.dust.frame"
@@ -145,32 +143,6 @@ describe("editHandler", () => {
     expect(fileStorageMock.saveFileCalls[0].contentType).toBe(
       "application/vnd.dust.frame"
     );
-  });
-
-  it("points at the file-id edit tool when editing a Frame source without frame_publish", async () => {
-    const { auth, conversation } = await setupProjectConversation();
-    mockStoredFile(
-      "export default function App() { return <h1>Old</h1>; }\n",
-      "application/vnd.dust.frame"
-    );
-
-    const result = await editHandler(
-      {
-        path: `conversation-${conversation.sId}/App.tsx`,
-        old_string: "Old",
-        new_string: "New",
-      },
-      makeExtra(auth, conversation)
-    );
-
-    assert(result.isOk());
-    expect(result.value[0]).toMatchObject({
-      type: "text",
-      text: expect.stringContaining(
-        "interactive_content__edit_interactive_content_file"
-      ),
-    });
-    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
   });
 
   it("returns Err when the file does not exist", async () => {

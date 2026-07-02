@@ -11,7 +11,6 @@ import {
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { frameSourceUpdatedNotice } from "@app/lib/api/actions/servers/files/tools/utils";
-import { getFeatureFlags } from "@app/lib/auth";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
@@ -96,15 +95,10 @@ export async function createHandler(
   const verb = exists ? "Updated" : "Created";
 
   if (isFrameSourceOverwrite) {
-    const flags = await getFeatureFlags(auth);
     return new Ok([
       {
         type: "text",
-        text:
-          `Updated \`${path}\` (${sizeKb} KB). ` +
-          frameSourceUpdatedNotice({
-            hasFramePublishFF: flags.includes("frame_publish"),
-          }),
+        text: `Updated \`${path}\` (${sizeKb} KB). ${frameSourceUpdatedNotice()}`,
       },
     ]);
   }

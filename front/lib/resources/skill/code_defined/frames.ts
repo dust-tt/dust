@@ -21,17 +21,15 @@ export const framesSkill = {
     "using when tsx or React code is shared or available in the conversation. " +
     "Frames used to a be a tool, now deprecated. Use this skill when the Frames/interactive " +
     "content tool is mentioned.",
-  // Computer-first guidance (edit the mounted source in place, then publish) is taught only when the
-  // Computer and frame_publish are both available. Otherwise the model updates Frames through the
-  // retrieve and edit tools.
+  // Computer-first guidance (edit the mounted source in place, then publish) is taught only when
+  // the Computer is available. Otherwise the model updates Frames through the retrieve and edit
+  // tools.
   fetchInstructions: async (
     auth: Authenticator,
     _params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const flags = await getFeatureFlags(auth);
-    const computerFirst =
-      flags.includes("frame_publish") && isComputerFeatureEnabled(flags);
-    return computerFirst
+    return isComputerFeatureEnabled(flags)
       ? INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST
       : INTERACTIVE_CONTENT_INSTRUCTIONS;
   },
