@@ -4,9 +4,11 @@ import {
 } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncDefaultPoolCapAlertsForWorkspace } from "@app/lib/api/workspace/default_user_spend_limit";
 import { Authenticator } from "@app/lib/auth";
+import { getMetronomeContractById } from "@app/lib/metronome/client";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   hasContractSeatSubscription,
+  remapMembershipSeatTypesForContract,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -60,37 +62,45 @@ export async function syncMetronomeSeatCountForWorkspace({
     });
   }
 
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  if (!subscription?.metronomeContractId) {
-    return new Ok({
-      status: "skipped",
-      reason: "workspace has no Metronome contract on its active subscription",
-    });
-  }
+  // When the workspace has a scheduled future contract switch (e.g. a
+  // legacy→Business migration in its window), also stage the PENDING contract:
+  // members added/changed mid-window must be seated on the contract that will
+  // bill them once it starts. The seat invoice is cut at contract start, so
+  // this is pre-provisioned now — the `contract.start` webhook would be too
+  // late. Every membership change routes through this function, so the pending
+  // contract stays correct across adds, revokes, and seat changes alike. This
+  // is independent of, and in addition to, reconciling the active contract
+  // below (whose seats a legacy shadow contract still bills / finalizes).
+  const stagedPending = await stagePendingContractSeats(workspace);
 
-  const contract = await getActiveContract(workspace.sId);
-  if (!contract) {
-    return new Ok({
-      status: "skipped",
-      reason: "no active contract found for workspace",
-    });
-  }
+  const activeSubscription =
+    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
+  const activeContract = activeSubscription?.metronomeContractId
+    ? await getActiveContract(workspace.sId)
+    : null;
 
-  if (!(await hasContractSeatSubscription(contract))) {
-    return new Ok({
-      status: "skipped",
-      reason: "active contract has no seat subscription",
-    });
+  if (
+    !activeSubscription?.metronomeContractId ||
+    !activeContract ||
+    !(await hasContractSeatSubscription(activeContract))
+  ) {
+    return new Ok(
+      stagedPending
+        ? { status: "synced" }
+        : {
+            status: "skipped",
+            reason:
+              "no active or pending contract with a seat subscription to sync",
+          }
+    );
   }
 
   const result = await syncSeatCount({
     metronomeCustomerId: workspace.metronomeCustomerId,
-    contractId: subscription.metronomeContractId,
+    contractId: activeSubscription.metronomeContractId,
     workspace,
-    planCode: subscription.getPlan().code,
-    contract,
+    planCode: activeSubscription.getPlan().code,
+    contract: activeContract,
   });
   if (result.isErr()) {
     return new Err(result.error);
@@ -131,8 +141,8 @@ export async function syncMetronomeSeatCountForWorkspace({
   await reconcileWorkspaceUserCreditStates({
     workspace,
     metronomeCustomerId: workspace.metronomeCustomerId,
-    metronomeContractId: subscription.metronomeContractId,
-    planCode: subscription.getPlan().code,
+    metronomeContractId: activeSubscription.metronomeContractId,
+    planCode: activeSubscription.getPlan().code,
   });
 
   // Ensure per-seat-type cap alerts exist with the current default pool limit.
@@ -146,4 +156,83 @@ export async function syncMetronomeSeatCountForWorkspace({
   }
 
   return new Ok({ status: "synced" });
+}
+
+/**
+ * Stage the workspace's PENDING (created_backend_only) contract, if any, so a
+ * scheduled future switch has correct seats before it starts.
+ *
+ * Schedules a future-dated seat change per member onto the pending contract
+ * (`remapMembershipSeatTypesForContract` with `swapAt: "next-hour"`), then
+ * pre-provisions the seat counts (`syncSeatCount` with the pending start).
+ * Legacy plans only carry `workspace`/`none` seats, which Business doesn't bill,
+ * so they are promoted to `pro` (the migration's target seat).
+ *
+ * Skips the live-balance credit reconcile: the contract isn't active yet, so
+ * that runs at `contract.start` (and on the next sync once it is active).
+ * Best-effort — a failure is logged and the next membership change re-runs it.
+ *
+ * Returns whether the pending contract was staged.
+ */
+async function stagePendingContractSeats(
+  workspace: LightWorkspaceType
+): Promise<boolean> {
+  if (!workspace.metronomeCustomerId) {
+    return false;
+  }
+  const pendingSubscription =
+    await SubscriptionResource.fetchPendingByWorkspaceModelId(workspace.id);
+  if (!pendingSubscription?.metronomeContractId) {
+    return false;
+  }
+  const pendingContractResult = await getMetronomeContractById({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    metronomeContractId: pendingSubscription.metronomeContractId,
+  });
+  if (
+    pendingContractResult.isErr() ||
+    !(await hasContractSeatSubscription(pendingContractResult.value))
+  ) {
+    return false;
+  }
+  const pendingContract = pendingContractResult.value;
+
+  // Schedule each member's future-dated seat change onto the pending contract.
+  // `promoteNoneSeatType: "pro"` maps legacy `workspace`/`none` members onto
+  // Business's `pro` seat (Business has no committed seats, so they'd otherwise
+  // stay `none`). Fixed to `"pro"` for the current legacy→Business migration.
+  const remapResult = await remapMembershipSeatTypesForContract({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    contractId: pendingSubscription.metronomeContractId,
+    workspace,
+    swapAt: "next-hour",
+    startingAt: new Date(pendingContract.starting_at),
+    contract: pendingContract,
+    promoteNoneSeatType: "pro",
+  });
+  if (remapResult.isErr()) {
+    logger.warn(
+      { workspaceId: workspace.sId, err: remapResult.error.message },
+      "[SeatSync] Failed to remap seats onto pending contract; continuing"
+    );
+    return false;
+  }
+
+  const syncResult = await syncSeatCount({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    contractId: pendingSubscription.metronomeContractId,
+    workspace,
+    planCode: pendingSubscription.getPlan().code,
+    contract: pendingContract,
+    startingAt: pendingContract.starting_at,
+  });
+  if (syncResult.isErr()) {
+    logger.warn(
+      { workspaceId: workspace.sId, err: syncResult.error.message },
+      "[SeatSync] Failed to pre-provision pending contract seats; continuing"
+    );
+    return false;
+  }
+
+  return true;
 }

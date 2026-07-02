@@ -95,6 +95,12 @@ async function resolveSeatTypeForNewMembership(
   if (!workspace.metronomeCustomerId) {
     return "none";
   }
+  // The new member's active seat is always resolved against the workspace's
+  // ACTIVE contract — the plan billing them right now. A pending contract switch
+  // (e.g. a legacy→Business migration in its window) does NOT change this: the
+  // member takes the current contract's seat now, and is separately scheduled
+  // onto the pending contract at its start by the seat sync (see
+  // `syncMetronomeSeatCountForWorkspace`).
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
