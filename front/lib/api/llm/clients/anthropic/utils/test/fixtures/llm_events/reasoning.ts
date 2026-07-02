@@ -93,6 +93,8 @@ export const reasoningLLMEvents: LLMEvent[] = [
       cachedTokens: 0,
       reasoningTokens: 50,
       cacheCreationTokens: 0,
+      longCacheCreationTokens: 0,
+      shortCacheCreationTokens: 0,
       totalTokens: 2680,
       uncachedInputTokens: 2500,
     },
