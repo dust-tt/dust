@@ -224,6 +224,7 @@ function serializeTrigger(
         kind: trigger.kind,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
         webhookSourceViewId: trigger.webhookSourceViewId,
+        spaceId: trigger.spaceId ?? null,
       };
     }
     case "schedule":
@@ -234,6 +235,7 @@ function serializeTrigger(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         kind: trigger.kind,
+        spaceId: trigger.spaceId ?? null,
       };
     default:
       assertNever(trigger);

@@ -23,6 +23,7 @@ export const WebhookFormSchema = z.object({
   naturalDescription: z.string().optional(),
   executionPerDayLimitOverride: z.number(),
   executionMode: z.enum(["fair_use", "programmatic"]).default("fair_use"),
+  spaceId: z.string().nullable(),
 });
 
 export type WebhookFormValues = z.infer<typeof WebhookFormSchema>;
@@ -54,6 +55,7 @@ export function getWebhookFormDefaultValues({
       trigger?.executionPerDayLimitOverride ??
       DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
     executionMode: trigger?.executionMode ?? "fair_use",
+    spaceId: trigger?.spaceId ?? null,
   };
 }
 
@@ -92,5 +94,6 @@ export function formValuesToWebhookTriggerData({
         : (user.fullName ?? undefined),
     executionPerDayLimitOverride: webhook.executionPerDayLimitOverride,
     executionMode: webhook.executionMode,
+    spaceId: webhook.spaceId,
   };
 }

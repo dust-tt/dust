@@ -1753,6 +1753,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "project_todo_version",
   "takeaways",
   "takeaways_version",
+  "trigger",
   "webhook_sources_view",
   "user_project_preferences",
 ];

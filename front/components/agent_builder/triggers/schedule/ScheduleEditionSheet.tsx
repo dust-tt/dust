@@ -1,5 +1,6 @@
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
+import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -97,6 +98,31 @@ function ScheduleEditionMessageInput({
   );
 }
 
+interface ScheduleEditionPodSelectorProps {
+  isEditor: boolean;
+}
+
+function ScheduleEditionPodSelector({
+  isEditor,
+}: ScheduleEditionPodSelectorProps) {
+  const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const { field } = useController({ control, name: "schedule.spaceId" });
+
+  return (
+    <div className="space-y-1">
+      <Label>Where to create this conversation? (optional) </Label>
+      <p className="text-sm text-muted-foreground">
+        Run this trigger's conversation inside a Pod instead.
+      </p>
+      <TriggerPodSelector
+        value={field.value}
+        onChange={field.onChange}
+        disabled={!isEditor}
+      />
+    </div>
+  );
+}
+
 interface ScheduleEditionSheetContentProps {
   owner: LightWorkspaceType;
   trigger: AgentBuilderScheduleTriggerType | null;
@@ -128,6 +154,8 @@ export function ScheduleEditionSheetContent({
         <ScheduleEditionScheduler isEditor={isEditor} owner={owner} />
         <Separator />
         <ScheduleEditionMessageInput isEditor={isEditor} />
+        <Separator />
+        <ScheduleEditionPodSelector isEditor={isEditor} />
       </div>
     </>
   );
