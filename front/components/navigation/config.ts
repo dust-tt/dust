@@ -281,7 +281,9 @@ export const subNavigationAdmin = ({
       },
       {
         id: "identity_and_provisioning",
-        label: "Identity & Provisioning",
+        label: featureFlags.includes("admin_governance")
+          ? "IT & Security"
+          : "Identity & Provisioning",
         icon: Fingerprint04,
         href: `/w/${owner.sId}/identity-and-provisioning`,
         current: isCurrent("identity_and_provisioning"),
