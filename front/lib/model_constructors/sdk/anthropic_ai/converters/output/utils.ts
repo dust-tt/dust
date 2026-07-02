@@ -38,6 +38,7 @@ import type {
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import logger from "@app/logger/logger";
 import {
   assertNever,
   assertNeverAndIgnore,
@@ -906,6 +907,24 @@ export function messageDeltaToEvents(
 ): [ModelResponseEvent[], MessageDeltaUsage] {
   const stopReason = event.delta.stop_reason;
   if (stopReason) {
+    // Anthropic pauses a turn when the server-side sampling loop reaches its
+    // iteration limit while running server tools (tool search in our case).
+    // The recommended handling is to re-issue the request with the paused
+    // assistant response appended so the model can finish:
+    // https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons#pause-turn
+    // We do not continue yet: the turn ends with the content produced so far.
+    // Logged to measure how often this truncation happens before implementing
+    // the continuation.
+    if (stopReason === "pause_turn") {
+      logger.warn(
+        {
+          providerId: metadata.providerId,
+          api: metadata.api,
+          modelId: metadata.modelId,
+        },
+        "Anthropic pause_turn stop reason, turn ended with partial content"
+      );
+    }
     const errorEvent = converters.stopReasonToErrorEvent(metadata, stopReason);
     if (errorEvent) {
       return [[errorEvent], event.usage];
