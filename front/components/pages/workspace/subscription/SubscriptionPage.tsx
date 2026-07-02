@@ -5,6 +5,11 @@ import {
 } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useCancelWorkspaceMigration,
+  useResumeWorkspaceMigration,
+  useWorkspaceMigration,
+} from "@app/hooks/useWorkspaceMigration";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getPriceAsString,
@@ -388,6 +393,56 @@ export function SubscriptionPage() {
     isWorkspaceWhitelistedBusinessPlan &&
     !isMetronomeCheckout;
 
+  const { pendingMigrationDate, mutateMigration } = useWorkspaceMigration({
+    workspaceId: owner.sId,
+    disabled: !isWorkspaceOnProPlan,
+  });
+  const { cancelMigration, isCancellingMigration } =
+    useCancelWorkspaceMigration({ workspaceId: owner.sId });
+  const { resumeMigration, isResumingMigration } = useResumeWorkspaceMigration({
+    workspaceId: owner.sId,
+  });
+
+  // A migration is scheduled (pending Business contract staged): the workspace
+  // can opt out (cancel) instead of being migrated.
+  const scheduledMigrationLabel = pendingMigrationDate
+    ? new Date(pendingMigrationDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+  // The migration was cancelled (churning at period end) but the subscription
+  // hasn't ended yet — resume re-stages it.
+  const canResumeMigration =
+    isWorkspaceOnProPlan &&
+    !pendingMigrationDate &&
+    subscription.endDate !== null &&
+    new Date(subscription.endDate).getTime() > Date.now();
+
+  const handleCancelMigration = async () => {
+    if (
+      !window.confirm(
+        "Cancel your subscription? It will end at the end of your current " +
+          "billing period and will not migrate to the new pricing."
+      )
+    ) {
+      return;
+    }
+    const ok = await cancelMigration();
+    if (ok) {
+      await mutateMigration();
+      router.reload();
+    }
+  };
+  const handleResumeMigration = async () => {
+    const ok = await resumeMigration();
+    if (ok) {
+      await mutateMigration();
+      router.reload();
+    }
+  };
+
   const isProcessing =
     isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
 
@@ -508,18 +563,27 @@ export function SubscriptionPage() {
               )}
             </ContentMessage>
           )}
-          {migrationDate && (
+          {scheduledMigrationLabel ? (
+            <ContentMessage
+              title="Your plan is scheduled to migrate to the new credit-based pricing."
+              variant="blue"
+            >
+              On{" "}
+              <span className="font-semibold">{scheduledMigrationLabel}</span>{" "}
+              your plan will move to the new credit-based pricing. To opt out,
+              cancel your subscription below — it will then end at the end of
+              your current billing period instead.
+            </ContentMessage>
+          ) : migrationDate ? (
             <ContentMessage
               title="Your plan will be migrated to the new credit-based pricing."
               variant="blue"
             >
               Your current plan will be automatically migrated to the new
               credit-based pricing on{" "}
-              <span className="font-semibold">{migrationDate}</span>. You can
-              cancel your subscription at any time before that date from the
-              Stripe billing portal below.
+              <span className="font-semibold">{migrationDate}</span>.
             </ContentMessage>
-          )}
+          ) : null}
           <>
             <div>
               {isWebhookProcessing ? (
@@ -542,6 +606,26 @@ export function SubscriptionPage() {
                           variant="outline"
                         />
                       )}
+                    {scheduledMigrationLabel && (
+                      <Button
+                        label="Cancel subscription"
+                        variant="outline"
+                        disabled={isCancellingMigration}
+                        onClick={() => {
+                          void handleCancelMigration();
+                        }}
+                      />
+                    )}
+                    {canResumeMigration && (
+                      <Button
+                        label="Resume subscription"
+                        variant="primary"
+                        disabled={isResumingMigration}
+                        onClick={() => {
+                          void handleResumeMigration();
+                        }}
+                      />
+                    )}
                   </Page.Horizontal>
                 </>
               )}

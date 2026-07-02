@@ -167,6 +167,17 @@ const config = {
   getStripeSecretWebhookKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_WEBHOOK_KEY");
   },
+  // Optional Stripe billing-portal configuration that disables subscription
+  // cancel/update (payment method + invoices only). Used for workspaces
+  // mid-migration so they can manage payment without removing the scheduled
+  // cancellation ("un-cancel"). Falls back to the account default when unset.
+  getStripeRestrictedPortalConfigurationId: (): string | null => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "STRIPE_RESTRICTED_PORTAL_CONFIGURATION_ID"
+      ) ?? null
+    );
+  },
   // Twilio (workspace verification - OTP).
   getTwilioAccountSid: (): string => {
     return EnvironmentConfig.getEnvVariable("TWILIO_ACCOUNT_SID");

@@ -15,6 +15,13 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+// Read model for the workspace's scheduled legacy → Business migration.
+export type WorkspaceMigrationStatus = {
+  // ISO date the pending migration will activate, or null when there is no
+  // pending migration (never scheduled, or cancelled).
+  pendingMigrationDate: string | null;
+};
+
 export type MigrationLifecycleErrorKind =
   // Bad input or precondition not met (no pending migration, not Stripe-billed,
   // no resolvable billing period) — handler should return 400.

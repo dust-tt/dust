@@ -2,7 +2,9 @@ import {
   cancelMigratingWorkspaceSubscription,
   type MigrationLifecycleError,
   resumeWorkspaceMigration,
+  type WorkspaceMigrationStatus,
 } from "@app/lib/api/billing/migration_lifecycle";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -35,6 +37,23 @@ function lifecycleErrorToApi(ctx: Context, err: MigrationLifecycleError) {
 
 // Mounted at /api/w/:wId/metronome/migration.
 const app = workspaceApp();
+
+/** @ignoreswagger */
+app.get(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<WorkspaceMigrationStatus> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
+
+    const pending = await SubscriptionResource.fetchPendingByWorkspaceModelId(
+      owner.id
+    );
+    return ctx.json({
+      pendingMigrationDate: pending?.startDate?.toISOString() ?? null,
+    });
+  }
+);
 
 /** @ignoreswagger */
 app.patch(
