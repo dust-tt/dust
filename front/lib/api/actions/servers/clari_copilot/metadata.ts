@@ -59,9 +59,9 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
   get_call_details: {
     description:
       "Retrieve details for a specific Clari Copilot call, including the AI summary, " +
-      "topics discussed, action items, and competitor mentions. " +
-      "The turn-by-turn transcript is excluded by default to limit context size; " +
-      "set include_transcript to true only when the full transcript is needed. " +
+      "topics discussed, action items, competitor mentions, and the turn-by-turn transcript. " +
+      "Set include_transcript to false to omit the transcript and limit context size " +
+      "when only the summary and action items are needed. " +
       "Requires a call ID from search_calls.",
     schema: {
       call_id: z
@@ -71,9 +71,9 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether to include the turn-by-turn transcript (default: false). " +
+          "Whether to include the turn-by-turn transcript (default: true). " +
             "The AI summary, topics, and action items are always included. " +
-            "Set to true only when the full transcript is needed."
+            "Set to false to reduce context size when the transcript isn't needed."
         ),
     },
     stake: "never_ask",
