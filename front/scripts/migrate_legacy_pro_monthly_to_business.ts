@@ -36,129 +36,32 @@
  * rollout-window migration). `--now` takes precedence if both are set.
  */
 
-import { checkWorkspaceFitsPlanLimits } from "@app/lib/api/plan_compatibility";
 import {
-  SwitchContractBodySchema,
-  switchContract,
-} from "@app/lib/api/poke/switch_contract";
+  loadMigrationDeps,
+  type MigrationDeps,
+  migrateWorkspaceToBusiness,
+} from "@app/lib/api/billing/migrate_to_business";
 import { Authenticator } from "@app/lib/auth";
-import {
-  ceilToHourISO,
-  floorToHourISO,
-  listMetronomePackages,
-} from "@app/lib/metronome/client";
-import {
-  BUSINESS_EUR_PACKAGE_ALIAS,
-  BUSINESS_USD_PACKAGE_ALIAS,
-} from "@app/lib/metronome/types";
-import { PlanModel } from "@app/lib/models/plan";
-import {
-  CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE,
-  CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  isProPlanPrefix,
-} from "@app/lib/plans/plan_codes";
-import { renderPlanFromModel } from "@app/lib/plans/renderers";
-import {
-  ensureStripeCustomerDefaultPaymentMethod,
-  getCustomerId,
-  getStripeSubscription,
-} from "@app/lib/plans/stripe";
+import { isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
-import type { PlanType } from "@app/types/plan";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 import { makeScript } from "./helpers";
 
-// One-off free AWU credit granted per workspace member at migration time. The
-// committed-credit conversion ($1 = 100 AWU) and this bonus are applied by the
-// `contract.start` webhook at activation, so the amounts reflect the
-// workspace's state at migration time rather than at script-run time.
-const FREE_MIGRATION_AWU_CREDITS_PER_USER = 2000;
-
-// Business package alias for a given Stripe currency. Returns null for currencies
-// we do not have a Business package for (the workspace is then skipped).
-function businessPackageAliasForCurrency(currency: string): string | null {
-  switch (currency.toUpperCase()) {
-    case "USD":
-      return BUSINESS_USD_PACKAGE_ALIAS;
-    case "EUR":
-      return BUSINESS_EUR_PACKAGE_ALIAS;
-    default:
-      return null;
-  }
-}
-
-// Add `n` calendar months to `date` (UTC), clamping the day to the last day of
-// the target month (e.g. Jan 31 + 1 month -> Feb 28/29).
-function addMonthsUTC(date: Date, n: number): Date {
-  const firstOfTargetMonth = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + n, 1)
-  );
-  const ty = firstOfTargetMonth.getUTCFullYear();
-  const tm = firstOfTargetMonth.getUTCMonth();
-  const lastDay = new Date(Date.UTC(ty, tm + 1, 0)).getUTCDate();
-  return new Date(
-    Date.UTC(
-      ty,
-      tm,
-      Math.min(date.getUTCDate(), lastDay),
-      date.getUTCHours(),
-      date.getUTCMinutes(),
-      date.getUTCSeconds()
-    )
-  );
-}
-
-// Roll the monthly renewal boundary forward by whole months until it lands in
-// the rollout window [windowStart, windowEnd). Returns null when no renewal
-// boundary falls inside the window.
-function migrationDateInWindow(
-  currentPeriodEnd: Date,
-  windowStart: Date,
-  windowEnd: Date
-): Date | null {
-  let d = currentPeriodEnd;
-  // Guard against an unexpectedly far-future boundary (e.g. mis-detected yearly).
-  if (d.getTime() >= windowEnd.getTime()) {
-    return null;
-  }
-  // Advance one month at a time until we reach the window.
-  let guard = 0;
-  while (d.getTime() < windowStart.getTime() && guard < 24) {
-    d = addMonthsUTC(d, 1);
-    guard += 1;
-  }
-  if (
-    d.getTime() >= windowStart.getTime() &&
-    d.getTime() < windowEnd.getTime()
-  ) {
-    return d;
-  }
-  return null;
-}
-
 async function migrateWorkspace(
   workspace: LightWorkspaceType,
   {
-    packageIdByAlias,
-    businessPlan,
-    businessLegacyLargePlan,
-    windowStart,
-    windowEnd,
+    deps,
     migrateNow,
     migrateNextHour,
     execute,
   }: {
-    packageIdByAlias: Map<string, string>;
-    businessPlan: PlanType;
-    businessLegacyLargePlan: PlanType;
-    windowStart: Date;
-    windowEnd: Date;
+    deps: MigrationDeps;
     migrateNow: boolean;
     migrateNextHour: boolean;
     execute: boolean;
@@ -166,234 +69,34 @@ async function migrateWorkspace(
   logger: Logger
 ): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const subscription = auth.subscriptionResource();
-  if (!subscription || !subscription.stripeSubscriptionId) {
-    logger.info(
-      { workspaceId: workspace.sId },
-      "[migrate-business] No active Stripe-billed subscription, skipping"
-    );
-    return;
-  }
-
-  // Don't re-schedule a workspace that already has a pending Metronome contract.
-  const existingPending =
-    await SubscriptionResource.fetchPendingByWorkspaceModelId(workspace.id);
-  if (existingPending) {
-    logger.info(
-      { workspaceId: workspace.sId },
-      "[migrate-business] Pending contract already exists, skipping"
-    );
-    return;
-  }
-
-  const pricing = await subscription.getPerSeatPricing();
-  if (!pricing || pricing.currentPeriodEndMs === null) {
-    logger.warn(
-      { workspaceId: workspace.sId },
-      "[migrate-business] Could not resolve per-seat Stripe pricing, skipping"
-    );
-    return;
-  }
-
-  if (pricing.billingPeriod !== "monthly") {
-    logger.info(
-      { workspaceId: workspace.sId, billingPeriod: pricing.billingPeriod },
-      "[migrate-business] Not a monthly subscription, skipping (handled separately)"
-    );
-    return;
-  }
-
-  // Plan-compatibility check: migrate onto the standard Business plan when the
-  // workspace fits it (seats, spaces, data sources). Otherwise fall back to the
-  // legacy-large Business plan, whose limits fit any PRO_* workspace, so the move
-  // never downgrades the workspace below its current usage.
-  const standardFit = await checkWorkspaceFitsPlanLimits(auth, businessPlan);
-  let targetPlan = businessPlan;
-  if (!standardFit.fits) {
-    const largeFit = await checkWorkspaceFitsPlanLimits(
-      auth,
-      businessLegacyLargePlan
-    );
-    if (!largeFit.fits) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          standardViolations: standardFit.violations,
-          legacyLargeViolations: largeFit.violations,
-        },
-        "[migrate-business] Workspace exceeds even the legacy-large Business plan, skipping"
-      );
-      return;
-    }
-    targetPlan = businessLegacyLargePlan;
-    logger.info(
-      { workspaceId: workspace.sId, violations: standardFit.violations },
-      "[migrate-business] Workspace exceeds standard Business limits, using legacy-large plan"
-    );
-  }
-
-  const packageAlias = businessPackageAliasForCurrency(pricing.seatCurrency);
-  if (!packageAlias) {
-    logger.warn(
-      { workspaceId: workspace.sId, currency: pricing.seatCurrency },
-      "[migrate-business] No Business package for currency, skipping"
-    );
-    return;
-  }
-  const metronomePackageId = packageIdByAlias.get(packageAlias);
-  if (!metronomePackageId) {
-    logger.error(
-      { workspaceId: workspace.sId, packageAlias },
-      "[migrate-business] Business package not found in Metronome, skipping"
-    );
-    return;
-  }
-
-  // Testing shortcuts (both bypass the rollout window):
-  //  - `--now`: current hour boundary (floor). The contract is backdated so
-  //    Metronome fires `contract.start` right away; with no pending row the
-  //    handler swaps/creates the subscription in place.
-  //  - `--next-hour`: next hour boundary (ceil), i.e. future-dated — exercises
-  //    the pending-subscription path (created_backend_only → activated at start),
-  //    same as a real rollout-window migration but without waiting.
-  // Otherwise use the workspace's own renewal boundary within the rollout window.
-  let migrationDate: Date;
-  if (migrateNow) {
-    migrationDate = new Date(floorToHourISO(new Date()));
-  } else if (migrateNextHour) {
-    migrationDate = new Date(ceilToHourISO(new Date()));
-  } else {
-    const windowBoundary = migrationDateInWindow(
-      new Date(pricing.currentPeriodEndMs),
-      windowStart,
-      windowEnd
-    );
-    if (!windowBoundary) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          currentPeriodEnd: new Date(pricing.currentPeriodEndMs).toISOString(),
-          windowStart: windowStart.toISOString(),
-          windowEnd: windowEnd.toISOString(),
-        },
-        "[migrate-business] No renewal boundary in rollout window, skipping"
-      );
-      return;
-    }
-    migrationDate = new Date(floorToHourISO(windowBoundary));
-  }
-
-  const stripeSubscription = await getStripeSubscription(
-    subscription.stripeSubscriptionId
-  );
-  if (!stripeSubscription) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        stripeSubscriptionId: subscription.stripeSubscriptionId,
-      },
-      "[migrate-business] Stripe subscription not found, skipping"
-    );
-    return;
-  }
-  const stripeCustomerId = getCustomerId(stripeSubscription);
-
-  const body = SwitchContractBodySchema.parse({
-    planCode: targetPlan.code,
-    metronomePackageId,
-    startingAt: migrationDate.toISOString(),
-    stripeCustomerId,
-    stripeCollectionMethod: "charge_automatically",
-    // Legacy members carry no explicit seat type ("none"); promote them all to a
-    // paid Pro seat on the new Business contract (scheduled at the switch moment).
-    // This branch only handles monthly subscriptions, hence "pro" (not "pro_yearly").
-    promoteNoneSeatsTo: "pro",
-    // Stamp the credit-migration marker on the contract. The script itself does
-    // NOT grant any credit — at `contract.start` the webhook converts the
-    // workspace's convertible legacy credits (committed + poke-granted free) to
-    // AWU and grants this many free AWU per member, computed THEN so the amounts
-    // reflect the workspace's state at activation.
-    legacyMigrationFreeAwuCreditsPerUser: FREE_MIGRATION_AWU_CREDITS_PER_USER,
+  const result = await migrateWorkspaceToBusiness(auth, {
+    deps,
+    migrateNow,
+    migrateNextHour,
+    execute,
   });
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      planCode: targetPlan.code,
-      currency: pricing.seatCurrency,
-      packageAlias,
-      metronomePackageId,
-      currentPeriodEnd: new Date(pricing.currentPeriodEndMs).toISOString(),
-      migrationDate: migrationDate.toISOString(),
-    },
-    `[migrate-business] ${execute ? "Migrating" : "[DRY RUN] Would migrate"} to Business`
-  );
-
-  if (!execute) {
-    return;
-  }
-
-  // Metronome bills the Stripe customer's default payment method. A paid Stripe
-  // subscription may keep its card only on the subscription, not as the customer
-  // default — set it so Metronome invoices don't fail after the switch.
-  const paymentMethodResult = await ensureStripeCustomerDefaultPaymentMethod({
-    stripeCustomerId,
-    stripeSubscription,
-    workspaceId: workspace.sId,
-  });
-  if (paymentMethodResult.isErr()) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        error: paymentMethodResult.error.error_message,
-      },
-      "[migrate-business] Failed to ensure Stripe default payment method, skipping"
-    );
-    return;
-  }
-  if (paymentMethodResult.value.updated) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        defaultPaymentMethodId:
-          paymentMethodResult.value.defaultPaymentMethodId,
-      },
-      "[migrate-business] Set Stripe customer default payment method"
-    );
-  } else if (!paymentMethodResult.value.defaultPaymentMethodId) {
-    logger.warn(
-      { workspaceId: workspace.sId },
-      "[migrate-business] No default payment method found — Metronome billing may fail"
-    );
-  }
-
-  const result = await switchContract({ auth, body });
   if (result.isErr()) {
     logger.error(
-      {
-        workspaceId: workspace.sId,
-        kind: result.error.kind,
-        error: result.error.message,
-      },
-      "[migrate-business] switchContract failed"
+      { workspaceId: workspace.sId, error: result.error.message },
+      "[migrate-business] Migration failed"
     );
     return;
   }
-
-  // NOTE: we intentionally do NOT mark the legacy subscription as canceled /
-  // set its endDate here. That would set `requestCancelAt`, which the UI reads
-  // as a scheduled cancellation — showing a "your subscription ends" banner and
-  // a reactivate/restore action that would undo the migration. switchContract
-  // has already scheduled the Stripe cancellation and staged the pending
-  // Metronome subscription; the `contract.start` webhook ends the legacy
-  // subscription (and applies the credit conversion + bonus) at activation.
+  const outcome = result.value;
+  if (outcome.status === "skipped") {
+    logger.info(
+      { workspaceId: workspace.sId, reason: outcome.reason },
+      "[migrate-business] Skipped"
+    );
+    return;
+  }
   logger.info(
     {
       workspaceId: workspace.sId,
-      metronomeContractId: result.value.metronomeContractId,
-      migrationDate: migrationDate.toISOString(),
+      migrationDate: outcome.migrationDate.toISOString(),
+      metronomeContractId: outcome.metronomeContractId,
     },
-    "[migrate-business] Migrated: pending Business contract scheduled for the migration date"
+    `[migrate-business] ${execute ? "Migrated" : "[DRY RUN] Would migrate"}: pending Business contract scheduled for the migration date`
   );
 }
 
@@ -457,33 +160,15 @@ makeScript(
       );
     }
 
-    // Resolve the Business package ids once (USD + EUR).
-    const packagesResult = await listMetronomePackages();
-    if (packagesResult.isErr()) {
-      throw new Error(
-        `Failed to list Metronome packages: ${packagesResult.error.message}`
-      );
+    // Resolve the Business packages + plans once, reused across workspaces.
+    const depsResult = await loadMigrationDeps({
+      windowStart: windowStartDate,
+      windowEnd: windowEndDate,
+    });
+    if (depsResult.isErr()) {
+      throw depsResult.error;
     }
-    const packageIdByAlias = new Map<string, string>();
-    for (const pkg of packagesResult.value) {
-      for (const alias of pkg.aliases) {
-        packageIdByAlias.set(alias, pkg.id);
-      }
-    }
-
-    // The target Business plans — their live limits are checked against each
-    // workspace to pick the standard plan or the legacy-large fallback.
-    const fetchPlan = async (code: string): Promise<PlanType> => {
-      const planModel = await PlanModel.findOne({ where: { code } });
-      if (!planModel) {
-        throw new Error(`Plan ${code} not found in the database.`);
-      }
-      return renderPlanFromModel({ plan: planModel });
-    };
-    const businessPlan = await fetchPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
-    const businessLegacyLargePlan = await fetchPlan(
-      CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE
-    );
+    const deps = depsResult.value;
 
     // Fetch the legacy Pro subscriptions (any PRO_* plan), then resolve their
     // workspaces so we only touch (and only hit Stripe for) legacy Pro workspaces.
@@ -521,11 +206,7 @@ makeScript(
           await migrateWorkspace(
             workspace,
             {
-              packageIdByAlias,
-              businessPlan,
-              businessLegacyLargePlan,
-              windowStart: windowStartDate,
-              windowEnd: windowEndDate,
+              deps,
               migrateNow: now,
               migrateNextHour: nextHour,
               execute,
