@@ -135,8 +135,8 @@ const NavigationListItem = React.forwardRef<
               "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
               "items-center outline-hidden rounded-lg text-sm p-2 transition-colors",
               "data-[disabled]:pointer-events-none",
-              "hover:bg-sidebar-foreground",
-              selected && "bg-sidebar-foreground",
+              "hover:bg-hover",
+              selected && "bg-selected",
               disabled && "pointer-events-none cursor-default opacity-50"
             )}
           >
@@ -239,7 +239,7 @@ const NavigationListItemAction = React.forwardRef<
         size="xmini"
         icon={DotsHorizontal}
         variant="ghost"
-        className="hover:bg-sidebar-foreground active:bg-sidebar-foreground"
+        className="hover:bg-hover active:bg-selected"
       />
     </div>
   );

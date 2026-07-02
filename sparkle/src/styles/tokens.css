@@ -268,7 +268,9 @@
 
   /* Surfaces */
   --color-muted: var(--color-stone-50);
-  --color-hover: var(--color-stone-100);
+  /* hover/selected are translucent overlays so they composite over any surface. */
+  --color-hover: rgba(0, 0, 0, 0.02);
+  --color-selected: rgba(0, 0, 0, 0.06);
   --color-faint: var(--color-stone-400);
 
   /* Text */
@@ -413,7 +415,9 @@
 
   /* Surfaces */
   --color-muted: var(--color-stone-950);
-  --color-hover: var(--color-stone-800);
+  /* hover/selected are translucent overlays so they composite over any surface. */
+  --color-hover: rgba(255, 255, 255, 0.04);
+  --color-selected: rgba(255, 255, 255, 0.08);
   --color-faint: var(--color-stone-600);
 
   /* Text */
