@@ -147,9 +147,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
 
               const sendMessage = () => {
                 const params = JSON.stringify(
-                  hasConversationId
-                    ? { conversationId }
-                    : { agentId }
+                  hasConversationId ? { conversationId } : { agentId }
                 );
                 void chrome.runtime.sendMessage({
                   type: "EXT_ROUTE_CHANGE",
