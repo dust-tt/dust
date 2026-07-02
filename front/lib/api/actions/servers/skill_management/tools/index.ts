@@ -72,7 +72,7 @@ async function findAvailableSkillForAgentLoop({
       skill,
     ])
   );
-  const candidate = await SkillResource.fetchActiveByName(auth, skillName, {
+  const candidate = await SkillResource.fetchByName(auth, skillName, {
     agentLoopData,
   });
   if (!candidate) {

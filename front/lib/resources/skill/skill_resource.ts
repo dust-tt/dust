@@ -885,7 +885,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  static async fetchActiveByName(
+  static async fetchByName(
     auth: Authenticator,
     name: string,
     { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
@@ -895,7 +895,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         where: {
           name,
-          status: "active",
         },
         limit: 1,
       },
