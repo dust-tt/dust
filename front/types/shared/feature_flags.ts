@@ -355,6 +355,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Model picker in the conversation input bar: pick a model tier (Fast, Balanced, Powerful, Frontier) or a specific model.",
     stage: "dust_only",
   },
+  activation_skill: {
+    description: "Enable the Activation skill for agentic user activation pods",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
