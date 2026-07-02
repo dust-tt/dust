@@ -18,13 +18,18 @@ const TOOL_SEARCH_TOOL_TYPE = TOOL_SEARCH_TOOL.type;
 
 // Added to the system prompt only when the search tool is in the request. Phrased
 // without naming the bm25 tool so it stays accurate across search implementations.
+//
+// The last sentence steers the model away from mixing a tool search with a
+// regular tool call in the same turn: the API leaves such searches un-run (the
+// turn ends on the tool call), and replaying the un-run blocks is fragile.
 export const TOOL_SEARCH_INSTRUCTION =
   "You can search for and load far more tools than are visible to you now, " +
   "including ones that fetch live or account-specific data and act in external " +
   "systems. When a request needs current state, the user's own systems, or an " +
   "action your visible tools cannot take, search for a tool before making " +
   "something up, answering from stale memory, or telling the user it is not " +
-  "possible.";
+  "possible. Do not combine tool searches with other tool calls in the same " +
+  "turn: search first, wait for the results, then call the tools you need.";
 
 export function includesToolSearchTool(
   tools: ReadonlyArray<{ type?: string | null }>
