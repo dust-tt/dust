@@ -460,7 +460,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare costCredits: number | null;
 
   // Per-message model override from the input-bar model picker. `requestedModelTier`
-  // records the abstract tier the user picked ("fast" | "balanced" | "powerful",
+  // records the abstract tier the user picked ("efficient" | "balanced" | "powerful",
   // null for an explicit "advanced" pick or no pick); the provider/model/effort
   // triplet is the concrete model that tier (or advanced pick) resolved to at
   // send time. All null when the message runs the agent's configured model.
