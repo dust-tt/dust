@@ -1,3 +1,13 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_EDIT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import {
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -9,6 +19,11 @@ const COMPUTER_FIRST_MARKER =
   "mounted in the Computer at `/files/conversation-";
 const FILES_FIRST_MARKER =
   "available to your file tools at `conversation-<conversationId>";
+
+const FILES_EDIT_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_EDIT_ACTION_NAME
+);
 
 function agentLoopDataWithUseFileSystem(
   useFileSystem: boolean | undefined
@@ -27,8 +42,8 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain(COMPUTER_FIRST_MARKER);
-    expect(instructions).toContain("publish_interactive_content_file");
-    expect(instructions).not.toContain("edit_interactive_content_file");
+    expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
   it("teaches the files-tools flow when the Computer is disabled", async () => {
@@ -41,9 +56,9 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
     expect(instructions).toContain(FILES_FIRST_MARKER);
-    expect(instructions).toContain("files__edit");
-    expect(instructions).toContain("publish_interactive_content_file");
-    expect(instructions).not.toContain("edit_interactive_content_file");
+    expect(instructions).toContain(FILES_EDIT_TOOL);
+    expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
   it("keeps the retrieve and file-id edit flow for legacy conversations", async () => {
@@ -56,8 +71,8 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
     expect(instructions).not.toContain(FILES_FIRST_MARKER);
-    expect(instructions).toContain("edit_interactive_content_file");
-    expect(instructions).toContain("retrieve_interactive_content_file");
+    expect(instructions).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(instructions).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
   it("treats a conversation with the file system like a new conversation", async () => {
@@ -69,6 +84,6 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain(COMPUTER_FIRST_MARKER);
-    expect(instructions).not.toContain("edit_interactive_content_file");
+    expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 });

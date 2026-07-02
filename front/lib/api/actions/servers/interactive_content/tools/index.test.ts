@@ -1,5 +1,9 @@
 import type { ToolContextType } from "@app/lib/actions/types";
-import { EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import {
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { createInteractiveContentTools } from "@app/lib/api/actions/servers/interactive_content/tools";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
@@ -23,8 +27,8 @@ describe("createInteractiveContentTools", () => {
     const names = tools.map((tool) => tool.name);
 
     expect(names).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
-    expect(names).toContain("publish_interactive_content_file");
-    expect(names).toContain("create_interactive_content_file");
+    expect(names).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
+    expect(names).toContain(CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
   it("keeps the file-id edit tool for legacy conversations", async () => {
