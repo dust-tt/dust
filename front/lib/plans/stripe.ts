@@ -1351,34 +1351,95 @@ export async function finalizeInvoice(
 const METRONOME_INVOICE_LINES_CLEANED_FLAG = "lines_cleaned";
 
 /**
+ * Metronome represents a fully-applied commit/credit as a pair of lines on the
+ * same invoice with equal and opposite amounts: a negative line whose
+ * description is "<label> applied", and the positive usage/subscription line
+ * it offsets, whose description contains "(<label>)" (e.g. a negative
+ * "Platform Seat (Yearly) commitment: 53 seats applied" line offsetting a
+ * positive "Platform Seat (Yearly) (Platform Seat (Yearly) commitment: 53
+ * seats)" line). Neither line carries metadata identifying the pairing (there
+ * is no such thing as `metronome_commit_id` on Stripe line items — Metronome
+ * does not document or set one), so we match them by description + amount
+ * instead.
+ */
+function findCommitAppliedLineIds(
+  lines: Stripe.InvoiceLineItem[]
+): Set<string> {
+  const appliedSuffix = " applied";
+  const matchedLineIds = new Set<string>();
+
+  for (const creditLine of lines) {
+    const description = creditLine.description;
+    if (
+      creditLine.amount >= 0 ||
+      !description ||
+      !description.endsWith(appliedSuffix)
+    ) {
+      continue;
+    }
+
+    const label = description.slice(0, -appliedSuffix.length);
+    const offsetLine = lines.find(
+      (candidate) =>
+        candidate.id !== creditLine.id &&
+        !matchedLineIds.has(candidate.id) &&
+        candidate.amount === -creditLine.amount &&
+        candidate.currency === creditLine.currency &&
+        candidate.description?.includes(`(${label})`)
+    );
+
+    if (offsetLine) {
+      matchedLineIds.add(offsetLine.id);
+    }
+  }
+
+  return matchedLineIds;
+}
+
+/**
  * Removes from a Metronome-pushed Stripe draft invoice the line items that
- * should not appear on the customer-facing invoice, mirroring the filters
- * applied by the /invoice/lines API endpoint:
+ * should not appear on the customer-facing invoice:
  *
- * 1. Negative lines
- * 2. Lines with an applied commit or credit — usage/subscription lines whose
- *    cost is covered by a commit/credit (identified by `metronome_commit_id`
- *    in the Stripe line item metadata).
+ * 1. Negative lines.
+ * 2. Lines with a fully-applied commit or credit, matched via
+ *    `findCommitAppliedLineIds` (see its doc comment).
  * 3. Wrong-currency lines — non-fiat lines (e.g. AWU-priced) that Metronome may
  *    not transfer to Stripe; guard retained for safety.
  *
- * Filters 1 and 2 cancel each other out: every negative credit line is paired
- * with a positive usage line of the same absolute amount, so removing both
- * leaves the invoice total unchanged.
+ * Filters 1 and 2 cancel each other out: the negative "applied" line and the
+ * positive line it offsets have equal and opposite amounts, so removing both
+ * leaves the invoice total unchanged. As a safety net against a bad match, the
+ * invoice total before and after cleaning is returned so the caller can abort
+ * finalization if it drifted.
  */
 async function cleanMetronomeInvoiceLines(
   stripe: Stripe,
   invoice: Stripe.Invoice
-): Promise<void> {
+): Promise<{
+  totalsMatch: boolean;
+  originalTotalCents: number;
+  newTotalCents: number;
+}> {
   const invoiceCurrency = invoice.currency;
+  const originalTotalCents = invoice.total;
 
   // `invoice.lines` only holds the first page; iterate the list endpoint so we
   // see every line. The Stripe SDK list result auto-paginates when iterated.
+  // We need the full set upfront (not streamed) since matching a commit's
+  // negative line to the positive line it offsets requires looking across all
+  // of the invoice's lines.
+  const lines: Stripe.InvoiceLineItem[] = [];
   for await (const line of stripe.invoices.listLineItems(invoice.id, {
     limit: 100,
   })) {
+    lines.push(line);
+  }
+
+  const commitAppliedLineIds = findCommitAppliedLineIds(lines);
+
+  for (const line of lines) {
     const isNegative = line.amount < 1;
-    const hasAppliedCommitOrCredit = !!line.metadata?.metronome_commit_id;
+    const hasAppliedCommitOrCredit = commitAppliedLineIds.has(line.id);
     const isWrongCurrency = line.currency !== invoiceCurrency;
     const shouldRemove =
       isNegative || hasAppliedCommitOrCredit || isWrongCurrency;
@@ -1418,6 +1479,15 @@ async function cleanMetronomeInvoiceLines(
 
     await stripe.invoiceItems.del(invoiceItemId);
   }
+
+  const updatedInvoice = await stripe.invoices.retrieve(invoice.id);
+  const newTotalCents = updatedInvoice.total;
+
+  return {
+    totalsMatch: newTotalCents === originalTotalCents,
+    originalTotalCents,
+    newTotalCents,
+  };
 }
 
 /**
@@ -1438,7 +1508,10 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
   invoiceId: string;
   workspaceId: string;
 }): Promise<
-  Result<{ outcome: "cleaned" | "skipped" }, { error_message: string }>
+  Result<
+    { outcome: "cleaned" | "skipped" | "totals_mismatch" },
+    { error_message: string }
+  >
 > {
   const stripe = getStripeClient();
 
@@ -1482,7 +1555,8 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
       creditConfig?.autoInvoiceFinalizationEnabled ??
       DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED;
 
-    await cleanMetronomeInvoiceLines(stripe, invoice);
+    const { totalsMatch, originalTotalCents, newTotalCents } =
+      await cleanMetronomeInvoiceLines(stripe, invoice);
 
     await stripe.invoices.update(invoiceId, {
       metadata: {
@@ -1490,6 +1564,23 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
         [METRONOME_INVOICE_LINES_CLEANED_FLAG]: "true",
       },
     });
+
+    if (!totalsMatch) {
+      // The lines_cleaned flag is already set above, so a Temporal retry
+      // would just hit the "already cleaned" early return and no-op — this
+      // needs a human, not a retry. Report Ok rather than throwing.
+      logger.error(
+        {
+          panic: true,
+          stripeInvoiceId: invoiceId,
+          workspaceId,
+          originalTotalCents,
+          newTotalCents,
+        },
+        "[Stripe] Invoice total changed after cleaning Metronome line items, leaving as draft for manual review"
+      );
+      return new Ok({ outcome: "totals_mismatch" });
+    }
 
     if (!autoInvoiceFinalizationEnabled) {
       logger.info(
