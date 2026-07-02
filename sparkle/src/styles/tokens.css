@@ -407,7 +407,10 @@
 
   /* Backgrounds */
   --color-app-background: var(--color-stone-900);
-  --color-background: var(--color-stone-950);
+  /* Temporary: lifted off stone-950 (14.7%) so the base canvas isn't so dark.
+     Kept below app/muted (stone-900, 20.6%) to preserve the elevation ladder.
+     Revert when surfaces move to the contextual bg-surface token. */
+  --color-background: oklch(18.5% 0.004 49.25);
   --color-panel-background: var(--color-stone-850);
   --color-overlay-background: var(--color-stone-800);
   --color-modal-background: var(--color-stone-775);
