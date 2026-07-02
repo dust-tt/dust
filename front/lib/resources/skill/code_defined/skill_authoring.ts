@@ -5,6 +5,8 @@ You can create and revise workspace Skills when the user wants to capture a repe
 
 Use create_skill when the workflow is new. Use list_skills and get_skill first when the user asks to improve, rename, rewrite, or refine an existing skill.
 
+If create_skill reports similar existing skills, reuse or update one of those skills instead of creating a duplicate. Only set bypassSimilarSkillCheck when the user explicitly confirms they want a separate skill anyway.
+
 Create instructions-only skills. Do not try to attach tools, knowledge, files, or other skills. If the user asks for those, explain that this authoring tool can capture the instructions now and that tool or knowledge wiring needs to be handled separately.
 
 Write concise skill names that describe the reusable capability, not the current conversation. Good names are action-oriented and stable, for example "Write Release Notes" or "Triage Support Escalations".

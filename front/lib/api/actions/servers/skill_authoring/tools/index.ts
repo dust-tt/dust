@@ -15,6 +15,7 @@ import {
 } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { makeSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
+import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
@@ -68,6 +69,79 @@ function makeJsonText(value: unknown) {
     type: "text" as const,
     text: JSON.stringify(value, null, 2),
   };
+}
+
+type SimilarSkillSummary = {
+  sId: string;
+  name: string;
+  agentFacingDescription: string;
+};
+
+async function findSimilarSkillSummaries(
+  auth: Authenticator,
+  naturalDescription: string
+): Promise<Result<SimilarSkillSummary[], MCPError>> {
+  const result = await getSimilarSkills(auth, {
+    naturalDescription,
+    excludeSkillId: null,
+  });
+
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error },
+      "Failed to check for similar skills before creating skill"
+    );
+    return new Err(
+      new MCPError(
+        "Could not check whether a similar skill already exists. Retry, or set " +
+          "`bypassSimilarSkillCheck` to true only if the user explicitly wants " +
+          "to create a separate skill."
+      )
+    );
+  }
+
+  const similarSkillIds = result.value.similar_skills;
+  if (similarSkillIds.length === 0) {
+    return new Ok([]);
+  }
+
+  const skills = await SkillResource.fetchByIds(auth, similarSkillIds);
+  const skillsById = new Map<string, SkillResource>();
+  for (const skill of skills) {
+    skillsById.set(skill.sId, skill);
+  }
+
+  const summaries: SimilarSkillSummary[] = [];
+  for (const skillId of similarSkillIds) {
+    const skill = skillsById.get(skillId);
+    if (skill) {
+      summaries.push({
+        sId: skill.sId,
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+      });
+    }
+  }
+
+  return new Ok(summaries);
+}
+
+function makeSimilarSkillsErrorMessage(
+  similarSkills: SimilarSkillSummary[]
+): string {
+  const summaries = similarSkills
+    .map(
+      (skill) =>
+        `- ${skill.name} (${skill.sId}): ${skill.agentFacingDescription}`
+    )
+    .join("\n");
+
+  return (
+    "Similar skills already exist. Reuse or update them instead of creating a " +
+    `duplicate skill:\n${summaries}\n` +
+    "If the user explicitly wants a separate skill, call `create_skill` again " +
+    "with `bypassSimilarSkillCheck` set to true."
+  );
 }
 
 const SPECIAL_TAG_CATEGORIES = ["nested skills", "knowledge", "tools"] as const;
@@ -218,7 +292,14 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
   },
 
   [CREATE_SKILL_TOOL_NAME]: async (
-    { agentFacingDescription, icon, instructions, name, userFacingDescription },
+    {
+      agentFacingDescription,
+      bypassSimilarSkillCheck,
+      icon,
+      instructions,
+      name,
+      userFacingDescription,
+    },
     { auth }
   ) => {
     const user = requireInteractiveBuilder(auth);
@@ -253,6 +334,21 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       return new Err(
         new MCPError(`A skill with the name "${trimmedName}" already exists.`)
       );
+    }
+
+    if (bypassSimilarSkillCheck !== true) {
+      const similarSkills = await findSimilarSkillSummaries(
+        auth,
+        agentFacingDescription
+      );
+      if (similarSkills.isErr()) {
+        return new Err(similarSkills.error);
+      }
+      if (similarSkills.value.length > 0) {
+        return new Err(
+          new MCPError(makeSimilarSkillsErrorMessage(similarSkills.value))
+        );
+      }
     }
 
     // Ignore an invalid agent-supplied icon and fall back to a suggestion
