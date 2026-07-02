@@ -1,6 +1,7 @@
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import type { PokeWorkspaceMember } from "@app/lib/api/poke/memberships";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -10,14 +11,10 @@ import {
   MEMBERSHIP_SEAT_TYPES,
   type MembershipSeatType,
 } from "@app/types/memberships";
-import type {
-  RoleType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types/user";
+import type { RoleType, WorkspaceType } from "@app/types/user";
 
 function prepareMembersForDisplay(
-  members: UserTypeWithWorkspaces[]
+  members: PokeWorkspaceMember[]
 ): MemberDisplayType[] {
   return members.map((m) => {
     return {
@@ -29,13 +26,15 @@ function prepareMembersForDisplay(
       sId: m.sId,
       origin: m.origin,
       seatType: isMembershipSeatType(m.seatType) ? m.seatType : undefined,
+      scheduledSeatType: m.scheduledSeatType,
+      scheduledSeatChangeAt: m.scheduledSeatChangeAt,
     };
   });
 }
 
 interface MembersDataTableProps {
   groupName?: string;
-  members: UserTypeWithWorkspaces[];
+  members: PokeWorkspaceMember[];
   owner: WorkspaceType;
   readonly?: boolean;
 }
