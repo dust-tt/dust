@@ -234,6 +234,11 @@ export async function scrubSpaceActivity({
     await UserProjectPreferencesResource.deleteAllBySpace(auth, space.id);
   }
 
+  // Detach triggers from this Pod before hard-deleting the space. The trigger
+  // FK is `onDelete: "RESTRICT"`, so references must be cleared first; the
+  // triggers keep running and fall back to the default target.
+  await TriggerResource.detachAllFromSpace(auth, space.id);
+
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
   await hardDeleteSpace(auth, space);

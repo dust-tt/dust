@@ -200,6 +200,7 @@ vi.mock("@app/lib/temporal", () => ({
     schedule: {
       getHandle: vi.fn().mockReturnValue({
         update: vi.fn(),
+        delete: vi.fn(),
       }),
     },
   }),
