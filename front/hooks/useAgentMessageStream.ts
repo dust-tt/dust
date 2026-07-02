@@ -202,8 +202,11 @@ export function updateProgress(
 }
 
 /**
- * Append a thinking step to the inline activity steps if the content
- * is new (not a duplicate of the last thinking step).
+ * Append a thinking step to the inline activity steps, unless it is a duplicate.
+ *
+ * Two dedup guards: (1) the id is derived from the triggering event so a replay
+ * after a remount regenerates the same id — we skip it if already present; and
+ * (2) within a mount we skip content identical to the most recent thinking step.
  */
 export function appendThinkingStep(
   steps: InlineActivityStep[],
@@ -211,6 +214,9 @@ export function appendThinkingStep(
   id: string,
   stepIndex: number
 ): InlineActivityStep[] {
+  if (steps.some((step) => step.id === id)) {
+    return steps;
+  }
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
     if (step.type === "thinking") {
@@ -232,6 +238,11 @@ function appendContentStep(
   id: string,
   stepIndex: number
 ): InlineActivityStep[] {
+  // Skip if already present — the id is event-derived, so a replay after a
+  // remount regenerates the same id instead of appending a duplicate.
+  if (steps.some((step) => step.id === id)) {
+    return steps;
+  }
   return [
     ...steps,
     { type: "content", content: textContent, id, step: stepIndex },
@@ -340,26 +351,12 @@ export function useAgentMessageStream({
     [methods, isAutoScrollEnabledRef]
   );
 
-  // Short-circuit replays of events we've already processed in this hook
-  // instance. The hook is mounted per agent message (via AgentMessage.tsx),
-  // so the ref is scoped to a single message and resets on remount or when a
-  // retry creates a new agentMessage.sId. Within a single mount,
-  // `useEventSource` reconnects on every server-side "done" frame and on
-  // network errors using `lastEventId`; if the server replays an event we
-  // already saw (e.g. just past the cursor boundary), the handlers downstream
-  // are not idempotent — inline activity step IDs are built from `Date.now()`
-  // and same-millisecond re-processing produces duplicate React keys.
+  // Short-circuit reconnect replays within this mount (useEventSource reconnects
+  // on every server "done" frame / network error and the server re-sends
+  // history). This ref resets on remount, which is fine: a remount re-runs the
+  // whole replay to rebuild the parser state, and steps are de-duplicated on
+  // insert by their stable, event-derived ids so nothing is appended twice.
   const seenEventIds = useRef<Set<string>>(new Set());
-
-  // Once a terminal event (agent_message_success, agent_error, etc.) is
-  // received, we must stop reconnecting entirely. Without this, a race between
-  // Virtuoso's deferred item re-render (which updates `agentMessage.status` and
-  // flips `shouldStream` to false) and the immediate React re-render triggered
-  // by the SSE `done` frame causes the effect to fire with `shouldStream` still
-  // true, reconnecting to the server. The server then replays history including
-  // `end-of-stream`, after which every subsequent reconnect gets an empty
-  // history and another immediate `done`, producing an infinite loop.
-  // Returning null from buildEventSourceURL breaks the loop at the source.
   const isStreamTerminated = useRef(false);
 
   useEffect(() => {
@@ -541,7 +538,7 @@ export function useAgentMessageStream({
                   chainOfThought,
                   content,
                   steps: m.streaming.inlineActivitySteps,
-                  suffix: `pre-${Date.now()}`,
+                  suffix: `pre-${eventPayload.eventId || Date.now()}`,
                   stepIndex: eventStep,
                   retryCoTBuffer,
                 });
@@ -663,7 +660,7 @@ export function useAgentMessageStream({
               chainOfThought,
               content,
               steps: m.streaming.inlineActivitySteps,
-              suffix: `toolparams-${Date.now()}`,
+              suffix: `toolparams-${eventPayload.eventId || Date.now()}`,
               stepIndex: toolParams.step,
               retryCoTBuffer,
             });
@@ -734,7 +731,7 @@ export function useAgentMessageStream({
               chainOfThought,
               content,
               steps: m.streaming.inlineActivitySteps,
-              suffix: `error-${Date.now()}`,
+              suffix: `error-${eventPayload.eventId || Date.now()}`,
               stepIndex: currentStep.current ?? 0,
               retryCoTBuffer,
             });
@@ -780,7 +777,7 @@ export function useAgentMessageStream({
               chainOfThought,
               content,
               steps: m.streaming.inlineActivitySteps,
-              suffix: `cancel-${Date.now()}`,
+              suffix: `cancel-${eventPayload.eventId || Date.now()}`,
               stepIndex: cancelData.step,
               retryCoTBuffer,
             });
