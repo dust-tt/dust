@@ -574,7 +574,7 @@ export function SubscriptionPage() {
               cancel your subscription below — it will then end at the end of
               your current billing period instead.
             </ContentMessage>
-          ) : migrationDate ? (
+          ) : migrationDate && !endDate ? (
             <ContentMessage
               title="Your plan will be migrated to the new credit-based pricing."
               variant="blue"

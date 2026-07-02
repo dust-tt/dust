@@ -5,6 +5,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import {
   archiveMetronomeContract,
+  reactivateMetronomeContract,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import { scheduleSubscriptionCancellation } from "@app/lib/plans/stripe";
@@ -214,7 +215,28 @@ export async function resumeWorkspaceMigration(
     );
   }
 
-  // Re-stage the migration FIRST. If it fails / is not eligible we leave the
+  // Undo the shadow-contract end that cancel brought forward to the current
+  // period end: clear it so `switchContract` can re-provision the Business
+  // contract as a contiguous renewal at the (later) migration date. Otherwise
+  // Metronome rejects the renewal — its start would be after the predecessor's
+  // (now earlier) end date.
+  const subscription = auth.subscriptionResource();
+  if (subscription?.metronomeContractId && workspace.metronomeCustomerId) {
+    const reactivateResult = await reactivateMetronomeContract({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      contractId: subscription.metronomeContractId,
+    });
+    if (reactivateResult.isErr()) {
+      return new Err(
+        new MigrationLifecycleError(
+          "upstream_error",
+          `Failed to restore the current contract before resuming: ${reactivateResult.error.message}.`
+        )
+      );
+    }
+  }
+
+  // Re-stage the migration. If it fails / is not eligible we leave the
   // cancellation untouched, so the workspace stays in a consistent state.
   const migrateResult = await migrateWorkspaceToBusiness(auth, {
     deps: depsResult.value,
@@ -241,7 +263,6 @@ export async function resumeWorkspaceMigration(
   // Clear the local cancellation marker now that a fresh pending contract is
   // staged (the Stripe cancellation + shadow end were rescheduled to the
   // migration date by the switch).
-  const subscription = auth.subscriptionResource();
   if (subscription) {
     await subscription.markAsCanceled({ endDate: null });
   }
