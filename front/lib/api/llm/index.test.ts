@@ -1,5 +1,5 @@
 import { getWorkspaceFilter } from "@app/lib/api/llm";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type { WorkspaceConfig } from "@app/lib/llms/types/filter";
 import {
@@ -10,21 +10,32 @@ import {
   AGENT_PLATFORM_API,
   GOOGLE_AI_STUDIO_API,
 } from "@app/lib/model_constructors/types/provider_apis";
+import {
+  isCreditPricedPlanPrefix,
+  isEnterpriseOrDust,
+} from "@app/lib/plans/plan_codes";
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it } from "vitest";
 
-const workspaceConfig: WorkspaceConfig = {
-  featureFlags: [],
-  isEnterprise: false,
-  isCreditPriced: false,
-};
+async function getWorkspaceConfig(
+  auth: Authenticator
+): Promise<WorkspaceConfig> {
+  const plan = auth.getNonNullablePlan();
+
+  return {
+    featureFlags: await getFeatureFlags(auth),
+    isEnterprise: isEnterpriseOrDust(plan),
+    isCreditPriced: isCreditPricedPlanPrefix(plan.code),
+  };
+}
 
 describe("getWorkspaceFilter", () => {
   it("routes non-byok gemini to agent-platform endpoints, never the direct Google AI Studio API", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
+    const workspaceConfig = await getWorkspaceConfig(auth);
     const filter = getWorkspaceFilter(auth);
 
     const flashEndpoints = getStreamEndpoints(workspaceConfig, {
@@ -50,6 +61,7 @@ describe("getWorkspaceFilter", () => {
     await ProviderCredentialFactory.basic(workspace, "google_ai_studio");
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
+    const workspaceConfig = await getWorkspaceConfig(auth);
     const filter = getWorkspaceFilter(auth);
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
