@@ -208,7 +208,7 @@ function ResizeHandle({
   return (
     <div
       className={[
-        "group relative z-[5] flex w-[6px] flex-none cursor-col-resize items-stretch -s-mx-[3px] transition-opacity duration-200",
+        "group relative z-[5] flex w-[6px] flex-none cursor-col-resize items-stretch -mx-[3px] transition-opacity duration-200",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
       ].join(" ")}
       onPointerDown={visible ? onPointerDown : undefined}
@@ -445,7 +445,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         :root {
           --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
         }
-        .s-dark {
+        .dark {
           --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]});
         }
       `}</style>
@@ -644,7 +644,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
               "transition-[transform,opacity] duration-[220ms] ease-[cubic-bezier(.4,0,.2,1)]",
               showNavOverlay
                 ? "translate-x-0 opacity-100 pointer-events-auto"
-                : "-s-translate-x-full opacity-0 pointer-events-none",
+                : "-translate-x-full opacity-0 pointer-events-none",
               isPeek
                 ? "shadow-[4px_0_16px_rgba(0,0,0,0.08)]"
                 : "shadow-[8px_0_24px_rgba(0,0,0,0.10)]",
