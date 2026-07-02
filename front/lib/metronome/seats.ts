@@ -1477,9 +1477,7 @@ export async function syncSeatCount({
         const userSeatType = seatTypeAt(userSId, tMs);
         // On legacy contracts, "none" members are Platform Seat members that
         // predate the seat system — count them alongside explicit "workspace" seats.
-        const match =
-          userSeatType === subSeatType ||
-          (legacy && subSeatType === "workspace" && userSeatType === "none");
+        const match = userSeatType === subSeatType || legacy;
         if (match) {
           sIds.push(userSId);
         }
