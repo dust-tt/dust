@@ -8,7 +8,7 @@ import {
   USER_ANALYTICS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_analytics/metadata";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { fetchAvailableSkillsBySkillId } from "@app/lib/api/assistant/observability/skill_usage";
+import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
 import {
   fetchAvailableTools,
   resolveToolDisplayNames,
@@ -25,6 +25,23 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const DAYS = 30;
 const TOP_ITEMS_LIMIT = 100;
+
+async function resolveAccessibleSkillNames(
+  auth: Authenticator,
+  rows: { skillId: string | null; skillName: string }[]
+): Promise<string[]> {
+  const ids = rows
+    .map((r) => r.skillId)
+    .filter((id): id is string => id !== null);
+  if (ids.length === 0) {
+    return [];
+  }
+  const resources = await SkillResource.fetchByIds(auth, ids);
+  const byId = new Map(resources.map((s) => [s.sId, s]));
+  return rows
+    .map((r) => (r.skillId ? byId.get(r.skillId)?.name : undefined))
+    .filter((n): n is string => n !== undefined);
+}
 
 const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
   get_personal_usage: async (_params, { auth }) => {
@@ -48,7 +65,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
     });
 
     const [skillsResult, toolsResult] = await Promise.all([
-      fetchAvailableSkillsBySkillId(baseQuery),
+      fetchAvailableSkills(baseQuery),
       fetchAvailableTools(baseQuery),
     ]);
 
@@ -58,18 +75,9 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       0,
       TOP_ITEMS_LIMIT
     );
-    if (topSkillRows.length > 0) {
-      const skillResources = await SkillResource.fetchByIds(
-        auth,
-        topSkillRows.map((s) => s.skillId)
-      );
-      const skillById = new Map(skillResources.map((s) => [s.sId, s]));
-      const names = topSkillRows
-        .map((s) => skillById.get(s.skillId)?.name)
-        .filter((n): n is string => n !== undefined);
-      if (names.length > 0) {
-        lines.push(`Your top skills: ${names.join(", ")}`);
-      }
+    const skillNames = await resolveAccessibleSkillNames(auth, topSkillRows);
+    if (skillNames.length > 0) {
+      lines.push(`Your top skills: ${skillNames.join(", ")}`);
     }
 
     const topTools = (toolsResult.isOk() ? toolsResult.value : []).slice(
@@ -113,7 +121,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
 
     const [agentsResult, skillsResult] = await Promise.all([
       fetchTopAgents(auth, { days: DAYS, limit: TOP_ITEMS_LIMIT }),
-      fetchAvailableSkillsBySkillId(baseQuery),
+      fetchAvailableSkills(baseQuery),
     ]);
 
     const lines: string[] = [];
@@ -142,18 +150,9 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       0,
       TOP_ITEMS_LIMIT
     );
-    if (topSkillRows.length > 0) {
-      const skillResources = await SkillResource.fetchByIds(
-        auth,
-        topSkillRows.map((s) => s.skillId)
-      );
-      const skillById = new Map(skillResources.map((s) => [s.sId, s]));
-      const names = topSkillRows
-        .map((s) => skillById.get(s.skillId)?.name)
-        .filter((n): n is string => n !== undefined);
-      if (names.length > 0) {
-        lines.push(`Trending skills: ${names.join(", ")}`);
-      }
+    const skillNames = await resolveAccessibleSkillNames(auth, topSkillRows);
+    if (skillNames.length > 0) {
+      lines.push(`Trending skills: ${skillNames.join(", ")}`);
     }
 
     if (lines.length === 0) {
