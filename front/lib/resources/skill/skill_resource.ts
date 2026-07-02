@@ -869,7 +869,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [];
     }
 
-    const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
+    // Separate custom skill IDs from global skill IDs.
+    const { customSkillIds, globalSkillIds } = sIds.reduce<{
+      customSkillIds: ModelId[];
+      globalSkillIds: string[];
+    }>(
+      (acc, sId) => {
+        if (isResourceSId("skill", sId)) {
+          const modelId = getResourceIdFromSId(sId);
+          if (modelId !== null) {
+            acc.customSkillIds.push(modelId);
+          }
+        } else {
+          acc.globalSkillIds.push(sId);
+        }
+        return acc;
+      },
+      { customSkillIds: [], globalSkillIds: [] }
+    );
+
 
     // When fetching by specific IDs, return skills regardless of status.
     return this.baseFetch(
@@ -998,29 +1016,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return null;
-  }
-
-  private static splitSkillSIds(sIds: string[]): {
-    customSkillIds: ModelId[];
-    globalSkillIds: string[];
-  } {
-    return sIds.reduce<{
-      customSkillIds: ModelId[];
-      globalSkillIds: string[];
-    }>(
-      (acc, sId) => {
-        if (isResourceSId("skill", sId)) {
-          const modelId = getResourceIdFromSId(sId);
-          if (modelId !== null) {
-            acc.customSkillIds.push(modelId);
-          }
-        } else {
-          acc.globalSkillIds.push(sId);
-        }
-        return acc;
-      },
-      { customSkillIds: [], globalSkillIds: [] }
-    );
   }
 
   async fetchChildSkills(auth: Authenticator): Promise<SkillResource[]> {
