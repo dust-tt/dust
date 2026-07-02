@@ -545,7 +545,6 @@ export function UsagePage() {
       searchTerm,
       doBulkSetSpendLimit,
       pageItemIds,
-      setTotalAllowedUsagePendingMemberIds,
     ]
   );
 
