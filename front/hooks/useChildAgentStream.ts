@@ -41,6 +41,10 @@ const initialState: ChildAgentStreamReducerState = {
   pendingToolCalls: [],
 };
 
+// TODO(tasks#9287): unlike useAgentMessageStream, this reducer does not dedupe
+// Temporal activity retries (no per-step traceId tracking / step-scoped drop,
+// no seenEventIds replay guard), so a retried sub-agent step can duplicate
+// inline steps mid-stream. It self-heals at completion via contentView.
 function childAgentStreamReducer(
   state: ChildAgentStreamReducerState,
   event: ChildAgentStreamEvent

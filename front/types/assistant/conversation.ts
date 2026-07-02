@@ -325,9 +325,14 @@ export type BaseAgentMessageType = {
   subAgentCostCredits?: number | null;
 };
 
+// `step` is the agent-loop step a given activity step was produced in. It lets
+// the streaming client discard the steps it built for a step that Temporal
+// re-ran (activity retry re-emits the step's events with a fresh traceId),
+// rebuilding it instead of appending duplicates. Optional: absent on the
+// server-rendered terminal view, which is already canonical.
 export type InlineActivityStep =
-  | { type: "thinking"; content: string; id: string }
-  | { type: "content"; content: string; id: string }
+  | { type: "thinking"; content: string; id: string; step?: number }
+  | { type: "content"; content: string; id: string; step?: number }
   | {
       type: "action";
       label: string;
@@ -335,6 +340,7 @@ export type InlineActivityStep =
       actionId: string;
       internalMCPServerName: InternalMCPServerNameType | null;
       toolName: string | null;
+      step?: number;
     };
 
 export type ParsedContentItem =
