@@ -6,6 +6,7 @@ import {
   registerForceUpdateListener,
   registerMessageListener,
 } from "@extension/shared/background";
+import { z } from "zod";
 
 const log = console.error;
 
@@ -91,6 +92,20 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
   }
 });
 
+const openSidePanelSchema = z
+  .object({
+    action: z.literal("openSidePanel"),
+    workspaceId: z.string().regex(/^[a-zA-Z0-9_-]{10,}$/),
+    conversationId: z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]{10,}$/)
+      .optional(),
+    agentId: z.string().optional(),
+  })
+  .refine((data) => data.conversationId || data.agentId, {
+    message: "Either conversationId or agentId must be provided",
+  });
+
 /**
  * Listener for messages sent from external websites that are whitelisted on the manifest.
  * It allows to open the side panel and either navigate to an existing conversation
@@ -105,24 +120,15 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
  * We return true to keep the message channel open for async response.
  */
 chrome.runtime.onMessageExternal.addListener((request) => {
-  if (
-    request.action !== "openSidePanel" ||
-    !request.workspaceId ||
-    !/^[a-zA-Z0-9_-]{10,}$/.test(request.workspaceId)
-  ) {
+  const parsed = openSidePanelSchema.safeParse(request);
+
+  if (!parsed.success) {
     log("[onMessageExternal] Invalid params:", request);
     return true;
   }
 
-  const hasConversationId =
-    request.conversationId &&
-    /^[a-zA-Z0-9_-]{10,}$/.test(request.conversationId);
-  const hasAgentId = request.agentId && typeof request.agentId === "string";
-
-  if (!hasConversationId && !hasAgentId) {
-    log("[onMessageExternal] Missing conversationId or agentId:", request);
-    return true;
-  }
+  const { workspaceId, conversationId, agentId } = parsed.data;
+  const hasConversationId = !!conversationId;
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]) {
@@ -134,7 +140,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
           chrome.storage.local.get(
             ["extensionReady", "selectedWorkspace"],
             ({ extensionReady, selectedWorkspace }) => {
-              if (request.workspaceId != selectedWorkspace) {
+              if (workspaceId != selectedWorkspace) {
                 log("[onMessageExternal] User selected another workspace.");
                 return;
               }
@@ -142,8 +148,8 @@ chrome.runtime.onMessageExternal.addListener((request) => {
               const sendMessage = () => {
                 const params = JSON.stringify(
                   hasConversationId
-                    ? { conversationId: request.conversationId }
-                    : { agentId: request.agentId }
+                    ? { conversationId }
+                    : { agentId }
                 );
                 void chrome.runtime.sendMessage({
                   type: "EXT_ROUTE_CHANGE",
