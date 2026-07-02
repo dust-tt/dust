@@ -31,9 +31,7 @@ import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
-import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -183,19 +181,6 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
 </memory_hygiene>
 </memory_guidelines>`,
 };
-
-const formatMemory = (memory: AgentMemoryResource) =>
-  `- ${memory.content} (saved ${formatTimestampToFriendlyDate(new Date(memory.updatedAt).getTime(), "compactWithDay")}).`;
-
-export function buildMemoriesContext(memories: AgentMemoryResource[]): string {
-  const memoryList = memories.length
-    ? memories.map(formatMemory).join("\n")
-    : "No existing memories.";
-
-  return `<existing_memories>
-${memoryList.trim()}
-</existing_memories>`;
-}
 
 export function buildToolsetsContext(
   availableToolsets: MCPServerViewResource[]

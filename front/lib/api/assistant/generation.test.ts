@@ -1,5 +1,4 @@
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { buildMemoriesContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
   globalAgentInjectsMemory,
   globalAgentInjectsUserContext,
@@ -11,7 +10,6 @@ import {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
-import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -735,39 +733,5 @@ describe("globalAgentInjectsWorkspaceContext", () => {
     expect(
       globalAgentInjectsWorkspaceContext(GLOBAL_AGENTS_SID.DEEP_DIVE)
     ).toBe(false);
-  });
-});
-
-describe("buildMemoriesContext", () => {
-  it("should output 'No existing memories' for an empty array", async () => {
-    const result = buildMemoriesContext([]);
-
-    expect(result).toContain("<existing_memories>");
-    expect(result).toContain("</existing_memories>");
-    expect(result).toContain("No existing memories");
-  });
-
-  it("should include each memory's content and a saved date marker", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-
-    const memory1 = await AgentMemoryResource.makeNew(authenticator, {
-      agentConfigurationId: "test-agent",
-      content: "User is a backend engineer",
-      userId: null,
-    });
-    const memory2 = await AgentMemoryResource.makeNew(authenticator, {
-      agentConfigurationId: "test-agent",
-      content: "Prefers dark mode",
-      userId: null,
-    });
-
-    const result = buildMemoriesContext([memory1, memory2]);
-
-    expect(result).toContain("<existing_memories>");
-    expect(result).toContain("</existing_memories>");
-    expect(result).toContain("User is a backend engineer");
-    expect(result).toContain("Prefers dark mode");
-    // Each memory should have a "saved" date marker from formatTimestampToFriendlyDate.
-    expect(result).toContain("(saved ");
   });
 });

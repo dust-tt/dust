@@ -15,12 +15,8 @@ import {
 } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import {
-  buildMemoriesContext,
-  buildToolsetsContext,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
-import {
-  globalAgentInjectsMemory,
   globalAgentInjectsToolsets,
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
@@ -337,22 +333,6 @@ export async function runModel(
       })
     : null;
 
-  let memoriesContext: string | undefined;
-  const hasAgentMemoryAction = agentConfiguration.actions.some((action) =>
-    isServerSideMCPServerConfigurationWithName(action, "agent_memory")
-  );
-  if (
-    globalAgentInjectsMemory(agentConfiguration.sId) &&
-    hasAgentMemoryAction &&
-    auth.user()
-  ) {
-    const memories =
-      await AgentMemoryResource.findByAgentConfigurationIdAndUser(auth, {
-        agentConfigurationId: agentConfiguration.sId,
-      });
-    memoriesContext = buildMemoriesContext(memories);
-  }
-
   let toolsetsContext: string | undefined;
   const hasToolsetsAction = agentConfiguration.actions.some((action) =>
     isServerSideMCPServerConfigurationWithName(action, "toolsets")
@@ -408,7 +388,6 @@ export async function runModel(
     systemSkills,
     enabledSkills,
     equippedSkills,
-    memoriesContext,
     toolsetsContext,
     userContext,
     workspaceContext,

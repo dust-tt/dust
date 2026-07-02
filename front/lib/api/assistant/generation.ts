@@ -378,7 +378,6 @@ export function constructPromptMultiActions(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    memoriesContext,
     toolsetsContext,
     userContext,
     workspaceContext,
@@ -399,7 +398,6 @@ export function constructPromptMultiActions(
     enabledSkills: EnabledSkill[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
-    memoriesContext?: string;
     toolsetsContext?: string;
     userContext?: string;
     workspaceContext?: string;
@@ -487,7 +485,6 @@ export function constructPromptMultiActions(
 
     const ephemeralContext: SystemPromptContext[] = [
       { role: "context" as const, content: branchContextSection },
-      { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: userContext ?? "" },
       { role: "context" as const, content: projectContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -512,7 +509,6 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: pastedContentSection },
     { role: "context" as const, content: guidelinesSection },
     { role: "context" as const, content: toolsetsContext ?? "" },
-    { role: "context" as const, content: memoriesContext ?? "" },
     { role: "context" as const, content: userContext ?? "" },
     { role: "context" as const, content: workspaceContext ?? "" },
     { role: "context" as const, content: projectContext ?? "" },
