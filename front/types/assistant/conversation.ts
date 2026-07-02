@@ -124,6 +124,14 @@ export type UserMessageOrigin =
   // a branch can be created before any user-visible message exists.
   | "branch_anchor";
 
+export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "onboarding_conversation",
+  "project_kickoff",
+  "reinforced_skill_notification",
+  "branch_anchor",
+  "wakeup",
+];
+
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
  */
@@ -209,13 +217,7 @@ export function isUserMessageTypeWithContentFragments(
 }
 
 export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
-  return (
-    origin === "onboarding_conversation" ||
-    origin === "project_kickoff" ||
-    origin === "reinforced_skill_notification" ||
-    origin === "branch_anchor" ||
-    origin === "wakeup"
-  );
+  return HIDDEN_MESSAGE_ORIGINS.includes(origin);
 }
 
 export function isVisibleMessage(m: LightMessageType): boolean {
