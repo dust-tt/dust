@@ -1344,7 +1344,8 @@ export const searchCrmObjects = async ({
     | "line_items"
     | "quotes"
     | "feedback_submissions"
-    | "products";
+    | "products"
+    | "tickets";
   filters?: Array<HubspotFilter>;
   query?: string;
   propertiesToReturn?: string[];
@@ -1450,6 +1451,10 @@ export const searchCrmObjects = async ({
           await hubspotClient.crm.objects.feedbackSubmissions.searchApi.doSearch(
             searchRequest
           );
+        break;
+      case "tickets":
+        searchResponse =
+          await hubspotClient.crm.tickets.searchApi.doSearch(searchRequest);
         break;
       default:
         throw new Error(

@@ -25,11 +25,11 @@ function getToolByName(name: string) {
 }
 
 // Create a minimal extra object for testing.
-function createTestExtra(auth: Authenticator, agentLoopContext?: unknown) {
+function createTestExtra(auth: Authenticator, toolContext?: unknown) {
   return {
     signal: new AbortController().signal,
     auth,
-    agentLoopContext,
+    toolContext,
   } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
 }
 

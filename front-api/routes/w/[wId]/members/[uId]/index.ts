@@ -105,16 +105,13 @@ app.post(
     const featureFlags = await getFeatureFlags(auth);
     const body = ctx.req.valid("json");
 
-    const canManageMembers = auth.hasPermission("workspace:manage_members");
-    const canManageAdmins = auth.hasPermission("workspace:manage_admin_role");
-
     // Allow Dust Super User to force role for testing
     const allowForSuperUserTesting =
       showDebugTools(featureFlags) &&
       auth.isDustSuperUser() &&
       body.force === "true";
 
-    if (!canManageMembers && !allowForSuperUserTesting) {
+    if (!auth.isBusinessAdmin() && !allowForSuperUserTesting) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -148,7 +145,7 @@ app.post(
 
     if (
       (targetIsAdmin || assigningAdmin) &&
-      !canManageAdmins &&
+      !auth.isAdmin() &&
       !allowForSuperUserTesting
     ) {
       return apiError(ctx, {

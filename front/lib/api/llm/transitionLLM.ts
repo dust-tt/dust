@@ -413,8 +413,12 @@ export function convertToOldEvent(
         shortCacheCreated,
         reasoning,
       } = event.content;
-      const totalCacheCreated =
-        cacheCreated > 0 ? cacheCreated : longCacheCreated + shortCacheCreated;
+      // `cacheCreated` is only set when the provider reports a flat total with
+      // no per-duration breakdown. Otherwise the split lives in long/short.
+      const hasDurationBreakdown = cacheCreated === 0;
+      const totalCacheCreated = hasDurationBreakdown
+        ? longCacheCreated + shortCacheCreated
+        : cacheCreated;
       const inputTokens = standardInput + cacheHit + totalCacheCreated;
       return {
         type: "token_usage",
@@ -424,7 +428,13 @@ export function convertToOldEvent(
           reasoningTokens: reasoning,
           totalTokens: inputTokens + standardOutput + reasoning,
           cachedTokens: cacheHit,
-          cacheCreationTokens: cacheCreated,
+          cacheCreationTokens: totalCacheCreated,
+          ...(hasDurationBreakdown
+            ? {
+                longCacheCreationTokens: longCacheCreated,
+                shortCacheCreationTokens: shortCacheCreated,
+              }
+            : {}),
           uncachedInputTokens: standardInput,
         },
         metadata,

@@ -3,7 +3,7 @@ import type {
   ToolDefinition,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -21,7 +21,7 @@ import type {
 
 export function registerTool(
   auth: Authenticator,
-  agentLoopContext: AgentLoopContextType | undefined,
+  toolContext: ToolContextType | undefined,
   server: McpServer,
   tool: ToolDefinition,
   { monitoringName }: { monitoringName: string }
@@ -43,12 +43,12 @@ export function registerTool(
       auth,
       {
         toolNameForMonitoring: monitoringName,
-        agentLoopContext,
+        toolContext,
         enableAlerting: tool.enableAlerting,
       },
       (params, extra) =>
         withToolResultProcessing(
-          tool.handler(params, { ...extra, agentLoopContext, auth })
+          tool.handler(params, { ...extra, toolContext, auth })
         )
     )
   );
@@ -103,11 +103,11 @@ function withToolLogging<T>(
   auth: Authenticator,
   {
     toolNameForMonitoring,
-    agentLoopContext,
+    toolContext,
     enableAlerting = false,
   }: {
     toolNameForMonitoring: string;
-    agentLoopContext: AgentLoopContextType | undefined;
+    toolContext: ToolContextType | undefined;
     enableAlerting?: boolean;
   },
   toolCallback: (
@@ -136,13 +136,13 @@ function withToolLogging<T>(
     };
 
     // Adding agent loop context if available.
-    if (agentLoopContext?.runContext) {
+    if (toolContext?.runContext) {
       const {
         agentConfiguration,
         toolConfiguration,
         conversation,
         agentMessage,
-      } = agentLoopContext.runContext;
+      } = toolContext.runContext;
       loggerArgs = {
         ...loggerArgs,
         actionConfigurationId: toolConfiguration.sId,

@@ -51,7 +51,10 @@ import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_li
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
-import { isMembershipSeatType } from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  type MembershipSeatType,
+} from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -128,6 +131,15 @@ export const SwitchContractBodySchema = z.object({
   // Metronome as a custom field so contracts can be joined back to HubSpot deals
   // for ARR reporting.
   hubspotDealId: z.string().optional(),
+  // Optional: when set, memberships that would otherwise stay on `none` after
+  // the seat remap (e.g. legacy members with no explicit seat) are forced onto
+  // this seat type, provided the new contract bills it — preempting the
+  // committed-spare promotion (see `promoteNoneSeatTypesForContract`). Used by
+  // the legacy → Business migration to promote every member to a paid seat
+  // (`pro` for a monthly switch, `pro_yearly` for a yearly one).
+  promoteNoneSeatsTo: z
+    .custom<MembershipSeatType>(isMembershipSeatType)
+    .optional(),
   seats: z
     .array(
       z.object({
@@ -967,6 +979,7 @@ async function stepSeatRemap({
   ownerLight,
   swapAt,
   alignedStart,
+  body,
 }: PostProvisionCtx): Promise<string | null> {
   const result = await remapMembershipSeatTypesForContract({
     metronomeCustomerId,
@@ -974,6 +987,7 @@ async function stepSeatRemap({
     workspace: ownerLight,
     swapAt,
     startingAt: alignedStart,
+    promoteNoneSeatType: body.promoteNoneSeatsTo,
   });
   if (result.isErr()) {
     return `seat_remap: ${result.error.message}`;

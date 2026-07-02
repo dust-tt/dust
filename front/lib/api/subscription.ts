@@ -114,6 +114,7 @@ async function provisionCreditPricedFreePlan(
     swapAt: "current-hour",
     enableStripeBilling: false,
     planCode: CREDIT_PRICED_FREE_PLAN_CODE,
+    displayedName: `Free Business ${currency.toUpperCase()}`,
     // We create the subscription row ourselves right below via
     // `createSubscriptionFromCheckout`. Stamp the contract so the
     // contract.start webhook skips its own subscription swap instead of

@@ -1,4 +1,4 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
@@ -172,10 +172,8 @@ export function normalizeTimezone(
   return null;
 }
 
-export function getUserTimezone(
-  agentLoopContext?: AgentLoopContextType
-): string | null {
-  const content = agentLoopContext?.runContext?.conversation?.content;
+export function getUserTimezone(toolContext?: ToolContextType): string | null {
+  const content = toolContext?.runContext?.conversation?.content;
   if (!content) {
     return null;
   }

@@ -96,6 +96,7 @@ export function WebAgentBrowser({
           onAgentMoreClick={(agentId) =>
             setQueryParam(router, "agentDetails", agentId)
           }
+          trackAgentBrowserEvents
         />
 
         <div className="hidden sm:block">
@@ -184,6 +185,7 @@ export function WebAgentBrowser({
           setDisplayedAssistantId={setDisplayedAssistantId}
           owner={owner}
           showTagHeadings={true}
+          trackAgentBrowserEvents
         />
       ) : (
         viewTab && (
@@ -192,6 +194,7 @@ export function WebAgentBrowser({
             handleAssistantClick={handleAgentClick}
             handleMoreClick={setDisplayedAssistantId}
             owner={owner}
+            trackAgentBrowserEvents
           />
         )
       )}

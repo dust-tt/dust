@@ -7,7 +7,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
   executeArchiveChannel,
@@ -367,7 +367,7 @@ export interface SlackPersonalToolsResult {
 export function createSlackPersonalTools(
   auth: Authenticator,
   mcpServerId: string,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): SlackPersonalToolsResult {
   const allowFooterRemoval =
     auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;
@@ -384,7 +384,7 @@ export function createSlackPersonalTools(
       },
       { authInfo }
     ) => {
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
@@ -446,7 +446,7 @@ export function createSlackPersonalTools(
           ]);
         }
 
-        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+        const { citationsOffset } = toolContext.runContext.stepContext;
 
         const refs = getRefs().slice(
           citationsOffset,
@@ -492,7 +492,7 @@ export function createSlackPersonalTools(
       },
       { authInfo }
     ) => {
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
@@ -522,7 +522,7 @@ export function createSlackPersonalTools(
           ]);
         }
 
-        const { citationsOffset } = agentLoopContext.runContext.stepContext;
+        const { citationsOffset } = toolContext.runContext.stepContext;
 
         const refs = getRefs().slice(
           citationsOffset,
@@ -574,14 +574,14 @@ export function createSlackPersonalTools(
         return new Err(new MCPError("Access token not found"));
       }
 
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
       }
 
       try {
-        return await executePostMessage(auth, agentLoopContext, {
+        return await executePostMessage(auth, toolContext, {
           to,
           message,
           threadTs,
@@ -619,14 +619,14 @@ export function createSlackPersonalTools(
         return new Err(new MCPError("Access token not found"));
       }
 
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
       }
 
       try {
-        return await executeScheduleMessage(auth, agentLoopContext, {
+        return await executeScheduleMessage(auth, toolContext, {
           to,
           message,
           post_at,
@@ -711,7 +711,7 @@ export function createSlackPersonalTools(
     },
 
     list_messages: async ({ channel, relativeTimeFrame }, { authInfo }) => {
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(
           new MCPError("Unreachable: missing agentLoopRunContext.")
         );
@@ -803,7 +803,7 @@ export function createSlackPersonalTools(
         accessToken,
       });
 
-      const { citationsOffset } = agentLoopContext.runContext.stepContext;
+      const { citationsOffset } = toolContext.runContext.stepContext;
 
       const refs = getRefs().slice(
         citationsOffset,

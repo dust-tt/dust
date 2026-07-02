@@ -7,7 +7,7 @@ import type {
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfigurationWithName,
   isServerSideMCPServerConfigurationWithName,
@@ -48,14 +48,14 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
  */
 export default async function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("run_dust_app");
   const owner = auth.getNonNullableWorkspace();
 
-  if (agentLoopContext?.listToolsContext) {
+  if (toolContext?.listToolsContext) {
     // Context: Listing tools for an agent
-    const { agentActionConfiguration } = agentLoopContext.listToolsContext;
+    const { agentActionConfiguration } = toolContext.listToolsContext;
     if (
       !isServerSideMCPServerConfigurationWithName(
         agentActionConfiguration,
@@ -93,12 +93,12 @@ export default async function createServer(
       },
     };
 
-    registerTool(auth, agentLoopContext, server, toolDefinition, {
+    registerTool(auth, toolContext, server, toolDefinition, {
       monitoringName: "run_dust_app",
     });
-  } else if (agentLoopContext?.runContext) {
+  } else if (toolContext?.runContext) {
     // Context: Running the Dust app
-    const { toolConfiguration } = agentLoopContext.runContext;
+    const { toolConfiguration } = toolContext.runContext;
     if (
       !isLightServerSideMCPToolConfigurationWithName(
         toolConfiguration,
@@ -138,7 +138,7 @@ export default async function createServer(
         const preparedParams = await prepareParamsWithHistory(
           params,
           schema,
-          agentLoopContext.runContext,
+          toolContext.runContext,
           auth
         );
 
@@ -203,12 +203,12 @@ export default async function createServer(
 
         if (
           containsFileOutput(sanitizedOutput) &&
-          agentLoopContext.runContext?.conversation
+          toolContext.runContext?.conversation
         ) {
           const fileContentResult = await processDustFileOutput(
             auth,
             sanitizedOutput,
-            agentLoopContext.runContext.conversation,
+            toolContext.runContext.conversation,
             app.name
           );
           if (fileContentResult.isErr()) {
@@ -226,7 +226,7 @@ export default async function createServer(
       },
     };
 
-    registerTool(auth, agentLoopContext, server, toolDefinition, {
+    registerTool(auth, toolContext, server, toolDefinition, {
       monitoringName: "run_dust_app",
     });
   } else {
@@ -254,7 +254,7 @@ export default async function createServer(
       },
     };
 
-    registerTool(auth, agentLoopContext, server, toolDefinition, {
+    registerTool(auth, toolContext, server, toolDefinition, {
       monitoringName: "run_dust_app",
     });
   }

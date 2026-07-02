@@ -4,13 +4,12 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
-import { hasPermission } from "@app/types/permissions";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
   UserTypeWithWorkspace,
 } from "@app/types/user";
-import { isActiveRoleType } from "@app/types/user";
+import { isActiveRoleType, isAdmin } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -63,10 +62,8 @@ export function ChangeMemberModal({
     );
   };
 
-  // Revoking an admin requires the manage_admin_role permission
-  const canRevokeMember =
-    role !== "admin" ||
-    hasPermission(workspace.role, "workspace:manage_admin_role");
+  // Revoking an admin requires to be an admin
+  const canRevokeMember = role !== "admin" || isAdmin(workspace);
 
   const handleSave = async () => {
     if (!selectedRole) {

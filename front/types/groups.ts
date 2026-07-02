@@ -36,6 +36,15 @@ export const GROUP_KINDS = [
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
 
+// Group kinds that can carry a per-group usage spend limit and be surfaced in
+// the Usage > Groups admin table. Only "provisioned" (SSO/SCIM directory)
+// groups.
+export const CAP_ELIGIBLE_GROUP_KINDS = ["provisioned"] as const;
+
+export function isCapEligibleGroupKind(kind: GroupKind): boolean {
+  return CAP_ELIGIBLE_GROUP_KINDS.some((k) => k === kind);
+}
+
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);
 }

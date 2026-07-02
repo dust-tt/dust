@@ -11,6 +11,7 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
+import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
@@ -506,18 +507,46 @@ export function UsagePage() {
               excludeUserIds: descriptor.excludeUserIds,
             };
 
-      const body = await doBulkSetSpendLimit({
-        selection: selectionBody,
-        limit,
+      // Spin the affected rows while the update runs — the request returns
+      // once the bulk workflow has completed. For an "all matching" selection
+      // only the current page is visible, so spin its non-excluded rows.
+      const pendingMemberIds =
+        descriptor.mode === "ids"
+          ? descriptor.userIds
+          : pageItemIds.filter((id) => !descriptor.excludeUserIds.includes(id));
+      setTotalAllowedUsagePendingMemberIds((prev) => {
+        const next = new Set(prev);
+        pendingMemberIds.forEach((id) => next.add(id));
+        return next;
       });
-      if (!body) {
-        return false;
-      }
 
-      selection.clearSelection();
-      return true;
+      try {
+        const body = await doBulkSetSpendLimit({
+          selection: selectionBody,
+          limit,
+        });
+        if (!body) {
+          return false;
+        }
+
+        selection.clearSelection();
+        return true;
+      } finally {
+        setTotalAllowedUsagePendingMemberIds((prev) => {
+          const next = new Set(prev);
+          pendingMemberIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
     },
-    [selection, seatTypeFilter, groupFilter, searchTerm, doBulkSetSpendLimit]
+    [
+      selection,
+      seatTypeFilter,
+      groupFilter,
+      searchTerm,
+      doBulkSetSpendLimit,
+      pageItemIds,
+    ]
   );
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
@@ -836,6 +865,9 @@ export function UsagePage() {
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
+            {isWorkspaceAdmin && pricingGroupsEnabled && (
+              <TabsTrigger value="groups" label="Groups" />
+            )}
             <TabsTrigger value="settings" label="Settings" />
           </TabsList>
 
@@ -902,6 +934,12 @@ export function UsagePage() {
               )}
             </Page.Vertical>
           </TabsContent>
+
+          {isWorkspaceAdmin && pricingGroupsEnabled && (
+            <TabsContent value="groups">
+              <GroupsUsageTable owner={owner} readOnly={isReadOnly} />
+            </TabsContent>
+          )}
 
           <TabsContent value="settings">
             <div className="flex flex-col gap-10">

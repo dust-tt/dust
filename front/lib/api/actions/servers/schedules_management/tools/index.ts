@@ -1,7 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import type { Authenticator } from "@app/lib/auth";
@@ -31,10 +31,8 @@ function renderSchedule(schedule: ScheduleTriggerType): string {
   return lines.join("\n");
 }
 
-function getUserTimezone(
-  agentLoopContext?: AgentLoopContextType
-): string | null {
-  const content = agentLoopContext?.runContext?.conversation?.content;
+function getUserTimezone(toolContext?: ToolContextType): string | null {
+  const content = toolContext?.runContext?.conversation?.content;
   if (!content) {
     return null;
   }
@@ -45,21 +43,21 @@ function getUserTimezone(
 
 export function createSchedulesManagementTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ) {
   const handlers: ToolHandlers<typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA> = {
     create_schedule: async ({ name, schedule, prompt, timezone }) => {
       const owner = auth.getNonNullableWorkspace();
       const user = auth.getNonNullableUser();
 
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         logger.error("Agent context missing");
         return new Err(new MCPError("Agent context is required"));
       }
 
-      const { agentConfiguration } = agentLoopContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
-      const resolvedTimezone = timezone ?? getUserTimezone(agentLoopContext);
+      const resolvedTimezone = timezone ?? getUserTimezone(toolContext);
 
       if (!resolvedTimezone) {
         logger.error("resolved timezone missing");
@@ -147,11 +145,11 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(new MCPError("Agent context is required"));
       }
 
-      const { agentConfiguration } = agentLoopContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
       const schedulesResult =
         await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
@@ -197,11 +195,11 @@ export function createSchedulesManagementTools(
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
 
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(new MCPError("Agent context is required"));
       }
 
-      const { agentConfiguration } = agentLoopContext.runContext;
+      const { agentConfiguration } = toolContext.runContext;
 
       const triggersResult =
         await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {

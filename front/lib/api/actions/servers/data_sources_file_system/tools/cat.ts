@@ -6,7 +6,7 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -73,12 +73,9 @@ export async function cat(
     limit?: number;
     grep?: string;
   },
-  {
-    auth,
-    agentLoopContext,
-  }: { auth: Authenticator; agentLoopContext?: AgentLoopContextType }
+  { auth, toolContext }: { auth: Authenticator; toolContext?: ToolContextType }
 ) {
-  if (!agentLoopContext?.runContext) {
+  if (!toolContext?.runContext) {
     return new Err(new MCPError("No conversation context available"));
   }
 
@@ -169,7 +166,7 @@ export async function cat(
     );
   }
 
-  const { citationsOffset } = agentLoopContext.runContext.stepContext;
+  const { citationsOffset } = toolContext.runContext.stepContext;
 
   if (citationsOffset >= getRefs().length) {
     return new Err(

@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  allow_sso: {
+    description:
+      "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
+    stage: "on_demand",
+  },
   live_speech_to_text: {
     description:
       "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
@@ -344,11 +349,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
     stage: "on_demand",
-  },
-  frame_publish: {
-    description:
-      "Publish a Frame's edited source tree into a built bundle so model and live edits become the rendered, shareable Frame.",
-    stage: "dust_only",
   },
   models_picker: {
     description:

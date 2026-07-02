@@ -13,7 +13,8 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { describe, expect, it, vi } from "vitest";
+import { Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Force a deterministic icon suggestion so the invalid-icon fallback does not
 // depend on a live LLM call.
@@ -24,7 +25,15 @@ vi.mock("@app/lib/api/skills/icon_suggestion", async () => {
   };
 });
 
+// Keep existing create_skill tests hermetic: getSimilarSkills calls an LLM.
+vi.mock("@app/lib/api/skills/existing_skill_checker", () => ({
+  getSimilarSkills: vi.fn(),
+}));
+
+import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import { TOOLS } from "./index";
+
+const mockGetSimilarSkills = vi.mocked(getSimilarSkills);
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -59,6 +68,11 @@ async function seedSkill(
 }
 
 describe("skill_authoring tools", () => {
+  beforeEach(() => {
+    mockGetSimilarSkills.mockReset();
+    mockGetSimilarSkills.mockResolvedValue(new Ok({ similar_skills: [] }));
+  });
+
   it("creates, lists, reads, and updates a skill", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "builder",

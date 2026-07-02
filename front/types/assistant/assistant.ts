@@ -97,6 +97,7 @@ export enum GLOBAL_AGENTS_SID {
   DUST_ANT_MEDIUM_OMITTED = "dust-ant-medium-omitted",
   DUST_ANT_HIGH_OMITTED = "dust-ant-high-omitted",
   DUST_ANT_SONNET_EDGE = "dust-ant-sonnet-edge",
+  DUST_ANT_SONNET_EDGE_LIGHT = "dust-ant-sonnet-edge-light",
   DUST_HAIKU = "dust-haiku",
   DUST_LIGHT = "dust-light",
   DUST_KIMI = "dust-kimi",

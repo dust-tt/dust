@@ -737,6 +737,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  groupCapAwuCredits,
   defaultPoolCapAwuCredits,
 }: {
   metronomeCustomerId: string | null;
@@ -744,6 +745,9 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId: string;
   seatType: MembershipSeatType | null | undefined;
   poolCapOverrideAwuCredits: number | null;
+  // Max group cap (pool-only, excluding seat allowance) across the user's
+  // groups; null when none carry a cap.
+  groupCapAwuCredits: number | null;
   defaultPoolCapAwuCredits: number;
 }): Promise<number | null> {
   const contract = metronomeCustomerId
@@ -787,8 +791,16 @@ export async function fetchRemainingCapCreditsPercentageForUser({
           : 0)
       : null;
 
+  // Max group cap (pool-only) + seat allowance, matching override/default units.
+  // Only pool-bearing seats get a group cap.
+  const groupCapTotalAwuCredits =
+    groupCapAwuCredits !== null && normalizedSeatType !== null
+      ? groupCapAwuCredits + (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+      : null;
+
   const spendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
     overrideAwuCredits,
+    groupCapAwuCredits: groupCapTotalAwuCredits,
     defaultAwuCredits,
   });
 
@@ -866,11 +878,16 @@ export async function getMemberUsage({
     return { member: null };
   }
 
-  const groupNamesByUserModelId =
-    await GroupResource.listGroupNamesByUserModelIdInWorkspace({
+  const [groupNamesByUserModelId, groupCapByUserModelId] = await Promise.all([
+    GroupResource.listGroupNamesByUserModelIdInWorkspace({
       workspace,
       userModelIds: [userResource.id],
-    });
+    }),
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: [userResource.id],
+    }),
+  ]);
 
   const metronomeUserId =
     membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
@@ -935,8 +952,19 @@ export async function getMemberUsage({
   const effectiveDefaultAwuCredits =
     membership.seatType === "free" ? effectiveAllocationAwu : defaultAwuCredits;
 
+  // Max group cap (pool-only) + seat allowance, matching override/default units.
+  // Only pool-bearing seats (pro/max/workspace) get a group cap.
+  const groupPoolCapAwuCredits =
+    groupCapByUserModelId.get(userResource.id) ?? null;
+  const groupCapAwuCredits =
+    groupPoolCapAwuCredits !== null && normalizedSeatType !== null
+      ? groupPoolCapAwuCredits +
+        (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+      : null;
+
   const spendLimitSource = resolveEffectiveSpendLimitSource({
     overrideAwuCredits,
+    groupCapAwuCredits,
     defaultAwuCredits: effectiveDefaultAwuCredits,
   });
 
@@ -962,6 +990,7 @@ export async function getMemberUsage({
       scheduledSeatChangeAt: null,
       spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
         overrideAwuCredits,
+        groupCapAwuCredits,
         defaultAwuCredits: effectiveDefaultAwuCredits,
       }),
       spendLimitSource,
@@ -1248,6 +1277,7 @@ export async function getMembersUsage({
     perUserSpendLimits,
     freeCreditAlertIdsByUserId,
     groupNamesByUserModelId,
+    groupCapByUserModelId,
   ] = await Promise.all([
     fetchConsumedAwuCreditsByUserId({
       workspace,
@@ -1296,6 +1326,10 @@ export async function getMembersUsage({
       workspace,
       userModelIds: users.map((u) => u.id),
       groupKinds: ["provisioned"],
+    }),
+    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: users.map((u) => u.id),
     }),
   ]);
   const freeCreditAlertIds =
@@ -1394,8 +1428,19 @@ export async function getMembersUsage({
         ? effectiveAllocationAwu
         : defaultAwuCredits;
 
+    // Max group cap (pool-only, stored on the group) + seat allowance, to match
+    // the units of override/default above. Only pool-bearing seats
+    // (pro/max/workspace) get a group cap; free/none have no pool.
+    const groupPoolCapAwuCredits = groupCapByUserModelId.get(u.id) ?? null;
+    const groupCapAwuCredits =
+      groupPoolCapAwuCredits !== null && normalizedSeatType !== null
+        ? groupPoolCapAwuCredits +
+          (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+        : null;
+
     const spendLimitSource = resolveEffectiveSpendLimitSource({
       overrideAwuCredits,
+      groupCapAwuCredits,
       defaultAwuCredits: effectiveDefaultAwuCredits,
     });
     const effectiveCapAlert =
@@ -1448,6 +1493,7 @@ export async function getMembersUsage({
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
           overrideAwuCredits,
+          groupCapAwuCredits,
           defaultAwuCredits: effectiveDefaultAwuCredits,
         }),
         spendLimitSource,

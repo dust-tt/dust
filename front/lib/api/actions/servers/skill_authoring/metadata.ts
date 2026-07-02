@@ -53,6 +53,13 @@ export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("Optional icon name; auto-suggested if omitted."),
+      bypassSimilarSkillCheck: z
+        .boolean()
+        .optional()
+        .describe(
+          "Bypass the similar skill check and create the skill anyway. Set to true " +
+            "only after the user explicitly confirms they want a separate skill."
+        ),
     },
     stake: "high",
     displayLabels: {

@@ -3203,13 +3203,10 @@ export async function updateAgentMessageWithFinalStatus(
       }
     );
 
-    const promotedUserMessages = await batchRenderUserMessagesWithoutMentions(
-      auth,
-      {
-        messages: pendingMessages,
-        transaction: t,
-      }
-    );
+    const promotedUserMessages = await batchRenderUserMessagesWithoutMentions({
+      messages: pendingMessages,
+      transaction: t,
+    });
 
     // The new agent message is triggered by the last steering message (being promoted here from
     // pending to visible). We need to use the promotedAuth of the associated user if it differs

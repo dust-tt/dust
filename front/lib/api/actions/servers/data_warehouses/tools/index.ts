@@ -203,15 +203,15 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
 
   query: async (
     { dataSources, tableIds, query, fileName },
-    { auth, agentLoopContext }
+    { auth, toolContext }
   ) => {
-    if (!agentLoopContext?.runContext) {
+    if (!toolContext?.runContext) {
       return new Err(
         new MCPError("Missing agentLoopContext for file generation")
       );
     }
 
-    const agentLoopRunContext = agentLoopContext.runContext;
+    const agentLoopRunContext = toolContext.runContext;
 
     const dataSourceConfigurationsResult =
       await getAgentDataSourceConfigurations(

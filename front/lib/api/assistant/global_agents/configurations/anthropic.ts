@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
 import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
+import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -20,6 +21,7 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 /**
  * GLOBAL AGENTS CONFIGURATION
@@ -303,10 +305,12 @@ export function _getClaude5SonnetGlobalAgent({
   auth,
   settings,
   mcpServerViews,
+  featureFlags,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettingsModel | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -316,6 +320,18 @@ export function _getClaude5SonnetGlobalAgent({
   const sId = GLOBAL_AGENTS_SID.CLAUDE_5_SONNET;
   const metadata = getGlobalAgentMetadata(sId);
 
+  // Serve Sonnet 5 by default and fall back to Sonnet 4.6 for EU-models-only
+  // workspaces, where Sonnet 5 is not regionally available.
+  const modelConfig =
+    selectEnabledModel(
+      auth,
+      [
+        CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      ],
+      { featureFlags }
+    ) ?? CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+
   return {
     id: -1,
     sId,
@@ -323,7 +339,7 @@ export function _getClaude5SonnetGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: metadata.name,
-    description: metadata.description,
+    description: modelConfig.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
@@ -331,11 +347,10 @@ export function _getClaude5SonnetGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId,
+      providerId: modelConfig.providerId,
+      modelId: modelConfig.modelId,
       temperature: 0.7,
-      reasoningEffort:
-        CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: modelConfig.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

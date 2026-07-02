@@ -163,7 +163,7 @@ export type AgentLoopListToolsContextType = {
   agentMessage: AgentMessageType;
 };
 
-export type AgentLoopContextType =
+export type ToolContextType =
   | {
       runContext: AgentLoopRunContextType;
       listToolsContext?: never;

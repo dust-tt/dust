@@ -20,35 +20,41 @@ import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_s
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
 import { notifyAdminsProgrammaticCapReached } from "@app/lib/notifications/workflows/programmatic-cap-reached";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
-
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 
 /**
  * Resolve the effective pool credit limit for a user.
  *
- * Priority: per-user override > workspace default. When nothing is configured,
- * defaults to 0 (no pool access). Unlimited pool is not supported.
+ * Priority: per-user override > max group cap > workspace default. When nothing
+ * is configured, defaults to 0 (no pool access). Unlimited pool is not
+ * supported. All values are pool-only (excluding seat allowance).
  *
  * Returns `number`: the pool credit limit (0 = no pool access).
  */
-async function resolvePoolLimitForUser({
+function resolvePoolLimitForUser({
   workspace,
   membership,
+  groupCapAwuCredits,
   defaultPoolCapAwuCredits,
 }: {
   workspace: WorkspaceResource;
   membership: MembershipResource;
+  groupCapAwuCredits: number | null;
   defaultPoolCapAwuCredits: number;
-}): Promise<number> {
+}): number {
   if (!workspace.metronomeCustomerId) {
     return 0;
   }
@@ -57,13 +63,33 @@ async function resolvePoolLimitForUser({
   if (membership.seatType === "free" || membership.seatType === "none") {
     return 0;
   }
-  // Per-user override takes precedence over the workspace default.
-  if (membership.poolCapOverrideAwuCredits !== null) {
-    return membership.poolCapOverrideAwuCredits;
-  }
-  // All remaining seat types (pro/max/workspace) have pool access governed by
-  // the workspace default (0 = no pool if not configured).
-  return defaultPoolCapAwuCredits;
+  // Remaining seat types (pro/max/workspace) have pool access following the
+  // shared ladder: per-user override > max group cap > workspace default.
+  return (
+    resolveEffectiveSpendLimitAwuCredits({
+      overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+      groupCapAwuCredits,
+      defaultAwuCredits: defaultPoolCapAwuCredits,
+    }) ?? defaultPoolCapAwuCredits
+  );
+}
+
+// Max group cap (pool-only, excluding seat allowance) across a single user's
+// groups; null when none carry a cap. Fed into the effective-cap resolution so
+// group caps rank between the per-user override and the workspace default.
+async function fetchMaxGroupPoolCapForUser({
+  workspace,
+  userModelId,
+}: {
+  workspace: LightWorkspaceType;
+  userModelId: ModelId;
+}): Promise<number | null> {
+  const caps =
+    await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: [userModelId],
+    });
+  return caps.get(userModelId) ?? null;
 }
 
 /**
@@ -111,9 +137,18 @@ export async function dispatchSeatBalanceExhausted({
   const defaultPoolCapAwuCredits =
     creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
 
-  const poolLimitAwuCredits = await resolvePoolLimitForUser({
+  // Max group cap (pool-only) across the user's groups; null when none carry a
+  // cap. Resolved once and fed to both the pool-limit and remaining-% helpers so
+  // they agree on the effective cap.
+  const groupCapAwuCredits = await fetchMaxGroupPoolCapForUser({
+    workspace: lightWorkspace,
+    userModelId: user.id,
+  });
+
+  const poolLimitAwuCredits = resolvePoolLimitForUser({
     workspace,
     membership,
+    groupCapAwuCredits,
     defaultPoolCapAwuCredits,
   });
   const remainingCapCreditsPercentage =
@@ -123,6 +158,7 @@ export async function dispatchSeatBalanceExhausted({
       userId,
       seatType: membership.seatType,
       poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+      groupCapAwuCredits,
       defaultPoolCapAwuCredits,
     });
 
@@ -208,6 +244,10 @@ export async function dispatchSeatBalanceResolved({
     userId,
     seatType: membership.seatType,
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    groupCapAwuCredits: await fetchMaxGroupPoolCapForUser({
+      workspace: lightWorkspace,
+      userModelId: membership.userId,
+    }),
   });
 
   const result = await transitionUserCreditState(
@@ -326,6 +366,10 @@ export async function dispatchPerUserCapResolved({
     userId,
     seatType: membership.seatType,
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    groupCapAwuCredits: await fetchMaxGroupPoolCapForUser({
+      workspace: lightWorkspace,
+      userModelId: membership.userId,
+    }),
   });
 
   const result = await transitionUserCreditState(
@@ -353,11 +397,13 @@ async function resolveLiveUserBalance({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  groupCapAwuCredits,
 }: {
   workspace: WorkspaceResource;
   userId: string;
   seatType: MembershipSeatType | null;
   poolCapOverrideAwuCredits: number | null;
+  groupCapAwuCredits: number | null;
 }): Promise<LiveUserSeatBalance | undefined> {
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
@@ -379,6 +425,7 @@ async function resolveLiveUserBalance({
     userId,
     seatType,
     poolCapOverrideAwuCredits,
+    groupCapAwuCredits,
     defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
     metronomeCustomerId,
     metronomeContractId,

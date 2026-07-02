@@ -2,21 +2,23 @@ import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
 import {
-  hasPermission,
-  type Permission,
-} from "@dust-tt/front/types/permissions";
+  isAdmin,
+  isBusinessAdmin,
+  type RoleType,
+} from "@dust-tt/front/types/user";
 import { Outlet } from "react-router-dom";
 
-interface RequirePermissionProps {
-  permission: Permission;
+interface RequireRoleProps {
+  requiredRole: Extract<RoleType, "admin" | "business_admin">;
 }
 
-export function RequirePermissionLayout({
-  permission,
-}: RequirePermissionProps) {
+export function RequireRoleLayout({ requiredRole }: RequireRoleProps) {
   const { workspace } = useAuth();
 
-  if (!hasPermission(workspace.role, permission)) {
+  const hasRequiredRole =
+    requiredRole === "admin" ? isAdmin(workspace) : isBusinessAdmin(workspace);
+
+  if (!hasRequiredRole) {
     return <Custom404 />;
   }
 

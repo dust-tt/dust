@@ -859,38 +859,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async fetchByIds(
     auth: Authenticator,
-    sIds: string[]
-  ): Promise<SkillResource[]> {
-    if (sIds.length === 0) {
-      return [];
-    }
-
-    const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
-
-    // When fetching by specific IDs, return skills regardless of status.
-    return this.baseFetch(auth, {
-      where: {
-        id: customSkillIds,
-        sId: globalSkillIds,
-        status: ["active", "archived", "suggested"],
-      },
-    });
-  }
-
-  static async fetchActiveByIdsForAgentLoop(
-    auth: Authenticator,
     sIds: string[],
-    agentLoopData?: AgentLoopExecutionData,
     {
-      withInstructions = true,
-      withTools = true,
-    }: { withInstructions?: boolean; withTools?: boolean } = {}
+      agentLoopData,
+      onlyActive = false,
+    }: { agentLoopData?: AgentLoopExecutionData; onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
     }
 
-    const { customSkillIds, globalSkillIds } = this.splitSkillSIds(sIds);
+    // Separate custom skill IDs from global skill IDs.
+    const { customSkillIds, globalSkillIds } = sIds.reduce<{
+      customSkillIds: ModelId[];
+      globalSkillIds: string[];
+    }>(
+      (acc, sId) => {
+        if (isResourceSId("skill", sId)) {
+          const modelId = getResourceIdFromSId(sId);
+          if (modelId !== null) {
+            acc.customSkillIds.push(modelId);
+          }
+        } else {
+          acc.globalSkillIds.push(sId);
+        }
+        return acc;
+      },
+      { customSkillIds: [], globalSkillIds: [] }
+    );
 
     return this.baseFetch(
       auth,
@@ -898,16 +894,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         where: {
           id: customSkillIds,
           sId: globalSkillIds,
-          status: "active",
+          status: onlyActive ? ["active"] : ["active", "archived", "suggested"],
         },
-        withInstructions,
-        withTools,
       },
       { agentLoopData }
     );
   }
 
-  static async fetchActiveByName(
+  static async fetchByName(
     auth: Authenticator,
     name: string,
     { agentLoopData }: { agentLoopData?: AgentLoopExecutionData } = {}
@@ -917,7 +911,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         where: {
           name,
-          status: "active",
         },
         limit: 1,
       },
@@ -1021,29 +1014,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return null;
-  }
-
-  private static splitSkillSIds(sIds: string[]): {
-    customSkillIds: ModelId[];
-    globalSkillIds: string[];
-  } {
-    return sIds.reduce<{
-      customSkillIds: ModelId[];
-      globalSkillIds: string[];
-    }>(
-      (acc, sId) => {
-        if (isResourceSId("skill", sId)) {
-          const modelId = getResourceIdFromSId(sId);
-          if (modelId !== null) {
-            acc.customSkillIds.push(modelId);
-          }
-        } else {
-          acc.globalSkillIds.push(sId);
-        }
-        return acc;
-      },
-      { customSkillIds: [], globalSkillIds: [] }
-    );
   }
 
   async fetchChildSkills(auth: Authenticator): Promise<SkillResource[]> {
@@ -1469,12 +1439,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       [conversation.spaceId]
     );
 
-    return this.fetchActiveByIdsForAgentLoop(
-      auth,
-      projectMetadata?.defaultSkillIds ?? [],
+    return this.fetchByIds(auth, projectMetadata?.defaultSkillIds ?? [], {
       agentLoopData,
-      { withInstructions: false, withTools: false }
-    );
+      onlyActive: true,
+    });
   }
 
   static async listForAgentLoop(
@@ -2608,14 +2576,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           agentFacingDescription,
           userFacingDescription,
           instructions,
-          ...(instructionsHtml !== undefined
-            ? {
-                instructionsHtml:
-                  instructionsHtml !== undefined
-                    ? instructionsHtml
-                    : this.instructionsHtml,
-              }
-            : {}),
+          ...(instructionsHtml !== undefined ? { instructionsHtml } : {}),
           icon,
           requestedSpaceIds,
           editedBy,

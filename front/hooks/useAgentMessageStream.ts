@@ -208,7 +208,8 @@ export function updateProgress(
 export function appendThinkingStep(
   steps: InlineActivityStep[],
   cotContent: string,
-  id: string
+  id: string,
+  stepIndex: number
 ): InlineActivityStep[] {
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
@@ -219,15 +220,22 @@ export function appendThinkingStep(
       break;
     }
   }
-  return [...steps, { type: "thinking", content: cotContent, id }];
+  return [
+    ...steps,
+    { type: "thinking", content: cotContent, id, step: stepIndex },
+  ];
 }
 
 function appendContentStep(
   steps: InlineActivityStep[],
   textContent: string,
-  id: string
+  id: string,
+  stepIndex: number
 ): InlineActivityStep[] {
-  return [...steps, { type: "content", content: textContent, id }];
+  return [
+    ...steps,
+    { type: "content", content: textContent, id, step: stepIndex },
+  ];
 }
 
 /**
@@ -244,6 +252,7 @@ function flushPendingSegment({
   content,
   steps,
   suffix,
+  stepIndex,
   retryCoTBuffer,
 }: {
   lastClassification: { current: "tokens" | "chain_of_thought" | null };
@@ -251,6 +260,7 @@ function flushPendingSegment({
   content: { current: string };
   steps: InlineActivityStep[];
   suffix: string;
+  stepIndex: number;
   retryCoTBuffer?: { current: string | null };
 }): { steps: InlineActivityStep[]; contentCleared: boolean } {
   const cls = lastClassification.current;
@@ -261,7 +271,12 @@ function flushPendingSegment({
       retryCoTBuffer.current = null;
     }
     return {
-      steps: appendThinkingStep(steps, cotToFlush, `thinking-${suffix}`),
+      steps: appendThinkingStep(
+        steps,
+        cotToFlush,
+        `thinking-${suffix}`,
+        stepIndex
+      ),
       contentCleared: false,
     };
   }
@@ -269,7 +284,12 @@ function flushPendingSegment({
     const textToFlush = content.current;
     content.current = "";
     return {
-      steps: appendContentStep(steps, textToFlush, `content-${suffix}`),
+      steps: appendContentStep(
+        steps,
+        textToFlush,
+        `content-${suffix}`,
+        stepIndex
+      ),
       contentCleared: true,
     };
   }
@@ -369,6 +389,11 @@ export function useAgentMessageStream({
   const lastClassification = useRef<"tokens" | "chain_of_thought" | null>(null);
   // Tracks the traceId of the last CoT event to detect Temporal retry boundaries.
   const lastCoTTraceId = useRef<string | null>(null);
+  // Tracks the agent-loop step of the last generation event. Combined with a
+  // traceId change, an unchanged step number means the SAME step was re-run
+  // (Temporal activity retry) rather than the loop advancing to a new step. It is
+  // the signal we use to drop and rebuild that step's committed inline steps.
+  const currentStep = useRef<number | null>(null);
   // Shadow buffer for retry CoT suppression. When a new traceId arrives, CoT
   // tokens are accumulated here instead of directly into chainOfThought.current.
   // As long as the buffer is a prefix of the existing CoT, display is unchanged
@@ -433,6 +458,7 @@ export function useAgentMessageStream({
             chainOfThought.current = "";
             lastCoTTraceId.current = null;
             retryCoTBuffer.current = null;
+            currentStep.current = null;
             mapMessagesWithAutoScroll((m) => {
               if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                 return m;
@@ -449,6 +475,7 @@ export function useAgentMessageStream({
 
           const generationTokens = eventPayload.data;
           const classification = generationTokens.classification;
+          const eventStep = generationTokens.step;
 
           if (
             classification === "tokens" ||
@@ -469,11 +496,33 @@ export function useAgentMessageStream({
               ) {
                 content.current = "";
                 retryCoTBuffer.current = "";
+                if (
+                  currentStep.current !== null &&
+                  eventStep === currentStep.current
+                ) {
+                  mapMessagesWithAutoScroll((m) => {
+                    if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
+                      return m;
+                    }
+                    return {
+                      ...m,
+                      streaming: {
+                        ...m.streaming,
+                        inlineActivitySteps:
+                          m.streaming.inlineActivitySteps.filter(
+                            (s) => s.step !== eventStep
+                          ),
+                      },
+                    };
+                  });
+                }
               }
               if (newTraceId) {
                 lastCoTTraceId.current = newTraceId;
               }
             }
+
+            currentStep.current = eventStep;
 
             // Detect classification transitions and flush completed segments.
             if (
@@ -493,6 +542,7 @@ export function useAgentMessageStream({
                   content,
                   steps: m.streaming.inlineActivitySteps,
                   suffix: `pre-${Date.now()}`,
+                  stepIndex: eventStep,
                   retryCoTBuffer,
                 });
                 return {
@@ -555,6 +605,7 @@ export function useAgentMessageStream({
 
         case "agent_action_success":
           const action = eventPayload.data.action;
+          const actionStep = eventPayload.data.step;
           mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
@@ -574,6 +625,7 @@ export function useAgentMessageStream({
                     actionId: action.sId,
                     internalMCPServerName: action.internalMCPServerName,
                     toolName: action.toolName ?? null,
+                    step: actionStep,
                   },
                 ];
             return {
@@ -612,6 +664,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `toolparams-${Date.now()}`,
+              stepIndex: toolParams.step,
               retryCoTBuffer,
             });
             return {
@@ -682,6 +735,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `error-${Date.now()}`,
+              stepIndex: currentStep.current ?? 0,
               retryCoTBuffer,
             });
             return {
@@ -727,6 +781,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `cancel-${Date.now()}`,
+              stepIndex: cancelData.step,
               retryCoTBuffer,
             });
             return {

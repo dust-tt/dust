@@ -435,7 +435,7 @@ export async function* tryCallMCPTool(
       );
       const connectionResult = await connectToMCPServer(auth, {
         params: connectionParams,
-        agentLoopContext: { runContext: agentLoopRunContext },
+        toolContext: { runContext: agentLoopRunContext },
       });
       if (connectionResult.isErr()) {
         if (
@@ -755,7 +755,7 @@ async function connectServerSideMCP(
   const connectionParams = makeServerSideMCPConnectionParams(mcpServerView);
   const connectionResult = await connectToMCPServer(auth, {
     params: connectionParams,
-    agentLoopContext: { runContext: agentLoopRunContext },
+    toolContext: { runContext: agentLoopRunContext },
   });
 
   if (connectionResult.isErr()) {
@@ -1370,7 +1370,7 @@ async function listMCPServerToolsAndServerInstructions(
     // Connect to the MCP server.
     const r = await connectToMCPServer(auth, {
       params: connectionParams,
-      agentLoopContext: { listToolsContext: agentLoopListToolsContext },
+      toolContext: { listToolsContext: agentLoopListToolsContext },
     });
     if (r.isErr()) {
       // When the workspace connection is broken (admin token revoked/expired) or hit the rate limit,

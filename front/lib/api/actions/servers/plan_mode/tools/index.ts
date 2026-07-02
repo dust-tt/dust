@@ -21,11 +21,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
-  create_plan: async ({ content }, { auth, agentLoopContext }) => {
-    if (!agentLoopContext?.runContext) {
+  create_plan: async ({ content }, { auth, toolContext }) => {
+    if (!toolContext?.runContext) {
       return new Err(new MCPError("Agent loop context is required."));
     }
-    const { conversation } = agentLoopContext.runContext;
+    const { conversation } = toolContext.runContext;
 
     return withPlanModeLock(conversation.sId, async () => {
       const existing = await getActivePlanContent(auth, conversation);
@@ -57,11 +57,11 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     });
   },
 
-  edit_plan: async ({ old_string, new_string }, { auth, agentLoopContext }) => {
-    if (!agentLoopContext?.runContext) {
+  edit_plan: async ({ old_string, new_string }, { auth, toolContext }) => {
+    if (!toolContext?.runContext) {
       return new Err(new MCPError("Agent loop context is required."));
     }
-    const { conversation } = agentLoopContext.runContext;
+    const { conversation } = toolContext.runContext;
 
     try {
       return await withPlanModeLock(conversation.sId, async () => {
@@ -130,11 +130,11 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
     }
   },
 
-  close_plan: async ({ reason }, { auth, agentLoopContext }) => {
-    if (!agentLoopContext?.runContext) {
+  close_plan: async ({ reason }, { auth, toolContext }) => {
+    if (!toolContext?.runContext) {
       return new Err(new MCPError("Agent loop context is required."));
     }
-    const { conversation } = agentLoopContext.runContext;
+    const { conversation } = toolContext.runContext;
 
     const closed = await closeActivePlan(auth, conversation);
     if (closed.isErr()) {

@@ -20,7 +20,10 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_TEST_PLAN_CODE,
+  isCreditPricedPlanPrefix,
+} from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -77,6 +80,11 @@ export async function recordUsageActivity(workspaceId: string) {
       "[UsageQueue] Subscription is on free test plan -- skipping reporting usage."
     );
 
+    return;
+  }
+
+  // Credit-priced (Metronome-billed) plans: skip Stripe reporting entirely.
+  if (isCreditPricedPlanPrefix(subscription.plan.code)) {
     return;
   }
 

@@ -1,23 +1,23 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import assert from "assert";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 function makeExtra(
   auth: Authenticator,
   conversation: ConversationType
 ): ToolHandlerExtra {
-  const agentLoopContext = {
+  const toolContext = {
     runContext: { conversation },
-  } as unknown as AgentLoopContextType;
-  return { auth, agentLoopContext } as unknown as ToolHandlerExtra;
+  } as unknown as ToolContextType;
+  return { auth, toolContext } as unknown as ToolHandlerExtra;
 }
 
 async function setupProjectConversation(): Promise<{
@@ -48,8 +48,13 @@ async function setupProjectConversation(): Promise<{
 }
 
 describe("createHandler", () => {
-  it("returns Err when content_type is a frame MIME type", async () => {
+  beforeEach(() => {
+    fileStorageMock.reset();
+  });
+
+  it("creates a new frame-typed file as a regular mount write", async () => {
     const { auth, conversation } = await setupProjectConversation();
+    fileStorageMock.setFileExists(() => false);
 
     const result = await createHandler(
       {
@@ -60,28 +65,23 @@ describe("createHandler", () => {
       makeExtra(auth, conversation)
     );
 
-    expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
-    }
-    expect(result.error.message).toContain(
-      "interactive_content__create_interactive_content_file"
+    assert(result.isOk());
+    expect(result.value[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("Created"),
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
+    expect(fileStorageMock.saveFileCalls[0].contentType).toBe(
+      "application/vnd.dust.frame"
     );
   });
 
-  it("returns Err when overwriting an existing frame file", async () => {
+  it("overwrites an existing frame file, preserving its content type", async () => {
     const { auth, conversation } = await setupProjectConversation();
-
-    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
-      file: vi.fn(() => ({
-        exists: vi.fn().mockResolvedValue([true]),
-        getMetadata: vi
-          .fn()
-          .mockResolvedValue([
-            { contentType: "application/vnd.dust.frame", size: "100" },
-          ]),
-      })),
-    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "application/vnd.dust.frame",
+      size: "100",
+    }));
 
     const result = await createHandler(
       {
@@ -92,13 +92,18 @@ describe("createHandler", () => {
       makeExtra(auth, conversation)
     );
 
-    expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
-    }
-    expect(result.error.message).toContain(
-      "interactive_content__edit_interactive_content_file"
+    assert(result.isOk());
+    expect(result.value[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining(
+        "interactive_content__publish_interactive_content_file"
+      ),
+    });
+
+    // The mount object must keep the frame content type, not the incoming one.
+    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
+    expect(fileStorageMock.saveFileCalls[0].contentType).toBe(
+      "application/vnd.dust.frame"
     );
-    expect(result.error.message).toContain("files__list");
   });
 });

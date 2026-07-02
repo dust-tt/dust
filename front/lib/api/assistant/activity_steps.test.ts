@@ -78,7 +78,12 @@ describe("renderAgentMessageContentView", () => {
       content: "The answer",
       chainOfThought: "Let me think",
       activitySteps: [
-        { type: "thinking", content: "Let me think", id: "reasoning-0-0" },
+        {
+          type: "thinking",
+          content: "Let me think",
+          id: "reasoning-0-0",
+          step: 0,
+        },
       ],
     });
   });
@@ -98,7 +103,7 @@ describe("renderAgentMessageContentView", () => {
       content: "Answer",
       chainOfThought: "pondering\n",
       activitySteps: [
-        { type: "thinking", content: "pondering\n", id: "cot-0-0" },
+        { type: "thinking", content: "pondering\n", id: "cot-0-0", step: 0 },
       ],
     });
   });
@@ -112,7 +117,9 @@ describe("renderAgentMessageContentView", () => {
     ).toEqual({
       content: "first\nsecond",
       chainOfThought: null,
-      activitySteps: [{ type: "content", content: "first", id: "content-0-0" }],
+      activitySteps: [
+        { type: "content", content: "first", id: "content-0-0", step: 0 },
+      ],
     });
   });
 });

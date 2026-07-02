@@ -200,6 +200,7 @@ export async function provisionMetronomeContract({
   additionalCustomFields,
   enableSeatSync = true,
   fromContractId,
+  displayedName,
 }: {
   metronomeCustomerId: string;
   workspace: LightWorkspaceType;
@@ -212,6 +213,7 @@ export async function provisionMetronomeContract({
   additionalCustomFields?: Record<string, string>;
   enableSeatSync?: boolean;
   fromContractId?: string;
+  displayedName?: string;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
   const alignedStart = new Date(
     swapAt === "current-hour"
@@ -240,6 +242,7 @@ export async function provisionMetronomeContract({
     planCode,
     additionalCustomFields,
     fromContractId,
+    displayedName,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);

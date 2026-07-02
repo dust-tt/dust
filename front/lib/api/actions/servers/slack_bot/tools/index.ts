@@ -4,7 +4,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   executeListPublicChannels,
   executePostMessage,
@@ -20,7 +20,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 export function createSlackBotTools(
   auth: Authenticator,
   mcpServerId: string,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SLACK_BOT_TOOLS_METADATA> = {
     post_message: async (
@@ -32,12 +32,12 @@ export function createSlackBotTools(
         return new Err(new MCPError("Access token not found"));
       }
 
-      if (!agentLoopContext?.runContext) {
+      if (!toolContext?.runContext) {
         return new Err(new MCPError("Issue with agent context"));
       }
 
       try {
-        return await executePostMessage(auth, agentLoopContext, {
+        return await executePostMessage(auth, toolContext, {
           to,
           message,
           threadTs,

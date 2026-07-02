@@ -47,6 +47,7 @@ export const AUDIT_ACTIONS = [
   "member.bulk_invited",
   "member.bulk_revoked",
   "member.spend_limit_updated",
+  "group.spend_limit_updated",
   "membership.upgrade_request_created",
   "membership.upgrade_request_resolved",
   "membership.seat_auto_upgraded",

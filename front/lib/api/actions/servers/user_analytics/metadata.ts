@@ -30,7 +30,6 @@ export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       done: "Fetched workspace activity",
     },
   },
-
 });
 
 export const USER_ANALYTICS_SERVER = {

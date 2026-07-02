@@ -11,11 +11,13 @@ import {
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
+import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import {
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Clock,
   createSelectionColumn,
@@ -48,6 +50,7 @@ type RowData = {
   consumedFromAllowanceAwuCredits: number;
   consumedFromPoolAwuCredits: number;
   spendLimitAwuCredits: number | null;
+  spendLimitSource: EffectiveSpendLimitSource;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
@@ -117,13 +120,35 @@ export interface AwuUsageBarProps {
   // When provided for a free seat, the bar shows lifetime consumed/remaining
   // instead of period spend.
   seatBalanceAwu?: number | null;
-  // The fully-resolved spend cap from `spendLimitAwuCredits` (member override or
-  // workspace default, both including seat allowance). Always non-null for seated
-  // users — workspace default pool cap treats null as 0 (seat-only). Pass `?? 0`
-  // as a TypeScript guard only.
+  // The fully-resolved spend cap from `spendLimitAwuCredits` (member override,
+  // group cap or workspace default, all including seat allowance). Always
+  // non-null for seated users — workspace default pool cap treats null as 0
+  // (seat-only). Pass `?? 0` as a TypeScript guard only.
   effectiveLimit: number;
+  // Where `effectiveLimit` comes from — shown as a tooltip on the limit figure.
+  spendLimitSource: EffectiveSpendLimitSource;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
+}
+
+// Human-readable origin of the effective spend limit, or null when there is
+// nothing worth explaining (no limit configured).
+function spendLimitSourceLabel(
+  source: EffectiveSpendLimitSource
+): string | null {
+  switch (source) {
+    case "override":
+      return "Limit set specifically for this member";
+    case "group":
+      return "Limit from a group";
+    case "default":
+      return "Workspace default limit";
+    case "none":
+      return null;
+    default:
+      assertNeverAndIgnore(source);
+      return null;
+  }
 }
 
 export function AwuUsageBar({
@@ -133,11 +158,13 @@ export function AwuUsageBar({
   memberUsageLimit,
   seatBalanceAwu,
   effectiveLimit,
+  spendLimitSource,
   seatType,
   isTotalAllowedUsagePending: isPending,
 }: AwuUsageBarProps) {
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
+  const sourceLabel = spendLimitSourceLabel(spendLimitSource);
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
   const isFreeWithBalance =
@@ -315,14 +342,16 @@ export function AwuUsageBar({
         </span>
         {isPending ? (
           <Spinner size="xs" />
+        ) : isFreeWithBalance ? (
+          <span>{formatCredits(allowance)}</span>
+        ) : sourceLabel !== null ? (
+          <Tooltip
+            tooltipTriggerAsChild
+            label={sourceLabel}
+            trigger={<span>{formatCredits(effectiveLimit)}</span>}
+          />
         ) : (
-          <span>
-            {isFreeWithBalance
-              ? formatCredits(allowance)
-              : effectiveLimit !== null
-                ? formatCredits(effectiveLimit)
-                : "—"}
-          </span>
+          <span>{formatCredits(effectiveLimit)}</span>
         )}
       </div>
       {tooltipContent ? (
@@ -416,6 +445,7 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
         memberUsageLimit={info.row.original.memberUsageLimit}
         seatBalanceAwu={info.row.original.seatBalanceAwu}
         effectiveLimit={info.row.original.spendLimitAwuCredits ?? 0}
+        spendLimitSource={info.row.original.spendLimitSource}
         seatType={info.row.original.seatType}
         isTotalAllowedUsagePending={
           info.row.original.isTotalAllowedUsagePending
@@ -516,6 +546,7 @@ export function MembersUsageTable({
         consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
         spendLimitAwuCredits: m.spendLimitAwuCredits,
+        spendLimitSource: m.spendLimitSource,
         scheduledSeatType: m.scheduledSeatType,
         scheduledSeatChangeAt: m.scheduledSeatChangeAt,
         isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(

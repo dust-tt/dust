@@ -2,11 +2,12 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   USER_ANALYTICS_SERVER_NAME,
   USER_ANALYTICS_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/user_analytics/metadata";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
 import {
   fetchAvailableTools,
@@ -17,7 +18,6 @@ import {
   buildAgentAnalyticsBaseQuery,
   daysToInstantRange,
 } from "@app/lib/api/assistant/observability/utils";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/types/shared/result";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -60,10 +60,7 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       );
     }
 
-    const topTools = (toolsResult.isOk() ? toolsResult.value : []).slice(
-      0,
-      10
-    );
+    const topTools = (toolsResult.isOk() ? toolsResult.value : []).slice(0, 10);
     if (topTools.length > 0) {
       const resolved = await resolveToolDisplayNames(auth, topTools).catch(
         () => topTools
@@ -83,7 +80,10 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
     }
 
     return new Ok([
-      { type: "text" as const, text: `Personal usage — last 30 days:\n${lines.join("\n")}` },
+      {
+        type: "text" as const,
+        text: `Personal usage — last 30 days:\n${lines.join("\n")}`,
+      },
     ]);
   },
 
@@ -104,7 +104,9 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
 
     const lines: string[] = [];
 
-    const candidateAgents = (agentsResult.isOk() ? agentsResult.value : []).slice(0, 10);
+    const candidateAgents = (
+      agentsResult.isOk() ? agentsResult.value : []
+    ).slice(0, 10);
     let topAgents = candidateAgents;
     if (candidateAgents.length > 0) {
       // Filter to agents the user can actually access — fetchTopAgents is workspace-scoped
@@ -122,7 +124,10 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       );
     }
 
-    const topSkills = (skillsResult.isOk() ? skillsResult.value : []).slice(0, 10);
+    const topSkills = (skillsResult.isOk() ? skillsResult.value : []).slice(
+      0,
+      10
+    );
     if (topSkills.length > 0) {
       lines.push(
         `Trending skills: ${topSkills.map((s) => s.skillName).join(", ")}`
@@ -155,18 +160,17 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       },
     ]);
   },
-
 };
 
 function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): McpServer {
   const server = makeInternalMCPServer(USER_ANALYTICS_SERVER_NAME);
 
   const tools = buildTools(USER_ANALYTICS_TOOLS_METADATA, handlers);
   for (const tool of tools) {
-    registerTool(auth, agentLoopContext, server, tool, {
+    registerTool(auth, toolContext, server, tool, {
       monitoringName: USER_ANALYTICS_SERVER_NAME,
     });
   }

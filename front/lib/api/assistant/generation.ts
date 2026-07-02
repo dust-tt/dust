@@ -378,7 +378,6 @@ export function constructPromptMultiActions(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    memoriesContext,
     toolsetsContext,
     userContext,
     workspaceContext,
@@ -399,7 +398,6 @@ export function constructPromptMultiActions(
     enabledSkills: EnabledSkill[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
-    memoriesContext?: string;
     toolsetsContext?: string;
     userContext?: string;
     workspaceContext?: string;
@@ -414,7 +412,7 @@ export function constructPromptMultiActions(
   // The system prompt is composed of multiple sections that provide instructions and context to the model.
   // Global agents with fully static instructions (no per-user data baked in) use the tuple form
   // [instructions, context] which enables extended prompt caching. Per-user dynamic content like
-  // memories is passed as a separate context section so it doesn't pollute instruction caching.
+  // the user profile is passed as a separate context section so it doesn't pollute instruction caching.
   // Only enabled for `deep-dive` and `dust(-x)` agents.
   const hasStaticInstructions =
     agentConfiguration.sId === GLOBAL_AGENTS_SID.DEEP_DIVE ||
@@ -462,7 +460,7 @@ export function constructPromptMultiActions(
     // section (directives + server listing), date, toolsets, and workspace info. A cache breakpoint
     // here lets different users in the same workspace share this prefix.
     //
-    // Ephemeral context (no breakpoint): per-call data, covering branch lineage, memories, and user
+    // Ephemeral context (no breakpoint): per-call data, covering branch lineage and user
     // profile.
     const fullInstructions = [
       instructionsContent,
@@ -487,7 +485,6 @@ export function constructPromptMultiActions(
 
     const ephemeralContext: SystemPromptContext[] = [
       { role: "context" as const, content: branchContextSection },
-      { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: userContext ?? "" },
       { role: "context" as const, content: projectContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -512,7 +509,6 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: pastedContentSection },
     { role: "context" as const, content: guidelinesSection },
     { role: "context" as const, content: toolsetsContext ?? "" },
-    { role: "context" as const, content: memoriesContext ?? "" },
     { role: "context" as const, content: userContext ?? "" },
     { role: "context" as const, content: workspaceContext ?? "" },
     { role: "context" as const, content: projectContext ?? "" },

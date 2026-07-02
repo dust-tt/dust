@@ -10,7 +10,7 @@ import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/temporal/bulk_spend_limit/client", () => ({
-  launchBulkSetUserSpendLimitWorkflow: vi.fn(),
+  runBulkSetUserSpendLimitWorkflow: vi.fn(),
 }));
 
 function bulkSpendLimitUrl(wId: string) {
@@ -30,7 +30,7 @@ function post(wId: string, body: unknown) {
 }
 
 beforeEach(() => {
-  vi.mocked(bulkClient.launchBulkSetUserSpendLimitWorkflow).mockResolvedValue(
+  vi.mocked(bulkClient.runBulkSetUserSpendLimitWorkflow).mockResolvedValue(
     new Ok({ workflowId: "wf_test_bulk" })
   );
   // The workspace-scoped search that validates membership. Default to "no
@@ -56,9 +56,7 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
     expect(response.status).toBe(403);
     expect((await response.json()).error.type).toBe("workspace_auth_error");
-    expect(
-      bulkClient.launchBulkSetUserSpendLimitWorkflow
-    ).not.toHaveBeenCalled();
+    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
   });
 
   it("returns 403 when the pricing_groups flag is off", async () => {
@@ -76,9 +74,7 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
     expect(response.status).toBe(403);
     expect((await response.json()).error.type).toBe("feature_flag_not_found");
-    expect(
-      bulkClient.launchBulkSetUserSpendLimitWorkflow
-    ).not.toHaveBeenCalled();
+    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
   });
 
   it("returns 403 when the workspace is not on Metronome billing", async () => {
@@ -95,9 +91,7 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
     expect(response.status).toBe(403);
     expect((await response.json()).error.type).toBe("plan_limit_error");
-    expect(
-      bulkClient.launchBulkSetUserSpendLimitWorkflow
-    ).not.toHaveBeenCalled();
+    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
   });
 
   it("returns 400 when the explicit selection is empty", async () => {
@@ -115,9 +109,7 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(
-      bulkClient.launchBulkSetUserSpendLimitWorkflow
-    ).not.toHaveBeenCalled();
+    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
   });
 
   it("returns 400 when awuCredits is out of range", async () => {
@@ -166,7 +158,7 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
       workflowId: "wf_test_bulk",
       memberCount: 2,
     });
-    expect(bulkClient.launchBulkSetUserSpendLimitWorkflow).toHaveBeenCalledWith(
+    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId: workspace.sId,
         userIds: [member1.sId, member2.sId],
@@ -195,9 +187,7 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
-    expect(
-      bulkClient.launchBulkSetUserSpendLimitWorkflow
-    ).not.toHaveBeenCalled();
+    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
   });
 
   it("returns 500 when member resolution fails (e.g. search outage)", async () => {
@@ -218,8 +208,6 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
     });
 
     expect(response.status).toBe(500);
-    expect(
-      bulkClient.launchBulkSetUserSpendLimitWorkflow
-    ).not.toHaveBeenCalled();
+    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
   });
 });

@@ -14,7 +14,7 @@ export type EndpointConfig = {
   region: Region;
   providerId: ProviderId;
   modelId: ModelId;
-  providerApi: ProviderApi;
+  api: ProviderApi;
 };
 
 export type ArrayValueFilter<T> = {

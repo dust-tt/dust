@@ -1,8 +1,7 @@
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
-import { hasPermission } from "@app/types/permissions";
 import type { ActiveRoleType } from "@app/types/user";
-import { ACTIVE_ROLES } from "@app/types/user";
+import { ACTIVE_ROLES, isAdmin } from "@app/types/user";
 import {
   Button,
   ChevronDown,
@@ -26,10 +25,7 @@ export function RoleDropDown({
 }: RoleDropDownProps) {
   const { hasFeature } = useFeatureFlags();
   const workspace = useWorkspace();
-  const canManageAdminRole = hasPermission(
-    workspace.role,
-    "workspace:manage_admin_role"
-  );
+  const canManageAdminRole = isAdmin(workspace);
 
   const availableRoles = ACTIVE_ROLES.filter((role) => {
     // `business_admin` can only be assigned when the workspace has the

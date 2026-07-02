@@ -48,10 +48,10 @@ async function findAvailableSkillForAgentLoop({
 }): Promise<SkillResource | null> {
   const { enabledSkills, equippedSkills, systemSkills } =
     await SkillResource.listForAgentLoop(auth, agentLoopData);
-  const userMessageSkills = await SkillResource.fetchActiveByIdsForAgentLoop(
+  const userMessageSkills = await SkillResource.fetchByIds(
     auth,
     extractSkillIdsFromConversationMessages(agentLoopData),
-    agentLoopData
+    { agentLoopData, onlyActive: true }
   );
   const directlyAllowedSkills = [
     ...enabledSkills,
@@ -72,7 +72,7 @@ async function findAvailableSkillForAgentLoop({
       skill,
     ])
   );
-  const candidate = await SkillResource.fetchActiveByName(auth, skillName, {
+  const candidate = await SkillResource.fetchByName(auth, skillName, {
     agentLoopData,
   });
   if (!candidate) {
@@ -95,16 +95,13 @@ async function findAvailableSkillForAgentLoop({
 }
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
-  [ENABLE_SKILL_TOOL_NAME]: async (
-    { skillName },
-    { auth, agentLoopContext }
-  ) => {
-    if (!agentLoopContext?.runContext) {
+  [ENABLE_SKILL_TOOL_NAME]: async ({ skillName }, { auth, toolContext }) => {
+    if (!toolContext?.runContext) {
       return new Err(new MCPError("No conversation context available"));
     }
 
     const { agentConfiguration, agentMessage, conversation, userMessage } =
-      agentLoopContext.runContext;
+      toolContext.runContext;
 
     const agentLoopData = {
       agentConfiguration,

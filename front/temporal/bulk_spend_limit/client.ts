@@ -10,7 +10,14 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
-export async function launchBulkSetUserSpendLimitWorkflow({
+/**
+ * Start a bulk spend-limit workflow and wait for it to complete, so callers
+ * (the members table) can refresh the updated limits as soon as the request
+ * returns. The wait is bounded by the caller's HTTP timeout — acceptable while
+ * selections stay in the hundreds of members (one Metronome alert upsert per
+ * member); revisit with an async status-polling flow if that stops holding.
+ */
+export async function runBulkSetUserSpendLimitWorkflow({
   workspaceId,
   actorUserId,
   userIds,
@@ -28,18 +35,19 @@ export async function launchBulkSetUserSpendLimitWorkflow({
   });
 
   try {
-    await client.workflow.start(bulkSetUserSpendLimitWorkflow, {
+    const handle = await client.workflow.start(bulkSetUserSpendLimitWorkflow, {
       args: [{ workspaceId, actorUserId, userIds, limit }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: { workspaceId, actorUserId, memberCount: userIds.length },
     });
+    await handle.result();
     return new Ok({ workflowId });
   } catch (e) {
     if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
       logger.error(
         { workflowId, workspaceId, err: e },
-        "[BulkSpendLimit] Failed to start workflow"
+        "[BulkSpendLimit] Failed to run workflow"
       );
     }
     return new Err(normalizeError(e));
