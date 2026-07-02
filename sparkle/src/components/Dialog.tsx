@@ -68,7 +68,7 @@ const dialogVariants = cva(
   cn(
     "fixed left-[50%] z-50 overflow-hidden translate-x-[-50%]",
     "rounded-2xl flex flex-col w-full max-w-[calc(100vw-2rem)] border border shadow-lg",
-    "bg-background",
+    "bg-modal-background",
     "border-border",
     "max-h-[90vh]"
   ),
@@ -166,7 +166,7 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "sticky top-0 z-50 flex flex-none flex-col gap-0 bg-background px-5 pt-4 text-left",
+      "sticky top-0 z-50 flex flex-none flex-col gap-0 bg-modal-background px-5 pt-4 text-left",
       className
     )}
     {...props}

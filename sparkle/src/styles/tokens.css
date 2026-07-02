@@ -262,6 +262,8 @@
   --color-app-background: oklch(98.56% 0.0017 67.8);
   --color-background: oklch(100% 0 0);
   --color-panel-background: oklch(100% 0 0);
+  --color-overlay-background: oklch(100% 0 0);
+  --color-modal-background: oklch(100% 0 0);
   --color-muted-background: var(--color-stone-50);
 
   /* Surfaces */
@@ -405,6 +407,8 @@
   --color-app-background: var(--color-stone-900);
   --color-background: var(--color-stone-950);
   --color-panel-background: var(--color-stone-850);
+  --color-overlay-background: var(--color-stone-800);
+  --color-modal-background: var(--color-stone-775);
   --color-muted-background: var(--color-stone-900);
 
   /* Surfaces */
