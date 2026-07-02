@@ -414,7 +414,7 @@ export async function getAgentLabelsByIds(
   auth: Authenticator,
   agentIds: string[]
 ): Promise<AgentLabel[]> {
-  if (!auth.hasPermission("workspace:view_analytics")) {
+  if (!auth.isBusinessAdmin()) {
     return [];
   }
 
