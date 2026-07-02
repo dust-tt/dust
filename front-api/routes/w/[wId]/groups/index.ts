@@ -6,6 +6,8 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import spendLimit from "./[groupId]/spend_limit";
+
 export type GetGroupsResponseBody = {
   groups: (GroupType & { memberCount: number })[];
 };
@@ -49,5 +51,7 @@ app.get(
     return ctx.json({ groups: groupsWithMemberCount });
   }
 );
+
+app.route("/:groupId/spend_limit", spendLimit);
 
 export default app;
