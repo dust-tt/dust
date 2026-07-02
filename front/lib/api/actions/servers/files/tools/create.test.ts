@@ -106,5 +106,4 @@ describe("createHandler", () => {
       "application/vnd.dust.frame"
     );
   });
-
 });
