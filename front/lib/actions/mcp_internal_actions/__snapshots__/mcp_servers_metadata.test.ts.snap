@@ -118,6 +118,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "copy": "never_ask",
     "create": "never_ask",
     "delete": "medium",
+    "edit": "never_ask",
     "extract_text": "never_ask",
     "grep": "never_ask",
     "list": "never_ask",
