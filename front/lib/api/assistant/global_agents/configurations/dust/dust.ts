@@ -585,6 +585,18 @@ export function _getDustAntSonnetEdgeGlobalAgent(
   });
 }
 
+export function _getDustAntSonnetEdgeLightGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE_LIGHT,
+    name: "dust-ant-sonnet-edge-light",
+    preferredModelConfiguration: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
 export function _getDustHaikuGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
