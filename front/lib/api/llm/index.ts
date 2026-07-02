@@ -40,6 +40,7 @@ import type {
 } from "@app/lib/llms/types/filter";
 import { sortEndpointsByPreferredRegion } from "@app/lib/llms/utils/sort_endpoints";
 import { isModelId } from "@app/lib/model_constructors/types/model_ids";
+import { GOOGLE_AI_STUDIO_API } from "@app/lib/model_constructors/types/provider_apis";
 import {
   isProviderId,
   type ProviderId,
@@ -308,19 +309,20 @@ function getProviderIdFilter(auth: Authenticator): ValueFilter<ProviderId> {
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = byok
     ? intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS)
-    : whitelistedProviderIds.filter(
-        // We route all non-byok gemini requests to agent platform
-        (providerId) => providerId !== "google_ai_studio"
-      );
+    : whitelistedProviderIds;
 
   return { in: providerIds };
 }
 
 // Temporary helper while we have both systems
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
+  const byok = auth.getNonNullablePlan().isByok;
+
   return {
     providerId: getProviderIdFilter(auth),
     region: getRegionFilter(auth),
+    // We route all non-byok gemini requests to agent platform.
+    ...(byok ? {} : { not: { api: { eq: GOOGLE_AI_STUDIO_API } } }),
   };
 }
 
