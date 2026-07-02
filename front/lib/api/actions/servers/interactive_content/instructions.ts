@@ -47,9 +47,9 @@ ${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
 `;
 
-// Computer-first variant, used when frame_publish is enabled. The Frame's source is mounted in the
-// Computer, so the model edits the file in place and republishes instead of round-tripping through
-// the retrieve and edit tools.
+// Computer-first variant, used when the Computer is available. The Frame's source is mounted in
+// the Computer, so the model edits the file in place and republishes instead of round-tripping
+// through the retrieve and edit tools.
 const UPDATING_SECTION_COMPUTER_FIRST = `\
 ### Updating Existing Files (preferred: edit in the Computer):
 
@@ -260,11 +260,11 @@ ${INTERACTIVE_CONTENT_CHART_EXAMPLES_V2}
 const buildInstructions = (updatingSection: string) =>
   `${interactiveContentProseBeforeAuthoring(updatingSection)}\n${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}\n${INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING}`;
 
-// Default (no frame_publish): the model updates Frames through the retrieve and edit tools.
+// Default (no Computer): the model updates Frames through the retrieve and edit tools.
 export const INTERACTIVE_CONTENT_INSTRUCTIONS = buildInstructions(
   UPDATING_SECTION_LEGACY
 );
 
-// frame_publish enabled: the model edits the mounted source in the Computer and republishes.
+// Computer available: the model edits the mounted source in the Computer and republishes.
 export const INTERACTIVE_CONTENT_INSTRUCTIONS_COMPUTER_FIRST =
   buildInstructions(UPDATING_SECTION_COMPUTER_FIRST);

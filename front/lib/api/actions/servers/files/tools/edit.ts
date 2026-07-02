@@ -14,7 +14,6 @@ import {
   isReadableAsText,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   isInteractiveContentType,
   stripMimeParameters,
@@ -155,10 +154,7 @@ export async function editHandler(
   let text = `Updated \`${path}\`: made ${occurrences} replacement${pluralize(occurrences)}.`;
 
   if (isFrameSource) {
-    const flags = await getFeatureFlags(auth);
-    text += ` ${frameSourceUpdatedNotice({
-      hasFramePublishFF: flags.includes("frame_publish"),
-    })}`;
+    text += ` ${frameSourceUpdatedNotice()}`;
   }
 
   return new Ok([{ type: "text", text }]);
