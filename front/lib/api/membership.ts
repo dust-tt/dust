@@ -22,7 +22,10 @@ import {
   classifySeatChange,
   hasContractSeatSubscription,
 } from "@app/lib/metronome/seats";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedPlanPrefix,
+  isFreePlan,
+} from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -96,6 +99,10 @@ async function resolveSeatTypeForNewMembership(
     workspace.id
   );
   if (!subscription?.metronomeContractId) {
+    return "none";
+  }
+
+  if (!isCreditPricedPlanPrefix(subscription.getPlan().code)) {
     return "none";
   }
   const contract = await getActiveContract(workspace.sId);
