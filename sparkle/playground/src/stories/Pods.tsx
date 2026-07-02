@@ -37,6 +37,9 @@ import {
   NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
+  NavTabPill,
+  NavTabPillList,
+  NavTabPillTrigger,
   Edit04,
   Planet,
   Plus,
@@ -45,11 +48,11 @@ import {
   ScrollBar,
   SearchInput,
   SlackLogo,
-  SpaceClosed,
-  SpaceOpen,
+  Cube01,
+  CubeOutline,
   Trash01,
   Users01,
-  User01,
+  User03,
   XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -59,8 +62,14 @@ import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { FreeButtonSwitch } from "../components/FreeButtonSwitch";
 import { GroupConversationView } from "../components/GroupConversationView";
-import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import {
+  type AgentSort,
+  type AgentType,
+  NewConversation,
+  NewConversationActionBar,
+  type WelcomeAgentTab,
+} from "../components/NewConversation";
 import {
   PanelLayout,
   PanelLayoutNav,
@@ -226,8 +235,16 @@ function Pods() {
     "chat"
   );
   const [searchText, setSearchText] = useState("");
-  const [inboxHideTriggered, setInboxHideTriggered] = useState(false);
   const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
+  const [welcomeAgentTab, setWelcomeAgentTab] =
+    useState<WelcomeAgentTab>("favorites");
+  const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
+  const [welcomeAgentType, setWelcomeAgentType] = useState<AgentType>("all");
+  const [welcomeAgentCategory, setWelcomeAgentCategory] = useState<
+    string | null
+  >(null);
+  const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
+  const [inboxHideTriggered, setInboxHideTriggered] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, SpaceNotificationPreference>>(new Map());
 
@@ -779,13 +796,19 @@ function Pods() {
       );
     // welcome
     return (
-      <div className="flex h-full w-full items-center justify-center bg-background">
-        <div className="flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
-          <div className="heading-2xl text-foreground">{greeting}</div>
-          <InputBar placeholder="Ask a question" />
-          <div className="heading-lg text-foreground">Chat with…</div>
-        </div>
-      </div>
+      <NewConversation
+        greeting={greeting}
+        spaces={spaces}
+        agentTab={welcomeAgentTab}
+        onAgentTabChange={setWelcomeAgentTab}
+        agentSort={welcomeAgentSort}
+        onAgentSortChange={setWelcomeAgentSort}
+        agentType={welcomeAgentType}
+        onAgentTypeChange={setWelcomeAgentType}
+        agentCategory={welcomeAgentCategory}
+        onAgentCategoryChange={setWelcomeAgentCategory}
+        onToolbarPinnedChange={setIsWelcomeToolbarPinned}
+      />
     );
   })();
 
@@ -919,6 +942,29 @@ function Pods() {
           hasLighterFont
         />
       );
+    if (p2View.kind === "welcome")
+      return (
+        <div
+          className={
+            "w-full transition-opacity duration-200 " +
+            (isWelcomeToolbarPinned
+              ? "opacity-100"
+              : "opacity-0 pointer-events-none")
+          }
+          aria-hidden={!isWelcomeToolbarPinned}
+        >
+          <NewConversationActionBar
+            value={welcomeAgentTab}
+            onValueChange={setWelcomeAgentTab}
+            agentSort={welcomeAgentSort}
+            onAgentSortChange={setWelcomeAgentSort}
+            agentType={welcomeAgentType}
+            onAgentTypeChange={setWelcomeAgentType}
+            agentCategory={welcomeAgentCategory}
+            onAgentCategoryChange={setWelcomeAgentCategory}
+          />
+        </div>
+      );
     return null;
   })();
 
@@ -961,20 +1007,25 @@ function Pods() {
 
   // ── Sidebar (Nav) top bar ─────────────────────────────────────────────────
   const navTopBar = (
-    <FreeButtonSwitch<"chat" | "spaces" | "admin">
+    <NavTabPill
       value={activeTab}
-      onValueChange={setActiveTab}
-      options={[
-        { value: "chat", label: "Chat", icon: MessageChatSquare },
-        { value: "spaces", label: "Spaces", icon: Planet },
-        { value: "admin", icon: Settings01 },
-      ]}
-    />
+      onValueChange={(v) => setActiveTab(v as "chat" | "spaces" | "admin")}
+    >
+      <NavTabPillList>
+        <NavTabPillTrigger value="chat" icon={MessageChatSquare}>
+          Chat
+        </NavTabPillTrigger>
+        <NavTabPillTrigger value="spaces" icon={Planet}>
+          Spaces
+        </NavTabPillTrigger>
+        <NavTabPillTrigger value="admin" icon={Settings01} />
+      </NavTabPillList>
+    </NavTabPill>
   );
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
   const navContent = (
-    <div className="flex min-h-0 flex-1 flex-col bg-muted-background">
+    <div className="flex min-h-0 flex-1 flex-col bg-app-background">
       {/* ── Chat tab ── */}
       {activeTab === "chat" && (
         <div className="flex min-h-0 flex-1 flex-col">
@@ -990,7 +1041,7 @@ function Pods() {
               />
               <Button
                 variant="primary"
-                tooltip="New Conversation"
+                tooltip="New conversation, agent, skill"
                 size="sm"
                 icon={MessageCircle01}
                 label="New"
@@ -1211,7 +1262,7 @@ function Pods() {
                       <NavigationListItem
                         key={space.id}
                         label={space.name}
-                        icon={isRestricted ? SpaceOpen : SpaceClosed}
+                        icon={isRestricted ? Cube01 : CubeOutline}
                         selected={
                           p2View.kind === "space" && p2View.spaceId === space.id
                         }
@@ -1540,7 +1591,7 @@ function Pods() {
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={User01}
+              icon={User03}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
