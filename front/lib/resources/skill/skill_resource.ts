@@ -1447,12 +1447,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       [conversation.spaceId]
     );
 
-    return this.fetchActiveByIdsForAgentLoop(
-      auth,
-      projectMetadata?.defaultSkillIds ?? [],
+    return this.fetchByIds(auth, projectMetadata?.defaultSkillIds ?? [], {
       agentLoopData,
-      { withInstructions: false, withTools: false }
-    );
+      onlyActive: true,
+    });
   }
 
   static async listForAgentLoop(
