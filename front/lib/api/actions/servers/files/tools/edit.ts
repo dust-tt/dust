@@ -20,6 +20,7 @@ import {
   stripMimeParameters,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 export async function editHandler(
   {
@@ -151,8 +152,7 @@ export async function editHandler(
     }
   }
 
-  const pluralSuffix = occurrences === 1 ? "" : "s";
-  let text = `Updated \`${path}\`: made ${occurrences} replacement${pluralSuffix}.`;
+  let text = `Updated \`${path}\`: made ${occurrences} replacement${pluralize(occurrences)}.`;
 
   if (isFrameSource) {
     const flags = await getFeatureFlags(auth);
