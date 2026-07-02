@@ -163,7 +163,10 @@ export async function getAgentConfigurationsWithVersion<
 >(
   auth: Authenticator,
   agentIdsWithVersion: { agentId: string; agentVersion: number }[],
-  { variant }: { variant: V }
+  {
+    variant,
+    dangerouslySkipPermissionFiltering,
+  }: { variant: V; dangerouslySkipPermissionFiltering?: boolean }
 ): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
@@ -193,10 +196,9 @@ export async function getAgentConfigurationsWithVersion<
     },
   });
 
-  const allowedAgentModels = await filterAgentsByRequestedSpaces(
-    auth,
-    workspaceAgentModels
-  );
+  const allowedAgentModels = dangerouslySkipPermissionFiltering
+    ? workspaceAgentModels
+    : await filterAgentsByRequestedSpaces(auth, workspaceAgentModels);
   const workspaceAgents = await enrichAgentConfigurations(
     auth,
     allowedAgentModels,
@@ -299,10 +301,12 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
     agentIds,
     variant,
     globalAgentContext,
+    dangerouslySkipPermissionFiltering,
   }: {
     agentIds: string[];
     variant: V;
     globalAgentContext?: GlobalAgentContext;
+    dangerouslySkipPermissionFiltering?: boolean;
   }
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
@@ -334,10 +338,9 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
         workspaceAgentIds
       );
 
-      const allowedAgentModels = await filterAgentsByRequestedSpaces(
-        auth,
-        agentModels
-      );
+      const allowedAgentModels = dangerouslySkipPermissionFiltering
+        ? agentModels
+        : await filterAgentsByRequestedSpaces(auth, agentModels);
       workspaceAgents = await enrichAgentConfigurations(
         auth,
         allowedAgentModels,
@@ -365,11 +368,13 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
     agentVersion,
     variant,
     globalAgentContext,
+    dangerouslySkipPermissionFiltering,
   }: {
     agentId: string;
     agentVersion?: number;
     variant: V;
     globalAgentContext?: GlobalAgentContext;
+    dangerouslySkipPermissionFiltering?: boolean;
   }
 ): Promise<
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
@@ -382,6 +387,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
         [{ agentId, agentVersion }],
         {
           variant,
+          dangerouslySkipPermissionFiltering,
         }
       );
       return (
@@ -394,6 +400,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
       agentIds: [agentId],
       variant,
       globalAgentContext,
+      dangerouslySkipPermissionFiltering,
     });
     return (
       (agent as V extends "light"
