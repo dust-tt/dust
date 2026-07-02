@@ -9,8 +9,8 @@ export const USER_ANALYTICS_SERVER_NAME = "user_analytics" as const;
 export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_personal_usage: {
     description:
-      "Get this user's most-used skills and tools over the last 30 days, " +
-      "ranked by execution count. Always scoped to the authenticated user.",
+      "Get this user's activity summary over the last 30 days: total agent messages and conversations, " +
+      "top skills and tools ranked by execution count. Always scoped to the authenticated user.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -21,8 +21,8 @@ export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_workspace_activity: {
     description:
       "Get anonymized workspace-wide activity over the last 30 days: " +
-      "most popular agents by usage rank, trending skills and tools, and " +
-      "the count of active users (30-day MAU). No individual user attribution.",
+      "high-level overview (active users, total messages, conversation count), " +
+      "most popular agents by usage rank, and trending skills and tools. No individual user attribution.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
