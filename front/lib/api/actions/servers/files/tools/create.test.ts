@@ -4,6 +4,7 @@ import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -48,8 +49,16 @@ async function setupProjectConversation(): Promise<{
 }
 
 describe("createHandler", () => {
-  it("returns Err when content_type is a frame MIME type", async () => {
+  it("creates a new frame-typed file as a regular mount write", async () => {
     const { auth, conversation } = await setupProjectConversation();
+
+    const saveMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      file: vi.fn(() => ({
+        exists: vi.fn().mockResolvedValue([false]),
+        save: saveMock,
+      })),
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
     const result = await createHandler(
       {
@@ -60,19 +69,23 @@ describe("createHandler", () => {
       makeExtra(auth, conversation)
     );
 
-    expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
-    }
-    expect(result.error.message).toContain(
-      "interactive_content__create_interactive_content_file"
-    );
+    assert(result.isOk());
+    expect(result.value[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("Created"),
+    });
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(saveMock.mock.calls[0][1]).toMatchObject({
+      contentType: "application/vnd.dust.frame",
+    });
   });
 
-  it("returns Err when overwriting an existing frame file", async () => {
+  it("overwrites an existing frame file, preserving its content type", async () => {
     const { auth, conversation } = await setupProjectConversation();
+    await FeatureFlagFactory.basic(auth, "frame_publish");
 
-    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
+    const saveMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
       file: vi.fn(() => ({
         exists: vi.fn().mockResolvedValue([true]),
         getMetadata: vi
@@ -80,6 +93,7 @@ describe("createHandler", () => {
           .mockResolvedValue([
             { contentType: "application/vnd.dust.frame", size: "100" },
           ]),
+        save: saveMock,
       })),
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
@@ -92,13 +106,53 @@ describe("createHandler", () => {
       makeExtra(auth, conversation)
     );
 
-    expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
-    }
-    expect(result.error.message).toContain(
-      "interactive_content__edit_interactive_content_file"
+    assert(result.isOk());
+    expect(result.value[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining(
+        "interactive_content__publish_interactive_content_file"
+      ),
+    });
+
+    // The mount object must keep the frame content type, not the incoming one.
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(saveMock.mock.calls[0][1]).toMatchObject({
+      contentType: "application/vnd.dust.frame",
+    });
+  });
+
+  it("overwrites an existing frame file without frame_publish, pointing at the file-id edit tool", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+
+    const saveMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      file: vi.fn(() => ({
+        exists: vi.fn().mockResolvedValue([true]),
+        getMetadata: vi
+          .fn()
+          .mockResolvedValue([
+            { contentType: "application/vnd.dust.frame", size: "100" },
+          ]),
+        save: saveMock,
+      })),
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const result = await createHandler(
+      {
+        path: `conversation-${conversation.sId}/interactive.tsx`,
+        content: "export default function App() { return null; }",
+        content_type: "text/plain",
+      },
+      makeExtra(auth, conversation)
     );
-    expect(result.error.message).toContain("files__list");
+
+    assert(result.isOk());
+    expect(result.value[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining(
+        "interactive_content__edit_interactive_content_file"
+      ),
+    });
+    expect(saveMock).toHaveBeenCalledTimes(1);
   });
 });
