@@ -84,7 +84,8 @@ export function Tree({
 
 const treeItemStyleClasses = {
   base: "group/tree flex cursor-default flex-row items-center gap-2 h-9",
-  isNavigatableBase: "rounded-xl pl-1.5 pr-3 ease-out cursor-pointer",
+  isNavigatableBase:
+    "rounded-xl pl-1.5 pr-3 cursor-pointer transition-colors duration-150 motion-reduce:transition-none",
   isNavigatableUnselected: cn("bg-hover/0", "hover:bg-hover"),
   isNavigatableSelected: cn("font-medium", "bg-selected"),
 };

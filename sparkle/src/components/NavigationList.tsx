@@ -133,7 +133,7 @@ const NavigationListItem = React.forwardRef<
               "peer/menu-button",
               "text-primary font-medium",
               "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
-              "items-center outline-hidden rounded-lg text-sm p-2 transition-colors",
+              "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
               "data-[disabled]:pointer-events-none",
               "hover:bg-hover",
               selected && "bg-selected",
