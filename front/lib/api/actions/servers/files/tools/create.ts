@@ -10,10 +10,8 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
-import {
-  frameFileCreateRejectedError,
-  frameFileEditRejectedError,
-} from "@app/lib/api/actions/servers/files/tools/utils";
+import { frameSourceUpdatedNotice } from "@app/lib/api/actions/servers/files/tools/utils";
+import { getFeatureFlags } from "@app/lib/auth";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
@@ -57,23 +55,23 @@ export async function createHandler(
 
   const dustFs = fsResult.value;
 
-  const incomingMimeType = stripMimeParameters(content_type);
-  if (isInteractiveContentType(incomingMimeType)) {
-    return new Err(frameFileCreateRejectedError());
-  }
-
   // Check existence before writing so we can report "Created" vs "Updated".
   const statResult = await dustFs.stat(path);
   const exists = statResult.isOk() && statResult.value !== null;
 
+  let isFrameSourceOverwrite = false;
+  let writeContentType = content_type;
+
   if (statResult.isOk() && statResult.value !== null) {
     const existingMimeType = stripMimeParameters(statResult.value.contentType);
     if (isInteractiveContentType(existingMimeType)) {
-      return new Err(frameFileEditRejectedError());
+      isFrameSourceOverwrite = true;
+      // Keep the frame content type on the mount so the file stays recognized as a Frame.
+      writeContentType = statResult.value.contentType;
     }
   }
 
-  const writeResult = await dustFs.write(path, contentBuffer, content_type);
+  const writeResult = await dustFs.write(path, contentBuffer, writeContentType);
   if (writeResult.isErr()) {
     const err = writeResult.error;
     switch (err.code) {
@@ -96,6 +94,20 @@ export async function createHandler(
   const fileName = path.split("/").pop() ?? path;
   const sizeKb = Math.ceil(contentBuffer.byteLength / 1024);
   const verb = exists ? "Updated" : "Created";
+
+  if (isFrameSourceOverwrite) {
+    const flags = await getFeatureFlags(auth);
+    return new Ok([
+      {
+        type: "text",
+        text:
+          `Updated \`${path}\` (${sizeKb} KB). ` +
+          frameSourceUpdatedNotice({
+            hasFramePublishFF: flags.includes("frame_publish"),
+          }),
+      },
+    ]);
+  }
 
   const items: Array<
     | { type: "text"; text: string }

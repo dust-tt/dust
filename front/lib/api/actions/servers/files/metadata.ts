@@ -3,7 +3,6 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   INTERACTIVE_CONTENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { FILE_PREVIEW_DIRECTIVE_EXAMPLE } from "@app/lib/markdown/file_preview";
@@ -17,6 +16,7 @@ export const FILES_LIST_ACTION_NAME = "list" as const;
 export const FILES_CAT_ACTION_NAME = "cat" as const;
 export const FILES_GREP_ACTION_NAME = "grep" as const;
 export const FILES_CREATE_ACTION_NAME = "create" as const;
+export const FILES_EDIT_ACTION_NAME = "edit" as const;
 export const FILES_UPLOAD_FROM_URL_ACTION_NAME = "upload_from_url" as const;
 export const FILES_DELETE_ACTION_NAME = "delete" as const;
 export const FILES_COPY_ACTION_NAME = "copy" as const;
@@ -247,9 +247,10 @@ const FILES_TOOLS_COMMON_METADATA = {
       "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
       `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB. ` +
       "If the file already exists it is silently overwritten (shell \`>\` semantics). " +
-      `${FRAME_FILES_UNSUPPORTED}; use ` +
-      `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to create or ` +
-      `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to edit them. ` +
+      "A file written with a Frame content type is only a source file on the mount. To turn it " +
+      `into a shareable rendered Frame, use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` ` +
+      "with mode='template' and this path as source. " +
+      "Overwriting an existing Frame file updates only its source, never the rendered Frame directly. " +
       "Returns whether the file was created or updated, along with its path and size.",
     schema: {
       path: z
@@ -323,6 +324,44 @@ const FILES_TOOLS_COMMON_METADATA = {
   },
 };
 
+const EDIT_TOOL = {
+  description:
+    "Edit a text file by replacing an exact string match with new content. " +
+    "`old_string` must match the file content exactly, including whitespace and indentation. " +
+    "Fails if `old_string` is not found or if the number of occurrences does not match " +
+    "`expected_replacements` (default 1); make `old_string` unique by including surrounding lines. " +
+    `Files larger than ${CREATE_CONTENT_MAX_BYTES / 1024} KB cannot be edited with this tool. ` +
+    "Editing a Frame source file updates only its source, never the rendered Frame directly. " +
+    "The tool result explains how to apply the change to the rendered Frame.",
+  schema: {
+    path: z
+      .string()
+      .describe(
+        `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation-<id>/App.tsx\`)`
+      ),
+    old_string: z
+      .string()
+      .min(1)
+      .describe(
+        "Exact text to replace, matching the file content character for character"
+      ),
+    new_string: z.string().describe("Text to replace `old_string` with"),
+    expected_replacements: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .describe(
+        "Number of occurrences expected to be replaced (default 1). The edit fails if the actual count differs."
+      ),
+  },
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Editing file",
+    done: "Edited file",
+  },
+};
+
 const EXTRACT_TEXT_TOOL = {
   description:
     "Extract text from a binary document (PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS) " +
@@ -348,6 +387,7 @@ const EXTRACT_TEXT_TOOL = {
 export const FILES_TOOLS_METADATA = createToolsRecord({
   [FILES_LIST_ACTION_NAME]: LIST_TOOL,
   ...FILES_TOOLS_COMMON_METADATA,
+  [FILES_EDIT_ACTION_NAME]: EDIT_TOOL,
   [FILES_EXTRACT_TEXT_ACTION_NAME]: EXTRACT_TEXT_TOOL,
   [FILES_COPY_ACTION_NAME]: COPY_TOOL,
   [FILES_MOVE_ACTION_NAME]: MOVE_TOOL,
