@@ -71,6 +71,9 @@ interface TooltipProps extends TooltipContentProps {
   tooltipTriggerAsChild?: boolean;
   label: React.ReactNode;
   shortcut?: KeyboardShortcutProps["shortcut"];
+  // Delay (ms) before the tooltip opens on hover. Radix defaults to 700ms,
+  // which feels sluggish; 300ms is responsive without triggering accidentally.
+  delayDuration?: number;
 }
 
 const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
@@ -80,11 +83,12 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
       tooltipTriggerAsChild = false,
       label,
       shortcut,
+      delayDuration = 300,
       ...props
     }: TooltipProps,
     ref
   ) => (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={delayDuration}>
       <TooltipRoot disableHoverableContent>
         <TooltipTrigger asChild={tooltipTriggerAsChild}>
           {trigger}
