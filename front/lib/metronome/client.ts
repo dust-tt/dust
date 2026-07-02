@@ -774,6 +774,7 @@ export async function createMetronomeContract({
   planCode,
   additionalCustomFields,
   fromContractId,
+  displayedName,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -781,6 +782,11 @@ export async function createMetronomeContract({
   /** Mutually exclusive with `packageAlias` */
   packageId?: string;
   uniquenessKey?: string;
+  // Displayed in the Metronome dashboard/invoices. Metronome's create endpoint
+  // rejects `name` alongside package_alias/package_id, so this is applied via
+  // a follow-up `v2.contracts.edit` (`update_contract_name`) once the
+  // contract exists. Left unset, Metronome derives it from the package.
+  displayedName?: string;
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
   enableStripeBilling: boolean;
@@ -889,6 +895,17 @@ export async function createMetronomeContract({
   });
   if (customFieldsResult.isErr()) {
     return new Err(customFieldsResult.error);
+  }
+
+  if (displayedName) {
+    const renameResult = await editMetronomeContract({
+      contract_id: contractId,
+      customer_id: metronomeCustomerId,
+      update_contract_name: displayedName,
+    });
+    if (renameResult.isErr()) {
+      return new Err(renameResult.error);
+    }
   }
 
   logger.info(
