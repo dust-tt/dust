@@ -339,6 +339,136 @@ The following skills are available for use with the skill_management__enable_ski
   });
 });
 
+describe("error content handling in getSteps", () => {
+  async function buildErroredMessage(contents: AgentMessageType["contents"]) {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Test Agent",
+        description: "A test agent for error content rendering",
+      }
+    );
+    const model = getSupportedModelConfig(agentConfig.model);
+    assert(model, "Expected a supported model configuration.");
+
+    const message = {
+      id: 1,
+      agentMessageId: 1,
+      type: "agent_message",
+      sId: "agent_msg_err",
+      version: 1,
+      rank: 1,
+      branchId: null,
+      created: Date.now(),
+      completedTs: null,
+      parentMessageId: "user_msg_1",
+      parentAgentMessageId: null,
+      status: "succeeded",
+      content: null,
+      chainOfThought: null,
+      error: null,
+      visibility: "visible",
+      configuration: agentConfig,
+      skipToolsValidation: false,
+      actions: [],
+      contents,
+      modelInteractionDurationMs: null,
+      richMentions: [],
+      completionDurationMs: null,
+      reactions: [],
+      costCredits: null,
+    } satisfies AgentMessageType;
+
+    return { authenticator, message, model };
+  }
+
+  it("drops the whole step (including a truncated function call) when it errored", async () => {
+    const { authenticator, message, model } = await buildErroredMessage([
+      {
+        step: 0,
+        content: {
+          type: "function_call",
+          value: {
+            id: "toolu_truncated",
+            name: "some_tool",
+            // Truncated arguments left over from a stream cut off by the error.
+            arguments: '{"query":"foo',
+          },
+        },
+      },
+      {
+        step: 0,
+        content: {
+          type: "error",
+          value: {
+            code: "multi_actions_error",
+            message: "The request was invalid.",
+            metadata: null,
+          },
+        },
+      },
+    ]);
+
+    const steps = await getSteps(authenticator, {
+      enabledSkillById: new Map(),
+      model,
+      message,
+      workspaceId: "workspace_123",
+      conversationId: "conv_1",
+      // Default used by the agent loop: without the fix, this injects a bogus
+      // placeholder result for the dangling function call.
+      onMissingAction: "inject-placeholder",
+    });
+
+    expect(steps).toHaveLength(0);
+  });
+
+  it("keeps prior successful steps and drops only the errored one", async () => {
+    const { authenticator, message, model } = await buildErroredMessage([
+      {
+        step: 0,
+        content: {
+          type: "text_content",
+          value: "Here is the completed first step.",
+        },
+      },
+      {
+        step: 1,
+        content: {
+          type: "text_content",
+          value: "Partial answer before the provider errored...",
+        },
+      },
+      {
+        step: 1,
+        content: {
+          type: "error",
+          value: {
+            code: "multi_actions_error",
+            message: "The request was invalid.",
+            metadata: null,
+          },
+        },
+      },
+    ]);
+
+    const steps = await getSteps(authenticator, {
+      enabledSkillById: new Map(),
+      model,
+      message,
+      workspaceId: "workspace_123",
+      conversationId: "conv_1",
+      onMissingAction: "inject-placeholder",
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0].contents).toEqual([
+      { type: "text_content", value: "Here is the completed first step." },
+    ]);
+  });
+});
+
 describe("vision image rendering in getSteps", () => {
   const buildVisionTest = async (gcsPathOverride?: string) => {
     const { authenticator, conversationsSpace } = await createResourceTest({

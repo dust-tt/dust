@@ -231,6 +231,28 @@ export async function getSteps(
   }
   const actions = removeNulls(message.actions);
 
+  // Steps that contain error content correspond to model generations that failed (e.g. an upstream
+  // provider error). Their partial output (in particular a function call whose arguments were
+  // truncated when the stream was cut off) must not be replayed to the model: doing so makes the
+  // provider reject every subsequent request and permanently breaks the conversation. We drop the
+  // whole errored step rather than only the error content item.
+  const erroredStepIndexes = new Set<number>();
+  for (const content of message.contents) {
+    if (content.content.type === "error") {
+      erroredStepIndexes.add(content.step);
+      logger.warn(
+        {
+          workspaceId,
+          conversationId,
+          agentMessageId: message.sId,
+          step: content.step,
+          errorContent: content.content.value,
+        },
+        "agent message step with error content in renderConversationForModelMultiActions"
+      );
+    }
+  }
+
   // We store for each step (identified by its index) the "contents" array (raw model outputs, including
   // text content, reasoning and function calls) and "actions", i.e the function results.
   const stepByStepIndex = {} as Record<number, Step>;
@@ -257,6 +279,9 @@ export async function getSteps(
 
   for (const { action, result, enabledSkillMessages } of renderedActions) {
     const stepIndex = action.step;
+    if (erroredStepIndexes.has(stepIndex)) {
+      continue;
+    }
     stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
     stepByStepIndex[stepIndex].actions.push({
       call: {
@@ -271,16 +296,12 @@ export async function getSteps(
 
   for (const content of message.contents) {
     if (content.content.type === "error") {
-      // Don't render error content.
-      logger.warn(
-        {
-          workspaceId,
-          conversationId,
-          agentMessageId: message.sId,
-          errorContent: content.content.value,
-        },
-        "agent message step with error content in renderConversationForModelMultiActions"
-      );
+      // Error content is never rendered; its whole step is dropped above.
+      continue;
+    }
+
+    if (erroredStepIndexes.has(content.step)) {
+      // Don't render any content from a step whose generation errored.
       continue;
     }
 
