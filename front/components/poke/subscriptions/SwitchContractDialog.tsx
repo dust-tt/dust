@@ -18,6 +18,10 @@ import {
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
 import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
+import {
+  BILLABLE_SEAT_TYPES,
+  isMembershipSeatType,
+} from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { CreditUsageConfigurationSchema } from "@app/types/poke/credit_usage_configuration";
 import type { WorkspaceType } from "@app/types/user";
@@ -82,6 +86,11 @@ const SwitchContractFormSchema = z
     autoSeatUpgradeEnabled: z.boolean().default(false),
     topUpEnabled: z.boolean().default(false),
     autoInvoiceFinalizationEnabled: z.boolean().default(true),
+    // Optional seat-type override: when set, every seat-less (`none`) member is
+    // forced onto this seat on the new contract, preempting committed-seat
+    // placement. Empty string means no override (default assignment). Sent as
+    // `promoteNoneSeatsTo` on submit.
+    forceSeatType: z.string().optional(),
     // One-off initial credits (contract-level prepaid commit). Toggled on via
     // `showInitialCredits`; both fields are then required together and assembled
     // into `initialCredits` on submit.
@@ -249,6 +258,7 @@ export default function SwitchContractDialog({
       autoSeatUpgradeEnabled: false,
       topUpEnabled: false,
       autoInvoiceFinalizationEnabled: true,
+      forceSeatType: "",
       showInitialCredits: false,
       initialCreditsAmount: undefined,
       initialCreditsInvoiceAmount: undefined,
@@ -559,6 +569,12 @@ export default function SwitchContractDialog({
       cleaned.topUpEnabled = values.topUpEnabled;
       cleaned.autoInvoiceFinalizationEnabled =
         values.autoInvoiceFinalizationEnabled;
+      // Optional seat-type override: forces seat-less members onto this seat on
+      // the new contract. Only sent when a valid seat type is selected (empty
+      // string = no override).
+      if (values.forceSeatType && isMembershipSeatType(values.forceSeatType)) {
+        cleaned.promoteNoneSeatsTo = values.forceSeatType;
+      }
       if (values.balanceThresholdCredits !== undefined) {
         cleaned.balanceThresholdCredits = values.balanceThresholdCredits;
       }
@@ -1135,6 +1151,31 @@ export default function SwitchContractDialog({
                         </div>
                       );
                     })}
+                    <div className="flex flex-col gap-1 border-t pt-3">
+                      <Label className="text-sm">
+                        Force seat type (optional)
+                      </Label>
+                      <div className="text-xs text-muted-foreground">
+                        Forces every seat-less ("none") member onto this seat on
+                        the new contract, preempting committed-seat placement.
+                        Leave unset for default seat assignment.
+                      </div>
+                      <div className="w-64">
+                        <SelectField
+                          control={form.control}
+                          name="forceSeatType"
+                          hideLabel
+                          mountPortalContainer={portalContainer}
+                          options={[
+                            { value: "", display: "— No override —" },
+                            ...BILLABLE_SEAT_TYPES.map((seatType) => ({
+                              value: seatType,
+                              display: seatType,
+                            })),
+                          ]}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
                 {trimmedStripeCustomerId && resolvedCurrency && (
