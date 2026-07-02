@@ -40,7 +40,11 @@ export const menuStyleClasses = {
     "bg-overlay-background",
     "text-foreground",
     "z-50 min-w-[8rem]",
-    "origin-[var(--radix-dropdown-menu-content-transform-origin)]",
+    "origin-[var(--radix-dropdown-menu-content-transform-origin)]"
+  ),
+  // Enter/exit animation applied to the top-level dropdown content only. Nested
+  // sub-menus open instantly so they don't feel sluggish when drilling in.
+  containerAnimation: cn(
     "duration-200 ease-enter data-[state=closed]:duration-150 motion-reduce:animate-none",
     "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
   ),
@@ -478,6 +482,7 @@ const DropdownMenuContent = React.forwardRef<
         onKeyDown={handleKeyDown}
         className={cn(
           menuStyleClasses.container,
+          menuStyleClasses.containerAnimation,
           "flex flex-col shadow-md",
           dropdownHeaders && "h-80 xs:h-96", // We use dropdownHeaders for putting search bar, so we can set the height for the container
           className
@@ -1060,6 +1065,7 @@ const DropdownTooltipTrigger = React.forwardRef<
         sideOffset={sideOffset}
         className={cn(
           menuStyleClasses.container,
+          menuStyleClasses.containerAnimation,
           "w-48 max-w-sm p-2 shadow-lg"
         )}
       >
