@@ -339,7 +339,7 @@ export function _getClaude5SonnetGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: metadata.name,
-    description: metadata.description,
+    description: modelConfig.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
