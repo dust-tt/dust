@@ -430,12 +430,15 @@ export function SubscriptionPage() {
     new Date(subscription.endDate).getTime() > Date.now();
 
   const handleCancelMigration = async () => {
-    if (
-      !window.confirm(
-        "Cancel your subscription? It will end at the end of your current " +
-          "billing period."
-      )
-    ) {
+    // Yearly subs end on the migration date (not their far-out renewal);
+    // monthly subs end at the current period end.
+    const cancelMessage =
+      perSeatPricing?.billingPeriod === "yearly"
+        ? "Cancel your subscription? It will end on the scheduled migration " +
+          "date instead of continuing to your yearly renewal."
+        : "Cancel your subscription? It will end at the end of your current " +
+          "billing period.";
+    if (!window.confirm(cancelMessage)) {
       return;
     }
     const ok = await cancelMigration();
@@ -482,7 +485,15 @@ export function SubscriptionPage() {
 
     let migrationMs: number;
     if (perSeatPricing.billingPeriod === "yearly") {
-      migrationMs = windowStartMs;
+      if (perSeatPricing.currentPeriodEndMs === null) {
+        return null;
+      }
+      // Fixed at the window start, at the subscription's billing-anchor hour
+      // (== currentPeriodEnd's hour) — matches resolveMigrationDate.
+      const anchorHour = new Date(
+        perSeatPricing.currentPeriodEndMs
+      ).getUTCHours();
+      migrationMs = new Date(windowStartMs).setUTCHours(anchorHour, 0, 0, 0);
     } else {
       if (perSeatPricing.currentPeriodEndMs === null) {
         return null;

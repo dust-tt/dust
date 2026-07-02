@@ -1,28 +1,32 @@
 /**
- * Migrate legacy monthly Pro workspaces (any PRO_* plan) to a new credit-priced
- * Business plan (CP_BUSINESS_PLAN, or the legacy-large variant when the workspace
- * exceeds the standard Business limits).
+ * Migrate legacy Pro workspaces (any PRO_* plan, monthly or yearly) to a new
+ * credit-priced Business plan (CP_BUSINESS_PLAN, or the legacy-large variant
+ * when the workspace exceeds the standard Business limits).
  *
- * For every active, Stripe-billed, MONTHLY subscription on a legacy PRO_* plan
- * this script:
- *   1. Computes the migration date = the workspace's own monthly renewal
- *      boundary that falls inside the rollout window [windowStart, windowEnd),
- *      floored to the hour. Each monthly subscription has exactly one renewal
- *      boundary per month, so the migration is naturally staggered across the
- *      window.
+ * For every active, Stripe-billed subscription on a legacy PRO_* plan this
+ * script:
+ *   1. Computes the migration date inside the rollout window [windowStart,
+ *      windowEnd), floored to the hour:
+ *        - monthly: the workspace's own monthly renewal boundary in the window
+ *          (each monthly sub has one per month, so migrations stagger across the
+ *          window);
+ *        - yearly: fixed at the window START date, at the subscription's
+ *          billing-anchor hour so yearly workspaces spread across the day rather
+ *          than all migrating at the same instant. Yearly subs are cut over
+ *          mid-year, so the unused prepaid time (`remainingProrationDays`) is
+ *          computed + logged (refund mechanism TBD).
  *   2. Picks the target plan: the standard Business plan when the workspace fits
  *      its limits, otherwise the legacy-large Business plan (whose limits fit any
  *      PRO_* workspace), so the move never downgrades the workspace.
  *   3. Provisions a PENDING Metronome contract on the Business package
  *      (business-usd / business-eur, chosen from the Stripe currency), starting
- *      at the migration date, via `switchContract`. `switchContract` also
- *      creates the `created_backend_only` pending subscription and schedules the
- *      Stripe subscription to cancel at the same moment (no double-billing). The
- *      legacy subscription is ended by the `contract.start` webhook at
- *      activation — the script does NOT set its endDate / requestCancelAt, which
- *      would surface a misleading "subscription ends" banner + restore action.
- *
- * Yearly subscriptions are intentionally skipped (handled separately).
+ *      at the migration date, via `switchContract` — promoting seat-less members
+ *      to `pro` (monthly) or `pro_yearly` (yearly). `switchContract` also creates
+ *      the `created_backend_only` pending subscription and schedules the Stripe
+ *      subscription to cancel at the same moment (no double-billing). The legacy
+ *      subscription is ended by the `contract.start` webhook at activation — the
+ *      script does NOT set its endDate / requestCancelAt, which would surface a
+ *      misleading "subscription ends" banner + restore action.
  *
  * Dry run by default. Run with:
  *   npx tsx scripts/migrate_legacy_pro_monthly_to_business.ts \

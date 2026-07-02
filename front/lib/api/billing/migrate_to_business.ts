@@ -104,6 +104,66 @@ export function migrationDateInWindow(
   return null;
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Resolve the migration instant for a workspace inside the rollout window.
+ *  - monthly: the workspace's own monthly renewal boundary that lands in the
+ *    window (staggered per workspace), floored to the hour;
+ *  - yearly: fixed at the window START date (there is no monthly renewal in the
+ *    window), at the subscription's billing-anchor hour (== `currentPeriodEnd`'s
+ *    hour) so yearly workspaces spread across the day rather than all migrating
+ *    at the same instant.
+ *
+ * Returns null for a monthly subscription with no renewal boundary in the window.
+ */
+export function resolveMigrationDate({
+  billingPeriod,
+  currentPeriodEndMs,
+  windowStart,
+  windowEnd,
+}: {
+  billingPeriod: "monthly" | "yearly";
+  currentPeriodEndMs: number;
+  windowStart: Date;
+  windowEnd: Date;
+}): Date | null {
+  if (billingPeriod === "yearly") {
+    const anchorHour = new Date(currentPeriodEndMs).getUTCHours();
+    return new Date(
+      Date.UTC(
+        windowStart.getUTCFullYear(),
+        windowStart.getUTCMonth(),
+        windowStart.getUTCDate(),
+        anchorHour
+      )
+    );
+  }
+  const boundary = migrationDateInWindow(
+    new Date(currentPeriodEndMs),
+    windowStart,
+    windowEnd
+  );
+  return boundary ? new Date(floorToHourISO(boundary)) : null;
+}
+
+/**
+ * Prepaid days a yearly subscription still has left at the migration date
+ * (`currentPeriodEnd − migrationDate`, rounded up, floored at 0). Cutting a
+ * yearly sub over at the migration date leaves this many prepaid days unused;
+ * Stripe does not auto-refund them. We compute + log this for now; the refund
+ * mechanism is TBD.
+ */
+export function remainingPrepaidDays(
+  currentPeriodEndMs: number,
+  migrationDate: Date
+): number {
+  return Math.max(
+    0,
+    Math.ceil((currentPeriodEndMs - migrationDate.getTime()) / MS_PER_DAY)
+  );
+}
+
 // Shared inputs resolved once (packages + Business plans + window) and reused
 // across workspaces by the batch script; the resume flow loads them per call.
 export type MigrationDeps = {
@@ -167,11 +227,14 @@ export async function loadMigrationDeps({
 
 export type MigrateToBusinessOutcome =
   // Migration was staged (or would be, in dry-run): a pending Business contract
-  // is scheduled for `migrationDate`.
+  // is scheduled for `migrationDate`. For yearly subs, `remainingProrationDays`
+  // is the unused prepaid time cut off at the migration date (refund TBD).
   | {
       status: "migrated";
       migrationDate: Date;
       metronomeContractId: string | null;
+      billingPeriod: "monthly" | "yearly";
+      remainingProrationDays: number | null;
     }
   // The workspace was intentionally not migrated (not eligible, no renewal in
   // window, exceeds limits, already pending, ...). `reason` documents why.
@@ -230,12 +293,8 @@ export async function migrateWorkspaceToBusiness(
       reason: "could not resolve per-seat Stripe pricing",
     });
   }
-  if (pricing.billingPeriod !== "monthly") {
-    return new Ok({
-      status: "skipped",
-      reason: `not a monthly subscription (${pricing.billingPeriod})`,
-    });
-  }
+  const { billingPeriod } = pricing;
+  const currentPeriodEndMs = pricing.currentPeriodEndMs;
 
   // Plan-compatibility: migrate onto the standard Business plan when the
   // workspace fits it (seats, spaces, data sources). Otherwise fall back to the
@@ -277,26 +336,40 @@ export async function migrateWorkspaceToBusiness(
   }
 
   // Migration date: `--now`/`--next-hour` are testing shortcuts (bypass the
-  // window); otherwise the workspace's own renewal boundary within the window.
+  // window); otherwise monthly uses the workspace's own renewal boundary in the
+  // window, yearly is fixed at the window start (at the anchor hour).
   let migrationDate: Date;
   if (migrateNow) {
     migrationDate = new Date(floorToHourISO(new Date()));
   } else if (migrateNextHour) {
     migrationDate = new Date(ceilToHourISO(new Date()));
   } else {
-    const windowBoundary = migrationDateInWindow(
-      new Date(pricing.currentPeriodEndMs),
-      deps.windowStart,
-      deps.windowEnd
-    );
-    if (!windowBoundary) {
+    const resolved = resolveMigrationDate({
+      billingPeriod,
+      currentPeriodEndMs,
+      windowStart: deps.windowStart,
+      windowEnd: deps.windowEnd,
+    });
+    if (!resolved) {
       return new Ok({
         status: "skipped",
         reason: "no renewal boundary falls inside the rollout window",
       });
     }
-    migrationDate = new Date(floorToHourISO(windowBoundary));
+    migrationDate = resolved;
   }
+
+  // Legacy members carry no explicit seat type ("none"); force them all onto the
+  // matching paid seat on the new Business contract — `pro` for a monthly switch,
+  // `pro_yearly` for a yearly one.
+  const promoteNoneSeatsTo = billingPeriod === "yearly" ? "pro_yearly" : "pro";
+
+  // Yearly subs are cut over mid-year at the migration date; track the unused
+  // prepaid time (refund mechanism TBD — computed + logged only).
+  const remainingProrationDays =
+    billingPeriod === "yearly"
+      ? remainingPrepaidDays(currentPeriodEndMs, migrationDate)
+      : null;
 
   const stripeSubscription = await getStripeSubscription(
     subscription.stripeSubscriptionId
@@ -316,9 +389,7 @@ export async function migrateWorkspaceToBusiness(
     startingAt: migrationDate.toISOString(),
     stripeCustomerId,
     stripeCollectionMethod: "charge_automatically",
-    // Legacy members carry no explicit seat type ("none"); force them all onto a
-    // paid Pro seat on the new Business contract. Monthly branch, hence "pro".
-    promoteNoneSeatsTo: "pro",
+    promoteNoneSeatsTo,
     // Stamp the credit-migration marker; the `contract.start` webhook converts
     // convertible legacy credits to AWU and grants the per-member bonus THEN.
     legacyMigrationFreeAwuCreditsPerUser: FREE_MIGRATION_AWU_CREDITS_PER_USER,
@@ -329,6 +400,8 @@ export async function migrateWorkspaceToBusiness(
       status: "migrated",
       migrationDate,
       metronomeContractId: null,
+      billingPeriod,
+      remainingProrationDays,
     });
   }
 
@@ -364,8 +437,11 @@ export async function migrateWorkspaceToBusiness(
     {
       workspaceId: workspace.sId,
       planCode: targetPlan.code,
+      billingPeriod,
       metronomeContractId: result.value.metronomeContractId,
       migrationDate: migrationDate.toISOString(),
+      // For yearly: prepaid days cut off at the migration date (refund TBD).
+      remainingProrationDays,
     },
     "[migrate-business] Staged pending Business contract for the migration date"
   );
@@ -374,5 +450,7 @@ export async function migrateWorkspaceToBusiness(
     status: "migrated",
     migrationDate,
     metronomeContractId: result.value.metronomeContractId,
+    billingPeriod,
+    remainingProrationDays,
   });
 }

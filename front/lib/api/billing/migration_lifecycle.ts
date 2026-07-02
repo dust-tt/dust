@@ -1,6 +1,10 @@
 import {
   loadMigrationDeps,
+  MIGRATION_WINDOW_END_ISO,
+  MIGRATION_WINDOW_START_ISO,
   migrateWorkspaceToBusiness,
+  remainingPrepaidDays,
+  resolveMigrationDate,
 } from "@app/lib/api/billing/migrate_to_business";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -77,9 +81,6 @@ export async function cancelMigratingWorkspaceSubscription(
     workspace.id
   );
 
-  // The churn lands at the end of the current billing period. When a migration
-  // is pending this is ≤ the scheduled migration date (equal inside the rollout
-  // window, earlier before it opens).
   const pricing = await subscription.getPerSeatPricing();
   if (!pricing || pricing.currentPeriodEndMs === null) {
     return new Err(
@@ -89,7 +90,33 @@ export async function cancelMigratingWorkspaceSubscription(
       )
     );
   }
-  const endDate = new Date(pricing.currentPeriodEndMs);
+
+  // Where the churn lands:
+  //  - monthly: the end of the current billing period (≤ the scheduled
+  //    migration date — equal inside the window, earlier before it opens);
+  //  - yearly: the migration date (fixed window-start @ anchor hour), NOT the
+  //    far-out yearly period end. The pending contract's start is that date;
+  //    with no pending contract we recompute it. The unused prepaid time is
+  //    logged (refund TBD).
+  let endDate: Date;
+  let remainingProrationDays: number | null = null;
+  if (pricing.billingPeriod === "yearly") {
+    endDate =
+      pending?.startDate ??
+      resolveMigrationDate({
+        billingPeriod: "yearly",
+        currentPeriodEndMs: pricing.currentPeriodEndMs,
+        windowStart: new Date(`${MIGRATION_WINDOW_START_ISO}T00:00:00.000Z`),
+        windowEnd: new Date(`${MIGRATION_WINDOW_END_ISO}T00:00:00.000Z`),
+      }) ??
+      new Date(pricing.currentPeriodEndMs);
+    remainingProrationDays = remainingPrepaidDays(
+      pricing.currentPeriodEndMs,
+      endDate
+    );
+  } else {
+    endDate = new Date(pricing.currentPeriodEndMs);
+  }
 
   const pendingContractId = pending?.metronomeContractId ?? null;
   if (pending) {
@@ -178,10 +205,14 @@ export async function cancelMigratingWorkspaceSubscription(
   logger.info(
     {
       workspaceId: workspace.sId,
+      billingPeriod: pricing.billingPeriod,
       endDate: endDate.toISOString(),
       archivedPendingContractId: pendingContractId,
+      // For yearly: prepaid days cut off by cancelling at the migration date
+      // (refund TBD).
+      remainingProrationDays,
     },
-    "[migration-lifecycle] Cancelled scheduled migration; workspace churns at current period end"
+    "[migration-lifecycle] Cancelled subscription; workspace churns at the cancellation date"
   );
 
   return new Ok({ endDate });
