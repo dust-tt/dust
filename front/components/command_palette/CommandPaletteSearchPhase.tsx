@@ -9,7 +9,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
-import { Avatar, Icon, SearchInput } from "@dust-tt/sparkle";
+import { Avatar, cn, Icon, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export type CommandPaletteItem =
@@ -125,6 +125,12 @@ export function CommandPaletteSearchPhase({
       <div className="p-3">
         <SearchInput
           ref={searchInputRef}
+          className={cn(
+            // Command palette: the dialog is the container, so the search
+            // input drops its border, background and focus ring.
+            "[&_input]:border-transparent [&_input]:bg-transparent",
+            "[&_input]:focus-visible:border-transparent [&_input]:focus-visible:ring-0"
+          )}
           name="command-palette-search"
           placeholder="Search agents, pods and skills…"
           value={searchQuery}
