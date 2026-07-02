@@ -256,6 +256,9 @@ const structuralDescriptions: Record<string, string> = {
   background: "Default app/page background.",
   "app-background": "App shell background behind panels.",
   "panel-background": "Background for panels and cards.",
+  "overlay-background":
+    "Raised surface for tooltips, popovers, and dropdowns (elevated above panels).",
+  "modal-background": "Surface for dialogs and sheets — the highest elevation.",
   "muted-background": "Subtle background for muted or secondary surfaces.",
   muted: "Muted surface fill.",
   faint: "Faintest surface tint.",
