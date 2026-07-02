@@ -661,7 +661,7 @@ export function AgentSidebarMenu({
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
 
-  const { setAnimate } = useContext(InputBarContext);
+  const { setShouldFocusInput } = useContext(InputBarContext);
 
   const handleNewClick = useCallback(async () => {
     setSidebarOpen(false);
@@ -672,9 +672,9 @@ export function AgentSidebarMenu({
       router.pathname.match(/^\/w\/[^/]+\/conversation\/[^/]+$/) !== null &&
       activeConversationId === null;
     if (isNewConversation) {
-      setAnimate(true);
+      setShouldFocusInput(true);
     }
-  }, [setSidebarOpen, router, activeConversationId, setAnimate]);
+  }, [setSidebarOpen, router, activeConversationId, setShouldFocusInput]);
 
   const hasTriggeredConversations = useMemo(
     () =>

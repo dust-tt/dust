@@ -1130,9 +1130,10 @@ const InputBarContainer = ({
     isSpacesLoading,
   ]);
 
-  // When input bar animation is requested, it means the new button was clicked (removing focus from
-  // the input bar), we grab it back.
-  const { animate, setAnimate, captureActions } = useContext(InputBarContext);
+  // When an input bar refocus is requested (e.g. the "New" button was clicked, removing focus from
+  // the input bar), we grab focus back.
+  const { shouldFocusInput, setShouldFocusInput, captureActions } =
+    useContext(InputBarContext);
 
   const handleSingleAgentSelect = useCallback(
     (mention: RichMention) => {
@@ -1180,14 +1181,14 @@ const InputBarContainer = ({
   }, [captureActions, disableInput, fileUploaderService.isProcessingFiles]);
 
   useEffect(() => {
-    if (animate) {
+    if (shouldFocusInput) {
       // Schedule focus to avoid flushing during render lifecycle.
       queueMicrotask(() => editorService.focusEnd());
       // Consume the flag so a later request (e.g. clicking "New" again) re-runs
       // this effect instead of being swallowed as a no-op state update.
-      setAnimate(false);
+      setShouldFocusInput(false);
     }
-  }, [animate, editorService, setAnimate]);
+  }, [shouldFocusInput, editorService, setShouldFocusInput]);
 
   // Focus the input bar when the extension panel is opened (content-script sidebar or Front iframe).
   // Not gated by disableAutoFocus: that flag prevents autofocus on mount (to avoid mobile keyboard

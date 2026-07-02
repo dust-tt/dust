@@ -38,9 +38,9 @@ type CaptureActions = {
 };
 
 export const InputBarContext = createContext<{
-  animate: boolean;
+  shouldFocusInput: boolean;
   getAndClearSelectedAgent: () => RichAgentMention | null;
-  setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
+  setShouldFocusInput: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
@@ -62,9 +62,9 @@ export const InputBarContext = createContext<{
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
 }>({
-  animate: false,
+  shouldFocusInput: false,
   getAndClearSelectedAgent: () => null,
-  setAnimate: () => {},
+  setShouldFocusInput: () => {},
   setSelectedAgent: () => {},
   selectedSingleAgent: null,
   setSelectedSingleAgent: () => {},
@@ -99,7 +99,7 @@ export function InputBarContextProvider({
   fileUploaderService,
   captureActions,
 }: InputBarContextProviderProps) {
-  const [animate, setAnimate] = useState<boolean>(false);
+  const [shouldFocusInput, setShouldFocusInput] = useState<boolean>(false);
 
   // Useful when a component needs to set the selected agent for the input bar but do not have direct access to the input bar.
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
@@ -148,9 +148,9 @@ export function InputBarContextProvider({
   const setSelectedAgentOuter = useCallback(
     (agentMention: RichAgentMention | null) => {
       if (agentMention) {
-        setAnimate(true);
+        setShouldFocusInput(true);
       } else {
-        setAnimate(false);
+        setShouldFocusInput(false);
       }
       setSelectedAgent(agentMention);
     },
@@ -187,8 +187,8 @@ export function InputBarContextProvider({
 
   const value = useMemo(
     () => ({
-      animate,
-      setAnimate,
+      shouldFocusInput,
+      setShouldFocusInput,
       getAndClearSelectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
       selectedSingleAgent,
@@ -204,7 +204,7 @@ export function InputBarContextProvider({
       fileUploaderService,
     }),
     [
-      animate,
+      shouldFocusInput,
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
       selectedSingleAgent,
