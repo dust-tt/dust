@@ -490,6 +490,92 @@ describe("SandboxFunctionResource", () => {
     });
   });
 
+  async function setupInvokeTest() {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const file = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "comments.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    const sandboxFunction = await SandboxFunctionResource.makeNew(
+      authenticator,
+      {
+        space,
+        file,
+        slug: "add-comment",
+        description: "Add a comment.",
+        inputSchema,
+        outputSchema,
+      }
+    );
+    const sandbox = await SandboxResource.makeNew(authenticator, {
+      providerId: "test-provider-id",
+      status: "running",
+      baseImage: "dust-base",
+      version: "0.0.0-test",
+    });
+    vi.mocked(ensurePodSandboxReady).mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
+    vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
+      "sbt-function-token"
+    );
+
+    return { authenticator, sandboxFunction, sandbox };
+  }
+
+  it("surfaces the runner stderr when the invocation exits non-zero", async () => {
+    const { authenticator, sandboxFunction, sandbox } = await setupInvokeTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 1,
+        stdout: "some stdout",
+        stderr: "dsbx command failed: connection refused",
+      })
+    );
+
+    const result = await sandboxFunction.invoke(authenticator, {
+      input: { message: "hello" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toContain("exit code 1");
+    expect(result.error.message).toContain(
+      "dsbx command failed: connection refused"
+    );
+  });
+
+  it("falls back to the runner stdout when stderr is empty on failure", async () => {
+    const { authenticator, sandboxFunction, sandbox } = await setupInvokeTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 2,
+        stdout: "boom from stdout",
+        stderr: "",
+      })
+    );
+
+    const result = await sandboxFunction.invoke(authenticator, {
+      input: { message: "hello" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toContain("exit code 2");
+    expect(result.error.message).toContain("boom from stdout");
+  });
+
   it("overwrites the bundle and contract in place on re-publish", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",

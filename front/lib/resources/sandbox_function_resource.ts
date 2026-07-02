@@ -20,6 +20,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionInvocationType,
@@ -30,6 +31,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
@@ -37,6 +39,10 @@ import type { Attributes, Transaction } from "sequelize";
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
+// Caps on runner output surfaced on failure: a small head for the error forwarded to the agent,
+// a larger one for the log fields.
+const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
+const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 
 function dustAPIBaseUrlForSandbox(): string {
   return isDevelopment() && config.getSandboxDevFrontHostName()
@@ -386,9 +392,31 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         return execResult;
       }
       if (execResult.value.exitCode !== 0) {
+        const { exitCode, stdout, stderr } = execResult.value;
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: this.space.sId,
+            sandboxFunctionId: this.sId,
+            slug: this.slug,
+            invocationId: invocation.sId,
+            exitCode,
+            stdout: truncate(stdout, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
+            stderr: truncate(stderr, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
+          },
+          "Sandbox function invocation failed"
+        );
+        // Surface the runner's stderr (stdout when empty) so the agent sees the actual cause,
+        // not just the exit code.
+        const detail = truncate(
+          stderr || stdout,
+          SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS
+        ).trim();
         return new Err(
           new Error(
-            `Sandbox function invocation failed with exit code ${execResult.value.exitCode}.`
+            `Sandbox function invocation failed with exit code ${exitCode}${
+              detail ? `:\n${detail}` : "."
+            }`
           )
         );
       }
