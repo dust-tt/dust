@@ -369,6 +369,7 @@
 
   --color-hover: var(--color-hover);
   --color-selected: var(--color-selected);
+  --color-loading: var(--color-loading);
 
   --color-muted: var(--color-muted);
   --color-muted-foreground: var(--color-muted-foreground);
