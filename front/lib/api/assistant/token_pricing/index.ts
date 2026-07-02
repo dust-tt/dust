@@ -57,9 +57,8 @@ export function computeTokensCostForUsageInMicroUsd({
   completionTokens: number;
   cachedTokens: number | null;
   cacheCreationTokens?: number | null;
-  // Portion of cacheCreationTokens written to a long-lived cache, for
-  // providers that bill those at a premium. The remainder is billed at the
-  // standard cache-write rate.
+  // Portion of cacheCreationTokens written to a long-lived cache, for providers that bill those at
+  // a premium. The remainder is billed at the standard cache-write rate.
   longCacheCreationTokens?: number | null;
   isBatch?: boolean;
   inferenceRegion?: InferenceRegionType;

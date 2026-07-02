@@ -4,9 +4,8 @@ import type { StaticModelIdType } from "@app/types/assistant/models/models";
 export type PricingEntry = {
   input: number;
   output: number;
-  // Cache write rate. For providers that bill by cache retention duration,
-  // this is the short-lived rate and long_cache_creation_input_tokens the
-  // long-lived one.
+  // Cache write rate. For providers that bill by cache retention duration, this is the short-lived
+  // rate and long_cache_creation_input_tokens the long-lived one.
   cache_creation_input_tokens?: number;
   long_cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
