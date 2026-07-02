@@ -234,7 +234,7 @@ describe("runSandboxBashTool", () => {
           sId: "workspace-id",
         }),
       },
-      agentLoopContext: {
+      toolContext: {
         runContext: {
           agentConfiguration: {
             model: { providerId: "openai" },
@@ -670,7 +670,7 @@ describe("runSandboxBashTool", () => {
   describe("resume mode", () => {
     function resumeStepContext(execId: string) {
       return {
-        agentLoopContext: {
+        toolContext: {
           runContext: {
             agentConfiguration: {
               model: { providerId: "openai" },
@@ -781,7 +781,7 @@ describe("addEgressDomainTool", () => {
           },
         }),
       },
-      agentLoopContext: {
+      toolContext: {
         runContext: {
           conversation: { sId: "conversation-id" },
         },
@@ -934,7 +934,7 @@ describe("addEgressDomainTool", () => {
             sId: "workspace-id",
           }),
         },
-        agentLoopContext: undefined,
+        toolContext: undefined,
         signal: new AbortController().signal,
       } as never
     );

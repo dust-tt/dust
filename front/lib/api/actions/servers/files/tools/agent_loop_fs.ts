@@ -7,12 +7,12 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-type AgentLoopConversationExtra = Pick<ToolHandlerExtra, "agentLoopContext">;
+type ToolConversationExtra = Pick<ToolHandlerExtra, "toolContext">;
 
 export function requireAgentLoopConversation(
-  extra: AgentLoopConversationExtra
+  extra: ToolConversationExtra
 ): Result<ConversationWithoutContentType, MCPError> {
-  const conversation = extra.agentLoopContext?.runContext?.conversation;
+  const conversation = extra.toolContext?.runContext?.conversation;
   if (!conversation) {
     return new Err(
       new MCPError("No conversation context available.", { tracked: false })

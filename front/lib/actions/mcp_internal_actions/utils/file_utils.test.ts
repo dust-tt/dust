@@ -1,4 +1,4 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -46,12 +46,10 @@ vi.mock("@app/lib/api/file_system", async (importOriginal) => {
   };
 });
 
-function makeAgentLoopContext(
-  conversation: ConversationType
-): AgentLoopContextType {
+function makeToolContext(conversation: ConversationType): ToolContextType {
   return {
     runContext: { conversation },
-  } as unknown as AgentLoopContextType;
+  } as unknown as ToolContextType;
 }
 
 function makeReadableStream(content: string): Readable {
@@ -99,7 +97,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         canonicalPath,
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeToolContext({ ...conversation, content: [] })
       );
 
       expect(result.isOk()).toBe(true);
@@ -132,7 +130,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         `conversation-${conversation.sId}/missing.pdf`,
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeToolContext({ ...conversation, content: [] })
       );
 
       expect(result.isErr()).toBe(true);
@@ -160,7 +158,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         `conversation-${conversation.sId}/file.txt`,
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeToolContext({ ...conversation, content: [] })
       );
 
       expect(result.isErr()).toBe(true);
@@ -213,7 +211,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         file.sId,
-        makeAgentLoopContext(fullConversation)
+        makeToolContext(fullConversation)
       );
 
       expect(result.isOk()).toBe(true);
@@ -245,7 +243,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "fil_notfound",
-        makeAgentLoopContext(conversationResult.value)
+        makeToolContext(conversationResult.value)
       );
 
       expect(result.isErr()).toBe(true);
@@ -280,7 +278,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "conversation/notes.txt",
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeToolContext({ ...conversation, content: [] })
       );
 
       expect(result.isOk()).toBe(true);
@@ -310,7 +308,7 @@ describe("getFileFromConversationAttachment", () => {
       const result = await getFileFromConversationAttachment(
         auth,
         "conversation/missing.pdf",
-        makeAgentLoopContext({ ...conversation, content: [] })
+        makeToolContext({ ...conversation, content: [] })
       );
 
       expect(result.isErr()).toBe(true);
@@ -359,7 +357,7 @@ describe("resolveConversationFileRef", () => {
       const result = await resolveConversationFileRef(
         auth,
         canonicalPath,
-        undefined // canonical paths do not need agentLoopContext
+        undefined // canonical paths do not need toolContext
       );
 
       expect(result.isOk()).toBe(true);
@@ -372,7 +370,7 @@ describe("resolveConversationFileRef", () => {
       expect(await result.value.getSignedUrl()).toBe(signedUrl);
     });
 
-    it("does not require agentLoopContext", async () => {
+    it("does not require toolContext", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -438,7 +436,7 @@ describe("resolveConversationFileRef", () => {
     });
   });
 
-  it("returns Err when agentLoopContext has no runContext", async () => {
+  it("returns Err when toolContext has no runContext", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const result = await resolveConversationFileRef(
@@ -477,7 +475,7 @@ describe("resolveConversationFileRef", () => {
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
-      makeAgentLoopContext({ ...conversation, content: [] })
+      makeToolContext({ ...conversation, content: [] })
     );
 
     expect(result.isOk()).toBe(true);
@@ -516,11 +514,11 @@ describe("resolveConversationFileRef", () => {
       useCaseMetadata: { conversationId: conversationA.sId },
     });
 
-    // But agentLoopContext points to conversation B.
+    // But toolContext points to conversation B.
     const result = await resolveConversationFileRef(
       auth,
       file.sId,
-      makeAgentLoopContext({ ...conversationB, content: [] })
+      makeToolContext({ ...conversationB, content: [] })
     );
 
     expect(result.isErr()).toBe(true);

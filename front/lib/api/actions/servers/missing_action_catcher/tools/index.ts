@@ -1,12 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { Err, Ok } from "@app/types/shared/result";
 
 // This server has dynamically created tools based on the agentLoopContext.
 // The tool name comes from the context at runtime.
+// TODO(spolu): move to AgentLoopRunContextType
 export function createMissingActionCatcherTools(
-  agentLoopContext?: AgentLoopContextType
+  agentLoopContext?: ToolContextType
 ): ToolDefinition[] {
   if (agentLoopContext) {
     const actionName = agentLoopContext.runContext

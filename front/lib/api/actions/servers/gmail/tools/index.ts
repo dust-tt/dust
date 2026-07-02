@@ -255,7 +255,7 @@ async function buildReplyContext(params: {
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
   attachmentFilePath: string | undefined,
-  agentLoopContext: ToolHandlerExtra["agentLoopContext"]
+  toolContext: ToolHandlerExtra["toolContext"]
 ): Promise<
   | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
   | Err<MCPError>
@@ -264,14 +264,14 @@ async function fetchAttachment(
     return new Ok(null);
   }
 
-  if (!agentLoopContext) {
+  if (!toolContext) {
     return new Err(new MCPError("No agent context available"));
   }
 
   const fileResult = await getFileFromConversationAttachment(
     auth,
     attachmentFilePath,
-    agentLoopContext
+    toolContext
   );
 
   if (fileResult.isErr()) {
@@ -365,7 +365,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       replyToMessageId,
       attachmentFilePath,
     },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, toolContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -399,7 +399,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const attachmentResult = await fetchAttachment(
       auth,
       attachmentFilePath,
-      agentLoopContext
+      toolContext
     );
     if (attachmentResult.isErr()) {
       return attachmentResult;
@@ -978,7 +978,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       replyToMessageId,
       attachmentFilePath,
     },
-    { authInfo, auth, agentLoopContext }
+    { authInfo, auth, toolContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1011,7 +1011,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const attachmentResult = await fetchAttachment(
       auth,
       attachmentFilePath,
-      agentLoopContext
+      toolContext
     );
     if (attachmentResult.isErr()) {
       return attachmentResult;

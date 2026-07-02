@@ -32,7 +32,7 @@ import {
   MCPOAuthProvider,
   MCPOAuthProviderError,
 } from "@app/lib/actions/mcp_oauth_provider";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type {
   MCPServerType,
@@ -356,10 +356,10 @@ export async function connectToMCPServer(
   auth: Authenticator,
   {
     params,
-    agentLoopContext,
+    toolContext,
   }: {
     params: MCPConnectionParams;
-    agentLoopContext?: AgentLoopContextType;
+    toolContext?: ToolContextType;
   }
 ): Promise<
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
@@ -386,13 +386,13 @@ export async function connectToMCPServer(
             params.mcpServerId,
             server,
             auth,
-            agentLoopContext
+            toolContext
           );
 
           await mcpClient.connect(client);
 
           // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
-          if (agentLoopContext?.runContext) {
+          if (toolContext?.runContext) {
             const bearerTokenCredentials =
               await InternalMCPServerInMemoryResource.fetchDecryptedCredentials(
                 auth,
@@ -565,7 +565,7 @@ export async function connectToMCPServer(
             mcpServerId: params.mcpServerId,
             oAuthUseCase: params.oAuthUseCase,
             remoteMCPServer,
-            isToolExecution: !!agentLoopContext?.runContext,
+            isToolExecution: !!toolContext?.runContext,
           });
           if (tokenRes.isErr()) {
             return tokenRes;

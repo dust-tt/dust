@@ -1,7 +1,7 @@
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   TOOLS_WITH_TAGS,
   TOOLS_WITHOUT_TAGS,
@@ -11,16 +11,16 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): McpServer {
   const server = makeInternalMCPServer("data_sources_file_system");
 
-  const areTagsDynamic = agentLoopContext
-    ? shouldAutoGenerateTags(agentLoopContext)
+  const areTagsDynamic = toolContext
+    ? shouldAutoGenerateTags(toolContext)
     : false;
 
   for (const tool of areTagsDynamic ? TOOLS_WITH_TAGS : TOOLS_WITHOUT_TAGS) {
-    registerTool(auth, agentLoopContext, server, tool, {
+    registerTool(auth, toolContext, server, tool, {
       monitoringName: tool.name,
     });
   }

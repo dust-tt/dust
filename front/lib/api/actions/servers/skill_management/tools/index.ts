@@ -95,16 +95,13 @@ async function findAvailableSkillForAgentLoop({
 }
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
-  [ENABLE_SKILL_TOOL_NAME]: async (
-    { skillName },
-    { auth, agentLoopContext }
-  ) => {
-    if (!agentLoopContext?.runContext) {
+  [ENABLE_SKILL_TOOL_NAME]: async ({ skillName }, { auth, toolContext }) => {
+    if (!toolContext?.runContext) {
       return new Err(new MCPError("No conversation context available"));
     }
 
     const { agentConfiguration, agentMessage, conversation, userMessage } =
-      agentLoopContext.runContext;
+      toolContext.runContext;
 
     const agentLoopData = {
       agentConfiguration,

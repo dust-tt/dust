@@ -13,9 +13,9 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 const handlers: ToolHandlers<typeof ASK_USER_QUESTION_TOOLS_METADATA> = {
   ask_user_question: async (
     { question, options, multiSelect },
-    { agentLoopContext }
+    { toolContext }
   ) => {
-    const resumeState = agentLoopContext?.runContext?.stepContext?.resumeState;
+    const resumeState = toolContext?.runContext?.stepContext?.resumeState;
     if (isUserQuestionResumeState(resumeState) && resumeState.answer) {
       const { answer } = resumeState;
       const selections = getUserQuestionSelections(

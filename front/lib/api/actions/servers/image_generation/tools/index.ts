@@ -4,7 +4,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
@@ -28,7 +28,7 @@ import { startObservation } from "@langfuse/tracing";
 
 export function createImageGenerationTools(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  toolContext?: ToolContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof IMAGE_GENERATION_TOOLS_METADATA> = {
     generate_image: async (
@@ -75,7 +75,7 @@ export function createImageGenerationTools(
       if (referenceImages && referenceImages.length > 0) {
         const processResult = await processImageFileIds(auth, {
           imageFileIds: referenceImages,
-          agentLoopContext,
+          toolContext,
           supportedContentTypes: imageGenerationModel.supportedContentTypes,
           providerId,
         });
@@ -174,7 +174,7 @@ export function createImageGenerationTools(
 
       return uploadAndFormatImageResponse(
         auth,
-        agentLoopContext,
+        toolContext,
         images,
         outputName
       );
