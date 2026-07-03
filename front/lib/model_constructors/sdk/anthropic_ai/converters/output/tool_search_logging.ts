@@ -32,7 +32,7 @@ export function logToolSearchQuery({
   toolName: string;
   tags: string[];
   logFields: Record<string, unknown>;
-}): void {
+}): string | undefined {
   let query: string | undefined;
   const parsed = safeParseJSON(rawInput);
   if (
@@ -59,23 +59,28 @@ export function logToolSearchQuery({
     `tool_name:${toolName}`,
     ...tags,
   ]);
+
+  return query;
 }
 
 // Logs the tools surfaced by a tool search, or the error code when the search
 // failed (e.g. too_many_requests, unavailable).
 export function logToolSearchResult({
   content,
+  query,
   logFields,
 }: {
   content: ToolSearchResultContent;
+  query: string | undefined;
   logFields: Record<string, unknown>;
 }): void {
   if (content.type === "tool_search_tool_result_error") {
     logger.warn(
       {
+        ...logFields,
+        query,
         errorCode: content.error_code,
         errorMessage: content.error_message,
-        ...logFields,
       },
       "Anthropic tool search returned an error"
     );
@@ -84,7 +89,12 @@ export function logToolSearchResult({
 
   const toolReferences = content.tool_references.map((ref) => ref.tool_name);
   logger.info(
-    { toolReferences, resultCount: toolReferences.length, ...logFields },
+    {
+      ...logFields,
+      query,
+      toolReferences,
+      resultCount: toolReferences.length,
+    },
     "Anthropic tool search results"
   );
 }
