@@ -1,4 +1,7 @@
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
@@ -173,31 +176,35 @@ export function normalizeTimezone(
 }
 
 export function getUserTimezone(toolContext?: ToolContextType): string | null {
-  const content = toolContext?.runContext?.conversation?.content;
-  if (!content) {
-    return null;
-  }
+  if (isAgentLoopRunContext(toolContext?.runContext)) {
+    const content = toolContext?.runContext?.conversation?.content;
+    if (!content) {
+      return null;
+    }
 
-  for (let i = content.length - 1; i >= 0; i--) {
-    const contentBlock = content[i];
-    if (Array.isArray(contentBlock)) {
-      const userMessage = contentBlock.find(
-        (msg) =>
-          msg.type === "user_message" &&
-          "context" in msg &&
-          msg.context &&
-          "timezone" in msg.context
-      );
-      if (
-        userMessage &&
-        "context" in userMessage &&
-        userMessage.context &&
-        "timezone" in userMessage.context
-      ) {
-        return normalizeTimezone(userMessage.context.timezone);
+    for (let i = content.length - 1; i >= 0; i--) {
+      const contentBlock = content[i];
+      if (Array.isArray(contentBlock)) {
+        const userMessage = contentBlock.find(
+          (msg) =>
+            msg.type === "user_message" &&
+            "context" in msg &&
+            msg.context &&
+            "timezone" in msg.context
+        );
+        if (
+          userMessage &&
+          "context" in userMessage &&
+          userMessage.context &&
+          "timezone" in userMessage.context
+        ) {
+          return normalizeTimezone(userMessage.context.timezone);
+        }
       }
     }
   }
+
+  // TODO(spolu): extract user timezone from sandbox function once available
 
   return null;
 }

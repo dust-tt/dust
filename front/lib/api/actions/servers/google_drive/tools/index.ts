@@ -14,6 +14,7 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
 import { formatPresentationStructure } from "@app/lib/api/actions/servers/google_drive/format_presentation";
 import {
@@ -297,7 +298,7 @@ function addAgentAttribution(
   content: string,
   { toolContext }: Pick<ToolHandlerExtra, "toolContext">
 ): string {
-  if (toolContext?.runContext?.agentConfiguration) {
+  if (isAgentLoopRunContext(toolContext?.runContext)) {
     const agentConfig = toolContext.runContext.agentConfiguration;
     return `${content}\n\nSent via ${agentConfig.name} Agent on Dust`;
   }
