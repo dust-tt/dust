@@ -147,6 +147,7 @@ export function ConnectorCliCommandForm({
           ))}
 
         <Button
+          type="button"
           variant="outline"
           label="Run"
           disabled={disabled || !canRun}

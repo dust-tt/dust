@@ -1,3 +1,4 @@
+import { ConnectorCliCommandForm } from "@app/components/poke/plugins/ConnectorCliCommandForm";
 import { PluginForm } from "@app/components/poke/plugins/PluginForm";
 import {
   PokeAlert,
@@ -28,6 +29,8 @@ import {
 } from "@dust-tt/sparkle";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
+
+const CONNECTOR_CLI_PLUGIN_ID = "run-connector-cli-command";
 
 function pluginResponseToCopyText(result: PluginResponse): string {
   switch (result.display) {
@@ -210,13 +213,20 @@ export function RunPluginDialog({
                   </div>
                 </div>
               )}
-              <PluginForm
-                disabled={result !== null}
-                manifest={manifest}
-                asyncArgs={asyncArgs}
-                onSubmit={onSubmit}
-                pluginResourceTarget={pluginResourceTarget}
-              />
+              {plugin.id === CONNECTOR_CLI_PLUGIN_ID ? (
+                <ConnectorCliCommandForm
+                  disabled={result !== null}
+                  onSubmit={onSubmit}
+                />
+              ) : (
+                <PluginForm
+                  disabled={result !== null}
+                  manifest={manifest}
+                  asyncArgs={asyncArgs}
+                  onSubmit={onSubmit}
+                  pluginResourceTarget={pluginResourceTarget}
+                />
+              )}
               {manifest.warning && (
                 <PokeAlert variant="destructive">
                   <PokeAlertTitle>Warning</PokeAlertTitle>
