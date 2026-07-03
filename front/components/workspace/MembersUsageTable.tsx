@@ -10,8 +10,13 @@ import {
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import {
+  getAdvancedModelDisplayNames,
+  resolveAdvancedModelsForUser,
+} from "@app/lib/client/advanced_models";
 import { formatCredits } from "@app/lib/client/credits";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
+import type { AllowedAdvancedModelType } from "@app/types/api/advanced_models";
 import {
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
@@ -37,6 +42,18 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
+const EMPTY_USER_ALLOWED_ADVANCED_MODELS_BY_USER_ID: Record<
+  string,
+  AllowedAdvancedModelType[]
+> = {};
+const EMPTY_GROUP_ADVANCED_MODELS_BY_GROUP_ID: Record<
+  string,
+  AllowedAdvancedModelType[]
+> = {};
+const EMPTY_WORKSPACE_ALLOWED_ADVANCED_MODELS: AllowedAdvancedModelType[] = [];
+const EMPTY_GROUP_NAME_TO_ID = new Map<string, string>();
+const EMPTY_ADVANCED_MODEL_DISPLAY_NAME_BY_KEY = new Map<string, string>();
+
 type RowData = {
   sId: string;
   name: string;
@@ -55,6 +72,8 @@ type RowData = {
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
   isSeatChangePending: boolean;
+  advancedModelDisplayNames: string[];
+  hasUserLevelAdvancedModelsOverride: boolean;
   menuItems: MenuItem[];
 };
 
@@ -456,6 +475,64 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   enableSorting: true,
 };
 
+const advancedModelsColumn: ColumnDef<RowData, string> = {
+  id: "advancedModels" as const,
+  header: "Advanced models",
+  enableSorting: false,
+  accessorFn: (row) => row.advancedModelDisplayNames.join(", "),
+  cell: (info: Info) => {
+    const displayNames = info.row.original.advancedModelDisplayNames;
+    const customSuffix = info.row.original.hasUserLevelAdvancedModelsOverride
+      ? " (custom)"
+      : "";
+
+    if (displayNames.length === 0) {
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            --
+          </span>
+        </DataTable.CellContent>
+      );
+    }
+
+    if (displayNames.length === 1) {
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {displayNames[0]}
+            {customSuffix}
+          </span>
+        </DataTable.CellContent>
+      );
+    }
+
+    return (
+      <DataTable.CellContent>
+        <Tooltip
+          label={
+            <div className="flex flex-col gap-0.5">
+              {displayNames.map((name, index) => (
+                <span key={`${name}-${index}`}>{name}</span>
+              ))}
+            </div>
+          }
+          tooltipTriggerAsChild
+          trigger={
+            <span className="cursor-default text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {displayNames.length} models
+              {customSuffix}
+            </span>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-48",
+  },
+};
+
 const actionsColumn: ColumnDef<RowData, string> = {
   id: "actions" as const,
   header: "",
@@ -472,14 +549,17 @@ const actionsColumn: ColumnDef<RowData, string> = {
 function buildColumns({
   enableSelection,
   showGroupsColumn,
+  showAdvancedModelsColumn,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
+  showAdvancedModelsColumn: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
+    ...(showAdvancedModelsColumn ? [advancedModelsColumn] : []),
     seatTypeColumn,
     { ...consumedAwuCreditsColumn, meta: { className: "w-64" } },
     actionsColumn,
@@ -498,6 +578,16 @@ interface MembersUsageTableProps {
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
+  onEditAdvancedModels?: (member: MemberUsageType) => void;
+  showAdvancedModelsColumn?: boolean;
+  userAllowedAdvancedModelsByUserId?: Record<
+    string,
+    AllowedAdvancedModelType[]
+  >;
+  groupAdvancedModelsByGroupId?: Record<string, AllowedAdvancedModelType[]>;
+  workspaceAllowedAdvancedModels?: AllowedAdvancedModelType[];
+  groupNameToId?: Map<string, string>;
+  advancedModelDisplayNameByKey?: Map<string, string>;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   totalRowCount: number;
@@ -521,6 +611,13 @@ export function MembersUsageTable({
   onChangeSeat,
   onRemoveSeat,
   onEditSpendLimit,
+  onEditAdvancedModels,
+  showAdvancedModelsColumn = false,
+  userAllowedAdvancedModelsByUserId = EMPTY_USER_ALLOWED_ADVANCED_MODELS_BY_USER_ID,
+  groupAdvancedModelsByGroupId = EMPTY_GROUP_ADVANCED_MODELS_BY_GROUP_ID,
+  workspaceAllowedAdvancedModels = EMPTY_WORKSPACE_ALLOWED_ADVANCED_MODELS,
+  groupNameToId = EMPTY_GROUP_NAME_TO_ID,
+  advancedModelDisplayNameByKey = EMPTY_ADVANCED_MODEL_DISPLAY_NAME_BY_KEY,
   pagination,
   setPagination,
   totalRowCount,
@@ -533,93 +630,136 @@ export function MembersUsageTable({
 }: MembersUsageTableProps) {
   const rows: RowData[] = useMemo(
     () =>
-      members.map((m) => ({
-        sId: m.sId,
-        name: m.name,
-        email: m.email,
-        image: m.image,
-        groups: m.groups,
-        seatType: m.seatType,
-        memberUsageLimit: m.memberUsageLimit,
-        seatBalanceAwu: m.seatBalanceAwu,
-        consumedAwuCredits: m.consumedAwuCredits,
-        consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
-        consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
-        spendLimitAwuCredits: m.spendLimitAwuCredits,
-        spendLimitSource: m.spendLimitSource,
-        scheduledSeatType: m.scheduledSeatType,
-        scheduledSeatChangeAt: m.scheduledSeatChangeAt,
-        isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
-          m.sId
-        ),
-        isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
-        menuItems: [
-          ...(!m.seatType || m.seatType === "none"
-            ? [
-                {
-                  kind: "item" as const,
-                  label: "Assign seat",
-                  disabled: readOnly,
-                  onClick: () => onChangeSeat(m),
-                },
-              ]
-            : []),
-          ...(isSeatBased && m.seatType && m.seatType !== "none"
-            ? [
-                {
-                  kind: "item" as const,
-                  label: "Change seat type",
-                  disabled: readOnly,
-                  onClick: () => onChangeSeat(m),
-                },
-              ]
-            : []),
-          // Only paid, message-sending seats have a spend limit to edit. Free
-          // seats have no pool (their cap is just the fixed free allowance), and
-          // "none"/seatless members can't send anything — so the option hides.
-          ...(showSpendLimit &&
-          m.seatType &&
-          m.seatType !== "free" &&
-          m.seatType !== "none"
-            ? [
-                {
-                  kind: "item" as const,
-                  label: "Edit spend limit",
-                  disabled: readOnly,
-                  onClick: () => onEditSpendLimit(m),
-                },
-              ]
-            : []),
-          // Only members who currently hold a billable seat can have it removed.
-          ...(isSeatBased && m.seatType && m.seatType !== "none"
-            ? [
-                {
-                  kind: "item" as const,
-                  label: "Remove seat",
-                  variant: "warning" as const,
-                  disabled: readOnly,
-                  onClick: () => onRemoveSeat(m),
-                },
-              ]
-            : []),
-        ],
-      })),
+      members.map((m) => {
+        const resolvedAdvancedModels = showAdvancedModelsColumn
+          ? resolveAdvancedModelsForUser({
+              userId: m.sId,
+              groupNames: m.groups,
+              groupNameToId,
+              userAllowedAdvancedModelsByUserId,
+              groupAdvancedModelsByGroupId,
+              workspaceAllowedAdvancedModels,
+            })
+          : null;
+
+        return {
+          sId: m.sId,
+          name: m.name,
+          email: m.email,
+          image: m.image,
+          groups: m.groups,
+          seatType: m.seatType,
+          memberUsageLimit: m.memberUsageLimit,
+          seatBalanceAwu: m.seatBalanceAwu,
+          consumedAwuCredits: m.consumedAwuCredits,
+          consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
+          consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
+          spendLimitAwuCredits: m.spendLimitAwuCredits,
+          spendLimitSource: m.spendLimitSource,
+          scheduledSeatType: m.scheduledSeatType,
+          scheduledSeatChangeAt: m.scheduledSeatChangeAt,
+          isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
+            m.sId
+          ),
+          isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
+          advancedModelDisplayNames: resolvedAdvancedModels
+            ? getAdvancedModelDisplayNames({
+                models: resolvedAdvancedModels.models,
+                displayNameByKey: advancedModelDisplayNameByKey,
+              })
+            : [],
+          hasUserLevelAdvancedModelsOverride:
+            resolvedAdvancedModels?.hasUserLevelOverride ?? false,
+          menuItems: [
+            ...(!m.seatType || m.seatType === "none"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Assign seat",
+                    disabled: readOnly,
+                    onClick: () => onChangeSeat(m),
+                  },
+                ]
+              : []),
+            ...(isSeatBased && m.seatType && m.seatType !== "none"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Change seat type",
+                    disabled: readOnly,
+                    onClick: () => onChangeSeat(m),
+                  },
+                ]
+              : []),
+            // Only paid, message-sending seats have a spend limit to edit. Free
+            // seats have no pool (their cap is just the fixed free allowance), and
+            // "none"/seatless members can't send anything — so the option hides.
+            ...(showSpendLimit &&
+            m.seatType &&
+            m.seatType !== "free" &&
+            m.seatType !== "none"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Edit spend limit",
+                    disabled: readOnly,
+                    onClick: () => onEditSpendLimit(m),
+                  },
+                ]
+              : []),
+            ...(showAdvancedModelsColumn && onEditAdvancedModels
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Edit advanced models",
+                    disabled: readOnly,
+                    onClick: () => onEditAdvancedModels(m),
+                  },
+                ]
+              : []),
+            // Only members who currently hold a billable seat can have it removed.
+            ...(isSeatBased && m.seatType && m.seatType !== "none"
+              ? [
+                  {
+                    kind: "item" as const,
+                    label: "Remove seat",
+                    variant: "warning" as const,
+                    disabled: readOnly,
+                    onClick: () => onRemoveSeat(m),
+                  },
+                ]
+              : []),
+          ],
+        };
+      }),
     [
       members,
       totalAllowedUsagePendingMemberIds,
       seatChangePendingMemberIds,
       isSeatBased,
       showSpendLimit,
+      showAdvancedModelsColumn,
+      userAllowedAdvancedModelsByUserId,
+      groupAdvancedModelsByGroupId,
+      workspaceAllowedAdvancedModels,
+      groupNameToId,
+      advancedModelDisplayNameByKey,
       readOnly,
       onChangeSeat,
       onRemoveSeat,
       onEditSpendLimit,
+      onEditAdvancedModels,
     ]
   );
 
   const columns = useMemo(
-    () => buildColumns({ enableSelection, showGroupsColumn }),
-    [enableSelection, showGroupsColumn]
+    () =>
+      buildColumns({
+        enableSelection,
+        showGroupsColumn,
+        showAdvancedModelsColumn,
+      }),
+    [enableSelection, showGroupsColumn, showAdvancedModelsColumn]
   );
 
   if (isLoading) {
