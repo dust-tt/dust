@@ -8,7 +8,8 @@ import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { MODEL_IDS, SUPPORTED_MODEL_CONFIGS } from "./models";
-import type { BYOK_MODEL_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "./providers";
+import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
+import { MODEL_PROVIDER_IDS } from "./providers";
 import { ORDERED_REASONING_EFFORTS } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
@@ -17,6 +18,23 @@ export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
 
 export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
 export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
+
+// Raw model selection coming from the input-bar model picker: an explicit
+// provider/model pick, with an optional reasoning-effort override.
+export const ModelSelectionSchema = z.object({
+  type: z.literal("model"),
+  providerId: z.enum(MODEL_PROVIDER_IDS),
+  modelId: z.string(),
+  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
+});
+export type ModelSelectionType = z.infer<typeof ModelSelectionSchema>;
+
+// A concrete model resolved from a picker selection at message-send time.
+export type ResolvedRequestedModel = {
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  reasoningEffort: ReasoningEffort;
+};
 
 // z.object (not z.record) so every reasoning effort key is required.
 const ReasoningEffortSupportSchema = z.object({

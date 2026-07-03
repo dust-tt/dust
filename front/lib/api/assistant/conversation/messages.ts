@@ -36,7 +36,7 @@ import type {
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
-import type { RequestedAgentModel } from "@app/types/assistant/models/types";
+import type { ResolvedRequestedModel } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -268,7 +268,7 @@ export const createAgentMessages = async (
           // Per-message model override (input-bar picker), already resolved to a
           // concrete model. Applied to every agent message created here. Null
           // when the agents run their configured models.
-          requestedModel?: RequestedAgentModel | null;
+          requestedModel?: ResolvedRequestedModel | null;
         };
     transaction?: Transaction;
   }
@@ -302,7 +302,6 @@ export const createAgentMessages = async (
             agentConfigurationVersion: agentConfiguration.version,
             workspaceId: owner.id,
             skipToolsValidation: metadata.agentMessage.skipToolsValidation,
-            requestedModelTier: retriedModel?.tier ?? null,
             requestedProviderId: retriedModel?.providerId ?? null,
             requestedModelId: retriedModel?.modelId ?? null,
             requestedReasoningEffort: retriedModel?.reasoningEffort ?? null,
@@ -466,7 +465,6 @@ export const createAgentMessages = async (
                 agentConfigurationVersion: configuration.version,
                 workspaceId: owner.id,
                 skipToolsValidation: metadata.skipToolsValidation,
-                requestedModelTier: metadata.requestedModel?.tier ?? null,
                 requestedProviderId:
                   metadata.requestedModel?.providerId ?? null,
                 requestedModelId: metadata.requestedModel?.modelId ?? null,

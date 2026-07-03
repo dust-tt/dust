@@ -413,11 +413,6 @@
  *           nullable: true
  *           description: Per-message model override from the input-bar model picker. Null when the agent ran its configured model.
  *           properties:
- *             tier:
- *               type: string
- *               nullable: true
- *               enum: [efficient, balanced, powerful]
- *               description: The abstract tier the user picked, or null for an explicit ("advanced") model pick.
  *             providerId:
  *               type: string
  *             modelId:

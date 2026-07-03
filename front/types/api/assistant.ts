@@ -33,9 +33,9 @@ export const MessageBaseSchema = z.object({
     originMessageId: z.string().optional(),
     origin: UserMessageOriginSchema.optional(),
   }),
-  // Optional per-message model override from the input-bar model picker (a tier
-  // or an explicit model pick). Resolved to a concrete model server-side at send
-  // time; omitted means the agent runs its configured model.
+  // Optional per-message model override from the input-bar model picker (an
+  // explicit model pick). Resolved to a concrete model server-side at send time;
+  // omitted means the agent runs its configured model.
   modelSelection: ModelSelectionSchema.optional(),
 });
 

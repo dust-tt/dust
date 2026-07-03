@@ -161,7 +161,7 @@ import {
 } from "@app/types/assistant/mentions";
 import type {
   ModelSelectionType,
-  RequestedAgentModel,
+  ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
@@ -600,14 +600,8 @@ export async function postUserMessage(
   // Resolve the picker selection to a concrete model for this workspace. If it
   // cannot be honored (unknown/disabled model), we leave `requestedModel` null
   // and the agent's configured model is used.
-  const resolvedRequestedModel = modelSelection
+  const requestedModel: ResolvedRequestedModel | null = modelSelection
     ? resolveModelSelection(auth, modelSelection, { featureFlags })
-    : null;
-  const requestedModel: RequestedAgentModel | null = resolvedRequestedModel
-    ? {
-        ...resolvedRequestedModel,
-        tier: modelSelection?.type === "tier" ? modelSelection.tier : null,
-      }
     : null;
 
   const isPartOfPod = isPodConversation(conversation);

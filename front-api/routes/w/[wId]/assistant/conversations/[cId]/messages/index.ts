@@ -154,29 +154,18 @@ const app = workspaceApp();
  *                 type: boolean
  *               modelSelection:
  *                 type: object
- *                 description: Optional per-message model override from the input-bar model picker. Either a tier or an explicit model pick.
- *                 oneOf:
- *                   - type: object
- *                     required: [type, tier]
- *                     properties:
- *                       type:
- *                         type: string
- *                         enum: [tier]
- *                       tier:
- *                         type: string
- *                         enum: [efficient, balanced, powerful]
- *                   - type: object
- *                     required: [type, providerId, modelId]
- *                     properties:
- *                       type:
- *                         type: string
- *                         enum: [model]
- *                       providerId:
- *                         type: string
- *                       modelId:
- *                         type: string
- *                       reasoningEffort:
- *                         type: string
+ *                 description: Optional per-message model override from the input-bar model picker (an explicit model pick).
+ *                 required: [type, providerId, modelId]
+ *                 properties:
+ *                   type:
+ *                     type: string
+ *                     enum: [model]
+ *                   providerId:
+ *                     type: string
+ *                   modelId:
+ *                     type: string
+ *                   reasoningEffort:
+ *                     type: string
  *     responses:
  *       200:
  *         description: Successfully posted message
