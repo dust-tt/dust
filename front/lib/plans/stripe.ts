@@ -848,13 +848,17 @@ export async function markSubscriptionForMigrationRefund({
 
 /**
  * Refund the unused prepaid time of a yearly subscription that was cut over
- * early by the migration. Prorated on remaining days:
- *   refund = amountPaid × (periodEnd − actualEnd) / (periodEnd − periodStart)
+ * early by the migration. Prorated on remaining days, where the paid period is
+ * taken from the invoice's yearly line item (NOT the subscription's
+ * `current_period_*`, which Stripe clamps to the cancel date):
+ *   refund = amountPaid × (paidPeriodEnd − actualEnd) / (paidPeriodEnd − paidPeriodStart)
  *
  * Only acts when the subscription is yearly, carries the migration-refund
  * marker, ended before its paid period end, and its latest invoice was paid.
  * The refund is issued against that invoice's charge and bounded by the amount
- * paid. Returns the refunded amount in cents (0 when nothing to refund).
+ * paid. After refunding to the card, reverses the matching unused-time credit
+ * Stripe auto-adds to the customer balance, so the customer isn't refunded
+ * twice. Returns the refunded amount in cents (0 when nothing to refund).
  */
 export async function refundYearlyMigrationProration({
   stripeSubscription,
@@ -883,14 +887,41 @@ export async function refundYearlyMigrationProration({
       return new Ok({ refundedCents: 0 });
     }
 
-    const periodStartSec = stripeSubscription.current_period_start;
-    const periodEndSec = stripeSubscription.current_period_end;
+    const latestInvoiceId =
+      typeof stripeSubscription.latest_invoice === "string"
+        ? stripeSubscription.latest_invoice
+        : (stripeSubscription.latest_invoice?.id ?? null);
+    if (!latestInvoiceId) {
+      logger.warn(
+        { stripeSubscriptionId: stripeSubscription.id },
+        "[Stripe] Yearly migration refund: no latest invoice, skipping"
+      );
+      return new Ok({ refundedCents: 0 });
+    }
+    const invoice = await stripe.invoices.retrieve(latestInvoiceId);
+
+    // Anchor the proration on the ACTUALLY-PAID coverage window, taken from the
+    // invoice's yearly line item(s). We can't use `subscription.current_period_*`
+    // here: once a cancellation is scheduled, Stripe clamps `current_period_end`
+    // to the cancel date, so `remaining` would read 0 and no refund would fire.
+    const yearlyLines = invoice.lines.data.filter(
+      (line) => line.price?.recurring?.interval === "year"
+    );
+    const paidPeriodStartSec =
+      yearlyLines.length > 0
+        ? Math.min(...yearlyLines.map((line) => line.period.start))
+        : stripeSubscription.current_period_start;
+    const paidPeriodEndSec =
+      yearlyLines.length > 0
+        ? Math.max(...yearlyLines.map((line) => line.period.end))
+        : stripeSubscription.current_period_end;
+
     const actualEndSec =
       stripeSubscription.ended_at ??
       stripeSubscription.canceled_at ??
       Math.floor(Date.now() / 1000);
-    const periodSec = periodEndSec - periodStartSec;
-    const remainingSec = periodEndSec - actualEndSec;
+    const periodSec = paidPeriodEndSec - paidPeriodStartSec;
+    const remainingSec = paidPeriodEndSec - actualEndSec;
     if (periodSec <= 0 || remainingSec <= 0) {
       logger.info(
         {
@@ -903,18 +934,6 @@ export async function refundYearlyMigrationProration({
       return new Ok({ refundedCents: 0 });
     }
 
-    const latestInvoiceId =
-      typeof stripeSubscription.latest_invoice === "string"
-        ? stripeSubscription.latest_invoice
-        : (stripeSubscription.latest_invoice?.id ?? null);
-    if (!latestInvoiceId) {
-      logger.warn(
-        { stripeSubscriptionId: stripeSubscription.id, remainingSec },
-        "[Stripe] Yearly migration refund: no latest invoice, skipping"
-      );
-      return new Ok({ refundedCents: 0 });
-    }
-    const invoice = await stripe.invoices.retrieve(latestInvoiceId);
     const chargeId =
       typeof invoice.charge === "string" ? invoice.charge : invoice.charge?.id;
     if (!chargeId) {
@@ -965,9 +984,82 @@ export async function refundYearlyMigrationProration({
       return new Ok({ refundedCents: 0 });
     }
     await stripe.refunds.create({ charge: chargeId, amount: refundedCents });
+
+    // When the scheduled cancellation fired, Stripe credited the unused time to
+    // the customer's balance (store credit that would offset a future
+    // Metronome-pushed invoice). We've now refunded that same unused time to the
+    // card, so remove the matching credit — otherwise the customer is refunded
+    // twice. Bounded by the credit actually present, so we never push the
+    // customer into a debit if no (or a smaller) credit was created.
+    await reverseMigrationBalanceCredit({
+      stripeSubscription,
+      refundedCents,
+      currency: charge.currency,
+    });
+
     return new Ok({ refundedCents });
   } catch (err) {
     return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Remove up to `refundedCents` of credit from the customer's Stripe balance,
+ * used after a yearly-migration card refund to cancel out the unused-time
+ * credit Stripe auto-creates on cancellation (so the customer isn't refunded
+ * twice — once to the card, once as balance credit). No-op when the customer
+ * has no credit balance. Best-effort: logs and swallows failures so a balance
+ * hiccup never blocks the (already-issued) refund.
+ */
+async function reverseMigrationBalanceCredit({
+  stripeSubscription,
+  refundedCents,
+  currency,
+}: {
+  stripeSubscription: Stripe.Subscription;
+  refundedCents: number;
+  currency: string;
+}): Promise<void> {
+  const stripe = getStripeClient();
+  const stripeCustomerId = getCustomerId(stripeSubscription);
+  const customer = await getStripeCustomer(stripeCustomerId);
+  // A negative balance is credit owed to the customer (offsets future invoices).
+  const creditCents = customer && customer.balance < 0 ? -customer.balance : 0;
+  const reverseCents = Math.min(creditCents, refundedCents);
+  if (reverseCents <= 0) {
+    logger.info(
+      { stripeSubscriptionId: stripeSubscription.id, stripeCustomerId },
+      "[Stripe] Yearly migration refund: no balance credit to reverse"
+    );
+    return;
+  }
+  try {
+    // A positive amount debits the customer, bringing a credit balance back
+    // toward zero.
+    await stripe.customers.createBalanceTransaction(stripeCustomerId, {
+      amount: reverseCents,
+      currency,
+      description:
+        "Reversed unused-time credit: refunded to card (legacy → Business yearly migration)",
+    });
+    logger.info(
+      {
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeCustomerId,
+        reverseCents,
+      },
+      "[Stripe] Yearly migration refund: reversed unused-time balance credit"
+    );
+  } catch (err) {
+    logger.error(
+      {
+        stripeSubscriptionId: stripeSubscription.id,
+        stripeCustomerId,
+        reverseCents,
+        err: normalizeError(err).message,
+      },
+      "[Stripe] Yearly migration refund: failed to reverse balance credit (refund already issued)"
+    );
   }
 }
 
