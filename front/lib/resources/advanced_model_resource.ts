@@ -1,3 +1,7 @@
+import {
+  type ResolvedAllowedAdvancedModels,
+  resolveAllowedAdvancedModels,
+} from "@app/lib/advanced_models/resolve_allowed";
 import { isAdvancedModel as isAdvancedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -29,6 +33,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
+import { Op } from "sequelize";
 
 export class AdvancedModelResource {
   private static assertIsAdmin(auth: Authenticator): void {
@@ -396,8 +401,114 @@ export class AdvancedModelResource {
     this.assertIsAdmin(auth);
 
     const workspace = auth.getNonNullableWorkspace();
+    return this.loadWorkspaceAllowedAdvancedModels(workspace.id);
+  }
+
+  static async resolveAllowedAdvancedModels(
+    auth: Authenticator,
+    {
+      user,
+      groupModelIds: explicitGroupModelIds,
+    }: {
+      user?: UserResource | null;
+      groupModelIds?: ModelId[];
+    } = {}
+  ): Promise<ResolvedAllowedAdvancedModels> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    let groupModelIds = explicitGroupModelIds;
+    if (groupModelIds === undefined && user) {
+      groupModelIds = await GroupResource.dangerouslyListUserGroupsForAuth({
+        user,
+        workspace,
+      });
+    }
+    groupModelIds = groupModelIds ?? [];
+
+    const [workspaceAllowedAdvancedModels, groupModelsByGroupId, userModels] =
+      await Promise.all([
+        this.loadWorkspaceAllowedAdvancedModels(workspace.id),
+        groupModelIds.length > 0
+          ? this.loadGroupAllowedAdvancedModelsByGroupId({
+              workspaceId: workspace.id,
+              groupModelIds,
+            })
+          : Promise.resolve(new Map<ModelId, AllowedAdvancedModelType[]>()),
+        user
+          ? this.loadUserAllowedAdvancedModels({
+              workspaceId: workspace.id,
+              userModelId: user.id,
+            })
+          : Promise.resolve([]),
+      ]);
+
+    const groupAllowedAdvancedModelsList = groupModelIds.map(
+      (groupModelId) => groupModelsByGroupId.get(groupModelId) ?? []
+    );
+
+    return resolveAllowedAdvancedModels({
+      workspaceAllowedAdvancedModels,
+      groupAllowedAdvancedModelsList,
+      userAllowedAdvancedModels: userModels,
+    });
+  }
+
+  private static async loadWorkspaceAllowedAdvancedModels(
+    workspaceId: ModelId
+  ): Promise<AllowedAdvancedModelType[]> {
     const rows = await WorkspaceAllowedAdvancedModel.findAll({
-      where: { workspaceId: workspace.id },
+      where: { workspaceId },
+    });
+
+    return rows.flatMap((row) => {
+      const model = this.parseAllowedAdvancedModelRow(row);
+      return model ? [model] : [];
+    });
+  }
+
+  private static async loadGroupAllowedAdvancedModelsByGroupId({
+    workspaceId,
+    groupModelIds,
+  }: {
+    workspaceId: ModelId;
+    groupModelIds: ModelId[];
+  }): Promise<Map<ModelId, AllowedAdvancedModelType[]>> {
+    const rows = await GroupAllowedAdvancedModel.findAll({
+      where: {
+        workspaceId,
+        groupId: {
+          [Op.in]: groupModelIds,
+        },
+      },
+    });
+
+    const modelsByGroupId = new Map<ModelId, AllowedAdvancedModelType[]>();
+    for (const row of rows) {
+      const model = this.parseAllowedAdvancedModelRow(row);
+      if (!model) {
+        continue;
+      }
+
+      const models = modelsByGroupId.get(row.groupId) ?? [];
+      models.push(model);
+      modelsByGroupId.set(row.groupId, models);
+    }
+
+    return modelsByGroupId;
+  }
+
+  private static async loadUserAllowedAdvancedModels({
+    workspaceId,
+    userModelId,
+  }: {
+    workspaceId: ModelId;
+    userModelId: ModelId;
+  }): Promise<AllowedAdvancedModelType[]> {
+    const rows = await UserAllowedAdvancedModel.findAll({
+      where: {
+        workspaceId,
+        userId: userModelId,
+      },
     });
 
     return rows.flatMap((row) => {
