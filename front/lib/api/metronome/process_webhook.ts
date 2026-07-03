@@ -1363,11 +1363,7 @@ export async function processMetronomeWebhook({
 
     case "credit.segment.start":
     case "credit.edit": {
-      const {
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        credit_id: creditId,
-      } = event;
+      const { customer_id: metronomeCustomerId, credit_id: creditId } = event;
 
       const creditResult = await getMetronomeCredit({
         metronomeCustomerId,
@@ -1406,25 +1402,10 @@ export async function processMetronomeWebhook({
         }
       }
 
-      if (event.type === "credit.segment.start") {
-        // Special case: only a contract-bound managed free credit drives the
-        // free monthly/yearly credit grant. Customer-level credits with no
-        // parent contract can't be the managed free credit, so stop here.
-        if (!contractId) {
-          break;
-        }
-
-        const grantResult = await handleFreeCreditSegmentGrant({
-          workspace,
-          metronomeCustomerId,
-          contractId,
-          creditId,
-          segmentId: event.segment_id,
-        });
-        if (grantResult.isErr()) {
-          return grantResult;
-        }
-      }
+      // The free monthly/yearly credit grant is now driven by the Stripe
+      // `customer.subscription.updated` webhook (see
+      // `grantFreeCreditsForSubscription`), which creates the DB credit and
+      // syncs the amount back into Metronome. We no longer grant it here.
       break;
     }
 
