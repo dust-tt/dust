@@ -33,9 +33,9 @@ this document is detail in service of one of its steps. One pass of the loop:
    one \`--qa\` call (§4.2) — pass them as a slide pattern (\`--qa 2,5,7-9\`) so the
    whole batch renders in a single pass — and read **each** one back:
 
-   > **\`pptx_inspect --qa 2,5,7-9\` → read every slide back against its text →
-   > fix what's wrong → re-run \`--qa N\` on each slide you fixed → done only once
-   > every slide reads back clean.**
+   > **\`pptx_inspect --qa 2,5,7-9\` → open each slide's render with \`files__cat\`
+   > and read it back against its text → fix what's wrong → re-run \`--qa N\` on
+   > each slide you fixed → done only once every slide reads back clean.**
 
    This QA pass is the **single most important thing in the skill, and it is
    itself a loop** — for any slide that doesn't read clean you edit it and re-run
@@ -70,15 +70,20 @@ that is mode C (§3).**
 
 Your first read of the copy is \`pptx_inspect\`, never \`markitdown\` (it drops
 layouts, placeholders, positioning, charts, and media — you'd rebuild blind)
-and never a PDF render (slow, burns vision tokens; renders are for a quick
-visual look, not structural reading).
+and never a PDF render for structural reading (it is slow, and a render shows
+pixels, not the \`#id\`-tagged structure you edit by — and you only ever see a
+render by opening it with \`files__cat\`, §4.2; viewing one then also costs vision
+tokens). Renders are for the visual QA pass, not the first structural read.
 
 \`\`\`bash
-pptx_inspect output.pptx                 # overview: theme, fonts, words/slide, per-slide kinds
-pptx_inspect output.pptx --layouts       # every layout's placeholders + resolved typography
-pptx_inspect output.pptx --text          # all readable text per slide (incl. notes)
-pptx_inspect output.pptx --slide 3       # one slide's shapes, positions, fit warnings
-pptx_inspect output.pptx --media         # embedded images / audio / video
+# Pass the full /files/conversation/ path — the sandbox shell starts in
+# /home/agent, not the conversation folder, and the render-publish step needs the
+# mount path to make renders viewable (§4.2).
+pptx_inspect /files/conversation/output.pptx              # overview: theme, fonts, words/slide, per-slide kinds
+pptx_inspect /files/conversation/output.pptx --layouts    # every layout's placeholders + resolved typography
+pptx_inspect /files/conversation/output.pptx --text       # all readable text per slide (incl. notes)
+pptx_inspect /files/conversation/output.pptx --slide 2,5,7-9  # shapes/positions/fit for those slides in ONE call (a single N works too)
+pptx_inspect /files/conversation/output.pptx --media      # embedded images / audio / video
 \`\`\`
 
 The overview gives you three contracts:
@@ -103,9 +108,11 @@ bold for a section number, not Arial 18pt.
 box labels to read a slide back, §4.2) and flags copy repeated across the
 deck — usually un-replaced template scaffolding ("Subject title", "Summary").
 
-\`--slide N\` shows each shape with its position/size in inches, placeholder
-type, per-paragraph typography including \`vanchor\` (vertical text anchor), and
-a text-fit estimate (\`holds~Nch@Spt\`). It marks problems at two levels:
+\`--slide N[,N,...]\` shows each shape with its position/size in inches,
+placeholder type, per-paragraph typography including \`vanchor\` (vertical text
+anchor), and a text-fit estimate (\`holds~Nch@Spt\`). It takes a slide pattern,
+so inspect every slide you're about to edit in **one** call rather than one per
+slide. It marks problems at two levels:
 
 - **\`[!]\` blockers** — must be zero before delivery: empty placeholder, manual
   bullet glyph, edge overflow, text overset, **image distorted** (box ratio ≠
@@ -182,19 +189,20 @@ quote / pull-quote      -> slide 20
 closing / thank-you     -> slide 25   (layout BLANK, dark)
 \`\`\`
 
-If you are unsure what a slide looks like, skim the renders
-(\`pptx_inspect template.pptx --render\`). The goal is to map every kind of slide
-you need onto a real slide that already exists and already carries the right
-images and placeholders.
+If you are unsure what a slide looks like, skim the renders — \`--render\` for the
+whole deck, or \`--render --slide 2,5,7-9\` to rasterize just the exemplars you're
+weighing in one shared pass. The goal is to map every kind of slide you need onto
+a real slide that already exists and already carries the right images and
+placeholders.
 
 **Materialize with \`pptx_slides\`, never by hand.** Clone each exemplar into
 place and delete what you did not reuse — all through \`pptx_slides\`, never by
 hand-editing the slide list:
 
 \`\`\`bash
-pptx_slides output.pptx --duplicate 13 --count 1 --after 4   # clone the 3-up grid
-pptx_slides output.pptx --move 27 --to 5                      # put it where you want
-pptx_slides output.pptx --delete 14-16,20-24                 # drop unused template slides
+pptx_slides /files/conversation/output.pptx --duplicate 13 --count 1 --after 4   # clone the 3-up grid
+pptx_slides /files/conversation/output.pptx --move 27 --to 5                      # put it where you want
+pptx_slides /files/conversation/output.pptx --delete 14-16,20-24                 # drop unused template slides
 \`\`\`
 
 Both \`--duplicate\` and \`--delete\` take a slide pattern — a single slide, a
@@ -256,7 +264,8 @@ what keeps each slide deliberate and gives the §4 loop its agenda.
 
 Reason about **space**, because font size — not word count — decides whether text
 fits a box. Pull each placeholder's \`box\` and resolved \`font_pt\` from
-\`--slide\` and \`--layouts\`; each text shape prints its capacity
+\`--slide\` (pass every slide in your plan as one pattern — \`--slide 2,5,7-9\` —
+not a call per slide) and \`--layouts\`; each text shape prints its capacity
 (\`holds~Nch@Spt\`). If your text exceeds what the box holds at the template's
 size, **cut the text** — do not shrink below the template's sizes, and do not
 exceed the density ceiling (Design guidance).
@@ -299,24 +308,42 @@ paragraph is made of (python-pptx calls them the paragraph's \`runs\`). Assignin
 to \`.text\` (on a text frame, paragraph, or table cell) **deletes every segment
 and its formatting** — typeface, size, weight, and color reset to the default.
 That is safe only for a placeholder \`--slide\` reports as *empty*. To replace
-text that is already styled — most of a template — edit the existing segment in
-place:
+text that is already styled — most of a template — write into the existing
+segments instead.
+
+**A paragraph is almost never one segment.** PowerPoint silently splits a single
+styled line into several runs (a proofing-language boundary, an old edit, an
+autocorrect), so a title that looks like one phrase is often stored as
+\`["Work doesn't ", "just get done."]\`. Setting only \`runs[0].text\` replaces
+the *first* segment and **leaves the rest**, so the old tail survives and renders
+*appended* to your new text (you get \`"New headingjust get done."\`). This is the
+single most common editing bug. Replace a paragraph's text by writing into the
+first run and **deleting the others** — use this helper for every text edit:
 
 \`\`\`python
+def set_text(paragraph, text):
+    """Replace a paragraph's text in place: keep the first run's formatting and
+    drop the trailing runs so no stale segment survives."""
+    runs = paragraph.runs
+    if not runs:
+        paragraph.text = text                  # truly empty paragraph: .text is fine
+        return
+    runs[0].text = text                        # keeps typeface / size / weight / color
+    for r in runs[1:]:
+        r._r.getparent().remove(r._r)          # delete the old tail segments
+
 prs = Presentation("/files/conversation/output.pptx")
-title = prs.slides[0].shapes.title
-
-runs = title.text_frame.paragraphs[0].runs   # the paragraph's segments
-if runs:
-    runs[0].text = "Work doesn't just get done."   # keeps typeface/size/weight/color
-else:
-    title.text_frame.text = "Work doesn't just get done."   # truly empty: .text is fine
-
+set_text(prs.slides[0].shapes.title.text_frame.paragraphs[0],
+         "Work doesn't just get done.")
 prs.save("/files/conversation/output.pptx")
 \`\`\`
 
-If a paragraph mixes segments (a bold word mid-sentence), map your text onto the
-matching segments instead of collapsing them into one.
+Define \`set_text\` once at the top of your edit script (§4.1) and route every
+text change through it. The only time to keep more than one segment is when you
+*intend* mixed styling within the line (a bold word mid-sentence): then map each
+piece of your text onto its matching run and don't delete them. For ordinary
+"replace this line with that line," \`set_text\` is the rule — always clear the
+tail.
 
 **Fill the box's content slots, not its spacers.** A text box is not a flat list
 of lines. \`--slide\` prints its skeleton — \`p[0]\`, \`p[1]\`, … — including
@@ -332,7 +359,7 @@ leave the \`(empty)\` paragraphs empty:
 \`\`\`python
 tf = slide.shapes[0].text_frame
 for slot, line in zip((2, 4, 6, 8), bullets):   # content slots, read from --slide
-    tf.paragraphs[slot].runs[0].text = line     # edit in place: keeps color/size/weight
+    set_text(tf.paragraphs[slot], line)          # edit in place: keeps style, clears tail
 \`\`\`
 
 Never write into a spacer. A segment added to an \`(empty)\` slot inherits a
@@ -392,15 +419,11 @@ placeholder in \`--layouts\`; otherwise the segment falls back to the theme's Ar
 and looks foreign next to the rest of the deck.
 
 **Tables.** Update the cells of the table that is already there; never draw a new
-one over it. The \`.text\` segment rule applies to cells:
+one over it. The same segment rule applies to cells — a styled cell is split into
+runs just like any paragraph, so route it through \`set_text\` too:
 
 \`\`\`python
-cell = table.cell(1, 0)
-runs = cell.text_frame.paragraphs[0].runs
-if runs:
-    runs[0].text = "Engineering"   # styled cell: keep its font and fill
-else:
-    cell.text = "Engineering"      # empty cell: .text is fine
+set_text(table.cell(1, 0).text_frame.paragraphs[0], "Engineering")  # keeps font + fill
 \`\`\`
 
 With fewer data rows than the template's table provides, leave the extra rows
@@ -421,6 +444,17 @@ _, rId = pic.part.get_or_add_image_part("/files/conversation/logo.png")
 pic._element.blipFill.blip.set(qn("r:embed"), rId)
 \`\`\`
 
+**Never put your text over a background image that already has text.** Some
+template backgrounds bake a headline, tagline, or watermark into the image itself
+(a small corner logo is fine; a sentence is not). Layering your own text on top
+makes two texts clash — and z-order does not fix it: your text wins the pixels it
+covers, but both still render and collide. If a background image carries text,
+pick a text-free background/exemplar, or **delete the background picture** (remove
+its \`<p:pic>\`, \`pic.element.getparent().remove(pic.element)\`) and let the
+layout's own background show. Do not try to thread your text around the baked-in
+words. This is a collision the \`--qa\` check cannot see (the words are pixels in
+an image, not a text box), so it is on you at authoring time.
+
 **Use real content; remove template guidance.** Fill slides from the user's
 actual material. If a value the template expects is genuinely missing, leave a
 visible placeholder (\`[TBD: Q3 revenue]\`) and flag it rather than inventing a
@@ -434,28 +468,46 @@ survive in the delivered deck.
 Once every slide is edited (§4.1), QA them — this is not a final glance, it is
 the gate, and it is **not optional**. \`--qa\` takes a slide pattern, so QA the
 whole batch you changed in one call: it converts the deck once and reuses that
-render across the slides, far faster than a call per slide. \`--qa\` bundles the
-two halves of QA so you can't look at one without the other — each slide's
-\`#id\`-tagged text and its boxed diagnostic render:
+render across the slides, far faster than a call per slide. For each slide it
+prints two halves you must check together — the slide's \`#id\`-tagged text, and
+a **boxed diagnostic render published as an image you open**:
 
 \`\`\`bash
-pptx_inspect output.pptx --qa 2,5,7-9        # QA every edited slide in one render pass
-pptx_inspect output.pptx --qa 6              # re-QA just slide 6 after fixing it
+pptx_inspect /files/conversation/output.pptx --qa 2,5,7-9   # render every edited slide in one pass
+pptx_inspect /files/conversation/output.pptx --qa 6         # re-QA just slide 6 after fixing it
 \`\`\`
 
-Read **every** slide in the batch back individually (see "The gate is a readback"
-below); batching the render is for speed, not an excuse to skim. On a large deck,
-split the batch into a few \`--qa\` calls if the combined output is truncated. A
-slide is done only when its own readback is clean, run after its last edit.
+**Open every render — the printed text alone is only half the gate.** \`--qa\`
+does not put the pixels in front of you; it writes each slide's render into the
+conversation and prints, for each slide, its render's path like
+\`slide 5: conversation-<id>/.pptx_render/output/slide-005-boxes.jpg\`
+(with your real conversation id already filled in). You must actually **look** at
+each one: call the **\`files__cat\` tool** on the exact path it printed — not the
+literal \`<id>\` — and the rendered slide is shown to you as an image. This is the
+one place to reach for \`files__cat\` instead of the sandbox shell — a bash
+\`cat\` of an image returns binary garbage; only the \`files__cat\` tool passes the
+real pixels to you. If a render ever comes back as text or a JSON blob instead of
+an image, your model cannot see images — say so and do not claim a visual
+readback you could not perform. (The renders go in a separate \`.pptx_render/\`
+folder; never copy or move them — the command already put them where you can view
+them.)
 
-\`--render\` (no boxes) is only a quick visual look — it shows nothing
-diagnostic, so it is **not** a QA step. The diagnostic boxes live in \`--qa\`.
+**Read every slide back, one at a time.** Batching the render is for speed, not
+an excuse to skim: open slide 2's render and check it against slide 2's text, then
+open slide 5's, and so on — every edited slide gets its own look, taken after its
+last edit. On a large deck, split into a few \`--qa\` calls if the output is
+truncated. A slide is done only when its own readback is clean.
+
+\`--render\` (no boxes) is the same files__cat viewing for a quick look, but it
+shows nothing diagnostic, so it is **not** a QA step. The diagnostic boxes live
+in \`--qa\`.
 
 \`--qa\` shows the rendered pixels; it does **not** repeat the structural \`[!]\`
-lints from \`--slide\` (§2). So the per-slide check is two reads of the slide you
-just edited: clear every \`--slide N\` \`[!]\` (empty placeholder, manual bullet,
-overset, distorted / low-res image, stacked box — editing readily introduces
-these), **and** read it back under \`--qa N\`. Confirm no template sample copy
+lints from \`--slide\` (§2). So the per-slide check is two reads of every slide you
+just edited — run both over the whole batch, one call each (\`--slide 2,5,7-9\`,
+\`--qa 2,5,7-9\`): clear every \`[!]\` the \`--slide\` view reports (empty placeholder,
+manual bullet, overset, distorted / low-res image, stacked box — editing readily
+introduces these), **and** read it back under \`--qa\`. Confirm no template sample copy
 survives either (\`xxxx\`, \`lorem\`, draft titles, \`<Client name>\`) — \`--text\`
 and the \`[leftover?]\` marks make that fast. A slide is done only when both reads
 are clean.
@@ -473,17 +525,20 @@ they reveal is real in PowerPoint even though the *text glyphs* render in
 substitute fonts; a grown box is an estimate biased larger, so judge a flagged
 overlap against the rendered text rather than treating the grown extent as exact.
 
-**The gate is a readback.** \`--qa\` prints the slide's authoritative text above
-the render, each line tagged with its shape \`#id\`. For every labeled box, read
-what the render shows and confirm it matches that \`#id\`'s text. If you cannot
-read a box's text back — **clipped** at the box edge (overflow), **too faint**
-against its background (e.g. dark text on a dark slide), or **hidden** under
-another shape (occlusion) — that is a real defect, not a render artifact. A box
-you can't read back is the most reliable signal that something is wrong.
+**The gate is a readback.** \`--qa\` prints the slide's authoritative text, each
+line tagged with its shape \`#id\`, plus the \`files__cat\` path to its render.
+Open that render, then for every labeled box read what the **image** shows and
+confirm it matches that \`#id\`'s text. If you cannot read a box's text back —
+**clipped** at the box edge (overflow), **too faint** against its background (e.g.
+dark text on a dark slide), or **hidden** under another shape (occlusion) — that
+is a real defect, not a render artifact. A box you can't read back is the most
+reliable signal that something is wrong.
 
 Go box by box, by asset class (the label gives you the kind):
 
-- **text / ph** — the full text reads back, is legible against its background,
+- **text / ph** — the full text reads back, is legible against its background
+  (including any text *baked into a background image* under it — that's a clash,
+  not a free pass, and z-order doesn't resolve it; drop the image, see §4.1),
   stays inside its box, and isn't covered. Overflow → cut text (preferred), or
   resize/raise the box to fit (template boxes too — see "Adapt the template to
   your content", §4.1); keep type at or above the template's sizes. Faint →
@@ -512,8 +567,9 @@ Go box by box, by asset class (the label gives you the kind):
 - **auto / shape** — decoration or background only; it must not cover content
   text.
 
-Fix, then re-run \`--qa N\` on that slide and read it back again. Repeat until the
-slide reads back clean — *that* is when the slide is done and you move on.
+Fix, then re-run \`--qa N\` on that slide and **open its new render** with
+\`files__cat\` to read it back again. Repeat until the slide reads back clean —
+*that* is when the slide is done and you move on.
 
 **No stale passes.** The \`--qa N\` that counts is the one run *after* your last
 edit to slide N — a result from before that edit is stale and hides the defect
@@ -526,7 +582,8 @@ rendered pixels, so it cannot see a stranded marker — only \`--qa\` can.
 What is **not** a defect: a few pixels of reflow or a substituted typeface — if
 the customer has the font, their PowerPoint is correct. To tell artifact from
 defect, view the template's matching slide the same way (\`pptx_inspect
-template.pptx --qa N\`) and compare like-for-like. For autofit text or dense
+/files/conversation/template.pptx --qa N\`, then open its render with
+\`files__cat\`) and compare like-for-like. For autofit text or dense
 tables, where this renderer is least reliable, note in your summary that they
 should be confirmed in PowerPoint before the deck reaches a customer.
 
@@ -539,7 +596,7 @@ per-slide QA pass cannot see.
 **A. Deck-level audit** — run \`--compare\`:
 
 \`\`\`bash
-pptx_inspect output.pptx --compare /files/conversation/template.pptx
+pptx_inspect /files/conversation/output.pptx --compare /files/conversation/template.pptx
 \`\`\`
 
 Every line is a measurement — your deck's count vs the template's (in
@@ -611,7 +668,7 @@ export const pptxSkill = {
   instructions: PPTX_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
-  version: 2,
+  version: 5,
   icon: "ActionSlideshowIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

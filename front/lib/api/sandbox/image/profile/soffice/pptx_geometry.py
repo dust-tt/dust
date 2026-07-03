@@ -141,12 +141,6 @@ def _text_extent_box(
         return None
     w_in = shape.width / EMU_PER_INCH
     h_in = shape.height / EMU_PER_INCH
-    char_w = size_pt * EXTENT_CHAR_WIDTH_EM / 72.0
-    if char_w <= 0:
-        return None
-    cpl = int(max(0.0, w_in - TEXTBOX_MARGIN_W_IN) / char_w)
-    if cpl < 1:
-        return None
     paragraphs = list(shape.text_frame.paragraphs)
     last = -1
     for i, p in enumerate(paragraphs):
@@ -154,12 +148,33 @@ def _text_extent_box(
             last = i
     if last < 0:
         return None
-    # Lines the copy needs: each paragraph wraps to ceil(chars/cpl) lines; an
-    # empty interior spacer still occupies one row; trailing empties ignored.
-    lines_needed = 0
-    for p in paragraphs[: last + 1]:
-        n = len(p.text or "")
-        lines_needed += max(1, -(-n // cpl))  # ceil division
+
+    # Lines the copy needs at a given glyph width, summed over paragraphs (each
+    # wraps to ceil(chars/cpl); an empty interior spacer still occupies one row;
+    # trailing empties ignored). None when the box is too narrow to hold a char.
+    def _lines_for(char_em: float) -> Optional[int]:
+        cw = size_pt * char_em / 72.0
+        if cw <= 0:
+            return None
+        cpl = int(max(0.0, w_in - TEXTBOX_MARGIN_W_IN) / cw)
+        if cpl < 1:
+            return None
+        return sum(
+            max(1, -(-len(p.text or "") // cpl))  # ceil division
+            for p in paragraphs[: last + 1]
+        )
+
+    # Two widths, two jobs. The conservative width (0.5em, the same as
+    # _fit_estimate) decides WHETHER the copy overflows: borderline copy that
+    # only the wider extent width would wrap is left alone, so a one-line title
+    # that just fits never fabricates a spill onto whatever sits below it. The
+    # generous width (0.6em — substitute fonts run wide) then decides HOW FAR to
+    # grow, so a genuine overflow still overshoots the text rather than
+    # under-covering it and missing a real collision.
+    lines_trigger = _lines_for(CHAR_WIDTH_EM)
+    lines_extent = _lines_for(EXTENT_CHAR_WIDTH_EM)
+    if lines_trigger is None or lines_extent is None:
+        return None
     line_h = size_pt * LINE_HEIGHT_FACTOR / 72.0
     if line_h <= 0:
         return None
@@ -170,10 +185,10 @@ def _text_extent_box(
     # design) and is never grown. One extra line is real overflow — a two-line
     # title in a one-line box spills onto whatever sits below it — so it grows;
     # EXTENT_MAX_GROWTH below bounds how far a mis-estimated wrap can take it.
-    if lines_needed < 2 or lines_needed < lines_avail + EXTENT_OVERFLOW_SLACK:
+    if lines_trigger < 2 or lines_trigger < lines_avail + EXTENT_OVERFLOW_SLACK:
         return None
     gen_line_h = size_pt * EXTENT_LINE_HEIGHT_FACTOR / 72.0
-    ext_h_in = lines_needed * gen_line_h + TEXTBOX_MARGIN_H_IN + EXTENT_PAD_IN
+    ext_h_in = lines_extent * gen_line_h + TEXTBOX_MARGIN_H_IN + EXTENT_PAD_IN
     new_h = int(round(ext_h_in * EMU_PER_INCH))
     # Cap the growth so a mis-estimated wrap can't balloon the box across the
     # slide (it still overshoots the text, just not unboundedly).
@@ -230,25 +245,29 @@ def _render_collision(
     decl_b: Tuple[int, int, int, int],
     eff_a: Tuple[int, int, int, int],
     eff_b: Tuple[int, int, int, int],
-) -> Tuple[bool, int]:
+) -> Tuple[bool, int, str]:
     """Whether the boxed render should flag two shapes as colliding, judged on
-    their effective (text-extent) boxes, plus the shallow-axis penetration (EMU).
+    their effective (text-extent) boxes, plus the shallow-axis penetration (EMU)
+    and a kind the QA digest tiers on.
 
     A peer overlap counts, as before. So does a containment that exists ONLY
     after a box grew to wrap overflowing text — that text spilled onto a
     neighbour. But a containment that already holds at the DECLARED sizes is an
     intentional foreground/background overlay (a label on a card) and does not.
-    Returns (flag, penetration_emu)."""
+    Returns (flag, penetration_emu, kind) where kind is "spill" (a box overflowed
+    its declared bounds onto a neighbour — almost always a defect), "peer" (a
+    partial overlap already present at declared geometry — often a designed
+    overlay), or "" when there is no collision."""
     kind, pen, _ = _classify_overlap(eff_a, eff_b)
     if kind == "peer":
-        return (True, pen)
+        return (True, pen, "peer")
     if kind == "contained":
         if _classify_overlap(decl_a, decl_b)[0] == "contained":
-            return (False, 0)  # designed fg/bg overlay, not a collision
+            return (False, 0, "")  # designed fg/bg overlay, not a collision
         ix = min(eff_a[0] + eff_a[2], eff_b[0] + eff_b[2]) - max(eff_a[0], eff_b[0])
         iy = min(eff_a[1] + eff_a[3], eff_b[1] + eff_b[3]) - max(eff_a[1], eff_b[1])
-        return (True, min(ix, iy))  # spillover depth on the shallow axis
-    return (False, 0)
+        return (True, min(ix, iy), "spill")  # spillover depth on the shallow axis
+    return (False, 0, "")
 
 
 def shape_kind(shape: BaseShape) -> str:
