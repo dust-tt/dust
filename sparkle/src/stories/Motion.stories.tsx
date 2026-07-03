@@ -1,17 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 
-import { Play } from "../index_with_tw_base";
-import { Copyable, useCssVar, withThemedSurface } from "./foundations-helpers";
+import { TokenChip, useCssVar, withThemedSurface } from "./foundations-helpers";
 
 const meta = {
   title: "Foundations/Motion",
+  tags: ["autodocs"],
   decorators: [withThemedSurface],
   parameters: {
-    layout: "centered",
+    layout: "padded",
     docs: {
       description: {
-        component: `Motion tokens as Tailwind utilities. Two decisions: **easing** (entering/exiting → ease-out, moving on screen → ease-in-out) and **duration** (bigger element → longer). Prefer the semantic aliases (\`ease-enter\`, \`duration-enter\`, …).`,
+        component: `Motion tokens as Tailwind utilities. Two decisions: **easing** (entering/exiting → ease-out, moving on screen → ease-in-out) and **duration** (bigger element → longer). Prefer the semantic aliases (\`ease-enter\`, \`duration-enter\`, …). Each token is shown as a reference row: a continuously looping specimen (a ball tracing the curve, a square spinning at the duration), a click-to-copy class chip, its resolved value, and a description of intended use.`,
       },
     },
   },
@@ -20,301 +20,361 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-interface MotionToken {
-  label: string;
-  easingClass?: string;
-  // Raw CSS value for curves that have no token on purpose (ease-in demo).
-  easingStyle?: string;
-  durationClass?: string;
-  circleClass?: string;
-  note?: string;
-}
+const SLIDE_KEYFRAMES = "sb-motion-slide";
+const SPIN_KEYFRAMES = "sb-motion-spin";
 
-interface MotionGroup {
-  group: string;
-  description: string;
-  items: MotionToken[];
-}
+// Keyframes for the looping specimens. The slide moves during the first 65%
+// and holds the rest, so each loop reads as one gesture with a beat between.
+const MotionKeyframes = () => (
+  <style>{`
+    @keyframes ${SLIDE_KEYFRAMES} {
+      0% { transform: translateX(0); }
+      65% { transform: translateX(8.25rem); }
+      100% { transform: translateX(8.25rem); }
+    }
+    @keyframes ${SPIN_KEYFRAMES} {
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sb-motion-specimen {
+        /* The specimens animate via inline style; only !important wins here. */
+        animation: none !important;
+      }
+    }
+  `}</style>
+);
 
-const EASING_GROUPS: MotionGroup[] = [
-  {
-    group: "Ease Out",
-    description:
-      "For anything entering or exiting the screen. The fast start feels responsive. Sorted weak → strong: bigger elements take stronger curves.",
-    items: [
-      {
-        label: "out-quad",
-        easingClass: "ease-out-quad",
-        note: "subtle: button press, small fades",
-      },
-      {
-        label: "out-cubic",
-        easingClass: "ease-out-cubic",
-        note: "the everyday default",
-      },
-      { label: "out-quart", easingClass: "ease-out-quart" },
-      {
-        label: "out-quint",
-        easingClass: "ease-out-quint",
-        note: "pronounced settle: modals, drawers",
-      },
-      {
-        label: "out-expo",
-        easingClass: "ease-out-expo",
-        note: "very snappy: large surfaces, sheets",
-      },
-    ],
-  },
-  {
-    group: "Ease In-Out",
-    description:
-      "For elements already on screen that move or morph. Never for enter/exit — the slow start delays feedback.",
-    items: [
-      {
-        label: "in-out-quad",
-        easingClass: "ease-in-out-quad",
-        note: "gentle: small position shifts",
-      },
-      {
-        label: "in-out-cubic",
-        easingClass: "ease-in-out-cubic",
-        note: "standard on-screen movement",
-      },
-      {
-        label: "in-out-quint",
-        easingClass: "ease-in-out-quint",
-        note: "dramatic: full-screen morphs",
-      },
-    ],
-  },
-  {
-    group: "Semantic aliases",
-    description:
-      "Prefer these in components so you can retune the whole system from one place.",
-    items: [
-      {
-        label: "enter",
-        easingClass: "ease-enter",
-        note: "= out-cubic — tooltips, dropdowns, popovers",
-      },
-      {
-        label: "emphasized",
-        easingClass: "ease-emphasized",
-        note: "= out-quint — modals, drawers",
-      },
-      {
-        label: "move",
-        easingClass: "ease-move",
-        note: "= in-out-quad — tab indicators, reorder",
-      },
-    ],
-  },
-];
-
-const EASE_IN_COMPARISON: MotionGroup = {
-  group: "Why there is no ease-in",
-  description:
-    "Ease-in starts slow and accelerates into the stop — the UI feels sluggish, so there are no ease-in tokens. For hovers use the default ease; ease-linear is for progress and marquees only.",
-  items: [
-    {
-      label: "out-cubic",
-      easingClass: "ease-out-cubic",
-      circleClass: "bg-green-500",
-      note: "responds instantly, settles naturally",
-    },
-    {
-      label: "ease-in",
-      easingStyle: "cubic-bezier(0.55, 0.085, 0.68, 0.53)",
-      circleClass: "bg-red-500",
-      note: "sluggish start, abrupt stop — avoid",
-    },
-  ],
+type MotionRow = {
+  // Utility class documented by the row; the chip copies it.
+  name: string;
+  // Raw CSS easing for curves that have no token on purpose (ease-in demo).
+  rawEasing?: string;
+  description?: React.ReactNode;
 };
 
-const DURATION_GROUPS: MotionGroup[] = [
-  {
-    group: "Primitives",
-    description:
-      "300ms is the ceiling for product UI. Anything used 100+ times a day: no animation at all.",
-    items: [
-      {
-        label: "duration-100",
-        durationClass: "duration-100",
-        note: "micro-interactions (press, toggle)",
-      },
-      {
-        label: "duration-150",
-        durationClass: "duration-150",
-        note: "hover & color transitions",
-      },
-      {
-        label: "duration-200",
-        durationClass: "duration-200",
-        note: "standard UI (tooltips, dropdowns)",
-      },
-      {
-        label: "duration-300",
-        durationClass: "duration-300",
-        note: "modals & drawers — the ceiling",
-      },
-    ],
-  },
-  {
-    group: "Semantic durations",
-    description:
-      "Exits run ~20% faster than entrances — these names encode the rule for you.",
-    items: [
-      {
-        label: "duration-enter",
-        durationClass: "duration-enter",
-        note: "200ms — standard UI appearing",
-      },
-      {
-        label: "duration-exit",
-        durationClass: "duration-exit",
-        note: "160ms — same element leaving",
-      },
-      {
-        label: "duration-modal-enter",
-        durationClass: "duration-modal-enter",
-        note: "300ms — largest surfaces",
-      },
-      {
-        label: "duration-modal-exit",
-        durationClass: "duration-modal-exit",
-        note: "240ms — largest surfaces leaving",
-      },
-    ],
-  },
-];
+type MotionKind = "easing" | "duration";
 
-function MotionRow({
-  label,
-  easingClass,
-  easingStyle,
-  durationClass,
-  circleClass = "bg-foreground",
-  note,
-  playSignal,
-}: MotionToken & { playSignal?: number }) {
-  const effectiveEasing = easingStyle ? "" : (easingClass ?? "ease-out-cubic");
-  const effectiveDuration = durationClass ?? "duration-1000";
+// The duration utilities: numeric ones (duration-200) resolve to a literal,
+// semantic ones (duration-enter) to their --transition-duration-* variable.
+const durationSuffix = (name: string) =>
+  name.startsWith("duration-") ? name.slice("duration-".length) : "";
 
-  // A row demoes either an easing or a duration. The other axis is a default.
-  const isDurationSubject =
-    durationClass !== undefined && easingClass === undefined && !easingStyle;
-  const copyValue = isDurationSubject ? durationClass : (easingClass ?? "");
+const MotionTableRow = ({
+  row,
+  kind,
+  withDescription,
+}: {
+  row: MotionRow;
+  kind: MotionKind;
+  withDescription: boolean;
+}) => {
+  const suffix = durationSuffix(row.name);
+  const isNumericDuration = /^\d+$/.test(suffix);
 
-  // Resolve the token's live value: cubic-bezier for easings, ms for durations.
-  const easingValue = useCssVar(easingClass ? `--${easingClass}` : "");
-  const durationSuffix = durationClass?.startsWith("duration-")
-    ? durationClass.slice("duration-".length)
-    : "";
-  const durationIsNumeric = /^\d+$/.test(durationSuffix);
-  const durationVarValue = useCssVar(
-    durationIsNumeric ? "" : `--transition-duration-${durationSuffix}`
-  );
-  const resolvedValue = easingStyle
-    ? easingStyle
-    : isDurationSubject
-      ? durationIsNumeric
-        ? `${durationSuffix}ms`
-        : durationVarValue
-      : easingValue;
+  const cssVarName =
+    kind === "easing"
+      ? row.rawEasing
+        ? ""
+        : `--${row.name}`
+      : isNumericDuration
+        ? ""
+        : `--transition-duration-${suffix}`;
+  const varValue = useCssVar(cssVarName);
+  const resolvedValue =
+    row.rawEasing ?? (isNumericDuration ? `${suffix}ms` : varValue);
 
-  const [animate, setAnimate] = useState(false);
-  // Replay needs the box to snap back to the start without animating,
-  // so the transition is disabled for the reset frame.
-  const [resetting, setResetting] = useState(false);
-
-  const play = useCallback(() => {
-    setResetting(true);
-    setAnimate(false);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setResetting(false);
-        setAnimate(true);
-      });
-    });
-  }, []);
-
-  useEffect(() => {
-    if (playSignal !== undefined && playSignal > 0) {
-      play();
-    }
-  }, [playSignal, play]);
-
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={play}
-        aria-label={`Play ${label}`}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-primary-100 hover:text-foreground"
-      >
-        <Play className="h-4 w-4" />
-      </button>
-      <div className="w-44 shrink-0">
-        {copyValue ? (
-          <Copyable value={copyValue}>
-            <div className="font-mono text-xs text-foreground">{label}</div>
-            {resolvedValue && (
-              <div className="break-all font-mono text-[10px] text-muted-foreground">
-                {resolvedValue}
-              </div>
-            )}
-          </Copyable>
-        ) : (
-          <>
-            <div className="font-mono text-xs text-foreground">{label}</div>
-            {resolvedValue && (
-              <div className="break-all font-mono text-[10px] text-muted-foreground">
-                {resolvedValue}
-              </div>
-            )}
-          </>
-        )}
-        {note && <div className="text-xs text-muted-foreground">{note}</div>}
-      </div>
-      <div className="relative h-10 w-full rounded-full bg-primary-100">
+  const specimen =
+    kind === "easing" ? (
+      <div className="relative h-8 w-44 rounded-full bg-primary-100">
         <div
-          className={`absolute top-2 h-6 w-6 rounded-full ${circleClass} ${
-            resetting
-              ? "transition-none"
-              : `transition-all ${effectiveEasing} ${effectiveDuration}`
-          }`}
+          className="sb-motion-specimen absolute left-1.5 top-1.5 h-5 w-5 rounded-full bg-foreground"
           style={{
-            left: animate ? "calc(100% - 2rem)" : "0.5rem",
-            transitionTimingFunction: resetting ? undefined : easingStyle,
+            animation: `${SLIDE_KEYFRAMES} 1400ms infinite`,
+            animationTimingFunction: row.rawEasing ?? `var(--${row.name})`,
           }}
         />
       </div>
-    </div>
-  );
-}
-
-function MotionGroupSection({ group, description, items }: MotionGroup) {
-  const [playSignal, setPlaySignal] = useState(0);
+    ) : (
+      <div className="flex h-8 w-44 items-center">
+        <div
+          className="sb-motion-specimen h-6 w-6 rounded bg-foreground"
+          style={{
+            animation: `${SPIN_KEYFRAMES} linear infinite`,
+            animationDuration: isNumericDuration
+              ? `${suffix}ms`
+              : `var(--transition-duration-${suffix})`,
+          }}
+        />
+      </div>
+    );
 
   return (
-    <div className="flex flex-col gap-3">
-      <div>
-        <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold">{group}</h3>
-          <button
-            onClick={() => setPlaySignal((n) => n + 1)}
-            className="rounded border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-primary-100"
-          >
-            Play all
-          </button>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      {items.map((item) => (
-        <MotionRow key={item.label} {...item} playSignal={playSignal} />
-      ))}
-    </div>
+    <tr className="border-b border-border last:border-b-0">
+      <td className="w-52 py-3 pr-4 align-middle">{specimen}</td>
+      <td className="py-3 pr-4 align-middle">
+        {row.rawEasing ? (
+          // No token on purpose — show a plain label instead of a copy chip.
+          <span className="font-mono text-xs text-muted-foreground">
+            {row.name}
+          </span>
+        ) : (
+          <TokenChip value={row.name} />
+        )}
+      </td>
+      <td className="whitespace-nowrap py-3 pr-4 align-middle font-mono text-xs text-muted-foreground">
+        {resolvedValue || "—"}
+      </td>
+      {withDescription && (
+        <td className="py-3 align-middle text-sm text-muted-foreground">
+          {row.description ?? "—"}
+        </td>
+      )}
+    </tr>
   );
-}
+};
+
+// Mirrors the Colors TokenTable: specimen · copyable chip · live value ·
+// optional description, so every Foundations page reads the same way.
+const MotionTable = ({
+  rows,
+  kind,
+}: {
+  rows: MotionRow[];
+  kind: MotionKind;
+}) => {
+  const withDescription = rows.some((row) => row.description != null);
+  return (
+    <table className="w-full border-collapse text-left">
+      <thead>
+        <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+          <th className="py-2 pr-4 font-medium">Preview</th>
+          <th className="py-2 pr-4 font-medium">Name</th>
+          <th className="py-2 pr-4 font-medium">Value</th>
+          {withDescription && <th className="py-2 font-medium">Description</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <MotionTableRow
+            key={row.name}
+            row={row}
+            kind={kind}
+            withDescription={withDescription}
+          />
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
+const Section = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-2">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      {description}
+    </div>
+    {children}
+  </div>
+);
+
+export const Easing: Story = {
+  render: () => (
+    <div className="flex flex-col gap-12">
+      <MotionKeyframes />
+      <Section
+        title="Ease Out"
+        description={
+          <p className="text-sm text-primary-600">
+            For anything entering or exiting the screen — the fast start feels
+            responsive. Sorted weak → strong: bigger elements take stronger
+            curves.
+          </p>
+        }
+      >
+        <MotionTable
+          kind="easing"
+          rows={[
+            {
+              name: "ease-out-quad",
+              description: "Subtle: button press, small fades.",
+            },
+            {
+              name: "ease-out-cubic",
+              description: "The everyday default.",
+            },
+            { name: "ease-out-quart" },
+            {
+              name: "ease-out-quint",
+              description: "Pronounced settle: modals, drawers.",
+            },
+            {
+              name: "ease-out-expo",
+              description: "Very snappy: large surfaces, sheets.",
+            },
+          ]}
+        />
+      </Section>
+      <Section
+        title="Ease In-Out"
+        description={
+          <p className="text-sm text-primary-600">
+            For elements already on screen that move or morph. Never for
+            enter/exit — the slow start delays feedback.
+          </p>
+        }
+      >
+        <MotionTable
+          kind="easing"
+          rows={[
+            {
+              name: "ease-in-out-quad",
+              description: "Gentle: small position shifts.",
+            },
+            {
+              name: "ease-in-out-cubic",
+              description: "Standard on-screen movement.",
+            },
+            {
+              name: "ease-in-out-quint",
+              description: "Dramatic: full-screen morphs.",
+            },
+          ]}
+        />
+      </Section>
+      <Section
+        title="Semantic aliases"
+        description={
+          <p className="text-sm text-primary-600">
+            Prefer these in components so the whole system can be retuned from
+            one place.
+          </p>
+        }
+      >
+        <MotionTable
+          kind="easing"
+          rows={[
+            {
+              name: "ease-enter",
+              description: "= out-cubic — tooltips, dropdowns, popovers.",
+            },
+            {
+              name: "ease-emphasized",
+              description: "= out-quint — modals, drawers.",
+            },
+            {
+              name: "ease-move",
+              description: "= in-out-quad — tab indicators, reorder.",
+            },
+          ]}
+        />
+      </Section>
+      <Section
+        title="Why there is no ease-in"
+        description={
+          <p className="text-sm text-primary-600">
+            Ease-in starts slow and accelerates into the stop — the UI feels
+            sluggish, so there are no ease-in tokens. For hovers use the default
+            ease; ease-linear is for progress and marquees only.
+          </p>
+        }
+      >
+        <MotionTable
+          kind="easing"
+          rows={[
+            {
+              name: "ease-out-cubic",
+              description: "Responds instantly, settles naturally.",
+            },
+            {
+              name: "ease-in",
+              rawEasing: "cubic-bezier(0.55, 0.085, 0.68, 0.53)",
+              description: "Sluggish start, abrupt stop — avoid.",
+            },
+          ]}
+        />
+      </Section>
+    </div>
+  ),
+};
+
+export const Durations: Story = {
+  render: () => (
+    <div className="flex flex-col gap-12">
+      <MotionKeyframes />
+      <Section
+        title="Durations"
+        description={
+          <p className="text-sm text-primary-600">
+            Bigger elements need more time; each square completes one turn per
+            token duration. 300ms is the ceiling for product UI — anything used
+            100+ times a day gets no animation at all.
+          </p>
+        }
+      >
+        <MotionTable
+          kind="duration"
+          rows={[
+            {
+              name: "duration-100",
+              description: "Micro-interactions (press, toggle).",
+            },
+            {
+              name: "duration-150",
+              description: "Hover & color transitions.",
+            },
+            {
+              name: "duration-200",
+              description: "Standard UI (tooltips, dropdowns).",
+            },
+            {
+              name: "duration-300",
+              description: "Modals & drawers — the ceiling.",
+            },
+          ]}
+        />
+      </Section>
+      <Section
+        title="Semantic durations"
+        description={
+          <p className="text-sm text-primary-600">
+            Exits run ~20% faster than entrances — these names encode the rule
+            for you.
+          </p>
+        }
+      >
+        <MotionTable
+          kind="duration"
+          rows={[
+            {
+              name: "duration-enter",
+              description: "Standard UI appearing.",
+            },
+            {
+              name: "duration-exit",
+              description: "The same element leaving.",
+            },
+            {
+              name: "duration-modal-enter",
+              description: "The largest surfaces appearing.",
+            },
+            {
+              name: "duration-modal-exit",
+              description: "The largest surfaces leaving.",
+            },
+          ]}
+        />
+      </Section>
+    </div>
+  ),
+};
 
 interface EnterExitDemoProps {
   label: string;
@@ -362,48 +422,13 @@ function EnterExitDemo({
   );
 }
 
-export const Easing: Story = {
-  render: () => (
-    <div className="flex w-[640px] flex-col gap-8 p-8">
-      <div>
-        <h2 className="text-xl font-semibold">Easing</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Entering or exiting the screen → ease-out. Moving while on screen →
-          ease-in-out.
-        </p>
-      </div>
-      {EASING_GROUPS.map((group) => (
-        <MotionGroupSection key={group.group} {...group} />
-      ))}
-      <MotionGroupSection {...EASE_IN_COMPARISON} />
-    </div>
-  ),
-};
-
-export const Durations: Story = {
-  render: () => (
-    <div className="flex w-[640px] flex-col gap-8 p-8">
-      <div>
-        <h2 className="text-xl font-semibold">Durations</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Bigger elements need more time. Use “Play all” to compare (all rows
-          use ease-out-cubic).
-        </p>
-      </div>
-      {DURATION_GROUPS.map((group) => (
-        <MotionGroupSection key={group.group} {...group} />
-      ))}
-    </div>
-  ),
-};
-
 export const EnterExitPairing: Story = {
   render: () => (
-    <div className="flex w-[640px] flex-col gap-8 p-8">
+    <div className="flex max-w-2xl flex-col gap-8">
       <div>
         <h2 className="text-xl font-semibold">Pairing the tokens</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pick the pair that matches the element’s size. The exit is quicker
+          Pick the pair that matches the element's size. The exit is quicker
           than the entrance.
         </p>
       </div>
