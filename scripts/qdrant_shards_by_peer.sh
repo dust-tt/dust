@@ -6,13 +6,25 @@
 # peer from /cluster has answered at least once (coupon collector), collecting its
 # local_shards each time.
 #
-# Usage: QDRANT_CLUSTER_0_URL=... QDRANT_CLUSTER_0_API_KEY=... ./qdrant_shards_by_peer.sh <collection>
+# Usage: QDRANT_CLUSTER_0_URL=... QDRANT_CLUSTER_0_API_KEY=... ./qdrant_shards_by_peer.sh [--verbose] <collection>
 set -euo pipefail
 
-COLLECTION="${1:?usage: $0 <collection>}"
+VERBOSE=""
+COLLECTION=""
+for arg in "$@"; do
+  case "$arg" in
+    --verbose | -v) VERBOSE=1 ;;
+    *) COLLECTION="$arg" ;;
+  esac
+done
+: "${COLLECTION:?usage: $0 [--verbose] <collection>}"
+
 BASE="$QDRANT_CLUSTER_0_URL"
 AUTH=(-H "api-key: $QDRANT_CLUSTER_0_API_KEY")
 MAX_ATTEMPTS="${MAX_ATTEMPTS:-100}"
+
+# Progress goes to stderr, only when --verbose. stdout stays pure JSON for piping.
+log() { [[ -n "$VERBOSE" ]] && echo "$@" >&2; return 0; }
 
 # peer_id -> pod ordinal (ordinal = number before ".qdrant-headless" in the p2p uri).
 ORDINALS="$(curl -s "${AUTH[@]}" "$BASE/cluster" \
@@ -32,7 +44,7 @@ for ((i = 1; i <= MAX_ATTEMPTS; i++)); do
   collected="$(jq -c --arg pid "$pid" --argjson r "$resp" \
     '.[$pid] = $r.result.local_shards' <<<"$collected")"
   seen="$(jq 'keys | length' <<<"$collected")"
-  echo "attempt $i: peer $pid answered — $seen/$want_count peers covered" >&2
+  log "attempt $i: peer $pid answered — $seen/$want_count peers covered"
   [[ "$seen" -ge "$want_count" ]] && break
 done
 
