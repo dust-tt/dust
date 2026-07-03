@@ -136,7 +136,8 @@ export async function fetchAgentExportRows(
     ])
   );
 
-  const scopeFilter = includeHiddenAgents ? "" : `AND ac."scope" != 'hidden'`;
+  const scopeFilter = (alias: string) =>
+    includeHiddenAgents ? "" : `AND ${alias}."scope" != 'hidden'`;
 
   // TODO(BACK5): Migrate to AgentConfigurationResource when a suitable method exists.
   const readReplica = getFrontReplicaDbConnection();
@@ -170,11 +171,20 @@ export async function fetchAgentExportRows(
         FROM "agent_configurations" av
           JOIN "users" edt ON av."authorId" = edt."id"
         WHERE av."workspaceId" = :wId
+          -- Only aggregate versions of the agents the outer query exports;
+          -- computing editors for archived/draft agents is wasted work.
+          AND av."sId" IN (
+            SELECT act."sId"
+            FROM "agent_configurations" act
+            WHERE act."workspaceId" = :wId
+              AND act."status" = 'active'
+              ${scopeFilter("act")}
+          )
         GROUP BY av."sId"
       ) editors ON editors."sId" = ac."sId"
     WHERE ac."workspaceId" = :wId
       AND ac."status" = 'active'
-      ${scopeFilter}
+      ${scopeFilter("ac")}
     `,
     {
       type: QueryTypes.SELECT,
