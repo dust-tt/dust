@@ -824,6 +824,118 @@ export async function clearScheduledSubscriptionCancellation({
   }
 }
 
+// Marks a Stripe subscription (via metadata) as cut short by the legacy →
+// Business yearly migration, so the `customer.subscription.deleted` webhook
+// knows to refund the unused prepaid days when it ends.
+export const YEARLY_MIGRATION_REFUND_METADATA_KEY =
+  "dust_yearly_migration_refund";
+
+export async function markSubscriptionForMigrationRefund({
+  stripeSubscriptionId,
+}: {
+  stripeSubscriptionId: string;
+}): Promise<Result<void, Error>> {
+  try {
+    const stripe = getStripeClient();
+    await stripe.subscriptions.update(stripeSubscriptionId, {
+      metadata: { [YEARLY_MIGRATION_REFUND_METADATA_KEY]: "true" },
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Refund the unused prepaid time of a yearly subscription that was cut over
+ * early by the migration. Prorated on remaining days:
+ *   refund = amountPaid × (periodEnd − actualEnd) / (periodEnd − periodStart)
+ *
+ * Only acts when the subscription is yearly, carries the migration-refund
+ * marker, ended before its paid period end, and its latest invoice was paid.
+ * The refund is issued against that invoice's charge and bounded by the amount
+ * paid. Returns the refunded amount in cents (0 when nothing to refund).
+ */
+export async function refundYearlyMigrationProration({
+  stripeSubscription,
+}: {
+  stripeSubscription: Stripe.Subscription;
+}): Promise<Result<{ refundedCents: number }, Error>> {
+  try {
+    const stripe = getStripeClient();
+
+    if (
+      stripeSubscription.metadata?.[YEARLY_MIGRATION_REFUND_METADATA_KEY] !==
+      "true"
+    ) {
+      return new Ok({ refundedCents: 0 });
+    }
+    const isYearly = stripeSubscription.items.data.some(
+      (item) => item.price.recurring?.interval === "year"
+    );
+    if (!isYearly) {
+      return new Ok({ refundedCents: 0 });
+    }
+
+    const periodStartSec = stripeSubscription.current_period_start;
+    const periodEndSec = stripeSubscription.current_period_end;
+    const actualEndSec =
+      stripeSubscription.ended_at ??
+      stripeSubscription.canceled_at ??
+      Math.floor(Date.now() / 1000);
+    const periodSec = periodEndSec - periodStartSec;
+    const remainingSec = periodEndSec - actualEndSec;
+    if (periodSec <= 0 || remainingSec <= 0) {
+      return new Ok({ refundedCents: 0 });
+    }
+
+    const latestInvoiceId =
+      typeof stripeSubscription.latest_invoice === "string"
+        ? stripeSubscription.latest_invoice
+        : (stripeSubscription.latest_invoice?.id ?? null);
+    if (!latestInvoiceId) {
+      logger.warn(
+        { stripeSubscriptionId: stripeSubscription.id },
+        "[Stripe] Yearly migration refund: no latest invoice, skipping"
+      );
+      return new Ok({ refundedCents: 0 });
+    }
+    const invoice = await stripe.invoices.retrieve(latestInvoiceId);
+    const chargeId =
+      typeof invoice.charge === "string" ? invoice.charge : invoice.charge?.id;
+    if (invoice.amount_paid <= 0 || !chargeId) {
+      logger.info(
+        { stripeSubscriptionId: stripeSubscription.id, invoiceId: invoice.id },
+        "[Stripe] Yearly migration refund: latest invoice not paid, skipping"
+      );
+      return new Ok({ refundedCents: 0 });
+    }
+
+    const refundedCents = Math.min(
+      invoice.amount_paid,
+      Math.round((invoice.amount_paid * remainingSec) / periodSec)
+    );
+    if (refundedCents <= 0) {
+      return new Ok({ refundedCents: 0 });
+    }
+
+    logger.info(
+      {
+        stripeSubscriptionId: stripeSubscription.id,
+        chargeId,
+        amountPaid: invoice.amount_paid,
+        remainingDays: Math.ceil(remainingSec / 86400),
+        refundedCents,
+      },
+      "[Stripe] Issuing yearly migration prorated refund"
+    );
+    await stripe.refunds.create({ charge: chargeId, amount: refundedCents });
+    return new Ok({ refundedCents });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 /**
  * Creates a new Stripe Business subscription for upgrading Pro → Business.
  * The old subscription is cancelled separately after the DB flip.

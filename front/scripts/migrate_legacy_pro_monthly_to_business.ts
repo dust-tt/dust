@@ -94,6 +94,16 @@ async function migrateWorkspace(
     );
     return;
   }
+  if (outcome.status === "cancellation_capped") {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        cancelDate: outcome.cancelDate.toISOString(),
+      },
+      `[migrate-business] ${execute ? "Capped" : "[DRY RUN] Would cap"} yearly cancellation at the cutover`
+    );
+    return;
+  }
   logger.info(
     {
       workspaceId: workspace.sId,

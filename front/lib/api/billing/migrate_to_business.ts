@@ -23,6 +23,8 @@ import {
   ensureStripeCustomerDefaultPaymentMethod,
   getCustomerId,
   getStripeSubscription,
+  markSubscriptionForMigrationRefund,
+  scheduleSubscriptionCancellation,
 } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
@@ -238,7 +240,11 @@ export type MigrateToBusinessOutcome =
     }
   // The workspace was intentionally not migrated (not eligible, no renewal in
   // window, exceeds limits, already pending, ...). `reason` documents why.
-  | { status: "skipped"; reason: string };
+  | { status: "skipped"; reason: string }
+  // An already-cancelled YEARLY subscription had its cancellation pulled in to
+  // the cutover date (no Business contract — the customer opted out). The unused
+  // prepaid time is refunded by the `subscription.deleted` webhook when it ends.
+  | { status: "cancellation_capped"; cancelDate: Date };
 
 /**
  * Stage the legacy Pro → Business migration for a SINGLE workspace: pick the
@@ -389,20 +395,74 @@ export async function migrateWorkspaceToBusiness(
     );
   }
 
-  // Don't migrate a subscription that is already scheduled to cancel (a leaving
-  // customer): starting a Business contract would hijack their cancellation —
-  // and for a yearly sub ending after the window it would pull the cancellation
-  // forward to the migration date. Skip; no pending contract is created.
-  if (
-    skipCancellingSubscription &&
-    (stripeSubscription.cancel_at_period_end ||
-      stripeSubscription.cancel_at !== null ||
-      stripeSubscription.status === "canceled")
-  ) {
-    return new Ok({
-      status: "skipped",
-      reason: "subscription is already scheduled to cancel",
+  const isCancelling =
+    stripeSubscription.cancel_at_period_end ||
+    stripeSubscription.cancel_at !== null ||
+    stripeSubscription.status === "canceled";
+  if (isCancelling && skipCancellingSubscription) {
+    // Monthly cancelling subs are left alone — they churn at their own period
+    // end (a leaving customer, don't migrate to Business).
+    if (billingPeriod !== "yearly") {
+      return new Ok({
+        status: "skipped",
+        reason: "subscription is already scheduled to cancel",
+      });
+    }
+    // Yearly cancelling subs: all yearly plans end by the cutover, so pull the
+    // cancellation in to the cutover date (window start @ anchor hour) when it
+    // would otherwise end later. No Business contract (they opted out); the
+    // unused prepaid time is refunded when it ends (webhook). Never extend a sub
+    // already ending on/before the cutover.
+    const capDate = resolveMigrationDate({
+      billingPeriod: "yearly",
+      currentPeriodEndMs,
+      windowStart: deps.windowStart,
+      windowEnd: deps.windowEnd,
     });
+    if (!capDate) {
+      return new Ok({
+        status: "skipped",
+        reason: "could not resolve the yearly cutover date",
+      });
+    }
+    const currentEndMs =
+      (stripeSubscription.cancel_at ?? stripeSubscription.current_period_end) *
+      1000;
+    if (currentEndMs <= capDate.getTime()) {
+      return new Ok({
+        status: "skipped",
+        reason: "cancelled subscription already ends on or before the cutover",
+      });
+    }
+    if (execute) {
+      try {
+        await scheduleSubscriptionCancellation({
+          stripeSubscriptionId: subscription.stripeSubscriptionId,
+          cancelAt: capDate,
+        });
+      } catch (err) {
+        return new Err(normalizeError(err));
+      }
+      const markResult = await markSubscriptionForMigrationRefund({
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+      });
+      if (markResult.isErr()) {
+        return new Err(markResult.error);
+      }
+      await subscription.markAsCanceled({ endDate: capDate });
+    }
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        cancelDate: capDate.toISOString(),
+        remainingProrationDays: remainingPrepaidDays(
+          currentPeriodEndMs,
+          capDate
+        ),
+      },
+      "[migrate-business] Capped yearly cancellation at the cutover (refund on end)"
+    );
+    return new Ok({ status: "cancellation_capped", cancelDate: capDate });
   }
 
   const stripeCustomerId = getCustomerId(stripeSubscription);
@@ -455,6 +515,21 @@ export async function migrateWorkspaceToBusiness(
   const result = await switchContract({ auth, body });
   if (result.isErr()) {
     return new Err(normalizeError(result.error));
+  }
+
+  // Yearly subs are cut over mid-year: mark the Stripe subscription so the
+  // `subscription.deleted` webhook refunds the unused prepaid days when it ends
+  // at the migration date. Best-effort — the migration already succeeded.
+  if (billingPeriod === "yearly" && subscription.stripeSubscriptionId) {
+    const markResult = await markSubscriptionForMigrationRefund({
+      stripeSubscriptionId: subscription.stripeSubscriptionId,
+    });
+    if (markResult.isErr()) {
+      logger.warn(
+        { workspaceId: workspace.sId, err: markResult.error.message },
+        "[migrate-business] Failed to mark yearly sub for migration refund; refund will not fire on end"
+      );
+    }
   }
 
   logger.info(

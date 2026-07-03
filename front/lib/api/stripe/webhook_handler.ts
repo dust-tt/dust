@@ -47,6 +47,7 @@ import {
   isEnterpriseSubscription,
   isMetronomePushedInvoice,
   isSubscriptionActivationInvoice,
+  refundYearlyMigrationProration,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -1521,6 +1522,23 @@ export async function processStripeWebhookEvent({
           `[Stripe Webhook] Received customer.subscription.deleted with unknown status = ${stripeSubscription.status}. Expected status = canceled.`
         );
         return new Ok(undefined);
+      }
+
+      // If this yearly subscription was cut over early by the legacy → Business
+      // migration, refund the unused prepaid days. Best-effort — a refund
+      // failure must not fail the webhook (it can be reconciled manually).
+      const migrationRefund = await refundYearlyMigrationProration({
+        stripeSubscription,
+      });
+      if (migrationRefund.isErr()) {
+        logger.error(
+          {
+            event,
+            stripeSubscriptionId: stripeSubscription.id,
+            err: migrationRefund.error.message,
+          },
+          "[Stripe Webhook] Yearly migration prorated refund failed"
+        );
       }
 
       const matchingSubscription = await SubscriptionResource.fetchByStripeId(

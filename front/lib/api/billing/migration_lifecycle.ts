@@ -281,12 +281,17 @@ export async function resumeWorkspaceMigration(
       )
     );
   }
-  if (migrateResult.value.status === "skipped") {
+  // Resume passes `skipCancellingSubscription: false`, so the migrate call
+  // re-stages a pending contract ("migrated") — it never caps a cancellation.
+  if (migrateResult.value.status !== "migrated") {
     return new Err(
       new MigrationLifecycleError(
         "invalid_state",
-        `Cannot resume the migration: ${migrateResult.value.reason}. ` +
-          "You will need to re-subscribe to the new pricing."
+        `Cannot resume the migration: ${
+          migrateResult.value.status === "skipped"
+            ? migrateResult.value.reason
+            : "unexpected outcome"
+        }. You will need to re-subscribe to the new pricing.`
       )
     );
   }
