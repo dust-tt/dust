@@ -1,109 +1,78 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
-import tailwindColors from "tailwindcss/colors";
 
-import { customColors } from "@sparkle/lib/colors";
+import {
+  TokenTable,
+  type TokenRow,
+  semanticFamilyTokens,
+  structuralTokens,
+  useColorFamilies,
+  useThemeColorTokens,
+  withThemedSurface,
+} from "./foundations-helpers";
 
 const meta = {
   title: "Foundations/Colors",
+  tags: ["autodocs"],
+  decorators: [withThemedSurface],
   parameters: {
+    layout: "padded",
     docs: {
       description: {
-        component: `The Sparkle color system: UI primitives, semantic tokens (\`primary\`, \`highlight\`, \`success\`, \`warning\`, \`info\`), an extended product palette, brand/marketing colors, and structural backgrounds. Reference these via Tailwind classes (e.g. \`bg-primary-500\`) rather than hard-coded hex values, and prefer semantic tokens over raw families so components stay theme-aware. Toggle the theme in the toolbar to preview light and dark (\`-night\`) values.`,
+        component: `The Sparkle color system: UI primitives, semantic tokens (\`primary\`, \`highlight\`, \`success\`, \`warning\`, \`info\`), an extended product palette, brand/marketing colors, and structural backgrounds. Reference these via Tailwind classes (e.g. \`bg-primary-500\`) rather than hard-coded hex values, and prefer semantic tokens over raw families so components stay theme-aware. Each token is shown as a reference row: swatch, a click-to-copy \`bg-*\` chip, its live value (read from the compiled CSS variables), and — for structural and brand tokens — a description. Toggle the theme in the toolbar to see semantic tokens resolve to their dark values; hover a swatch for its best text-contrast grade.`,
       },
     },
   },
 } satisfies Meta;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-// The swatches below build their class names dynamically (e.g.
-// `bg-${family}-${shade}`), which Tailwind's JIT scanner cannot see, so the
-// corresponding `bg-*` utilities are never generated and the swatches render
-// blank. Instead we resolve each token to its hex value and apply it via an
-// inline style — independent of Tailwind utility generation.
-//
-// Families mirror the design-system theme: Sparkle overrides gray/blue/green/
-// rose/golden (from `customColors`); the remaining product families fall back
-// to Tailwind's defaults.
-type Palette = Record<string, string>;
-const families: Record<string, Palette> = {
-  gray: customColors.gray,
-  blue: customColors.blue,
-  green: customColors.green,
-  rose: customColors.rose,
-  golden: customColors.golden,
-  violet: tailwindColors.violet,
-  pink: tailwindColors.pink,
-  red: tailwindColors.red,
-  orange: tailwindColors.orange,
-  lime: tailwindColors.lime,
-  emerald: tailwindColors.emerald,
-};
+// Build the rows for a shade ramp, resolving each to `--color-{family}-{shade}`
+// and copying `bg-{family}-{shade}`.
+const rampRows = (family: string, shades: readonly string[]): TokenRow[] =>
+  shades.map((shade) => ({
+    varName: `--color-${family}-${shade}`,
+    name: `${family}-${shade}`,
+    copyValue: `bg-${family}-${shade}`,
+  }));
 
-// Semantic tokens map onto a base family; in dark mode their shade is inverted
-// (matching the theme's auto-generated `-night` values). `muted` is a fixed tint.
-const semanticBase: Palette = {
-  primary: "gray",
-  highlight: "blue",
-  success: "green",
-  warning: "rose",
-  info: "golden",
-};
-const semanticMuted: Palette = {
-  primary: customColors.gray[500],
-  highlight: "#8EB2D3",
-  success: "#A9B8A9",
-  warning: "#D5AAA1",
-  info: "#E1C99B",
-};
+const Section = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-2">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      {description}
+    </div>
+    {children}
+  </div>
+);
 
-const resolveColor = (token: string, isDark: boolean): string | undefined => {
-  if (token === "background") {
-    return isDark ? customColors.gray[950] : "#FFFFFF";
-  }
-  if (token === "muted-background") {
-    return isDark ? customColors.gray[900] : customColors.gray[50];
-  }
+const FamilyTables = ({
+  families,
+  shades,
+}: {
+  families: readonly string[];
+  shades: readonly string[];
+}) => (
+  <div className="flex flex-col gap-10">
+    {families.map((family) => (
+      <div key={family} className="flex flex-col gap-3">
+        <h3 className="text-lg font-semibold capitalize">{family}</h3>
+        <TokenTable rows={rampRows(family, shades)} />
+      </div>
+    ))}
+  </div>
+);
 
-  const dash = token.lastIndexOf("-");
-  const family = token.slice(0, dash);
-  const shade = token.slice(dash + 1);
-
-  if (family in semanticBase) {
-    if (shade === "muted") {
-      return semanticMuted[family];
-    }
-    const base = families[semanticBase[family]];
-    const nightShade = Math.min(950, 1000 - Number(shade));
-    return base[isDark ? String(nightShade) : shade];
-  }
-
-  // Raw and extended palettes are absolute colors; show the same value in both
-  // themes.
-  return families[family]?.[shade];
-};
-
-// Track the active theme so semantic swatches can preview their dark value.
-const useIsDark = () => {
-  const [isDark, setIsDark] = React.useState(
-    () =>
-      typeof document !== "undefined" &&
-      document.documentElement.classList.contains("dark")
-  );
-  React.useEffect(() => {
-    const el = document.documentElement;
-    const update = () => setIsDark(el.classList.contains("dark"));
-    update();
-    const observer = new MutationObserver(update);
-    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-  return isDark;
-};
-
-// Color families to display
-const colorFamilies = ["gray", "rose", "green", "blue", "golden"] as const;
+const uiColorFamilies = ["gray", "rose", "green", "blue", "golden"] as const;
 const semanticColorFamilies = [
   "primary",
   "highlight",
@@ -111,18 +80,6 @@ const semanticColorFamilies = [
   "warning",
   "info",
 ] as const;
-const extendedColorFamilies = [
-  "blue",
-  "violet",
-  "pink",
-  "red",
-  "orange",
-  "golden",
-  "lime",
-  "emerald",
-] as const;
-
-// Shades to display for each color
 const shades = [
   "50",
   "100",
@@ -137,223 +94,217 @@ const shades = [
   "950",
 ] as const;
 
-const semanticShades = [
-  "50",
-  "100",
-  "200",
-  "300",
-  "400",
-  "500",
-  "600",
-  "700",
-  "800",
-  "900",
-  "950",
-  "muted",
-] as const;
+// Build table rows from a list of token names (e.g. `primary-500`, `foreground`).
+const tokenRows = (
+  names: string[],
+  describe?: (name: string) => React.ReactNode
+): TokenRow[] =>
+  names.map((name) => ({
+    varName: `--color-${name}`,
+    name,
+    copyValue: `bg-${name}`,
+    description: describe?.(name),
+  }));
 
-const ColorSwatch = ({ token, label }: { token: string; label: string }) => {
-  const isDark = useIsDark();
-  const color = resolveColor(token, isDark);
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div
-        className="relative h-16 w-24 rounded-lg border border-border"
-        style={{ backgroundColor: color }}
-      >
-        <div className="absolute bottom-1 left-1 font-mono text-[10px] text-foreground opacity-50">
-          {color ?? "—"}
-        </div>
-      </div>
-      <div className="font-mono text-xs">{label}</div>
-    </div>
-  );
-};
-
-export const UIColorPalette = () => {
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">UI Color Palette</h2>
+export const UIColorPalette: Story = {
+  render: () => (
+    <Section
+      title="UI Color Palette"
+      description={
         <p className="text-sm text-primary-600">
           Colors to use in the UI for all direct color references.
         </p>
-      </div>
-      {colorFamilies.map((family) => (
-        <div key={family} className="flex flex-col gap-4">
-          <h3 className="text-lg font-semibold capitalize">{family}</h3>
-          <div className="flex flex-wrap gap-4">
-            {shades.map((shade) => (
-              <div key={shade}>
-                <ColorSwatch
-                  token={`${family}-${shade}`}
-                  label={`${family}-${shade}`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+      }
+    >
+      <FamilyTables families={uiColorFamilies} shades={shades} />
+    </Section>
+  ),
 };
 
-export const SemanticColorPalette = () => {
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">Semantic Color Palette</h2>
-        <p className="text-sm text-primary-600">
-          Colors to use in the UI for all functional elements.
-        </p>
-      </div>
-      {semanticColorFamilies.map((family) => (
-        <div key={family} className="flex flex-col gap-4">
-          <h3 className="text-lg font-semibold capitalize">{family}</h3>
-          <div className="flex flex-wrap gap-4">
-            {semanticShades.map((shade) => (
-              <div key={shade}>
-                <ColorSwatch
-                  token={`${family}-${shade}`}
-                  label={`${family}-${shade}`}
-                />
-              </div>
-            ))}
-          </div>
+export const SemanticColorPalette: Story = {
+  render: () => {
+    const tokens = useThemeColorTokens();
+    return (
+      <Section
+        title="Semantic Color Palette"
+        description={
+          <p className="text-sm text-primary-600">
+            Colors to use in the UI for all functional elements — the base
+            token, its light / dark / muted / on variants, and the full shade
+            ramp. Toggle the theme to preview their dark values.
+          </p>
+        }
+      >
+        <div className="flex flex-col gap-10">
+          {semanticColorFamilies.map((family) => (
+            <div key={family} className="flex flex-col gap-3">
+              <h3 className="text-lg font-semibold capitalize">{family}</h3>
+              <TokenTable
+                rows={tokenRows(semanticFamilyTokens(tokens, family))}
+              />
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
-  );
+      </Section>
+    );
+  },
 };
 
-const brandColorFamilies = [
+// Brand tokens are named colors (not ramps); each resolves to its own
+// `--color-brand-{name}` variable. Descriptions make this table read like the
+// design-system reference.
+const brandRows: TokenRow[] = [
   {
-    name: "green",
-    shades: [
-      { name: "hunter-green", shade: 600 },
-      { name: "tea-green", shade: 200 },
-      { name: "support-green", shade: 50 },
-    ],
+    name: "hunter-green",
+    description: "Primary brand green — dark, high-emphasis blocks.",
+  },
+  { name: "tea-green", description: "Light brand green for softer blocks." },
+  {
+    name: "support-green",
+    description: "Lightest green tint for backgrounds.",
+  },
+  { name: "electric-blue", description: "Primary brand blue." },
+  { name: "sky-blue", description: "Light brand blue for softer blocks." },
+  { name: "support-blue", description: "Lightest blue tint for backgrounds." },
+  { name: "red-rose", description: "Primary brand rose/red." },
+  { name: "pink-rose", description: "Light brand rose for softer blocks." },
+  { name: "support-rose", description: "Lightest rose tint for backgrounds." },
+  { name: "orange-golden", description: "Primary brand golden/orange." },
+  {
+    name: "sunshine-golden",
+    description: "Light brand golden for softer blocks.",
   },
   {
-    name: "blue",
-    shades: [
-      { name: "electric-blue", shade: 500 },
-      { name: "sky-blue", shade: 200 },
-      { name: "support-blue", shade: 50 },
-    ],
+    name: "support-golden",
+    description: "Lightest golden tint for backgrounds.",
   },
+  { name: "dark-gray", description: "Dark brand neutral." },
+  { name: "light-gray", description: "Light brand neutral." },
   {
-    name: "rose",
-    shades: [
-      { name: "red-rose", shade: 500 },
-      { name: "pink-rose", shade: 200 },
-      { name: "support-rose", shade: 50 },
-    ],
+    name: "support-gray",
+    description: "Lightest neutral tint for backgrounds.",
   },
-  {
-    name: "golden",
-    shades: [
-      { name: "orange-golden", shade: 500 },
-      { name: "sunshine-golden", shade: 200 },
-      { name: "support-golden", shade: 50 },
-    ],
-  },
-  {
-    name: "gray",
-    shades: [
-      { name: "dark-gray", shade: 700 },
-      { name: "light-gray", shade: 200 },
-      { name: "support-gray", shade: 50 },
-    ],
-  },
-];
+].map(({ name, description }) => ({
+  varName: `--color-brand-${name}`,
+  name,
+  copyValue: `bg-brand-${name}`,
+  description,
+}));
 
-export const BrandColorPalette = () => {
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">Brand Color Palette</h2>
-        <p className="text-sm text-primary-600">
-          Colors to use in Marketing / Brand situations:
-        </p>
-        <ul className="ml-4 list-disc text-sm text-primary-600">
-          <li>Block colors on the website</li>
-          <li>Communication in the product</li>
-        </ul>
-      </div>
-      {brandColorFamilies.map((family) => (
-        <div key={family.name} className="flex flex-col gap-4">
-          <h3 className="text-lg font-semibold capitalize">{family.name}</h3>
-          <div className="flex flex-wrap gap-4">
-            {family.shades.map((shade) => (
-              <div key={shade.name}>
-                <ColorSwatch
-                  token={`${family.name}-${shade.shade}`}
-                  label={shade.name}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+export const BrandColorPalette: Story = {
+  render: () => (
+    <Section
+      title="Brand Color Palette"
+      description={
+        <>
+          <p className="text-sm text-primary-600">
+            Colors to use in Marketing / Brand situations:
+          </p>
+          <ul className="ml-4 list-disc text-sm text-primary-600">
+            <li>Block colors on the website</li>
+            <li>Communication in the product</li>
+          </ul>
+        </>
+      }
+    >
+      <TokenTable rows={brandRows} />
+    </Section>
+  ),
 };
 
-export const ExtendedColorPalette = () => {
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">Extended Color Palette</h2>
-        <p className="text-sm text-primary-600">
-          These colors are available for product-specific use cases where
-          semantic colors might not be appropriate. Use them when you need to
-          create visual distinctions, such as:
-        </p>
-        <ul className="ml-4 list-disc text-sm text-primary-600">
-          <li>Avatar background colors</li>
-          <li>Data visualization</li>
-        </ul>
-      </div>
-      {extendedColorFamilies.map((family) => (
-        <div key={family} className="flex flex-col gap-4">
-          <h3 className="text-lg font-semibold capitalize">{family}</h3>
-          <div className="flex flex-wrap gap-4">
-            {shades.map((shade) => (
-              <div key={shade}>
-                <ColorSwatch
-                  token={`${family}-${shade}`}
-                  label={`${family}-${shade}`}
-                />
-              </div>
-            ))}
-          </div>
+export const ExtendedColorPalette: Story = {
+  render: () => {
+    // Discovered from the compiled CSS (minus the semantic families, which have
+    // their own section), so every raw palette — stone, slate, cyan, … — shows
+    // up automatically with the exact shades it defines.
+    const families = useColorFamilies(semanticColorFamilies);
+    return (
+      <Section
+        title="Extended Color Palette"
+        description={
+          <>
+            <p className="text-sm text-primary-600">
+              The complete set of raw color palettes, available for
+              product-specific use cases where semantic colors might not be
+              appropriate. Use them when you need to create visual distinctions,
+              such as:
+            </p>
+            <ul className="ml-4 list-disc text-sm text-primary-600">
+              <li>Avatar background colors</li>
+              <li>Data visualization</li>
+            </ul>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-10">
+          {families.map(({ family, shades: familyShades }) => (
+            <div key={family} className="flex flex-col gap-3">
+              <h3 className="text-lg font-semibold capitalize">{family}</h3>
+              <TokenTable rows={rampRows(family, familyShades)} />
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
-  );
+      </Section>
+    );
+  },
 };
 
-const backgroundColors = ["background", "muted-background"] as const;
+// Descriptions for the named structural/surface tokens. Tokens without an
+// entry still render (with a "—" description) — this map only enriches the
+// ones whose intent is well established.
+const structuralDescriptions: Record<string, string> = {
+  background: "Default app/page background.",
+  "app-background": "App shell background behind panels.",
+  "panel-background": "Background for panels and cards.",
+  "overlay-background":
+    "Raised surface for tooltips, popovers, and dropdowns (elevated above panels).",
+  "modal-background": "Surface for dialogs and sheets — the highest elevation.",
+  "muted-background": "Subtle background for muted or secondary surfaces.",
+  muted: "Muted surface fill.",
+  faint: "Faintest surface tint.",
+  foreground: "Default text color.",
+  "muted-foreground": "Lower-emphasis text (captions, hints).",
+  "foreground-warning": "Text color for warning states.",
+  border: "Default border color.",
+  "border-dark": "Higher-contrast border.",
+  "border-focus": "Border color for focused elements.",
+  "border-warning": "Border color for warning states.",
+  hover: "Translucent tint for hovered elements — composites over any surface.",
+  selected:
+    "Translucent tint for selected elements — a stronger step than hover.",
+  loading:
+    "Translucent fill for skeleton placeholders (LoadingBlock) — reads on any surface.",
+  ring: "Focus ring color.",
+  "ring-warning": "Focus ring for warning states.",
+  separator: "Divider line color.",
+  "sidebar-foreground": "Sidebar text color.",
+  "sidebar-primary": "Sidebar primary / active accent.",
+};
 
-export const BackgroundColors = () => {
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">Background Colors</h2>
-        <p className="text-sm text-primary-600">
-          Background colors used for structural elements in the UI.
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-4">
-        {backgroundColors.map((bg) => (
-          <div key={bg}>
-            <ColorSwatch token={bg} label={bg} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+export const SurfaceAndStructural: Story = {
+  render: () => {
+    const tokens = useThemeColorTokens();
+    // Structural tokens are used across many properties (bg / text / border),
+    // so the chip copies the CSS variable rather than a single `bg-*` class.
+    const rows: TokenRow[] = structuralTokens(tokens).map((name) => ({
+      varName: `--color-${name}`,
+      name,
+      copyValue: `--color-${name}`,
+      description: structuralDescriptions[name],
+    }));
+    return (
+      <Section
+        title="Surface & Structural"
+        description={
+          <p className="text-sm text-primary-600">
+            Structural tokens for backgrounds, text, borders, and other UI
+            surfaces. These flip with the theme — toggle it to preview dark
+            values.
+          </p>
+        }
+      >
+        <TokenTable rows={rows} />
+      </Section>
+    );
+  },
 };

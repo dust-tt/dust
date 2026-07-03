@@ -14,9 +14,10 @@ export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
       <div
         ref={ref}
         className={cn(
-          "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-100",
+          "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150",
           "text-foreground",
-          isSelected ? "bg-primary-100" : "hover:bg-muted-background"
+          // Match the hover/selected background used by menus and dropdowns.
+          isSelected ? "bg-hover" : "hover:bg-hover"
         )}
         onClick={onClick}
         onMouseMove={onMouseMove}

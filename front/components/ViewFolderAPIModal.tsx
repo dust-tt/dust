@@ -125,12 +125,11 @@ export function ViewFolderAPIModal({
                 value={`$ ${cURLRequest("upsert")}`}
                 language="shell"
                 padding={15}
-                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
+                className="mt-5 rounded-md bg-muted-background px-4 py-4 font-mono text-[13px]"
                 style={{
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  backgroundColor: "rgb(241 245 249)",
                   width: "100%",
                   marginTop: "0rem",
                 }}
@@ -159,12 +158,11 @@ export function ViewFolderAPIModal({
                 value={`$ ${cURLRequest("search")}`}
                 language="shell"
                 padding={15}
-                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
+                className="mt-5 rounded-md bg-muted-background px-4 py-4 font-mono text-[13px]"
                 style={{
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  backgroundColor: "rgb(241 245 249)",
                   width: "100%",
                   marginTop: "0rem",
                 }}

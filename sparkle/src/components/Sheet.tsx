@@ -54,7 +54,7 @@ const sizeClasses: Record<SheetSizeType, string> = {
 const sheetVariants = cva(
   cn(
     "fixed z-50 overflow-hidden flex flex-col h-full w-full",
-    "bg-background",
+    "bg-modal-background",
     "transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500"
   ),
   {
@@ -188,7 +188,7 @@ const SheetHeader = ({
   <div
     className={cn(
       "z-50 flex flex-none flex-col p-5 text-left",
-      "bg-background",
+      "bg-modal-background",
       className
     )}
     {...props}

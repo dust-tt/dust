@@ -380,7 +380,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                             <>
                               This location contains {tables.length} tables that
                               can be connected :{" "}
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-muted-foreground">
                                 {tables.join(", ")}
                               </span>
                             </>

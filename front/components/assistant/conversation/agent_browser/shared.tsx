@@ -283,7 +283,7 @@ export function SearchDropdownContent({
         <Spinner size="md" />
       </div>
     ) : (
-      <div className="p-2 text-sm text-gray-500">No results found</div>
+      <div className="p-2 text-sm text-muted-foreground">No results found</div>
     );
   }
   return (

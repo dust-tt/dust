@@ -281,8 +281,8 @@ export function WelcomeTourGuide({
                     <Avatar
                       size="md"
                       icon={action.icon}
-                      backgroundColor="bg-gray-700"
-                      iconColor="text-gray-50"
+                      backgroundColor="bg-primary-700"
+                      iconColor="text-primary-50"
                     />
                   }
                 />

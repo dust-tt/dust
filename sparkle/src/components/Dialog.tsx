@@ -19,7 +19,7 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 duration-200 ease-emphasized data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:duration-150 motion-reduce:animate-none",
       "bg-muted-foreground/75 dark:bg-muted-background/75",
       className
     )}
@@ -56,19 +56,25 @@ type DialogVariantType = (typeof DIALOG_VARIANTS)[number];
 
 const variantClasses: Record<DialogVariantType, string> = {
   default: cn(
-    "top-[50%] translate-y-[-50%] duration-200",
+    "top-[50%] translate-y-[-50%] duration-200 ease-emphasized data-[state=closed]:duration-150 motion-reduce:animate-none",
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
     "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
   ),
-  command: "top-[20%]",
+  command: cn(
+    "top-[20%] duration-200 ease-emphasized data-[state=closed]:duration-150 motion-reduce:animate-none",
+    "data-[state=open]:animate-in data-[state=closed]:animate-out",
+    "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+    "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+    "data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2"
+  ),
 };
 
 const dialogVariants = cva(
   cn(
     "fixed left-[50%] z-50 overflow-hidden translate-x-[-50%]",
     "rounded-2xl flex flex-col w-full max-w-[calc(100vw-2rem)] border border shadow-lg",
-    "bg-background",
+    "bg-modal-background",
     "border-border",
     "max-h-[90vh]"
   ),
@@ -166,7 +172,7 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "sticky top-0 z-50 flex flex-none flex-col gap-0 bg-background px-5 pt-4 text-left",
+      "sticky top-0 z-50 flex flex-none flex-col gap-0 bg-modal-background px-5 pt-4 text-left",
       className
     )}
     {...props}

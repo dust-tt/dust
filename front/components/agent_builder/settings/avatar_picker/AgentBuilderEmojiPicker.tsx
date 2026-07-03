@@ -19,7 +19,7 @@ import {
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
-  "bg-gray-100";
+  "bg-muted";
 
 interface AgentBuilderEmojiPickerProps {
   avatarUrl: string | null;

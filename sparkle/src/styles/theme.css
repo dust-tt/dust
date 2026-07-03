@@ -361,11 +361,15 @@
   --color-background: var(--color-background);
   --color-app-background: var(--color-app-background);
   --color-panel-background: var(--color-panel-background);
+  --color-overlay-background: var(--color-overlay-background);
+  --color-modal-background: var(--color-modal-background);
 
   --color-foreground: var(--color-foreground);
   --color-foreground-warning: var(--color-foreground-warning);
 
   --color-hover: var(--color-hover);
+  --color-selected: var(--color-selected);
+  --color-loading: var(--color-loading);
 
   --color-muted: var(--color-muted);
   --color-muted-foreground: var(--color-muted-foreground);

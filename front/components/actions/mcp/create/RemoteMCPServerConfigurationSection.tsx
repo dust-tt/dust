@@ -131,7 +131,7 @@ export function RemoteMCPServerConfigurationSection({
                   <Icon
                     visual={InfoCircle}
                     size="xs"
-                    className="text-gray-400"
+                    className="text-muted-foreground"
                   />
                 }
                 label="Choose how to authenticate to the MCP server: Automatic discovery, Bearer token, or Static OAuth credentials."

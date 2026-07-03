@@ -8,7 +8,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `A skeleton placeholder that animates a subtle shimmer while content loads. Size and shape it entirely through **className** (e.g. \`h-4 w-[250px]\`, \`rounded-full\`), composing several blocks to mirror the layout of the content being fetched.
+        component: `A skeleton placeholder that pulses a translucent tint (the \`loading\` token) while content loads, so it reads on any surface in both themes. Size and shape it entirely through **className** (e.g. \`h-4 w-[250px]\`, \`rounded-full\`), composing several blocks to mirror the layout of the content being fetched.
 
 **When to use**
 - To reserve space and signal loading for content whose shape is known ahead of time (cards, avatars, text lines).

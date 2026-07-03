@@ -132,7 +132,7 @@ export const SpaceCreateAppModal = ({
                 message={nameError}
                 messageStatus="error"
               />
-              <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+              <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 <AlertCircle /> Must be unique and only use alphanumeric, - or _
                 characters.
               </p>

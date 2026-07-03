@@ -73,7 +73,7 @@ export function Map({
     >
       <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col lg:flex-row lg:space-x-4">
-          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
             <Label>From</Label>
             <div className="flex flex-initial font-normal">
               <Input
@@ -84,7 +84,7 @@ export function Map({
               />
             </div>
           </div>
-          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
             <Label>Repeat</Label>
             <div className="flex flex-initial font-normal">
               <Input
