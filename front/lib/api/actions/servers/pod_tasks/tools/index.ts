@@ -4,7 +4,10 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import {
   getPod,
   withErrorHandling,
@@ -299,8 +302,20 @@ export function createProjectTasksTools(
           assignmentPool.length === 1 ? assignmentPool[0]!.id : null;
 
         const currentUser = auth.getNonNullableUser();
-        const agentConfigId =
-          toolContext?.runContext?.agentConfiguration?.sId ?? null;
+        const agentConfigurationId = isAgentLoopRunContext(
+          toolContext?.runContext
+        )
+          ? toolContext.runContext.agentConfiguration.sId
+          : null;
+
+        if (creatorType === "agent" && !agentConfigurationId) {
+          return new Err(
+            new MCPError(
+              "Agent creator type specified, but no agent configuration ID found in the context.",
+              { tracked: false }
+            )
+          );
+        }
 
         const created: string[] = [];
         const errors: string[] = [];
@@ -330,7 +345,7 @@ export function createProjectTasksTools(
             userId: newUserId,
             createdByType: creatorType,
             createdByAgentConfigurationId:
-              creatorType === "agent" ? agentConfigId : null,
+              creatorType === "agent" ? agentConfigurationId : null,
             createdByUserId: creatorType === "user" ? currentUser.id : null,
             text: item.text,
             status: item.doneRationale ? "done" : "todo",
@@ -341,7 +356,11 @@ export function createProjectTasksTools(
 
           // Record the conversation where the task was created as a source so
           // it surfaces in the kickoff prompt when the task is started.
-          const sourceConversation = toolContext?.runContext?.conversation;
+          const sourceConversation = isAgentLoopRunContext(
+            toolContext?.runContext
+          )
+            ? toolContext?.runContext?.conversation
+            : null;
           if (sourceConversation) {
             await row.upsertSource(auth, {
               itemId: sourceConversation.sId,
@@ -393,8 +412,11 @@ export function createProjectTasksTools(
         }
         const { pod } = contextRes.value;
 
-        const agentConfigId =
-          toolContext?.runContext?.agentConfiguration?.sId ?? null;
+        const agentConfigurationId = isAgentLoopRunContext(
+          toolContext?.runContext
+        )
+          ? toolContext.runContext.agentConfiguration.sId
+          : null;
 
         const updated: string[] = [];
         const errors: string[] = [];
@@ -412,7 +434,7 @@ export function createProjectTasksTools(
             pod,
             row,
             item,
-            agentConfigId
+            agentConfigurationId
           );
           if (payloadRes.isErr()) {
             errors.push(payloadRes.error.message);
