@@ -37,6 +37,19 @@ export function getPendingAgentsDeletionCutoffDate(): Date {
 }
 
 /**
+ * Purge draft agents logic.
+ */
+
+export const DRAFT_AGENTS_RETENTION_DAYS = 7;
+
+export function getDraftAgentsDeletionCutoffDate(): Date {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - DRAFT_AGENTS_RETENTION_DAYS);
+
+  return cutoffDate;
+}
+
+/**
  * Purge synthetic agent suggestions logic.
  */
 

@@ -1665,6 +1665,74 @@ export async function batchHardDeletePendingAgentConfigurations(
 }
 
 /**
+ * Batch-deletes draft agent configurations and their related resources.
+ * Only call with drafts that are not referenced by any mention, since
+ * conversation rendering relies on the mentioned configuration.
+ */
+export async function batchHardDeleteDraftAgentConfigurations(
+  agents: AgentConfigurationModel[],
+  workspaceId: number
+) {
+  const agentIds = agents.map((a) => a.id);
+
+  const mcpConfigs = await AgentMCPServerConfigurationModel.findAll({
+    where: { agentConfigurationId: agentIds, workspaceId },
+    attributes: ["id"],
+  });
+  const mcpIds = mcpConfigs.map((c) => c.id);
+
+  await withTransaction(async (t) => {
+    if (mcpIds.length > 0) {
+      await AgentDataSourceConfigurationModel.destroy({
+        where: { mcpServerConfigurationId: { [Op.in]: mcpIds }, workspaceId },
+        transaction: t,
+      });
+
+      await AgentTablesQueryConfigurationTableModel.destroy({
+        where: { mcpServerConfigurationId: { [Op.in]: mcpIds }, workspaceId },
+        transaction: t,
+      });
+
+      await AgentChildAgentConfigurationModel.destroy({
+        where: { mcpServerConfigurationId: { [Op.in]: mcpIds }, workspaceId },
+        transaction: t,
+      });
+
+      await AgentMCPServerConfigurationModel.destroy({
+        where: { id: { [Op.in]: mcpIds }, workspaceId },
+        transaction: t,
+      });
+    }
+
+    await TagAgentModel.destroy({
+      where: { agentConfigurationId: agentIds, workspaceId },
+      transaction: t,
+    });
+
+    // Drafts do not get editor groups, but unlink defensively.
+    await GroupAgentModel.destroy({
+      where: { agentConfigurationId: agentIds, workspaceId },
+      transaction: t,
+    });
+
+    await AgentSkillModel.destroy({
+      where: { agentConfigurationId: agentIds, workspaceId },
+      transaction: t,
+    });
+
+    await AgentSuggestionModel.destroy({
+      where: { agentConfigurationId: agentIds, workspaceId },
+      transaction: t,
+    });
+
+    await AgentConfigurationModel.destroy({
+      where: { id: agentIds, workspaceId },
+      transaction: t,
+    });
+  });
+}
+
+/**
  * Updates the permissions (editors) for an agent configuration.
  */
 export async function updateAgentPermissions(

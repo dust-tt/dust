@@ -1,6 +1,10 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
-import { batchHardDeletePendingAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import {
+  batchHardDeleteDraftAgentConfigurations,
+  batchHardDeletePendingAgentConfigurations,
+} from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { MentionModel } from "@app/lib/models/agent/conversation";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -12,6 +16,7 @@ import type {
   RunsJoinsRow,
 } from "@app/temporal/hard_delete/types";
 import {
+  getDraftAgentsDeletionCutoffDate,
   getPendingAgentsDeletionCutoffDate,
   getRunExecutionsDeletionCutoffDate,
   getSyntheticSuggestionsDeletionCutoffDate,
@@ -177,6 +182,86 @@ export async function purgeExpiredPendingAgentsActivity(
   logger.info(
     { totalDeleted },
     "Done purging expired pending agent configurations."
+  );
+}
+
+export async function purgeExpiredDraftAgentsActivity(
+  batchSize: number = BATCH_SIZE
+) {
+  const cutoffDate = getDraftAgentsDeletionCutoffDate();
+
+  logger.info(
+    {},
+    `About to purge draft agents created before ${cutoffDate.toISOString()}.`
+  );
+
+  const workspaces = await WorkspaceResource.listAll();
+
+  const deletedCounts = await concurrentExecutor(
+    workspaces,
+    async (workspace) => {
+      let deleted = 0;
+      let hasMore = true;
+      // Keyset pagination: mentioned drafts are skipped (not deleted), so
+      // re-querying from the start would loop on them forever.
+      let lastId = 0;
+
+      do {
+        const batch = await AgentConfigurationModel.findAll({
+          where: {
+            status: "draft",
+            createdAt: { [Op.lt]: cutoffDate },
+            workspaceId: workspace.id,
+            id: { [Op.gt]: lastId },
+          },
+          limit: batchSize,
+          order: [["id", "ASC"]],
+        });
+
+        hasMore = batch.length === batchSize;
+
+        if (batch.length > 0) {
+          lastId = batch[batch.length - 1].id;
+
+          // Drafts referenced by a mention were used in a conversation and
+          // must be kept: rendering the conversation needs their
+          // configuration.
+          const mentions = await MentionModel.findAll({
+            where: {
+              workspaceId: workspace.id,
+              agentConfigurationId: batch.map((a) => a.sId),
+            },
+            attributes: ["agentConfigurationId"],
+          });
+          const mentionedAgentIds = new Set(
+            mentions.map((m) => m.agentConfigurationId)
+          );
+
+          const deletableAgents = batch.filter(
+            (a) => !mentionedAgentIds.has(a.sId)
+          );
+          if (deletableAgents.length > 0) {
+            await batchHardDeleteDraftAgentConfigurations(
+              deletableAgents,
+              workspace.id
+            );
+            deleted += deletableAgents.length;
+          }
+        }
+
+        Context.current().heartbeat();
+      } while (hasMore);
+
+      return deleted;
+    },
+    { concurrency: WORKSPACE_CONCURRENCY }
+  );
+
+  const totalDeleted = deletedCounts.reduce((sum, count) => sum + count, 0);
+
+  logger.info(
+    { totalDeleted },
+    "Done purging expired draft agent configurations."
   );
 }
 
