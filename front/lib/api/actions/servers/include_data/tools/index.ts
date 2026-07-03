@@ -1,7 +1,11 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
+import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
 import {
   INCLUDE_DATA_BASE_TOOLS_METADATA,
@@ -19,6 +23,12 @@ export function createIncludeDataTools(
     ? shouldAutoGenerateTags(toolContext)
     : false;
 
+  const { retrievalTopK, citationsOffset } = isAgentLoopRunContext(
+    toolContext?.runContext
+  )
+    ? toolContext.runContext.stepContext
+    : { retrievalTopK: AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K, citationsOffset: 0 };
+
   if (!areTagsDynamic) {
     // Return base tools without tags
     const handlers: ToolHandlers<typeof INCLUDE_DATA_BASE_TOOLS_METADATA> = {
@@ -30,8 +40,8 @@ export function createIncludeDataTools(
         }
         return runIncludeDataRetrieval(auth, {
           ...params,
-          citationsOffset: toolContext.runContext.stepContext.citationsOffset,
-          retrievalTopK: toolContext.runContext.stepContext.retrievalTopK,
+          citationsOffset,
+          retrievalTopK,
         });
       },
     };
@@ -48,8 +58,8 @@ export function createIncludeDataTools(
       }
       return runIncludeDataRetrieval(auth, {
         ...params,
-        citationsOffset: toolContext.runContext.stepContext.citationsOffset,
-        retrievalTopK: toolContext.runContext.stepContext.retrievalTopK,
+        citationsOffset,
+        retrievalTopK,
       });
     },
     find_tags: async ({ query, dataSources }, _extra) => {

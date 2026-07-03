@@ -236,6 +236,7 @@ describe("runSandboxBashTool", () => {
       },
       toolContext: {
         runContext: {
+          contextType: "agent_loop",
           agentConfiguration: {
             model: { providerId: "openai" },
             sId: "agent-id",
@@ -672,6 +673,7 @@ describe("runSandboxBashTool", () => {
       return {
         toolContext: {
           runContext: {
+            contextType: "agent_loop",
             agentConfiguration: {
               model: { providerId: "openai" },
               sId: "agent-id",
@@ -783,6 +785,7 @@ describe("addEgressDomainTool", () => {
       },
       toolContext: {
         runContext: {
+          contextType: "agent_loop",
           conversation: { sId: "conversation-id" },
         },
       },
@@ -919,28 +922,6 @@ describe("addEgressDomainTool", () => {
     expect(result.isErr()).toBe(true);
     expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
-  });
-
-  it("returns an error without conversation context", async () => {
-    const result = await addEgressDomainTool(
-      {
-        domain: "example.org",
-        reason: "Retry a blocked request.",
-      },
-      {
-        auth: {
-          getNonNullableWorkspace: () => ({
-            name: "Workspace",
-            sId: "workspace-id",
-          }),
-        },
-        toolContext: undefined,
-        signal: new AbortController().signal,
-      } as never
-    );
-
-    expect(result.isErr()).toBe(true);
-    expect(mockEnsureSandboxReady).not.toHaveBeenCalled();
   });
 
   it("returns an error when no active sandbox is available", async () => {

@@ -4,6 +4,7 @@ import { GET_DATABASE_SCHEMA_MARKER } from "@app/lib/actions/mcp_internal_action
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   executeQuery,
   verifyDataSourceViewReadAccess,
@@ -27,6 +28,7 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 function tablesFromUris(tableUris: string[]): TablesConfigurationToolType {
   return tableUris.map((uri) => ({
@@ -239,9 +241,10 @@ const handlers: ToolHandlers<typeof QUERY_TABLES_V2_TOOLS_METADATA> = {
     { auth, toolContext }
   ) => {
     // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
-    if (!toolContext?.runContext) {
-      throw new Error("Unreachable: missing agentLoopContext.");
-    }
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
     const agentLoopRunContext = toolContext.runContext;
 

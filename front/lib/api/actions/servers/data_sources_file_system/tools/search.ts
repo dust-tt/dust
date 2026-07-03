@@ -12,7 +12,10 @@ import type {
   SearchWithNodesInputType,
   TagsInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -30,6 +33,8 @@ import {
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+
+export const AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K = 10;
 
 export async function search(
   {
@@ -52,7 +57,11 @@ export async function search(
     );
   }
 
-  const { retrievalTopK, citationsOffset } = toolContext.runContext.stepContext;
+  const { retrievalTopK, citationsOffset } = isAgentLoopRunContext(
+    toolContext.runContext
+  )
+    ? toolContext.runContext.stepContext
+    : { retrievalTopK: AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K, citationsOffset: 0 };
 
   const agentDataSourceConfigurationsResult =
     await getAgentDataSourceConfigurations(auth, dataSources);

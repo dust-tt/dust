@@ -1,6 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import {
   formatSlackMessageForLLM,
   renderFormattedMessage,
@@ -790,7 +793,10 @@ export async function executePostMessage(
 
   const originalMessage = message;
 
-  if (showSentByFooter !== false) {
+  if (
+    showSentByFooter !== false &&
+    isAgentLoopRunContext(toolContext.runContext)
+  ) {
     const agentUrl = getConversationRoute(
       auth.getNonNullableWorkspace().sId,
       "new",
@@ -945,7 +951,10 @@ export async function executeScheduleMessage(
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
 
-  if (showSentByFooter !== false) {
+  if (
+    showSentByFooter !== false &&
+    isAgentLoopRunContext(toolContext.runContext)
+  ) {
     const agentUrl = getConversationRoute(
       auth.getNonNullableWorkspace().sId,
       "new",

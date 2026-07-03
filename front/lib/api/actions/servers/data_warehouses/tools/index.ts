@@ -2,6 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   getAvailableWarehouses,
   getWarehouseNodes,
@@ -21,6 +22,7 @@ import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -205,11 +207,11 @@ const handlers: ToolHandlers<typeof DATA_WAREHOUSES_TOOLS_METADATA> = {
     { dataSources, tableIds, query, fileName },
     { auth, toolContext }
   ) => {
-    if (!toolContext?.runContext) {
-      return new Err(
-        new MCPError("Missing agentLoopContext for file generation")
-      );
-    }
+    // TODO(spolu): move query CSV output to DFS
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
     const agentLoopRunContext = toolContext.runContext;
 

@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import type {
   TeamsChannel,
   TeamsChat,
@@ -529,7 +530,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
 
       // Add footer with link to Dust conversation if agent context is available
       let finalContent = messageContent;
-      if (toolContext?.runContext?.agentConfiguration) {
+
+      if (isAgentLoopRunContext(toolContext?.runContext)) {
         const agentUrl = getConversationRoute(
           auth.getNonNullableWorkspace().sId,
           "new",

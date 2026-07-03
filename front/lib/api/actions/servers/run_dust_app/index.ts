@@ -7,7 +7,10 @@ import type {
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfigurationWithName,
   isServerSideMCPServerConfigurationWithName,
@@ -96,12 +99,12 @@ export default async function createServer(
     registerTool(auth, toolContext, server, toolDefinition, {
       monitoringName: "run_dust_app",
     });
-  } else if (toolContext?.runContext) {
+  } else if (isAgentLoopRunContext(toolContext?.runContext)) {
     // Context: Running the Dust app
-    const { toolConfiguration } = toolContext.runContext;
+    const runContext = toolContext.runContext;
     if (
       !isLightServerSideMCPToolConfigurationWithName(
-        toolConfiguration,
+        runContext.toolConfiguration,
         "run_dust_app"
       )
     ) {
@@ -110,7 +113,7 @@ export default async function createServer(
 
     const { app, schema, appConfig } = await prepareAppContext(
       auth,
-      toolConfiguration
+      runContext.toolConfiguration
     );
 
     if (!app.description) {
@@ -138,7 +141,7 @@ export default async function createServer(
         const preparedParams = await prepareParamsWithHistory(
           params,
           schema,
-          toolContext.runContext,
+          runContext,
           auth
         );
 
@@ -201,14 +204,11 @@ export default async function createServer(
 
         const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
 
-        if (
-          containsFileOutput(sanitizedOutput) &&
-          toolContext.runContext?.conversation
-        ) {
+        if (containsFileOutput(sanitizedOutput) && runContext.conversation) {
           const fileContentResult = await processDustFileOutput(
             auth,
             sanitizedOutput,
-            toolContext.runContext.conversation,
+            runContext.conversation,
             app.name
           );
           if (fileContentResult.isErr()) {

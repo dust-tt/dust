@@ -8,7 +8,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { NOTION_TOOLS_METADATA } from "@app/lib/api/actions/servers/notion/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -114,15 +117,16 @@ export function createNotionTools(
           },
         ]);
       } else {
-        const citationsOffset =
-          toolContext?.runContext?.stepContext.citationsOffset ?? 0;
+        const { citationsOffset } = isAgentLoopRunContext(
+          toolContext?.runContext
+        )
+          ? toolContext.runContext.stepContext
+          : { citationsOffset: 0 };
 
-        const refs = toolContext?.runContext?.stepContext.citationsOffset
-          ? getRefs().slice(
-              citationsOffset,
-              citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
-            )
-          : [];
+        const refs = getRefs().slice(
+          citationsOffset,
+          citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
+        );
 
         const resultResources = results.map((result) => {
           if (isFullPage(result)) {

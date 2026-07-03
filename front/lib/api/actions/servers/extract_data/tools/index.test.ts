@@ -66,6 +66,7 @@ function makeRunContext(): ToolContextType {
 
   return {
     runContext: {
+      contextType: "agent_loop",
       agentConfiguration: {
         model: {
           modelId: "test-model",

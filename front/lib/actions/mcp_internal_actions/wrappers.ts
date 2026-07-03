@@ -3,7 +3,10 @@ import type {
   ToolDefinition,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -137,20 +140,22 @@ function withToolLogging<T>(
 
     // Adding agent loop context if available.
     if (toolContext?.runContext) {
-      const {
-        agentConfiguration,
-        toolConfiguration,
-        conversation,
-        agentMessage,
-      } = toolContext.runContext;
-      loggerArgs = {
-        ...loggerArgs,
-        actionConfigurationId: toolConfiguration.sId,
-        agentConfigurationId: agentConfiguration.sId,
-        agentConfigurationVersion: agentConfiguration.version,
-        agentMessageId: agentMessage.sId,
-        conversationId: conversation.sId,
-      };
+      if (isAgentLoopRunContext(toolContext.runContext)) {
+        const {
+          agentConfiguration,
+          toolConfiguration,
+          conversation,
+          agentMessage,
+        } = toolContext.runContext;
+        loggerArgs = {
+          ...loggerArgs,
+          actionConfigurationId: toolConfiguration.sId,
+          agentConfigurationId: agentConfiguration.sId,
+          agentConfigurationVersion: agentConfiguration.version,
+          agentMessageId: agentMessage.sId,
+          conversationId: conversation.sId,
+        };
+      }
     }
 
     logger.info(loggerArgs, "Tool execution start");

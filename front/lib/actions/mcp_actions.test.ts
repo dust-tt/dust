@@ -709,6 +709,7 @@ describe("tryCallMCPTool", () => {
 
     // Create agent loop run context
     const agentLoopRunContext: AgentLoopRunContextType = {
+      contextType: "agent_loop",
       agentConfiguration: agentConfig,
       agentMessage,
       conversation,
@@ -732,7 +733,7 @@ describe("tryCallMCPTool", () => {
         relativeTimeFrame: "all",
         dataSources: [],
       },
-      agentLoopRunContext,
+      { runContext: agentLoopRunContext },
       {
         progressToken: agentMessage.agentMessageId as number,
         makeToolNotificationEvent: async () => ({

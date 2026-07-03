@@ -48,7 +48,7 @@ vi.mock("@app/lib/api/file_system", async (importOriginal) => {
 
 function makeToolContext(conversation: ConversationType): ToolContextType {
   return {
-    runContext: { conversation },
+    runContext: { contextType: "agent_loop", conversation },
   } as unknown as ToolContextType;
 }
 
@@ -425,7 +425,7 @@ describe("resolveConversationFileRef", () => {
       const result = await resolveConversationFileRef(
         auth,
         `conversation-${conversation.sId}/missing.png`,
-        undefined
+        makeToolContext({ ...conversation, content: [] })
       );
 
       expect(result.isErr()).toBe(true);
@@ -434,22 +434,6 @@ describe("resolveConversationFileRef", () => {
       }
       expect(result.error).toContain("not found");
     });
-  });
-
-  it("returns Err when toolContext has no runContext", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
-
-    const result = await resolveConversationFileRef(
-      auth,
-      "conversation/file.pdf",
-      undefined
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
-    }
-    expect(result.error).toContain("No conversation context");
   });
 
   it("returns the signed URL and metadata for a legacy fileId", async () => {

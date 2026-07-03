@@ -1,7 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { WAKEUPS_TOOLS_METADATA } from "@app/lib/api/actions/servers/wakeups/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -10,6 +13,7 @@ import { isUserMessageType } from "@app/types/assistant/conversation";
 import { isActiveWakeUp, type WakeUpType } from "@app/types/assistant/wakeups";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import assert from "assert";
 
 // Per-conversation guardrails. Enforced at tool-call time so the agent gets a clear error instead
 // of silently over-scheduling.
@@ -89,6 +93,10 @@ function parseWhen(when: string):
 }
 
 function getUserTimezone(toolContext?: ToolContextType): string | null {
+  if (!isAgentLoopRunContext(toolContext?.runContext)) {
+    return null;
+  }
+
   const content = toolContext?.runContext?.conversation?.content;
   if (!content) {
     return null;
@@ -123,13 +131,10 @@ export function createWakeupsTools(
 ) {
   const handlers: ToolHandlers<typeof WAKEUPS_TOOLS_METADATA> = {
     schedule_wakeup: async ({ when, reason, timezone }) => {
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError(
-            "Wake-ups can only be scheduled from within a conversation."
-          )
-        );
-      }
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
 
       const { conversation: runConversation, agentConfiguration } =
         toolContext.runContext;
@@ -246,13 +251,10 @@ export function createWakeupsTools(
     },
 
     list_wakeups: async () => {
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError(
-            "Wake-ups can only be listed from within a conversation."
-          )
-        );
-      }
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
 
       const { conversation } = toolContext.runContext;
 
@@ -282,13 +284,10 @@ export function createWakeupsTools(
     },
 
     cancel_wakeup: async ({ wakeUpId }) => {
-      if (!toolContext?.runContext) {
-        return new Err(
-          new MCPError(
-            "Wake-ups can only be cancelled from within a conversation."
-          )
-        );
-      }
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
 
       const { conversation } = toolContext.runContext;
 
