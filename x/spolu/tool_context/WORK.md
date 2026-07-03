@@ -68,6 +68,7 @@ to dynamically express that a server is not usable.
 ### TODOs:
 
 - [x] run_tool/mcp_execution: introduce pod tool_outputs (action_output_fs, persistToolOutput)
+- [ ] make runToolWithStreaming conversation-free
 - [ ] data_warehouse: flow to tool_outputs if in sandbox function
 - [ ] image_generation: flow to tool_outputs if in sandbox function
 - [ ] query_tables_v2: flow to tool_outputs if in sandbox function

@@ -1,7 +1,6 @@
 import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import type {
-  LightMCPToolConfigurationType,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -49,6 +48,7 @@ import {
   toWellFormed,
 } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 import { extname } from "path";
 import type { Logger } from "pino";
 
@@ -148,20 +148,24 @@ export async function processToolResults(
     conversation,
     localLogger,
     toolCallResultContent,
-    toolConfiguration,
     toolContext,
   }: {
     action: AgentMCPActionResource;
     conversation: ConversationType;
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
-    toolConfiguration: LightMCPToolConfigurationType;
     toolContext: ToolContextType;
   }
 ): Promise<{
   outputItems: AgentMCPActionOutputItemModel[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
+  assert(
+    toolContext.runContext,
+    "processToolResults requires a tool run context."
+  );
+  const { toolConfiguration } = toolContext.runContext;
+
   const fileUseCase: FileUseCase = "conversation";
   const fileUseCaseMetadata: FileUseCaseMetadata = {
     conversationId: conversation.sId,

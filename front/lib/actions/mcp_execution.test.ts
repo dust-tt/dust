@@ -39,7 +39,11 @@ vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
   };
 });
 
-async function setupTest() {
+async function setupTest({
+  mcpServerName = "test_server",
+}: {
+  mcpServerName?: string;
+} = {}) {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
   await MembershipFactory.associate(workspace, user, { role: "admin" });
@@ -65,7 +69,7 @@ async function setupTest() {
     type: "mcp_configuration",
     name: "test_tool",
     originalName: "test_tool",
-    mcpServerName: "test_server",
+    mcpServerName,
     dataSources: null,
     tables: null,
     childAgentId: null,
@@ -116,7 +120,7 @@ async function setupTest() {
     },
   };
 
-  return { auth, conversation, action, toolConfiguration, toolContext };
+  return { auth, conversation, action, toolContext };
 }
 
 async function setupAuth() {
@@ -240,8 +244,7 @@ describe("getAugmentedInputs", () => {
 
 describe("processToolResults", () => {
   it("should store snippet in DB when text exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES", async () => {
-    const { auth, conversation, action, toolConfiguration, toolContext } =
-      await setupTest();
+    const { auth, conversation, action, toolContext } = await setupTest();
 
     // Generate text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
     const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
@@ -252,7 +255,6 @@ describe("processToolResults", () => {
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
-      toolConfiguration,
     });
 
     expect(outputItems).toHaveLength(1);
@@ -272,8 +274,7 @@ describe("processToolResults", () => {
   });
 
   it("should store snippet for large resource text", async () => {
-    const { auth, conversation, action, toolConfiguration, toolContext } =
-      await setupTest();
+    const { auth, conversation, action, toolContext } = await setupTest();
 
     // Generate resource text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
     const largeResourceText = "y".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
@@ -289,7 +290,6 @@ describe("processToolResults", () => {
           resource: { uri: "file://test.txt", text: largeResourceText },
         },
       ],
-      toolConfiguration,
     });
 
     expect(outputItems).toHaveLength(1);
@@ -308,8 +308,7 @@ describe("processToolResults", () => {
   });
 
   it("should keep small text content as-is", async () => {
-    const { auth, conversation, action, toolConfiguration, toolContext } =
-      await setupTest();
+    const { auth, conversation, action, toolContext } = await setupTest();
 
     const smallText = "hello world";
 
@@ -319,7 +318,6 @@ describe("processToolResults", () => {
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: smallText }],
-      toolConfiguration,
     });
 
     expect(outputItems).toHaveLength(1);
@@ -332,8 +330,9 @@ describe("processToolResults", () => {
   });
 
   it("should keep large sandbox text content as-is", async () => {
-    const { auth, conversation, action, toolConfiguration, toolContext } =
-      await setupTest();
+    const { auth, conversation, action, toolContext } = await setupTest({
+      mcpServerName: "sandbox",
+    });
 
     const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
@@ -343,10 +342,6 @@ describe("processToolResults", () => {
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
-      toolConfiguration: {
-        ...toolConfiguration,
-        mcpServerName: "sandbox",
-      },
     });
 
     expect(outputItems).toHaveLength(1);
@@ -359,8 +354,7 @@ describe("processToolResults", () => {
   });
 
   it("should keep small resource text as-is", async () => {
-    const { auth, conversation, action, toolConfiguration, toolContext } =
-      await setupTest();
+    const { auth, conversation, action, toolContext } = await setupTest();
 
     const smallText = "small resource text";
 
@@ -375,7 +369,6 @@ describe("processToolResults", () => {
           resource: { uri: "file://small.txt", text: smallText },
         },
       ],
-      toolConfiguration,
     });
 
     expect(outputItems).toHaveLength(1);
@@ -388,8 +381,7 @@ describe("processToolResults", () => {
   });
 
   it(`should persist DATA_SOURCE_NODE_CONTENT block to ${TOOL_OUTPUTS_FOLDER_NAME}/`, async () => {
-    const { auth, conversation, action, toolConfiguration, toolContext } =
-      await setupTest();
+    const { auth, conversation, action, toolContext } = await setupTest();
 
     fileStorageMock.reset();
 
@@ -421,7 +413,6 @@ describe("processToolResults", () => {
           resource: dataSourceNodeResult,
         },
       ],
-      toolConfiguration,
     });
 
     const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
@@ -437,8 +428,7 @@ describe("processToolResults", () => {
   });
 
   it(`should persist large plain text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .txt`, async () => {
-    const { auth, conversation, action, toolConfiguration, toolContext } =
-      await setupTest();
+    const { auth, conversation, action, toolContext } = await setupTest();
 
     fileStorageMock.reset();
 
@@ -450,7 +440,6 @@ describe("processToolResults", () => {
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
-      toolConfiguration,
     });
 
     const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
@@ -464,8 +453,7 @@ describe("processToolResults", () => {
   });
 
   it(`should persist large JSON text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .json`, async () => {
-    const { auth, conversation, action, toolConfiguration, toolContext } =
-      await setupTest();
+    const { auth, conversation, action, toolContext } = await setupTest();
 
     fileStorageMock.reset();
 
@@ -479,7 +467,6 @@ describe("processToolResults", () => {
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: largeJson }],
-      toolConfiguration,
     });
 
     const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>

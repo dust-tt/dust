@@ -148,7 +148,6 @@ export async function* runToolWithStreaming(
         conversation,
         localLogger,
         toolCallResultContent: toolCallResult.content,
-        toolConfiguration,
         toolContext: { runContext: agentLoopRunContext },
       }),
     {
