@@ -3,9 +3,18 @@ import "../src/styles/tailwind.css";
 
 import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react";
+import { create } from "storybook/theming/create";
 
 const preview: Preview = {
   parameters: {
+    docs: {
+      // Render docs pages in the system fonts (Geist is loaded by fonts.css).
+      theme: create({
+        base: "light",
+        fontBase: "Geist, sans-serif",
+        fontCode: "'Geist Mono', monospace",
+      }),
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
