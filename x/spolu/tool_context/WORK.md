@@ -29,9 +29,9 @@
            // TODO: similar to data_warehouse, we need a specific flow to write to the pod
                     tool_outputs when in sandbox function. See TODOs below.
 [+]     4  front/lib/api/actions/servers/include_data/tools/index.ts:33
-[~]     7  front/lib/api/actions/servers/interactive_content/tools/index.ts:52
-           // We don't know how to create frames directly in pods for now it seems.
-           // Maybe we need just publish?
+[-]     7  front/lib/api/actions/servers/interactive_content/tools/index.ts:52
+           // We don't know how to create frames directly in pods for now.
+           // Create still conversation tied. Will have to skip for now the server.
 [+]     3  front/lib/api/actions/servers/microsoft_teams/tools/index.ts:532
 [+]     2  front/lib/api/actions/servers/notion/tools/index.ts:118
 [-]     3  front/lib/api/actions/servers/plan_mode/tools/index.ts:28
@@ -65,7 +65,6 @@ to dynamically express that a server is not usable.
 - [ ] run_tool/mcp_execution: introduce pod tool_outputs (action_output_fs, persistToolOutput)
 - [ ] data_warehouse: flow to tool_outputs if in sandbox function
 - [ ] image_generation: flow to tool_outputs if in sandbox function
-- [ ] interactive_content: enable publish only when in sandbox function (update tools listing)
 - [ ] pod_manager: filter add_message_to_conversation tool when in sandbox function 
 - [ ] timezone on invocation for:
       - google_calendar
