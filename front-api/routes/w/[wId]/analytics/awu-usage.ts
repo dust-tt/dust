@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/analytics/awu_usage";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsBusinessAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -17,7 +17,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureIsBusinessAdmin(),
   validate("query", AwuUsageQuerySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
