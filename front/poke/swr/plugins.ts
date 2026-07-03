@@ -7,6 +7,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { PokeGetConnectorCliCatalogResponseBody } from "@app/types/api/poke/connectors/cli_catalog";
 import type { PokeListPluginRunsResponseBody } from "@app/types/api/poke/plugin_manager";
 import type { PokeGetPluginAsyncArgsResponseBody } from "@app/types/api/poke/plugins/async_args";
 import type { PokeGetPluginDetailsResponseBody } from "@app/types/api/poke/plugins/manifest";
@@ -71,6 +72,28 @@ export function usePokePluginManifest({
 
   return {
     manifest: data ? data.manifest : null,
+    isLoading: !error && !data && !disabled,
+    isError: error,
+  };
+}
+
+export function usePokeConnectorCliCatalog({
+  disabled,
+}: {
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const catalogFetcher: Fetcher<PokeGetConnectorCliCatalogResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/poke/connectors/cli-catalog`,
+    catalogFetcher,
+    { disabled }
+  );
+
+  return {
+    catalog: data ? data.catalog : null,
     isLoading: !error && !data && !disabled,
     isError: error,
   };
