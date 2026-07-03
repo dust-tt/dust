@@ -25,10 +25,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
-import * as skillLifecycle from "@app/lib/resources/skill/skill_lifecycle";
-import { SkillResourceWithAgents } from "@app/lib/resources/skill/skill_resource_agents";
-import * as skillUpdates from "@app/lib/resources/skill/skill_updates";
-import * as skillVersions from "@app/lib/resources/skill/skill_versions";
+import { SkillResourceWithLifecycle } from "@app/lib/resources/skill/skill_resource_lifecycle";
 import type {
   SkillAttachedKnowledge,
   SkillConfigurationFindOptions,
@@ -40,7 +37,6 @@ import {
   getResourceIdFromSId,
   isResourceSId,
 } from "@app/lib/resources/string_ids";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -49,9 +45,6 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
-  SkillReinforcementMode,
-  SkillSourceMetadata,
-  SkillSourceType,
   SkillStatus,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
@@ -59,7 +52,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
 import omit from "lodash/omit";
@@ -77,6 +69,12 @@ export type {
   SkillAttachedKnowledge,
   SkillMCPServerConfiguration,
 } from "@app/lib/resources/skill/types";
+
+function isSkillResourceWithVersion(
+  skill: SkillResource
+): skill is SkillResource & { version: number } {
+  return skill.version !== null;
+}
 
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
@@ -122,7 +120,7 @@ export type {
  * @see GlobalSkillsRegistry for global skill definitions
  * @see SystemSkillsRegistry for always-enabled system skill definitions
  */
-export class SkillResource extends SkillResourceWithAgents {
+export class SkillResource extends SkillResourceWithLifecycle {
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
@@ -140,36 +138,6 @@ export class SkillResource extends SkillResourceWithAgents {
     ids: ModelId[]
   ): Promise<SkillResource[]> {
     return SkillResource.fetchByModelIds(auth, ids);
-  }
-
-  /**
-   * Get attached knowledge from the skill's data source configurations.
-   * Requires data source views to be fetched first.
-   */
-  async getAttachedKnowledge(
-    auth: Authenticator
-  ): Promise<SkillAttachedKnowledge[]> {
-    return skillUpdates.getAttachedKnowledge(auth, this);
-  }
-
-  /**
-   * Compute the requestedSpaceIds from MCP server views and attached knowledge.
-   * This is the source of truth for which spaces a skill needs access to.
-   */
-  static async computeRequestedSpaceIds(
-    auth: Authenticator,
-    {
-      mcpServerViews,
-      attachedKnowledge,
-    }: {
-      mcpServerViews: MCPServerViewResource[];
-      attachedKnowledge: SkillAttachedKnowledge[];
-    }
-  ): Promise<ModelId[]> {
-    return skillUpdates.computeRequestedSpaceIds(auth, {
-      mcpServerViews,
-      attachedKnowledge,
-    });
   }
 
   static async makeNew(
@@ -1422,7 +1390,7 @@ export class SkillResource extends SkillResourceWithAgents {
           version: versionModel.version,
         }
       );
-      assert(skillVersions.isSkillResourceWithVersion(skill));
+      assert(isSkillResourceWithVersion(skill));
       return skill;
     });
   }
@@ -1505,315 +1473,6 @@ export class SkillResource extends SkillResourceWithAgents {
     return result;
   }
 
-  async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
-    assert(this.canWrite(auth), "User is not authorized to archive this skill");
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    const affectedCount = await withTransaction(async (transaction) => {
-      // Rename any existing archived skill with the same name to avoid unique constraint violation.
-      const existingArchivedSkill = await this.model.findOne({
-        where: {
-          workspaceId: workspace.id,
-          name: this.name,
-          status: "archived",
-        },
-        transaction,
-      });
-
-      if (existingArchivedSkill) {
-        const timestamp = formatTimestampToFriendlyDate(
-          existingArchivedSkill.updatedAt.getTime(),
-          "compactWithDay"
-        );
-        await existingArchivedSkill.update(
-          { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
-          { transaction }
-        );
-      }
-
-      // We preserve AgentSkillModel, ConversationSkillModel, and
-      // SkillReferenceModel relationships so they can be restored when the skill
-      // is unarchived.
-      const [count] = await this.update({ status: "archived" }, transaction);
-
-      if (count > 0) {
-        // The skill no longer contributes any space requirement: drop its
-        // spaces from the agents using it (unless another active capability
-        // still requires them).
-        await this.updateActiveAgentsRequirements(
-          auth,
-          {
-            previousRequestedSpaceIds: this.requestedSpaceIds,
-            newRequestedSpaceIds: [],
-          },
-          { transaction }
-        );
-
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon: this.icon,
-            name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
-            status: "archived",
-          },
-          { transaction }
-        );
-
-        // Suspend all editor group memberships for this skill.
-        if (this.editorGroup) {
-          await this.editorGroup.suspendMembers(auth, { transaction });
-        }
-      }
-
-      return count;
-    });
-
-    return { affectedCount };
-  }
-
-  async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
-    assert(this.canWrite(auth), "User is not authorized to restore this skill");
-
-    const affectedCount = await withTransaction(async (transaction) => {
-      const [count] = await this.update({ status: "active" }, transaction);
-
-      if (count > 0) {
-        // The skill contributes its space requirements again: add them back to
-        // the agents using it.
-        await this.updateActiveAgentsRequirements(
-          auth,
-          {
-            previousRequestedSpaceIds: [],
-            newRequestedSpaceIds: this.requestedSpaceIds,
-          },
-          { transaction }
-        );
-
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon: this.icon,
-            name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
-            status: "active",
-          },
-          { transaction }
-        );
-
-        // Restore all editor group memberships (set suspended → active).
-        if (this.editorGroup) {
-          await this.editorGroup.restoreMembers(auth, { transaction });
-        }
-      }
-
-      return count;
-    });
-
-    return { affectedCount };
-  }
-
-  async updateSkill(
-    auth: Authenticator,
-    {
-      agentFacingDescription,
-      attachedKnowledge,
-      fileAttachments,
-      icon,
-      instructions,
-      instructionsHtml,
-      isDefault,
-      mcpServerViews,
-      name,
-      reinforcement,
-      requestedSpaceIds,
-      source,
-      sourceMetadata,
-      status,
-      userFacingDescription,
-    }: {
-      agentFacingDescription: string;
-      attachedKnowledge: SkillAttachedKnowledge[];
-      fileAttachments?: FileResource[];
-      icon: string | null;
-      instructions: string;
-      instructionsHtml?: string | null;
-      isDefault?: boolean;
-      mcpServerViews: MCPServerViewResource[];
-      name: string;
-      reinforcement?: SkillReinforcementMode;
-      requestedSpaceIds: ModelId[];
-      source?: SkillSourceType;
-      sourceMetadata?: SkillSourceMetadata;
-      status?: SkillStatus;
-      userFacingDescription: string;
-    }
-  ): Promise<void> {
-    assert(this.canWrite(auth), "User is not authorized to update this skill");
-
-    // Snapshot the previous name and icon before updating to detect changes below.
-    const previousName = this.name;
-    const previousIcon = this.icon;
-    const previousStatus = this.status;
-
-    await withTransaction(async (transaction) => {
-      // Save the current version before updating.
-      await skillVersions.saveVersion(auth, this, { transaction });
-
-      // Snapshot the previous requested space IDs before updating.
-      const previousRequestedSpaceIds = [...this.requestedSpaceIds];
-      const previousRequestedSpaceIdsSet = new Set(previousRequestedSpaceIds);
-      const requestedSpaceIdsChanged =
-        previousRequestedSpaceIds.length !== requestedSpaceIds.length ||
-        requestedSpaceIds.some(
-          (spaceId) => !previousRequestedSpaceIdsSet.has(spaceId)
-        );
-      const statusChanged = status !== undefined && previousStatus !== status;
-
-      const editedBy = auth.user()?.id;
-      await this.update(
-        {
-          name,
-          agentFacingDescription,
-          userFacingDescription,
-          instructions,
-          ...(instructionsHtml !== undefined ? { instructionsHtml } : {}),
-          icon,
-          requestedSpaceIds,
-          editedBy,
-          ...(status ? { status } : {}),
-          ...(source ? { source } : {}),
-          ...(sourceMetadata ? { sourceMetadata } : {}),
-          ...(isDefault !== undefined ? { isDefault } : {}),
-          ...(reinforcement !== undefined ? { reinforcement } : {}),
-        },
-        transaction
-      );
-
-      await this.normalizeSkillReferenceTags(auth, { transaction });
-      await this.syncSkillReferences(auth, { transaction });
-
-      if (
-        name !== previousName ||
-        icon !== previousIcon ||
-        requestedSpaceIdsChanged ||
-        statusChanged
-      ) {
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon,
-            name,
-            requestedSpaceIds,
-            status: status ?? this.status,
-          },
-          { transaction }
-        );
-      }
-
-      await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
-
-      await skillUpdates.setAttachedKnowledge(
-        auth,
-        this,
-        {
-          attachedKnowledge,
-        },
-        { transaction }
-      );
-
-      await this.updateActiveAgentsRequirements(
-        auth,
-        { previousRequestedSpaceIds },
-        { transaction }
-      );
-    });
-
-    if (fileAttachments) {
-      await this.setFileAttachments(auth, fileAttachments);
-    }
-
-    await this.upsertCurrentUserAsEditor(auth);
-  }
-
-  async updateReinforcement(
-    reinforcement: SkillReinforcementMode
-  ): Promise<void> {
-    await this.update({ reinforcement });
-  }
-
-  async updateSelfImprovementLock(selfImprovementLock: boolean): Promise<void> {
-    await this.update({ selfImprovementLock });
-  }
-
-  async updateSelfImprovementCostsCap(
-    selfImprovementCostsCapMicroUsd: number | null
-  ): Promise<void> {
-    await this.update({ selfImprovementCostsCapMicroUsd });
-  }
-
-  async updateSelfImprovementCostsCapAwuCredits(
-    selfImprovementCostsCapAwuCredits: number | null
-  ): Promise<void> {
-    await this.update({ selfImprovementCostsCapAwuCredits });
-  }
-
-  async recordReinforcementAnalysisCompletion(): Promise<void> {
-    await this.update({ lastReinforcementAnalysisAt: new Date() });
-  }
-
-  private async updateMCPServerViews(
-    auth: Authenticator,
-    mcpServerViews: MCPServerViewResource[],
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    await skillUpdates.syncMCPServerViews(auth, this, mcpServerViews, {
-      transaction,
-    });
-
-    // Update instance to avoid stale data.
-    this._mcpServerConfigurations = mcpServerViews.map((view) => ({
-      view,
-    }));
-  }
-
-  static computeDataSourceConfigurationChanges(
-    owner: LightWorkspaceType,
-    {
-      attachedKnowledge,
-      existingConfigurations,
-      skillConfigurationId,
-    }: {
-      attachedKnowledge: SkillAttachedKnowledge[];
-      existingConfigurations: SkillDataSourceConfigurationModel[];
-      skillConfigurationId: ModelId;
-    }
-  ): {
-    toDelete: SkillDataSourceConfigurationModel[];
-    toUpsert: CreationAttributes<SkillDataSourceConfigurationModel>[];
-  } {
-    return skillUpdates.computeDataSourceConfigurationChanges(owner, {
-      attachedKnowledge,
-      existingConfigurations,
-      skillConfigurationId,
-    });
-  }
-
-  private async setFileAttachments(
-    auth: Authenticator,
-    fileAttachments: FileResource[]
-  ): Promise<void> {
-    await skillUpdates.syncFileAttachments(auth, this, fileAttachments);
-
-    // Update instance to avoid stale data.
-    this.fileAttachments = fileAttachments;
-  }
-
-  async delete(auth: Authenticator): Promise<Result<number, Error>> {
-    return skillLifecycle.deleteSkill(auth, this);
-  }
-
   static async listByAgentMessageId(
     auth: Authenticator,
     agentMessageId: ModelId
@@ -1852,9 +1511,5 @@ export class SkillResource extends SkillResourceWithAgents {
     return this.fetchBySkillReferences(auth, agentMessageSkills, {
       status: ["active", "archived", "suggested"],
     });
-  }
-
-  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
-    return skillLifecycle.deleteAllForWorkspace(auth);
   }
 }
