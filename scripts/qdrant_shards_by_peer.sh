@@ -12,7 +12,7 @@ set -euo pipefail
 COLLECTION="${1:?usage: $0 <collection>}"
 BASE="$QDRANT_CLUSTER_0_URL"
 AUTH=(-H "api-key: $QDRANT_CLUSTER_0_API_KEY")
-MAX_ATTEMPTS="${MAX_ATTEMPTS:-500}"
+MAX_ATTEMPTS="${MAX_ATTEMPTS:-100}"
 
 # peer_id -> pod ordinal (ordinal = number before ".qdrant-headless" in the p2p uri).
 ORDINALS="$(curl -s "${AUTH[@]}" "$BASE/cluster" \
