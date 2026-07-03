@@ -80,6 +80,11 @@ export default function ConversationSidePanelContainer({
         ref={panelRef}
         minSize={20}
         defaultSize={0}
+        onCollapse={() => {
+          if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+            onPanelClosed();
+          }
+        }}
         onTransitionEnd={() => {
           if (panelRef.current?.isCollapsed()) {
             onPanelClosed();
@@ -87,9 +92,12 @@ export default function ConversationSidePanelContainer({
         }}
         collapsible
         collapsedSize={0}
+        animated
+        stableContent
+        stableContentSize={DEFAULT_RIGHT_PANEL_SIZE}
         className={cn(
           // Smooth transition animation similar to sidebar
-          "flex-0 overflow-hidden transition-all duration-300 ease-out",
+          "flex-0 overflow-hidden",
           !currentPanel && "hidden w-0 md:block",
           // On mobile: overlay full screen with absolute positioning.
           "md:relative",
