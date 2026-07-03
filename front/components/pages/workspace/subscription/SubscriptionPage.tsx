@@ -197,6 +197,66 @@ function CancelFreeTrialDialog({
   );
 }
 
+interface CancelMigrationDialogProps {
+  show: boolean;
+  onClose: () => void;
+  onValidate: () => Promise<void>;
+  isSaving: boolean;
+  billingPeriod: BillingPeriod | undefined;
+}
+
+function CancelMigrationDialog({
+  show,
+  onClose,
+  onValidate,
+  isSaving,
+  billingPeriod,
+}: CancelMigrationDialogProps) {
+  return (
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Cancel subscription</DialogTitle>
+          <DialogDescription>
+            {billingPeriod === "yearly"
+              ? "Your subscription will end on the scheduled migration date " +
+                "instead of continuing to your yearly renewal."
+              : "Your subscription will end at the end of your current " +
+                "billing period."}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          {isSaving ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <div className="font-bold">Are you sure you want to proceed?</div>
+          )}
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Keep subscription",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Yes, cancel subscription",
+            variant: "warning",
+            onClick: onValidate,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function SubscriptionPage() {
   const owner = useWorkspace();
   const { subscription, user: authUser } = useAuth();
@@ -211,6 +271,8 @@ export function SubscriptionPage() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
+    useState(false);
+  const [showCancelMigrationDialog, setShowCancelMigrationDialog] =
     useState(false);
 
   const { trialDaysRemaining, isTrialInfoLoading } = useSubscriptionTrialInfo({
@@ -438,19 +500,9 @@ export function SubscriptionPage() {
     new Date(subscription.endDate).getTime() > Date.now();
 
   const handleCancelMigration = async () => {
-    // Yearly subs end on the migration date (not their far-out renewal);
-    // monthly subs end at the current period end.
-    const cancelMessage =
-      perSeatPricing?.billingPeriod === "yearly"
-        ? "Cancel your subscription? It will end on the scheduled migration " +
-          "date instead of continuing to your yearly renewal."
-        : "Cancel your subscription? It will end at the end of your current " +
-          "billing period.";
-    if (!window.confirm(cancelMessage)) {
-      return;
-    }
     const ok = await cancelMigration();
     if (ok) {
+      setShowCancelMigrationDialog(false);
       await mutateMigration();
       router.reload();
     }
@@ -572,6 +624,14 @@ export function SubscriptionPage() {
             isSaving={cancelFreeTrialSubmitting}
           />
 
+          <CancelMigrationDialog
+            show={showCancelMigrationDialog}
+            onClose={() => setShowCancelMigrationDialog(false)}
+            onValidate={handleCancelMigration}
+            isSaving={isCancellingMigration}
+            billingPeriod={perSeatPricing.billingPeriod}
+          />
+
           <SkipFreeTrialDialog
             plan={subscription.plan}
             show={showSkipFreeTrialDialog}
@@ -668,7 +728,7 @@ export function SubscriptionPage() {
                         variant="outline"
                         disabled={isCancellingMigration}
                         onClick={() => {
-                          void handleCancelMigration();
+                          setShowCancelMigrationDialog(true);
                         }}
                       />
                     )}
