@@ -1,4 +1,7 @@
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { resolveFile } from "@app/lib/api/actions/servers/files/tools/utils";
 import {
   conversationAttachmentId,
@@ -20,6 +23,7 @@ import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import assert from "assert";
 import { PassThrough } from "stream";
 
 export function sanitizeFilename(filename: string): string {
@@ -51,6 +55,11 @@ export async function resolveConversationFileRef(
   fileId: string,
   toolContext: ToolContextType | undefined
 ): Promise<Result<ConversationFileRef, string>> {
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
+
   // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) produced by the new
   // DustFileSystem layer. Resolved directly — no conversation context needed.
   if (isCanonicalScopedPath(fileId)) {
@@ -167,9 +176,10 @@ export async function getFileFromConversationAttachment(
     string
   >
 > {
-  if (!toolContext?.runContext) {
-    return new Err("No conversation context available");
-  }
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
 
   // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) — resolve via DustFileSystem.
   if (isCanonicalScopedPath(fileId)) {
