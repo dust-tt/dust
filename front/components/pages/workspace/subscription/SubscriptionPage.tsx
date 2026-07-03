@@ -428,6 +428,14 @@ export function SubscriptionPage() {
     !pendingMigrationDate &&
     subscription.endDate !== null &&
     new Date(subscription.endDate).getTime() > Date.now();
+  // A yearly sub cut short (ends before its paid period end) is refunded the
+  // remaining days.
+  const willBeRefundedOnEnd =
+    perSeatPricing?.billingPeriod === "yearly" &&
+    subscription.endDate !== null &&
+    perSeatPricing.currentPeriodEndMs !== null &&
+    new Date(subscription.endDate).getTime() <
+      perSeatPricing.currentPeriodEndMs;
 
   const handleCancelMigration = async () => {
     // Yearly subs end on the migration date (not their far-out renewal);
@@ -608,6 +616,13 @@ export function SubscriptionPage() {
                     here
                   </LinkWrapper>
                   .
+                  {willBeRefundedOnEnd && (
+                    <>
+                      {" "}
+                      You'll be refunded for the remaining days of your current
+                      period.
+                    </>
+                  )}
                 </>
               )}
             </ContentMessage>
