@@ -265,9 +265,6 @@ export const createAgentMessages = async (
           skipToolsValidation: boolean;
           nextMessageRank: number;
           userMessage: UserMessageTypeWithoutMentions;
-          // Per-message model override (input-bar picker), already resolved to a
-          // concrete model. Applied to every agent message created here. Null
-          // when the agents run their configured models.
           requestedModel?: ResolvedRequestedModel | null;
         };
     transaction?: Transaction;

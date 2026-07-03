@@ -22,7 +22,6 @@ export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
 // Raw model selection coming from the input-bar model picker: an explicit
 // provider/model pick, with an optional reasoning-effort override.
 export const ModelSelectionSchema = z.object({
-  type: z.literal("model"),
   providerId: z.enum(MODEL_PROVIDER_IDS),
   modelId: z.string(),
   reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),

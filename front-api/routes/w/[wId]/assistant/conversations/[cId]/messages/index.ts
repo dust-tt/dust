@@ -155,11 +155,8 @@ const app = workspaceApp();
  *               modelSelection:
  *                 type: object
  *                 description: Optional per-message model override from the input-bar model picker (an explicit model pick).
- *                 required: [type, providerId, modelId]
+ *                 required: [providerId, modelId]
  *                 properties:
- *                   type:
- *                     type: string
- *                     enum: [model]
  *                   providerId:
  *                     type: string
  *                   modelId:
