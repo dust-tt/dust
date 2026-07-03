@@ -4,7 +4,10 @@ import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_inte
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
@@ -85,10 +88,9 @@ export function createExtractDataTools(
     tagsIn?: string[];
     tagsNot?: string[];
   }) {
-    // Unwrap and prepare variables.
     assert(
-      toolContext?.runContext,
-      "agentLoopContext is required to run the extract_data tool"
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
     );
     const { agentConfiguration, conversation } = toolContext.runContext;
     const { model } = agentConfiguration;
