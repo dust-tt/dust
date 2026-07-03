@@ -118,11 +118,30 @@
 }
 
 @layer utilities {
-  /* Dark-mode elevation: progressively stronger drop shadows plus faint inset
-     highlight lines, so each raised surface lifts off the one below it. In the
-     utilities layer (and via .dark specificity) so they override the
-     components' own shadow-* utilities in dark mode; light mode keeps those.
-     Ladder: panel < overlay < modal. */
+  /* Surface elevation: progressively stronger drop shadows so each raised
+     surface lifts off the one below it. Light mode uses soft outer shadows;
+     dark mode adds faint inset highlight lines. In the utilities layer (and
+     via .dark specificity in dark mode) so they override shadow-* utilities
+     on the same element. Ladder: panel < overlay < modal. */
+
+  .bg-panel-background {
+    box-shadow: 0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+
+  .bg-overlay-background {
+    box-shadow: 0 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+    0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .bg-modal-background {
+    box-shadow: 0 6px 6px -3px rgba(0, 0, 0, 0.06),
+     0 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+     0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+     0 0 0 1px rgba(0, 0, 0, 0.06);
+  }   
+
   .dark .bg-panel-background {
     box-shadow:
       0 1px 1px -0.5px rgba(0, 0, 0, 0.18),

@@ -17,7 +17,7 @@ const meta = {
     layout: "padded",
     docs: {
       description: {
-        component: `The elevation scale: box shadows (\`shadow\` through \`shadow-2xl\`) for surfaces and drop shadows (\`drop-shadow-*\`) for irregular shapes. Apply these Tailwind utilities to convey elevation consistently, reserving larger shadows for higher, more transient surfaces like popovers and dialogs. In dark mode the surface tokens \`bg-panel-background\`, \`bg-overlay-background\`, and \`bg-modal-background\` carry built-in elevation shadows that override these utilities — see Surface Elevation below. Each token is shown as a reference row: live specimen on a \`muted-background\` plate, a click-to-copy class chip, its computed value (read from the compiled CSS), and a description of intended use.`,
+        component: `The elevation scale: box shadows (\`shadow\` through \`shadow-2xl\`) for surfaces and drop shadows (\`drop-shadow-*\`) for irregular shapes. Apply these Tailwind utilities to convey elevation consistently, reserving larger shadows for higher, more transient surfaces like popovers and dialogs. The surface tokens \`bg-panel-background\`, \`bg-overlay-background\`, and \`bg-modal-background\` carry built-in elevation shadows in both themes that override these utilities on the same element — see Surface Elevation below. Each token is shown as a reference row: live specimen on a \`muted-background\` plate, a click-to-copy class chip, its computed value (read from the compiled CSS), and a description of intended use.`,
       },
     },
   },
@@ -174,11 +174,10 @@ export const SurfaceElevation: Story = {
       title="Surface Elevation"
       description={
         <p className="text-sm text-primary-600">
-          In dark mode these surface tokens carry built-in shadows (panel &lt;
+          These surface tokens carry built-in shadows in both themes (panel &lt;
           overlay &lt; modal) that override shadow-* utilities on the same
-          element, and a surface nested inside the same surface casts none. In
-          light mode they are flat — pair them with the box shadows above.
-          Toggle the theme to compare.
+          element. In dark mode, a surface nested inside the same surface casts
+          none. Toggle the theme to compare light and dark elevation.
         </p>
       }
     >
