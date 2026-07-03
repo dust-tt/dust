@@ -18,7 +18,7 @@ import { apiError } from "./utils";
 
 type SandboxTokenKind = "action" | "function_invocation";
 type SandboxAuthOptions = {
-  tokenKind: SandboxTokenKind;
+  tokenKinds: SandboxTokenKind[];
 };
 
 function readHeaders(ctx: Context): Record<string, string> {
@@ -38,7 +38,7 @@ function readHeaders(ctx: Context): Record<string, string> {
  * Mirrors `withSandboxAuthentication` in `front/lib/api/auth_wrappers.ts`.
  */
 export function sandboxAuth({
-  tokenKind,
+  tokenKinds,
 }: SandboxAuthOptions): MiddlewareHandler<SandboxCtx> {
   return createMiddleware<SandboxCtx>(async (ctx, next) => {
     const wId = ctx.req.param("wId");
@@ -83,25 +83,19 @@ export function sandboxAuth({
         },
       });
     }
-    if (tokenKind === "action" && !isSandboxExecTokenPayload(claims)) {
+    const claimsKind: SandboxTokenKind | null = isSandboxExecTokenPayload(
+      claims
+    )
+      ? "action"
+      : isSandboxFunctionInvocationTokenPayload(claims)
+        ? "function_invocation"
+        : null;
+    if (claimsKind === null || !tokenKinds.includes(claimsKind)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
-          message: "This sandbox token cannot access sandbox actions.",
-        },
-      });
-    }
-    if (
-      tokenKind === "function_invocation" &&
-      !isSandboxFunctionInvocationTokenPayload(claims)
-    ) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "This sandbox token cannot access sandbox function invocations.",
+          message: "This sandbox token cannot access this endpoint.",
         },
       });
     }
@@ -112,7 +106,7 @@ export function sandboxAuth({
     }
     const auth = authRes.value;
 
-    if (tokenKind === "action") {
+    if (claimsKind === "action") {
       const featureFlags = await getFeatureFlags(auth);
       if (!isComputerFeatureEnabled(featureFlags)) {
         return apiError(ctx, {

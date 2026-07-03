@@ -6,7 +6,7 @@ import result from "./result";
 // Mounted at /api/v1/w/:wId/sandbox/sandbox-functions.
 const app = sandboxApp();
 
-app.use("*", sandboxAuth({ tokenKind: "function_invocation" }));
+app.use("*", sandboxAuth({ tokenKinds: ["function_invocation"] }));
 
 app.route("/result", result);
 

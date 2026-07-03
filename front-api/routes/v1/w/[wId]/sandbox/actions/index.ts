@@ -1,3 +1,4 @@
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -6,12 +7,16 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
+import {
+  isSandboxExecTokenPayload,
+  isSandboxFunctionInvocationTokenPayload,
+} from "@app/lib/api/sandbox/access_tokens";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import type { Context } from "hono";
 
 import aId from "./[aId]";
 import call from "./call";
@@ -23,7 +28,33 @@ interface GetSandboxToolsResponseType {
 // Mounted at /api/v1/w/:wId/sandbox/actions.
 const app = sandboxApp();
 
-app.use("*", sandboxAuth({ tokenKind: "action" }));
+app.use("*", sandboxAuth({ tokenKinds: ["action", "function_invocation"] }));
+
+// Shared response tail: `?server=` name filtering and `?light=true` inputSchema stripping.
+function respondWithServerViews(ctx: Context, views: MCPServerViewType[]) {
+  const server = ctx.req.query("server");
+  const light = ctx.req.query("light");
+
+  let serverViews = views.filter((sv) => sv.server.name !== SANDBOX_TOOL_NAME);
+
+  // Filter by server name if requested.
+  if (server !== undefined) {
+    serverViews = serverViews.filter((sv) => sv.server.name === server);
+  }
+
+  // Strip tool inputSchemas in light mode.
+  if (light === "true") {
+    serverViews = serverViews.map((sv) => ({
+      ...sv,
+      server: {
+        ...sv.server,
+        tools: sv.server.tools.map(({ inputSchema, ...rest }) => rest),
+      },
+    }));
+  }
+
+  return ctx.json({ serverViews }, 200);
+}
 
 /**
  * @ignoreswagger
@@ -32,6 +63,27 @@ app.use("*", sandboxAuth({ tokenKind: "action" }));
 app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   const auth = ctx.get("auth");
   const claims = ctx.get("sandboxClaims");
+
+  // Sandbox function invocations have no agent configuration or conversation: they see the
+  // internal servers of their pod space (+ global space). Tools that require an agent-loop
+  // context error at execution based on the run context.
+  if (isSandboxFunctionInvocationTokenPayload(claims)) {
+    const views = await MCPServerViewResource.listBySpaceIds(
+      auth,
+      [claims.spaceId],
+      { includeGlobalSpace: true }
+    );
+
+    const serverViews = views
+      .filter((view) => {
+        const { serverType } = getServerTypeAndIdFromSId(view.mcpServerId);
+        return serverType === "internal";
+      })
+      .map((view) => view.toJSON());
+
+    return respondWithServerViews(ctx, serverViews);
+  }
+
   if (!isSandboxExecTokenPayload(claims)) {
     return apiError(ctx, {
       status_code: 403,
@@ -103,30 +155,10 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   // Fetch the server views with their tools metadata.
   const views = await MCPServerViewResource.fetchByIds(auth, [...viewIds]);
 
-  const server = ctx.req.query("server");
-  const light = ctx.req.query("light");
-
-  let serverViews = views
-    .map((view) => view.toJSON())
-    .filter((sv) => sv.server.name !== SANDBOX_TOOL_NAME);
-
-  // Filter by server name if requested.
-  if (server !== undefined) {
-    serverViews = serverViews.filter((sv) => sv.server.name === server);
-  }
-
-  // Strip tool inputSchemas in light mode.
-  if (light === "true") {
-    serverViews = serverViews.map((sv) => ({
-      ...sv,
-      server: {
-        ...sv.server,
-        tools: sv.server.tools.map(({ inputSchema, ...rest }) => rest),
-      },
-    }));
-  }
-
-  return ctx.json({ serverViews }, 200);
+  return respondWithServerViews(
+    ctx,
+    views.map((view) => view.toJSON())
+  );
 });
 
 // `/call` (literal) must be registered before `/:aId` (param) so the param

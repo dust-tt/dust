@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -9,6 +10,7 @@ import {
   makeAgentLoopWorkflowId,
   makeCompactionWorkflowId,
   makeSandboxChildToolWorkflowId,
+  makeSandboxFunctionToolWorkflowId,
 } from "@app/temporal/agent_loop/lib/workflow_ids";
 import type {
   AgentLoopArgs,
@@ -24,6 +26,7 @@ import {
   agentLoopWorkflow,
   compactionWorkflow,
   runSandboxChildToolWorkflow,
+  runSandboxFunctionToolWorkflow,
 } from "./workflows";
 
 export async function launchAgentLoopWorkflow({
@@ -244,6 +247,42 @@ export async function launchSandboxChildToolWorkflow(
       },
       memo: {
         conversationId: agentLoopArgs.conversationId,
+        workspaceId,
+      },
+    });
+  } catch (error) {
+    if (error instanceof WorkflowExecutionAlreadyStartedError) {
+      // Idempotent: another caller already kicked it off for this action.
+      return new Ok(undefined);
+    }
+    throw error;
+  }
+
+  return new Ok(undefined);
+}
+
+export async function launchSandboxFunctionToolWorkflow(
+  auth: Authenticator,
+  { action }: { action: SandboxFunctionMCPActionResource }
+): Promise<Result<undefined, Error>> {
+  const authType = auth.toJSON();
+  const { workspaceId } = authType;
+  const client = await getTemporalClientForAgentNamespace();
+
+  const workflowId = makeSandboxFunctionToolWorkflowId({
+    workspaceId,
+    actionModelId: action.id,
+  });
+
+  try {
+    await client.workflow.start(runSandboxFunctionToolWorkflow, {
+      args: [{ authType, actionModelId: action.id }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        workspaceId: [workspaceId],
+      },
+      memo: {
         workspaceId,
       },
     });

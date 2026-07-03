@@ -159,7 +159,9 @@ export async function processToolNotification(
 }
 
 /**
- * Processes tool results, handles file uploads, and creates output items.
+ * Processes tool results, handles file uploads, and persists the output: one output item per
+ * content block in an agent loop, a single GCS object holding the full content array for a
+ * sandbox function invocation.
  * Returns the processed content and generated files.
  */
 export async function processToolResults(
@@ -442,20 +444,6 @@ export async function processToolResults(
     }
   );
 
-  // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
-  // sandbox function run context.
-  assert(
-    isAgentLoopRunContext(runContext),
-    "processToolResults requires an agent loop run context to store output items."
-  );
-  const outputItems = await runContext.action.createOutputItems(
-    auth,
-    cleanContent.map((c) => ({
-      content: sanitizeStringsDeep(c.content),
-      fileId: c.file?.id,
-    }))
-  );
-
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
     cleanContent.map((c) => {
       if (c.file) {
@@ -488,7 +476,33 @@ export async function processToolResults(
     })
   );
 
-  return { outputItems, generatedFiles };
+  switch (runContext.contextType) {
+    case "agent_loop": {
+      const outputItems = await runContext.action.createOutputItems(
+        auth,
+        cleanContent.map((c) => ({
+          content: sanitizeStringsDeep(c.content),
+          fileId: c.file?.id,
+        }))
+      );
+      return { outputItems, generatedFiles };
+    }
+    case "sandbox_function": {
+      // No per-block consumer outside of a conversation: the full content array is written to a
+      // single GCS object, consumed once as a whole by the invocation poll endpoint.
+      const writeResult = await runContext.action.writeOutput(
+        auth,
+        cleanContent.map((c) => sanitizeStringsDeep(c.content))
+      );
+      if (writeResult.isErr()) {
+        // Same contract as `createOutputItems` above: no acceptable degraded state.
+        throw writeResult.error;
+      }
+      return { outputItems: [], generatedFiles };
+    }
+    default:
+      return assertNever(runContext);
+  }
 }
 
 /**

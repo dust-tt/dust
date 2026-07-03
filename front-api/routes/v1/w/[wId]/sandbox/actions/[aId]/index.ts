@@ -1,13 +1,19 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
-import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
+import {
+  isSandboxExecTokenPayload,
+  isSandboxFunctionInvocationTokenPayload,
+} from "@app/lib/api/sandbox/access_tokens";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { SandboxFunctionMCPActionType } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -28,8 +34,17 @@ type CallToolSuccessResponse = {
   action: AgentMCPActionWithOutputType;
 };
 
+// Narrow sandbox-function flavor: dsbx only reads `action.status` and `action.output`.
+type CallToolSandboxFunctionSuccessResponse = {
+  status: "success";
+  action: SandboxFunctionMCPActionType & {
+    output: CallToolResult["content"] | null;
+  };
+};
+
 export type FetchConversationMessageActionResponse =
   | CallToolSuccessResponse
+  | CallToolSandboxFunctionSuccessResponse
   | CallToolPendingResponse
   | CallToolRejectedResponse;
 
@@ -46,6 +61,57 @@ app.get(
   async (ctx): HandlerResult<FetchConversationMessageActionResponse> => {
     const auth = ctx.get("auth");
     const claims = ctx.get("sandboxClaims");
+
+    const { aId } = ctx.req.valid("param");
+
+    if (isSandboxFunctionInvocationTokenPayload(claims)) {
+      const action = await SandboxFunctionMCPActionResource.fetchById(
+        auth,
+        aId
+      );
+      // Scope the action lookup to the token's invocation — prevents a token leaking access to
+      // actions of other invocations in the same workspace.
+      if (!action || action.toJSON().invocationId !== claims.invocationId) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "action_not_found",
+            message: "Action not found.",
+          },
+        });
+      }
+
+      switch (action.status) {
+        case "running":
+        case "blocked_validation_required":
+          return ctx.json({ status: "pending", actionId: action.sId }, 202);
+        case "succeeded":
+        case "errored": {
+          const outputResult = await action.readOutput();
+          if (outputResult.isErr()) {
+            return apiError(ctx, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to read the action output.",
+              },
+            });
+          }
+          return ctx.json(
+            {
+              status: "success",
+              action: { ...action.toJSON(), output: outputResult.value },
+            },
+            200
+          );
+        }
+        case "denied":
+          return ctx.json({ status: "rejected" }, 403);
+        default:
+          assertNever(action.status);
+      }
+    }
+
     if (!isSandboxExecTokenPayload(claims)) {
       return apiError(ctx, {
         status_code: 403,
@@ -55,8 +121,6 @@ app.get(
         },
       });
     }
-
-    const { aId } = ctx.req.valid("param");
 
     const action = await AgentMCPActionResource.fetchById(auth, aId);
     if (!action) {
