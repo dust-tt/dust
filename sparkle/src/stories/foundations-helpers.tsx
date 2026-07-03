@@ -354,7 +354,7 @@ export function TokenChip({
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       )}
     >
-      <span>{label ?? value}</span>
+      <span className="whitespace-nowrap">{label ?? value}</span>
       {isCopied ? (
         <Check className="h-3 w-3 shrink-0 text-success-500" />
       ) : (
