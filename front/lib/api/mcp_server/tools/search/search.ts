@@ -94,13 +94,6 @@ export function registerSearchTool(server: McpServer) {
         nodeIds,
         tagsIn,
         tagsNot,
-        stepContext: {
-          citationsCount: topK,
-          citationsOffset: 0,
-          retrievalTopK: topK,
-          resumeState: null,
-          websearchResultCount: 0,
-        },
       });
 
       if (searchResult.isErr()) {
