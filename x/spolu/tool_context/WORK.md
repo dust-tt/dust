@@ -35,8 +35,10 @@
 [+]     3  front/lib/api/actions/servers/microsoft_teams/tools/index.ts:532
 [+]     2  front/lib/api/actions/servers/notion/tools/index.ts:118
 [-]     3  front/lib/api/actions/servers/plan_mode/tools/index.ts:28
-[ ]     2  front/lib/api/actions/servers/pod_manager/helpers.ts:147
-[ ]    11  front/lib/api/actions/servers/pod_manager/tools/index.ts:986
+[+]     2  front/lib/api/actions/servers/pod_manager/helpers.ts:147
+[+]    11  front/lib/api/actions/servers/pod_manager/tools/index.ts:986
+           // TODO: create_conversation should have timezone
+                    origin defaults to "web" which is fine for now
 [ ]     3  front/lib/api/actions/servers/pod_tasks/tools/index.ts:303
 [ ]     1  front/lib/api/actions/servers/query_tables_v2/tools/index.ts:284
 [ ]     6  front/lib/api/actions/servers/run_agent/index.ts:224
@@ -64,6 +66,10 @@ to dynamically express that a server is not usable.
 - [ ] data_warehouse: flow to tool_outputs if in sandbox function
 - [ ] image_generation: flow to tool_outputs if in sandbox function
 - [ ] interactive_content: enable publish only when in sandbox function (update tools listing)
+- [ ] pod_manager: filter add_message_to_conversation tool when in sandbox function 
+- [ ] timezone on invocation for:
+      - google_calendar
+      - pod_manager/create_conversation
 
 ### files server
 

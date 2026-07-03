@@ -6,7 +6,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import {
   FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
@@ -71,6 +74,7 @@ import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "../../data_sources_file_system/tools/search";
 import { formatConversationsForDisplay } from "./conversation_formatting";
 
 const LIST_CONVERSATIONS_DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
@@ -979,12 +983,21 @@ export function createProjectManagerTools(
           );
         }
 
+        const { retrievalTopK, citationsOffset } = isAgentLoopRunContext(
+          toolContext.runContext
+        )
+          ? toolContext.runContext.stepContext
+          : {
+              retrievalTopK: AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K,
+              citationsOffset: 0,
+            };
+
         return runIncludeDataRetrieval(auth, {
           timeFrame: params.timeFrame,
           dataSources,
           nodeIds: params.nodeIds,
-          citationsOffset: toolContext.runContext.stepContext.citationsOffset,
-          retrievalTopK: toolContext.runContext.stepContext.retrievalTopK,
+          citationsOffset,
+          retrievalTopK,
         });
       }, "Failed to retrieve recent Pod documents");
     },
@@ -1050,7 +1063,7 @@ export function createProjectManagerTools(
         let origin: UserMessageOrigin = "web";
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-        if (toolContext?.runContext?.conversation?.content) {
+        if (isAgentLoopRunContext(toolContext?.runContext)) {
           const userMessage = toolContext.runContext.conversation.content
             .flat()
             .findLast(isUserMessageType);
@@ -1061,11 +1074,15 @@ export function createProjectManagerTools(
         }
 
         // Get agent configuration name & profile picture URL
-        const agentName =
-          toolContext?.runContext?.agentConfiguration?.name ?? "Agent";
+        const agentName = isAgentLoopRunContext(toolContext?.runContext)
+          ? toolContext.runContext.agentConfiguration.name
+          : "Agent";
 
-        const agentProfilePictureUrl =
-          toolContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
+        const agentProfilePictureUrl = isAgentLoopRunContext(
+          toolContext?.runContext
+        )
+          ? toolContext.runContext.agentConfiguration.pictureUrl
+          : null;
 
         let mentions: { configurationId: string }[] = [];
         if (params.agentName) {
@@ -1305,7 +1322,10 @@ export function createProjectManagerTools(
         const owner = auth.getNonNullableWorkspace();
 
         const conversationId =
-          params.conversationId ?? toolContext?.runContext?.conversation?.sId;
+          params.conversationId ??
+          (isAgentLoopRunContext(toolContext?.runContext)
+            ? toolContext.runContext.conversation.sId
+            : null);
 
         if (!conversationId) {
           return new Err(
@@ -1341,7 +1361,7 @@ export function createProjectManagerTools(
         let origin: UserMessageOrigin = "web";
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-        if (toolContext?.runContext?.conversation?.content) {
+        if (isAgentLoopRunContext(toolContext?.runContext)) {
           const userMessage = toolContext.runContext.conversation.content
             .flat()
             .findLast(isUserMessageType);
@@ -1351,10 +1371,15 @@ export function createProjectManagerTools(
           }
         }
 
-        const agentName =
-          toolContext?.runContext?.agentConfiguration?.name ?? "Agent";
-        const agentProfilePictureUrl =
-          toolContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
+        const agentName = isAgentLoopRunContext(toolContext?.runContext)
+          ? toolContext.runContext.agentConfiguration.name
+          : "Agent";
+
+        const agentProfilePictureUrl = isAgentLoopRunContext(
+          toolContext?.runContext
+        )
+          ? toolContext.runContext.agentConfiguration.pictureUrl
+          : null;
 
         let mentions: { configurationId: string }[] = [];
         if (params.agentName) {
