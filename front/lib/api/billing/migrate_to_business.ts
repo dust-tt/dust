@@ -17,6 +17,7 @@ import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE,
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
+  isBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -313,25 +314,32 @@ export async function migrateWorkspaceToBusiness(
   // workspace fits it (seats, spaces, data sources). Otherwise fall back to the
   // legacy-large Business plan, whose limits fit any PRO_* workspace, so the
   // move never downgrades the workspace below its current usage.
-  const standardFit = await checkWorkspaceFitsPlanLimits(
-    auth,
-    deps.businessPlan
-  );
+  //
+  // PRO_PLAN_SEAT_39 (the enterprise seat-based legacy plan) always migrates to
+  // the legacy-large Business plan regardless of current usage.
   let targetPlan = deps.businessPlan;
-  if (!standardFit.fits) {
-    const largeFit = await checkWorkspaceFitsPlanLimits(
-      auth,
-      deps.businessLegacyLargePlan
-    );
-    if (!largeFit.fits) {
-      return new Ok({
-        status: "skipped",
-        reason:
-          "workspace exceeds even the legacy-large Business plan limits " +
-          `(${largeFit.violations.join(", ")})`,
-      });
-    }
+  if (isBusinessPlan(subscription.getPlan())) {
     targetPlan = deps.businessLegacyLargePlan;
+  } else {
+    const standardFit = await checkWorkspaceFitsPlanLimits(
+      auth,
+      deps.businessPlan
+    );
+    if (!standardFit.fits) {
+      const largeFit = await checkWorkspaceFitsPlanLimits(
+        auth,
+        deps.businessLegacyLargePlan
+      );
+      if (!largeFit.fits) {
+        return new Ok({
+          status: "skipped",
+          reason:
+            "workspace exceeds even the legacy-large Business plan limits " +
+            `(${largeFit.violations.join(", ")})`,
+        });
+      }
+      targetPlan = deps.businessLegacyLargePlan;
+    }
   }
 
   const packageAlias = businessPackageAliasForCurrency(pricing.seatCurrency);
