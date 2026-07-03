@@ -1,6 +1,13 @@
 import type { SkillConfigurationModel } from "@app/lib/models/skill";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
+import type { ModelId } from "@app/types/shared/model_id";
+
+// Fields identifying a skill in related tables (e.g., AgentSkillModel,
+// ConversationSkillModel).
+export type SkillReferenceFields =
+  | { globalSkillId: string }
+  | { customSkillId: ModelId };
 
 // Constrained find options include both global and custom skills.
 export type AllSkillConfigurationFindOptions = Omit<

@@ -34,10 +34,14 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
+import * as skillConversations from "@app/lib/resources/skill/skill_conversations";
 import * as skillEditors from "@app/lib/resources/skill/skill_editors";
 import * as skillReferences from "@app/lib/resources/skill/skill_references";
 import * as skillVersions from "@app/lib/resources/skill/skill_versions";
-import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import type {
+  SkillConfigurationFindOptions,
+  SkillReferenceFields,
+} from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -117,19 +121,6 @@ type SkillResourceConstructorOptions =
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     };
-
-type ConversationSkillCreationAttributes =
-  CreationAttributes<ConversationSkillModel> &
-    (
-      | {
-          source: "conversation";
-          agentConfigurationId: null;
-        }
-      | {
-          source: "agent_enabled";
-          agentConfigurationId: string;
-        }
-    );
 
 export interface SkillAttachedKnowledge {
   dataSourceView: DataSourceViewResource;
@@ -990,9 +981,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * Returns the fields to identify this skill in related tables (e.g., AgentSkillModel).
    */
-  private get skillReference():
-    | { globalSkillId: string }
-    | { customSkillId: ModelId } {
+  private get skillReference(): SkillReferenceFields {
     return this.globalSId
       ? { globalSkillId: this.globalSId }
       : { customSkillId: this.id };
@@ -1526,44 +1515,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    const user = auth.user();
-    if (!user) {
-      return new Err(new Error("User must be authenticated"));
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    const existingConversationSkill = await ConversationSkillModel.findOne({
-      where: {
-        ...this.skillReference,
-        workspaceId: workspace.id,
+    return skillConversations.upsertToConversation(
+      auth,
+      {
+        skillReference: this.skillReference,
         conversationId,
-        agentConfigurationId: null,
+        enabled,
       },
-      transaction,
-    });
-
-    if (existingConversationSkill && !enabled) {
-      await existingConversationSkill.destroy({ transaction });
-      return new Ok(undefined);
-    }
-
-    if (!existingConversationSkill && enabled) {
-      await ConversationSkillModel.create(
-        {
-          ...this.skillReference,
-          conversationId,
-          workspaceId: workspace.id,
-          agentConfigurationId: null,
-          source: "conversation",
-          addedByUserId: user.id,
-        } satisfies ConversationSkillCreationAttributes,
-        { transaction }
-      );
-      return new Ok(undefined);
-    }
-
-    return new Ok(undefined);
+      { transaction }
+    );
   }
 
   static async upsertConversationSkills(
@@ -1579,22 +1539,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    for (const skill of skills) {
-      const result = await skill.upsertToConversation(
-        auth,
-        {
-          conversationId,
-          enabled,
-        },
-        { transaction }
-      );
-
-      if (result.isErr()) {
-        return result;
-      }
-    }
-
-    return new Ok(undefined);
+    return skillConversations.upsertConversationSkills(
+      auth,
+      { conversationId, skills, enabled },
+      { transaction }
+    );
   }
 
   static async clearAllEnabledByConversation(
@@ -1606,15 +1555,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    await ConversationSkillModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-      },
-      transaction,
-    });
+    return skillConversations.clearAllEnabledByConversation(
+      auth,
+      { conversation },
+      { transaction }
+    );
   }
 
   private static async fromGlobalSkill(
@@ -2878,29 +2823,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversation: ConversationType;
     }
   ): Promise<{ wasAlreadyEnabled: boolean }> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const conversationSkillBlob: ConversationSkillCreationAttributes = {
-      ...this.skillReference,
-      workspaceId: workspace.id,
-      conversationId: conversation.id,
-      addedByUserId: null,
-      source: "agent_enabled",
-      agentConfigurationId: agentConfiguration.sId,
-    };
-
-    // Check if this skill is already enabled for this agent in this conversation.
-    const existingConversationSkill = await ConversationSkillModel.findOne({
-      where: conversationSkillBlob,
+    return skillConversations.enableForAgent(auth, {
+      skillReference: this.skillReference,
+      agentConfiguration,
+      conversation,
     });
-
-    if (existingConversationSkill) {
-      return { wasAlreadyEnabled: true };
-    }
-
-    await ConversationSkillModel.create(conversationSkillBlob);
-
-    return { wasAlreadyEnabled: false };
   }
 
   static async snapshotConversationSkillsForMessage(
@@ -2915,28 +2842,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversationId: ModelId;
     }
   ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const conversationSkills = await ConversationSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        conversationId,
-        [Op.or]: [{ agentConfigurationId }, { agentConfigurationId: null }],
-      },
+    return skillConversations.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId,
+      agentMessageId,
+      conversationId,
     });
-
-    await AgentMessageSkillModel.bulkCreate(
-      conversationSkills.map((cs) => ({
-        workspaceId: workspace.id,
-        agentConfigurationId: cs.agentConfigurationId,
-        customSkillId: cs.customSkillId,
-        globalSkillId: cs.globalSkillId,
-        agentMessageId,
-        conversationId: cs.conversationId,
-        source: cs.source,
-        addedByUserId: cs.addedByUserId,
-      }))
-    );
   }
 
   static async listByAgentMessageId(
@@ -2990,46 +2900,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       createdAt: Date;
     }[]
   > {
-    if (customSkills.length === 0) {
-      return [];
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    const skillsById = new Map(customSkills.map((s) => [s.id, s]));
-
-    const records = await AgentMessageSkillModel.findAll({
-      attributes: [
-        "createdAt",
-        "conversationId",
-        "customSkillId",
-        "agentConfigurationId",
-      ],
-      where: {
-        workspaceId: workspace.id,
-        customSkillId: {
-          [Op.ne]: null,
-          [Op.in]: [...skillsById.keys()],
-        },
-      },
-    });
-
-    return removeNulls(
-      records.map((r) => {
-        if (r.customSkillId === null) {
-          return null;
-        }
-        const skill = skillsById.get(r.customSkillId);
-        if (!skill) {
-          return null;
-        }
-        return {
-          skill,
-          conversationModelId: r.conversationId,
-          agentConfigurationId: r.agentConfigurationId,
-          createdAt: r.createdAt,
-        };
-      })
+    return skillConversations.listAgentMessageSkillsByCustomSkills(
+      auth,
+      customSkills
     );
   }
 
