@@ -206,15 +206,21 @@ security review is warranted). The design assumes Option A unless changed at rev
 - The dedicated form is exercised manually in Poke; no unit tests for the component (per repo
   testing guidance — functional/endpoint-level only).
 
+## Resolved decisions
+
+1. **Whitelist / security → Option A (approved).** A Poke-scoped run path validates against
+   `AdminCommandSchema` (authoritative) but is not limited to the interactive whitelist. The
+   existing whitelisted endpoint stays unchanged for other callers. Access stays gated by the
+   connectors API secret + Poke superuser + `requiredRoles` + `PluginRun` audit trail.
+2. **`requiredRoles` → `["engineering"]` (approved).**
+
 ## Open questions (to resolve in the plan)
 
-1. **Whitelist / security** — confirm Option A (recommended) vs B vs C. *Requires sign-off.*
-2. **`isNumber` derivation** — the cleanest signal for which params are numbers. Candidates:
+1. **`isNumber` derivation** — the cleanest signal for which params are numbers. Candidates:
    Commander option `parseArg === parseInt` hints, and/or the typed zod groups (`z.number()`).
    Untyped `z.record` groups accept strings anyway. Fallback: send all as strings and rely on the
    connectors schema's coercion where it exists; only coerce where we can prove a number is
    required. To be pinned down when writing the plan.
-3. **`requiredRoles`** — confirm `engineering` (vs `admin`) as the gate.
 
 ## File change summary
 
