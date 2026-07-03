@@ -1,8 +1,8 @@
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { PodType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -14,17 +14,18 @@ import {
 import { useCallback, useMemo, useState } from "react";
 
 interface TriggerPodSelectorProps {
+  owner: LightWorkspaceType;
   value: string | null | undefined;
   onChange: (spaceId: string | null) => void;
   disabled?: boolean;
 }
 
 export function TriggerPodSelector({
+  owner,
   value,
   onChange,
   disabled,
 }: TriggerPodSelectorProps) {
-  const { owner } = useAgentBuilderContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
 

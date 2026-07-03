@@ -245,10 +245,12 @@ function WebhookEditionMessageInput({
 
 interface WebhookEditionPodSelectorProps {
   isEditor: boolean;
+  owner: LightWorkspaceType;
 }
 
 function WebhookEditionPodSelector({
   isEditor,
+  owner,
 }: WebhookEditionPodSelectorProps) {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const { field } = useController({ control, name: "webhook.spaceId" });
@@ -260,6 +262,7 @@ function WebhookEditionPodSelector({
         Run this trigger's conversation inside a Pod instead.
       </p>
       <TriggerPodSelector
+        owner={owner}
         value={field.value}
         onChange={field.onChange}
         disabled={!isEditor}
@@ -346,7 +349,7 @@ export function WebhookEditionSheetContent({
 
         <Separator />
 
-        <WebhookEditionPodSelector isEditor={isEditor} />
+        <WebhookEditionPodSelector isEditor={isEditor} owner={owner} />
 
         {trigger && (
           <div className="space-y-1">

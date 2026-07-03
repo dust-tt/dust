@@ -100,10 +100,12 @@ function ScheduleEditionMessageInput({
 
 interface ScheduleEditionPodSelectorProps {
   isEditor: boolean;
+  owner: LightWorkspaceType;
 }
 
 function ScheduleEditionPodSelector({
   isEditor,
+  owner,
 }: ScheduleEditionPodSelectorProps) {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const { field } = useController({ control, name: "schedule.spaceId" });
@@ -115,6 +117,7 @@ function ScheduleEditionPodSelector({
         Run this trigger's conversation inside a Pod instead.
       </p>
       <TriggerPodSelector
+        owner={owner}
         value={field.value}
         onChange={field.onChange}
         disabled={!isEditor}
@@ -155,7 +158,7 @@ export function ScheduleEditionSheetContent({
         <Separator />
         <ScheduleEditionMessageInput isEditor={isEditor} />
         <Separator />
-        <ScheduleEditionPodSelector isEditor={isEditor} />
+        <ScheduleEditionPodSelector isEditor={isEditor} owner={owner} />
       </div>
     </>
   );
