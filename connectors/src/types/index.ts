@@ -1,3 +1,4 @@
+export * from "./admin/catalog";
 export * from "./admin/cli";
 export * from "./api";
 export * from "./configuration";
