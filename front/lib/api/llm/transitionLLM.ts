@@ -225,47 +225,6 @@ export function toBaseMessages(
   }
 }
 
-/**
- * Converts the rendered conversation to BaseMessages and places the message-level
- * cache breakpoints.
- *
- * Anthropic allows 4 explicit breakpoints per request and the budget is fully
- * allocated: the two system blocks (placed in `buildPayload`), the equipped-skills
- * message, and the trailing user message. Do not add a marker without removing one.
- * The request-level cache_control sent by the direct Anthropic client is a same-TTL
- * no-op on the trailing marker and does not consume a slot.
- */
-export function toBaseMessagesWithCacheBreakpoints(
-  messages: ModelMessageTypeMultiActionsWithoutContentFragment[]
-): BaseMessage[] {
-  const baseMessages = messages.flatMap((message, index): BaseMessage[] => {
-    const base = toBaseMessages(message);
-    // Breakpoint on the equipped-skills message (leading, system-authored, stable
-    // per agent) so the skills list is reused across conversations and users. The
-    // name discriminator does not survive the conversion, hence the check on the
-    // source message.
-    if (index === 0 && message.role === "user" && message.name === "system") {
-      return base.map((m, i) =>
-        i === base.length - 1 ? { ...m, cache: "short" } : m
-      );
-    }
-    return base;
-  });
-
-  // Breakpoint on the last user-role message so the conversation prefix is reused
-  // across turns. Tool results are user-role here, so this also covers the
-  // tool-result turns the legacy client left to the request-level cache_control.
-  for (let i = baseMessages.length - 1; i >= 0; i--) {
-    const msg = baseMessages[i];
-    if (msg.role === "user") {
-      baseMessages[i] = { ...msg, cache: "short" };
-      break;
-    }
-  }
-
-  return baseMessages;
-}
-
 // The new router nests reasoning replay state under `metadata.content`: OpenAI
 // uses `id` + `encryptedContent`, Anthropic/Gemini use `signature`. Persist it in
 // the legacy top-level shape (`id` / `encrypted_content`) the replay path reads,
@@ -569,9 +528,20 @@ abstract class BaseTransition extends LLM {
   protected buildPayload(streamParameters: LLMStreamParameters): Payload {
     const { conversation, hasConditionalJITTools, prompt } = streamParameters;
 
-    const baseMessages = toBaseMessagesWithCacheBreakpoints(
-      conversation.messages
-    );
+    const baseMessages = conversation.messages.flatMap(toBaseMessages);
+
+    // Cache breakpoint on the last user-role message so the conversation
+    // prefix is reused across turns. Mirrors the legacy cache_control:
+    // ephemeral marker on the last user content block, and the request-level
+    // cache_control that acted as a default trailing breakpoint for
+    // tool-result turns.
+    for (let i = baseMessages.length - 1; i >= 0; i--) {
+      const msg = baseMessages[i];
+      if (msg.role === "user") {
+        baseMessages[i] = { ...msg, cache: "short" };
+        break;
+      }
+    }
 
     const { instructions, sharedContext, ephemeralContext } =
       normalizePrompt(prompt);
