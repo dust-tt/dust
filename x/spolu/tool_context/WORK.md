@@ -14,15 +14,20 @@
 [+]     1  front/lib/api/actions/servers/data_sources_file_system/tools/cat.ts:169
 [+]     1  front/lib/api/actions/servers/data_sources_file_system/tools/search.ts:55
 [~]     1  front/lib/api/actions/servers/data_warehouses/tools/index.ts:262
-           // TODO: migrate to CSV output to DFS
+           // TODO: end state is a migration of the whole system here but today it relies on table
+                    query. To re-enable likely different path when sandbox function that writes to
+                    the pod tool outputs. Will need to change the tool return (currently returns a
+                    file should now be a path for that flow). See TODOs below.
 [-]     2  front/lib/api/actions/servers/extract_data/tools/index.ts:56
 [-]     1  front/lib/api/actions/servers/files/tools/agent_loop_fs.ts:15
 [+]     1  front/lib/api/actions/servers/google_calendar/helpers.ts:176
            // TODO: user timezone for calendar, once we have it in invocations
 [+]     2  front/lib/api/actions/servers/google_drive/tools/index.ts:300
 [+]     1  front/lib/api/actions/servers/helpers.ts:44
-           // TODO sidekick should be removed from list
-[ ]     1  front/lib/api/actions/servers/image_generation/helpers.ts:217
+           // TODO: sidekick should be removed from list
+[~]     1  front/lib/api/actions/servers/image_generation/helpers.ts:217
+           // TODO: similar to data_warehouse, we need a specific flow to write to the pod
+                    tool_outputs when in sandbox function. See TODOs below.
 [ ]     4  front/lib/api/actions/servers/include_data/tools/index.ts:33
 [ ]     7  front/lib/api/actions/servers/interactive_content/tools/index.ts:52
 [ ]     3  front/lib/api/actions/servers/microsoft_teams/tools/index.ts:532
@@ -50,6 +55,12 @@
 
 Ideally if createServer returns 0 tools we should not expose the server at all. Would be a nice way
 to dynamically express that a server is not usable.
+
+### TODOs:
+
+ - [ ] mcp_execution: introduce pod tool_outputs
+ - [ ] data_warehouse: flow to tool_outputs if in sandbox function
+ - [ ] image_generation: flow to tool_outputs if in sandbox function
 
 ### files server
 

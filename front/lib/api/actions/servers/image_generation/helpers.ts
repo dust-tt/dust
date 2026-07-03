@@ -4,7 +4,10 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
@@ -26,6 +29,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 export type ImageGenerationErrorCode =
   | "api_error"
@@ -206,6 +210,10 @@ export async function uploadAndFormatImageResponse(
 ): Promise<
   Result<Array<{ type: "resource"; resource: ToolGeneratedFileType }>, MCPError>
 > {
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
   if (!toolContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file upload", {
