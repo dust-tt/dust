@@ -225,6 +225,53 @@ export function toBaseMessages(
   }
 }
 
+/**
+ * Converts the rendered conversation to BaseMessages and places at most one
+ * message-level cache breakpoint.
+ *
+ * Anthropic allows 4 cache_control markers per request. The direct Anthropic
+ * client sends a request-level cache_control that the API materializes as a
+ * marker on the last cacheable block and counts against that limit. With the two
+ * system blocks placed in `buildPayload`, that leaves room for exactly one
+ * message-level marker.
+ *
+ * It goes on the leading equipped-skills message when present (large, stable per
+ * agent, reused across conversations and users) and on the last user-role message
+ * otherwise, where it keeps the conversation prefix cached across turns on Vertex,
+ * which has no request-level caching.
+ */
+export function toBaseMessagesWithCacheBreakpoints(
+  messages: ModelMessageTypeMultiActionsWithoutContentFragment[]
+): BaseMessage[] {
+  // The skills message is the leading, system-authored user message. Its name
+  // discriminator does not survive the conversion, hence the check on the source.
+  const [first] = messages;
+  const hasLeadingSkillsMessage =
+    first !== undefined && first.role === "user" && first.name === "system";
+
+  const baseMessages = messages.flatMap((message, index): BaseMessage[] => {
+    const base = toBaseMessages(message);
+    if (index === 0 && hasLeadingSkillsMessage) {
+      return base.map((m, i) =>
+        i === base.length - 1 ? { ...m, cache: "short" } : m
+      );
+    }
+    return base;
+  });
+
+  if (!hasLeadingSkillsMessage) {
+    for (let i = baseMessages.length - 1; i >= 0; i--) {
+      const msg = baseMessages[i];
+      if (msg.role === "user") {
+        baseMessages[i] = { ...msg, cache: "short" };
+        break;
+      }
+    }
+  }
+
+  return baseMessages;
+}
+
 // The new router nests reasoning replay state under `metadata.content`: OpenAI
 // uses `id` + `encryptedContent`, Anthropic/Gemini use `signature`. Persist it in
 // the legacy top-level shape (`id` / `encrypted_content`) the replay path reads,
@@ -528,20 +575,9 @@ abstract class BaseTransition extends LLM {
   protected buildPayload(streamParameters: LLMStreamParameters): Payload {
     const { conversation, hasConditionalJITTools, prompt } = streamParameters;
 
-    const baseMessages = conversation.messages.flatMap(toBaseMessages);
-
-    // Cache breakpoint on the last user-role message so the conversation
-    // prefix is reused across turns. Mirrors the legacy cache_control:
-    // ephemeral marker on the last user content block, and the request-level
-    // cache_control that acted as a default trailing breakpoint for
-    // tool-result turns.
-    for (let i = baseMessages.length - 1; i >= 0; i--) {
-      const msg = baseMessages[i];
-      if (msg.role === "user") {
-        baseMessages[i] = { ...msg, cache: "short" };
-        break;
-      }
-    }
+    const baseMessages = toBaseMessagesWithCacheBreakpoints(
+      conversation.messages
+    );
 
     const { instructions, sharedContext, ephemeralContext } =
       normalizePrompt(prompt);

@@ -2,10 +2,12 @@ import {
   convertToOldEvent,
   reasoningContentToLegacyMetadata,
   toBaseMessages,
+  toBaseMessagesWithCacheBreakpoints,
 } from "@app/lib/api/llm/transitionLLM";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { assistantReasoningMessageToInputItems } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
 import type { ProviderPassthroughEvent } from "@app/lib/model_constructors/types/output/events";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -78,6 +80,99 @@ describe("toBaseMessages", () => {
         content: { provider: "anthropic", block: serverToolUseBlock },
       },
     ]);
+  });
+});
+
+describe("toBaseMessagesWithCacheBreakpoints", () => {
+  const cacheOf = (message: BaseMessage) =>
+    "cache" in message ? message.cache : undefined;
+
+  const skillsMessage: ModelMessageTypeMultiActionsWithoutContentFragment = {
+    role: "user",
+    name: "system",
+    content: [{ type: "text", text: "<dust_system>skills list</dust_system>" }],
+  };
+  const userMessage: ModelMessageTypeMultiActionsWithoutContentFragment = {
+    role: "user",
+    name: "john_doe",
+    content: [{ type: "text", text: "hi" }],
+  };
+  const assistantMessage: ModelMessageTypeMultiActionsWithoutContentFragment = {
+    role: "assistant",
+    name: "agent",
+    contents: [{ type: "text_content", value: "hello" }],
+  };
+  const toolResultMessage: ModelMessageTypeMultiActionsWithoutContentFragment =
+    {
+      role: "function",
+      name: "some_tool",
+      function_call_id: "call_1",
+      content: "ok",
+    };
+
+  it("marks only the leading system-authored message when present", () => {
+    const result = toBaseMessagesWithCacheBreakpoints([
+      skillsMessage,
+      userMessage,
+      assistantMessage,
+      toolResultMessage,
+    ]);
+
+    expect(cacheOf(result[0])).toBe("short");
+    expect(result.slice(1).every((m) => cacheOf(m) === undefined)).toBe(true);
+  });
+
+  it("marks the trailing user message when there is no leading system message", () => {
+    const result = toBaseMessagesWithCacheBreakpoints([
+      userMessage,
+      assistantMessage,
+      userMessage,
+    ]);
+
+    expect(cacheOf(result[0])).toBeUndefined();
+    expect(cacheOf(result[result.length - 1])).toBe("short");
+  });
+
+  it("treats a system-authored message that is not first as a regular message", () => {
+    const result = toBaseMessagesWithCacheBreakpoints([
+      userMessage,
+      assistantMessage,
+      skillsMessage,
+      userMessage,
+    ]);
+
+    expect(cacheOf(result[0])).toBeUndefined();
+    expect(cacheOf(result[2])).toBeUndefined();
+    expect(cacheOf(result[3])).toBe("short");
+  });
+
+  it("puts the trailing marker on a tool result when the conversation ends on one", () => {
+    const result = toBaseMessagesWithCacheBreakpoints([
+      userMessage,
+      assistantMessage,
+      toolResultMessage,
+    ]);
+
+    const last = result[result.length - 1];
+    expect(last.role).toBe("user");
+    expect(last.type).toBe("tool_call_result");
+    expect(cacheOf(last)).toBe("short");
+  });
+
+  it("never places more than one message-level marker", () => {
+    const conversations = [
+      [skillsMessage, userMessage],
+      [skillsMessage, userMessage, assistantMessage, toolResultMessage],
+      [userMessage, assistantMessage, toolResultMessage],
+      [userMessage],
+    ];
+
+    for (const conversation of conversations) {
+      const marked = toBaseMessagesWithCacheBreakpoints(conversation).filter(
+        (m) => cacheOf(m) !== undefined
+      );
+      expect(marked).toHaveLength(1);
+    }
   });
 });
 
