@@ -19,7 +19,6 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
-import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -36,6 +35,7 @@ import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/syst
 import * as skillAgents from "@app/lib/resources/skill/skill_agents";
 import * as skillConversations from "@app/lib/resources/skill/skill_conversations";
 import * as skillEditors from "@app/lib/resources/skill/skill_editors";
+import * as skillLifecycle from "@app/lib/resources/skill/skill_lifecycle";
 import * as skillReferences from "@app/lib/resources/skill/skill_references";
 import * as skillUpdates from "@app/lib/resources/skill/skill_updates";
 import * as skillVersions from "@app/lib/resources/skill/skill_versions";
@@ -77,7 +77,6 @@ import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -2283,136 +2282,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async delete(auth: Authenticator): Promise<Result<number, Error>> {
-    try {
-      assert(
-        this.canWrite(auth),
-        "User does not have permission to delete this skill."
-      );
-
-      const workspace = auth.getNonNullableWorkspace();
-
-      const whereWorkspaceIdAndSkillId = {
-        skillConfigurationId: this.id,
-        workspaceId: workspace.id,
-      };
-
-      // Collect file IDs from current attachments and all version snapshots.
-      const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
-        where: whereWorkspaceIdAndSkillId,
-      });
-      const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
-
-      const versionRows = await SkillVersionModel.findAll({
-        where: whereWorkspaceIdAndSkillId,
-        attributes: ["fileAttachmentIds"],
-      });
-      const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
-
-      const allFileIds = [...new Set([...currentFileIds, ...versionFileIds])];
-      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        allFileIds
-      );
-
-      const affectedCount = await withTransaction(async (transaction) => {
-        await skillReferences.propagateReferenceUpdatesToParentSkills(
-          auth,
-          this,
-          {
-            icon: this.icon,
-            name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
-            status: "archived",
-          },
-          { transaction }
-        );
-
-        // Delete agent-skill associations.
-        await AgentSkillModel.destroy({
-          where: {
-            customSkillId: this.id,
-            workspaceId: workspace.id,
-          },
-          transaction,
-        });
-
-        await ProjectMetadataResource.removeSkillFromAllDefaultSkills(
-          auth,
-          this.sId,
-          transaction
-        );
-
-        await GroupSkillModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
-          transaction,
-        });
-
-        if (this.editorGroup) {
-          await this.editorGroup.delete(auth, { transaction });
-        }
-
-        await SkillFileAttachmentModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
-          transaction,
-        });
-
-        await SkillDataSourceConfigurationModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
-          transaction,
-        });
-
-        await SkillMCPServerConfigurationModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
-          transaction,
-        });
-
-        await SkillSuggestionModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
-          transaction,
-        });
-
-        await SkillVersionModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
-          transaction,
-        });
-
-        await SkillReferenceModel.destroy({
-          where: {
-            workspaceId: workspace.id,
-            parentSkillId: this.id,
-          },
-          transaction,
-        });
-
-        await SkillReferenceModel.destroy({
-          where: {
-            workspaceId: workspace.id,
-            childCustomSkillId: this.id,
-          },
-          transaction,
-        });
-
-        return this.model.destroy({
-          where: {
-            id: this.id,
-            workspaceId: workspace.id,
-          },
-          transaction,
-        });
-      });
-
-      // Delete files from cloud storage outside the transaction (I/O with GCS).
-      for (const file of filesToDelete) {
-        const res = await file.delete(auth);
-        if (res.isErr()) {
-          return res;
-        }
-      }
-
-      return new Ok(affectedCount);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    return skillLifecycle.deleteSkill(auth, this);
   }
 
   async addToAgent(
@@ -2535,80 +2405,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    await AgentSkillModel.destroy({
-      where: { workspaceId },
-    });
-
-    // Delete editor groups associated with skills.
-    const groupSkills = await GroupSkillModel.findAll({
-      where: { workspaceId },
-    });
-    const editorGroups = await GroupResource.fetchByModelIds(
-      auth,
-      groupSkills.map((gs) => gs.groupId)
-    );
-
-    await GroupSkillModel.destroy({
-      where: { workspaceId },
-    });
-
-    for (const editorGroup of editorGroups) {
-      await editorGroup.delete(auth);
-    }
-
-    // Delete file attachments and their underlying files.
-    const fileAttachments = await SkillFileAttachmentModel.findAll({
-      where: { workspaceId },
-    });
-    if (fileAttachments.length > 0) {
-      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        fileAttachments.map((a) => a.fileId)
-      );
-      await SkillFileAttachmentModel.destroy({
-        where: { workspaceId },
-      });
-      for (const file of filesToDelete) {
-        const res = await file.delete(auth);
-        if (res.isErr()) {
-          throw res.error;
-        }
-      }
-    }
-
-    await SkillDataSourceConfigurationModel.destroy({
-      where: { workspaceId },
-    });
-
-    await SkillMCPServerConfigurationModel.destroy({
-      where: { workspaceId },
-    });
-
-    await SkillSuggestionModel.destroy({
-      where: { workspaceId },
-    });
-
-    await SkillVersionModel.destroy({
-      where: { workspaceId },
-    });
-
-    await AgentMessageSkillModel.destroy({
-      where: { workspaceId },
-    });
-
-    await ConversationSkillModel.destroy({
-      where: { workspaceId },
-    });
-
-    await SkillReferenceModel.destroy({
-      where: { workspaceId },
-    });
-
-    await this.model.destroy({
-      where: { workspaceId },
-    });
+    return skillLifecycle.deleteAllForWorkspace(auth);
   }
 
   private async normalizeSkillReferenceTags(
