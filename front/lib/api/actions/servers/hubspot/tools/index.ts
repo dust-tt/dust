@@ -13,6 +13,7 @@ import {
   createNote,
   createTask,
   createTicket,
+  deleteTask,
   getAssociatedMeetings,
   getCompany,
   getContact,
@@ -41,6 +42,7 @@ import {
   updateCompany,
   updateContact,
   updateDeal,
+  updateTask,
 } from "@app/lib/api/actions/servers/hubspot/client";
 import {
   ERROR_MESSAGES,
@@ -853,6 +855,53 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       return new Ok([
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  update_task: async ({ taskId, properties }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await updateTask({
+        accessToken,
+        taskId,
+        properties,
+      });
+      return new Ok([
+        { type: "text" as const, text: "Task updated successfully." },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  complete_task: async ({ taskId }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await updateTask({
+        accessToken,
+        taskId,
+        properties: { hs_task_status: "COMPLETED" },
+      });
+      return new Ok([
+        { type: "text" as const, text: "Task marked as completed." },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  delete_task: async ({ taskId }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      await deleteTask({
+        accessToken,
+        taskId,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Task ${taskId} deleted successfully.`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify({ success: true }, null, 2),
+        },
       ]);
     });
   },

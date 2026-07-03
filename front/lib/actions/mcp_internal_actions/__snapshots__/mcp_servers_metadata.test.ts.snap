@@ -278,6 +278,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "websearch": "never_ask",
   },
   "hubspot": {
+    "complete_task": "high",
     "count_objects_by_properties": "never_ask",
     "create_association": "high",
     "create_communication": "high",
@@ -289,6 +290,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_note": "high",
     "create_task": "high",
     "create_ticket": "high",
+    "delete_task": "high",
     "export_crm_objects_csv": "never_ask",
     "get_associated_meetings": "never_ask",
     "get_company": "never_ask",
@@ -317,6 +319,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_company": "high",
     "update_contact": "high",
     "update_deal": "high",
+    "update_task": "high",
   },
   "image_generation": {
     "generate_image": "never_ask",

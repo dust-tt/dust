@@ -775,6 +775,46 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       done: "Update HubSpot deal",
     },
   },
+  update_task: {
+    description:
+      "Update properties of a HubSpot task by ID (e.g., hs_task_subject, hs_task_body, hs_timestamp, hs_task_priority, hs_task_status). Set hs_task_status to COMPLETED to mark the task as done.",
+    schema: {
+      taskId: z.string().describe("The ID of the task to update."),
+      properties: z
+        .record(z.string())
+        .describe(
+          "An object containing the properties to update with their new values."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Updating HubSpot task",
+      done: "Update HubSpot task",
+    },
+  },
+  complete_task: {
+    description:
+      "Complete a HubSpot task by ID, setting its status to COMPLETED.",
+    schema: {
+      taskId: z.string().describe("The ID of the task to complete."),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Completing HubSpot task",
+      done: "Complete HubSpot task",
+    },
+  },
+  delete_task: {
+    description: "Delete a HubSpot task by ID.",
+    schema: {
+      taskId: z.string().describe("The ID of the task to delete."),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Deleting HubSpot task",
+      done: "Delete HubSpot task",
+    },
+  },
   remove_association: {
     description: "Remove an association between two HubSpot objects.",
     schema: {

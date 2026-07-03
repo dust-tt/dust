@@ -1772,6 +1772,58 @@ export const updateDeal = async ({
   }
 };
 
+export const updateTask = async ({
+  accessToken,
+  taskId,
+  properties,
+}: {
+  accessToken: string;
+  taskId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const updateInput: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    const result = await hubspotClient.crm.objects.basicApi.update(
+      "tasks",
+      taskId,
+      updateInput
+    );
+
+    return result;
+  } catch (error) {
+    localLogger.error(
+      { error, taskId },
+      `Error updating task with ID ${taskId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const deleteTask = async ({
+  accessToken,
+  taskId,
+}: {
+  accessToken: string;
+  taskId: string;
+}): Promise<void> => {
+  const hubspotClient = new Client({ accessToken });
+
+  try {
+    await hubspotClient.crm.objects.basicApi.archive("tasks", taskId);
+  } catch (error) {
+    localLogger.error(
+      { error, taskId },
+      `Error deleting task with ID ${taskId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
 export const getUserDetails = async (accessToken: string) => {
   try {
     // eslint-disable-next-line no-restricted-globals
