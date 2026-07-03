@@ -24,7 +24,7 @@ function getMaintenancePageInfo(code: string): MaintenancePageInfo {
               application. This temporary interruption ensures a smooth
               transition of your organization's data.
             </p>
-            <h4 className="heading-xl text-white">What's happening?</h4>
+            <h4 className="heading-xl text-primary-50">What's happening?</h4>
             <p className={defaultErrorMessageClassName}>
               As discussed with your team, we're moving your account to a
               different regional infrastructure. All your data, settings, and
@@ -91,7 +91,7 @@ export function MaintenancePage() {
             <div className="mx-20 flex flex-col items-center gap-6">
               <Page.Header
                 title={
-                  <span className="text-white">
+                  <span className="text-primary-50">
                     {maintenancePageInfo.title}
                   </span>
                 }

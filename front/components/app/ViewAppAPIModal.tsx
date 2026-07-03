@@ -138,7 +138,7 @@ export function ViewAppAPIModal({
                 value={`$ ${cURLRequest("run")}`}
                 language="shell"
                 padding={15}
-                className="mt-5 rounded-md bg-primary-700 px-4 py-4 font-mono text-[13px] text-white"
+                className="mt-5 rounded-md bg-stone-700 px-4 py-4 font-mono text-[13px] text-white"
                 style={{
                   fontSize: 13,
                   fontFamily:
