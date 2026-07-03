@@ -47,11 +47,7 @@ export const runConnectorCliCommandPlugin = createPlugin({
     });
 
     if (result.isErr()) {
-      return new Err(
-        new Error(
-          `Connectors error: ${result.error.message ?? "unknown error"}`
-        )
-      );
+      return new Err(new Error(`Connectors error: ${result.error.message}`));
     }
 
     return new Ok({ display: "json", value: { result: result.value } });
