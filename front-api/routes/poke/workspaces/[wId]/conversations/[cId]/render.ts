@@ -219,9 +219,7 @@ app.post(
       agentsList,
       conversation,
       serverToolsAndInstructions,
-      enabledSkills,
       systemSkills,
-      equippedSkills,
       projectContext,
       isNewFileExplorer,
     });

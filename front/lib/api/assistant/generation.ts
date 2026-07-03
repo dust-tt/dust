@@ -22,7 +22,6 @@ import {
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
-import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { TRUNCATED_SNIPPET_SIZE } from "@app/lib/api/files/snippet";
 import type {
   StructuredSystemPrompt,
@@ -64,11 +63,9 @@ function constructContextSection({
   errorContext?: string;
   disableFormattingPrompt: boolean;
 }): string {
-  const d = moment(new Date()).tz(userMessage.context.timezone);
-
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
-  context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
+  context += `current_date: ${currentDate.format("YYYY-MM-DD (ddd)")}\n`;
   context += `model_id: ${model.modelId}\n`;
   if (owner) {
     context += `workspace: ${owner.name}\n`;
@@ -375,9 +372,7 @@ export function constructPromptMultiActions(
     agentsList,
     conversation,
     serverToolsAndInstructions,
-    enabledSkills,
     systemSkills,
-    equippedSkills,
     toolsetsContext,
     userContext,
     workspaceContext,
@@ -395,9 +390,7 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    enabledSkills: EnabledSkill[];
     systemSkills: SkillResource[];
-    equippedSkills: SkillResource[];
     toolsetsContext?: string;
     userContext?: string;
     workspaceContext?: string;
