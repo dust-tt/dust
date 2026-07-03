@@ -15,6 +15,8 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
       running: "Listing tools",
       done: "List tools",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   enable: {
     description: "Enable a toolset for this conversation.",
@@ -27,6 +29,8 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
       running: "Enabling tool",
       done: "Enabled tool",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -38,14 +42,14 @@ export const TOOLSETS_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
-    toolCategory: "basic",
-    freeUsage: true,
   },
   tools: Object.values(TOOLSETS_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(TOOLSETS_TOOLS_METADATA).map((t) => [t.name, t.stake])

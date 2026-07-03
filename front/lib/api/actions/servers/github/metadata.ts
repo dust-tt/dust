@@ -32,6 +32,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Creating GitHub issue",
       done: "Create GitHub issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_issue: {
     description:
@@ -92,6 +94,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Updating GitHub issue",
       done: "Update GitHub issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_pull_request: {
     description:
@@ -112,6 +116,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub pull request",
       done: "Retrieve GitHub pull request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_pull_request_review: {
     description:
@@ -158,6 +164,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Reviewing GitHub pull request",
       done: "Review GitHub pull request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_organization_projects: {
     description:
@@ -174,6 +182,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub organization projects",
       done: "List GitHub organization projects",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_issue_to_project: {
     description:
@@ -212,6 +222,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Adding GitHub issue to project",
       done: "Add GitHub issue to project",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   comment_on_issue: {
     description: "Add a comment to an existing GitHub issue.",
@@ -232,6 +244,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Commenting on GitHub issue",
       done: "Comment on GitHub issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_discussion_categories: {
     description:
@@ -257,6 +271,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub discussion categories",
       done: "List GitHub discussion categories",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_discussion: {
     description:
@@ -283,6 +299,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Creating GitHub discussion",
       done: "Create GitHub discussion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   comment_on_discussion: {
     description:
@@ -310,6 +328,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Commenting on GitHub discussion",
       done: "Comment on GitHub discussion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_discussion: {
     description:
@@ -328,6 +348,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub discussion",
       done: "Retrieve GitHub discussion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_discussion_comments: {
     description:
@@ -354,6 +376,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub discussion comments",
       done: "Retrieve GitHub discussion comments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_discussions: {
     description:
@@ -395,6 +419,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub discussions",
       done: "List GitHub discussions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue: {
     description:
@@ -413,6 +439,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub issue",
       done: "Retrieve GitHub issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue_custom_fields: {
     description:
@@ -437,6 +465,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving GitHub issue custom fields",
       done: "Retrieve GitHub issue custom fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_issues: {
     description:
@@ -478,6 +508,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub issues",
       done: "List GitHub issues",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_advanced: {
     description:
@@ -506,6 +538,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Searching GitHub issues and pull requests",
       done: "Search GitHub issues and pull requests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_pull_requests: {
     description:
@@ -543,6 +577,8 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       running: "Listing GitHub pull requests",
       done: "List GitHub pull requests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -557,13 +593,14 @@ export const GITHUB_SERVER = {
     },
     icon: "GithubLogo",
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(GITHUB_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GITHUB_TOOLS_METADATA).map((t) => [t.name, t.stake])

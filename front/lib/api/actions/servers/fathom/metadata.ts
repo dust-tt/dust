@@ -78,6 +78,8 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
       running: "Listing Fathom meetings",
       done: "List Fathom meetings",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_transcript: {
     description:
@@ -93,6 +95,8 @@ export const FATHOM_TOOLS_METADATA = createToolsRecord({
       running: "Getting Fathom transcript",
       done: "Get Fathom transcript",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -108,13 +112,14 @@ export const FATHOM_SERVER = {
     },
     icon: "FathomLogo",
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(FATHOM_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FATHOM_TOOLS_METADATA).map((t) => [t.name, t.stake])

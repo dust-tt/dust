@@ -24,7 +24,7 @@ import {
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
-import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
+import { TOOL_COST_CATEGORIES } from "@app/lib/metronome/events";
 import {
   BILLING_CYCLE_CONFIG,
   BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
@@ -196,8 +196,8 @@ export const NEW_METRICS: MetricDef[] = [
 ];
 
 // Per-tier AWU price for Tool Usage rates. Shared across all AWU-priced rate cards
-const TOOL_CATEGORY_PRICES_AWU: Record<
-  (typeof TOOL_CATEGORIES)[number],
+const TOOL_COST_CATEGORY_PRICES_AWU: Record<
+  (typeof TOOL_COST_CATEGORIES)[number],
   number
 > = {
   basic: 1,
@@ -210,14 +210,14 @@ const TOOL_CATEGORY_PRICES_AWU: Record<
 const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC] as const;
 
 function buildAwuToolUsageRates(): RateDef[] {
-  return TOOL_CATEGORIES.flatMap((category): RateDef[] => [
+  return TOOL_COST_CATEGORIES.flatMap((category): RateDef[] => [
     ...PAID_USAGE_TYPES.map(
       (usageType): RateDef => ({
         product_name: "Tool Usage",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
-        price: TOOL_CATEGORY_PRICES_AWU[category],
+        price: TOOL_COST_CATEGORY_PRICES_AWU[category],
         credit_type_id: getCreditTypeAwuId(),
         pricing_group_values: {
           tool_category: category,

@@ -21,6 +21,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving memories",
       done: "Retrieve memories",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [AGENT_MEMORY_RECORD_TOOL_NAME]: {
     description:
@@ -37,6 +39,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
       running: "Recording memories",
       done: "Record memories",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [AGENT_MEMORY_ERASE_TOOL_NAME]: {
     description:
@@ -53,6 +57,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
       running: "Erasing memory entries",
       done: "Erase memory entries",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [AGENT_MEMORY_EDIT_TOOL_NAME]: {
     description:
@@ -76,6 +82,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
       running: "Editing memory entries",
       done: "Edit memory entries",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [AGENT_MEMORY_COMPACT_TOOL_NAME]: {
     description:
@@ -103,6 +111,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
       running: "Compacting memory",
       done: "Compact memory",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -114,14 +124,14 @@ export const AGENT_MEMORY_SERVER = {
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
-    toolCategory: "basic",
-    freeUsage: true,
   },
   tools: Object.values(AGENT_MEMORY_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_MEMORY_TOOLS_METADATA).map((t) => [t.name, t.stake])

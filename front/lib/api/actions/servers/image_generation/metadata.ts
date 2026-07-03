@@ -78,6 +78,8 @@ export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Generating image",
       done: "Generate image",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -90,13 +92,14 @@ export const IMAGE_GENERATION_SERVER = {
     authorization: null,
     icon: "ActionImageIcon",
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(IMAGE_GENERATION_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(IMAGE_GENERATION_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -26,6 +26,8 @@ export const SEARCH_TOOLS_METADATA = createToolsRecord({
       running: "Searching data sources",
       done: "Search data sources",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -54,6 +56,8 @@ export const SEARCH_TOOL_METADATA_WITH_TAGS = createToolsRecord({
       running: "Finding tags",
       done: "Find tags",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
 });
@@ -67,13 +71,14 @@ export const SEARCH_SERVER = {
     icon: "ActionMagnifyingGlassIcon",
     authorization: null,
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(SEARCH_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SEARCH_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -28,6 +28,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Generating random number",
       done: "Generate random number",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   generate_random_float: {
     description:
@@ -38,6 +40,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Generating random float",
       done: "Generate random float",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   wait: {
     description: `Pause execution for the provided number of milliseconds (maximum ${MAX_WAIT_DURATION_MS}).`,
@@ -57,6 +61,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Waiting",
       done: "Wait",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_current_time: {
     description:
@@ -76,6 +82,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Getting current time",
       done: "Get current time",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   math_operation: {
     description:
@@ -90,6 +98,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Calculating",
       done: "Calculate",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   set_conversation_title: {
     description:
@@ -105,6 +115,8 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       running: "Setting conversation title",
       done: "Set conversation title",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -116,14 +128,14 @@ export const COMMON_UTILITIES_SERVER = {
     icon: "ActionAtomIcon",
     authorization: null,
     documentationUrl: null,
-    toolCategory: "basic",
-    freeUsage: true,
   },
   tools: Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(COMMON_UTILITIES_TOOLS_METADATA).map((t) => [t.name, t.stake])

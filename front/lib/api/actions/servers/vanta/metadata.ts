@@ -70,6 +70,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: { running: "Listing Vanta tests", done: "List Vanta tests" },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_test_entities: {
     description:
@@ -87,6 +89,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta test entities",
       done: "List Vanta test entities",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_controls: {
     description:
@@ -107,6 +111,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta controls",
       done: "List Vanta controls",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_control_tests: {
     description:
@@ -120,6 +126,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta control tests",
       done: "List Vanta control tests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_control_documents: {
     description:
@@ -135,6 +143,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta control documents",
       done: "List Vanta control documents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_documents: {
     description:
@@ -153,6 +163,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta documents",
       done: "List Vanta documents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_document_resources: {
     description:
@@ -169,6 +181,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta document resources",
       done: "List Vanta document resources",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_integrations: {
     description:
@@ -185,6 +199,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta integrations",
       done: "List Vanta integrations",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_frameworks: {
     description:
@@ -201,6 +217,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta frameworks",
       done: "List Vanta frameworks",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_framework_controls: {
     description:
@@ -216,6 +234,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Vanta framework controls",
       done: "List Vanta framework controls",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_people: {
     description:
@@ -232,6 +252,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing people on Vanta",
       done: "List people on Vanta",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_risks: {
     description:
@@ -248,6 +270,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing risks on Vanta",
       done: "List risks on Vanta",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_vulnerabilities: {
     description:
@@ -310,6 +334,8 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       running: "Listing vulnerabilities on Vanta",
       done: "List vulnerabilities on Vanta",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -325,13 +351,14 @@ export const VANTA_SERVER = {
     },
     icon: "VantaLogo",
     documentationUrl: "https://docs.dust.tt/docs/vanta",
-    toolCategory: "advanced",
   },
   tools: Object.values(VANTA_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(VANTA_TOOLS_METADATA).map((t) => [t.name, t.stake])

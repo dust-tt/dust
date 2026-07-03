@@ -91,6 +91,8 @@ const LIST_TOOL = {
     running: "Listing available files",
     done: "Listed available files",
   },
+  toolCostCategory: "basic" as const,
+  freeUsage: true,
 };
 
 // `copy` tool variants. The conversation-only build keeps the description scoped to within-
@@ -130,6 +132,8 @@ const COPY_TOOL = {
     running: "Copying file",
     done: "Copied file",
   },
+  toolCostCategory: "basic" as const,
+  freeUsage: true,
 };
 
 const MOVE_TOOL = {
@@ -151,6 +155,8 @@ const MOVE_TOOL = {
     running: "Moving file",
     done: "Moved file",
   },
+  toolCostCategory: "basic" as const,
+  freeUsage: true,
 };
 
 // Stake levels in this record are typed via `as const` so the object can be spread into
@@ -178,6 +184,8 @@ const FILES_TOOLS_COMMON_METADATA = {
       running: "Resolving file ID",
       done: "Resolved file ID",
     },
+    toolCostCategory: "basic" as const,
+    freeUsage: true,
   },
   [FILES_CAT_ACTION_NAME]: {
     description:
@@ -216,6 +224,8 @@ const FILES_TOOLS_COMMON_METADATA = {
       running: "Reading file",
       done: "Read file",
     },
+    toolCostCategory: "basic" as const,
+    freeUsage: true,
   },
   [FILES_GREP_ACTION_NAME]: {
     description:
@@ -240,6 +250,8 @@ const FILES_TOOLS_COMMON_METADATA = {
       running: "Searching file",
       done: "Searched file",
     },
+    toolCostCategory: "basic" as const,
+    freeUsage: true,
   },
   [FILES_CREATE_ACTION_NAME]: {
     description:
@@ -270,6 +282,8 @@ const FILES_TOOLS_COMMON_METADATA = {
       running: "Writing file",
       done: "Write file",
     },
+    toolCostCategory: "basic" as const,
+    freeUsage: true,
   },
   [FILES_UPLOAD_FROM_URL_ACTION_NAME]: {
     description:
@@ -304,6 +318,8 @@ const FILES_TOOLS_COMMON_METADATA = {
       running: "Uploading file from URL",
       done: "Uploaded file from URL",
     },
+    toolCostCategory: "basic" as const,
+    freeUsage: true,
   },
   [FILES_DELETE_ACTION_NAME]: {
     description:
@@ -321,6 +337,8 @@ const FILES_TOOLS_COMMON_METADATA = {
       running: "Deleting file",
       done: "Deleted file",
     },
+    toolCostCategory: "basic" as const,
+    freeUsage: true,
   },
 };
 
@@ -360,6 +378,8 @@ const EDIT_TOOL = {
     running: "Editing file",
     done: "Edited file",
   },
+  toolCostCategory: "basic" as const,
+  freeUsage: true,
 };
 
 const EXTRACT_TEXT_TOOL = {
@@ -382,6 +402,8 @@ const EXTRACT_TEXT_TOOL = {
     running: "Extracting text from document",
     done: "Extracted text from document",
   },
+  toolCostCategory: "basic" as const,
+  freeUsage: true,
 };
 
 export const FILES_TOOLS_METADATA = createToolsRecord({
@@ -407,13 +429,14 @@ export const FILES_SERVER = {
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(FILES_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FILES_TOOLS_METADATA).map((t) => [t.name, t.stake])

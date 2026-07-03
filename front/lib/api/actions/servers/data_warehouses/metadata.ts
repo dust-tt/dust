@@ -52,6 +52,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
       running: "Listing warehouse contents",
       done: "List warehouse contents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   find: {
     description:
@@ -97,6 +99,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
       running: "Finding tables in warehouse",
       done: "Find tables in warehouse",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   describe_tables: {
     description:
@@ -120,6 +124,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
       running: "Describing warehouse tables",
       done: "Describe warehouse tables",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   query: {
     description:
@@ -156,6 +162,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
       running: "Running warehouse query",
       done: "Run warehouse query",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -168,13 +176,14 @@ export const DATA_WAREHOUSES_SERVER = {
     authorization: null,
     icon: "ActionTableIcon",
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(DATA_WAREHOUSES_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(DATA_WAREHOUSES_TOOLS_METADATA).map((t) => [t.name, t.stake])

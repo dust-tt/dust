@@ -26,6 +26,8 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
       running: "Searching the web",
       done: "Web search",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   webbrowser: {
     description:
@@ -40,6 +42,8 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
       running: "Browsing web page",
       done: "Browse web page",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
 });
 
@@ -51,13 +55,14 @@ export const WEB_SEARCH_BROWSE_SERVER = {
     authorization: null,
     icon: "ActionGlobeAltIcon" as const,
     documentationUrl: null,
-    toolCategory: "basic",
   },
   tools: Object.values(WEB_SEARCH_BROWSE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(WEB_SEARCH_BROWSE_TOOLS_METADATA).map((t) => [

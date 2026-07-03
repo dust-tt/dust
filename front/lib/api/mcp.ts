@@ -49,8 +49,8 @@ export function getRetryPolicyFromToolConfiguration(
       DEFAULT_MCP_TOOL_RETRY_POLICY;
 }
 
-export const TOOL_CATEGORIES = ["basic", "advanced"] as const;
-export type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+export const TOOL_COST_CATEGORIES = ["basic", "advanced"] as const;
+export type ToolCostCategory = (typeof TOOL_COST_CATEGORIES)[number];
 
 // Schemas are in mcp_schemas.ts to avoid pulling zod + heavy dependencies
 // into the Temporal workflow sandbox.
@@ -165,8 +165,6 @@ export type InternalMCPServerDefinitionType = Omit<
   // "Allow Linear to create an issue?"). Use "agent" for self-contained agent
   // capabilities; leave undefined for third-party integrations.
   displayedAs?: "agent" | "server";
-  toolCategory: ToolCategory;
-  freeUsage?: boolean;
 };
 
 export type MCPServerTypeWithViews = MCPServerType & {

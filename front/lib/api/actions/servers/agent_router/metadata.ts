@@ -24,6 +24,8 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
       running: "Listing agents",
       done: "List agents",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   suggest_agents_for_content: {
     description:
@@ -42,6 +44,8 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
       running: "Suggesting agents",
       done: "Suggest agents",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -53,14 +57,14 @@ export const AGENT_ROUTER_SERVER = {
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
-    toolCategory: "basic",
-    freeUsage: true,
   },
   tools: Object.values(AGENT_ROUTER_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_ROUTER_TOOLS_METADATA).map((t) => [t.name, t.stake])

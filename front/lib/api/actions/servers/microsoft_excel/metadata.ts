@@ -20,6 +20,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Listing Microsoft Excel files",
       done: "List Microsoft Excel files",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_worksheets: {
     description:
@@ -46,6 +48,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Getting Excel worksheets",
       done: "Get Excel worksheets",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   read_worksheet: {
     description:
@@ -79,6 +83,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Reading Excel worksheet",
       done: "Read Excel worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   write_worksheet: {
     description: "Write data to a specific range in an Excel worksheet.",
@@ -117,6 +123,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Writing to Excel worksheet",
       done: "Write to Excel worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_worksheet: {
     description: "Create a new worksheet (sheet/tab) in an Excel workbook.",
@@ -145,6 +153,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Creating Excel worksheet",
       done: "Create Excel worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   clear_range: {
     description: "Clear data from a specific range in an Excel worksheet.",
@@ -182,6 +192,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
       running: "Clearing Excel range",
       done: "Clear Excel range",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -231,13 +243,14 @@ export const MICROSOFT_EXCEL_SERVER = {
       ],
     },
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(MICROSOFT_EXCEL_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MICROSOFT_EXCEL_TOOLS_METADATA).map((t) => [t.name, t.stake])

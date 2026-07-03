@@ -4,11 +4,7 @@ import {
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { InternalMCPToolType } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  type InternalMCPServerDefinitionType,
-  TOOL_CATEGORIES,
-  type ToolCategory,
-} from "@app/lib/api/mcp";
+import { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
@@ -59,41 +55,39 @@ function truncatePropertyValue(value: string): string {
 // basic: 1 AWU, advanced: 3 AWU; freeUsage overrides to 0 AWU regardless of category
 
 // Re-export from mcp so consumers can import from one place.
-export { TOOL_CATEGORIES, type ToolCategory } from "@app/lib/api/mcp";
+export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
 
 // AWU price per tool invocation by category (1 AWU = $0.01). Canonical source
 // for both the Tool Usage rate-card prices (scripts/metronome_setup.ts) and the
 // runtime per-user AWU spend computation (per_user_usage.ts) — keep both in
 // sync by importing from here rather than redefining.
-export const TOOL_CATEGORY_AWU_WEIGHTS: Record<ToolCategory, number> = {
-  basic: 1,
-  advanced: 3,
-};
+export const TOOL_COST_CATEGORY_AWU_WEIGHTS: Record<ToolCostCategory, number> =
+  {
+    basic: 1,
+    advanced: 3,
+  };
 
-export function isToolCategory(value: string): value is ToolCategory {
-  return TOOL_CATEGORIES.includes(value as ToolCategory);
+export function isToolCostCategory(value: string): value is ToolCostCategory {
+  return TOOL_COST_CATEGORIES.includes(value as ToolCostCategory);
 }
 
 export function getToolBillingInfo(
   serverName: string | null,
   toolName: string
-): { toolCategory: ToolCategory; freeUsage: boolean } {
+): { toolCostCategory: ToolCostCategory; freeUsage: boolean } {
   if (!serverName || !isInternalMCPServerName(serverName)) {
     // External MCP servers (user-configured remote servers) are always advanced.
-    return { toolCategory: "advanced", freeUsage: false };
+    return { toolCostCategory: "advanced", freeUsage: false };
   }
   const metadata = getInternalMCPServerMetadata(serverName);
-  // Both casts are safe: each metadata file satisfies ServerMetadata which uses InternalMCPToolType
-  // and InternalMCPServerDefinitionType. The narrow as-const type drops optional fields absent from
-  // that specific object, so we cast to access them uniformly.
-  const serverInfo = metadata.serverInfo as InternalMCPServerDefinitionType;
   const tool = (metadata.tools as InternalMCPToolType[]).find(
     (t) => t.name === toolName
   );
-  return {
-    toolCategory: tool?.toolCategory ?? serverInfo.toolCategory,
-    freeUsage: tool?.freeUsage ?? serverInfo.freeUsage ?? false,
-  };
+  // Unknown tool on a known internal server — default to advanced, not free.
+  if (!tool) {
+    return { toolCostCategory: "advanced", freeUsage: false };
+  }
+  return { toolCostCategory: tool.toolCostCategory, freeUsage: tool.freeUsage };
 }
 
 // ---------------------------------------------------------------------------
@@ -251,14 +245,14 @@ export function toolAwuFromAction(
   if (isFreeOrigin(contextOrigin)) {
     return 0;
   }
-  const { toolCategory, freeUsage } = getToolBillingInfo(
+  const { toolCostCategory, freeUsage } = getToolBillingInfo(
     action.internalMCPServerName,
     action.toolName
   );
   if (freeUsage) {
     return 0;
   }
-  return TOOL_CATEGORY_AWU_WEIGHTS[toolCategory];
+  return TOOL_COST_CATEGORY_AWU_WEIGHTS[toolCostCategory];
 }
 
 // ---------------------------------------------------------------------------
@@ -468,7 +462,7 @@ export function buildToolUseEvents({
   }
 
   return [...groups.values()].map(({ action, count, totalDurationMs }) => {
-    const { toolCategory, freeUsage } = getToolBillingInfo(
+    const { toolCostCategory, freeUsage } = getToolBillingInfo(
       action.internalMCPServerName,
       action.toolName
     );
@@ -499,7 +493,7 @@ export function buildToolUseEvents({
         internal_mcp_server_name: truncatePropertyValue(
           action.internalMCPServerName ?? ""
         ),
-        tool_category: toolCategory,
+        tool_category: toolCostCategory,
         // Constant grouping key — used as presentation_group_key in Metronome to
         // aggregate all tool categories into a single "Tool Usage" invoice line.
         tool_group: "tools",

@@ -19,6 +19,8 @@ export const SKILL_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       running: "Enabling skill",
       done: "Enable skill",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -32,7 +34,6 @@ export const SKILL_MANAGEMENT_SERVER = {
     authorization: null,
     icon: "PuzzleIcon" as const,
     documentationUrl: null,
-    toolCategory: "basic",
   },
   tools: (
     Object.keys(SKILL_MANAGEMENT_TOOLS_METADATA) as SkillManagementToolKey[]
@@ -43,6 +44,8 @@ export const SKILL_MANAGEMENT_SERVER = {
       z.object(SKILL_MANAGEMENT_TOOLS_METADATA[key].schema)
     ) as JSONSchema,
     displayLabels: SKILL_MANAGEMENT_TOOLS_METADATA[key].displayLabels,
+    toolCostCategory: SKILL_MANAGEMENT_TOOLS_METADATA[key].toolCostCategory,
+    freeUsage: SKILL_MANAGEMENT_TOOLS_METADATA[key].freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     (

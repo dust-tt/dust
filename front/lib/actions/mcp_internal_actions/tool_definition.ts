@@ -4,7 +4,7 @@ import type { ToolContextType } from "@app/lib/actions/types";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolType,
-  ToolCategory,
+  ToolCostCategory,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -55,8 +55,8 @@ export interface ToolDefinition<
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
-  toolCategory?: ToolCategory;
-  freeUsage?: boolean;
+  toolCostCategory: ToolCostCategory;
+  freeUsage: boolean;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra
@@ -73,8 +73,8 @@ interface ClientToolDefinition<
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
-  toolCategory?: ToolCategory;
-  freeUsage?: boolean;
+  toolCostCategory: ToolCostCategory;
+  freeUsage: boolean;
   argumentsRequiringApproval?: Array<
     Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
   >;
@@ -149,8 +149,8 @@ export type InternalMCPToolType<TName extends string = string> = Omit<
 > & {
   name: TName;
   displayLabels: ToolDisplayLabels;
-  toolCategory?: ToolCategory;
-  freeUsage?: boolean;
+  toolCostCategory: ToolCostCategory;
+  freeUsage: boolean;
 };
 
 export type ServerMetadata<

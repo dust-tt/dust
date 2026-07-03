@@ -33,6 +33,8 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
       running: "Listing calls",
       done: "List calls",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_call: {
     description:
@@ -48,6 +50,8 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving call",
       done: "Retrieve call",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_call_transcript: {
     description:
@@ -65,6 +69,8 @@ export const GONG_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving transcript",
       done: "Retrieve transcript",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -80,13 +86,14 @@ export const GONG_SERVER = {
     },
     icon: "GongLogo",
     documentationUrl: "https://docs.dust.tt/update/docs/gong-mcp",
-    toolCategory: "advanced",
   },
   tools: Object.values(GONG_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GONG_TOOLS_METADATA).map((t) => [t.name, t.stake])

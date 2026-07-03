@@ -35,6 +35,8 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Google drives",
       done: "List Google drives",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_files: {
     description:
@@ -108,6 +110,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Searching Google Drive files",
       done: "Search Google Drive files",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_file_content: {
     description:
@@ -137,6 +141,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Getting Google Drive file content",
       done: "Get Google Drive file content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_document_structure: {
     description:
@@ -165,6 +171,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Getting Google Docs structure",
       done: "Get Google Docs structure",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_presentation_structure: {
     description:
@@ -191,6 +199,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Getting Google Slides structure",
       done: "Get Google Slides structure",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_spreadsheet: {
     description:
@@ -206,6 +216,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Retrieving Google spreadsheet",
       done: "Retrieve Google spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_worksheet: {
     description:
@@ -231,6 +243,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Retrieving Google worksheet",
       done: "Retrieve Google worksheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_file_permissions: {
     description:
@@ -244,6 +258,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Listing file permissions",
       done: "List file permissions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_comments: {
     description:
@@ -267,6 +283,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       running: "Listing comments on Google Drive",
       done: "List comments on Google Drive",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -288,6 +306,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google document",
       done: "Create Google document",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_spreadsheet: {
     description:
@@ -306,6 +326,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google spreadsheet",
       done: "Create Google spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_presentation: {
     description:
@@ -324,6 +346,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google presentation",
       done: "Create Google presentation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_folder: {
     description:
@@ -342,6 +366,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google Drive folder",
       done: "Create Google Drive folder",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   copy_file: {
     description:
@@ -369,6 +395,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Copying Google Drive file",
       done: "Copy Google Drive file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_comment: {
     description:
@@ -383,6 +411,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Adding comment on Google Drive",
       done: "Add comment on Google Drive",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_reply: {
     description:
@@ -398,6 +428,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Replying to comment on Google Drive",
       done: "Reply to comment on Google Drive",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_document: {
     description:
@@ -414,6 +446,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Google document",
       done: "Update Google document",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   append_to_spreadsheet: {
     description:
@@ -449,6 +483,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Appending to Google spreadsheet",
       done: "Append to Google spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_spreadsheet: {
     description:
@@ -467,6 +503,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Google spreadsheet",
       done: "Update Google spreadsheet",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_presentation: {
     description:
@@ -485,6 +523,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Google presentation",
       done: "Update Google presentation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   share_file: {
     description:
@@ -534,6 +574,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Sharing Google Drive file",
       done: "Share Google Drive file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_file_permission: {
     description:
@@ -555,6 +597,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Updating file permission",
       done: "Update file permission",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   revoke_file_sharing: {
     description:
@@ -575,6 +619,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Removing file access",
       done: "Remove file access",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   upload_file: {
     description:
@@ -603,6 +649,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       running: "Uploading file to Google Drive",
       done: "Upload file to Google Drive",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -629,13 +677,14 @@ export function getGoogleDriveServerMetadata() {
       },
       icon: "DriveLogo",
       documentationUrl: "https://docs.dust.tt/docs/google-drive",
-      toolCategory: "advanced",
     },
     tools: Object.values(ALL_TOOLS_METADATA).map((t) => ({
       name: t.name,
       description: t.description,
       inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
       displayLabels: t.displayLabels,
+      toolCostCategory: t.toolCostCategory,
+      freeUsage: t.freeUsage,
     })),
     tools_stakes: Object.fromEntries(
       Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])

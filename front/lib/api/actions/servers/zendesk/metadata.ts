@@ -36,6 +36,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Zendesk ticket",
       done: "Retrieve Zendesk ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_tickets: {
     description:
@@ -62,6 +64,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Searching Zendesk tickets",
       done: "Search Zendesk tickets",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_ticket_fields: {
     description:
@@ -77,6 +81,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Listing Zendesk ticket fields",
       done: "List Zendesk ticket fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   draft_reply: {
     description:
@@ -96,6 +102,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Drafting reply to Zendesk",
       done: "Draft reply to Zendesk",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   post_reply: {
     description:
@@ -113,6 +121,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Posting reply to Zendesk",
       done: "Post reply to Zendesk",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_ticket_tags: {
     description:
@@ -141,6 +151,8 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       running: "Updating Zendesk ticket tags",
       done: "Update Zendesk ticket tags",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -156,13 +168,14 @@ export const ZENDESK_SERVER = {
     },
     icon: "ZendeskLogo",
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(ZENDESK_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ZENDESK_TOOLS_METADATA).map((t) => [t.name, t.stake])

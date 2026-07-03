@@ -69,6 +69,8 @@ export const JIT_TESTING_TOOLS_METADATA = createToolsRecord({
       running: "Testing JIT",
       done: "Test JIT",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -80,13 +82,14 @@ export const JIT_TESTING_SERVER = {
     icon: "ActionEmotionLaughIcon",
     authorization: null,
     documentationUrl: null,
-    toolCategory: "basic",
   },
   tools: Object.values(JIT_TESTING_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(JIT_TESTING_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -19,6 +19,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
       running: "Listing sandbox functions...",
       done: "Listed sandbox functions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get: {
     description:
@@ -36,6 +38,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
       running: "Getting sandbox function...",
       done: "Got sandbox function",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   publish: {
     description:
@@ -71,6 +75,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
       running: "Publishing sandbox function...",
       done: "Published sandbox function",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   call: {
     description:
@@ -96,6 +102,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = createToolsRecord({
       running: "Calling sandbox function...",
       done: "Called sandbox function",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -109,13 +117,14 @@ export const SANDBOX_FUNCTIONS_SERVER = {
     icon: "CommandLineIcon",
     authorization: null,
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(SANDBOX_FUNCTIONS_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SANDBOX_FUNCTIONS_TOOLS_METADATA).map((t) => [

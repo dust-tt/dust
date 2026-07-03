@@ -68,6 +68,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       running: "Searching Slack messages (keyword)",
       done: "Search Slack messages (keyword)",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   semantic_search_messages: {
     description:
@@ -85,6 +87,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       running: "Searching Slack messages (semantic)",
       done: "Search Slack messages (semantic)",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   post_message: {
     description:
@@ -142,6 +146,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       running: "Posting Slack message",
       done: "Post Slack message",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   schedule_message: {
     description:
@@ -197,6 +203,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       running: "Scheduling Slack message",
       done: "Schedule Slack message",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_user: {
     description: `Search for a Slack user by Slack user ID or email address.
@@ -228,6 +236,8 @@ The search_all parameter should only be set to true if the user explicitly reque
       running: "Searching Slack user",
       done: "Search Slack user",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_user_groups: {
     description:
@@ -238,6 +248,8 @@ The search_all parameter should only be set to true if the user explicitly reque
       running: "Listing Slack user groups",
       done: "List Slack user groups",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_channels: {
     description: `Search for Slack channels by channel ID or name.
@@ -267,6 +279,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Searching Slack channels",
       done: "Search Slack channels",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_messages: {
     description:
@@ -292,6 +306,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Listing Slack messages",
       done: "List Slack messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   read_thread_messages: {
     description:
@@ -329,6 +345,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Reading Slack thread messages",
       done: "Read Slack thread messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_channel_canvases: {
     description:
@@ -344,6 +362,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Getting channel canvases",
       done: "Got channel canvases",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   read_canvas: {
     description:
@@ -369,6 +389,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Reading Slack canvas sections",
       done: "Read Slack canvas sections",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   write_canvas: {
     description:
@@ -437,6 +459,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Writing Slack canvas",
       done: "Write Slack canvas",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_channel: {
     description:
@@ -467,6 +491,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Creating Slack channel",
       done: "Create Slack channel",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   invite_to_channel: {
     description:
@@ -490,6 +516,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Inviting users to Slack channel",
       done: "Invite users to Slack channel",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   archive_channel: {
     description:
@@ -506,6 +534,8 @@ Set search_all=true only if the user explicitly requests to search all public wo
       running: "Archiving Slack channel",
       done: "Archive Slack channel",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -522,13 +552,14 @@ export const SLACK_PERSONAL_SERVER = {
     },
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-    toolCategory: "advanced",
   },
   tools: Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => [t.name, t.stake])

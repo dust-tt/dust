@@ -51,6 +51,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching messages",
       done: "Fetch messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_folders: {
     description:
@@ -76,6 +78,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Listing folders",
       done: "List folders",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_attachments: {
     description:
@@ -104,6 +108,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Listing attachments",
       done: "List attachments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_attachment: {
     description:
@@ -129,6 +135,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Downloading attachment",
       done: "Download attachment",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_attachments: {
     description:
@@ -153,6 +161,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Getting Outlook attachments",
       done: "Get Outlook attachments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_drafts: {
     description:
@@ -186,6 +196,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching drafts",
       done: "Fetch drafts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_draft: {
     description: `Create a new email draft in Outlook, or a reply draft to an existing message.
@@ -265,6 +277,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Creating draft",
       done: "Create draft",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_draft: {
     description: "Delete a draft email from Outlook.",
@@ -284,6 +298,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Deleting draft",
       done: "Delete draft",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   send_mail: {
     description: `Send an email directly via Outlook.
@@ -363,6 +379,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Sending email",
       done: "Send email",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   move_messages: {
     description:
@@ -392,6 +410,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Moving messages",
       done: "Move messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_message_body: {
     description:
@@ -432,6 +452,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching message body",
       done: "Fetch message body",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_contacts: {
     description:
@@ -463,6 +485,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Fetching contacts",
       done: "Fetch contacts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_contact: {
     description: "Create a new contact in Outlook.",
@@ -495,6 +519,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Creating contact",
       done: "Create contact",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_contact: {
     description: "Update an existing contact in Outlook.",
@@ -531,6 +557,8 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       running: "Updating contact",
       done: "Update contact",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -598,13 +626,14 @@ export const OUTLOOK_MAIL_SERVER = {
     },
     icon: "MicrosoftOutlookLogo",
     documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
-    toolCategory: "advanced",
   },
   tools: Object.values(OUTLOOK_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(OUTLOOK_TOOLS_METADATA).map((t) => [t.name, t.stake])

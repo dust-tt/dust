@@ -55,6 +55,8 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
       running: "Searching Clari Copilot calls",
       done: "Search Clari Copilot calls",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_call_details: {
     description:
@@ -81,6 +83,8 @@ export const CLARI_COPILOT_TOOLS_METADATA = createToolsRecord({
       running: "Fetching Clari Copilot call details",
       done: "Fetch Clari Copilot call details",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -93,13 +97,14 @@ export const CLARI_COPILOT_SERVER = {
     authorization: null,
     icon: "ClariLogo",
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(CLARI_COPILOT_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(CLARI_COPILOT_TOOLS_METADATA).map((t) => [t.name, t.stake])

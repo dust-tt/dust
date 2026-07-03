@@ -38,6 +38,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Creating note in Productboard",
       done: "Create Productboard note",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_note: {
     description:
@@ -73,6 +75,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Updating note in Productboard",
       done: "Update Productboard note",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_note: {
     description:
@@ -89,6 +93,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Getting note from Productboard",
       done: "Get Productboard note",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   query_notes: {
     description:
@@ -163,6 +169,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Querying notes in Productboard",
       done: "Query Productboard notes",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   query_entities: {
     description:
@@ -223,6 +231,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Querying entities in Productboard",
       done: "Query Productboard entities",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_entity: {
     description:
@@ -272,6 +282,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Creating entity in Productboard",
       done: "Create Productboard entity",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_entity: {
     description:
@@ -307,6 +319,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Updating entity in Productboard",
       done: "Update Productboard entity",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_relationships: {
     description:
@@ -326,6 +340,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Getting relationships from Productboard",
       done: "Get Productboard relationships",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_configuration: {
     description:
@@ -356,6 +372,8 @@ export const PRODUCTBOARD_TOOLS_METADATA = createToolsRecord({
       running: "Getting configuration from Productboard",
       done: "Get Productboard configuration",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -371,13 +389,14 @@ export const PRODUCTBOARD_SERVER = {
     },
     icon: "ProductboardLogo",
     documentationUrl: "https://docs.dust.tt/docs/productboard",
-    toolCategory: "advanced",
   },
   tools: Object.values(PRODUCTBOARD_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(PRODUCTBOARD_TOOLS_METADATA).map((t) => [t.name, t.stake])

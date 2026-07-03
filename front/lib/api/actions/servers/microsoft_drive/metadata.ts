@@ -32,6 +32,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Searching in OneDrive/SharePoint files",
       done: "Search in OneDrive/SharePoint files",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_drive_items: {
     description:
@@ -48,6 +50,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Searching OneDrive/SharePoint items",
       done: "Search OneDrive/SharePoint items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_drive_items: {
     description:
@@ -97,6 +101,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Listing OneDrive/SharePoint items",
       done: "List OneDrive/SharePoint items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_word_document: {
     description:
@@ -126,6 +132,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Microsoft Word document",
       done: "Update Microsoft Word document",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_file_content: {
     description:
@@ -170,6 +178,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Getting OneDrive/SharePoint file content",
       done: "Get OneDrive/SharePoint file content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   upload_file: {
     description:
@@ -210,6 +220,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Uploading file to OneDrive/SharePoint",
       done: "Upload file to OneDrive/SharePoint",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   rename_drive_item: {
     description:
@@ -235,6 +247,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Renaming OneDrive/SharePoint item",
       done: "Rename OneDrive/SharePoint item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   copy_file: {
     description:
@@ -271,6 +285,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       running: "Copying file",
       done: "Copy file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -327,13 +343,14 @@ export const MICROSOFT_DRIVE_SERVER = {
       ],
     },
     documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
-    toolCategory: "advanced",
   },
   tools: Object.values(MICROSOFT_DRIVE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MICROSOFT_DRIVE_TOOLS_METADATA).map((t) => [t.name, t.stake])

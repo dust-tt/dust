@@ -89,6 +89,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Creating new Frame",
       done: "Create new Frame",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
@@ -141,6 +143,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Updating Frame",
       done: "Update Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
@@ -159,6 +163,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Reverting changes on Frame",
       done: "Revert changes on Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
@@ -181,6 +187,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Renaming Frame",
       done: "Rename Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
@@ -201,6 +209,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Reading Frame content",
       done: "Read Frame content",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME]: {
     description:
@@ -219,6 +229,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Getting share URL",
       done: "Get share URL",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
@@ -251,6 +263,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Exporting Frame",
       done: "Export Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
     description:
@@ -287,6 +301,8 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
       running: "Publishing Frame",
       done: "Publish Frame",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
 });
 
@@ -299,13 +315,14 @@ export const INTERACTIVE_CONTENT_SERVER = {
     authorization: null,
     icon: "ActionFrameIcon",
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(INTERACTIVE_CONTENT_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(INTERACTIVE_CONTENT_TOOLS_METADATA).map((t) => [

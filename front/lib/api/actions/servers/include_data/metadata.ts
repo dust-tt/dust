@@ -27,6 +27,8 @@ export const INCLUDE_DATA_BASE_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving recent documents",
       done: "Retrieve recent documents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -45,6 +47,8 @@ export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving recent documents",
       done: "Retrieve recent documents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   find_tags: {
     description:
@@ -56,6 +60,8 @@ export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
       running: "Finding tags",
       done: "Find tags",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -69,13 +75,14 @@ export const INCLUDE_DATA_SERVER = {
     icon: "ActionTimeIcon",
     authorization: null,
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   tools: Object.values(INCLUDE_DATA_BASE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(INCLUDE_DATA_BASE_TOOLS_METADATA).map((t) => [

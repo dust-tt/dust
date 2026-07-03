@@ -28,6 +28,8 @@ export const SALESLOFT_TOOLS_METADATA = createToolsRecord({
       running: "Getting Salesloft actions",
       done: "Get Salesloft actions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -40,13 +42,14 @@ export const SALESLOFT_SERVER = {
     authorization: null,
     icon: "SalesloftLogo",
     documentationUrl: "https://docs.dust.tt/docs/salesloft-mcp",
-    toolCategory: "advanced",
   },
   tools: Object.values(SALESLOFT_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SALESLOFT_TOOLS_METADATA).map((t) => [t.name, t.stake])

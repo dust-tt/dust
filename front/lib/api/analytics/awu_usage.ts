@@ -27,8 +27,8 @@ import {
   USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
 import {
-  isToolCategory,
-  TOOL_CATEGORY_AWU_WEIGHTS,
+  isToolCostCategory,
+  TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -66,7 +66,7 @@ const USAGE_TYPE_LABELS: Record<string, string> = {
 // Human-readable labels for the "tool_category" grouping. Besides the real
 // tool_category values, it carries a synthetic "llm" bucket for all LLM usage,
 // so the breakdown reads Tokens / Basic actions / Advanced actions.
-const TOOL_CATEGORY_LABELS: Record<string, string> = {
+const TOOL_COST_CATEGORY_LABELS: Record<string, string> = {
   llm: "Tokens",
   basic: "Basic actions",
   advanced: "Advanced actions",
@@ -324,7 +324,7 @@ async function resolveGroupLabels(
       break;
     case "tool_category":
       for (const key of groupKeys) {
-        labelMap.set(key, TOOL_CATEGORY_LABELS[key] ?? key);
+        labelMap.set(key, TOOL_COST_CATEGORY_LABELS[key] ?? key);
       }
       break;
     case "user": {
@@ -547,10 +547,14 @@ export async function getAwuUsage(
         toolCfg.bucketProp,
         (entry) => {
           const category = entry.group?.["tool_category"];
-          if (entry.value === null || !category || !isToolCategory(category)) {
+          if (
+            entry.value === null ||
+            !category ||
+            !isToolCostCategory(category)
+          ) {
             return null;
           }
-          return entry.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
+          return entry.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
         },
         periodStartMs,
         aggregateToMs

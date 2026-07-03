@@ -54,6 +54,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice tickets",
       done: "List Freshservice tickets",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_ticket: {
     description:
@@ -74,6 +76,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice ticket",
       done: "Get Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_ticket_read_fields: {
     description:
@@ -84,6 +88,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice ticket read fields",
       done: "Get Freshservice ticket read fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_ticket_write_fields: {
     description:
@@ -99,6 +105,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice ticket write fields",
       done: "Get Freshservice ticket write fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_ticket: {
     description:
@@ -127,6 +135,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Freshservice ticket",
       done: "Create Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_ticket: {
     description: "Update an existing Freshservice ticket.",
@@ -153,6 +163,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Freshservice ticket",
       done: "Update Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_ticket_note: {
     description:
@@ -171,6 +183,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Adding note to Freshservice ticket",
       done: "Add note to Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_ticket_reply: {
     description:
@@ -184,6 +198,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Adding reply to Freshservice ticket",
       done: "Add reply to Freshservice ticket",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Service request items
@@ -198,6 +214,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice ticket requested items",
       done: "List Freshservice ticket requested items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Ticket tasks
@@ -211,6 +229,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice ticket tasks",
       done: "List Freshservice ticket tasks",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_ticket_task: {
     description: "Get detailed information about a specific task on a ticket",
@@ -223,6 +243,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice ticket task",
       done: "Get Freshservice ticket task",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_ticket_task: {
     description:
@@ -248,6 +270,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Freshservice ticket task",
       done: "Create Freshservice ticket task",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_ticket_task: {
     description: "Update an existing task on a ticket",
@@ -282,6 +306,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Freshservice ticket task",
       done: "Update Freshservice ticket task",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_ticket_task: {
     description: "Delete a task from a ticket",
@@ -294,6 +320,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Freshservice ticket task",
       done: "Delete Freshservice ticket task",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Ticket approvals
@@ -308,6 +336,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice ticket approval",
       done: "Get Freshservice ticket approval",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_ticket_approvals: {
     description: "List all approvals for a specific ticket",
@@ -319,6 +349,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice ticket approvals",
       done: "List Freshservice ticket approvals",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   request_service_approval: {
     description:
@@ -345,6 +377,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Requesting Freshservice approval",
       done: "Request Freshservice approval",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Departments, Products, On-call schedules
@@ -359,6 +393,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice departments",
       done: "List Freshservice departments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_products: {
     description: "List all products in Freshservice",
@@ -371,6 +407,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice products",
       done: "List Freshservice products",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_oncall_schedules: {
     description: "List on-call schedules",
@@ -383,6 +421,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice on-call schedules",
       done: "List Freshservice on-call schedules",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Service catalog
@@ -398,6 +438,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice service categories",
       done: "List Freshservice service categories",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_service_items: {
     description:
@@ -417,6 +459,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice service items",
       done: "List Freshservice service items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_service_items: {
     description:
@@ -448,6 +492,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Searching Freshservice service items",
       done: "Search Freshservice service items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_service_item: {
     description:
@@ -462,6 +508,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice service item",
       done: "Get Freshservice service item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_service_item_fields: {
     description:
@@ -476,6 +524,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice service item fields",
       done: "Get Freshservice service item fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   request_service_item: {
     description:
@@ -506,6 +556,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Requesting Freshservice service item",
       done: "Request Freshservice service item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Solutions (Knowledge Base)
@@ -521,6 +573,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice solution categories",
       done: "List Freshservice solution categories",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_solution_folders: {
     description:
@@ -535,6 +589,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice solution folders",
       done: "List Freshservice solution folders",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_solution_articles: {
     description:
@@ -557,6 +613,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice solution articles",
       done: "List Freshservice solution articles",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_solution_article: {
     description:
@@ -569,6 +627,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice solution article",
       done: "Get Freshservice solution article",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_solution_article: {
     description:
@@ -592,6 +652,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Freshservice solution article",
       done: "Create Freshservice solution article",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Requesters
@@ -610,6 +672,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice requesters",
       done: "List Freshservice requesters",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_requester: {
     description: "Get detailed information about a specific requester",
@@ -621,6 +685,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice requester",
       done: "Get Freshservice requester",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Purchase Orders
@@ -635,6 +701,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice purchase orders",
       done: "List Freshservice purchase orders",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // SLA Policies
@@ -646,6 +714,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice SLA policies",
       done: "List Freshservice SLA policies",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Canned responses
@@ -670,6 +740,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Freshservice canned responses",
       done: "List Freshservice canned responses",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_canned_response: {
     description: "Get detailed information about a specific canned response",
@@ -681,6 +753,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Freshservice canned response",
       done: "Get Freshservice canned response",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -696,13 +770,14 @@ export const FRESHSERVICE_SERVER = {
     },
     icon: "FreshserviceLogo",
     documentationUrl: "https://docs.dust.tt/docs/freshservice",
-    toolCategory: "advanced",
   },
   tools: Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FRESHSERVICE_TOOLS_METADATA).map((t) => [t.name, t.stake])

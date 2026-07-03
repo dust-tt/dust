@@ -68,6 +68,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       running: "Executing command",
       done: "Execute command in the Computer",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
     enableAlerting: true,
   },
   describe_toolset: {
@@ -84,6 +86,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       running: "Describing Computer toolset",
       done: "Describe Computer toolset",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   add_egress_domain: {
     description:
@@ -121,6 +125,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       done: "Allow domain in the Computer",
       icon: "ActionGlobeAltIcon",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -133,7 +139,6 @@ export const SANDBOX_SERVER = {
     authorization: null,
     icon: "CommandLineIcon",
     documentationUrl: null,
-    toolCategory: "advanced",
   },
   // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
   // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.
@@ -142,6 +147,8 @@ export const SANDBOX_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake])

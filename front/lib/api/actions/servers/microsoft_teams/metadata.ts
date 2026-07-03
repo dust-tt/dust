@@ -20,6 +20,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Searching Teams messages",
       done: "Search Teams messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_teams: {
     description:
@@ -30,6 +32,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Listing Teams teams",
       done: "List Teams teams",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_users: {
     description:
@@ -50,6 +54,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Listing Teams users",
       done: "List Teams users",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_channels: {
     description:
@@ -68,6 +74,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Listing Teams channels",
       done: "List Teams channels",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_chats: {
     description:
@@ -96,6 +104,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Listing Teams chats",
       done: "List Teams chats",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_messages: {
     description:
@@ -141,6 +151,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Listing Teams messages",
       done: "List Teams messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   post_message: {
     description:
@@ -215,6 +227,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Posting Teams message",
       done: "Post Teams message",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_meetings: {
     description:
@@ -244,6 +258,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Listing Teams meetings",
       done: "List Teams meetings",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_transcript_content: {
     description:
@@ -260,6 +276,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
       running: "Fetching meeting transcript",
       done: "Fetch meeting transcript",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -349,13 +367,14 @@ export const MICROSOFT_TEAMS_SERVER = {
       ],
     },
     documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
-    toolCategory: "advanced",
   },
   tools: Object.values(MICROSOFT_TEAMS_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MICROSOFT_TEAMS_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -14,6 +14,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving UKG Ready employee info",
       done: "Retrieve UKG Ready employee info",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_pto_requests: {
     description:
@@ -37,6 +39,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving UKG Ready PTO requests",
       done: "Retrieve UKG Ready PTO requests",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_accrual_balances: {
     description: "Get accrual balances for yourself or a specific employee.",
@@ -59,6 +63,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving UKG Ready accrual balances",
       done: "Retrieve UKG Ready accrual balances",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_pto_request_notes: {
     description: "Get notes/comments for a specific PTO request.",
@@ -74,6 +80,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving UKG Ready PTO notes",
       done: "Retrieve UKG Ready PTO notes",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_pto_request: {
     description:
@@ -131,6 +139,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Creating UKG Ready PTO request",
       done: "Create UKG Ready PTO request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_pto_request: {
     description: "Delete one or more PTO/time-off requests.",
@@ -148,6 +158,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Deleting UKG Ready PTO request",
       done: "Delete UKG Ready PTO request",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_schedules: {
     description: "Get work schedules for yourself or a specific employee.",
@@ -172,6 +184,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Listing UKG Ready schedules",
       done: "List UKG Ready schedules",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_employees: {
     description: "Get a list of active employees.",
@@ -181,6 +195,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       running: "Listing UKG Ready employees",
       done: "List UKG Ready employees",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -196,13 +212,14 @@ export const UKG_READY_SERVER = {
     },
     icon: "UkgLogo",
     documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
-    toolCategory: "advanced",
   },
   tools: Object.values(UKG_READY_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(UKG_READY_TOOLS_METADATA).map((t) => [t.name, t.stake])
