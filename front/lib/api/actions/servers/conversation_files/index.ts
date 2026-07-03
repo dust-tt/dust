@@ -1,6 +1,9 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { CONVERSATION_FILES_SERVER_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
   TOOLS,
@@ -16,14 +19,18 @@ async function createServer(
   const server = makeInternalMCPServer("conversation_files");
 
   const conversation =
-    toolContext?.runContext?.conversation ??
-    toolContext?.listToolsContext?.conversation;
+    (isAgentLoopRunContext(toolContext?.runContext)
+      ? toolContext.runContext.conversation
+      : null) ?? toolContext?.listToolsContext?.conversation;
   const useFileSystem = conversation?.metadata?.useFileSystem === true;
 
-  for (const tool of useFileSystem ? TOOLS_WITH_FILESYSTEM : TOOLS) {
-    registerTool(auth, toolContext, server, tool, {
-      monitoringName: CONVERSATION_FILES_SERVER_NAME,
-    });
+  // Returns no tool at all if there is no conversation in tool context.
+  if (conversation) {
+    for (const tool of useFileSystem ? TOOLS_WITH_FILESYSTEM : TOOLS) {
+      registerTool(auth, toolContext, server, tool, {
+        monitoringName: CONVERSATION_FILES_SERVER_NAME,
+      });
+    }
   }
 
   return server;

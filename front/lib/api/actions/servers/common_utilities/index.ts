@@ -21,6 +21,7 @@ function createServer(
       : null) ?? toolContext?.listToolsContext?.conversation;
 
   for (const tool of TOOLS) {
+    // Skip `set_conversation_title` if there is no conversation in tool context.
     if (!conversation && tool.name === "set_conversation_title") {
       continue;
     }
