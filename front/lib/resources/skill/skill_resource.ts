@@ -39,24 +39,16 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
+import * as skillReferences from "@app/lib/resources/skill/skill_references";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
-  getResourceNameAndIdFromSId,
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import {
-  extractUniqueSkillReferenceIds,
-  parseSkillReferenceTag,
-  renameSkillReferencesInContent,
-  SKILL_REFERENCE_TAG_REGEX,
-  serializeSkillTag,
-  serializeUnavailableSkillTag,
-} from "@app/lib/skills/format";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -105,18 +97,6 @@ export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
   childAgentId?: string;
   serverNameOverride?: string;
-};
-
-type SkillReferenceTarget = {
-  icon: string | null;
-  id: string;
-  name: string;
-  requestedSpaceIds: readonly ModelId[];
-  status: SkillStatus;
-};
-
-type ReplaceSkillReferenceTagsOptions = {
-  html?: boolean;
 };
 
 type SkillResourceConstructorOptions =
@@ -458,7 +438,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
       await skillResource.normalizeSkillReferenceTags(auth, { transaction });
-      await skillResource.syncSkillReferences(auth, { transaction });
+      await skillReferences.syncSkillReferences(auth, skillResource, {
+        transaction,
+      });
 
       return skillResource;
     });
@@ -2448,8 +2430,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           { transaction }
         );
 
-        await this.propagateReferenceUpdatesToParentSkills(
+        await skillReferences.propagateReferenceUpdatesToParentSkills(
           auth,
+          this,
           {
             icon: this.icon,
             name: this.name,
@@ -2489,8 +2472,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           { transaction }
         );
 
-        await this.propagateReferenceUpdatesToParentSkills(
+        await skillReferences.propagateReferenceUpdatesToParentSkills(
           auth,
+          this,
           {
             icon: this.icon,
             name: this.name,
@@ -2590,7 +2574,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       await this.normalizeSkillReferenceTags(auth, { transaction });
-      await this.syncSkillReferences(auth, { transaction });
+      await skillReferences.syncSkillReferences(auth, this, { transaction });
 
       if (
         name !== previousName ||
@@ -2598,8 +2582,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         requestedSpaceIdsChanged ||
         statusChanged
       ) {
-        await this.propagateReferenceUpdatesToParentSkills(
+        await skillReferences.propagateReferenceUpdatesToParentSkills(
           auth,
+          this,
           {
             icon,
             name,
@@ -2634,115 +2619,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.upsertCurrentUserAsEditor(auth);
   }
 
-  /**
-   * Rewrites inline references to this skill in every parent skill so their tag
-   * availability reflects this skill's current status and requested spaces.
-   */
-  private async propagateReferenceUpdatesToParentSkills(
-    auth: Authenticator,
-    {
-      icon,
-      name,
-      requestedSpaceIds,
-      status,
-    }: {
-      icon: string | null;
-      name: string;
-      requestedSpaceIds: readonly ModelId[];
-      status: SkillStatus;
-    },
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const references = await SkillReferenceModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        childCustomSkillId: this.id,
-      },
-      transaction,
-    });
-
-    const referencingSkillIds = uniq(
-      references.map((reference) => reference.parentSkillId)
-    );
-
-    if (referencingSkillIds.length === 0) {
-      return;
-    }
-
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
-      auth,
-      transaction
-    );
-    const target = new Map<string, SkillReferenceTarget>([
-      [
-        this.sId,
-        {
-          icon,
-          id: this.sId,
-          name,
-          requestedSpaceIds,
-          status,
-        },
-      ],
-    ]);
-
-    const referencingSkills = await this.model.findAll({
-      where: {
-        workspaceId: workspace.id,
-        id: referencingSkillIds,
-      },
-      transaction,
-    });
-
-    // Each update carries distinct instructions content so it cannot be
-    // batched. Bounded by the number of skills referencing this one.
-    for (const referencingSkill of referencingSkills) {
-      const parentRequestedSpaceIds = uniq([
-        ...referencingSkill.requestedSpaceIds,
-        globalSpace.id,
-      ]);
-      const renamedInstructions = renameSkillReferencesInContent(
-        referencingSkill.instructions,
-        { skillId: this.sId, newName: name }
-      );
-      const renamedInstructionsHtml =
-        referencingSkill.instructionsHtml != null
-          ? renameSkillReferencesInContent(referencingSkill.instructionsHtml, {
-              skillId: this.sId,
-              newName: name,
-            })
-          : referencingSkill.instructionsHtml;
-      const instructions = SkillResource.replaceSkillReferenceTags(
-        renamedInstructions,
-        target,
-        parentRequestedSpaceIds
-      );
-      const instructionsHtml =
-        renamedInstructionsHtml !== null
-          ? SkillResource.replaceSkillReferenceTags(
-              renamedInstructionsHtml,
-              target,
-              parentRequestedSpaceIds,
-              { html: true }
-            )
-          : null;
-
-      if (
-        instructions === referencingSkill.instructions &&
-        instructionsHtml === referencingSkill.instructionsHtml
-      ) {
-        continue;
-      }
-
-      await referencingSkill.update(
-        { instructions, instructionsHtml },
-        { transaction }
-      );
-    }
-  }
-
   async updateReinforcement(
     reinforcement: SkillReinforcementMode
   ): Promise<void> {
@@ -2767,116 +2643,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   async recordReinforcementAnalysisCompletion(): Promise<void> {
     await this.update({ lastReinforcementAnalysisAt: new Date() });
-  }
-
-  /**
-   * Sync the denormalized skill_references rows with the inline skill reference
-   * tags found in the instructions (the source of truth). Deriving from the
-   * instructions keeps the table consistent on every write path, including
-   * restoring a previous version whose references differ from the current ones.
-   */
-  private async syncSkillReferences(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Self-references are intentionally kept (#26680 allows them).
-    const referencedSkillIds = extractUniqueSkillReferenceIds(
-      this.instructions
-    );
-
-    // Retrieve what we want the end state to be.
-    const referencedCustomSkillIds = uniq(
-      removeNulls(
-        referencedSkillIds.map((sId) => {
-          const parsed = getResourceNameAndIdFromSId(sId);
-
-          return parsed?.resourceName === "skill" &&
-            parsed.workspaceModelId === workspace.id
-            ? parsed.resourceModelId
-            : null;
-        })
-      )
-    );
-    const referencedGlobalSkillIds = uniq(
-      referencedSkillIds.filter((sId) => !getResourceNameAndIdFromSId(sId))
-    );
-
-    const childSkills = await this.model.findAll({
-      attributes: ["id"],
-      where: {
-        id: { [Op.in]: referencedCustomSkillIds },
-        workspaceId: workspace.id,
-      },
-      transaction,
-    });
-
-    const desiredCustomSkillIds = new Set(childSkills.map((skill) => skill.id));
-    const desiredGlobalSkillIds = new Set(referencedGlobalSkillIds);
-
-    // Retrieve the current state.
-    const existingReferences = await SkillReferenceModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        parentSkillId: this.id,
-      },
-      transaction,
-    });
-
-    const existingCustomSkillIds = new Set(
-      removeNulls(existingReferences.map((ref) => ref.childCustomSkillId))
-    );
-    const existingGlobalSkillIds = new Set(
-      removeNulls(existingReferences.map((ref) => ref.childGlobalSkillId))
-    );
-
-    // Delete references that are in the current state but not the end state.
-    const referencesToDelete = existingReferences.filter((ref) => {
-      if (ref.childCustomSkillId !== null) {
-        return !desiredCustomSkillIds.has(ref.childCustomSkillId);
-      }
-
-      if (ref.childGlobalSkillId !== null) {
-        return !desiredGlobalSkillIds.has(ref.childGlobalSkillId);
-      }
-
-      return true;
-    });
-
-    if (referencesToDelete.length > 0) {
-      await SkillReferenceModel.destroy({
-        where: {
-          id: { [Op.in]: referencesToDelete.map((ref) => ref.id) },
-          workspaceId: workspace.id,
-        },
-        transaction,
-      });
-    }
-
-    // Add references that are in the end state but not the current state.
-    const referencesToCreate = [
-      ...[...desiredCustomSkillIds]
-        .filter((childSkillId) => !existingCustomSkillIds.has(childSkillId))
-        .map((childSkillId) => ({
-          workspaceId: workspace.id,
-          parentSkillId: this.id,
-          childCustomSkillId: childSkillId,
-          childGlobalSkillId: null,
-        })),
-      ...[...desiredGlobalSkillIds]
-        .filter((globalSkillId) => !existingGlobalSkillIds.has(globalSkillId))
-        .map((globalSkillId) => ({
-          workspaceId: workspace.id,
-          parentSkillId: this.id,
-          childCustomSkillId: null,
-          childGlobalSkillId: globalSkillId,
-        })),
-    ];
-
-    if (referencesToCreate.length > 0) {
-      await SkillReferenceModel.bulkCreate(referencesToCreate, { transaction });
-    }
   }
 
   /**
@@ -3155,8 +2921,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       const affectedCount = await withTransaction(async (transaction) => {
-        await this.propagateReferenceUpdatesToParentSkills(
+        await skillReferences.propagateReferenceUpdatesToParentSkills(
           auth,
+          this,
           {
             icon: this.icon,
             name: this.name,
@@ -3534,137 +3301,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  private static replaceSkillReferenceTags(
-    content: string,
-    targets: ReadonlyMap<string, SkillReferenceTarget>,
-    parentRequestedSpaceIds: readonly ModelId[],
-    { html = false }: ReplaceSkillReferenceTagsOptions = {}
-  ): string {
-    if (targets.size === 0) {
-      return content;
-    }
-
-    const parentRequestedSpaceIdsSet = new Set(parentRequestedSpaceIds);
-
-    return content.replace(SKILL_REFERENCE_TAG_REGEX, (tag) => {
-      const skill = parseSkillReferenceTag(tag);
-      const target = skill ? targets.get(skill.id) : undefined;
-
-      if (!target) {
-        return tag;
-      }
-
-      const isAvailable =
-        target.status === "active" &&
-        target.requestedSpaceIds.every((spaceId) =>
-          parentRequestedSpaceIdsSet.has(spaceId)
-        );
-
-      if (!isAvailable) {
-        return serializeUnavailableSkillTag({ id: target.id }, { html });
-      }
-
-      return serializeSkillTag(
-        {
-          icon: target.icon,
-          id: target.id,
-          name: target.name,
-        },
-        { html }
-      );
-    });
-  }
-
   private async normalizeSkillReferenceTags(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-    const customSkillIdByModelId = new Map<ModelId, string>(
-      removeNulls(
-        extractUniqueSkillReferenceIds(this.instructions).map((skillId) => {
-          const modelId = isResourceSId("skill", skillId)
-            ? getResourceIdFromSId(skillId)
-            : null;
+    const normalized =
+      await skillReferences.computeNormalizedSkillReferenceTags(auth, this, {
+        transaction,
+      });
 
-          return modelId ? [modelId, skillId] : null;
-        })
-      )
-    );
-
-    if (customSkillIdByModelId.size === 0) {
-      return;
-    }
-
-    const customSkills = await SkillConfigurationModel.findAll({
-      where: {
-        id: [...customSkillIdByModelId.keys()],
-        workspaceId: workspace.id,
-      },
-      attributes: ["id", "icon", "name", "requestedSpaceIds", "status"],
-      transaction,
-    });
-    const targets = new Map<string, SkillReferenceTarget>(
-      removeNulls(
-        customSkills.map((skill) => {
-          const sId = customSkillIdByModelId.get(skill.id);
-
-          return sId
-            ? [
-                sId,
-                {
-                  icon: skill.icon,
-                  id: sId,
-                  name: skill.name,
-                  requestedSpaceIds: skill.requestedSpaceIds,
-                  status: skill.status,
-                },
-              ]
-            : null;
-        })
-      )
-    );
-    for (const skillId of customSkillIdByModelId.values()) {
-      if (!targets.has(skillId)) {
-        targets.set(skillId, {
-          icon: null,
-          id: skillId,
-          name: "",
-          requestedSpaceIds: [],
-          status: "archived",
-        });
-      }
-    }
-
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
-      auth,
-      transaction
-    );
-    const parentRequestedSpaceIds = uniq([
-      ...this.requestedSpaceIds,
-      globalSpace.id,
-    ]);
-
-    const instructions = SkillResource.replaceSkillReferenceTags(
-      this.instructions,
-      targets,
-      parentRequestedSpaceIds
-    );
-    const instructionsHtml =
-      this.instructionsHtml !== null
-        ? SkillResource.replaceSkillReferenceTags(
-            this.instructionsHtml,
-            targets,
-            parentRequestedSpaceIds,
-            { html: true }
-          )
-        : null;
-
-    if (
-      instructions !== this.instructions ||
-      instructionsHtml !== this.instructionsHtml
-    ) {
-      await this.update({ instructions, instructionsHtml }, transaction);
+    if (normalized) {
+      await this.update(normalized, transaction);
     }
   }
 
