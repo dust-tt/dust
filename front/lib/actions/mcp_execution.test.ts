@@ -83,17 +83,38 @@ async function setupTest() {
     retryPolicy: "no_retry",
   };
 
-  const { action } = await ConversationFactory.createAgentMessage(auth, {
-    workspace,
-    conversation,
-    agentConfig,
-    mcpAction: { toolConfiguration },
-  });
+  const { action, agentMessage } = await ConversationFactory.createAgentMessage(
+    auth,
+    {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    }
+  );
   assert(action, "MCP action should be created");
 
-  const toolContext = {
-    runContext: { contextType: "agent_loop", conversation },
-  } as unknown as ToolContextType;
+  // The agent message above is created with rank 0, use rank 1 for the user message.
+  const { userMessage } = await ConversationFactory.createUserMessage({
+    auth,
+    workspace,
+    conversation,
+    content: "Test message",
+    rank: 1,
+  });
+
+  const toolContext: ToolContextType = {
+    runContext: {
+      contextType: "agent_loop",
+      agentConfiguration: agentConfig,
+      agentMessage,
+      currentAction: action.toJSON(),
+      conversation,
+      stepContext: action.stepContext,
+      toolConfiguration,
+      userMessage,
+    },
+  };
 
   return { auth, conversation, action, toolConfiguration, toolContext };
 }
