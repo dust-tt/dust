@@ -1,7 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import {
   MAX_QUERY_ROWS,
@@ -22,9 +25,9 @@ const CONNECTION_ERROR = new MCPError(
 
 interface SnowflakeQueryTagMetadata {
   workspace_id: string;
-  agent_id: string;
-  agent_name: string;
-  conversation_id: string;
+  agent_id: string | null;
+  agent_name: string | null;
+  conversation_id: string | null;
   user_id: string | null;
   user_email: string | null;
 }
@@ -39,15 +42,20 @@ function buildQueryTagMetadata(
     return undefined;
   }
 
-  const { agentConfiguration, conversation } = toolContext.runContext;
+  const { agentConfiguration, conversation } = isAgentLoopRunContext(
+    toolContext.runContext
+  )
+    ? toolContext.runContext
+    : {};
+
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
   const metadata: SnowflakeQueryTagMetadata = {
     workspace_id: workspace.sId,
-    agent_id: agentConfiguration.sId,
-    agent_name: agentConfiguration.name,
-    conversation_id: conversation.sId,
+    agent_id: agentConfiguration?.sId ?? null,
+    agent_name: agentConfiguration?.name ?? null,
+    conversation_id: conversation?.sId ?? null,
     user_id: user?.sId ?? null,
     user_email: user?.email ?? null,
   };
