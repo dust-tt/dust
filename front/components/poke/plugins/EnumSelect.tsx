@@ -26,6 +26,7 @@ interface EnumSelectProps {
   placeholder?: string;
   values?: string[];
   multiple: boolean;
+  fullWidth?: boolean;
 }
 
 export function EnumSelect({
@@ -35,6 +36,7 @@ export function EnumSelect({
   placeholder = "Select value",
   values,
   multiple,
+  fullWidth = false,
 }: EnumSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -62,7 +64,8 @@ export function EnumSelect({
             variant="outline"
             role="combobox"
             className={cn(
-              "w-auto justify-between border-border-dark bg-background " + "",
+              "justify-between border-border-dark bg-background",
+              fullWidth ? "w-full" : "w-auto",
               !values?.length && "text-muted-foreground"
             )}
           >

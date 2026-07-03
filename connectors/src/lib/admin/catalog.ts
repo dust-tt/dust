@@ -22,6 +22,9 @@ export function buildCliCommandCatalog(program: Command): CliCommandCatalog {
         description: opt.description,
         // Options declared with `parseInt` as their coercion are numeric.
         isNumber: opt.parseArg === parseInt,
+        // Options declared with a `<bool>` value placeholder are booleans
+        // (submitted as the string "true").
+        isBoolean: /<bool>|\[bool\]/i.test(opt.flags ?? ""),
       }));
     optionsByGroup.set(cmd.name(), options);
   }

@@ -4,6 +4,9 @@ export const CliCommandOptionSchema = z.object({
   name: z.string(),
   description: z.string(),
   isNumber: z.boolean(),
+  // A value-style boolean flag (declared `--flag <bool>`), rendered as a
+  // checkbox that submits the string "true" when checked.
+  isBoolean: z.boolean(),
 });
 export type CliCommandOption = z.infer<typeof CliCommandOptionSchema>;
 

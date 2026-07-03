@@ -9,7 +9,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 export const runConnectorCliCommandPlugin = createPlugin({
   manifest: {
     id: "run-connector-cli-command",
-    name: "Run Connector CLI Command",
+    name: "Connector CLI Command",
     description:
       "Run an admin CLI command for this connector. The command group and " +
       "the workspace/data source/connector are implied; just pick a command " +

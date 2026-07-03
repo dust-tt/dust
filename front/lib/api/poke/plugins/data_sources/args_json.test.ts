@@ -3,9 +3,9 @@ import type { CliCommandOption } from "@app/types/connectors/admin/catalog";
 import { describe, expect, it } from "vitest";
 
 const options: CliCommandOption[] = [
-  { name: "connectorId", description: "", isNumber: true },
-  { name: "channelId", description: "", isNumber: false },
-  { name: "force", description: "", isNumber: false },
+  { name: "connectorId", description: "", isNumber: true, isBoolean: false },
+  { name: "channelId", description: "", isNumber: false, isBoolean: false },
+  { name: "force", description: "", isNumber: false, isBoolean: true },
 ];
 
 describe("buildAdminRunArgs", () => {

@@ -17,7 +17,7 @@ import { usePokeConnectorCliCatalog } from "@app/poke/swr/plugins";
 import type { CliCommandGroup } from "@app/types/connectors/admin/catalog";
 import type { EnumValue, PluginResourceTarget } from "@app/types/poke/plugins";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { Button, Checkbox, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -161,45 +161,62 @@ function ConnectorCliCommandFormInner({
     });
   };
 
+  const setParam = (name: string, value: string) =>
+    setParamValues((prev) => ({ ...prev, [name]: value }));
+
   return (
     <PokeForm {...formContextOnly}>
-      <div className="flex max-w-[600px] flex-col gap-y-6">
-        <PokeFormItem>
-          <PokeFormLabel>Command</PokeFormLabel>
-          <PokeFormDescription>
-            Commands available for this {connectorProvider} connector.
-          </PokeFormDescription>
-          <EnumSelect
-            label="Command"
-            options={commandOptions}
-            values={commandValue ? [commandValue] : []}
-            multiple={false}
-            onValuesChange={(values) => {
-              setCommandValue(values[0] ?? null);
-              setParamValues({});
-            }}
-          />
-        </PokeFormItem>
+      <div className="flex max-w-[600px] flex-col gap-y-4">
+        <div className="flex max-h-[50vh] flex-col gap-y-6 overflow-y-auto pr-2">
+          <PokeFormItem>
+            <PokeFormLabel>Command</PokeFormLabel>
+            <PokeFormDescription>
+              Commands available for this {connectorProvider} connector.
+            </PokeFormDescription>
+            <EnumSelect
+              label="Command"
+              fullWidth
+              options={commandOptions}
+              values={commandValue ? [commandValue] : []}
+              multiple={false}
+              onValuesChange={(values) => {
+                setCommandValue(values[0] ?? null);
+                setParamValues({});
+              }}
+            />
+          </PokeFormItem>
 
-        {selectedGroup &&
-          visibleOptions.map((option) => (
-            <PokeFormItem key={option.name}>
-              <PokeFormLabel>{option.name}</PokeFormLabel>
-              <PokeFormInput
-                type={option.isNumber ? "number" : "text"}
-                value={paramValues[option.name] ?? ""}
-                onChange={(e) =>
-                  setParamValues((prev) => ({
-                    ...prev,
-                    [option.name]: e.target.value,
-                  }))
-                }
-              />
-              {option.description && (
-                <PokeFormDescription>{option.description}</PokeFormDescription>
-              )}
-            </PokeFormItem>
-          ))}
+          {selectedGroup &&
+            visibleOptions.map((option) => (
+              <PokeFormItem key={option.name}>
+                {option.isBoolean ? (
+                  <div className="flex flex-row items-center gap-x-2">
+                    <Checkbox
+                      checked={paramValues[option.name] === "true"}
+                      onCheckedChange={(checked) =>
+                        setParam(option.name, checked ? "true" : "")
+                      }
+                    />
+                    <PokeFormLabel>{option.name}</PokeFormLabel>
+                  </div>
+                ) : (
+                  <>
+                    <PokeFormLabel>{option.name}</PokeFormLabel>
+                    <PokeFormInput
+                      type={option.isNumber ? "number" : "text"}
+                      value={paramValues[option.name] ?? ""}
+                      onChange={(e) => setParam(option.name, e.target.value)}
+                    />
+                  </>
+                )}
+                {option.description && (
+                  <PokeFormDescription>
+                    {option.description}
+                  </PokeFormDescription>
+                )}
+              </PokeFormItem>
+            ))}
+        </div>
 
         <Button
           type="button"

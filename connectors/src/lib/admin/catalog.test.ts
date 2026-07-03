@@ -31,5 +31,17 @@ describe("buildCliCommandCatalog", () => {
 
     const callId = gong?.options.find((o) => o.name === "callId");
     expect(callId?.isNumber).toBe(false);
+    expect(callId?.isBoolean).toBe(false);
+  });
+
+  it("flags value-style boolean options", () => {
+    const slack = catalog.groups.find((g) => g.majorCommand === "slack");
+    // slack declares --force <bool>.
+    const force = slack?.options.find((o) => o.name === "force");
+    expect(force?.isBoolean).toBe(true);
+    expect(force?.isNumber).toBe(false);
+
+    const channelId = slack?.options.find((o) => o.name === "channelId");
+    expect(channelId?.isBoolean).toBe(false);
   });
 });

@@ -12,19 +12,35 @@ const catalog: CliCommandCatalog = {
       majorCommand: "connectors",
       description: "Generic connector lifecycle operations",
       subcommands: ["pause", "resume"],
-      options: [{ name: "wId", description: "", isNumber: false }],
+      options: [
+        { name: "wId", description: "", isNumber: false, isBoolean: false },
+      ],
     },
     {
       majorCommand: "slack",
       description: "Slack connector management",
       subcommands: ["sync-channel", "check-channel"],
-      options: [{ name: "channelId", description: "", isNumber: false }],
+      options: [
+        {
+          name: "channelId",
+          description: "",
+          isNumber: false,
+          isBoolean: false,
+        },
+      ],
     },
     {
       majorCommand: "gong",
       description: "Gong connector management",
       subcommands: ["force-resync"],
-      options: [{ name: "connectorId", description: "", isNumber: true }],
+      options: [
+        {
+          name: "connectorId",
+          description: "",
+          isNumber: true,
+          isBoolean: false,
+        },
+      ],
     },
   ],
 };
