@@ -12,6 +12,7 @@ import {
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   areDataSourcesConfigured,
+  isClientSideMCPToolConfiguration,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import {
@@ -115,6 +116,36 @@ function constructBranchContextSection({
     "carried over into this conversation.\n" +
     "Conversation attachments and tool outputs available at the branch point were " +
     "also carried over into this conversation.\n"
+  );
+}
+
+function constructPlatformSpecificContextSection({
+  userMessage,
+  serverToolsAndInstructions,
+}: {
+  userMessage: UserMessageType;
+  serverToolsAndInstructions?: ServerToolsAndInstructions[];
+}): string {
+  // Extension-originated messages are currently the only client messages where
+  // we inject instructions for ambient platform-specific context.
+  if (userMessage.context.origin !== "extension") {
+    return "";
+  }
+
+  const hasClientSideTools =
+    serverToolsAndInstructions?.some((server) =>
+      server.tools.some((tool) => isClientSideMCPToolConfiguration(tool))
+    ) ?? false;
+
+  if (!hasClientSideTools) {
+    return "";
+  }
+
+  return (
+    "# PLATFORM-SPECIFIC CONTEXT\n\n" +
+    "This conversation is connected to a Dust client that can provide platform-specific context through tools. " +
+    "When the user refers to local, visible, or current platform context, look for tools that could be relevant " +
+    "to the user's inquiry before asking the user to paste it.\n"
   );
 }
 
@@ -434,6 +465,11 @@ export function constructPromptMultiActions(
     disableFormattingPrompt,
   });
   const branchContextSection = constructBranchContextSection({ conversation });
+  const platformSpecificContextSection =
+    constructPlatformSpecificContextSection({
+      userMessage,
+      serverToolsAndInstructions,
+    });
 
   const toolsSection = constructToolsSection({
     hasAvailableActions,
@@ -460,8 +496,8 @@ export function constructPromptMultiActions(
     // section (directives + server listing), date, toolsets, and workspace info. A cache breakpoint
     // here lets different users in the same workspace share this prefix.
     //
-    // Ephemeral context (no breakpoint): per-call data, covering branch lineage and user
-    // profile.
+    // Ephemeral context (no breakpoint): per-call data, covering branch lineage,
+    // platform-specific context, and user profile.
     const fullInstructions = [
       instructionsContent,
       skillsSection,
@@ -485,6 +521,7 @@ export function constructPromptMultiActions(
 
     const ephemeralContext: SystemPromptContext[] = [
       { role: "context" as const, content: branchContextSection },
+      { role: "context" as const, content: platformSpecificContextSection },
       { role: "context" as const, content: userContext ?? "" },
       { role: "context" as const, content: projectContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -504,6 +541,7 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: contextSection },
     { role: "context" as const, content: branchContextSection },
     { role: "context" as const, content: toolsSection },
+    { role: "context" as const, content: platformSpecificContextSection },
     { role: "context" as const, content: skillsSection },
     { role: "context" as const, content: attachmentsSection },
     { role: "context" as const, content: pastedContentSection },
