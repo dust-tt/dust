@@ -67,7 +67,7 @@ describe("getAdvancedModelAccessErrorForAgentConfiguration", () => {
     expect(result).toBeNull();
   });
 
-  it("returns an error for advanced models that are not in the allowlist", async () => {
+  it("returns null when workspace default allows all advanced models", async () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
@@ -86,9 +86,74 @@ describe("getAdvancedModelAccessErrorForAgentConfiguration", () => {
       }
     );
 
+    expect(result).toBeNull();
+  });
+
+  it("returns an error when the advanced model is disabled at workspace level", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(userAuth, "models_picker");
+
+    await AdvancedModelResource.removeWorkspaceAllowedAdvancedModel(adminAuth, {
+      providerId: "anthropic",
+      modelId: CLAUDE_OPUS_4_6_MODEL_ID,
+    });
+
+    const result = await getAdvancedModelAccessErrorForAgentConfiguration(
+      userAuth,
+      {
+        agentName: "Opus Agent",
+        model: opusModel,
+        featureFlags: ["models_picker"],
+      }
+    );
+
     expect(result?.code).toBe(ADVANCED_MODEL_NOT_ENABLED_ERROR_CODE);
     expect(result?.message).toContain("not enabled for you");
     expect(result?.metadata?.errorTitle).toBe("Advanced model not enabled");
+  });
+
+  it("returns an error when all workspace advanced models are disabled", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(userAuth, "models_picker");
+
+    for (const model of AdvancedModelResource.getAdvancedModels()) {
+      await AdvancedModelResource.removeWorkspaceAllowedAdvancedModel(
+        adminAuth,
+        {
+          providerId: model.providerId,
+          modelId: model.modelId,
+        }
+      );
+    }
+
+    const result = await getAdvancedModelAccessErrorForAgentConfiguration(
+      userAuth,
+      {
+        agentName: "Opus Agent",
+        model: opusModel,
+        featureFlags: ["models_picker"],
+      }
+    );
+
+    expect(result?.code).toBe(ADVANCED_MODEL_NOT_ENABLED_ERROR_CODE);
   });
 
   it("returns null when the advanced model is granted at workspace level", async () => {
