@@ -14,6 +14,11 @@ export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
 // Credit-priced plans:
 export const CREDIT_PRICED_BUSINESS_PLAN_CODE = "CP_BUSINESS_PLAN";
+// Business variant whose limits are permissive enough to fit any legacy PRO_*
+// plan — used to migrate legacy Pro workspaces that exceed the standard Business
+// plan limits (seats, spaces, data sources) without downgrading their limits.
+export const CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE =
+  "CP_BUSINESS_LEGACY_LARGE_PLAN";
 export const CREDIT_PRICED_FREE_PLAN_CODE = "CP_FREE_PLAN";
 export const CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE = "CP_ENT_DEFAULT_PLAN";
 export const CREDIT_PRICED_DUST_COMPANY_PLAN_CODE = "CP_DUST_COMPANY";
@@ -56,7 +61,8 @@ export const isFriendsAndFamilyPlan = (planCode: string) =>
   planCode === "FREE_FRIENDSAMILY";
 
 export const isCreditPricedBusinessPlan = (planCode: string) =>
-  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE;
+  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE ||
+  planCode === CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE;
 
 export const isCreditPricedFreePlan = (planCode: string) =>
   planCode === CREDIT_PRICED_FREE_PLAN_CODE;
