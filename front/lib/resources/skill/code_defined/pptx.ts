@@ -63,7 +63,7 @@ layout it prints the \`idx\`, type, and resolved typeface / size / weight /
 color / alignment. This is what tells you the template wants Montserrat 35pt
 bold for a section number, not Arial 18pt.
 
-\`--text\` tags each line with its shape \`#id\` (match against the \`--render\`
+\`--text\` tags each line with its shape \`#id\` (match against the \`--qa\`
 box labels to read a slide back, section 7) and flags copy repeated across the
 deck — usually un-replaced template scaffolding ("Subject title", "Summary").
 
@@ -80,8 +80,8 @@ a text-fit estimate (\`holds~Nch@Spt\`). It marks problems at two levels:
   (section 7); they flag designed-overlay-vs-collision and centering, which
   geometry alone can't settle — and centering is design intent (section 6).
 
-These are the structural half of QA; the boxed-render readback (section 7) is
-the other half, and neither alone is sufficient.
+These are the structural half of QA; the per-slide \`--qa\` readback (section 7)
+is the other half, and neither alone is sufficient.
 
 ## 3. Pick your mode
 
@@ -404,8 +404,9 @@ remove them so none survive in the delivered deck.
 
 You cannot tell from the XML — or from a clean render — whether text actually
 fits, stays readable, lands where you meant, or whether an image is squished.
-QA has two gates: a **structural audit** (7.1) and a **boxed-render readback**
-(7.2). Run both after every batch of edits; deliver only when both are clean.
+QA has two gates: a deck-level **structural audit** (7.1, \`--compare\`) and a
+per-slide **\`--qa\` readback** (7.2). Run \`--qa N\` after every slide edit, and
+the structural audit after a batch; deliver only when both are clean.
 
 ### 7.1 Structural audit
 
@@ -445,15 +446,19 @@ distorted, low-res image, near-identical box). Confirm no template sample copy
 survives (\`xxxx\`, \`lorem\`, draft titles, \`<Client name>\`) — \`--text\` makes
 that fast.
 
-### 7.2 Boxed render + readback — your microscope (never skip this)
+### 7.2 Per-slide QA — run \`--qa N\` after EVERY edit to a slide (never skip)
 
-The render is your only view of what a slide actually looks like, and the
-**bounding-box overlay is not optional** — it is how you inspect every asset at
-once. \`--render\` always draws it:
+\`--qa N\` is the readback gate, and after a slide edit it is **not optional**:
+run it the moment you finish editing slide N — not just once at the end. It
+bundles the two halves of QA so you can't look at one without the other — the
+slide's \`#id\`-tagged text and its boxed diagnostic render:
 
 \`\`\`bash
-pptx_inspect output.pptx --render            # one labeled slide-NNN-boxes.png per slide
+pptx_inspect output.pptx --qa 6              # slide 6's #id-tagged text + boxed render
 \`\`\`
+
+\`--render\` (no boxes) is only a quick visual look — it shows nothing
+diagnostic, so it is **not** a QA step. The diagnostic boxes live in \`--qa\`.
 
 Each shape is outlined and labeled \`#id\` just outside it (text shapes tinted),
 so the label keys the box to its file text without covering content. A **red
@@ -463,10 +468,10 @@ left with no text row beside it. Box geometry and image ratios are read straight
 from the file/pixels, so what they reveal is real in PowerPoint even though the
 *text glyphs* render in substitute fonts.
 
-**The gate is a readback.** Get the authoritative text with \`pptx_inspect
-output.pptx --text\` — each line is tagged with its shape \`#id\`. Then, for every
-slide, for every labeled box, read what the render shows and confirm it matches
-the \`#id\`'s file text. If you cannot read a box's text back — **clipped** at the
+**The gate is a readback.** \`--qa\` prints the slide's authoritative text above
+the render, each line tagged with its shape \`#id\`. For every labeled box, read
+what the render shows and confirm it matches that \`#id\`'s text. If you cannot
+read a box's text back — **clipped** at the
 box edge (overflow), **too faint** against its background (e.g. dark text on a
 dark slide), or **hidden** under another shape (occlusion) — that is a real
 defect, not a render artifact. A box you can't read back is the most reliable
@@ -503,24 +508,23 @@ Go box by box, by asset class (the label gives you the kind):
 - **auto / shape** — decoration or background only; it must not cover content
   text.
 
-Fix, then re-render just that slide (\`pptx_inspect output.pptx --render
---slide N\`) and read it back again. Repeat until every box on every slide reads
-back clean. Render as you author — after each slide — not only at the end.
+Fix, then re-run \`--qa N\` on that slide and read it back again. Repeat until the
+slide reads back clean. **Run \`--qa N\` after every edit to a slide — as you
+author, not only at the end** — so each defect is caught on the slide that
+introduced it, never buried in a final sweep.
 
-**Final render gate (your last action before delivery).** After your *last*
-edit, render the whole deck once more — \`pptx_inspect output.pptx --render\` —
-and read the Pixel-metrics digest end to end. A render from before your last
-change is **stale** and hides the defect you just introduced (the common way a
-wrapped row and its stranded marker ship unseen): the only render that counts is
-one taken after the final edit. Any \`unaligned markers\` line, overlap, or clip
-in that pass means the gate is not met — fix it and render again. Do not trust a
+**No stale passes.** The \`--qa N\` that counts is the one run *after* your last
+edit to slide N — a result from before that edit is stale and hides the defect
+you just introduced (the common way a wrapped row and its stranded marker ship
+unseen). Any \`unaligned markers\` line, overlap, or clipped/illegible box means
+the slide is not done — fix it and re-run \`--qa N\`. Do not lean on a
 \`[QA: PASS]\` from \`--compare\` here: \`--compare\` checks structure, not the
-rendered pixels, so it cannot see a stranded marker.
+rendered pixels, so it cannot see a stranded marker — only \`--qa\` can.
 
 What is **not** a defect: a few pixels of reflow or a substituted typeface — if
 the customer has the font, their PowerPoint is correct. To tell artifact from
-defect, render the template the same way (\`pptx_inspect template.pptx
---render\`) and compare like-for-like. For autofit text or dense tables, where
+defect, view the template's matching slide the same way (\`pptx_inspect
+template.pptx --qa N\`) and compare like-for-like. For autofit text or dense tables, where
 this renderer is least reliable, note in your summary that they should be
 confirmed in PowerPoint before the deck reaches a customer.
 
