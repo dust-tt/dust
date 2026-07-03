@@ -15,8 +15,17 @@ const app = createHono();
 
 /** @ignoreswagger */
 app.post("/", async (ctx) => {
-  const body = await ctx.req.json().catch(() => ({}));
-  const { token } = body ?? {};
+  // The validation page auto-submits a plain HTML form, which posts as
+  // `application/x-www-form-urlencoded` (Next's body parser decoded it
+  // transparently; Hono's `ctx.req.json()` does not). Parse form bodies when
+  // the header says so, and default to JSON otherwise.
+  const contentType = ctx.req.header("content-type") ?? "";
+  const body: Record<string, unknown> = contentType.includes(
+    "application/x-www-form-urlencoded"
+  )
+    ? await ctx.req.parseBody().catch(() => ({}))
+    : await ctx.req.json().catch(() => ({}));
+  const { token } = body;
   if (!isString(token)) {
     return apiError(ctx, {
       status_code: 400,
