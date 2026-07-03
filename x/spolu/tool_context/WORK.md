@@ -54,9 +54,9 @@
 [+]     2  front/lib/api/actions/servers/snowflake/tools/index.ts:42
 [-]     4  front/lib/api/actions/servers/toolsets/tools/index.ts:25
 [+]     1  front/lib/api/actions/servers/user_mentions/tools/index.ts:44
-[ ]     5  front/lib/api/actions/servers/wakeups/tools/index.ts:92
-[ ]     4  front/lib/api/actions/servers/web_search_browse/tools/index.ts:59
-[ ]     1  front/lib/api/mcp/run_tool.ts:91
+[-]     5  front/lib/api/actions/servers/wakeups/tools/index.ts:92
+[+]     4  front/lib/api/actions/servers/web_search_browse/tools/index.ts:59
+[+]     1  front/lib/api/mcp/run_tool.ts:91
 
 ## notes
 
@@ -74,6 +74,7 @@ to dynamically express that a server is not usable.
 - [ ] timezone on invocation for:
       - google_calendar
       - pod_manager/create_conversation
+- [ ] runToolWithStreaming is highly conversation centric, maybe dsbx does not use it.
 
 ### files server
 

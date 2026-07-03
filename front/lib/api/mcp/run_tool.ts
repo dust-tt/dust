@@ -89,6 +89,7 @@ export async function* runToolWithStreaming(
   });
 
   const agentLoopRunContext: AgentLoopRunContextType = {
+    contextType: "agent_loop",
     agentConfiguration,
     agentMessage,
     currentAction: action.toJSON(),
@@ -106,7 +107,7 @@ export async function* runToolWithStreaming(
   const toolCallResult = yield* tryCallMCPTool(
     auth,
     inputs,
-    agentLoopRunContext,
+    { runContext: agentLoopRunContext },
     {
       progressToken: action.id,
       makeToolNotificationEvent: async (notification) => {
