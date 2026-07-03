@@ -197,7 +197,16 @@ export async function getLegacyLLM(
       featureFlags.includes("use_vertex_for_supported_models"));
 
   if (isAnthropicWhitelistedModelId(modelId)) {
-    const useEapKey = getModelConfigByModelId(modelId)?.useEapKey ?? false;
+    const modelConfig = getModelConfigByModelId(modelId);
+    const useEapKey = modelConfig?.useEapKey ?? false;
+
+    // Vertex serves models from regional deployments, so only route to Vertex
+    // when the model actually has quota in the current region. A model that is
+    // not regionally available (e.g. Sonnet 5 in europe-west1) must fall back to
+    // the direct Anthropic API rather than hit a non-existent regional endpoint.
+    const regionallyAvailable =
+      modelConfig?.regionalAvailability[regionConfig.getCurrentRegion()] ===
+      true;
 
     // EAP models must hit the Anthropic API directly with the EAP key. Vertex
     // authenticates via GCP project creds and ignores ANTHROPIC_API_KEY, so
@@ -205,7 +214,8 @@ export async function getLegacyLLM(
     const useVertex =
       !useEapKey &&
       useVertexPrerequisite &&
-      isAnthropicVertexWhitelistedModelId(modelId);
+      isAnthropicVertexWhitelistedModelId(modelId) &&
+      regionallyAvailable;
 
     const anthropicCredentials = useEapKey
       ? withEapAnthropicKey(modelId, credentials)
