@@ -36,6 +36,8 @@ import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import assert from "assert";
 import compact from "lodash/compact";
 
+const ENABLE_SKILL_FUNCTION_CALL_NAME = "skill_management__enable_skill";
+
 const ACCEPTED_MEDIA_TYPES = [
   "image/jpeg",
   "image/png",
@@ -236,6 +238,76 @@ function assistantMessage(
     role: "assistant",
     content: contents,
   };
+}
+
+export function detectAnthropicToolSearchEnableSkillConflict(
+  messages: ModelMessageTypeMultiActionsWithoutContentFragment[]
+): boolean {
+  let pendingServerToolUseId: string | null = null;
+  let pendingEnableSkillFunctionCallId: string | null = null;
+  let enableSkillResultSeen = false;
+
+  for (const message of messages) {
+    if (message.role === "assistant") {
+      let serverToolUseId: string | null = null;
+      let enableSkillFunctionCallId: string | null = null;
+
+      for (const content of message.contents) {
+        if (
+          content.type === "function_call" &&
+          content.value.name === ENABLE_SKILL_FUNCTION_CALL_NAME
+        ) {
+          enableSkillFunctionCallId = content.value.id;
+          continue;
+        }
+
+        if (
+          content.type !== "provider_passthrough" ||
+          content.value.provider !== ANTHROPIC_PROVIDER_ID
+        ) {
+          continue;
+        }
+
+        const block = parseAnthropicToolSearchBlock(content.value.block);
+        if (block?.type === "server_tool_use") {
+          serverToolUseId = block.id;
+        } else if (
+          block?.type === "tool_search_tool_result" &&
+          block.tool_use_id === pendingServerToolUseId
+        ) {
+          pendingServerToolUseId = null;
+          pendingEnableSkillFunctionCallId = null;
+          enableSkillResultSeen = false;
+        }
+      }
+
+      if (serverToolUseId && enableSkillFunctionCallId) {
+        pendingServerToolUseId = serverToolUseId;
+        pendingEnableSkillFunctionCallId = enableSkillFunctionCallId;
+        enableSkillResultSeen = false;
+      }
+      continue;
+    }
+
+    if (
+      message.role === "function" &&
+      message.name === ENABLE_SKILL_FUNCTION_CALL_NAME &&
+      message.function_call_id === pendingEnableSkillFunctionCallId
+    ) {
+      enableSkillResultSeen = true;
+      continue;
+    }
+
+    if (
+      pendingServerToolUseId &&
+      enableSkillResultSeen &&
+      (message.role === "user" || message.role === "compaction")
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export async function toMessage(
