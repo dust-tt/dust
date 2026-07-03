@@ -134,6 +134,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     sandboxFunction: SandboxFunctionResource,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<number> {
+    // SandboxFunctionMCPActionModel FKs invocations with RESTRICT, but has no writer yet.
+    // TODO(2026-07-03 sandbox-functions): delete actions (rows + `outputGcsPath` GCS objects)
+    // before invocations, through SandboxFunctionMCPActionResource — lands with the resource,
+    // before any writer exists.
     return this.model.destroy({
       where: {
         sandboxFunctionId: sandboxFunction.id,
@@ -148,6 +152,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
+      // SandboxFunctionMCPActionModel FKs invocations with RESTRICT, but has no writer yet.
+      // TODO(2026-07-03 sandbox-functions): delete actions (rows + `outputGcsPath` GCS objects)
+      // first, through SandboxFunctionMCPActionResource — lands with the resource, before any
+      // writer exists.
       await this.model.destroy({
         where: {
           id: this.id,

@@ -132,6 +132,7 @@ import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
 } from "@app/lib/resources/storage/models/sandbox_function";
+import { SandboxFunctionMCPActionModel } from "@app/lib/resources/storage/models/sandbox_function_mcp_action";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -223,6 +224,7 @@ export function loadAllModels() {
     RemoteMCPServerToolMetadataModel,
     InternalMCPServerCredentialModel,
     ConversationMCPServerViewModel,
+    SandboxFunctionMCPActionModel,
     AgentMCPServerConfigurationModel,
     AgentTablesQueryConfigurationTableModel,
     AgentDataSourceConfigurationModel,
