@@ -97,7 +97,73 @@
   }
 }
 
+@keyframes sheet-enter {
+  from {
+    transform: translate3d(
+      var(--sheet-translate-x, 0),
+      var(--sheet-translate-y, 0),
+      0
+    );
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes sheet-exit {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(
+      var(--sheet-translate-x, 0),
+      var(--sheet-translate-y, 0),
+      0
+    );
+  }
+}
+
 @layer components {
+  .sheet {
+    animation-duration: 300ms;
+    animation-fill-mode: both;
+    animation-timing-function: var(--ease-out-quint);
+    will-change: transform;
+  }
+
+  .sheet[data-state="open"] {
+    animation-name: sheet-enter;
+  }
+
+  .sheet[data-state="closed"] {
+    animation-name: sheet-exit;
+  }
+
+  .sheet[data-side="top"] {
+    --sheet-translate-y: -100%;
+  }
+
+  .sheet[data-side="bottom"] {
+    --sheet-translate-y: 100%;
+  }
+
+  .sheet[data-side="left"] {
+    --sheet-translate-x: -100%;
+  }
+
+  .sheet[data-side="right"] {
+    --sheet-translate-x: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sheet[data-state="open"],
+    .sheet[data-state="closed"] {
+      animation: none;
+    }
+  }
+
   .touch-hitbox {
     position: relative;
   }
