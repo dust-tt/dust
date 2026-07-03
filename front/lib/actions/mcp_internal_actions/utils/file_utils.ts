@@ -55,11 +55,6 @@ export async function resolveConversationFileRef(
   fileId: string,
   toolContext: ToolContextType | undefined
 ): Promise<Result<ConversationFileRef, string>> {
-  assert(
-    isAgentLoopRunContext(toolContext?.runContext),
-    "AgentLoopRunContext expected"
-  );
-
   // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) produced by the new
   // DustFileSystem layer. Resolved directly — no conversation context needed.
   if (isCanonicalScopedPath(fileId)) {
@@ -109,9 +104,10 @@ export async function resolveConversationFileRef(
     });
   }
 
-  if (!toolContext?.runContext) {
-    return new Err("No conversation context available");
-  }
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
 
   const parsed = parseScopedFilePath(fileId);
   if (parsed) {

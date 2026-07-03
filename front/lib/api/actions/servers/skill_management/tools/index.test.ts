@@ -110,6 +110,7 @@ describe("skill_management enable_skill tool", () => {
       auth,
       toolContext: {
         runContext: {
+          contextType: "agent_loop",
           agentConfiguration,
           agentMessage,
           conversation: conversationOverride,
