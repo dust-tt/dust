@@ -21,6 +21,12 @@ export type MetronomeInvoiceLineItem = {
   quantity: number | null;
   unitPriceCents: number | null;
   totalCents: number;
+  /** Whether the line item is prorated (partial billing period). */
+  isProrated?: boolean;
+  /** Start of the period covered by the line item. */
+  periodStartMs?: number | null;
+  /** Exclusive end of the period covered by the line item. */
+  periodEndMs?: number | null;
 };
 
 export type GetMetronomeInvoiceLinesResponseBody = {

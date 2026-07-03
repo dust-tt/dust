@@ -201,10 +201,18 @@ app.get(
           totalCents: itemCurrency
             ? amountCents(item.total, itemCurrency)
             : item.total,
+          isProrated: item.is_prorated ?? false,
+          periodStartMs: item.starting_at
+            ? new Date(item.starting_at).getTime()
+            : null,
+          // Exclusive end of the period covered by the line item.
+          periodEndMs: item.ending_before
+            ? new Date(item.ending_before).getTime()
+            : null,
         };
       });
 
-    return ctx.json({ currency, lineItems, items: invoice.line_items });
+    return ctx.json({ currency, lineItems });
   }
 );
 
