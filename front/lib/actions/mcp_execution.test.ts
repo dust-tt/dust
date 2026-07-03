@@ -12,6 +12,7 @@ import {
   processToolResults,
 } from "@app/lib/actions/mcp_execution";
 import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -90,7 +91,11 @@ async function setupTest() {
   });
   assert(action, "MCP action should be created");
 
-  return { auth, conversation, action, toolConfiguration };
+  const toolContext = {
+    runContext: { contextType: "agent_loop", conversation },
+  } as unknown as ToolContextType;
+
+  return { auth, conversation, action, toolConfiguration, toolContext };
 }
 
 async function setupAuth() {
@@ -214,7 +219,8 @@ describe("getAugmentedInputs", () => {
 
 describe("processToolResults", () => {
   it("should store snippet in DB when text exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, conversation, action, toolConfiguration, toolContext } =
+      await setupTest();
 
     // Generate text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
     const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
@@ -223,6 +229,7 @@ describe("processToolResults", () => {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
       toolConfiguration,
     });
@@ -244,7 +251,8 @@ describe("processToolResults", () => {
   });
 
   it("should store snippet for large resource text", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, conversation, action, toolConfiguration, toolContext } =
+      await setupTest();
 
     // Generate resource text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
     const largeResourceText = "y".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
@@ -253,6 +261,7 @@ describe("processToolResults", () => {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [
         {
           type: "resource",
@@ -278,7 +287,8 @@ describe("processToolResults", () => {
   });
 
   it("should keep small text content as-is", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, conversation, action, toolConfiguration, toolContext } =
+      await setupTest();
 
     const smallText = "hello world";
 
@@ -286,6 +296,7 @@ describe("processToolResults", () => {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: smallText }],
       toolConfiguration,
     });
@@ -300,7 +311,8 @@ describe("processToolResults", () => {
   });
 
   it("should keep large sandbox text content as-is", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, conversation, action, toolConfiguration, toolContext } =
+      await setupTest();
 
     const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
@@ -308,6 +320,7 @@ describe("processToolResults", () => {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
       toolConfiguration: {
         ...toolConfiguration,
@@ -325,7 +338,8 @@ describe("processToolResults", () => {
   });
 
   it("should keep small resource text as-is", async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, conversation, action, toolConfiguration, toolContext } =
+      await setupTest();
 
     const smallText = "small resource text";
 
@@ -333,6 +347,7 @@ describe("processToolResults", () => {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [
         {
           type: "resource",
@@ -352,7 +367,8 @@ describe("processToolResults", () => {
   });
 
   it(`should persist DATA_SOURCE_NODE_CONTENT block to ${TOOL_OUTPUTS_FOLDER_NAME}/`, async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, conversation, action, toolConfiguration, toolContext } =
+      await setupTest();
 
     fileStorageMock.reset();
 
@@ -377,6 +393,7 @@ describe("processToolResults", () => {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [
         {
           type: "resource",
@@ -399,7 +416,8 @@ describe("processToolResults", () => {
   });
 
   it(`should persist large plain text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .txt`, async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, conversation, action, toolConfiguration, toolContext } =
+      await setupTest();
 
     fileStorageMock.reset();
 
@@ -409,6 +427,7 @@ describe("processToolResults", () => {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
       toolConfiguration,
     });
@@ -424,7 +443,8 @@ describe("processToolResults", () => {
   });
 
   it(`should persist large JSON text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .json`, async () => {
-    const { auth, conversation, action, toolConfiguration } = await setupTest();
+    const { auth, conversation, action, toolConfiguration, toolContext } =
+      await setupTest();
 
     fileStorageMock.reset();
 
@@ -436,6 +456,7 @@ describe("processToolResults", () => {
       action,
       conversation,
       localLogger: logger.child({ test: true }),
+      toolContext,
       toolCallResultContent: [{ type: "text", text: largeJson }],
       toolConfiguration,
     });

@@ -16,7 +16,10 @@ import {
   isToolGeneratedFilePath,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type {
+  ActionGeneratedFileType,
+  ToolContextType,
+} from "@app/lib/actions/types";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
@@ -146,12 +149,14 @@ export async function processToolResults(
     localLogger,
     toolCallResultContent,
     toolConfiguration,
+    toolContext,
   }: {
     action: AgentMCPActionResource;
     conversation: ConversationType;
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
     toolConfiguration: LightMCPToolConfigurationType;
+    toolContext: ToolContextType;
   }
 ): Promise<{
   outputItems: AgentMCPActionOutputItemModel[];
@@ -169,7 +174,7 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      const res = await persistToolOutput(auth, conversation, block, {
+      const res = await persistToolOutput(auth, toolContext, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });
