@@ -238,7 +238,7 @@ function CancelMigrationDialog({
               <Spinner variant="dark" size="md" />
             </div>
           ) : (
-            <div className="font-bold">Are you sure you want to proceed?</div>
+            <div>Are you sure you want to proceed?</div>
           )}
         </DialogContainer>
         <DialogFooter
