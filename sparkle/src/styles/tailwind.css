@@ -170,13 +170,14 @@
 
   /* A surface nested inside the same surface (e.g. a sticky dialog/dropdown
      header reusing its parent's background color) must not re-cast the
-     elevation shadow — that draws a stray line under the header. Higher
-     specificity than the rules above, so it wins for the nested case only;
-     a genuinely different floating layer (e.g. a dropdown inside a dialog)
+     elevation shadow — that draws a stray line under the header. Applies to
+     both themes: it out-specifies the light rules, and ties with the .dark
+     rules where source order (keep this block after them) breaks the tie.
+     A genuinely different floating layer (e.g. a dropdown inside a dialog)
      keeps its own shadow. */
-  .dark .bg-panel-background .bg-panel-background,
-  .dark .bg-overlay-background .bg-overlay-background,
-  .dark .bg-modal-background .bg-modal-background {
+  .bg-panel-background .bg-panel-background,
+  .bg-overlay-background .bg-overlay-background,
+  .bg-modal-background .bg-modal-background {
     box-shadow: none;
   }
 
