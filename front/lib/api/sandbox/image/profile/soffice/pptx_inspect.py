@@ -33,7 +33,7 @@ from utils import (
     safe_output,
 )
 
-from pptx_geometry import emu_to_inches, format_box, shape_kind
+from pptx_geometry import _text_extent_box, emu_to_inches, format_box, shape_kind
 
 from pptx_typography import (
     _read_clr_map,
@@ -582,16 +582,7 @@ def print_slide(
 
     # Resolve the slide's layout chain once so fit estimates can use each
     # placeholder's inherited font size. Parsed elements outlive the zip.
-    layout_chain = None
-    try:
-        zf: Optional[zipfile.ZipFile] = zipfile.ZipFile(file_path)
-    except (zipfile.BadZipFile, OSError):
-        zf = None
-    if zf is not None:
-        with zf:
-            layout_path = _layout_part_path(slide.slide_layout)
-            if layout_path:
-                layout_chain = _read_layout_chain(zf, layout_path)
+    layout_chain = _resolve_layout_chain(file_path, slide)
 
     end = min(total, offset + max_shapes)
     for shape in shapes[offset:end]:
@@ -631,6 +622,42 @@ def _layout_part_path(layout) -> Optional[str]:
     if partname is None:
         return None
     return str(partname).lstrip("/")
+
+
+def _resolve_layout_chain(file_path: str, slide: Slide):
+    """The slide's (layout, master, theme, clr_map, theme_colors) chain, used to
+    resolve placeholder-inherited font sizes. Parsed elements outlive the zip.
+    None when the package or its layout part can't be read."""
+    try:
+        zf: Optional[zipfile.ZipFile] = zipfile.ZipFile(file_path)
+    except (zipfile.BadZipFile, OSError):
+        return None
+    with zf:
+        layout_path = _layout_part_path(slide.slide_layout)
+        if not layout_path:
+            return None
+        return _read_layout_chain(zf, layout_path)
+
+
+def _text_extent_boxes(file_path: str, slide: Slide) -> Dict[int, Tuple[int, int, int, int]]:
+    """Map shape_id -> the box (EMU) grown to wrap a text shape's rendered copy,
+    for the shapes whose copy overflows the declared box. Feeds the --qa overlay
+    so it wraps the actual text and catches overflow-into-neighbour overlaps.
+    Empty when nothing overflows."""
+    layout_chain = _resolve_layout_chain(file_path, slide)
+    out: Dict[int, Tuple[int, int, int, int]] = {}
+    for shape in slide.shapes:
+        if not shape.has_text_frame:
+            continue
+        if not any((p.text or "").strip() for p in shape.text_frame.paragraphs):
+            continue
+        size_pt = _effective_font_size_pt(shape, layout_chain)
+        if size_pt is None:
+            continue
+        box = _text_extent_box(shape, size_pt)
+        if box is not None:
+            out[shape.shape_id] = box
+    return out
 
 
 def print_layouts(prs: PresentationType, file_path: str) -> str:
@@ -1028,9 +1055,11 @@ def _boxed_render(
         idx = int(m.group(1)) if m else None
         res = None
         if idx is not None and 1 <= idx <= total_slides:
+            slide = prs.slides[idx - 1]
             res = _annotate_boxes(
-                p, prs.slides[idx - 1],
+                p, slide,
                 prs.slide_width or 0, prs.slide_height or 0,
+                effective_boxes=_text_extent_boxes(file_path, slide),
             )
         if res:
             ap, findings = res
@@ -1053,13 +1082,11 @@ def _boxed_render(
         else:
             annotated.append(p)
     plural = "" if len(annotated) == 1 else "s"
+    # How to read the overlay (boxes, tints, grown extents, red wash, marker
+    # notes) lives in the pptx skill's QA section, not re-emitted on every run.
     lines = [
         f"[Rendered: {len(annotated)} slide{plural} | jpeg + bbox overlay | "
         f"{out_dir}]",
-        "[Boxes: each rectangle is a shape's bounding box, labeled '#id' just "
-        "outside it. A red wash marks peer-overlap regions; an unaligned-markers "
-        "note means a decorative run (checkmarks/icons) has no text row beside "
-        "it. Read each slide image directly.]",
     ]
     if digest:
         lines.append("[Pixel metrics:]")

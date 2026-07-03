@@ -461,12 +461,17 @@ pptx_inspect output.pptx --qa 6              # slide 6's #id-tagged text + boxed
 diagnostic, so it is **not** a QA step. The diagnostic boxes live in \`--qa\`.
 
 Each shape is outlined and labeled \`#id\` just outside it (text shapes tinted),
-so the label keys the box to its file text without covering content. A **red
-wash** marks any peer-overlap region, and a **pixel-metrics digest** lists, per
-slide, peer overlaps and any decorative marker run (checkmarks, numbers, icons)
-left with no text row beside it. Box geometry and image ratios are read straight
-from the file/pixels, so what they reveal is real in PowerPoint even though the
-*text glyphs* render in substitute fonts.
+so the label keys the box to its file text without covering content. A text box
+whose copy overflows is **grown to wrap the rendered text** (biased larger — a
+box bigger than the text, never smaller), so overflow is visible and copy
+spilling onto a neighbour is caught. A **red wash** marks any overlap region
+(a peer overlap, or text spilling out of its box onto another shape), and a
+**pixel-metrics digest** lists, per slide, those overlaps and any decorative
+marker run (checkmarks, numbers, icons) left with no text row beside it. Declared
+box geometry and image ratios are read straight from the file/pixels, so what
+they reveal is real in PowerPoint even though the *text glyphs* render in
+substitute fonts; a grown box is an estimate biased larger, so judge a flagged
+overlap against the rendered text rather than treating the grown extent as exact.
 
 **The gate is a readback.** \`--qa\` prints the slide's authoritative text above
 the render, each line tagged with its shape \`#id\`. For every labeled box, read

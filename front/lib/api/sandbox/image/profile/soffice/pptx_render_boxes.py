@@ -8,12 +8,58 @@ _classify_overlap, EMU) and PIL; the CLI calls _annotate_boxes from --render.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pptx.shapes.base import BaseShape
 from pptx.slide import Slide
 
-from pptx_geometry import EMU_PER_INCH, _classify_overlap, shape_kind
+from pptx_geometry import EMU_PER_INCH, FULL_SPAN, _render_collision, shape_kind
+
+# (left, top, width, height) in EMU.
+BoxEmu = Tuple[int, int, int, int]
+
+
+def _is_full_span(box: BoxEmu, slide_w_emu: int, slide_h_emu: int) -> bool:
+    """A shape covering >= FULL_SPAN of either slide axis is a banner or
+    background: its overlap with foreground content is intentional layering, not
+    a collision, so it is excluded from the overlap wash."""
+    _, _, w, h = box
+    return w >= FULL_SPAN * slide_w_emu or h >= FULL_SPAN * slide_h_emu
+
+
+def _rects_overlap(a, b) -> bool:
+    return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
+
+
+def _suppress_as_layering(
+    a: BoxEmu, b: BoxEmu, slide_w_emu: int, slide_h_emu: int
+) -> bool:
+    """Whether a full-span shape makes this pair's overlap intentional layering
+    (content sitting on a banner/backdrop) rather than a collision.
+
+    Boxes are (left, top, width, height) in EMU. A full-span shape suppresses
+    the pair ONLY when the two boxes already overlap at their declared geometry.
+    A box that grew past its declared bounds and newly spilled onto a full-span
+    shape (e.g. an overflowing title onto a full-width subtitle) is a real
+    overflow, not layering, so it is not suppressed here — the caller's
+    collision test surfaces it."""
+    if not (
+        _is_full_span(a, slide_w_emu, slide_h_emu)
+        or _is_full_span(b, slide_w_emu, slide_h_emu)
+    ):
+        return False
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return not (
+        ax + aw <= bx or bx + bw <= ax or ay + ah <= by or by + bh <= ay
+    )
+
+
+def _contrast_text(color):
+    """Black or white text, whichever reads on a chip of `color`."""
+    r, g, b = color[:3]
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    return (0, 0, 0, 255) if lum > 140 else (255, 255, 255, 255)
 
 
 # Text-row detection by horizontal EDGE density. A box that spans a gradient or
@@ -141,17 +187,28 @@ def _pair_run_to_text(
 
 
 def _annotate_boxes(
-    image_path: Path, slide: Slide, slide_w_emu: int, slide_h_emu: int
+    image_path: Path,
+    slide: Slide,
+    slide_w_emu: int,
+    slide_h_emu: int,
+    effective_boxes: Optional[Dict[int, BoxEmu]] = None,
 ):
-    """Overlay each top-level shape's exact bounding box on the slide image and
+    """Overlay each top-level shape's bounding box on the slide image and
     compute pixel metrics. Box positions are read from the file (exact even
     though text is LibreOffice-rendered); the rest is measured on the rendered
     pixels (colors/positions are faithful). Draws box outlines, an `#id` label
     just OUTSIDE each box (detail goes to stdout, not onto the image), a tint on
-    text boxes, and a red wash over peer-overlap regions. Returns
-    (out_path, findings) where findings has keys: "overlaps" [(a, b, pen_in)] and
-    "markers" [(id, off_in)] (decorative markers in a run with no rendered text
-    row near them). None if the image is unreadable."""
+    text boxes, and a red wash over peer-overlap regions.
+
+    `effective_boxes` maps a shape_id to a box (EMU) grown to wrap copy that
+    overflows its declared box; when present the overlay draws and tests that
+    box, so an overflowing text box visibly wraps its text and a spill onto a
+    neighbour is caught (a containment that appears only after a box grows is
+    spillover, not a designed fg/bg overlay, so it is surfaced not suppressed).
+
+    Returns (out_path, findings) where findings has keys: "overlaps"
+    [(a, b, pen_in)] and "markers" [(id, off_in)] (decorative markers in a run
+    with no rendered text row near them). None if the image is unreadable."""
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
@@ -166,21 +223,41 @@ def _annotate_boxes(
     sample = base.convert("RGB")  # clean pixels for metrics (before overlay)
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    try:
-        font = ImageFont.load_default()
-    except Exception:  # noqa: BLE001 - label font is optional
-        font = None
+    # A legible label font: prefer a TrueType bold, then a sized default; the
+    # sandbox may ship neither, so fall back to the bitmap default last.
+    font = None
+    for _loader in (
+        lambda: ImageFont.truetype("DejaVuSans-Bold.ttf", 14),
+        lambda: ImageFont.load_default(size=13),  # Pillow >= 10.1
+        ImageFont.load_default,
+    ):
+        try:
+            font = _loader()
+            break
+        except Exception:  # noqa: BLE001 - try the next fallback
+            continue
 
     findings = {"overlaps": [], "markers": []}
     ppi = width_px / (slide_w_emu / EMU_PER_INCH)
+    effective_boxes = effective_boxes or {}
+
+    def declared(sh) -> BoxEmu:
+        return (sh.left, sh.top, sh.width, sh.height)
+
+    def box_of(sh) -> BoxEmu:
+        return effective_boxes.get(sh.shape_id) or declared(sh)
+
+    def to_px_box(b: BoxEmu):
+        l, t, w, h = b
+        return (
+            l / slide_w_emu * width_px,
+            t / slide_h_emu * height_px,
+            (l + w) / slide_w_emu * width_px,
+            (t + h) / slide_h_emu * height_px,
+        )
 
     def to_px(sh):
-        return (
-            sh.left / slide_w_emu * width_px,
-            sh.top / slide_h_emu * height_px,
-            (sh.left + sh.width) / slide_w_emu * width_px,
-            (sh.top + sh.height) / slide_h_emu * height_px,
-        )
+        return to_px_box(box_of(sh))
 
     def has_text(sh):
         return sh.has_text_frame and any(
@@ -192,17 +269,27 @@ def _annotate_boxes(
         if None not in (s.left, s.top, s.width, s.height)
     ]
 
-    # Shade peer-overlap intersection regions (the "collision zones").
+    # Shade collision zones on the effective (text-extent) boxes: a peer overlap
+    # as before, plus a containment that exists ONLY after a box grew to wrap
+    # overflowing text — that text spilled onto a neighbour (a containment that
+    # also holds at declared sizes is an intentional fg/bg overlay, suppressed).
     for i, a in enumerate(shapes):
         for b in shapes[i + 1:]:
-            kind, pen, _ = _classify_overlap(
-                (a.left, a.top, a.width, a.height),
-                (b.left, b.top, b.width, b.height),
-            )
-            if kind != "peer":
+            # Banners/backgrounds (full-bleed bands, backdrops) intentionally sit
+            # under content that overlaps them at declared geometry — layering,
+            # not a collision. But an overflowing box that spilled onto a
+            # full-span shape (a title grown onto a full-width subtitle) is a
+            # real overflow, so suppress only the declared-overlap layering case.
+            if _suppress_as_layering(
+                declared(a), declared(b), slide_w_emu, slide_h_emu
+            ):
                 continue
-            ax0, ay0, ax1, ay1 = to_px(a)
-            bx0, by0, bx1, by1 = to_px(b)
+            ea, eb = box_of(a), box_of(b)
+            flag, pen = _render_collision(declared(a), declared(b), ea, eb)
+            if not flag:
+                continue
+            ax0, ay0, ax1, ay1 = to_px_box(ea)
+            bx0, by0, bx1, by1 = to_px_box(eb)
             ix0, iy0 = max(ax0, bx0), max(ay0, by0)
             ix1, iy1 = min(ax1, bx1), min(ay1, by1)
             if ix1 > ix0 and iy1 > iy0:
@@ -237,10 +324,38 @@ def _annotate_boxes(
         if has_text(shape):
             draw.rectangle([x0, y0, x1, y1], fill=color + (40,))
         draw.rectangle([x0, y0, x1, y1], outline=color + (255,), width=3)
-        # Label OUTSIDE the box (above-left), so it never occludes content; the
-        # per-shape detail lives in the stdout digest, keyed by this #id.
-        ly = y0 - 13 if y0 >= 13 else y0 + 1
-        draw.text((x0, ly), f"#{shape.shape_id}", fill=color + (255,), font=font)
+
+    # Labels last, each on a small filled chip so the #id stays legible over any
+    # content or outline. Place it just above its box (just inside the top when
+    # there is no room above), then nudge it down past any already-placed label
+    # so stacked boxes don't smear their labels together.
+    placed: List[Tuple[float, float, float, float]] = []
+    for i, shape in enumerate(shapes):
+        x0, y0, _, _ = to_px(shape)
+        color = _BOX_PALETTE[i % len(_BOX_PALETTE)]
+        text = f"#{shape.shape_id}"
+        try:
+            bl, bt, br, bb = draw.textbbox((0, 0), text, font=font)
+            tw, th, off_l, off_t = br - bl, bb - bt, bl, bt
+        except Exception:  # noqa: BLE001 - measuring is best-effort
+            tw, th, off_l, off_t = 7 * len(text), 11, 0, 0
+        pad = 2
+        cw, ch = tw + 2 * pad, th + 2 * pad
+        lx = max(0.0, x0)
+        ly = y0 - ch - 1 if y0 - ch - 1 >= 0 else y0 + 1
+        rect = (lx, ly, lx + cw, ly + ch)
+        # O(n^2) over labels; n = shapes per slide (< ~40), so this is cheap.
+        for _ in range(8):
+            if not any(_rects_overlap(rect, p) for p in placed):
+                break
+            ly = rect[3] + 1
+            rect = (lx, ly, lx + cw, ly + ch)
+        placed.append(rect)
+        draw.rectangle(list(rect), fill=color + (235,))
+        draw.text(
+            (lx + pad - off_l, ly + pad - off_t),
+            text, fill=_contrast_text(color), font=font,
+        )
 
     out_path = image_path.with_name(image_path.stem + "-boxes.png")
     try:
