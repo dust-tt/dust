@@ -1,4 +1,8 @@
-import { adminAPIHandler } from "@connectors/api/admin";
+import {
+  adminAPIHandler,
+  adminCatalogAPIHandler,
+  adminRunAPIHandler,
+} from "@connectors/api/admin";
 import { patchConnectorConfigurationAPIHandler } from "@connectors/api/configuration";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
@@ -203,6 +207,8 @@ export function startServer(port: number) {
   );
 
   app.post("/connectors/admin", adminAPIHandler);
+  app.get("/connectors/admin/catalog", adminCatalogAPIHandler);
+  app.post("/connectors/admin/run", adminRunAPIHandler);
 
   const server = app.listen(port, () => {
     logger.info(`Connectors API listening on port ${port}`);
