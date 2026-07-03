@@ -1,7 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { SCHEDULES_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,6 +16,7 @@ import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ScheduleTriggerType } from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 import { UniqueConstraintError } from "sequelize";
 
 function renderSchedule(schedule: ScheduleTriggerType): string {
@@ -32,6 +36,10 @@ function renderSchedule(schedule: ScheduleTriggerType): string {
 }
 
 function getUserTimezone(toolContext?: ToolContextType): string | null {
+  if (!isAgentLoopRunContext(toolContext?.runContext)) {
+    return null;
+  }
+
   const content = toolContext?.runContext?.conversation?.content;
   if (!content) {
     return null;
@@ -47,13 +55,13 @@ export function createSchedulesManagementTools(
 ) {
   const handlers: ToolHandlers<typeof SCHEDULES_MANAGEMENT_TOOLS_METADATA> = {
     create_schedule: async ({ name, schedule, prompt, timezone }) => {
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
+
       const owner = auth.getNonNullableWorkspace();
       const user = auth.getNonNullableUser();
-
-      if (!toolContext?.runContext) {
-        logger.error("Agent context missing");
-        return new Err(new MCPError("Agent context is required"));
-      }
 
       const { agentConfiguration } = toolContext.runContext;
 
@@ -142,12 +150,13 @@ export function createSchedulesManagementTools(
     },
 
     list_schedules: async () => {
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
+
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
-
-      if (!toolContext?.runContext) {
-        return new Err(new MCPError("Agent context is required"));
-      }
 
       const { agentConfiguration } = toolContext.runContext;
 
@@ -192,12 +201,13 @@ export function createSchedulesManagementTools(
     },
 
     disable_schedule: async ({ scheduleId }) => {
+      assert(
+        isAgentLoopRunContext(toolContext?.runContext),
+        "AgentLoopRunContext expected"
+      );
+
       const owner = auth.getNonNullableWorkspace();
       const userId = auth.getNonNullableUser().id;
-
-      if (!toolContext?.runContext) {
-        return new Err(new MCPError("Agent context is required"));
-      }
 
       const { agentConfiguration } = toolContext.runContext;
 
