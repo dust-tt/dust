@@ -3,10 +3,6 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
-import {
-  filterUsersWithSharedMembership,
-  hasSharedMembership,
-} from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -30,7 +26,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
@@ -39,6 +34,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
+import * as skillEditors from "@app/lib/resources/skill/skill_editors";
 import * as skillReferences from "@app/lib/resources/skill/skill_references";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -48,7 +44,7 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import { UserResource } from "@app/lib/resources/user_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -72,7 +68,6 @@ import type {
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
-import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -390,10 +385,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
 
-      const editorGroup = await this.makeNewSkillEditorsGroup(auth, skill, {
-        addCurrentUserAsEditor,
-        transaction,
-      });
+      const editorGroup = await skillEditors.makeNewSkillEditorsGroup(
+        auth,
+        skill,
+        {
+          addCurrentUserAsEditor,
+          transaction,
+        }
+      );
 
       // MCP server configurations for the skill.
       await SkillMCPServerConfigurationModel.bulkCreate(
@@ -482,52 +481,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     return new Ok(createdSuggestedSkill);
-  }
-
-  /**
-   * Creates a new skill editors group for the given skill and adds the creating
-   * user to it.
-   */
-  private static async makeNewSkillEditorsGroup(
-    auth: Authenticator,
-    skill: SkillConfigurationModel,
-    {
-      addCurrentUserAsEditor = true,
-      transaction,
-    }: {
-      addCurrentUserAsEditor?: boolean;
-      transaction?: Transaction;
-    } = {}
-  ): Promise<GroupResource> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    assert(
-      skill.workspaceId === workspace.id,
-      "Unexpected: skill and workspace mismatch"
-    );
-
-    const defaultGroup = await GroupResource.makeNew(
-      {
-        workspaceId: workspace.id,
-        name: `${SKILL_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
-        kind: "skill_editors",
-      },
-      {
-        memberIds: addCurrentUserAsEditor ? [auth.getNonNullableUser().id] : [],
-        transaction,
-      }
-    );
-
-    await GroupSkillModel.create(
-      {
-        groupId: defaultGroup.id,
-        skillConfigurationId: skill.id,
-        workspaceId: workspace.id,
-      },
-      { transaction }
-    );
-
-    return defaultGroup;
   }
 
   private static async baseFetch(
@@ -2047,63 +2000,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     users: UserResource[]
   ): Promise<Result<void, Error>> {
-    if (users.length === 0) {
-      return new Ok(undefined);
-    }
-
-    if (!this.canWrite(auth)) {
-      return new Err(
-        new Error("User is not authorized to update skill editors.")
-      );
-    }
-
-    if (!this.editorGroup) {
-      return new Err(new Error("The skill does not have an editors group."));
-    }
-
-    const existingEditors = await this.listEditors(auth);
-    const existingEditorIds = new Set(existingEditors?.map((u) => u.id) ?? []);
-    const usersToAdd = users.filter((u) => !existingEditorIds.has(u.id));
-
-    if (usersToAdd.length === 0) {
-      return new Ok(undefined);
-    }
-
-    const addResult = await this.editorGroup.dangerouslyAddMembers(auth, {
-      users: usersToAdd.map((u) => u.toJSON()),
-    });
-    if (addResult.isErr()) {
-      return new Err(new Error(addResult.error.message));
-    }
-
-    return new Ok(undefined);
-  }
-
-  private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
-    const user = auth.user();
-    if (!user) {
-      return;
-    }
-
-    await this.upsertEditors(auth, [user]);
+    return skillEditors.upsertEditors(auth, this, users);
   }
 
   async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
-    if (this.editedBy === null) {
-      return null;
-    }
-
-    const editedByUser = await UserResource.fetchByModelId(this.editedBy);
-
-    if (!editedByUser) {
-      return null;
-    }
-
-    const shouldReturnEditedByUser = await hasSharedMembership(auth, {
-      user: editedByUser,
-    });
-
-    return shouldReturnEditedByUser ? editedByUser : null;
+    return skillEditors.fetchEditedByUser(auth, this);
   }
 
   /**
@@ -2293,57 +2194,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     skills: SkillResource[]
   ): Promise<Map<string, UserResource[] | null>> {
-    const result = new Map<string, UserResource[] | null>(
-      skills.map((s) => [s.sId, null])
-    );
-
-    const skillsWithEditorGroups = skills.filter((s) => s.editorGroup !== null);
-
-    if (skillsWithEditorGroups.length === 0) {
-      return result;
-    }
-
-    const editorGroups = removeNulls(
-      skillsWithEditorGroups.map((s) => s.editorGroup)
-    );
-
-    const membershipsByGroupId =
-      await GroupResource.getActiveMembershipsForGroups(auth, editorGroups);
-
-    const allUserIds = [...new Set(Object.values(membershipsByGroupId).flat())];
-
-    if (allUserIds.length === 0) {
-      return result;
-    }
-
-    const allUsers = await UserResource.fetchByModelIds(allUserIds);
-
-    // Filter to only keep users with an active workspace membership,
-    // matching the behavior of getActiveMembers.
-    const workspace = auth.getNonNullableWorkspace();
-    const { memberships: workspaceMemberships } =
-      await MembershipResource.getActiveMemberships({
-        users: allUsers,
-        workspace,
-      });
-    const activeWorkspaceUserIds = new Set(
-      workspaceMemberships.map((m) => m.userId)
-    );
-
-    const userById = new Map(
-      allUsers
-        .filter((u) => activeWorkspaceUserIds.has(u.id))
-        .map((u) => [u.id, u])
-    );
-
-    for (const skill of skillsWithEditorGroups) {
-      const groupId = skill.editorGroup!.id;
-      const userIds = membershipsByGroupId[groupId] ?? [];
-      const users = removeNulls(userIds.map((id) => userById.get(id) ?? null));
-      result.set(skill.sId, users);
-    }
-
-    return result;
+    return skillEditors.batchListEditors(auth, skills);
   }
 
   /**
@@ -2353,36 +2204,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     skills: SkillResource[]
   ): Promise<Map<string, UserResource | null>> {
-    const result = new Map<string, UserResource | null>(
-      skills.map((s) => [s.sId, null])
-    );
-
-    const uniqueEditedByIds = [
-      ...new Set(removeNulls(skills.map((s) => s.editedBy))),
-    ];
-
-    if (uniqueEditedByIds.length === 0) {
-      return result;
-    }
-
-    // Single query: fetch all edited-by users.
-    const editedByUsers = await UserResource.fetchByModelIds(uniqueEditedByIds);
-
-    // Batch privacy filter: keep only users visible to the auth user.
-    const visibleUsers = await filterUsersWithSharedMembership(
-      auth,
-      editedByUsers
-    );
-    const visibleUserIds = new Set(visibleUsers.map((u) => u.id));
-    const userById = new Map(visibleUsers.map((u) => [u.id, u]));
-
-    for (const skill of skills) {
-      if (skill.editedBy !== null && visibleUserIds.has(skill.editedBy)) {
-        result.set(skill.sId, userById.get(skill.editedBy) ?? null);
-      }
-    }
-
-    return result;
+    return skillEditors.batchFetchEditedByUsers(auth, skills);
   }
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
@@ -2616,7 +2438,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await this.setFileAttachments(auth, fileAttachments);
     }
 
-    await this.upsertCurrentUserAsEditor(auth);
+    await skillEditors.upsertCurrentUserAsEditor(auth, this);
   }
 
   async updateReinforcement(
