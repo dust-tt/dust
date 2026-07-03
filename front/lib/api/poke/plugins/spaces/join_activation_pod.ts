@@ -1,9 +1,9 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
-import type { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -20,46 +20,54 @@ function activationPodNameForEmail(email: string): string {
   return `${ACTIVATION_POD_NAME_PREFIX}${email}`;
 }
 
-async function getManualMemberGroup(
-  space: SpaceResource
-): Promise<GroupResource | null> {
-  const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-    space,
-    filterOnManagementMode: true,
-  });
-  if (memberGroupSpaces.length !== 1) {
-    return null;
-  }
-  return memberGroupSpaces[0].group;
-}
-
-// Adds the user to the pod's manual member group if they are not already in it.
-// Does not add the same user multiple times, so it is safe to call repeatedly for the same user and pod.
-async function ensureUserInMemberGroup(
+// Adds the user to the pod as an editor.
+async function addUserAsEditor(
   auth: Authenticator,
-  space: SpaceResource,
+  pod: SpaceResource,
   user: UserResource
 ): Promise<Result<{ added: boolean }, Error>> {
-  const memberGroup = await getManualMemberGroup(space);
-  if (!memberGroup) {
-    return new Err(new Error("Pod does not have a manual member group."));
-  }
-
-  const currentMembers = await memberGroup.getActiveMembers(auth);
-  if (currentMembers.some((member) => member.sId === user.sId)) {
-    return new Ok({ added: false });
-  }
-
-  const addResult = await memberGroup.dangerouslyAddMembers(auth, {
-    users: [user.toJSON()],
-  });
-  if (addResult.isErr()) {
+  const res = await pod.addEditors(auth, { userIds: [user.sId] });
+  if (res.isErr()) {
     return new Err(
-      new Error(`Failed to add the user to the pod: ${addResult.error.message}`)
+      new Error(
+        `Failed to add the user as an editor of the pod: ${res.error.message}`
+      )
     );
   }
 
-  return new Ok({ added: true });
+  return new Ok({ added: res.value.length > 0 });
+}
+
+// Select the pod's default skills.
+async function setPodDefaultSkills(
+  auth: Authenticator,
+  pod: SpaceResource,
+  selectedSkillIds: string[]
+): Promise<Result<{ skillNames: string[] }, Error>> {
+  if (selectedSkillIds.length === 0) {
+    return new Ok({ skillNames: [] });
+  }
+
+  let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+  if (!metadata) {
+    metadata = await ProjectMetadataResource.makeNew(auth, pod, {
+      description: null,
+    });
+  }
+
+  const skills = await SkillResource.fetchByIds(auth, selectedSkillIds, {
+    onlyActive: true,
+  });
+  await metadata.setDefaultSkills(auth, skills);
+
+  return new Ok({ skillNames: skills.map((skill) => skill.name) });
+}
+
+function formatDefaultSkillsSuffix(skillNames: string[]): string {
+  if (skillNames.length === 0) {
+    return "";
+  }
+  return ` Set ${skillNames.length} default skill(s): ${skillNames.join(", ")}.`;
 }
 
 export const joinActivationPodPlugin = createPlugin({
@@ -74,16 +82,45 @@ export const joinActivationPodPlugin = createPlugin({
         type: "string",
         label: "User email",
         description:
-          "Email of the workspace member(s) to provision an activation Pod for.",
+          "Email of the workspace member to provision an activation Pod for.",
+      },
+      defaultSkillIds: {
+        type: "enum",
+        label: "Default skills",
+        description:
+          "Optional. Select workspace skills to add as default skills for the Activation Pod.",
+        async: true,
+        values: [],
+        multiple: true,
       },
     },
     requiredRoles: ["support"],
   },
-  execute: async (auth, _resource, { userEmail }) => {
+  populateAsyncArgs: async (auth) => {
+    const skills = await SkillResource.listByWorkspace(auth, {
+      status: "active",
+      globalSpaceOnly: true,
+      withInstructions: false,
+      withTools: false,
+    });
+
+    return new Ok({
+      defaultSkillIds: skills
+        .map((skill) => ({
+          label: skill.name,
+          value: skill.sId,
+          checked: false,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    });
+  },
+  execute: async (auth, _resource, { userEmail, defaultSkillIds }) => {
     const email = userEmail.trim().toLowerCase();
     if (email.length === 0) {
       return new Err(new Error("A user email is required."));
     }
+
+    const selectedSkillIds = defaultSkillIds ?? [];
 
     const workspace = auth.getNonNullableWorkspace();
 
@@ -113,20 +150,26 @@ export const joinActivationPodPlugin = createPlugin({
     const existingPods = await SpaceResource.listProjectSpaces(auth);
     const existingPod = existingPods.find((space) => space.name === podName);
     if (existingPod) {
-      const inviteResult = await ensureUserInMemberGroup(
+      const editorResult = await addUserAsEditor(auth, existingPod, user);
+      if (editorResult.isErr()) {
+        return editorResult;
+      }
+
+      const skillsResult = await setPodDefaultSkills(
         auth,
         existingPod,
-        user
+        selectedSkillIds
       );
-      if (inviteResult.isErr()) {
-        return inviteResult;
+      if (skillsResult.isErr()) {
+        return skillsResult;
       }
 
       joinActivationPodLogger.info(
         {
           action: "join_activation_pod",
           created: false,
-          invited: inviteResult.value.added,
+          addedAsEditor: editorResult.value.added,
+          defaultSkills: skillsResult.value.skillNames,
           spaceId: existingPod.sId,
           userId: user.sId,
           workspaceId: workspace.sId,
@@ -138,16 +181,15 @@ export const joinActivationPodPlugin = createPlugin({
         display: "textWithLink",
         value:
           `Activation Pod already exists for ${user.username}. ` +
-          (inviteResult.value.added
-            ? "The user was missing and has been invited."
-            : "The user is already a member."),
+          (editorResult.value.added
+            ? "The user was missing and has been added as an editor."
+            : "The user is already an editor.") +
+          formatDefaultSkillsSuffix(skillsResult.value.skillNames),
         link: podLink(existingPod),
         linkText: "Open Pod in Poke",
       });
     }
 
-    // The user is added to the pod as editor. Pods reject members at creation time, so the user
-    // is added to the member group in a second step.
     const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -165,16 +207,16 @@ export const joinActivationPodPlugin = createPlugin({
     }
     const pod = createResult.value;
 
-    const inviteResult = await ensureUserInMemberGroup(auth, pod, user);
-    if (inviteResult.isErr()) {
-      return inviteResult;
+    const skillsResult = await setPodDefaultSkills(auth, pod, selectedSkillIds);
+    if (skillsResult.isErr()) {
+      return skillsResult;
     }
 
     joinActivationPodLogger.info(
       {
         action: "join_activation_pod",
         created: true,
-        invited: inviteResult.value.added,
+        defaultSkills: skillsResult.value.skillNames,
         spaceId: pod.sId,
         userId: user.sId,
         workspaceId: workspace.sId,
@@ -184,7 +226,9 @@ export const joinActivationPodPlugin = createPlugin({
 
     return new Ok({
       display: "textWithLink",
-      value: `Created activation Pod for ${user.username} and invited them.`,
+      value:
+        `Created activation Pod for ${user.username} and added them as an editor.` +
+        formatDefaultSkillsSuffix(skillsResult.value.skillNames),
       link: podLink(pod),
       linkText: "Open Pod in Poke",
     });
