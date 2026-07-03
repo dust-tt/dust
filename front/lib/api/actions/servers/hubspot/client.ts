@@ -1861,12 +1861,16 @@ export const createAssociation = async ({
   fromObjectId,
   toObjectType,
   toObjectId,
+  associationCategory,
+  associationTypeId,
 }: {
   accessToken: string;
   fromObjectType: string;
   fromObjectId: string;
   toObjectType: string;
   toObjectId: string;
+  associationCategory?: AssociationSpecAssociationCategoryEnum;
+  associationTypeId?: number;
 }) => {
   try {
     const hubspotClient = new Client({ accessToken });
@@ -1879,8 +1883,9 @@ export const createAssociation = async ({
       [
         {
           associationCategory:
+            associationCategory ??
             AssociationSpecAssociationCategoryEnum.HubspotDefined,
-          associationTypeId: 1,
+          associationTypeId: associationTypeId ?? 1,
         },
       ]
     );
@@ -1893,6 +1898,29 @@ export const createAssociation = async ({
     );
     throw normalizeError(error);
   }
+};
+
+interface HubSpotAssociationLabel {
+  category: AssociationSpecAssociationCategoryEnum;
+  typeId: number;
+  label?: string;
+}
+
+export const listAssociationLabels = async ({
+  accessToken,
+  fromObjectType,
+  toObjectType,
+}: {
+  accessToken: string;
+  fromObjectType: string;
+  toObjectType: string;
+}): Promise<HubSpotAssociationLabel[]> => {
+  const data = await hubspotApiFetch<{ results: HubSpotAssociationLabel[] }>({
+    accessToken,
+    path: `/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
+  });
+
+  return data.results;
 };
 
 export const listAssociations = async ({
