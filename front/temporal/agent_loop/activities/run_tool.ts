@@ -1,3 +1,4 @@
+import { isAgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -464,7 +465,21 @@ async function executeToolStreaming(
         });
         break;
       case "tool_params":
+        await handleNonDeferredEvents(auth, {
+          event,
+          agentMessage,
+          conversation,
+          step,
+        });
+        break;
+
       case "tool_notification":
+        // Tools executed from the agent loop activity always run with an agent loop context, so
+        // sandbox function notification events cannot surface here.
+        assert(
+          isAgentLoopToolNotificationEvent(event),
+          "Unexpected sandbox function tool notification in the agent loop."
+        );
         await handleNonDeferredEvents(auth, {
           event,
           agentMessage,

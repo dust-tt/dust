@@ -27,11 +27,7 @@ import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/action
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-} from "@app/types/assistant/conversation";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
@@ -79,19 +75,18 @@ export async function processToolNotification(
   notification: MCPProgressNotificationType,
   {
     action,
-    agentConfiguration,
-    conversation,
-    agentMessage,
+    toolContext,
   }: {
     action: AgentMCPActionResource;
-    agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
-    agentMessage: AgentMessageType;
+    toolContext: ToolContextType;
   }
 ): Promise<{
   event: ToolNotificationEvent;
   storedItems: AgentMCPActionOutputItemModel[];
 }> {
+  const { runContext } = toolContext;
+  assert(runContext, "processToolNotification requires a tool run context.");
+
   const output = notification.params._meta.data.output;
 
   let storedItems: AgentMCPActionOutputItemModel[] = [];
@@ -118,23 +113,43 @@ export async function processToolNotification(
     });
   }
 
-  // Regular notifications, we yield them as is with the type "tool_notification".
-  return {
-    event: {
-      type: "tool_notification",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      conversationId: conversation.sId,
-      messageId: agentMessage.sId,
-      action: {
-        ...action.toJSON(),
-        output: null,
-        generatedFiles: [],
-      },
-      notification: notification.params,
-    },
-    storedItems,
+  const actionWithOutput = {
+    ...action.toJSON(),
+    output: null,
+    generatedFiles: [],
   };
+
+  // Regular notifications, we yield them as is with the type "tool_notification", scoped to the
+  // run context they were emitted from.
+  switch (runContext.contextType) {
+    case "agent_loop":
+      return {
+        event: {
+          type: "tool_notification",
+          created: Date.now(),
+          configurationId: runContext.agentConfiguration.sId,
+          conversationId: runContext.conversation.sId,
+          messageId: runContext.agentMessage.sId,
+          action: actionWithOutput,
+          notification: notification.params,
+        },
+        storedItems,
+      };
+    case "sandbox_function":
+      return {
+        event: {
+          type: "tool_notification",
+          created: Date.now(),
+          sandboxFunctionId: runContext.invocation.sandboxFunction.sId,
+          invocationId: runContext.invocation.sId,
+          action: actionWithOutput,
+          notification: notification.params,
+        },
+        storedItems,
+      };
+    default:
+      return assertNever(runContext);
+  }
 }
 
 /**
