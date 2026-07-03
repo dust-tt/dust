@@ -1071,6 +1071,7 @@ export function createProjectManagerTools(
             origin = userMessage.context.origin ?? origin;
             timezone = userMessage.context.timezone ?? timezone;
           }
+         // TODO(spolu): extract user timezone from sandbox function once available
         }
 
         // Get agent configuration name & profile picture URL
