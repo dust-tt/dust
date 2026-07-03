@@ -5,7 +5,6 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   SkillConfigurationModel,
@@ -34,6 +33,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
+import * as skillAgents from "@app/lib/resources/skill/skill_agents";
 import * as skillConversations from "@app/lib/resources/skill/skill_conversations";
 import * as skillEditors from "@app/lib/resources/skill/skill_editors";
 import * as skillReferences from "@app/lib/resources/skill/skill_references";
@@ -1657,48 +1657,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup.canWrite(auth);
   }
 
-  private async listActiveAgents(
-    auth: Authenticator
-  ): Promise<AgentConfigurationModel[]> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const agentSkills = await AgentSkillModel.findAll({
-      where: {
-        ...this.skillReference,
-        workspaceId: workspace.id,
-      },
-    });
-
-    if (agentSkills.length === 0) {
-      return [];
-    }
-
-    const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
-
-    return AgentConfigurationModel.findAll({
-      where: {
-        id: { [Op.in]: agentConfigIds },
-        workspaceId: workspace.id,
-        status: "active",
-      },
-    });
-  }
-
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
-    const agents = await this.listActiveAgents(auth);
-
-    const sortedAgents = agents
-      .map((agent) => ({
-        sId: agent.sId,
-        name: agent.name,
-        pictureUrl: agent.pictureUrl,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return {
-      count: sortedAgents.length,
-      agents: sortedAgents,
-    };
+    return skillAgents.fetchUsage(auth, this.skillReference);
   }
 
   private async updateActiveAgentsRequirements(
@@ -1724,7 +1684,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const agents = await this.listActiveAgents(auth);
+    const agents = await skillAgents.listActiveAgents(
+      auth,
+      this.skillReference
+    );
 
     if (agents.length === 0) {
       // No agents are using this skill, skip.
@@ -1940,83 +1903,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Batch version of listActiveAgents, returns active agents grouped by skill sId.
-   */
-  private static async batchListActiveAgents(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<Map<string, AgentConfigurationModel[]>> {
-    if (skills.length === 0) {
-      return new Map();
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Separate custom skills from global skills.
-    const customSkillIds = removeNulls(
-      skills.map((s) => (s.globalSId ? null : s.id))
-    );
-    const globalSkillIds = removeNulls(skills.map((s) => s.globalSId));
-
-    // Single query: all agent-skill associations for the given skills.
-    const agentSkills = await AgentSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        [Op.or]: removeNulls([
-          customSkillIds.length > 0
-            ? { customSkillId: { [Op.in]: customSkillIds } }
-            : null,
-          globalSkillIds.length > 0
-            ? { globalSkillId: { [Op.in]: globalSkillIds } }
-            : null,
-        ]),
-      },
-    });
-
-    if (agentSkills.length === 0) {
-      return new Map();
-    }
-
-    // Single query: all referenced agent configurations.
-    const uniqueAgentConfigIds = [
-      ...new Set(agentSkills.map((as) => as.agentConfigurationId)),
-    ];
-    const agentConfigs = await AgentConfigurationModel.findAll({
-      where: {
-        id: { [Op.in]: uniqueAgentConfigIds },
-        workspaceId: workspace.id,
-        status: "active",
-      },
-    });
-
-    const agentConfigById = new Map(agentConfigs.map((a) => [a.id, a]));
-
-    // Map AgentSkillModel references back to skill sId.
-    const sIdByCustomId = new Map(
-      skills.filter((s) => !s.globalSId).map((s) => [s.id, s.sId])
-    );
-
-    const result = new Map<string, AgentConfigurationModel[]>();
-    for (const as of agentSkills) {
-      const skillId = as.customSkillId
-        ? sIdByCustomId.get(as.customSkillId)
-        : (as.globalSkillId ?? undefined);
-      if (!skillId) {
-        continue;
-      }
-      const agent = agentConfigById.get(as.agentConfigurationId);
-      if (!agent) {
-        continue;
-      }
-      const list = result.get(skillId) ?? [];
-      list.push(agent);
-      result.set(skillId, list);
-    }
-
-    return result;
-  }
-
-  /**
    * Batch fetch usage (agents using each skill) for multiple skills.
    * Keyed by skill sId to avoid collisions (global skills share id: -1).
    */
@@ -2024,21 +1910,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     skills: SkillResource[]
   ): Promise<Map<string, AgentsUsageType>> {
-    const agentsBySkillId = await this.batchListActiveAgents(auth, skills);
-
-    const result = new Map<string, AgentsUsageType>();
-    for (const skill of skills) {
-      const agents = (agentsBySkillId.get(skill.sId) ?? [])
-        .map((agent) => ({
-          sId: agent.sId,
-          name: agent.name,
-          pictureUrl: agent.pictureUrl,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-      result.set(skill.sId, { count: agents.length, agents });
-    }
-
-    return result;
+    return skillAgents.batchFetchUsage(
+      auth,
+      skills.map((skill) => ({ skill, reference: skill.skillReference }))
+    );
   }
 
   /**
@@ -2779,12 +2654,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType
   ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    await AgentSkillModel.create({
-      ...this.skillReference,
-      workspaceId: workspace.id,
-      agentConfigurationId: agentConfiguration.id,
+    return skillAgents.addToAgent(auth, {
+      skillReference: this.skillReference,
+      agentConfiguration,
     });
   }
 
@@ -2798,19 +2670,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills: SkillResource[];
     }
   ): Promise<void> {
-    if (skills.length === 0) {
-      return;
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    await AgentSkillModel.bulkCreate(
-      skills.map((skill) => ({
-        ...skill.skillReference,
-        workspaceId: workspace.id,
-        agentConfigurationId: agentConfiguration.id,
-      }))
-    );
+    return skillAgents.addManyToAgent(auth, {
+      agentConfiguration,
+      skillReferences: skills.map((skill) => skill.skillReference),
+    });
   }
 
   async enableForAgent(
