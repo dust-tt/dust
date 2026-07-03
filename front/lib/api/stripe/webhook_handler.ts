@@ -13,6 +13,7 @@ import {
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
+import { grantFreeCreditsForSubscription } from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
@@ -1137,6 +1138,37 @@ export async function processStripeWebhookEvent({
         );
       }
 
+      const createdSubscription = await SubscriptionResource.fetchByStripeId(
+        stripeSubscriptionCreated.id
+      );
+      if (createdSubscription) {
+        const workspace = await WorkspaceResource.fetchByModelId(
+          createdSubscription.workspaceId
+        );
+        assert(
+          workspace !== null,
+          "Workspace not found for subscription in customer.subscription.created."
+        );
+        const auth = await Authenticator.internalAdminForWorkspace(
+          workspace.sId
+        );
+
+        const freeCreditsResult = await grantFreeCreditsForSubscription({
+          auth,
+          stripeSubscription: stripeSubscriptionCreated,
+        });
+        if (freeCreditsResult.isErr()) {
+          logger.error(
+            {
+              error: freeCreditsResult.error,
+              subscriptionId: stripeSubscriptionCreated.id,
+              workspaceId: workspace.sId,
+            },
+            "[Stripe Webhook] Error granting free credits on subscription created"
+          );
+        }
+      }
+
       break;
     }
 
@@ -1189,6 +1221,21 @@ export async function processStripeWebhookEvent({
         const auth = await Authenticator.internalAdminForWorkspace(
           workspace.sId
         );
+
+        const freeCreditsResult = await grantFreeCreditsForSubscription({
+          auth,
+          stripeSubscription,
+        });
+        if (freeCreditsResult.isErr()) {
+          logger.error(
+            {
+              error: freeCreditsResult.error,
+              subscriptionId: stripeSubscription.id,
+              workspaceId: workspace.sId,
+            },
+            "[Stripe Webhook] Error granting free credits"
+          );
+        }
 
         if (subscriptionCycleChanged) {
           const paygEnabled = await isPAYGEnabled(auth);
