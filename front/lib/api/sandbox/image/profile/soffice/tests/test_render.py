@@ -4,15 +4,15 @@ soffice for every slide. No soffice/subprocess — just temp files and mtimes.
 
 Run directly (`python test_render.py`) or under pytest.
 
-Lives in soffice_tests/ (sibling of soffice/), which getLocalDirContent never
-copies into the sandbox image; it adds soffice/ to sys.path to import the module.
+Lives in soffice/tests/, a subdir getLocalDirContent skips: it copies only the
+regular files directly in soffice/ (never recursing), so tests never ship in the image. It adds soffice/ to sys.path to import the module.
 """
 import os
 import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "soffice"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import render as R  # noqa: E402
 

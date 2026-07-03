@@ -18,6 +18,7 @@ from xml.etree import ElementTree as ET
 
 import ooxml
 import render
+import render_publish
 from docx import Document
 from docx.document import Document as DocumentType
 from utils import (
@@ -35,7 +36,7 @@ DEFAULT_MAX_PARAGRAPHS = 200
 
 USAGE = (
     "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] "
-    "[--sections] [--fields] [--media] [--render] "
+    "[--sections] [--fields] [--media] [--render] [--render-dir DIR] "
     "[--offset N] [--max N] [--page N]"
 )
 
@@ -55,8 +56,11 @@ HELP_TEXT = (
     "  --sections    Page size, margins, orientation per section.\n"
     "  --fields      Fields (TOC, REF, HYPERLINK, DATE, ...) with stale flag.\n"
     "  --media       Embedded media under word/media/ with sizes.\n"
-    "  --render      Rasterize pages to JPEG (100 dpi) via soffice + pdftoppm.\n"
-    "                Outputs to /tmp/docx_render/<doc>/page-NNN.jpg.\n"
+    "  --render      Rasterize pages to JPEG (100 dpi) via soffice + pdftoppm,\n"
+    "                published to the conversation; the scoped path of each page\n"
+    "                is printed (a files__cat-readable image).\n"
+    "  --render-dir DIR  Base dir renders are published under, as\n"
+    "                DIR/.docx_render/<doc>/ (default: /files/conversation).\n"
     "  --max N       Max paragraphs printed in --paragraphs (default 200).\n"
     "  --offset N    Skip first N paragraphs in --paragraphs (default 0).\n"
     "  --page N      Render only the given page (1-indexed) with --render.\n"
@@ -602,19 +606,30 @@ def print_media(file_path: str) -> str:
     return "\n".join(lines)
 
 
-def print_render(file_path: str, page_idx: Optional[int]) -> str:
-    out_dir, rendered = render.render_via_soffice(
+# docx renders are published onto the conversation/pod mount (where the model can
+# open them with files__cat) under this dot-prefixed subdir; the shared publish
+# machinery lives in render_publish.
+_VIEW_SUBDIR = ".docx_render"
+
+
+def print_render(
+    file_path: str,
+    page_idx: Optional[int],
+    render_dir: str = "/files/conversation",
+) -> str:
+    _, rendered = render.render_via_soffice(
         file_path,
         out_root=Path("/tmp/docx_render"),
         item_name="page",
         item_idx=page_idx,
     )
-    plural = "" if len(rendered) == 1 else "s"
-    lines = [
-        f"[Rendered: {len(rendered)} page{plural} | jpeg @ 100 dpi | {out_dir}]"
-    ]
-    for p in rendered:
-        lines.append(str(p))
+    basename = os.path.splitext(os.path.basename(file_path))[0]
+    published = render_publish.publish_renders(
+        basename, rendered, render_dir, _VIEW_SUBDIR
+    )
+    plural = "" if len(published) == 1 else "s"
+    lines = [f"[Rendered {len(published)} page{plural} @ 100 dpi:]"]
+    lines.extend(render_publish.render_view_lines(published, item_name="page"))
     return "\n".join(lines)
 
 
@@ -638,6 +653,12 @@ def main() -> int:
     parser.add_argument("--fields", action="store_true")
     parser.add_argument("--media", action="store_true")
     parser.add_argument("--render", action="store_true")
+    parser.add_argument(
+        "--render-dir",
+        dest="render_dir",
+        metavar="DIR",
+        default="/files/conversation",
+    )
     parser.add_argument("--max", type=int, default=DEFAULT_MAX_PARAGRAPHS)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--page", type=int)
@@ -670,7 +691,7 @@ def main() -> int:
     if args.media:
         body = print_media(args.file)
     elif args.render:
-        body = print_render(args.file, args.page)
+        body = print_render(args.file, args.page, args.render_dir)
     else:
         doc = Document(args.file)
         with zipfile.ZipFile(args.file) as zf:

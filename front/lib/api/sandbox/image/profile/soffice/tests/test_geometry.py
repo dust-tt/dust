@@ -1,14 +1,11 @@
 """Tier-1 pure-logic tests for pptx_geometry: overlap classification, the
 text-fit estimate, and EMU conversion. No fixtures — tuples and a tiny fake
 shape. Run directly (`python test_geometry.py`) or under pytest.
-
-Lives in soffice_tests/ (sibling of soffice/), which getLocalDirContent never
-copies into the sandbox image; it adds soffice/ to sys.path to import the module.
 """
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "soffice"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pptx_geometry as G  # noqa: E402
 

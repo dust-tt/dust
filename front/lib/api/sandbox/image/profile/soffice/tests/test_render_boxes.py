@@ -8,7 +8,7 @@ Run directly (`python test_render_boxes.py`) or under pytest.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "soffice"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from PIL import Image  # noqa: E402
 from pptx.enum.shapes import MSO_SHAPE_TYPE  # noqa: E402

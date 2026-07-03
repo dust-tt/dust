@@ -97,14 +97,18 @@ Two passes. Both required — never ship after only the structural pass.
      text.", "Error! No table of contents entries found.", "Lorem
      ipsum", "xxxx").
 
-2. **Visual** — render every page and \`Read\` each image:
+2. **Visual** — render every page, then open each with \`files__cat\`:
    \`\`\`bash
    docx_inspect /files/conversation/doc.docx --render
    \`\`\`
-   Prints one absolute path per page
-   (\`/tmp/docx_render/<doc>/page-001.jpg\`, …). For **every** path
-   printed, use the \`Read\` tool to load the image into context. Do
-   not stop after one or two. On each page, check for:
+   This publishes each page's render into the conversation and prints,
+   per page, its path like
+   \`page 1: conversation-<id>/.docx_render/doc/page-001.jpg\` (with your
+   real conversation id filled in). For **every** page, call the
+   \`files__cat\` tool on the exact path it printed — that is the only
+   way to see the pixels (a bash \`cat\` of an image returns binary
+   garbage, and the \`/tmp\` path is invisible to you). Do not stop
+   after one or two. On each page, check for:
    - text overflowing into the margins or off the page,
    - headings rendered as plain body text (style not applied),
    - orphaned headings (heading at the bottom of a page with no
@@ -118,8 +122,8 @@ Two passes. Both required — never ship after only the structural pass.
    \`\`\`bash
    docx_inspect /files/conversation/doc.docx --render --page 3
    \`\`\`
-   \`Read\` just that one image, confirm the fix, move on. Do not
-   declare the doc done until every page has been \`Read\` clean.
+   Open just that one render with \`files__cat\`, confirm the fix, move
+   on. Do not declare the doc done until every page has read back clean.
 `;
 
 export const docxSkill = {
@@ -132,7 +136,7 @@ export const docxSkill = {
   instructions: DOCX_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
-  version: 1,
+  version: 2,
   icon: "ActionDocumentTextIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
