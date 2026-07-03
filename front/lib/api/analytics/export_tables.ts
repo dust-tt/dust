@@ -2,6 +2,7 @@ import type { AgentExportRow } from "@app/lib/api/analytics/agents_export";
 import {
   AGENT_EXPORT_HEADERS,
   fetchAgentExportRows,
+  toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import type { FeedbackExportRow } from "@app/lib/api/analytics/feedback_export";
@@ -234,7 +235,7 @@ export function stringifyExportTableAsCsv(data: ExportTableData): string {
     case "source":
       return rowsToCsv(data.headers, data.rows);
     case "agents":
-      return rowsToCsv(data.headers, data.rows);
+      return rowsToCsv(data.headers, data.rows.map(toAgentExportCsvRow));
     case "users":
       return rowsToCsv(data.headers, data.rows);
     case "skills":
