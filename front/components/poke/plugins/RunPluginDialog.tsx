@@ -217,6 +217,7 @@ export function RunPluginDialog({
                 <ConnectorCliCommandForm
                   disabled={result !== null}
                   onSubmit={onSubmit}
+                  pluginResourceTarget={pluginResourceTarget}
                 />
               ) : (
                 <PluginForm

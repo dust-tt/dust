@@ -6,87 +6,157 @@ import {
   PokeFormItem,
   PokeFormLabel,
 } from "@app/components/poke/shadcn/ui/form";
-import { buildAdminRunArgs } from "@app/lib/api/poke/plugins/global/args_json";
+import { buildAdminRunArgs } from "@app/lib/api/poke/plugins/data_sources/args_json";
+import {
+  buildConnectorCommandOptions,
+  IMPLIED_CONTEXT_PARAMS,
+  parseConnectorCommandValue,
+} from "@app/lib/api/poke/plugins/data_sources/connector_cli_commands";
+import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import { usePokeConnectorCliCatalog } from "@app/poke/swr/plugins";
 import type { CliCommandGroup } from "@app/types/connectors/admin/catalog";
-import type { EnumValue } from "@app/types/poke/plugins";
+import type { EnumValue, PluginResourceTarget } from "@app/types/poke/plugins";
+import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
+type SubmitArgs = {
+  majorCommand: string;
+  command: string;
+  argsJson: string;
+};
+
 interface ConnectorCliCommandFormProps {
   disabled?: boolean;
-  onSubmit: (args: {
-    majorCommand: string;
-    command: string;
-    argsJson: string;
-  }) => Promise<void>;
+  onSubmit: (args: SubmitArgs) => Promise<void>;
+  pluginResourceTarget: PluginResourceTarget;
 }
 
 export function ConnectorCliCommandForm({
   disabled,
   onSubmit,
+  pluginResourceTarget,
 }: ConnectorCliCommandFormProps) {
-  const { catalog, isLoading, isError } = usePokeConnectorCliCatalog({
-    disabled: false,
-  });
+  // This plugin is data-source-scoped, so the target always carries a
+  // workspace and a data source id. Guard defensively without any hooks so we
+  // can hand the inner form concrete, non-null values.
+  const owner =
+    "workspace" in pluginResourceTarget ? pluginResourceTarget.workspace : null;
+  const dsId =
+    "resourceId" in pluginResourceTarget
+      ? pluginResourceTarget.resourceId
+      : null;
 
-  // `PokeForm*` primitives (and `EnumSelect`, which wraps its trigger in
-  // `PokeFormControl`) call react-hook-form's `useFormContext()` internally
-  // and crash if there is no ancestor `FormProvider` (verified: rendering
-  // `EnumSelect`/`PokeFormLabel`/`PokeFormDescription` with no `PokeForm`
-  // ancestor throws `Cannot destructure property 'getFieldState' of null`).
-  // This form does not register fields with react-hook-form or use its
-  // state (values live in plain `useState` below); `useForm()` is only
-  // used to satisfy that context requirement.
-  const formContextOnly = useForm();
-
-  const [group, setGroup] = useState<string | null>(null);
-  const [command, setCommand] = useState<string | null>(null);
-  const [paramValues, setParamValues] = useState<Record<string, string>>({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  const selectedGroup: CliCommandGroup | null = useMemo(
-    () => catalog?.groups.find((g) => g.majorCommand === group) ?? null,
-    [catalog, group]
-  );
-
-  const groupOptions: EnumValue[] = useMemo(
-    () =>
-      (catalog?.groups ?? []).map((g) => ({
-        label: g.majorCommand,
-        value: g.majorCommand,
-      })),
-    [catalog]
-  );
-
-  const commandOptions: EnumValue[] = useMemo(
-    () =>
-      (selectedGroup?.subcommands ?? []).map((c) => ({ label: c, value: c })),
-    [selectedGroup]
-  );
-
-  if (isLoading) {
-    return <Spinner />;
-  }
-
-  if (isError || !catalog) {
+  if (!owner || !dsId) {
     return (
-      <div className="text-warning-500">Could not load the CLI catalog.</div>
+      <div className="text-warning-500">
+        This plugin can only run from a data source.
+      </div>
     );
   }
 
-  const canRun = group !== null && command !== null && !isSubmitted;
+  return (
+    <ConnectorCliCommandFormInner
+      disabled={disabled}
+      dsId={dsId}
+      onSubmit={onSubmit}
+      owner={owner}
+    />
+  );
+}
+
+interface ConnectorCliCommandFormInnerProps {
+  disabled?: boolean;
+  dsId: string;
+  onSubmit: (args: SubmitArgs) => Promise<void>;
+  owner: LightWorkspaceType;
+}
+
+function ConnectorCliCommandFormInner({
+  disabled,
+  dsId,
+  onSubmit,
+  owner,
+}: ConnectorCliCommandFormInnerProps) {
+  const { catalog, isLoading: isCatalogLoading } = usePokeConnectorCliCatalog({
+    disabled: false,
+  });
+  const { data: dataSourceDetails, isLoading: isDataSourceLoading } =
+    usePokeDataSourceDetails({ owner, dsId, disabled: false });
+
+  // `PokeForm*` primitives (and `EnumSelect`, which wraps its trigger in
+  // `PokeFormControl`) call react-hook-form's `useFormContext()` internally
+  // and crash if there is no ancestor `FormProvider`. This form keeps its
+  // values in plain `useState`; `useForm()` only satisfies that context
+  // requirement.
+  const formContextOnly = useForm();
+
+  // Selected command, encoded as "<majorCommand>::<command>".
+  const [commandValue, setCommandValue] = useState<string | null>(null);
+  const [paramValues, setParamValues] = useState<Record<string, string>>({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const connectorProvider =
+    dataSourceDetails?.dataSource.connectorProvider ?? null;
+
+  const commandOptions: EnumValue[] = useMemo(() => {
+    if (!catalog || !connectorProvider) {
+      return [];
+    }
+    return buildConnectorCommandOptions(catalog, connectorProvider);
+  }, [catalog, connectorProvider]);
+
+  const parsedCommand = useMemo(
+    () => (commandValue ? parseConnectorCommandValue(commandValue) : null),
+    [commandValue]
+  );
+
+  const selectedGroup: CliCommandGroup | null = useMemo(() => {
+    if (!catalog || !parsedCommand) {
+      return null;
+    }
+    return (
+      catalog.groups.find(
+        (g) => g.majorCommand === parsedCommand.majorCommand
+      ) ?? null
+    );
+  }, [catalog, parsedCommand]);
+
+  // Params to fill in: the selected command's group options, minus the ones
+  // implied from the data source context.
+  const visibleOptions = useMemo(
+    () =>
+      (selectedGroup?.options ?? []).filter(
+        (option) => !IMPLIED_CONTEXT_PARAMS.includes(option.name)
+      ),
+    [selectedGroup]
+  );
+
+  if (isCatalogLoading || isDataSourceLoading) {
+    return <Spinner />;
+  }
+
+  if (!catalog || !connectorProvider) {
+    return (
+      <div className="text-warning-500">
+        Could not load the connector CLI commands for this data source.
+      </div>
+    );
+  }
+
+  const canRun =
+    parsedCommand !== null && selectedGroup !== null && !isSubmitted;
 
   const handleRun = async () => {
-    if (group === null || command === null || selectedGroup === null) {
+    if (!parsedCommand || !selectedGroup) {
       return;
     }
     setIsSubmitted(true);
-    const args = buildAdminRunArgs(paramValues, selectedGroup.options);
+    const args = buildAdminRunArgs(paramValues, visibleOptions);
     await onSubmit({
-      majorCommand: group,
-      command,
+      majorCommand: parsedCommand.majorCommand,
+      command: parsedCommand.command,
       argsJson: JSON.stringify(args),
     });
   };
@@ -95,39 +165,24 @@ export function ConnectorCliCommandForm({
     <PokeForm {...formContextOnly}>
       <div className="flex max-w-[600px] flex-col gap-y-6">
         <PokeFormItem>
-          <PokeFormLabel>Command group</PokeFormLabel>
+          <PokeFormLabel>Command</PokeFormLabel>
+          <PokeFormDescription>
+            Commands available for this {connectorProvider} connector.
+          </PokeFormDescription>
           <EnumSelect
-            label="Command group"
-            options={groupOptions}
-            values={group ? [group] : []}
+            label="Command"
+            options={commandOptions}
+            values={commandValue ? [commandValue] : []}
             multiple={false}
             onValuesChange={(values) => {
-              setGroup(values[0] ?? null);
-              setCommand(null);
+              setCommandValue(values[0] ?? null);
               setParamValues({});
             }}
           />
         </PokeFormItem>
 
-        {selectedGroup && (
-          <PokeFormItem>
-            <PokeFormLabel>Subcommand</PokeFormLabel>
-            <PokeFormDescription>
-              {selectedGroup.description}
-            </PokeFormDescription>
-            <EnumSelect
-              label="Subcommand"
-              options={commandOptions}
-              values={command ? [command] : []}
-              multiple={false}
-              onValuesChange={(values) => setCommand(values[0] ?? null)}
-            />
-          </PokeFormItem>
-        )}
-
         {selectedGroup &&
-          command &&
-          selectedGroup.options.map((option) => (
+          visibleOptions.map((option) => (
             <PokeFormItem key={option.name}>
               <PokeFormLabel>{option.name}</PokeFormLabel>
               <PokeFormInput

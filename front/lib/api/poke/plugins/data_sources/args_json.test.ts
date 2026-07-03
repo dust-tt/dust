@@ -1,4 +1,4 @@
-import { buildAdminRunArgs } from "@app/lib/api/poke/plugins/global/args_json";
+import { buildAdminRunArgs } from "@app/lib/api/poke/plugins/data_sources/args_json";
 import type { CliCommandOption } from "@app/types/connectors/admin/catalog";
 import { describe, expect, it } from "vitest";
 
