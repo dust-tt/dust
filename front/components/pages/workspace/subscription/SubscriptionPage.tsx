@@ -413,20 +413,24 @@ export function SubscriptionPage() {
         day: "numeric",
       })
     : null;
-  // A legacy Pro workspace (Stripe-billed, not trialing, not already cancelled)
-  // can cancel at its current period end — whether or not a migration is
-  // scheduled. Cancellation via the Stripe portal is disabled, so this is the
-  // path out.
+  // A pending migration means the workspace is MIGRATING, not cancelled — this
+  // is the authoritative, freshly-fetched signal. It takes precedence over a
+  // lingering `subscription.endDate` (which can be stale right after a resume).
+  const isMigrating = pendingMigrationDate !== null;
+  // Cancelled (churning at the end date) only when not migrating.
+  const isCancelledNotMigrating = !isMigrating && subscription.endDate !== null;
+
+  // A legacy Pro workspace (Stripe-billed, not trialing) can cancel — while
+  // active or while migrating (opt out). Not when already cancelled (→ Resume).
   const canCancelSubscription =
     isWorkspaceOnProPlan &&
     !subscription.trialing &&
     subscription.stripeSubscriptionId !== null &&
-    subscription.endDate === null;
-  // The subscription was cancelled (churning at period end) but hasn't ended
-  // yet — resume re-stages the migration.
+    !isCancelledNotMigrating;
+  // Cancelled (not migrating) but not yet ended — resume re-stages the migration.
   const canResumeMigration =
     isWorkspaceOnProPlan &&
-    !pendingMigrationDate &&
+    isCancelledNotMigrating &&
     subscription.endDate !== null &&
     new Date(subscription.endDate).getTime() > Date.now();
 
@@ -588,7 +592,7 @@ export function SubscriptionPage() {
         <Page.Vertical align="stretch" gap="md">
           <Page.H variant="h5">Your plan </Page.H>
 
-          {endDate && (
+          {isCancelledNotMigrating && endDate && (
             <ContentMessage
               title={`Your subscription ends on ${endDate}.`}
               variant="warning"
@@ -620,7 +624,8 @@ export function SubscriptionPage() {
               )}
             </ContentMessage>
           )}
-          {(scheduledMigrationLabel ?? migrationDate) && !endDate ? (
+          {scheduledMigrationLabel ||
+          (migrationDate && !isCancelledNotMigrating) ? (
             <ContentMessage
               title="Your plan is scheduled to migrate to the new credit-based pricing."
               variant="blue"
