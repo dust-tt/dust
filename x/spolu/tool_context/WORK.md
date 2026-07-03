@@ -48,8 +48,8 @@
 [-]     7  front/lib/api/actions/servers/sandbox/tools/index.ts:231
 [-]     4  front/lib/api/actions/servers/schedules_management/tools/index.ts:35
            // Agent specific
-[ ]     2  front/lib/api/actions/servers/search/tools/index.ts:65
-[ ]     4  front/lib/api/actions/servers/skill_management/tools/index.ts:103
+[+]     2  front/lib/api/actions/servers/search/tools/index.ts:65
+[-]     4  front/lib/api/actions/servers/skill_management/tools/index.ts:103
 [+]     3  front/lib/api/actions/servers/slack_personal/tools/index.ts:449
 [ ]     2  front/lib/api/actions/servers/snowflake/tools/index.ts:42
 [ ]     4  front/lib/api/actions/servers/toolsets/tools/index.ts:25
