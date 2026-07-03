@@ -18,6 +18,40 @@ in Arial instead of the template's font, and the deck reads as generic. It will
 *look* plausible to you in a render and be completely wrong. Everything below
 exists to prevent that.
 
+## The loop — this IS the skill
+
+**Editing a deck is a LOOP, and the loop is the method.** Everything else in
+this document is detail in service of one of its steps. One pass of the loop:
+
+1. **Copy** the file; work only on the copy — §1.
+2. **Inspect** the copy with \`pptx_inspect\` — §2.
+3. **Pick a mode** — revise in place, author on the template, or author from
+   scratch — and **decompose the job into a list of one edit per slide** — §3.
+4. **Edit, then QA — in two passes, not interleaved per slide.** First make
+   **every** edit across **every** slide in one pass (§4.1) — ideally one script
+   that opens the deck once and saves once. **Then** QA the slides you changed in
+   one \`--qa\` call (§4.2) — pass them as a slide pattern (\`--qa 2,5,7-9\`) so the
+   whole batch renders in a single pass — and read **each** one back:
+
+   > **\`pptx_inspect --qa 2,5,7-9\` → read every slide back against its text →
+   > fix what's wrong → re-run \`--qa N\` on each slide you fixed → done only once
+   > every slide reads back clean.**
+
+   This QA pass is the **single most important thing in the skill, and it is
+   itself a loop** — for any slide that doesn't read clean you edit it and re-run
+   \`--qa N\` on that *same* slide until it does. Batching the render is only for
+   speed; it does **not** mean skimming — every edited slide still gets its own
+   readback, run *after its last edit*. QA'ing only some slides — or glancing at
+   a box-free render and calling it good — is the most common way a broken deck
+   ships. **Never skip a slide's readback.**
+
+5. **Audit the whole deck** with \`--compare\`, clear every \`[!]\`, then deliver
+   — §5.
+
+Read §4 as the spine: the numbered sections are the loop's steps, and the
+reference at the end (design guidance) serves them — none of it outranks the
+loop.
+
 ## 1. Copy the file first
 
 Your very first action, before anything else:
@@ -28,14 +62,16 @@ cp "/files/conversation/template.pptx" "/files/conversation/output.pptx"
 
 Editing the copy keeps the masters, layouts, theme, embedded media (logos,
 photos, charts), and embedded fonts intact — everything that makes the deck
-look designed survives for free, and you change only what you touch. **Build
-from a blank \`Presentation()\` only when the user gives you no deck at all.**
+look designed survives for free, and you change only what you touch. **Only when
+the user hands you no deck at all do you start from a blank \`Presentation()\` —
+that is mode C (§3).**
 
 ## 2. Inspect before you touch
 
 Your first read of the copy is \`pptx_inspect\`, never \`markitdown\` (it drops
 layouts, placeholders, positioning, charts, and media — you'd rebuild blind)
-and never a PDF render (slow, burns vision tokens; that is for final QA only).
+and never a PDF render (slow, burns vision tokens; renders are for a quick
+visual look, not structural reading).
 
 \`\`\`bash
 pptx_inspect output.pptx                 # overview: theme, fonts, words/slide, per-slide kinds
@@ -51,9 +87,9 @@ The overview gives you three contracts:
   entire palette; do not bring colors from outside it.
 - **fonts** line — the dominant title/body typefaces the layouts resolve to
   (e.g. \`title=Montserrat 22pt bold | body=Montserrat Medium 16pt\`).
-  \`theme-fallback\` is what runs *outside* placeholders inherit, usually Arial —
+  \`theme-fallback\` is what text *outside* placeholders inherits, usually Arial —
   a slide full of theme-fallback text is a slide that abandoned the template.
-- **words/slide: avg=X max=Y** — your density ceiling (section 6).
+- **words/slide: avg=X max=Y** — your density ceiling (see Design guidance).
 
 Read the per-slide line too: \`pic:N chart:N table:N\` tells you which slides
 carry the imagery you will want to reuse.
@@ -64,7 +100,7 @@ color / alignment. This is what tells you the template wants Montserrat 35pt
 bold for a section number, not Arial 18pt.
 
 \`--text\` tags each line with its shape \`#id\` (match against the \`--qa\`
-box labels to read a slide back, section 7) and flags copy repeated across the
+box labels to read a slide back, §4.2) and flags copy repeated across the
 deck — usually un-replaced template scaffolding ("Subject title", "Summary").
 
 \`--slide N\` shows each shape with its position/size in inches, placeholder
@@ -77,42 +113,63 @@ a text-fit estimate (\`holds~Nch@Spt\`). It marks problems at two levels:
 - **\`[i]\` advisories** — quantitative judgment calls, *not* auto-failures: a
   partial **overlap** (with the inches to separate and the axis), **underfilled**
   or **off-centre** text, a **tight margin**. Read them and confirm in the render
-  (section 7); they flag designed-overlay-vs-collision and centering, which
-  geometry alone can't settle — and centering is design intent (section 6).
+  (§4.2); they flag designed-overlay-vs-collision and centering, which geometry
+  alone can't settle — and centering is design intent (Design guidance).
 
-These are the structural half of QA; the per-slide \`--qa\` readback (section 7)
-is the other half, and neither alone is sufficient.
+These per-slide markers are the structural half of QA; you lean on them in the
+per-slide QA pass (§4.2), alongside the \`--qa\` readback.
 
-## 3. Pick your mode
+## 3. Pick a mode, then decompose into per-slide edits
 
-Decide which job you are doing, because the method is different:
+Decide which of three jobs you are doing — the method differs — then break the
+work into a list of *one edit per slide* before you touch anything.
 
-- **Revise in place** — the deck the user gave you *is* the content; they want
-  it updated (new numbers, new quarter, new wording). Its slides map ~1:1 onto
-  what they want. → Edit each slide where it sits (section 5).
+### The three modes
 
-- **Author on the template** — the template is a *design system* and the user
+- **A — Revise in place.** The deck the user gave you *is* the content; they want
+  it updated (new numbers, new quarter, new wording), and its slides map ~1:1
+  onto what they want. → Edit each slide where it sits.
+
+- **B — Author on the template.** The deck is a *design system* and the user
   wants a **different** deck: a different number of slides, a different
-  narrative, different topics. The template's slide 4 is not "your slide 4."
-  → You will **clone the template's slides as building blocks** (section 4),
-  then fill them.
+  narrative, different topics. The template's slide 4 is not "your slide 4." →
+  **Clone the template's slides as building blocks** (below), then fill them.
 
-Decision rule: if the requested outline maps onto the existing slides one for
-one, you are revising. If the user hands you an outline that does not match the
-template's slides — a 12-slide pitch to build on a 26-slide sales template —
-you are authoring, and "edit slide N in place" is the wrong instinct. **Do not
-reach for the blank layout to bridge the gap. Clone a real slide instead.**
+- **C — Author from scratch.** The user hands you **no deck** — only a request
+  ("make me a deck about X"). You have no template to reuse, so you must first
+  **establish a design**, then build on it (below). Do not just start typing
+  slides onto blanks.
 
-## 4. Author on the template: clone exemplars, don't free-hand
+Decision rule between A and B: if the requested outline maps onto the existing
+slides one for one, you are revising (A). If the user hands you an outline that
+does not match the template's slides — a 12-slide pitch on a 26-slide sales
+template — you are authoring (B), and "edit slide N in place" is the wrong
+instinct. **Do not reach for the blank layout to bridge the gap; clone a real
+slide instead.**
 
-This is the heart of getting a template-faithful deck when the structure
-differs from the template's. Three steps.
+**All three modes converge on the same per-slide loop (§4)** — that loop is the
+build, and it is not optional in any of them. They differ *only* in the **setup
+before the loop**: mode A has none (you edit in place), mode B clones exemplars
+first, mode C establishes a design first. That is exactly why only B and C get
+setup subsections below — mode A goes straight to the §4 loop.
 
-### 4.1 Build a menu of reusable slide kinds
+### Mode A — revise where it sits
 
-From the overview (the \`pic/chart/table\` counts) and \`--layouts\`, catalog
-what the template already knows how to do, with the **best exemplar slide** for
-each kind:
+The simplest mode, and the only one with no setup before the loop: nothing to
+clone, no design to establish, because the deck's slides already *are* the deck
+you want. Go straight from the decompose list (below) to the §4 turn on each
+slide you are changing — edit its shapes in place (§4.1), \`--qa\` it, move on.
+Leave the slides you are *not* changing untouched: do not reflow, re-theme, or
+re-center the whole deck to make one number current.
+
+### Mode B — clone exemplars, don't free-hand
+
+This is the heart of getting a template-faithful deck when the structure differs
+from the template's.
+
+**Build a menu of reusable slide kinds.** From the overview (the
+\`pic/chart/table\` counts) and \`--layouts\`, catalog what the template already
+knows how to do, with the **best exemplar slide** for each kind:
 
 \`\`\`
 title slide             -> slide 1    (layout TITLE)
@@ -126,54 +183,13 @@ closing / thank-you     -> slide 25   (layout BLANK, dark)
 \`\`\`
 
 If you are unsure what a slide looks like, skim the renders
-(\`pptx_inspect template.pptx --render\`). The goal is to map every kind of
-slide you need onto a real slide that already exists and already carries the
-right images and placeholders.
+(\`pptx_inspect template.pptx --render\`). The goal is to map every kind of slide
+you need onto a real slide that already exists and already carries the right
+images and placeholders.
 
-### 4.2 Plan slide-by-slide (plan.json)
-
-Decks come out as junk when you free-hand shape by shape. Before editing, write
-\`/files/conversation/plan.json\` — **one entry per output slide** — naming the
-exemplar you will clone, the images you will keep or swap, the placeholders you
-will fill, and the word budget. This plan is about *layout and visuals*, not
-just text:
-
-\`\`\`json
-{
-  "output": "/files/conversation/output.pptx",
-  "template": "/files/conversation/template.pptx",
-  "mode": "author",
-  "ceiling": 59,
-  "slides": [
-    {"n": 1, "purpose": "Title / hook", "clone": 1, "layout": "TITLE",
-     "keep_images": ["dust logo"], "swap_images": [],
-     "fill": {"center_title": "Work doesn't just get done. It gets rewired.",
-              "subtitle": "Multiplayer AI for human-agent collaboration."},
-     "words": 12},
-
-    {"n": 5, "purpose": "Three layers", "clone": 13, "layout": "CUSTOM_3",
-     "keep_images": ["three layer icons"], "swap_images": [],
-     "fill": {"title[0]": "Knowledge", "body[1]": "20+ connectors, hybrid search",
-              "title[2]": "Agents", "body[3]": "no-code builder, 20+ models"},
-     "words": 38},
-
-    {"n": 8, "purpose": "Customer logos", "clone": 18, "layout": "CUSTOM_2",
-     "keep_images": [], "swap_images": ["eight cells -> customer logos"],
-     "fill": {"title[0]": "3,000+ organizations"}, "words": 16}
-  ]
-}
-\`\`\`
-
-Reason about **space**: font size, not word count, decides whether text fits a
-box. Pull each placeholder's \`box\` and resolved \`font_pt\` from \`--slide\`
-and \`--layouts\`; each text shape prints its capacity (\`holds~Nch@Spt\`). If
-your text exceeds what the box holds at the template's size, **cut the text** —
-do not shrink below the template's sizes, and do not exceed \`ceiling\`.
-
-### 4.3 Materialize with pptx_slides, then fill
-
-Clone each exemplar into place, fill it (section 5), and delete what you did
-not reuse — all through \`pptx_slides\`, never by hand-editing the slide list:
+**Materialize with \`pptx_slides\`, never by hand.** Clone each exemplar into
+place and delete what you did not reuse — all through \`pptx_slides\`, never by
+hand-editing the slide list:
 
 \`\`\`bash
 pptx_slides output.pptx --duplicate 13 --count 1 --after 4   # clone the 3-up grid
@@ -191,14 +207,12 @@ their data) so each copy is independent; \`--delete\` drops only that slide's ow
 media, keeping media shared with slides you keep — **and it removes the slide
 part itself.** Deleting slides by removing \`sldId\`s yourself leaves orphaned
 slide parts and their media stranded in the file (bloat that also dodges QA);
-the \`--compare\` audit (section 7.1) flags orphans as a blocker. Let
-\`pptx_slides\` do every add / move / delete.
+the \`--compare\` audit (§5) flags orphans as a blocker. Let \`pptx_slides\` do
+every add / move / delete.
 
-### 4.4 Never bridge the gap with the blank layout
-
-If you catch yourself adding text boxes and drawn rectangles onto a \`BLANK\`
-slide, **stop** — that is the exact failure this skill exists to prevent. Two
-hard rules:
+**Never bridge the gap with the blank layout.** If you catch yourself adding text
+boxes and drawn rectangles onto a \`BLANK\` slide, **stop** — that is the exact
+failure this skill exists to prevent. Two hard rules:
 
 - **No content on \`BLANK\`** (or any placeholder-less catch-all layout). It has
   no placeholders, so your text inherits Arial instead of the template's font,
@@ -208,43 +222,91 @@ hard rules:
 - **No emoji or drawn shapes standing in for the template's images.** A 🔒 in a
   text box is not the template's lock icon; a drawn rectangle is not its photo
   card. Reuse the real image parts: clone the slide that holds them and swap the
-  picture in place (section 5).
+  picture in place (§4.1).
 
-## 5. Fill a slide (both modes)
+### Mode C — establish a design, then author
 
-Whether you are editing a slide where it sits or one you just cloned, the
-mechanics are identical: change the content of the shapes that are already
-there. Do not add new shapes on top of styled ones.
+With no template, *you* are the design system, so the deck's coherence is your
+responsibility. Before building, **derive the design from the user and their
+context** — the way Dust support pins down a request — rather than inventing it
+ad hoc, slide by slide:
 
-### Adapt the template to your content — within limits
+- **Audience & purpose.** Who reads it, to decide what (pitch, board update,
+  training, conference talk)? This sets tone, density, and length.
+- **Brand.** If the user names a company or provides brand assets (a logo,
+  colors, a font, an existing deck), use them — that effectively turns mode C
+  into mode A/B on their material; ask for or fetch them when a brand clearly
+  exists. Absent any brand, pick **one** simple, coherent system and **state it
+  in your summary**: a palette of a background, a text color, and two or three
+  accents; one title font and one body font; consistent margins.
+- **Outline.** Agree the slide list and one purpose per slide first.
 
-The template is a starting point, not a straitjacket: resize, reposition, or
-remove its elements — template-placed ones too, not only shapes you added — so
-your content fits. Three limits keep the slide reading as the template:
+If essentials are missing and you cannot proceed coherently, ask; otherwise pick
+sensible defaults, **state them**, and proceed. Then build each slide with those
+choices held constant (typography defaults in Design guidance). A from-scratch
+deck is **just as much a loop** — every slide still runs the §4 turn.
+
+### Decompose into per-slide edits
+
+In every mode, before editing, write out — as a short list, one line per output
+slide — what each slide will be: its purpose, the exemplar to clone (B) or layout
+to use (C), the images to keep or swap, the placeholders to fill, and a word
+budget. Decks come out as junk when you free-hand shape by shape; this list is
+what keeps each slide deliberate and gives the §4 loop its agenda.
+
+Reason about **space**, because font size — not word count — decides whether text
+fits a box. Pull each placeholder's \`box\` and resolved \`font_pt\` from
+\`--slide\` and \`--layouts\`; each text shape prints its capacity
+(\`holds~Nch@Spt\`). If your text exceeds what the box holds at the template's
+size, **cut the text** — do not shrink below the template's sizes, and do not
+exceed the density ceiling (Design guidance).
+
+## 4. Edit every slide, then QA every slide
+
+This is the heart of the loop, in two passes. **First** edit every slide you are
+changing in one pass (§4.1) — ideally a single script that opens the deck once
+and saves once. **Then** QA the slides you changed in one \`--qa\` call (§4.2):
+pass them as a pattern (\`--qa 2,5,7-9\`) so the whole batch renders in a single
+pass, then read **each** slide back in turn and fix what's wrong. Batch the
+**edits** and batch the **render** — but never skip a slide's readback, and a fix
+found in QA means re-running \`--qa\` on that slide.
+
+### 4.1 Edit the slides — one pass
+
+Make all your edits in this pass, working from the decompose list — ideally a
+single script that opens the deck once, edits every slide on the list, and saves
+once. Whether you are editing a slide where it sits or one you just cloned, the
+mechanics are identical: change the content of the shapes that are already there.
+Do not add new shapes on top of styled ones.
+
+**Adapt the template to your content — within limits.** The template is a
+starting point, not a straitjacket: resize, reposition, or remove its elements —
+template-placed ones too, not only shapes you added — so your content fits. Three
+limits keep the slide reading as the template:
 
 - **Keep ratios.** Scale an image by both dimensions together, or crop; never
   stretch one axis (the \`[!] image distorted\` lint catches it). Hold the
   template's proportions and alignment.
 - **Keep its visual character.** Do not strip the template's imagery or rebuild
-  on a blank canvas — that is the cardinal failure (section 3).
+  on a blank canvas — that is the cardinal failure (intro, §3).
 - **Don't gut it.** Trimming surplus is expected — an unused cell, an unpaired
   marker. But deleting *most* of an exemplar's shapes means you cloned the wrong
   one; pick a simpler exemplar instead. \`--compare\` flags a slide that kept
   under ~60% of its exemplar's shapes (\`reuse: [i]\`) so you can catch this.
 
-### Edit styled text by its runs
-
-**Assigning to \`.text\` (on a text frame, paragraph, or table cell) deletes
-every run and its formatting** — typeface, size, weight, and color reset to the
-default. That is safe only for a placeholder \`--slide\` reports as *empty*. To
-replace text that is already styled — most of a template — edit the existing
-run in place:
+**Edit styled text by its segments** — the spans of same-formatted characters a
+paragraph is made of (python-pptx calls them the paragraph's \`runs\`). Assigning
+to \`.text\` (on a text frame, paragraph, or table cell) **deletes every segment
+and its formatting** — typeface, size, weight, and color reset to the default.
+That is safe only for a placeholder \`--slide\` reports as *empty*. To replace
+text that is already styled — most of a template — edit the existing segment in
+place:
 
 \`\`\`python
 prs = Presentation("/files/conversation/output.pptx")
 title = prs.slides[0].shapes.title
 
-runs = title.text_frame.paragraphs[0].runs
+runs = title.text_frame.paragraphs[0].runs   # the paragraph's segments
 if runs:
     runs[0].text = "Work doesn't just get done."   # keeps typeface/size/weight/color
 else:
@@ -253,17 +315,16 @@ else:
 prs.save("/files/conversation/output.pptx")
 \`\`\`
 
-If a paragraph mixes runs (a bold word mid-sentence), map your text onto the
-matching runs instead of collapsing them into one.
+If a paragraph mixes segments (a bold word mid-sentence), map your text onto the
+matching segments instead of collapsing them into one.
 
-### Fill the box's content slots, not its spacers
-
-A text box is not a flat list of lines. \`--slide\` prints its skeleton —
-\`p[0]\`, \`p[1]\`, … — including \`(empty)\` spacer paragraphs and each
-paragraph's color and alignment. Templates lean on this: a heading in \`p[0]\`,
-\`(empty)\` spacers between rows, and the real content in specific slots (often
-\`p[2]\`, \`p[4]\`, \`p[6]\`…), with decorative shapes — checkmarks, numbers,
-icons — placed to sit beside those content rows.
+**Fill the box's content slots, not its spacers.** A text box is not a flat list
+of lines. \`--slide\` prints its skeleton — \`p[0]\`, \`p[1]\`, … — including
+\`(empty)\` spacer paragraphs and each paragraph's color and alignment. Templates
+lean on this: a heading in \`p[0]\`, \`(empty)\` spacers between rows, and the
+real content in specific slots (often \`p[2]\`, \`p[4]\`, \`p[6]\`…), with
+decorative shapes — checkmarks, numbers, icons — placed to sit beside those
+content rows.
 
 Put your text in the **same slots the template fills**, addressed by index, and
 leave the \`(empty)\` paragraphs empty:
@@ -274,7 +335,7 @@ for slot, line in zip((2, 4, 6, 8), bullets):   # content slots, read from --sli
     tf.paragraphs[slot].runs[0].text = line     # edit in place: keeps color/size/weight
 \`\`\`
 
-Never write into a spacer. A run added to an \`(empty)\` slot inherits a
+Never write into a spacer. A segment added to an \`(empty)\` slot inherits a
 *different* default — usually a darker body color and the spacer's alignment —
 so the line renders off-color and the markers, pinned to the content-row
 positions, strand in empty space below your text. Writing consecutively from
@@ -286,20 +347,19 @@ surplus slots' text *and* delete their paired markers so nothing floats. More
 items than the exemplar holds: clone a denser slide kind rather than overflow
 into spacers.
 
-### Populate every empty placeholder
-
-Layouts ship with empty title / body / subtitle placeholders, and **an empty
-placeholder renders "Click to add …" in PowerPoint** — the prompt is not stored
-in the file, the renderer draws it whenever the placeholder is empty, so
-covering it with a parallel text box does **not** suppress it. This is the one
-case where assigning \`.text\` is correct (there is no run to preserve):
+**Populate every empty placeholder.** Layouts ship with empty title / body /
+subtitle placeholders, and **an empty placeholder renders "Click to add …" in
+PowerPoint** — the prompt is not stored in the file, the renderer draws it
+whenever the placeholder is empty, so covering it with a parallel text box does
+**not** suppress it. This is the one case where assigning \`.text\` is correct
+(there is no segment to preserve):
 
 - Title: \`slide.shapes.title.text = "..."\` (works for \`title\` and
   \`center_title\`).
 - Others: \`slide.placeholders[idx].text_frame.text = "..."\`, where \`idx\` is
   the value from \`--layouts\`.
 
-If a placeholder already shows sample copy it is *not* empty — edit its run so
+If a placeholder already shows sample copy it is *not* empty — edit its segment so
 the formatting survives. The \`[!] EMPTY PLACEHOLDER\` warning in \`--slide\` is
 your safety net; if a placeholder is covered by intentional content (a chart
 image, a table, a callout), delete the placeholder instead of stacking text
@@ -310,11 +370,10 @@ sp = slide.placeholders[idx]    # idx reported by --slide / --layouts
 sp.element.getparent().remove(sp.element)
 \`\`\`
 
-### Let the layout draw bullets and set type
-
-Body placeholders draw bullets *from the layout* by paragraph level. Typing
-\`•\`, \`·\`, \`-\`, \`–\`, or \`*\` at the start stacks your glyph on the
-layout's ("● • text"). Use \`paragraph.level\` instead:
+**Let the layout draw bullets and set type.** Body placeholders draw bullets
+*from the layout* by paragraph level. Typing \`•\`, \`·\`, \`-\`, \`–\`, or \`*\`
+at the start stacks your glyph on the layout's ("● • text"). Use
+\`paragraph.level\` instead:
 
 \`\`\`python
 tf = slide.placeholders[1].text_frame
@@ -326,16 +385,14 @@ sub.level = 1                                   # nested bullet style from the l
 
 The layout already defines typeface, size, color, weight, and alignment for
 each placeholder. Write the text and **leave \`font.name\` / \`font.size\` /
-\`font.color\` unset** on runs — they inherit. Override only when you
+\`font.color\` unset** on segments — they inherit. Override only when you
 intentionally want a one-off style. If you must add a shape *outside* a
 placeholder (a callout, a label), copy the typeface and color from the matching
-placeholder in \`--layouts\`; otherwise the run falls back to the theme's Arial
+placeholder in \`--layouts\`; otherwise the segment falls back to the theme's Arial
 and looks foreign next to the rest of the deck.
 
-### Tables
-
-Update the cells of the table that is already there; never draw a new one over
-it. The \`.text\` run rule applies to cells:
+**Tables.** Update the cells of the table that is already there; never draw a new
+one over it. The \`.text\` segment rule applies to cells:
 
 \`\`\`python
 cell = table.cell(1, 0)
@@ -351,12 +408,11 @@ blank first — PowerPoint often renders trailing blank rows differently from th
 sandbox (they can fold off the slide or push the table past its bottom edge).
 If your visual QA shows that, rebuild *only that table* with exactly the rows
 you need, copying the original's column widths (\`table.columns[i].width\`), row
-heights, header run styling, and cell fills, kept inside the slide.
+heights, header segment styling, and cell fills, kept inside the slide.
 
-### Swap images in place
-
-To swap a logo or photo, replace the image *inside* the existing picture so its
-position, size, and crop are kept — do not drop a new picture on top:
+**Swap images in place.** To swap a logo or photo, replace the image *inside* the
+existing picture so its position, size, and crop are kept — do not drop a new
+picture on top:
 
 \`\`\`python
 from pptx.oxml.ns import qn
@@ -365,100 +421,44 @@ _, rId = pic.part.get_or_add_image_part("/files/conversation/logo.png")
 pic._element.blipFill.blip.set(qn("r:embed"), rId)
 \`\`\`
 
-### Use real content; remove template guidance
+**Use real content; remove template guidance.** Fill slides from the user's
+actual material. If a value the template expects is genuinely missing, leave a
+visible placeholder (\`[TBD: Q3 revenue]\`) and flag it rather than inventing a
+number. Templates carry builder instructions — \`<Client name>\`, bracketed
+prompts, notes / off-slide text ("replace with this quarter's figures";
+\`--text\` includes notes). Read them, act on them, then remove them so none
+survive in the delivered deck.
 
-Fill slides from the user's actual material. If a value the template expects is
-genuinely missing, leave a visible placeholder (\`[TBD: Q3 revenue]\`) and flag
-it rather than inventing a number. Templates carry builder instructions —
-\`<Client name>\`, bracketed prompts, notes / off-slide text ("replace with this
-quarter's figures"; \`--text\` includes notes). Read them, act on them, then
-remove them so none survive in the delivered deck.
+### 4.2 QA the edited slides — \`pptx_inspect --qa N[,N,...]\` (never skip a readback)
 
-## 6. Design guidance
-
-- **Density.** Treat the overview's \`max\` as a hard ceiling for *every* slide.
-  If the template averages ~23 words/slide, yours should too — exceeding its
-  density is the most common way a deck stops looking like the template even
-  when fonts and colors match. Overflow goes into speaker notes, not the slide:
-  \`slide.notes_slide.notes_text_frame.text = "..."\`. The \`--compare\` audit
-  blocks slides over the ceiling.
-- **Imagery.** Every slide wants a visual element, and it should be the
-  template's — reuse its photos, icons, and charts by cloning the slides that
-  carry them (section 4). If you must add a chart, prefer native python-pptx
-  charts (\`XL_CHART_TYPE.BAR_CLUSTERED\`, \`LINE\`, …) — they inherit the theme
-  palette and typography. For matplotlib only, pull \`bg1\` / \`tx1\` / accents
-  from the theme line so it does not read as a foreign screenshot, then insert
-  the PNG.
-- **Palette.** Use only the theme's six accents.
-- **Margins.** Keep ≥0.5". The bottom ~0.5" is the master's logo/footer band —
-  content reaching into it is overflow, not layout. Move it up or split the
-  slide.
-- **Variety.** Vary layouts across slides; do not repeat the same template
-  slide. Do not draw thin accent lines under titles — use whitespace or
-  background color for hierarchy.
-- When building from scratch (no template only): title 36–44pt bold, body
-  14–16pt, left-align body, center only titles. **Editing a template, the
-  layout's sizes win** — leave them to inherit.
-
-## 7. QA (mandatory before delivery)
-
-You cannot tell from the XML — or from a clean render — whether text actually
-fits, stays readable, lands where you meant, or whether an image is squished.
-QA has two gates: a deck-level **structural audit** (7.1, \`--compare\`) and a
-per-slide **\`--qa\` readback** (7.2). Run \`--qa N\` after every slide edit, and
-the structural audit after a batch; deliver only when both are clean.
-
-### 7.1 Structural audit
-
-**A. Deck-level audit** — run \`--compare\`; it catches deck-wide regressions:
+Once every slide is edited (§4.1), QA them — this is not a final glance, it is
+the gate, and it is **not optional**. \`--qa\` takes a slide pattern, so QA the
+whole batch you changed in one call: it converts the deck once and reuses that
+render across the slides, far faster than a call per slide. \`--qa\` bundles the
+two halves of QA so you can't look at one without the other — each slide's
+\`#id\`-tagged text and its boxed diagnostic render:
 
 \`\`\`bash
-pptx_inspect output.pptx --compare /files/conversation/template.pptx
+pptx_inspect output.pptx --qa 2,5,7-9        # QA every edited slide in one render pass
+pptx_inspect output.pptx --qa 6              # re-QA just slide 6 after fixing it
 \`\`\`
 
-Every line is a measurement — your deck's count vs the template's (in
-parentheses). A negative slide or media delta is just the slides you removed; it
-is not itself a problem. Delivery is gated by the \`[!]\` markers and the
-\`[QA: PASS]\` / \`[QA: FAIL — N blockers]\` verdict; each \`[!]\` is a measurement
-that crossed a threshold:
-
-- **orphans** — slide parts left in the package after a hand-edited delete.
-  Re-do the deletes with \`pptx_slides --delete\`.
-- **fonts dropped** — the deck no longer carries its embedded fonts; you rebuilt
-  instead of editing the copy. Start over from the copy (section 1).
-- **imagery stripped** — an image-rich template but text-only output: you
-  rebuilt slides on the background. Clone the slides that carry the images
-  (section 4) and swap the picture in place.
-- **layout collapse** — your slides piled onto one catch-all layout (usually
-  \`BLANK\`). Rebuild each on a real content layout.
-- **density** — slides over the template's word ceiling. Cut, or move detail
-  into speaker notes.
-
-This audit looks at the deck as a whole; it does **not** inspect individual
-shapes, so a \`[QA: PASS]\` says nothing about what is on each slide.
-
-**B. Per-slide lint** — the deck audit says nothing about individual shapes, so
-\`[QA: PASS]\` can still hide "Click to add…" prompts, doubled bullet glyphs,
-overset text, distorted images, and stacked boxes. For **every** slide you
-touched, run \`pptx_inspect output.pptx --slide N\` and clear every \`[!]\`
-(empty placeholder, manual bullet glyph, edge overflow, text overset, image
-distorted, low-res image, near-identical box). Confirm no template sample copy
-survives (\`xxxx\`, \`lorem\`, draft titles, \`<Client name>\`) — \`--text\` makes
-that fast.
-
-### 7.2 Per-slide QA — run \`--qa N\` after EVERY edit to a slide (never skip)
-
-\`--qa N\` is the readback gate, and after a slide edit it is **not optional**:
-run it the moment you finish editing slide N — not just once at the end. It
-bundles the two halves of QA so you can't look at one without the other — the
-slide's \`#id\`-tagged text and its boxed diagnostic render:
-
-\`\`\`bash
-pptx_inspect output.pptx --qa 6              # slide 6's #id-tagged text + boxed render
-\`\`\`
+Read **every** slide in the batch back individually (see "The gate is a readback"
+below); batching the render is for speed, not an excuse to skim. On a large deck,
+split the batch into a few \`--qa\` calls if the combined output is truncated. A
+slide is done only when its own readback is clean, run after its last edit.
 
 \`--render\` (no boxes) is only a quick visual look — it shows nothing
 diagnostic, so it is **not** a QA step. The diagnostic boxes live in \`--qa\`.
+
+\`--qa\` shows the rendered pixels; it does **not** repeat the structural \`[!]\`
+lints from \`--slide\` (§2). So the per-slide check is two reads of the slide you
+just edited: clear every \`--slide N\` \`[!]\` (empty placeholder, manual bullet,
+overset, distorted / low-res image, stacked box — editing readily introduces
+these), **and** read it back under \`--qa N\`. Confirm no template sample copy
+survives either (\`xxxx\`, \`lorem\`, draft titles, \`<Client name>\`) — \`--text\`
+and the \`[leftover?]\` marks make that fast. A slide is done only when both reads
+are clean.
 
 Each shape is outlined and labeled \`#id\` just outside it (text shapes tinted),
 so the label keys the box to its file text without covering content. A text box
@@ -476,19 +476,18 @@ overlap against the rendered text rather than treating the grown extent as exact
 **The gate is a readback.** \`--qa\` prints the slide's authoritative text above
 the render, each line tagged with its shape \`#id\`. For every labeled box, read
 what the render shows and confirm it matches that \`#id\`'s text. If you cannot
-read a box's text back — **clipped** at the
-box edge (overflow), **too faint** against its background (e.g. dark text on a
-dark slide), or **hidden** under another shape (occlusion) — that is a real
-defect, not a render artifact. A box you can't read back is the most reliable
-signal that something is wrong.
+read a box's text back — **clipped** at the box edge (overflow), **too faint**
+against its background (e.g. dark text on a dark slide), or **hidden** under
+another shape (occlusion) — that is a real defect, not a render artifact. A box
+you can't read back is the most reliable signal that something is wrong.
 
 Go box by box, by asset class (the label gives you the kind):
 
 - **text / ph** — the full text reads back, is legible against its background,
   stays inside its box, and isn't covered. Overflow → cut text (preferred), or
   resize/raise the box to fit (template boxes too — see "Adapt the template to
-  your content"); keep type at or above the template's sizes. Faint → recolor
-  (e.g. white on a dark slide). Stacked/occluded → reposition (the
+  your content", §4.1); keep type at or above the template's sizes. Faint →
+  recolor (e.g. white on a dark slide). Stacked/occluded → reposition (the
   \`[!] near-identical box\` lint flags the worst stacks). Floating — text
   bunched at the top of a much taller box (\`--slide\` shows \`vanchor=top\` and
   the render shows the gap) — center it (\`tf.vertical_anchor = MSO_ANCHOR.MIDDLE\`)
@@ -507,16 +506,14 @@ Go box by box, by asset class (the label gives you the kind):
   position (a heading or first item is the usual culprit) — **shorten that row's
   copy** until it realigns; if the marker has **no item at all** (you have fewer
   items than the template's markers), **delete the surplus marker** — dropping an
-  unpaired decoration is fine (section 5). Re-render and confirm the note is gone.
+  unpaired decoration is fine (§4.1). Re-render and confirm the note is gone.
 - **chart / table** — readable, on-theme, not clipped or past the slide edge; no
-  trailing blank rows folding (rebuild that one table if so — section 5).
+  trailing blank rows folding (rebuild that one table if so — §4.1).
 - **auto / shape** — decoration or background only; it must not cover content
   text.
 
 Fix, then re-run \`--qa N\` on that slide and read it back again. Repeat until the
-slide reads back clean. **Run \`--qa N\` after every edit to a slide — as you
-author, not only at the end** — so each defect is caught on the slide that
-introduced it, never buried in a final sweep.
+slide reads back clean — *that* is when the slide is done and you move on.
 
 **No stale passes.** The \`--qa N\` that counts is the one run *after* your last
 edit to slide N — a result from before that edit is stale and hides the defect
@@ -529,21 +526,85 @@ rendered pixels, so it cannot see a stranded marker — only \`--qa\` can.
 What is **not** a defect: a few pixels of reflow or a substituted typeface — if
 the customer has the font, their PowerPoint is correct. To tell artifact from
 defect, view the template's matching slide the same way (\`pptx_inspect
-template.pptx --qa N\`) and compare like-for-like. For autofit text or dense tables, where
-this renderer is least reliable, note in your summary that they should be
-confirmed in PowerPoint before the deck reaches a customer.
+template.pptx --qa N\`) and compare like-for-like. For autofit text or dense
+tables, where this renderer is least reliable, note in your summary that they
+should be confirmed in PowerPoint before the deck reaches a customer.
 
-**Deliver only when 7.1 reads \`[QA: PASS]\` with zero \`[!]\`, and 7.2 reads
-back clean on every slide — every box's text legible and in place, and no
-\`unaligned markers\` note left in the digest.**
+## 5. Audit the deck, then deliver
+
+Once **every** slide has passed its own \`--qa\` (§4.2), run the deck-level audit
+— it catches regressions that only show across the whole file, which the
+per-slide QA pass cannot see.
+
+**A. Deck-level audit** — run \`--compare\`:
+
+\`\`\`bash
+pptx_inspect output.pptx --compare /files/conversation/template.pptx
+\`\`\`
+
+Every line is a measurement — your deck's count vs the template's (in
+parentheses). A negative slide or media delta is just the slides you removed; it
+is not itself a problem. Delivery is gated by the \`[!]\` markers and the
+\`[QA: PASS]\` / \`[QA: FAIL — N blockers]\` verdict; each \`[!]\` is a measurement
+that crossed a threshold:
+
+- **orphans** — slide parts left in the package after a hand-edited delete.
+  Re-do the deletes with \`pptx_slides --delete\`.
+- **fonts dropped** — the deck no longer carries its embedded fonts; you rebuilt
+  instead of editing the copy. Start over from the copy (§1).
+- **imagery stripped** — an image-rich template but text-only output: you
+  rebuilt slides on the background. Clone the slides that carry the images
+  (§3, mode B) and swap the picture in place.
+- **layout collapse** — your slides piled onto one catch-all layout (usually
+  \`BLANK\`). Rebuild each on a real content layout.
+- **density** — slides over the template's word ceiling. Cut, or move detail
+  into speaker notes.
+
+This audit looks at the deck as a whole; it does **not** inspect individual
+shapes, so a \`[QA: PASS]\` here says nothing about what is on each slide — that
+is exactly why every slide must already have passed its own \`--qa\` (§4.2).
+
+**Deliver only when §5 reads \`[QA: PASS]\` with zero \`[!]\`, and every slide
+has read back clean under its own \`--qa N\` (§4.2) — every box's text legible
+and in place, and no \`unaligned markers\` left in the digest.**
+
+## Design guidance (reference)
+
+This serves the loop; it does not replace it. The defaults below hold across all
+three modes.
+
+- **Density.** Treat the overview's \`max\` as a hard ceiling for *every* slide.
+  If the template averages ~23 words/slide, yours should too — exceeding its
+  density is the most common way a deck stops looking like the template even
+  when fonts and colors match. Overflow goes into speaker notes, not the slide:
+  \`slide.notes_slide.notes_text_frame.text = "..."\`. The \`--compare\` audit
+  blocks slides over the ceiling.
+- **Imagery.** Every slide wants a visual element, and it should be the
+  template's — reuse its photos, icons, and charts by cloning the slides that
+  carry them (§3, mode B). If you must add a chart, prefer native python-pptx
+  charts (\`XL_CHART_TYPE.BAR_CLUSTERED\`, \`LINE\`, …) — they inherit the theme
+  palette and typography. For matplotlib only, pull \`bg1\` / \`tx1\` / accents
+  from the theme line so it does not read as a foreign screenshot, then insert
+  the PNG.
+- **Palette.** Use only the theme's six accents.
+- **Margins.** Keep ≥0.5". The bottom ~0.5" is the master's logo/footer band —
+  content reaching into it is overflow, not layout. Move it up or split the
+  slide.
+- **Variety.** Vary layouts across slides; do not repeat the same template
+  slide. Do not draw thin accent lines under titles — use whitespace or
+  background color for hierarchy.
+- **From scratch (mode C only).** With no template's sizes to inherit: title
+  36–44pt bold, body 14–16pt, left-align body, center only titles. Hold the one
+  palette and the two fonts you stated (§3, mode C) constant across every slide.
+  Editing a template, the layout's sizes win — leave them to inherit.
 `;
 
 export const pptxSkill = {
   sId: "pptx",
   name: "Slide decks",
-  userFacingDescription: "Read, edit, and create slide presentations (.pptx)",
+  userFacingDescription: "Read, edit, and create slide presentations",
   agentFacingDescription:
-    "Work with .pptx files in the sandbox. Includes the pptx_inspect tool " +
+    "Work with .pptx files in the computer. Includes the pptx_inspect tool " +
     "for paginated structural inspection of decks (slides, layouts, shapes, " +
     "text, charts, tables, media) so existing decks can be adapted in place " +
     "via python-pptx rather than rebuilt from scratch with pptxgenjs.",
