@@ -45,13 +45,13 @@
   bottom: 0;
   height: var(--fade-height);
   pointer-events: none;
-  /* Fade to the background token so the clamp stays invisible on the
-     conversation canvas in both themes. */
+  /* Fade to the panel-background token (the conversation canvas surface) so
+     the clamp stays invisible in both themes. */
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    color-mix(in srgb, var(--color-background) 85%, transparent) 65%,
-    var(--color-background) 100%
+    color-mix(in srgb, var(--color-panel-background) 85%, transparent) 65%,
+    var(--color-panel-background) 100%
   );
   transition: opacity var(--dur-close) var(--ease);
 }
