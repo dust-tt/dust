@@ -1,18 +1,18 @@
-import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { ToolContextType } from "@app/lib/actions/types";
+import type {LightServerSideMCPToolConfigurationType} from "@app/lib/actions/mcp";
+import type {ToolContextType} from "@app/lib/actions/types";
 import {
   generateProcessToolOutput,
   getCoreDataSourceSearchCriterias,
   getPromptForProcessDustApp,
 } from "@app/lib/api/actions/servers/extract_data/helpers";
-import { EXTRACT_DATA_MAIN_TOOL_NAME } from "@app/lib/api/actions/servers/extract_data/metadata";
-import { createExtractDataTools } from "@app/lib/api/actions/servers/extract_data/tools";
-import { processDataSources } from "@app/lib/api/assistant/process_data_sources";
-import type { Authenticator } from "@app/lib/auth";
-import { Ok } from "@app/types/shared/result";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {EXTRACT_DATA_MAIN_TOOL_NAME} from "@app/lib/api/actions/servers/extract_data/metadata";
+import {createExtractDataTools} from "@app/lib/api/actions/servers/extract_data/tools";
+import {processDataSources} from "@app/lib/api/assistant/process_data_sources";
+import type {Authenticator} from "@app/lib/auth";
+import {Ok} from "@app/types/shared/result";
+import {INTERNAL_MIME_TYPES} from "@dust-tt/client";
+import type {JSONSchema7 as JSONSchema} from "json-schema";
+import {beforeEach, describe, expect, it, vi} from "vitest";
 
 vi.mock("@app/lib/api/actions/servers/extract_data/helpers", () => ({
   generateProcessToolOutput: vi.fn(),
@@ -66,6 +66,7 @@ function makeRunContext(): ToolContextType {
 
   return {
     runContext: {
+      contextType: "agent_loop",
       agentConfiguration: {
         model: {
           modelId: "test-model",
