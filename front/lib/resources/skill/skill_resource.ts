@@ -32,10 +32,9 @@ import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shar
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import * as skillAgents from "@app/lib/resources/skill/skill_agents";
 import * as skillConversations from "@app/lib/resources/skill/skill_conversations";
-import * as skillEditors from "@app/lib/resources/skill/skill_editors";
 import * as skillLifecycle from "@app/lib/resources/skill/skill_lifecycle";
 import * as skillReferences from "@app/lib/resources/skill/skill_references";
-import { SkillResourceBase } from "@app/lib/resources/skill/skill_resource_base";
+import { SkillResourceWithEditors } from "@app/lib/resources/skill/skill_resource_editors";
 import * as skillUpdates from "@app/lib/resources/skill/skill_updates";
 import * as skillVersions from "@app/lib/resources/skill/skill_versions";
 import type {
@@ -49,7 +48,6 @@ import {
   getResourceIdFromSId,
   isResourceSId,
 } from "@app/lib/resources/string_ids";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -139,7 +137,7 @@ export type {
  * @see GlobalSkillsRegistry for global skill definitions
  * @see SystemSkillsRegistry for always-enabled system skill definitions
  */
-export class SkillResource extends SkillResourceBase {
+export class SkillResource extends SkillResourceWithEditors {
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
@@ -208,14 +206,10 @@ export class SkillResource extends SkillResourceBase {
         }
       );
 
-      const editorGroup = await skillEditors.makeNewSkillEditorsGroup(
-        auth,
-        skill,
-        {
-          addCurrentUserAsEditor,
-          transaction,
-        }
-      );
+      const editorGroup = await this.makeNewSkillEditorsGroup(auth, skill, {
+        addCurrentUserAsEditor,
+        transaction,
+      });
 
       // MCP server configurations for the skill.
       await SkillMCPServerConfigurationModel.bulkCreate(
@@ -1697,21 +1691,6 @@ export class SkillResource extends SkillResourceBase {
     });
   }
 
-  async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
-    return this.editorGroup?.getActiveMembers(auth) ?? null;
-  }
-
-  async upsertEditors(
-    auth: Authenticator,
-    users: UserResource[]
-  ): Promise<Result<void, Error>> {
-    return skillEditors.upsertEditors(auth, this, users);
-  }
-
-  async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
-    return skillEditors.fetchEditedByUser(auth, this);
-  }
-
   /**
    * Batch fetch usage (agents using each skill) for multiple skills.
    * Keyed by skill sId to avoid collisions (global skills share id: -1).
@@ -1802,26 +1781,6 @@ export class SkillResource extends SkillResourceBase {
     }
 
     return result;
-  }
-
-  /**
-   * Batch list editors for multiple skills. Keyed by skill sId.
-   */
-  static async batchListEditors(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<Map<string, UserResource[] | null>> {
-    return skillEditors.batchListEditors(auth, skills);
-  }
-
-  /**
-   * Batch fetch edited-by users for multiple skills.
-   */
-  static async batchFetchEditedByUsers(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<Map<string, UserResource | null>> {
-    return skillEditors.batchFetchEditedByUsers(auth, skills);
   }
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
@@ -2056,7 +2015,7 @@ export class SkillResource extends SkillResourceBase {
       await this.setFileAttachments(auth, fileAttachments);
     }
 
-    await skillEditors.upsertCurrentUserAsEditor(auth, this);
+    await this.upsertCurrentUserAsEditor(auth);
   }
 
   async updateReinforcement(
