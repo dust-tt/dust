@@ -11,6 +11,7 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { PodSandboxEnvVarModel } from "@app/lib/resources/storage/models/pod_sandbox_env_var";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -654,6 +655,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     if (hardDelete) {
       await SandboxOwnerModel.destroy({
+        where: {
+          spaceId: this.id,
+          workspaceId,
+        },
+        transaction,
+      });
+
+      await PodSandboxEnvVarModel.destroy({
         where: {
           spaceId: this.id,
           workspaceId,

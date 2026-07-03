@@ -1743,6 +1743,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "data_source_view",
   "group_vaults",
   "mcp_server_view",
+  "pod_sandbox_env_var",
   "sandbox_function",
   "sandbox_owner",
   "project_metadata",

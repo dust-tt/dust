@@ -3,6 +3,7 @@ import { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import type { Authenticator } from "@app/lib/auth";
+import { PodSandboxEnvVarResource } from "@app/lib/resources/pod_sandbox_env_var_resource";
 import {
   type EnsureSandboxResult,
   type SandboxCreateBlob,
@@ -153,11 +154,31 @@ export class PodSandboxAdapter {
   ): Promise<Result<EnsureSandboxResult, Error>> {
     this.assertPod(pod);
 
+    // Pod env vars ride the owner env layer, which beats the workspace env
+    // layer in buildSandboxEnvVars — so a pod var shadows a workspace var of
+    // the same name, consistent with the egress-secrets file merge. Config
+    // vars are injected in cleartext; HTTPS secrets as their DSEC
+    // placeholders (dsbx swaps them on the wire). Fail closed: a var we
+    // cannot resolve aborts activation rather than booting without it.
+    const podEnvResult = await PodSandboxEnvVarResource.loadEnv(auth, pod);
+    if (podEnvResult.isErr()) {
+      return podEnvResult;
+    }
+    const podPlaceholderEnvResult =
+      await PodSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(auth, pod);
+    if (podPlaceholderEnvResult.isErr()) {
+      return podPlaceholderEnvResult;
+    }
+
     return SandboxResource.ensureActive(
       auth,
       {
         ...this.toSandboxLifecycleOwner(auth, pod),
-        envVars: { SPACE_ID: pod.sId },
+        envVars: {
+          ...podEnvResult.value,
+          ...podPlaceholderEnvResult.value,
+          SPACE_ID: pod.sId,
+        },
         logLabel: "pod",
         createSandbox: (blob) =>
           this.createSandboxRecordForPod(auth, pod, blob),

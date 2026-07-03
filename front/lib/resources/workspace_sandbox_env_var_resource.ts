@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import {
   MAX_VARS_PER_WORKSPACE,
+  normalizeAllowedDomainsForKind,
   renderEgressSecretPlaceholder,
   renderWorkspaceSandboxEnvVarName,
   validateEnvVarName,
@@ -20,14 +21,12 @@ import {
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type {
   WorkspaceSandboxEnvVarKind,
   WorkspaceSandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { randomBytes } from "crypto";
@@ -53,8 +52,6 @@ const USER_JOIN_INCLUDES: Includeable[] = [
     required: false,
   },
 ];
-
-type NormalizedAllowedDomains = string[] | null | undefined;
 
 function formatAllowedDomainsForAudit(
   allowedDomains: string[] | null | undefined
@@ -247,7 +244,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         );
       }
 
-      const normalizedAllowedDomains = this.normalizeAllowedDomainsForKind({
+      const normalizedAllowedDomains = normalizeAllowedDomainsForKind({
         kind,
         allowedDomains,
         requiredForSecret: false,
@@ -294,7 +291,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         );
       }
 
-      const normalizedAllowedDomains = this.normalizeAllowedDomainsForKind({
+      const normalizedAllowedDomains = normalizeAllowedDomainsForKind({
         kind,
         allowedDomains,
         requiredForSecret: true,
@@ -441,12 +438,11 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     const user = auth.getNonNullableUser();
     const previousEnvName = this.envName;
 
-    const normalizedAllowedDomains =
-      WorkspaceSandboxEnvVarResource.normalizeAllowedDomainsForKind({
-        kind: "https_secret",
-        allowedDomains,
-        requiredForSecret: true,
-      });
+    const normalizedAllowedDomains = normalizeAllowedDomainsForKind({
+      kind: "https_secret",
+      allowedDomains,
+      requiredForSecret: true,
+    });
     if (normalizedAllowedDomains.isErr()) {
       return normalizedAllowedDomains;
     }
@@ -585,12 +581,11 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     const user = auth.getNonNullableUser();
     const previousAllowedDomains = this.allowedDomains;
 
-    const normalizedAllowedDomains =
-      WorkspaceSandboxEnvVarResource.normalizeAllowedDomainsForKind({
-        kind: this.kind,
-        allowedDomains,
-        requiredForSecret: true,
-      });
+    const normalizedAllowedDomains = normalizeAllowedDomainsForKind({
+      kind: this.kind,
+      allowedDomains,
+      requiredForSecret: true,
+    });
     if (normalizedAllowedDomains.isErr()) {
       return normalizedAllowedDomains;
     }
@@ -637,62 +632,6 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     });
 
     return new Ok(this);
-  }
-
-  private static normalizeAllowedDomainsForKind({
-    kind,
-    allowedDomains,
-    requiredForSecret,
-  }: {
-    kind: WorkspaceSandboxEnvVarKind;
-    allowedDomains: string[] | null | undefined;
-    requiredForSecret: boolean;
-  }): Result<NormalizedAllowedDomains, Error> {
-    switch (kind) {
-      case "config": {
-        if (allowedDomains && allowedDomains.length > 0) {
-          return new Err(
-            new Error("allowedDomains can only be set for HTTPS secrets.")
-          );
-        }
-
-        return new Ok(null);
-      }
-
-      case "https_secret": {
-        if (!allowedDomains) {
-          if (requiredForSecret) {
-            return new Err(
-              new Error("HTTPS secrets require at least one allowed domain.")
-            );
-          }
-
-          return new Ok(undefined);
-        }
-
-        if (allowedDomains.length === 0) {
-          return new Err(
-            new Error("HTTPS secrets require at least one allowed domain.")
-          );
-        }
-
-        const normalized = normalizeEgressPolicyDomains(allowedDomains);
-        if (normalized.isErr()) {
-          return normalized;
-        }
-
-        if (normalized.value.length === 0) {
-          return new Err(
-            new Error("HTTPS secrets require at least one allowed domain.")
-          );
-        }
-
-        return normalized;
-      }
-
-      default:
-        assertNever(kind);
-    }
   }
 
   async delete(

@@ -17,3 +17,14 @@ export type WorkspaceSandboxEnvVarType = {
   createdByName: string | null;
   lastUpdatedByName: string | null;
 };
+
+export type PodSandboxEnvVarType = {
+  sId: string;
+  name: string;
+  kind: WorkspaceSandboxEnvVarKind;
+  placeholderNonce: string | null;
+  allowedDomains: string[] | null;
+  secretSourceKind: string;
+  createdAt: number;
+  updatedAt: number;
+};

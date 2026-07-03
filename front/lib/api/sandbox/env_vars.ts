@@ -1,3 +1,4 @@
+import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type { WorkspaceSandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -16,6 +17,7 @@ export const MAX_VALUE_BYTES = 32 * 1_024;
 // rest of the request line + other headers.
 export const MAX_HTTPS_SECRET_VALUE_BYTES = 4 * 1_024;
 export const MAX_VARS_PER_WORKSPACE = 50;
+export const MAX_VARS_PER_POD = 50;
 
 const ENV_VAR_PREFIX_BY_KIND: Record<WorkspaceSandboxEnvVarKind, string> = {
   config: SANDBOX_ENV_VAR_PREFIX,
@@ -90,6 +92,68 @@ export function validateEnvVarValueForKind({
 
 export function envVarPrefixForKind(kind: WorkspaceSandboxEnvVarKind): string {
   return ENV_VAR_PREFIX_BY_KIND[kind];
+}
+
+export type NormalizedAllowedDomains = string[] | null | undefined;
+
+// Validates the allowedDomains input against the row kind: config rows must
+// not carry domains, https_secret rows must carry at least one (unless the
+// caller passes none on an update, when `requiredForSecret` is false and the
+// stored value is kept — signalled by `undefined`).
+export function normalizeAllowedDomainsForKind({
+  kind,
+  allowedDomains,
+  requiredForSecret,
+}: {
+  kind: WorkspaceSandboxEnvVarKind;
+  allowedDomains: string[] | null | undefined;
+  requiredForSecret: boolean;
+}): Result<NormalizedAllowedDomains, Error> {
+  switch (kind) {
+    case "config": {
+      if (allowedDomains && allowedDomains.length > 0) {
+        return new Err(
+          new Error("allowedDomains can only be set for HTTPS secrets.")
+        );
+      }
+
+      return new Ok(null);
+    }
+
+    case "https_secret": {
+      if (!allowedDomains) {
+        if (requiredForSecret) {
+          return new Err(
+            new Error("HTTPS secrets require at least one allowed domain.")
+          );
+        }
+
+        return new Ok(undefined);
+      }
+
+      if (allowedDomains.length === 0) {
+        return new Err(
+          new Error("HTTPS secrets require at least one allowed domain.")
+        );
+      }
+
+      const normalized = normalizeEgressPolicyDomains(allowedDomains);
+      if (normalized.isErr()) {
+        return normalized;
+      }
+
+      if (normalized.value.length === 0) {
+        return new Err(
+          new Error("HTTPS secrets require at least one allowed domain.")
+        );
+      }
+
+      return normalized;
+    }
+
+    default:
+      assertNever(kind);
+  }
 }
 
 // Format used both as the agent-visible env var (DSEC_*) for HTTPS secrets

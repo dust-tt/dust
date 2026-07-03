@@ -575,7 +575,7 @@ export async function setupEgressForwarder(
 
   const secretsWriteResult = await traceSandboxStartupPhase(
     "egress.write_secrets",
-    () => writeEgressSecretsFile(auth, sandbox)
+    () => writeEgressSecretsFile(auth, sandbox, runtimeOwner)
   );
   if (secretsWriteResult.isErr()) {
     return secretsWriteResult;
