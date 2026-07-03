@@ -5,6 +5,7 @@ import {
   isAgentLoopRunContext,
   type ToolContextType,
 } from "@app/lib/actions/types";
+import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "@app/lib/api/actions/servers/data_sources_file_system/tools/search";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
 import {
   INCLUDE_DATA_BASE_TOOLS_METADATA,
@@ -12,7 +13,6 @@ import {
 } from "@app/lib/api/actions/servers/include_data/metadata";
 import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import type { Authenticator } from "@app/lib/auth";
-import { AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K } from "../../data_sources_file_system/tools/search";
 
 // Create tools with access to auth via closure
 export function createIncludeDataTools(

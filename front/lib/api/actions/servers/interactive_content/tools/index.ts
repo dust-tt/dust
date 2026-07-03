@@ -42,7 +42,7 @@ export async function createInteractiveContentTools(
       { file_name, mime_type, mode, source, description },
       { sendNotification, _meta }
     ) => {
-      // TODO: enable craete and publish to be conversation agnostic for both templates (local) and
+      // TODO: enable create and publish to be conversation agnostic for both templates (local) and
       //       createClientExecutablefile direclty on pod DFS so that we can re-enable this server
       //       when run without conversation context.
       assert(
