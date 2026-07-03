@@ -6,7 +6,10 @@ import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -166,7 +169,9 @@ export async function cat(
     );
   }
 
-  const { citationsOffset } = toolContext.runContext.stepContext;
+  const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
+    ? toolContext.runContext.stepContext
+    : { citationsOffset: 0 };
 
   if (citationsOffset >= getRefs().length) {
     return new Err(
