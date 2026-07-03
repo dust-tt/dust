@@ -864,6 +864,8 @@ export async function refundYearlyMigrationProration({
   try {
     const stripe = getStripeClient();
 
+    // Only subscriptions marked by the migration are refund candidates; every
+    // other subscription.deleted returns silently.
     if (
       stripeSubscription.metadata?.[YEARLY_MIGRATION_REFUND_METADATA_KEY] !==
       "true"
@@ -874,6 +876,10 @@ export async function refundYearlyMigrationProration({
       (item) => item.price.recurring?.interval === "year"
     );
     if (!isYearly) {
+      logger.warn(
+        { stripeSubscriptionId: stripeSubscription.id },
+        "[Stripe] Yearly migration refund: marked sub is not yearly, skipping"
+      );
       return new Ok({ refundedCents: 0 });
     }
 
@@ -886,6 +892,14 @@ export async function refundYearlyMigrationProration({
     const periodSec = periodEndSec - periodStartSec;
     const remainingSec = periodEndSec - actualEndSec;
     if (periodSec <= 0 || remainingSec <= 0) {
+      logger.info(
+        {
+          stripeSubscriptionId: stripeSubscription.id,
+          periodSec,
+          remainingSec,
+        },
+        "[Stripe] Yearly migration refund: no prepaid days remaining, skipping"
+      );
       return new Ok({ refundedCents: 0 });
     }
 
@@ -895,7 +909,7 @@ export async function refundYearlyMigrationProration({
         : (stripeSubscription.latest_invoice?.id ?? null);
     if (!latestInvoiceId) {
       logger.warn(
-        { stripeSubscriptionId: stripeSubscription.id },
+        { stripeSubscriptionId: stripeSubscription.id, remainingSec },
         "[Stripe] Yearly migration refund: no latest invoice, skipping"
       );
       return new Ok({ refundedCents: 0 });
@@ -903,32 +917,53 @@ export async function refundYearlyMigrationProration({
     const invoice = await stripe.invoices.retrieve(latestInvoiceId);
     const chargeId =
       typeof invoice.charge === "string" ? invoice.charge : invoice.charge?.id;
-    if (invoice.amount_paid <= 0 || !chargeId) {
-      logger.info(
+    if (!chargeId) {
+      logger.warn(
         { stripeSubscriptionId: stripeSubscription.id, invoiceId: invoice.id },
-        "[Stripe] Yearly migration refund: latest invoice not paid, skipping"
+        "[Stripe] Yearly migration refund: invoice has no charge, skipping"
       );
       return new Ok({ refundedCents: 0 });
     }
 
-    const refundedCents = Math.min(
-      invoice.amount_paid,
-      Math.round((invoice.amount_paid * remainingSec) / periodSec)
-    );
-    if (refundedCents <= 0) {
+    // Verify the charge was actually paid (and not already fully refunded)
+    // before refunding anything.
+    const charge = await stripe.charges.retrieve(chargeId);
+    if (!charge.paid || charge.status !== "succeeded") {
+      logger.warn(
+        {
+          stripeSubscriptionId: stripeSubscription.id,
+          chargeId,
+          chargePaid: charge.paid,
+          chargeStatus: charge.status,
+        },
+        "[Stripe] Yearly migration refund: charge not paid, skipping"
+      );
       return new Ok({ refundedCents: 0 });
     }
+    const refundableCents = charge.amount - charge.amount_refunded;
+    const proratedCents = Math.round(
+      (charge.amount * remainingSec) / periodSec
+    );
+    const refundedCents = Math.min(refundableCents, proratedCents);
 
+    // Always log the refund attempt for a marked sub, with the computed amount.
     logger.info(
       {
         stripeSubscriptionId: stripeSubscription.id,
         chargeId,
-        amountPaid: invoice.amount_paid,
+        chargeAmount: charge.amount,
+        alreadyRefunded: charge.amount_refunded,
         remainingDays: Math.ceil(remainingSec / 86400),
+        proratedCents,
         refundedCents,
       },
-      "[Stripe] Issuing yearly migration prorated refund"
+      refundedCents > 0
+        ? "[Stripe] Issuing yearly migration prorated refund"
+        : "[Stripe] Yearly migration refund: nothing left to refund, skipping"
     );
+    if (refundedCents <= 0) {
+      return new Ok({ refundedCents: 0 });
+    }
     await stripe.refunds.create({ charge: chargeId, amount: refundedCents });
     return new Ok({ refundedCents });
   } catch (err) {
