@@ -221,6 +221,9 @@ const DropdownMenuSubTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       menuStyleClasses.item({ variant: "default" }),
+      // Keep the trigger highlighted while its sub-menu is open, so the
+      // hover state doesn't drop when the pointer moves into the sub-menu.
+      "data-[state=open]:bg-hover data-[state=open]:text-foreground",
       inset ? menuStyleClasses.inset : "",
       className
     )}
