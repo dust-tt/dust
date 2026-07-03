@@ -28,7 +28,10 @@ import {
 import { useAgents } from "../../utils/hooks/use_agents.js";
 import { useMe } from "../../utils/hooks/use_me.js";
 import { clearTerminal } from "../../utils/terminal.js";
-import { toolsCache } from "../../utils/toolsCache.js";
+import {
+  resolveToolsCacheScope,
+  toolsCache,
+} from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
@@ -193,6 +196,15 @@ const CliChat: FC<CliChatProps> = ({
   const { stdout } = useStdout();
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
+  const toolsCacheScopeRef = useRef<string | null>(null);
+
+  const getToolsCacheScope = useCallback(async (): Promise<string> => {
+    if (!toolsCacheScopeRef.current) {
+      toolsCacheScopeRef.current = await resolveToolsCacheScope();
+    }
+
+    return toolsCacheScopeRef.current;
+  }, []);
 
   // Import useAgents hook for agent search functionality
   const {
@@ -432,7 +444,9 @@ const CliChat: FC<CliChatProps> = ({
 
       // For low stake tools, check cache first
       if (event.stake === "low") {
+        const scope = await getToolsCacheScope();
         const cachedApproval = await toolsCache.getCachedApproval({
+          scope,
           agentName: event.metadata.agentName,
           mcpServerName: event.metadata.mcpServerName,
           toolName: event.metadata.toolName,
@@ -451,11 +465,11 @@ const CliChat: FC<CliChatProps> = ({
         const isLowStake = event.stake === "low";
         const items: InlineSelectorItem[] = isLowStake
           ? [
-              { id: "approve", label: "Approve" },
               {
-                id: "approve_and_cache",
-                label: "Approve and don't ask again",
+                id: "approve_in_project",
+                label: "Approve in this project",
               },
+              { id: "approve", label: "Approve" },
               { id: "reject", label: "Reject" },
             ]
           : [
@@ -471,7 +485,7 @@ const CliChat: FC<CliChatProps> = ({
         });
       });
     },
-    []
+    [getToolsCacheScope]
   );
 
   const handleApproval = useCallback(
@@ -489,7 +503,9 @@ const CliChat: FC<CliChatProps> = ({
         }
         // Cache the approval if requested and it's a low stake tool
         if (cacheApproval && pendingApproval.stake === "low") {
+          const scope = await getToolsCacheScope();
           await toolsCache.setCachedApproval({
+            scope,
             agentName: pendingApproval.metadata.agentName,
             mcpServerName: pendingApproval.metadata.mcpServerName,
             toolName: pendingApproval.metadata.toolName,
@@ -502,7 +518,7 @@ const CliChat: FC<CliChatProps> = ({
         setInlineSelector(null);
       }
     },
-    [approvalResolver, pendingApproval]
+    [approvalResolver, pendingApproval, getToolsCacheScope]
   );
 
   const handleDiffApproval = useCallback(
@@ -811,8 +827,10 @@ const CliChat: FC<CliChatProps> = ({
   useEffect(() => {
     const cacheEditTool = async () => {
       if (selectedAgent) {
+        const scope = await getToolsCacheScope();
         // Pre-cache the Edit tool to avoid approval prompts
         await toolsCache.setCachedApproval({
+          scope,
           agentName: selectedAgent.name,
           mcpServerName: "fs-cli",
           toolName: "edit_file",
@@ -820,7 +838,7 @@ const CliChat: FC<CliChatProps> = ({
       }
     };
     void cacheEditTool();
-  }, [selectedAgent]);
+  }, [selectedAgent, getToolsCacheScope]);
 
   // Handle agent search when component mounts
   useEffect(() => {
@@ -1463,8 +1481,9 @@ const CliChat: FC<CliChatProps> = ({
 
           if (inlineSelector.mode === "approval") {
             const approved =
-              selected.id === "approve" || selected.id === "approve_and_cache";
-            const cacheApproval = selected.id === "approve_and_cache";
+              selected.id === "approve" ||
+              selected.id === "approve_in_project";
+            const cacheApproval = selected.id === "approve_in_project";
             void handleApproval(approved, cacheApproval);
             return;
           }
