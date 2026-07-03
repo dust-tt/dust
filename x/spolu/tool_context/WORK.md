@@ -20,7 +20,8 @@
 [+]     1  front/lib/api/actions/servers/google_calendar/helpers.ts:176
            // TODO: user timezone for calendar, once we have it in invocations
 [+]     2  front/lib/api/actions/servers/google_drive/tools/index.ts:300
-[ ]     1  front/lib/api/actions/servers/helpers.ts:44
+[+]     1  front/lib/api/actions/servers/helpers.ts:44
+           // TODO sidekick should be removed from list
 [ ]     1  front/lib/api/actions/servers/image_generation/helpers.ts:217
 [ ]     4  front/lib/api/actions/servers/include_data/tools/index.ts:33
 [ ]     7  front/lib/api/actions/servers/interactive_content/tools/index.ts:52
