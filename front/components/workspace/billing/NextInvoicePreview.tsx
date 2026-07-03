@@ -12,6 +12,7 @@ import {
   WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
 import { useMetronomeInvoiceLines } from "@app/lib/swr/workspaces";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import {
   Avatar,
   ChevronDown,
@@ -27,6 +28,7 @@ import { useSubscriptionContext } from "./SubscriptionContext";
 
 interface InvoiceRow {
   name: string;
+  period: string | null;
   quantity: string;
   cost: string;
   subtotal: string;
@@ -54,6 +56,14 @@ const PRODUCT_NAME_TO_SEAT_TYPE: Record<string, string> = {
   [OVERAGE_NAME]: "overage",
 };
 
+function formatLineItemPeriod(item: MetronomeInvoiceLineItem): string | null {
+  if (item.periodStartMs == null || item.periodEndMs == null) {
+    return null;
+  }
+  const period = `${formatTimestampToFriendlyDate(item.periodStartMs, "compactWithDay")} → ${formatTimestampToFriendlyDate(item.periodEndMs, "compactWithDay")}`;
+  return item.isProrated ? `Prorated · ${period}` : period;
+}
+
 function formatLineItem(
   item: MetronomeInvoiceLineItem,
   currency: string
@@ -61,6 +71,7 @@ function formatLineItem(
   const isOverage = item.name === CREDITS_CONVERSION_NAME;
   return {
     name: isOverage ? OVERAGE_NAME : item.name,
+    period: formatLineItemPeriod(item),
     quantity:
       item.quantity !== null
         ? `${item.quantity.toLocaleString()}${isOverage ? " credits" : ""}`
@@ -116,11 +127,21 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
                 iconColor={avatarColors.iconColor}
               />
             ) : null}
-            <span
-              className={cn("text-sm", row.original.isBold && "font-semibold")}
-            >
-              {name}
-            </span>
+            <div className="flex flex-col">
+              <span
+                className={cn(
+                  "text-sm",
+                  row.original.isBold && "font-semibold"
+                )}
+              >
+                {name}
+              </span>
+              {row.original.period ? (
+                <span className="text-xs text-muted-foreground">
+                  {row.original.period}
+                </span>
+              ) : null}
+            </div>
           </div>
         );
       },
@@ -224,6 +245,7 @@ export function NextInvoicePreview() {
         name === CREDITS_CONVERSION_NAME ? OVERAGE_NAME : name;
       rows.push({
         name: displayName,
+        period: null,
         quantity: "",
         cost: "",
         subtotal: formatAmount(subtotalCents, currency),
@@ -245,6 +267,7 @@ export function NextInvoicePreview() {
   );
   rows.push({
     name: "Total",
+    period: null,
     quantity: "",
     cost: "",
     subtotal: formatAmount(totalCents, currency),
