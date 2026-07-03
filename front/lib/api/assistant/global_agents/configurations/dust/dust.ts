@@ -87,6 +87,9 @@ interface DustLikeGlobalAgentArgs {
   // When set, the @dust agent defaults to GPT 5.5 (medium reasoning) instead of
   // Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_5_default` feature flag.
   preferGpt55DefaultModel?: boolean;
+  // When set, the @dust agent defaults to light reasoning instead of medium.
+  // Gated by the `dust_agent_light_reasoning_default` feature flag.
+  preferLightReasoningDefault?: boolean;
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -468,7 +471,9 @@ export function _getDustGlobalAgent(
     preferredModelConfiguration: args.preferGpt55DefaultModel
       ? GPT_5_5_MODEL_CONFIG
       : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
+    preferredReasoningEffort: args.preferLightReasoningDefault
+      ? "light"
+      : "medium",
   });
 }
 

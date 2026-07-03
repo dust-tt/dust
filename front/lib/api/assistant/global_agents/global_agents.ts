@@ -670,6 +670,7 @@ function getGlobalAgent({
   globalAgentContext,
   excludeProviders,
   preferGpt55DefaultModel,
+  preferLightReasoningDefault,
   featureFlags,
 }: {
   auth: Authenticator;
@@ -683,6 +684,7 @@ function getGlobalAgent({
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
   preferGpt55DefaultModel: boolean;
+  preferLightReasoningDefault: boolean;
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
   const settings =
@@ -897,6 +899,7 @@ function getGlobalAgent({
         globalAgentContext,
         excludeProviders,
         preferGpt55DefaultModel,
+        preferLightReasoningDefault,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_HIGH:
@@ -1665,6 +1668,9 @@ export async function getGlobalAgents(
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
       preferGpt55DefaultModel: flags.includes("dust_agent_gpt_5_5_default"),
+      preferLightReasoningDefault: flags.includes(
+        "dust_agent_light_reasoning_default"
+      ),
       featureFlags: flags,
     })
   );

@@ -51,6 +51,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Use GPT 5.5 (medium reasoning) as the default model for the @dust agent",
     stage: "dust_only",
   },
+  dust_agent_light_reasoning_default: {
+    description:
+      "Use light reasoning (instead of medium) as the default for the @dust agent",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
