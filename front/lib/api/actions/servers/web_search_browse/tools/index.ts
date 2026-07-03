@@ -239,11 +239,11 @@ async function handleWebbrowser(
           ext: ".txt",
         });
 
-        const writeResult = await writeToToolOutputsFolder(
-          auth,
-          runCtx.conversation,
-          { fileName, content: fileContent, contentType: "text/plain" }
-        );
+        const writeResult = await writeToToolOutputsFolder(auth, toolContext, {
+          fileName,
+          content: fileContent,
+          contentType: "text/plain",
+        });
 
         if (writeResult.isErr()) {
           throw writeResult.error;

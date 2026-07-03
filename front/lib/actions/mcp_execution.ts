@@ -1,7 +1,6 @@
 import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import type {
-  LightMCPToolConfigurationType,
   MCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
@@ -16,7 +15,10 @@ import {
   isToolGeneratedFilePath,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type {
+  ActionGeneratedFileType,
+  ToolContextType,
+} from "@app/lib/actions/types";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
@@ -46,6 +48,7 @@ import {
   toWellFormed,
 } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 import { extname } from "path";
 import type { Logger } from "pino";
 
@@ -145,18 +148,24 @@ export async function processToolResults(
     conversation,
     localLogger,
     toolCallResultContent,
-    toolConfiguration,
+    toolContext,
   }: {
     action: AgentMCPActionResource;
     conversation: ConversationType;
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
-    toolConfiguration: LightMCPToolConfigurationType;
+    toolContext: ToolContextType;
   }
 ): Promise<{
   outputItems: AgentMCPActionOutputItemModel[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
+  assert(
+    toolContext.runContext,
+    "processToolResults requires a tool run context."
+  );
+  const { toolConfiguration } = toolContext.runContext;
+
   const fileUseCase: FileUseCase = "conversation";
   const fileUseCaseMetadata: FileUseCaseMetadata = {
     conversationId: conversation.sId,
@@ -169,7 +178,7 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      const res = await persistToolOutput(auth, conversation, block, {
+      const res = await persistToolOutput(auth, toolContext, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });

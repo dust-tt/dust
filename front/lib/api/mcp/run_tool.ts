@@ -148,7 +148,7 @@ export async function* runToolWithStreaming(
         conversation,
         localLogger,
         toolCallResultContent: toolCallResult.content,
-        toolConfiguration,
+        toolContext: { runContext: agentLoopRunContext },
       }),
     {
       intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,

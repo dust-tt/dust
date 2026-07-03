@@ -199,7 +199,7 @@ export function createExtractDataTools(
 
     const result = await generateProcessToolOutput({
       auth,
-      conversation,
+      toolContext,
       outputs,
       jsonSchema: jsonSchemaForExtraction,
       timeFrame: timeFrameForExtraction ?? null,
