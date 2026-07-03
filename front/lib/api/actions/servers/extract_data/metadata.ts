@@ -38,7 +38,7 @@ const EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION =
   "This schema will be used as signature to extract the relevant information based on selected documents to properly follow instructions.";
 
 // JSON Schema for extraction - when not pre-configured by user
-const JsonSchemaSchema = z
+const DynamicJsonSchemaSchema = z
   .object({})
   .passthrough()
   .describe(EXTRACT_TOOL_JSON_SCHEMA_ARGUMENT_DESCRIPTION);
@@ -62,20 +62,25 @@ const objectiveSchema = z
       " This is used to guide the tool to extract the right data based on the user request."
   );
 
-// Base tool schema (without tags, with dynamic jsonSchema and timeFrame)
-const baseExtractSchema = {
-  dataSources:
-    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-  objective: objectiveSchema,
-  jsonSchema: JsonSchemaSchema,
-  timeFrame: DynamicTimeFrameSchema,
-};
-
-// With tags schema
-const extractWithTagsSchema = {
-  ...baseExtractSchema,
-  ...TagsInputSchema.shape,
-};
+function makeBaseExtractSchema({
+  isJsonSchemaConfigured,
+  isTimeFrameConfigured,
+}: {
+  isJsonSchemaConfigured: boolean;
+  isTimeFrameConfigured: boolean;
+}) {
+  return {
+    dataSources:
+      ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+    objective: objectiveSchema,
+    jsonSchema: isJsonSchemaConfigured
+      ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.JSON_SCHEMA]
+      : DynamicJsonSchemaSchema,
+    timeFrame: isTimeFrameConfigured
+      ? ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME]
+      : DynamicTimeFrameSchema,
+  };
+}
 
 // Tool description
 const TOOL_DESCRIPTION =
@@ -83,41 +88,94 @@ const TOOL_DESCRIPTION =
   " JSON schema. This tool retrieves content" +
   " from data sources already pre-configured by the user, ensuring the latest information is included.";
 
-// Base tools metadata (without tags)
-export const EXTRACT_DATA_BASE_TOOLS_METADATA = createToolsRecord({
-  [EXTRACT_DATA_MAIN_TOOL_NAME]: {
-    description: TOOL_DESCRIPTION,
-    schema: baseExtractSchema,
-    stake: "never_ask",
-    displayLabels: {
-      running: "Extracting data from documents",
-      done: "Extract data from documents",
-    },
-  },
-});
+export function makeExtractDataBaseToolsMetadata({
+  isJsonSchemaConfigured,
+  isTimeFrameConfigured,
+}: {
+  isJsonSchemaConfigured: boolean;
+  isTimeFrameConfigured: boolean;
+}) {
+  const schema = makeBaseExtractSchema({
+    isJsonSchemaConfigured,
+    isTimeFrameConfigured,
+  });
 
-// Tools metadata with tags support
-export const EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
-  [EXTRACT_DATA_MAIN_TOOL_NAME]: {
-    description: TOOL_DESCRIPTION,
-    schema: extractWithTagsSchema,
-    stake: "never_ask",
-    displayLabels: {
-      running: "Extracting data from documents",
-      done: "Extract data from documents",
+  return createToolsRecord({
+    [EXTRACT_DATA_MAIN_TOOL_NAME]: {
+      description: TOOL_DESCRIPTION,
+      schema,
+      stake: "never_ask",
+      displayLabels: {
+        running: "Extracting data from documents",
+        done: "Extract data from documents",
+      },
     },
-  },
-  find_tags: {
-    description:
-      FIND_TAGS_BASE_DESCRIPTION +
-      ` This tool is meant to be used before the ${EXTRACT_DATA_MAIN_TOOL_NAME} tool.`,
-    schema: findTagsSchema,
-    stake: "never_ask",
-    displayLabels: {
-      running: "Finding tags",
-      done: "Find tags",
+  });
+}
+
+export function makeExtractDataToolsWithTagsMetadata({
+  isJsonSchemaConfigured,
+  isTimeFrameConfigured,
+}: {
+  isJsonSchemaConfigured: boolean;
+  isTimeFrameConfigured: boolean;
+}) {
+  const baseMetadata = makeExtractDataBaseToolsMetadata({
+    isJsonSchemaConfigured,
+    isTimeFrameConfigured,
+  });
+  const baseToolMetadata = baseMetadata[EXTRACT_DATA_MAIN_TOOL_NAME];
+
+  return createToolsRecord({
+    [EXTRACT_DATA_MAIN_TOOL_NAME]: {
+      ...baseToolMetadata,
+      schema: {
+        ...makeBaseExtractSchema({
+          isJsonSchemaConfigured,
+          isTimeFrameConfigured,
+        }),
+        ...TagsInputSchema.shape,
+      },
     },
-  },
+    find_tags: {
+      description:
+        FIND_TAGS_BASE_DESCRIPTION +
+        ` This tool is meant to be used before the ${EXTRACT_DATA_MAIN_TOOL_NAME} tool.`,
+      schema: findTagsSchema,
+      stake: "never_ask",
+      displayLabels: {
+        running: "Finding tags",
+        done: "Find tags",
+      },
+    },
+  });
+}
+
+export function makeExtractDataToolsMetadata({
+  areTagsDynamic,
+  isJsonSchemaConfigured,
+  isTimeFrameConfigured,
+}: {
+  areTagsDynamic: boolean;
+  isJsonSchemaConfigured: boolean;
+  isTimeFrameConfigured: boolean;
+}) {
+  if (areTagsDynamic) {
+    return makeExtractDataToolsWithTagsMetadata({
+      isJsonSchemaConfigured,
+      isTimeFrameConfigured,
+    });
+  }
+
+  return makeExtractDataBaseToolsMetadata({
+    isJsonSchemaConfigured,
+    isTimeFrameConfigured,
+  });
+}
+
+const EXTRACT_DATA_BASE_TOOLS_METADATA = makeExtractDataBaseToolsMetadata({
+  isJsonSchemaConfigured: false,
+  isTimeFrameConfigured: false,
 });
 
 // Server metadata - used in constants.ts
