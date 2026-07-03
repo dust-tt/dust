@@ -34,7 +34,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
-const AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K = 10;
+export const AGENT_LESS_DEFAULT_RETRIEVAL_TOP_K = 10;
 
 export async function search(
   {

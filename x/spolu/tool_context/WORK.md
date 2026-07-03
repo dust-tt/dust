@@ -28,7 +28,7 @@
 [~]     1  front/lib/api/actions/servers/image_generation/helpers.ts:217
            // TODO: similar to data_warehouse, we need a specific flow to write to the pod
                     tool_outputs when in sandbox function. See TODOs below.
-[ ]     4  front/lib/api/actions/servers/include_data/tools/index.ts:33
+[+]     4  front/lib/api/actions/servers/include_data/tools/index.ts:33
 [ ]     7  front/lib/api/actions/servers/interactive_content/tools/index.ts:52
 [ ]     3  front/lib/api/actions/servers/microsoft_teams/tools/index.ts:532
 [ ]     2  front/lib/api/actions/servers/notion/tools/index.ts:118
@@ -58,7 +58,7 @@ to dynamically express that a server is not usable.
 
 ### TODOs:
 
- - [ ] mcp_execution: introduce pod tool_outputs
+ - [ ] mcp_execution: introduce pod tool_outputs (action_output_fs, persistToolOutput)
  - [ ] data_warehouse: flow to tool_outputs if in sandbox function
  - [ ] image_generation: flow to tool_outputs if in sandbox function
 
