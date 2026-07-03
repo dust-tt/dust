@@ -33,7 +33,7 @@
            // We don't know how to create frames directly in pods for now it seems.
            // Maybe we need just publish?
 [+]     3  front/lib/api/actions/servers/microsoft_teams/tools/index.ts:532
-[ ]     2  front/lib/api/actions/servers/notion/tools/index.ts:118
+[+]     2  front/lib/api/actions/servers/notion/tools/index.ts:118
 [ ]     3  front/lib/api/actions/servers/plan_mode/tools/index.ts:28
 [ ]     2  front/lib/api/actions/servers/pod_manager/helpers.ts:147
 [ ]    11  front/lib/api/actions/servers/pod_manager/tools/index.ts:986
