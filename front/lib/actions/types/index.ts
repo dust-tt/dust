@@ -3,7 +3,10 @@ import type {
   LightMCPToolConfigurationType,
   MCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { AgentMCPActionType } from "@app/types/actions";
+import { SandboxFunctionInvocationType } from "@app/types/api/sandbox_functions";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -146,6 +149,7 @@ export type ActionGeneratedFileType =
   | ActionGeneratedFilePathType;
 
 export type AgentLoopRunContextType = {
+  contextType: "agent_loop";
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   currentAction: AgentMCPActionType;
@@ -153,6 +157,12 @@ export type AgentLoopRunContextType = {
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;
   userMessage: UserMessageType;
+};
+
+export type SandboxFunctionRunContextType = {
+  contextType: "sandbox_function";
+  invocation: SandboxFunctionInvocationResource;
+  toolConfiguration: LightMCPToolConfigurationType;
 };
 
 export type AgentLoopListToolsContextType = {
@@ -163,9 +173,21 @@ export type AgentLoopListToolsContextType = {
   agentMessage: AgentMessageType;
 };
 
+export function isSandboxFunctionRunContext(
+  value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
+): value is SandboxFunctionRunContextType {
+  return value?.contextType === "sandbox_function";
+}
+
+export function isAgentLoopRunContext(
+  value: AgentLoopRunContextType | SandboxFunctionRunContextType | undefined
+): value is AgentLoopRunContextType {
+  return value?.contextType === "agent_loop";
+}
+
 export type ToolContextType =
   | {
-      runContext: AgentLoopRunContextType;
+      runContext: AgentLoopRunContextType | SandboxFunctionRunContextType;
       listToolsContext?: never;
     }
   | {
