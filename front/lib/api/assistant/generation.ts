@@ -194,7 +194,8 @@ function constructSkillsSection({
     `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +
     "These mean the instructions used to reference another skill, but that skill is no longer available to this conversation, for example because skill scope or permissions changed. " +
     "Do not try to enable unavailable skill tags.\n" +
-    "If you need to enable multiple skills, enable them in parallel.\n\n" +
+    "If you need to enable multiple skills, enable those skills in parallel together. " +
+    "Do not make tool calls to other tools in parallel to skill-enablement; you may want to revisit after the skill instructions are loaded.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
     "perspective on the currently available context.\n";
 
