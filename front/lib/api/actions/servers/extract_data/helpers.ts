@@ -120,8 +120,6 @@ export async function getPromptForProcessDustApp({
       model,
       hasAvailableActions: false,
       systemSkills: [],
-      enabledSkills: [],
-      equippedSkills: [],
       agentsList: null,
       conversation,
     })

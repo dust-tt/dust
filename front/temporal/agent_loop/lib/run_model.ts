@@ -399,8 +399,6 @@ export async function runModel(
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,
-    enabledSkills,
-    equippedSkills,
     toolsetsContext,
     userContext,
     workspaceContext,
@@ -584,10 +582,7 @@ export async function runModel(
     "[LLM stream] Starting (agent loop)"
   );
 
-  if (
-    modelConversationRes.value.prunedContext === true &&
-    !agentMessage.prunedContext
-  ) {
+  if (modelConversationRes.value.prunedContext && !agentMessage.prunedContext) {
     await updateAgentMessageDBAndMemory(auth, {
       agentMessage,
       update: {

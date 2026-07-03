@@ -23,7 +23,6 @@ import {
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
-import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { TRUNCATED_SNIPPET_SIZE } from "@app/lib/api/files/snippet";
 import type {
   StructuredSystemPrompt,
@@ -407,9 +406,7 @@ export function constructPromptMultiActions(
     agentsList,
     conversation,
     serverToolsAndInstructions,
-    enabledSkills,
     systemSkills,
-    equippedSkills,
     toolsetsContext,
     userContext,
     workspaceContext,
@@ -427,9 +424,7 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    enabledSkills: EnabledSkill[];
     systemSkills: SkillResource[];
-    equippedSkills: SkillResource[];
     toolsetsContext?: string;
     userContext?: string;
     workspaceContext?: string;
