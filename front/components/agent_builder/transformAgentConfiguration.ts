@@ -1,6 +1,7 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 import {
@@ -10,10 +11,7 @@ import {
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
-import type {
-  ModelConfigurationType,
-  ModelIdType,
-} from "@app/types/assistant/models/types";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
 import type { UserType } from "@app/types/user";
 import uniqueId from "lodash/uniqueId";
@@ -75,20 +73,27 @@ const PREFERRED_LARGE_MODEL_IDS: ModelIdType[] = [
  * then a hardcoded default.
  */
 export function getDefaultModel(
-  availableModels: ModelConfigurationType[]
-): ModelConfigurationType {
+  availableModels: EnabledModelConfigurationType[]
+): EnabledModelConfigurationType {
+  const selectableModels = availableModels.filter((m) => m.isSelectable);
+
   for (const modelId of PREFERRED_LARGE_MODEL_IDS) {
-    const model = availableModels.find((m) => m.modelId === modelId);
+    const model = selectableModels.find((m) => m.modelId === modelId);
     if (model) {
       return model;
     }
   }
 
   const fallbackModel =
-    availableModels.find((m) => m.largeModel) ??
-    availableModels.find((m) => !m.largeModel);
+    selectableModels.find((m) => m.largeModel) ??
+    selectableModels.find((m) => !m.largeModel);
 
-  return fallbackModel ?? CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
+  return (
+    fallbackModel ?? {
+      ...CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+      isSelectable: true,
+    }
+  );
 }
 
 export function getDefaultAgentFormData({
