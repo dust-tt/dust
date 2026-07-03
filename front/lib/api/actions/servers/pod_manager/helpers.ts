@@ -5,7 +5,11 @@ import type {
   DustPodConfigurationType,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
@@ -144,46 +148,47 @@ export async function getPod(
   // Otherwise, use the existing logic to get space from conversation context.
   if ("toolContext" in from && from.toolContext) {
     const { toolContext } = from;
-    if (!toolContext.runContext?.conversation) {
-      return new Err(
-        new MCPError("No conversation context available", { tracked: false })
-      );
+    if (isAgentLoopRunContext(toolContext.runContext)) {
+      const conversationRes =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          toolContext.runContext.conversation.sId
+        );
+
+      if (conversationRes.isErr()) {
+        return new Err(
+          new MCPError(
+            `Conversation not found: ${conversationRes.error.message}`,
+            {
+              tracked: false,
+            }
+          )
+        );
+      }
+
+      const conversation = conversationRes.value;
+
+      if (!isPodConversation(conversation)) {
+        return new Err(
+          new MCPError(
+            "This conversation is not in a Pod. Pod context management is only available in Pod conversations.",
+            { tracked: false }
+          )
+        );
+      }
+
+      const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+      if (!space) {
+        return new Err(new MCPError("Pod not found", { tracked: false }));
+      }
+
+      return new Ok({ pod: space });
     }
 
-    const conversationRes =
-      await ConversationResource.fetchConversationWithoutContent(
-        auth,
-        toolContext.runContext.conversation.sId
-      );
-
-    if (conversationRes.isErr()) {
-      return new Err(
-        new MCPError(
-          `Conversation not found: ${conversationRes.error.message}`,
-          {
-            tracked: false,
-          }
-        )
-      );
+    if (isSandboxFunctionRunContext(toolContext.runContext)) {
+      const space = toolContext.runContext.invocation.sandboxFunction.space;
+      return new Ok({ pod: space });
     }
-
-    const conversation = conversationRes.value;
-
-    if (!isPodConversation(conversation)) {
-      return new Err(
-        new MCPError(
-          "This conversation is not in a Pod. Pod context management is only available in Pod conversations.",
-          { tracked: false }
-        )
-      );
-    }
-
-    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (!space) {
-      return new Err(new MCPError("Pod not found", { tracked: false }));
-    }
-
-    return new Ok({ pod: space });
   }
 
   return new Err(new MCPError("No Pod context available", { tracked: false }));
