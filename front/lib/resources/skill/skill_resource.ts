@@ -7,7 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
-  SkillConfigurationModel,
+  type SkillConfigurationModel,
   SkillDataSourceConfigurationModel,
   SkillFileAttachmentModel,
   SkillMCPServerConfigurationModel,
@@ -19,8 +19,6 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
-import { BaseResource } from "@app/lib/resources/base_resource";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -37,18 +35,19 @@ import * as skillConversations from "@app/lib/resources/skill/skill_conversation
 import * as skillEditors from "@app/lib/resources/skill/skill_editors";
 import * as skillLifecycle from "@app/lib/resources/skill/skill_lifecycle";
 import * as skillReferences from "@app/lib/resources/skill/skill_references";
+import { SkillResourceBase } from "@app/lib/resources/skill/skill_resource_base";
 import * as skillUpdates from "@app/lib/resources/skill/skill_updates";
 import * as skillVersions from "@app/lib/resources/skill/skill_versions";
 import type {
+  SkillAttachedKnowledge,
   SkillConfigurationFindOptions,
-  SkillReferenceFields,
+  SkillMCPServerConfiguration,
+  SkillResourceConstructorOptions,
 } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
   isResourceSId,
-  makeSId,
 } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -70,7 +69,6 @@ import type {
   SkillSourceMetadata,
   SkillSourceType,
   SkillStatus,
-  SkillType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -92,45 +90,10 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-export type SkillMCPServerConfiguration = {
-  view: MCPServerViewResource;
-  childAgentId?: string;
-  serverNameOverride?: string;
-};
-
-type SkillResourceConstructorOptions =
-  | {
-      // For global skills, there is no editor group.
-      dataSourceConfigurations: SkillDataSourceConfigurationModel[];
-      editorGroup?: undefined;
-      // When true, the global skill's instructions are exposed to the front-end.
-      exposeInstructions?: boolean;
-      fileAttachments: FileResource[];
-      globalSId: string;
-      mcpServerConfigurations: SkillMCPServerConfiguration[];
-      version?: number;
-    }
-  | {
-      dataSourceConfigurations: SkillDataSourceConfigurationModel[];
-      editorGroup?: GroupResource;
-      // Custom skills always expose their own instructions; this flag is unused.
-      exposeInstructions?: undefined;
-      fileAttachments: FileResource[];
-      globalSId?: undefined;
-      mcpServerConfigurations: SkillMCPServerConfiguration[];
-      version?: number;
-    };
-
-export interface SkillAttachedKnowledge {
-  dataSourceView: DataSourceViewResource;
-  nodeId: string;
-}
-
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SkillResource
-  extends ReadonlyAttributesType<SkillConfigurationModel> {}
+export type {
+  SkillAttachedKnowledge,
+  SkillMCPServerConfiguration,
+} from "@app/lib/resources/skill/types";
 
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
@@ -176,67 +139,13 @@ export interface SkillResource
  * @see GlobalSkillsRegistry for global skill definitions
  * @see SystemSkillsRegistry for always-enabled system skill definitions
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class SkillResource extends BaseResource<SkillConfigurationModel> {
-  static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
-
-  readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
-  private fileAttachments: FileResource[];
-  readonly editorGroup: GroupResource | null = null;
-  readonly version: number | null = null;
-
-  private readonly globalSId: string | null;
-  // Only meaningful for global skills: whether their instructions may be
-  // serialized to the front-end. Custom skills always expose their own.
-  private readonly exposeInstructions: boolean;
-
-  private _mcpServerConfigurations: SkillMCPServerConfiguration[];
-
+export class SkillResource extends SkillResourceBase {
   private constructor(
-    _: ModelStatic<SkillConfigurationModel>,
+    model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
-    {
-      dataSourceConfigurations,
-      exposeInstructions,
-      fileAttachments,
-      globalSId,
-      mcpServerConfigurations,
-      editorGroup,
-      version,
-    }: SkillResourceConstructorOptions
+    options: SkillResourceConstructorOptions
   ) {
-    super(SkillConfigurationModel, blob);
-
-    this.dataSourceConfigurations = dataSourceConfigurations;
-    this.editorGroup = editorGroup ?? null;
-    this.exposeInstructions = exposeInstructions ?? false;
-    this.fileAttachments = fileAttachments ?? [];
-    this.globalSId = globalSId ?? null;
-    this._mcpServerConfigurations = mcpServerConfigurations;
-    this.version = version ?? null;
-  }
-
-  get sId(): string {
-    if (this.globalSId) {
-      return this.globalSId;
-    }
-
-    return SkillResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
-  get mcpServerViews(): MCPServerViewResource[] {
-    return this._mcpServerConfigurations.map((config) => config.view);
-  }
-
-  getFileAttachments(): readonly FileResource[] {
-    return this.fileAttachments;
-  }
-
-  get mcpServerConfigurations(): SkillMCPServerConfiguration[] {
-    return this._mcpServerConfigurations;
+    super(model, blob, options);
   }
 
   /**
@@ -267,29 +176,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       attachedKnowledge,
     });
-  }
-
-  get isSystemSkill(): boolean {
-    if (!this.globalSId) {
-      return false;
-    }
-
-    return SystemSkillsRegistry.isSystemSkill(this.sId);
-  }
-
-  get inheritsAgentConfigurationDataSources(): boolean {
-    if (!this.globalSId) {
-      return false;
-    }
-
-    return (
-      GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
-      ) ||
-      SystemSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
-      )
-    );
   }
 
   static async makeNew(
@@ -937,15 +823,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  /**
-   * Returns the fields to identify this skill in related tables (e.g., AgentSkillModel).
-   */
-  private get skillReference(): SkillReferenceFields {
-    return this.globalSId
-      ? { globalSkillId: this.globalSId }
-      : { customSkillId: this.id };
-  }
-
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentConfigurationType,
@@ -1076,19 +953,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       customSkillId: s.customSkillId,
       globalSkillId: s.globalSkillId,
     }));
-  }
-
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: ModelId;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("skill", {
-      id,
-      workspaceId,
-    });
   }
 
   static async listByWorkspace(
@@ -1601,19 +1465,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         fileAttachments: [],
       }
     );
-  }
-
-  canWrite(auth: Authenticator): boolean {
-    // API keys with at least builder role can write to any skill.
-    if (auth.isKey() && auth.isBuilder()) {
-      return true;
-    }
-
-    if (!this.editorGroup) {
-      return false;
-    }
-
-    return this.editorGroup.canWrite(auth);
   }
 
   async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
@@ -2420,71 +2271,5 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     if (normalized) {
       await this.update(normalized, transaction);
     }
-  }
-
-  toJSON(auth: Authenticator): SkillType {
-    const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
-      SpaceResource.modelIdToSId({
-        id: spaceId,
-        workspaceId: this.workspaceId,
-      })
-    );
-
-    // Code-defined (global) skills hide their instructions from the front-end by
-    // default; a skill opts in via `exposeInstructions` in its definition (e.g.
-    // docs/pptx/xlsx) so builders can read and build on top of it. System skills
-    // and the rest stay opaque. Custom skills always expose their own
-    // instructions. The list endpoints strip instructions/tools regardless, and
-    // the public v1 API only returns custom skills, so this only surfaces on the
-    // single-skill detail fetch.
-    const hideInstructions =
-      this.globalSId !== null && !this.exposeInstructions;
-
-    return {
-      id: this.id,
-      sId: this.sId,
-      createdAt: this.globalSId ? null : this.createdAt.getTime(),
-      updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
-      editedBy: this.globalSId ? null : this.editedBy,
-      status: this.status,
-      name: this.name,
-      agentFacingDescription: this.agentFacingDescription,
-      userFacingDescription: this.userFacingDescription,
-      instructions: hideInstructions ? null : this.instructions,
-      instructionsHtml: hideInstructions ? null : this.instructionsHtml,
-      requestedSpaceIds,
-      icon: this.icon ?? null,
-      reinforcement: this.reinforcement,
-      lastReinforcementAnalysisAt:
-        this.lastReinforcementAnalysisAt?.toISOString() ?? null,
-      selfImprovementLock: this.selfImprovementLock,
-      selfImprovementCostsCapMicroUsd: this.selfImprovementCostsCapMicroUsd,
-      selfImprovementCostsCapAwuCredits: this.selfImprovementCostsCapAwuCredits,
-      source: this.source,
-      sourceMetadata: this.sourceMetadata,
-      tools: this.mcpServerViews.map((view) => {
-        const serializedView = view.toJSON();
-        const server = serializedView.server;
-        return {
-          ...serializedView,
-          server: {
-            ...server,
-            // This object may be used in server side props so we need to make it serializable.
-            // TODO(mcp 2025-12-24): make MCPServerType serverSideProps-serializable (no undefined).
-            developerSecretSelection: server.developerSecretSelection ?? null,
-            developerSecretSelectionDescription:
-              server.developerSecretSelectionDescription ?? null,
-            sharedSecret: server.sharedSecret ?? null,
-            customHeaders: server.customHeaders ?? null,
-          },
-        };
-      }),
-      fileAttachments: this.fileAttachments.map((file) => ({
-        fileId: file.sId,
-        fileName: file.fileName,
-      })),
-      canWrite: this.canWrite(auth),
-      isDefault: this.isDefault,
-    };
   }
 }
