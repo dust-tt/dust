@@ -24,15 +24,10 @@ async function createServer(
       : null) ?? toolContext?.listToolsContext?.conversation;
   const useFileSystem = conversation?.metadata?.useFileSystem === true;
 
-  // Without a tool context (metadata extraction, server listing) expose the default toolset,
-  // otherwise the server would advertise no tools at all and `tools/list` would fail. With a tool
-  // context but no conversation (e.g. sandbox function run context), expose no tool at all.
-  if (!toolContext || conversation) {
-    for (const tool of useFileSystem ? TOOLS_WITH_FILESYSTEM : TOOLS) {
-      registerTool(auth, toolContext, server, tool, {
-        monitoringName: CONVERSATION_FILES_SERVER_NAME,
-      });
-    }
+  for (const tool of useFileSystem ? TOOLS_WITH_FILESYSTEM : TOOLS) {
+    registerTool(auth, toolContext, server, tool, {
+      monitoringName: CONVERSATION_FILES_SERVER_NAME,
+    });
   }
 
   return server;
