@@ -12,7 +12,10 @@ import {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import {
+  ensureIsAdmin,
+  ensureIsBusinessAdmin,
+} from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -99,7 +102,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureIsBusinessAdmin(),
   async (ctx): HandlerResult<GetCreditPurchaseInfoResponseBody> => {
     const auth = ctx.get("auth");
 

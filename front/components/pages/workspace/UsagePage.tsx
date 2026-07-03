@@ -239,8 +239,6 @@ export function UsagePage() {
       }),
     []
   );
-  // Admin-only Requests tab: pending member-initiated upgrade requests, resolved
-  // by approving (via the seat / spend-limit modals) or denying.
   const isWorkspaceAdmin = isAdmin(owner);
   const modelsPickerEnabled = hasFeature("models_picker") && isWorkspaceAdmin;
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
@@ -248,7 +246,6 @@ export function UsagePage() {
   );
   const { upgradeRequests, isUpgradeRequestsLoading } = useUpgradeRequests({
     workspaceId: owner.sId,
-    disabled: !isWorkspaceAdmin,
   });
 
   const filteredUpgradeRequests = useMemo(() => {
@@ -449,8 +446,7 @@ export function UsagePage() {
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
-    disabled:
-      !isWorkspaceAdmin || (!pricingGroupsEnabled && !modelsPickerEnabled),
+    disabled: !pricingGroupsEnabled && !modelsPickerEnabled,
   });
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
@@ -839,7 +835,7 @@ export function UsagePage() {
       sorting={sorting}
       setSorting={handleSetSorting}
       showGroupsColumn={pricingGroupsEnabled && groups.length > 0}
-      enableSelection={pricingGroupsEnabled && isWorkspaceAdmin && !isReadOnly}
+      enableSelection={pricingGroupsEnabled && !isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
     />
@@ -874,7 +870,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <div className="flex items-center justify-between">
           <Page.Header title="Usage" icon={PieChart01} />
-          {!isReadOnly && usageSettings.topUpEnabled && (
+          {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
             <Button
               label="Top up"
               icon={ArrowUp}
@@ -972,79 +968,70 @@ export function UsagePage() {
             {isWorkspaceAdmin && pricingGroupsEnabled && (
               <TabsTrigger value="groups" label="Groups" />
             )}
-            <TabsTrigger value="settings" label="Settings" />
+            {isWorkspaceAdmin && (
+              <TabsTrigger value="settings" label="Settings" />
+            )}
           </TabsList>
 
           <TabsContent value="members">
             <Page.Vertical gap="sm" align="stretch">
               {searchAndInviteRow}
-              {isWorkspaceAdmin ? (
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-row items-center justify-between gap-2">
-                    <ButtonsSwitchList
-                      size="xs"
-                      defaultValue="members"
-                      onValueChange={(v: string) =>
-                        setMembersTab(v === "requests" ? "requests" : "members")
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-row items-center justify-between gap-2">
+                  <ButtonsSwitchList
+                    size="xs"
+                    defaultValue="members"
+                    onValueChange={(v: string) =>
+                      setMembersTab(v === "requests" ? "requests" : "members")
+                    }
+                  >
+                    <ButtonsSwitch value="members" label="Members" />
+                    <ButtonsSwitch
+                      value="requests"
+                      label="Requests"
+                      isCounter
+                      counterValue={
+                        filteredUpgradeRequests.length > 0
+                          ? String(filteredUpgradeRequests.length)
+                          : undefined
                       }
-                    >
-                      <ButtonsSwitch value="members" label="Members" />
-                      <ButtonsSwitch
-                        value="requests"
-                        label="Requests"
-                        isCounter
-                        counterValue={
-                          filteredUpgradeRequests.length > 0
-                            ? String(filteredUpgradeRequests.length)
-                            : undefined
-                        }
-                      />
-                    </ButtonsSwitchList>
-                    {membersTab === "members" && (
-                      <div className="flex flex-row items-center gap-2">
-                        {groupsFilterDropdown}
-                        {modelsPickerEnabled && groupFilter && (
-                          <Button
-                            label="Edit group advanced models"
-                            variant="outline"
-                            size="sm"
-                            disabled={isReadOnly}
-                            onClick={handleEditGroupAdvancedModels}
-                          />
-                        )}
-                        {seatFilterDropdown}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 pt-2">
-                    {membersTab === "members" ? (
-                      <>
-                        {selectionBanner}
-                        {membersTable}
-                      </>
-                    ) : (
-                      <UpgradeRequestsTable
-                        requests={filteredUpgradeRequests}
-                        isLoading={isUpgradeRequestsLoading}
-                        seatPlans={seatPlans}
-                        pendingRequestIds={resolvingRequestIds}
-                        onUpgradePlan={handleUpgradePlanRequest}
-                        onEditLimit={handleEditLimitRequest}
-                        onDeny={handleDenyRequest}
-                      />
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {seatFilterDropdown && (
-                    <div className="flex flex-row justify-end">
+                    />
+                  </ButtonsSwitchList>
+                  {membersTab === "members" && (
+                    <div className="flex flex-row items-center gap-2">
+                      {groupsFilterDropdown}
+                      {modelsPickerEnabled && groupFilter && (
+                        <Button
+                          label="Edit group advanced models"
+                          variant="outline"
+                          size="sm"
+                          disabled={isReadOnly}
+                          onClick={handleEditGroupAdvancedModels}
+                        />
+                      )}
                       {seatFilterDropdown}
                     </div>
                   )}
-                  {membersTable}
-                </>
-              )}
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  {membersTab === "members" ? (
+                    <>
+                      {selectionBanner}
+                      {membersTable}
+                    </>
+                  ) : (
+                    <UpgradeRequestsTable
+                      requests={filteredUpgradeRequests}
+                      isLoading={isUpgradeRequestsLoading}
+                      seatPlans={seatPlans}
+                      pendingRequestIds={resolvingRequestIds}
+                      onUpgradePlan={handleUpgradePlanRequest}
+                      onEditLimit={handleEditLimitRequest}
+                      onDeny={handleDenyRequest}
+                    />
+                  )}
+                </div>
+              </div>
             </Page.Vertical>
           </TabsContent>
 
@@ -1054,37 +1041,39 @@ export function UsagePage() {
             </TabsContent>
           )}
 
-          <TabsContent value="settings">
-            <div className="flex flex-col gap-10">
-              <UsageSettingsCard
-                workspaceId={owner.sId}
-                readOnly={isReadOnly}
-                hasPool={hasPool}
-              />
-              {modelsPickerEnabled && (
-                <AdvancedModelsSettingsCard
-                  owner={owner}
-                  readOnly={isReadOnly}
-                  onEditWorkspaceAdvancedModels={
-                    handleEditWorkspaceAdvancedModels
-                  }
-                />
-              )}
-              <LockedSection
-                locked={!isAwuPoolSummaryLoading && !hasPool}
-                className="flex flex-col gap-10"
-              >
-                <UsageProgrammaticLimitCard
+          {isWorkspaceAdmin && (
+            <TabsContent value="settings">
+              <div className="flex flex-col gap-10">
+                <UsageSettingsCard
                   workspaceId={owner.sId}
                   readOnly={isReadOnly}
+                  hasPool={hasPool}
                 />
-                <UsageNotificationsCard
-                  workspaceId={owner.sId}
-                  readOnly={isReadOnly}
-                />
-              </LockedSection>
-            </div>
-          </TabsContent>
+                {modelsPickerEnabled && (
+                  <AdvancedModelsSettingsCard
+                    owner={owner}
+                    readOnly={isReadOnly}
+                    onEditWorkspaceAdvancedModels={
+                      handleEditWorkspaceAdvancedModels
+                    }
+                  />
+                )}
+                <LockedSection
+                  locked={!isAwuPoolSummaryLoading && !hasPool}
+                  className="flex flex-col gap-10"
+                >
+                  <UsageProgrammaticLimitCard
+                    workspaceId={owner.sId}
+                    readOnly={isReadOnly}
+                  />
+                  <UsageNotificationsCard
+                    workspaceId={owner.sId}
+                    readOnly={isReadOnly}
+                  />
+                </LockedSection>
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
