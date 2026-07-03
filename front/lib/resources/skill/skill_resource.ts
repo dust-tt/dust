@@ -1,10 +1,5 @@
-import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
-import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
-import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
   type SkillConfigurationModel,
@@ -30,11 +25,8 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
-import * as skillAgents from "@app/lib/resources/skill/skill_agents";
-import * as skillConversations from "@app/lib/resources/skill/skill_conversations";
 import * as skillLifecycle from "@app/lib/resources/skill/skill_lifecycle";
-import * as skillReferences from "@app/lib/resources/skill/skill_references";
-import { SkillResourceWithEditors } from "@app/lib/resources/skill/skill_resource_editors";
+import { SkillResourceWithAgents } from "@app/lib/resources/skill/skill_resource_agents";
 import * as skillUpdates from "@app/lib/resources/skill/skill_updates";
 import * as skillVersions from "@app/lib/resources/skill/skill_versions";
 import type {
@@ -51,16 +43,10 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type {
-  ConversationType,
-  ConversationWithoutContentType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
   SkillReinforcementMode,
@@ -69,7 +55,6 @@ import type {
   SkillStatus,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
-import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -137,13 +122,24 @@ export type {
  * @see GlobalSkillsRegistry for global skill definitions
  * @see SystemSkillsRegistry for always-enabled system skill definitions
  */
-export class SkillResource extends SkillResourceWithEditors {
+export class SkillResource extends SkillResourceWithAgents {
   private constructor(
     model: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     options: SkillResourceConstructorOptions
   ) {
     super(model, blob, options);
+  }
+
+  /**
+   * Bridge for the agents layer, which cannot reach the fetching statics of
+   * the final class.
+   */
+  protected async fetchSkillsByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<SkillResource[]> {
+    return SkillResource.fetchByModelIds(auth, ids);
   }
 
   /**
@@ -254,9 +250,7 @@ export class SkillResource extends SkillResourceWithEditors {
       });
 
       await skillResource.normalizeSkillReferenceTags(auth, { transaction });
-      await skillReferences.syncSkillReferences(auth, skillResource, {
-        transaction,
-      });
+      await skillResource.syncSkillReferences(auth, { transaction });
 
       return skillResource;
     });
@@ -745,29 +739,6 @@ export class SkillResource extends SkillResourceWithEditors {
     );
   }
 
-  private static skillReferenceChildId(
-    auth: Authenticator,
-    reference: Pick<
-      SkillReferenceModel,
-      "childCustomSkillId" | "childGlobalSkillId"
-    >
-  ): string | null {
-    if (reference.childGlobalSkillId !== null) {
-      return reference.childGlobalSkillId;
-    }
-
-    if (reference.childCustomSkillId !== null) {
-      const workspace = auth.getNonNullableWorkspace();
-
-      return this.modelIdToSId({
-        id: reference.childCustomSkillId,
-        workspaceId: workspace.id,
-      });
-    }
-
-    return null;
-  }
-
   async fetchChildSkills(auth: Authenticator): Promise<SkillResource[]> {
     const childSkillsMap = await SkillResource.batchFetchChildSkills(auth, [
       this,
@@ -905,48 +876,6 @@ export class SkillResource extends SkillResourceWithEditors {
         });
       })
     );
-  }
-
-  /**
-   * Returns skill references for an agent configuration.
-   * For global agents, returns references from the config's skills field.
-   * For non-global agents, queries the database.
-   * TODO(2026-01-30 agent-resource): move this to an AgentResource that would bundle the logic
-   *   about loading skills and will expose a unified interface.
-   */
-  static async getSkillReferencesForAgent(
-    auth: Authenticator,
-    agentConfiguration: AgentConfigurationType
-  ): Promise<
-    {
-      customSkillId: ModelId | null;
-      globalSkillId: string | null;
-    }[]
-  > {
-    // For global agents, skills are defined in the config, not in the database.
-    if (
-      isGlobalAgentId(agentConfiguration.sId) &&
-      "skills" in agentConfiguration
-    ) {
-      return (agentConfiguration.skills ?? []).map((globalSkillId) => ({
-        customSkillId: null,
-        globalSkillId,
-      }));
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    const agentSkills = await AgentSkillModel.findAll({
-      where: {
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    return agentSkills.map((s) => ({
-      customSkillId: s.customSkillId,
-      globalSkillId: s.globalSkillId,
-    }));
   }
 
   static async listByWorkspace(
@@ -1321,64 +1250,6 @@ export class SkillResource extends SkillResourceWithEditors {
     };
   }
 
-  async upsertToConversation(
-    auth: Authenticator,
-    {
-      conversationId,
-      enabled,
-    }: {
-      conversationId: ModelId;
-      enabled: boolean;
-    },
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, Error>> {
-    return skillConversations.upsertToConversation(
-      auth,
-      {
-        skillReference: this.skillReference,
-        conversationId,
-        enabled,
-      },
-      { transaction }
-    );
-  }
-
-  static async upsertConversationSkills(
-    auth: Authenticator,
-    {
-      conversationId,
-      skills,
-      enabled,
-    }: {
-      conversationId: ModelId;
-      skills: SkillResource[];
-      enabled: boolean;
-    },
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, Error>> {
-    return skillConversations.upsertConversationSkills(
-      auth,
-      { conversationId, skills, enabled },
-      { transaction }
-    );
-  }
-
-  static async clearAllEnabledByConversation(
-    auth: Authenticator,
-    {
-      conversation,
-    }: {
-      conversation: ConversationWithoutContentType;
-    },
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    return skillConversations.clearAllEnabledByConversation(
-      auth,
-      { conversation },
-      { transaction }
-    );
-  }
-
   private static async fromGlobalSkill(
     auth: Authenticator,
     def: SkillDefinition,
@@ -1459,141 +1330,6 @@ export class SkillResource extends SkillResourceWithEditors {
         fileAttachments: [],
       }
     );
-  }
-
-  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
-    return skillAgents.fetchUsage(auth, this.skillReference);
-  }
-
-  private async updateActiveAgentsRequirements(
-    auth: Authenticator,
-    {
-      previousRequestedSpaceIds,
-      newRequestedSpaceIds = this.requestedSpaceIds,
-    }: {
-      // The spaces the skill previously contributed before the change
-      previousRequestedSpaceIds: ModelId[];
-      // The spaces the skill contributes after the change. Defaults to the
-      // skill's current `requestedSpaceIds`, but callers can override it (e.g.
-      // archiving treats the skill as contributing no spaces).
-      newRequestedSpaceIds?: ModelId[];
-    },
-    { transaction }: { transaction?: Transaction }
-  ): Promise<void> {
-    if (
-      previousRequestedSpaceIds.length === newRequestedSpaceIds.length &&
-      hasAll(previousRequestedSpaceIds, newRequestedSpaceIds)
-    ) {
-      // Requested spaces didn't change, skip.
-      return;
-    }
-
-    const agents = await skillAgents.listActiveAgents(
-      auth,
-      this.skillReference
-    );
-
-    if (agents.length === 0) {
-      // No agents are using this skill, skip.
-      return;
-    }
-
-    const spaceIdsRemovedFromThisSkill = previousRequestedSpaceIds.filter(
-      (spaceId) => !newRequestedSpaceIds.includes(spaceId)
-    );
-
-    const workspace = auth.getNonNullableWorkspace();
-    const agentIds = agents.map((a) => a.id);
-
-    let actionsByAgentModelId = new Map<
-      ModelId,
-      MCPServerConfigurationType[]
-    >();
-    let skillByAgentModelId = new Map<ModelId, SkillResource[]>();
-
-    if (spaceIdsRemovedFromThisSkill.length > 0) {
-      actionsByAgentModelId = await fetchMCPServerActionConfigurations(auth, {
-        configurationIds: agentIds,
-        variant: "full",
-      });
-
-      const agentSkillModels = await AgentSkillModel.findAll({
-        where: {
-          agentConfigurationId: { [Op.in]: agentIds },
-          workspaceId: workspace.id,
-        },
-      });
-
-      // We only need to consider custom skills, as global skill have no effect on space requirements.
-      const customSkills = await SkillResource.fetchByModelIds(
-        auth,
-        removeNulls(agentSkillModels.map((skill) => skill.customSkillId))
-      );
-
-      const skillByModelId = new Map<ModelId, SkillResource>(
-        customSkills.map((skill) => [skill.id, skill])
-      );
-      for (const agentSkill of agentSkillModels) {
-        if (!agentSkill.customSkillId) {
-          continue;
-        }
-        const skill = skillByModelId.get(agentSkill.customSkillId);
-        if (!skill) {
-          continue;
-        }
-        const list =
-          skillByAgentModelId.get(agentSkill.agentConfigurationId) ?? [];
-        list.push(skill);
-        skillByAgentModelId.set(agentSkill.agentConfigurationId, list);
-      }
-    }
-
-    for (const agent of agents) {
-      const spaceIdsToRemoveFromAgent = new Set<ModelId>();
-
-      // Some spaces were removed from the skill: we must check if they need to be
-      // removed from the agent. In order to achieve this, we check if the agent has
-      // any other capabilities that require the removed spaces.
-      if (spaceIdsRemovedFromThisSkill.length > 0) {
-        const actions = actionsByAgentModelId.get(agent.id) ?? [];
-        const otherAgentSkills = (
-          skillByAgentModelId.get(agent.id) ?? []
-        ).filter((skill) => skill.sId !== this.sId);
-
-        const agentOtherCapabilitiesRequirements =
-          await getAgentConfigurationRequirementsFromCapabilities(auth, {
-            actions,
-            skills: otherAgentSkills,
-          });
-
-        const otherCapabilitiesRequestedSpaceIds = new Set(
-          agentOtherCapabilitiesRequirements.requestedSpaceIds
-        );
-
-        for (const spaceId of spaceIdsRemovedFromThisSkill) {
-          if (!otherCapabilitiesRequestedSpaceIds.has(spaceId)) {
-            // This space is not required by any other capabilities of the agent, so
-            // we must remove it from the config.
-            spaceIdsToRemoveFromAgent.add(spaceId);
-          }
-        }
-      }
-
-      const newSpaceIds = uniq(
-        agent.requestedSpaceIds
-          .filter((id) => !spaceIdsToRemoveFromAgent.has(id))
-          .concat(newRequestedSpaceIds)
-      );
-
-      await updateAgentRequirements(
-        auth,
-        {
-          agentModelId: agent.id,
-          newSpaceIds,
-        },
-        { transaction }
-      );
-    }
   }
 
   async listVersions(
@@ -1689,20 +1425,6 @@ export class SkillResource extends SkillResourceWithEditors {
       assert(skillVersions.isSkillResourceWithVersion(skill));
       return skill;
     });
-  }
-
-  /**
-   * Batch fetch usage (agents using each skill) for multiple skills.
-   * Keyed by skill sId to avoid collisions (global skills share id: -1).
-   */
-  static async batchFetchUsage(
-    auth: Authenticator,
-    skills: SkillResource[]
-  ): Promise<Map<string, AgentsUsageType>> {
-    return skillAgents.batchFetchUsage(
-      auth,
-      skills.map((skill) => ({ skill, reference: skill.skillReference }))
-    );
   }
 
   /**
@@ -1828,9 +1550,8 @@ export class SkillResource extends SkillResourceWithEditors {
           { transaction }
         );
 
-        await skillReferences.propagateReferenceUpdatesToParentSkills(
+        await this.propagateReferenceUpdatesToParentSkills(
           auth,
-          this,
           {
             icon: this.icon,
             name: this.name,
@@ -1870,9 +1591,8 @@ export class SkillResource extends SkillResourceWithEditors {
           { transaction }
         );
 
-        await skillReferences.propagateReferenceUpdatesToParentSkills(
+        await this.propagateReferenceUpdatesToParentSkills(
           auth,
-          this,
           {
             icon: this.icon,
             name: this.name,
@@ -1972,7 +1692,7 @@ export class SkillResource extends SkillResourceWithEditors {
       );
 
       await this.normalizeSkillReferenceTags(auth, { transaction });
-      await skillReferences.syncSkillReferences(auth, this, { transaction });
+      await this.syncSkillReferences(auth, { transaction });
 
       if (
         name !== previousName ||
@@ -1980,9 +1700,8 @@ export class SkillResource extends SkillResourceWithEditors {
         requestedSpaceIdsChanged ||
         statusChanged
       ) {
-        await skillReferences.propagateReferenceUpdatesToParentSkills(
+        await this.propagateReferenceUpdatesToParentSkills(
           auth,
-          this,
           {
             icon,
             name,
@@ -2095,68 +1814,6 @@ export class SkillResource extends SkillResourceWithEditors {
     return skillLifecycle.deleteSkill(auth, this);
   }
 
-  async addToAgent(
-    auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
-  ): Promise<void> {
-    return skillAgents.addToAgent(auth, {
-      skillReference: this.skillReference,
-      agentConfiguration,
-    });
-  }
-
-  static async addManyToAgent(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      skills,
-    }: {
-      agentConfiguration: LightAgentConfigurationType;
-      skills: SkillResource[];
-    }
-  ): Promise<void> {
-    return skillAgents.addManyToAgent(auth, {
-      agentConfiguration,
-      skillReferences: skills.map((skill) => skill.skillReference),
-    });
-  }
-
-  async enableForAgent(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      conversation,
-    }: {
-      agentConfiguration: AgentConfigurationType;
-      conversation: ConversationType;
-    }
-  ): Promise<{ wasAlreadyEnabled: boolean }> {
-    return skillConversations.enableForAgent(auth, {
-      skillReference: this.skillReference,
-      agentConfiguration,
-      conversation,
-    });
-  }
-
-  static async snapshotConversationSkillsForMessage(
-    auth: Authenticator,
-    {
-      agentConfigurationId,
-      agentMessageId,
-      conversationId,
-    }: {
-      agentConfigurationId: string;
-      agentMessageId: ModelId;
-      conversationId: ModelId;
-    }
-  ): Promise<void> {
-    return skillConversations.snapshotConversationSkillsForMessage(auth, {
-      agentConfigurationId,
-      agentMessageId,
-      conversationId,
-    });
-  }
-
   static async listByAgentMessageId(
     auth: Authenticator,
     agentMessageId: ModelId
@@ -2197,38 +1854,7 @@ export class SkillResource extends SkillResourceWithEditors {
     });
   }
 
-  static async listAgentMessageSkillsByCustomSkills(
-    auth: Authenticator,
-    customSkills: SkillResource[]
-  ): Promise<
-    {
-      skill: SkillResource;
-      conversationModelId: ModelId;
-      agentConfigurationId: string | null;
-      createdAt: Date;
-    }[]
-  > {
-    return skillConversations.listAgentMessageSkillsByCustomSkills(
-      auth,
-      customSkills
-    );
-  }
-
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     return skillLifecycle.deleteAllForWorkspace(auth);
-  }
-
-  private async normalizeSkillReferenceTags(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    const normalized =
-      await skillReferences.computeNormalizedSkillReferenceTags(auth, this, {
-        transaction,
-      });
-
-    if (normalized) {
-      await this.update(normalized, transaction);
-    }
   }
 }
