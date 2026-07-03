@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { COMMON_UTILITIES_TOOLS_METADATA } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { Err, Ok } from "@app/types/shared/result";
@@ -97,8 +98,9 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
 
   set_conversation_title: async ({ title }, { auth, toolContext }) => {
     const conversation =
-      toolContext?.runContext?.conversation ??
-      toolContext?.listToolsContext?.conversation;
+      (isAgentLoopRunContext(toolContext?.runContext)
+        ? toolContext.runContext.conversation
+        : null) ?? toolContext?.listToolsContext?.conversation;
 
     if (!conversation) {
       return new Err(
