@@ -428,8 +428,10 @@ export function SubscriptionPage() {
     !pendingMigrationDate &&
     subscription.endDate !== null &&
     new Date(subscription.endDate).getTime() > Date.now();
-  // A yearly sub cut short (ends before its paid period end) is refunded the
-  // remaining days.
+  // A yearly sub is refunded the remaining days when it ends before its
+  // theoretical one-year end — i.e. `endDate` is earlier than the paid-through
+  // date (Stripe `current_period_end`, which the scheduled cancellation does
+  // not change).
   const willBeRefundedOnEnd =
     perSeatPricing?.billingPeriod === "yearly" &&
     subscription.endDate !== null &&
