@@ -179,11 +179,20 @@ async function toolResultToParam(
 
 async function functionMessage(
   message: FunctionMessageTypeModel,
-  { convertToBase64 }: { convertToBase64: boolean }
+  { isLast, convertToBase64 }: { isLast: boolean; convertToBase64: boolean }
 ): Promise<MessageParam> {
+  const toolResult = await toolResultToParam(message, { convertToBase64 });
+
+  // On Vertex the trailing breakpoint must be explicit (isLast is only set
+  // there), and tool loops end every iteration on a tool result. Without this
+  // marker the conversation tail is reprocessed uncached on each iteration.
   return {
     role: "user",
-    content: [await toolResultToParam(message, { convertToBase64 })],
+    content: [
+      isLast
+        ? { ...toolResult, cache_control: { type: "ephemeral" } }
+        : toolResult,
+    ],
   };
 }
 
@@ -265,6 +274,7 @@ export async function toMessage(
       });
     case "function":
       return functionMessage(message, {
+        isLast,
         convertToBase64: convertToBase64 ?? false,
       });
     case "assistant":

@@ -5,7 +5,7 @@ import {
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { describe, expect, it } from "vitest";
 
-import { toTool, toToolsParam } from "./conversation_to_anthropic";
+import { toMessage, toTool, toToolsParam } from "./conversation_to_anthropic";
 
 const TOOL_SEARCH_TYPE = TOOL_SEARCH_TOOL.type;
 
@@ -29,6 +29,37 @@ const baseSpec: AgentActionSpecification = {
   description: "Does a thing.",
   inputSchema: { type: "object", properties: {} },
 };
+
+describe("toMessage — cache breakpoints", () => {
+  const toolResultMessage = {
+    role: "function" as const,
+    name: "some_tool",
+    function_call_id: "call_1",
+    content: "ok",
+  };
+
+  it("marks the trailing tool result when isLast is set", async () => {
+    const result = await toMessage(toolResultMessage, {
+      isFirst: false,
+      isLast: true,
+      omittedThinking: false,
+    });
+
+    expect(result.role).toBe("user");
+    const [block] = result.content as { cache_control?: unknown }[];
+    expect(block.cache_control).toEqual({ type: "ephemeral" });
+  });
+
+  it("does not mark a tool result when isLast is not set", async () => {
+    const result = await toMessage(toolResultMessage, {
+      isFirst: false,
+      omittedThinking: false,
+    });
+
+    const [block] = result.content as { cache_control?: unknown }[];
+    expect(block.cache_control).toBeUndefined();
+  });
+});
 
 describe("toTool", () => {
   it("defers a non-eager tool when tool search is enabled", () => {
