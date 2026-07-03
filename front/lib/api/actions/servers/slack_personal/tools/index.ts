@@ -7,7 +7,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
   executeArchiveChannel,
@@ -266,7 +269,7 @@ function formatDateForSlackQuery(date: Date): string {
 // Helper function to build search results from matches.
 function buildSearchResults<T>(
   matches: T[],
-  refs: string[],
+  refs: string[] | null,
   extractors: {
     permalink: (match: T) => string | undefined;
     text: (match: T) => string;
@@ -282,7 +285,7 @@ function buildSearchResults<T>(
       id: extractors.id(match),
       source: { provider: "slack" },
       tags: [],
-      ref: refs[index] ?? "",
+      ref: refs ? (refs[index] ?? "") : "",
       chunks: [stripNullBytes(extractors.content(match))],
     })
   );
@@ -446,12 +449,15 @@ export function createSlackPersonalTools(
           ]);
         }
 
-        const { citationsOffset } = toolContext.runContext.stepContext;
+        let refs: string[] | null = null;
+        if (isAgentLoopRunContext(toolContext.runContext)) {
+          const { citationsOffset } = toolContext.runContext.stepContext;
 
-        const refs = getRefs().slice(
-          citationsOffset,
-          citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
-        );
+          refs = getRefs().slice(
+            citationsOffset,
+            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+          );
+        }
 
         const searchResults = buildSearchResults<SlackSearchMatch>(
           matches,
@@ -522,12 +528,15 @@ export function createSlackPersonalTools(
           ]);
         }
 
-        const { citationsOffset } = toolContext.runContext.stepContext;
+        let refs: string[] | null = null;
+        if (isAgentLoopRunContext(toolContext.runContext)) {
+          const { citationsOffset } = toolContext.runContext.stepContext;
 
-        const refs = getRefs().slice(
-          citationsOffset,
-          citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
-        );
+          refs = getRefs().slice(
+            citationsOffset,
+            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+          );
+        }
 
         const searchResults = buildSearchResults<SlackSearchMatch>(
           matches,
@@ -803,12 +812,15 @@ export function createSlackPersonalTools(
         accessToken,
       });
 
-      const { citationsOffset } = toolContext.runContext.stepContext;
+      let refs: string[] | null = null;
+      if (isAgentLoopRunContext(toolContext.runContext)) {
+        const { citationsOffset } = toolContext.runContext.stepContext;
 
-      const refs = getRefs().slice(
-        citationsOffset,
-        citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
-      );
+        refs = getRefs().slice(
+          citationsOffset,
+          citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+        );
+      }
 
       // Resolve user display names for all thread authors.
       const threadsWithAuthors = await Promise.all(
