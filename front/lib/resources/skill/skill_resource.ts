@@ -36,6 +36,7 @@ import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shar
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import * as skillEditors from "@app/lib/resources/skill/skill_editors";
 import * as skillReferences from "@app/lib/resources/skill/skill_references";
+import * as skillVersions from "@app/lib/resources/skill/skill_versions";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -117,14 +118,6 @@ type SkillResourceConstructorOptions =
       version?: number;
     };
 
-type SkillVersionCreationAttributes =
-  CreationAttributes<SkillConfigurationModel> & {
-    skillConfigurationId: ModelId;
-    version: number;
-    mcpServerViewIds: ModelId[];
-    fileAttachmentIds: ModelId[];
-  };
-
 type ConversationSkillCreationAttributes =
   CreationAttributes<ConversationSkillModel> &
     (
@@ -137,12 +130,6 @@ type ConversationSkillCreationAttributes =
           agentConfigurationId: string;
         }
     );
-
-function isSkillResourceWithVersion(
-  skill: SkillResource
-): skill is SkillResource & { version: number } {
-  return skill.version !== null;
-}
 
 export interface SkillAttachedKnowledge {
   dataSourceView: DataSourceViewResource;
@@ -1987,7 +1974,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           version: versionModel.version,
         }
       );
-      assert(isSkillResourceWithVersion(skill));
+      assert(skillVersions.isSkillResourceWithVersion(skill));
       return skill;
     });
   }
@@ -2363,7 +2350,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     await withTransaction(async (transaction) => {
       // Save the current version before updating.
-      await this.saveVersion(auth, { transaction });
+      await skillVersions.saveVersion(auth, this, { transaction });
 
       // Snapshot the previous requested space IDs before updating.
       const previousRequestedSpaceIds = [...this.requestedSpaceIds];
@@ -3201,76 +3188,5 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       canWrite: this.canWrite(auth),
       isDefault: this.isDefault,
     };
-  }
-
-  private async saveVersion(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Fetch current MCP server configuration IDs for this skill.
-    const mcpServerConfigurations =
-      await SkillMCPServerConfigurationModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          skillConfigurationId: this.id,
-        },
-        transaction,
-      });
-
-    const mcpServerViewIds = mcpServerConfigurations.map(
-      (config) => config.mcpServerViewId
-    );
-
-    // Fetch current file attachment IDs for this skill.
-    const fileAttachments = await SkillFileAttachmentModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        skillConfigurationId: this.id,
-      },
-      transaction,
-    });
-
-    const fileAttachmentIds = fileAttachments.map((a) => a.fileId);
-
-    // Calculate the next version number by counting existing versions.
-    const where: WhereOptions<SkillVersionModel> = {
-      workspaceId: this.workspaceId,
-      skillConfigurationId: this.id,
-    };
-
-    const existingVersionsCount = await SkillVersionModel.count({
-      where,
-      transaction,
-    });
-
-    const versionNumber = existingVersionsCount + 1;
-
-    // Create a new version entry with the current state.
-    const versionData: SkillVersionCreationAttributes = {
-      workspaceId: this.workspaceId,
-      skillConfigurationId: this.id,
-      version: versionNumber,
-      status: this.status,
-      name: this.name,
-      agentFacingDescription: this.agentFacingDescription,
-      userFacingDescription: this.userFacingDescription,
-      instructions: this.instructions,
-      instructionsHtml: this.instructionsHtml,
-      requestedSpaceIds: this.requestedSpaceIds,
-      editedBy: this.editedBy,
-      mcpServerViewIds,
-      fileAttachmentIds,
-      source: this.source,
-      sourceMetadata: this.sourceMetadata,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      isDefault: this.isDefault,
-    };
-
-    await SkillVersionModel.create(versionData, {
-      transaction,
-    });
   }
 }
