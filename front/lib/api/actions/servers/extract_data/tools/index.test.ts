@@ -1,5 +1,5 @@
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ToolContextType } from "@app/lib/actions/types";
 import {
   generateProcessToolOutput,
   getCoreDataSourceSearchCriterias,
@@ -39,7 +39,7 @@ const CONFIGURED_TIME_FRAME = {
   unit: "day" as const,
 };
 
-function makeRunContext(): AgentLoopContextType {
+function makeRunContext(): ToolContextType {
   const toolConfiguration: LightServerSideMCPToolConfigurationType = {
     id: -1,
     sId: "tool-configuration-id",
@@ -76,7 +76,7 @@ function makeRunContext(): AgentLoopContextType {
       conversation: {},
       toolConfiguration,
     },
-  } as unknown as AgentLoopContextType;
+  } as unknown as ToolContextType;
 }
 
 describe("createExtractDataTools", () => {
@@ -123,8 +123,8 @@ describe("createExtractDataTools", () => {
 
   it("returns a tool error when a stringified JSON schema is not an object", async () => {
     const auth = {} as Authenticator;
-    const agentLoopContext = makeRunContext();
-    const tools = createExtractDataTools(auth, agentLoopContext);
+    const toolContext = makeRunContext();
+    const tools = createExtractDataTools(auth, toolContext);
     const tool = tools.find((t) => t.name === EXTRACT_DATA_MAIN_TOOL_NAME);
 
     expect(tool).toBeDefined();
@@ -140,8 +140,8 @@ describe("createExtractDataTools", () => {
       },
       {
         auth,
-        agentLoopContext,
-      } as Parameters<typeof tool.handler>[1]
+        toolContext,
+      } as unknown as Parameters<typeof tool.handler>[1]
     );
 
     expect(result.isErr()).toBe(true);
@@ -156,8 +156,8 @@ describe("createExtractDataTools", () => {
 
   it("strips configured-input metadata before validating and processing", async () => {
     const auth = {} as Authenticator;
-    const agentLoopContext = makeRunContext();
-    const tools = createExtractDataTools(auth, agentLoopContext);
+    const toolContext = makeRunContext();
+    const tools = createExtractDataTools(auth, toolContext);
     const tool = tools.find((t) => t.name === EXTRACT_DATA_MAIN_TOOL_NAME);
 
     expect(tool).toBeDefined();
@@ -180,8 +180,8 @@ describe("createExtractDataTools", () => {
       },
       {
         auth,
-        agentLoopContext,
-      } as Parameters<typeof tool.handler>[1]
+        toolContext,
+      } as unknown as Parameters<typeof tool.handler>[1]
     );
 
     expect(result.isOk()).toBe(true);
