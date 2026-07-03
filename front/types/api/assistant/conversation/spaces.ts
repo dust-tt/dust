@@ -1,8 +1,5 @@
 // Shared contract types for the assistant conversation "spaces" API endpoints.
-import type {
-  ConversationWithoutContentType,
-  LightConversationType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { PodListItemType } from "@app/types/space";
 
 export type GetBySpacesSummaryResponseBody = {
@@ -13,8 +10,29 @@ export type GetBySpacesSummaryResponseBody = {
   }>;
 };
 
+export type PodConversationListItemType = {
+  id: string;
+  title: string;
+  created: number;
+  updated: number;
+  replyCount: number;
+  unreadMessageCount: number;
+  isRunningAgentLoop: boolean;
+  description: string;
+  creator: {
+    name: string;
+    visual: string;
+    isRounded: boolean;
+  } | null;
+  avatars: {
+    name: string;
+    visual: string;
+    isRounded: boolean;
+  }[];
+};
+
 export type GetSpaceConversationsResponseBody = {
-  conversations: LightConversationType[];
+  conversations: PodConversationListItemType[];
   hasMore: boolean;
   lastValue: string | null;
   isEmpty: boolean;

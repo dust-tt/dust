@@ -16,11 +16,9 @@ import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
 import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
-import type {
-  ConversationWithoutContentType,
-  LightConversationType,
-} from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
@@ -58,7 +56,7 @@ type GroupLabel =
 interface PodConversationsTabProps {
   owner: WorkspaceType;
   user: UserType;
-  conversations: LightConversationType[];
+  conversations: PodConversationListItemType[];
   isConversationsLoading: boolean;
   hasMore: boolean;
   loadMore: () => void;
@@ -151,13 +149,13 @@ export function PodConversationsTab({
     initialSearchText: "",
   });
 
-  const conversationsByDate: Record<GroupLabel, LightConversationType[]> =
+  const conversationsByDate: Record<GroupLabel, PodConversationListItemType[]> =
     useMemo(() => {
       return conversations.length
         ? (getGroupConversationsByDate({
             conversations,
             titleFilter: "",
-          }) as Record<GroupLabel, LightConversationType[]>)
+          }) as Record<GroupLabel, PodConversationListItemType[]>)
         : ({} as Record<GroupLabel, typeof conversations>);
     }, [conversations]);
 
@@ -379,7 +377,7 @@ export function PodConversationsTab({
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (
                                 <PodConversationListItem
-                                  key={conversation.sId}
+                                  key={conversation.id}
                                   conversation={conversation}
                                   owner={owner}
                                 />

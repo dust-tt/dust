@@ -1,26 +1,13 @@
-import { isHiddenMessage } from "@app/components/assistant/conversation/types";
-import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import {
-  getConversationDisplayTitle,
-  isCompactionMessageType,
-  isLightAgentMessageType,
-  isUserMessageTypeWithContentFragments,
-  isVisibleMessage,
-  type LightConversationType,
-} from "@app/types/assistant/conversation";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { WorkspaceType } from "@app/types/user";
-import type { Avatar } from "@dust-tt/sparkle";
 import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
-import uniqBy from "lodash/uniqBy";
 import moment from "moment";
-import { useMemo } from "react";
 
 interface PodConversationListItemProps {
-  conversation: LightConversationType;
+  conversation: PodConversationListItemType;
   owner: WorkspaceType;
 }
 
@@ -29,115 +16,38 @@ export function PodConversationListItem({
   owner,
 }: PodConversationListItemProps) {
   const router = useAppRouter();
-
-  const validMessages = conversation.content.filter((message) => {
-    if (isCompactionMessageType(message)) {
-      return false;
-    }
-    return (
-      (isUserMessageTypeWithContentFragments(message) &&
-        message.visibility === "visible" &&
-        !isHiddenMessage(message)) ||
-      (!isUserMessageTypeWithContentFragments(message) &&
-        message.status === "succeeded")
-    );
-  });
-
-  const firstVisibleMessage = conversation.content.find(isVisibleMessage);
-
-  // Compute the reply section avatars.
-  const avatars = useMemo(() => {
-    const avatars: Parameters<typeof Avatar.Stack>[0]["avatars"] = [];
-    // Lookup the messages in reverse order and collect the users and agents icons
-    // Slice to skip the first message as it's not a reply.
-    for (const message of validMessages.slice(1)) {
-      if (isUserMessageTypeWithContentFragments(message)) {
-        avatars.push({
-          isRounded: true,
-          name: message.user?.fullName ?? message.context?.fullName ?? "",
-          visual:
-            message.user?.image ?? message.context?.profilePictureUrl ?? "",
-        });
-      } else if (isCompactionMessageType(message)) {
-        // Nothing to do unless we want to show that the conversation was compacted.
-      } else if (isLightAgentMessageType(message)) {
-        avatars.push({
-          isRounded: false,
-          name: "@" + (message.configuration.name ?? ""),
-          visual: message.configuration.pictureUrl ?? "",
-        });
-      } else {
-        assertNeverAndIgnore(message);
-      }
-    }
-    return uniqBy(avatars.reverse(), "visual");
-  }, [validMessages]);
-
-  const countUnreadMessages = useMemo(() => {
-    return validMessages.filter((message) => {
-      return isMessageUnread(message, conversation.lastReadMs);
-    }).length;
-  }, [validMessages, conversation.lastReadMs]);
-
-  if (!firstVisibleMessage || isCompactionMessageType(firstVisibleMessage)) {
-    return null;
-  }
-
-  const conversationLabel = getConversationDisplayTitle(conversation);
-
   const time = moment(conversation.updated).fromNow();
-
-  const replyCount = validMessages.length - 1;
-
-  let creatorName = "Unknown";
-  let creatorVisual: string | undefined;
-
-  if (isUserMessageTypeWithContentFragments(firstVisibleMessage)) {
-    creatorName =
-      firstVisibleMessage.user?.fullName ??
-      firstVisibleMessage.context?.fullName ??
-      "Unknown";
-    creatorVisual =
-      firstVisibleMessage.user?.image ??
-      firstVisibleMessage.context?.profilePictureUrl ??
-      undefined;
-  } else if (isLightAgentMessageType(firstVisibleMessage)) {
-    creatorName = `@${firstVisibleMessage.configuration.name}`;
-    creatorVisual = firstVisibleMessage.configuration.pictureUrl || undefined;
-  } else {
-    assertNeverAndIgnore(firstVisibleMessage);
-  }
 
   return (
     <>
       <ConversationListItem
         className="border-t-0 border-b-0"
-        key={conversation.sId}
+        key={conversation.id}
         textAnimation={conversation.isRunningAgentLoop ? "streaming" : "none"}
         conversation={{
-          id: conversation.sId,
-          title: conversationLabel,
-          description: stripMarkdown(firstVisibleMessage.content ?? ""),
+          id: conversation.id,
+          title: conversation.title,
+          description: stripMarkdown(conversation.description ?? ""),
           updatedAt: new Date(conversation.updated),
         }}
         creator={{
-          fullName: creatorName,
-          portrait: creatorVisual,
+          fullName: conversation.creator?.name ?? "",
+          portrait: conversation.creator?.visual ?? "",
         }}
         time={time}
         replySection={
-          replyCount || countUnreadMessages ? (
+          conversation.replyCount || conversation.unreadMessageCount ? (
             <ReplySection
-              replyCount={replyCount}
-              unreadCount={countUnreadMessages}
-              avatars={avatars}
-              lastMessageBy={avatars[0]?.name ?? "Unknown"}
+              replyCount={conversation.replyCount}
+              unreadCount={conversation.unreadMessageCount}
+              avatars={conversation.avatars}
+              lastMessageBy={conversation.avatars[0]?.name ?? "Unknown"}
             />
           ) : null
         }
         onClick={async () => {
           await router.push(
-            getConversationRoute(owner.sId, conversation.sId),
+            getConversationRoute(owner.sId, conversation.id),
             undefined,
             { shallow: true }
           );
