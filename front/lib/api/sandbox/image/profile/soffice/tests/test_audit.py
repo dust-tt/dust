@@ -9,7 +9,7 @@ Run directly (`python test_audit.py`) or under pytest.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "soffice"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pptx import Presentation  # noqa: E402
 from pptx.util import Inches  # noqa: E402
