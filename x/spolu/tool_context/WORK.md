@@ -68,16 +68,15 @@ to dynamically express that a server is not usable.
 ### TODOs:
 
 - [x] run_tool/mcp_execution: introduce pod tool_outputs (action_output_fs, persistToolOutput)
-- [ ] make runToolWithStreaming conversation-free
+- [x] make runToolWithStreaming conversation-free
 - [ ] data_warehouse: flow to tool_outputs if in sandbox function
 - [ ] image_generation: flow to tool_outputs if in sandbox function
 - [ ] query_tables_v2: flow to tool_outputs if in sandbox function
-- [ ] interactive_content: allow converstaion less create and publish (big one, flavien has context)
+- [ ] interactive_content: allow conversation-less create and publish (big one, flavien has context)
 - [ ] pod_manager: filter add_message_to_conversation tool when in sandbox function 
 - [ ] timezone on invocation for:
       - google_calendar
       - pod_manager/create_conversation
-- [ ] runToolWithStreaming is highly conversation centric, maybe dsbx does not use it.
 
 ### files server
 
