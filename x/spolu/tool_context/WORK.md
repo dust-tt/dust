@@ -53,7 +53,7 @@
 [+]     3  front/lib/api/actions/servers/slack_personal/tools/index.ts:449
 [+]     2  front/lib/api/actions/servers/snowflake/tools/index.ts:42
 [-]     4  front/lib/api/actions/servers/toolsets/tools/index.ts:25
-[ ]     1  front/lib/api/actions/servers/user_mentions/tools/index.ts:44
+[+]     1  front/lib/api/actions/servers/user_mentions/tools/index.ts:44
 [ ]     5  front/lib/api/actions/servers/wakeups/tools/index.ts:92
 [ ]     4  front/lib/api/actions/servers/web_search_browse/tools/index.ts:59
 [ ]     1  front/lib/api/mcp/run_tool.ts:91
