@@ -1,6 +1,7 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { FilterOperatorEnum } from "@hubspot/api-client/lib/codegen/crm/contacts";
+import { AssociationSpecAssociationCategoryEnum } from "@hubspot/api-client/lib/codegen/crm/objects/models/AssociationSpec";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -331,6 +332,25 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Listing HubSpot associations",
       done: "List HubSpot associations",
+    },
+  },
+  list_association_labels: {
+    description:
+      "List the available association labels between two HubSpot object types " +
+      "(e.g., the 'Parent Company'/'Child Company' labels between companies). " +
+      "Returns each label's category and typeId, to be passed to create_association.",
+    schema: {
+      fromObjectType: z
+        .enum(["contacts", "companies", "deals"])
+        .describe("The type of the source object"),
+      toObjectType: z
+        .enum(["contacts", "companies", "deals"])
+        .describe("The type of the target object"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing HubSpot association labels",
+      done: "List HubSpot association labels",
     },
   },
   get_current_user_id: {
@@ -708,7 +728,9 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   create_association: {
     description:
-      "Create an association between two existing HubSpot objects (e.g., associate a contact with a company).",
+      "Create an association between two existing HubSpot objects (e.g., associate a contact with a company). " +
+      "To create a labeled association (e.g., set a company as the parent/child of another), first call " +
+      "list_association_labels to get the label's category and typeId, then pass them here.",
     schema: {
       fromObjectType: z
         .enum(["contacts", "companies", "deals"])
@@ -718,6 +740,18 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
         .enum(["contacts", "companies", "deals"])
         .describe("The type of the target object"),
       toObjectId: z.string().describe("The ID of the target object"),
+      associationCategory: z
+        .nativeEnum(AssociationSpecAssociationCategoryEnum)
+        .optional()
+        .describe(
+          "Optional association category for a labeled association, from list_association_labels. Defaults to HUBSPOT_DEFINED."
+        ),
+      associationTypeId: z
+        .number()
+        .optional()
+        .describe(
+          "Optional association type id for a labeled association, from list_association_labels. Defaults to the primary unlabeled association."
+        ),
     },
     stake: "high",
     displayLabels: {

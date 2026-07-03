@@ -28,6 +28,7 @@ import {
   getObjectProperties,
   getUserActivity,
   getUserDetails,
+  listAssociationLabels,
   listAssociations,
   listEmailCampaigns,
   listEmailEvents,
@@ -488,6 +489,23 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  list_association_labels: async ({ fromObjectType, toObjectType }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await listAssociationLabels({
+        accessToken,
+        fromObjectType,
+        toObjectType,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Association labels retrieved successfully between ${fromObjectType} and ${toObjectType}`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
   get_current_user_id: async (_params, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getCurrentUserId(accessToken);
@@ -791,7 +809,14 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
   },
 
   create_association: async (
-    { fromObjectType, fromObjectId, toObjectType, toObjectId },
+    {
+      fromObjectType,
+      fromObjectId,
+      toObjectType,
+      toObjectId,
+      associationCategory,
+      associationTypeId,
+    },
     extra
   ) => {
     return withAuth(extra, async (accessToken) => {
@@ -801,6 +826,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         fromObjectId,
         toObjectType,
         toObjectId,
+        associationCategory,
+        associationTypeId,
       });
       return new Ok([
         {
