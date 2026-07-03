@@ -385,8 +385,9 @@ export async function migrateWorkspaceToBusiness(
   // `pro_yearly` for a yearly one.
   const promoteNoneSeatsTo = billingPeriod === "yearly" ? "pro_yearly" : "pro";
 
-  // Yearly subs are cut over mid-year at the migration date; track the unused
-  // prepaid time (refund mechanism TBD — computed + logged only).
+  // Yearly subs are cut over mid-year at the migration date; the unused prepaid
+  // time is refunded when the Stripe sub ends (see the refund marker below and
+  // the `subscription.deleted` webhook). Tracked here for logging.
   const remainingProrationDays =
     billingPeriod === "yearly"
       ? remainingPrepaidDays(currentPeriodEndMs, migrationDate)
@@ -547,7 +548,7 @@ export async function migrateWorkspaceToBusiness(
       billingPeriod,
       metronomeContractId: result.value.metronomeContractId,
       migrationDate: migrationDate.toISOString(),
-      // For yearly: prepaid days cut off at the migration date (refund TBD).
+      // For yearly: prepaid days cut off at the migration date, refunded on end.
       remainingProrationDays,
     },
     "[migrate-business] Staged pending Business contract for the migration date"

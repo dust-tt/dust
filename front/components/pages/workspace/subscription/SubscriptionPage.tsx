@@ -381,18 +381,11 @@ export function SubscriptionPage() {
       }
     });
 
-  if (isMetronome) {
-    return null;
-  }
-
   const plan = subscription.plan;
   const isWorkspaceOnProPlan = isProPlan(plan);
-  const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
-  const canUpsellToBusinessPlan =
-    isWorkspaceOnProPlan &&
-    isWorkspaceWhitelistedBusinessPlan &&
-    !isMetronomeCheckout;
 
+  // Hooks must run unconditionally (before any early return): the migration
+  // fetch is gated via `disabled`, not by skipping the hook.
   const { pendingMigrationDate, willBeRefundedOnEnd, mutateMigration } =
     useWorkspaceMigration({
       workspaceId: owner.sId,
@@ -403,6 +396,16 @@ export function SubscriptionPage() {
   const { resumeMigration, isResumingMigration } = useResumeWorkspaceMigration({
     workspaceId: owner.sId,
   });
+
+  if (isMetronome) {
+    return null;
+  }
+
+  const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
+  const canUpsellToBusinessPlan =
+    isWorkspaceOnProPlan &&
+    isWorkspaceWhitelistedBusinessPlan &&
+    !isMetronomeCheckout;
 
   // A migration is scheduled (pending Business contract staged): the workspace
   // can opt out (cancel) instead of being migrated.
