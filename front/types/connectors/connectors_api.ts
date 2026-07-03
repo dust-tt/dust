@@ -6,6 +6,7 @@ import type { ConnectorProvider, DataSourceType } from "../data_source";
 import type { LoggerInterface } from "../shared/logger";
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
+import type { CliCommandCatalog } from "./admin/catalog";
 import type { AdminCommandType, AdminResponseType } from "./admin/cli";
 import type { ConnectorConfiguration } from "./configuration";
 import type { ContentNodesViewType } from "./content_nodes";
@@ -555,6 +556,37 @@ export class ConnectorsAPI {
       headers: this.getDefaultHeaders(),
       body: JSON.stringify(adminCommand),
     });
+
+    return this._resultFromResponse(res);
+  }
+
+  async getAdminCliCatalog(): Promise<
+    ConnectorsAPIResponse<CliCommandCatalog>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/admin/catalog`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async adminRun(command: {
+    majorCommand: string;
+    command: string;
+    args: Record<string, unknown>;
+  }): Promise<ConnectorsAPIResponse<AdminResponseType>> {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/admin/run`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify(command),
+      }
+    );
 
     return this._resultFromResponse(res);
   }
