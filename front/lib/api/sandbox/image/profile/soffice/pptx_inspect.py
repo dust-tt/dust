@@ -14,13 +14,12 @@ import re
 import sys
 import zipfile
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import ooxml
 import render
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
-from pptx.oxml.ns import qn
 from pptx.presentation import Presentation as PresentationType
 from pptx.shapes.base import BaseShape
 from pptx.slide import Slide
@@ -33,24 +32,7 @@ from utils import (
     safe_output,
 )
 
-from pptx_geometry import (
-    ASPECT_TOLERANCE,
-    CENTER_OFFSET_EMU,
-    EDGE_EPSILON_EMU,
-    EMU_PER_INCH,
-    FILL_FLOATING,
-    FULL_SPAN,
-    MIN_IMAGE_DPI,
-    OVERSET_TOLERANCE,
-    SAFE_MARGIN_EMU,
-    _classify_overlap,
-    _fit_estimate,
-    _frame_text_len,
-    _grows_to_fit,
-    emu_to_inches,
-    format_box,
-    shape_kind,
-)
+from pptx_geometry import emu_to_inches, format_box, shape_kind
 
 from pptx_typography import (
     _read_clr_map,
