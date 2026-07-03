@@ -582,6 +582,25 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
       done: "Create HubSpot deal",
     },
   },
+  create_ticket: {
+    description: "Create a new ticket in Hubspot, with optional associations.",
+    schema: {
+      properties: z
+        .record(z.string())
+        .describe(
+          "Properties for the ticket. `subject` is required; common fields include content, hs_pipeline, hs_pipeline_stage, hs_ticket_priority."
+        ),
+      associations: z
+        .array(associationSchema)
+        .optional()
+        .describe("Optional array of associations to create."),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Creating HubSpot ticket",
+      done: "Create HubSpot ticket",
+    },
+  },
   create_lead: {
     description:
       "Create a new lead in Hubspot (as a Deal), with optional associations. Ensure properties correctly define it as a lead.",

@@ -781,6 +781,51 @@ export const createDeal = async ({
   return hubspotClient.crm.deals.basicApi.create(dealData);
 };
 
+export const createTicket = async ({
+  accessToken,
+  properties,
+  associations,
+}: {
+  accessToken: string;
+  properties: Record<string, string>;
+  associations?: Array<{
+    toObjectId: string;
+    toObjectType: string;
+  }>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
+    [];
+
+  if (associations && associations.length > 0) {
+    for (const assoc of associations) {
+      const associationTypeId = await getAssociationTypeId(
+        accessToken,
+        "tickets",
+        assoc.toObjectType
+      );
+      builtAssociations.push({
+        to: { id: assoc.toObjectId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId: associationTypeId,
+          },
+        ],
+      });
+    }
+  }
+
+  const ticketData: SimplePublicObjectInputForCreate = {
+    properties,
+    associations: builtAssociations,
+  };
+
+  return hubspotClient.crm.tickets.basicApi.create(ticketData);
+};
+
 export const createNote = async ({
   accessToken,
   properties,

@@ -12,6 +12,7 @@ import {
   createMeeting,
   createNote,
   createTask,
+  createTicket,
   getAssociatedMeetings,
   getCompany,
   getContact,
@@ -693,6 +694,24 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       return new Ok([
         { type: "text" as const, text: "Deal created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  create_ticket: async ({ properties, associations }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await createTicket({
+        accessToken,
+        properties,
+        associations,
+      });
+      const formatted = formatHubSpotCreateSuccess(result, "tickets");
+      return new Ok([
+        { type: "text" as const, text: formatted.message },
+        {
+          type: "text" as const,
+          text: JSON.stringify(formatted.result, null, 2),
+        },
       ]);
     });
   },
