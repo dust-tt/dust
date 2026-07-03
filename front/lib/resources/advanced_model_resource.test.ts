@@ -80,9 +80,77 @@ describe("AdvancedModelResource admin management", () => {
     ).rejects.toThrow("Only admins can manage allowed advanced models.");
   });
 
-  it("should add, list, and remove workspace allowed advanced models", async () => {
+  it("should list all advanced models by default and support workspace allowlist edits", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const allAdvancedModels = AdvancedModelResource.getAdvancedModels().map(
+      (model) => ({
+        providerId: model.providerId,
+        modelId: model.modelId,
+      })
+    );
+
+    expect(
+      await AdvancedModelResource.listWorkspaceAllowedAdvancedModels(auth)
+    ).toEqual(allAdvancedModels);
+
+    const addRes = await AdvancedModelResource.addWorkspaceAllowedAdvancedModel(
+      auth,
+      {
+        providerId: advancedModel.providerId,
+        modelId: advancedModel.modelId,
+      }
+    );
+    expect(addRes.isOk()).toBe(true);
+    expect(
+      await AdvancedModelResource.listWorkspaceAllowedAdvancedModels(auth)
+    ).toEqual(allAdvancedModels);
+
+    const removeRes =
+      await AdvancedModelResource.removeWorkspaceAllowedAdvancedModel(auth, {
+        providerId: advancedModel.providerId,
+        modelId: advancedModel.modelId,
+      });
+    expect(removeRes.isOk()).toBe(true);
+
+    expect(
+      await AdvancedModelResource.listWorkspaceAllowedAdvancedModels(auth)
+    ).toEqual(
+      allAdvancedModels.filter(
+        (model) =>
+          model.providerId !== advancedModel.providerId ||
+          model.modelId !== advancedModel.modelId
+      )
+    );
+
+    const reAddRes =
+      await AdvancedModelResource.addWorkspaceAllowedAdvancedModel(auth, {
+        providerId: advancedModel.providerId,
+        modelId: advancedModel.modelId,
+      });
+    expect(reAddRes.isOk()).toBe(true);
+
+    expect(
+      await AdvancedModelResource.listWorkspaceAllowedAdvancedModels(auth)
+    ).toEqual(allAdvancedModels);
+  });
+
+  it("should allow disabling all workspace advanced models", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    for (const model of AdvancedModelResource.getAdvancedModels()) {
+      const removeRes =
+        await AdvancedModelResource.removeWorkspaceAllowedAdvancedModel(auth, {
+          providerId: model.providerId,
+          modelId: model.modelId,
+        });
+      expect(removeRes.isOk()).toBe(true);
+    }
+
+    expect(
+      await AdvancedModelResource.listWorkspaceAllowedAdvancedModels(auth)
+    ).toEqual([]);
 
     const addRes = await AdvancedModelResource.addWorkspaceAllowedAdvancedModel(
       auth,
@@ -101,17 +169,6 @@ describe("AdvancedModelResource admin management", () => {
         modelId: advancedModel.modelId,
       },
     ]);
-
-    const removeRes =
-      await AdvancedModelResource.removeWorkspaceAllowedAdvancedModel(auth, {
-        providerId: advancedModel.providerId,
-        modelId: advancedModel.modelId,
-      });
-    expect(removeRes.isOk()).toBe(true);
-
-    expect(
-      await AdvancedModelResource.listWorkspaceAllowedAdvancedModels(auth)
-    ).toEqual([]);
   });
 
   it("should add, list, and remove user allowed advanced models", async () => {
@@ -264,6 +321,25 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
     modelId: CLAUDE_OPUS_4_8_MODEL_ID,
   };
 
+  async function restrictWorkspaceAdvancedModels(
+    auth: Authenticator,
+    allowedModels: Array<{ providerId: "anthropic"; modelId: string }>
+  ) {
+    for (const model of AdvancedModelResource.getAdvancedModels()) {
+      const isAllowed = allowedModels.some(
+        (allowed) =>
+          allowed.providerId === model.providerId &&
+          allowed.modelId === model.modelId
+      );
+      if (!isAllowed) {
+        await AdvancedModelResource.removeWorkspaceAllowedAdvancedModel(auth, {
+          providerId: model.providerId,
+          modelId: model.modelId,
+        });
+      }
+    }
+  }
+
   it("returns the union of workspace, group, and user models", async () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
@@ -279,9 +355,7 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
 
     await GroupFactory.withMembers(adminAuth, group, [user]);
 
-    await AdvancedModelResource.addWorkspaceAllowedAdvancedModel(adminAuth, {
-      ...opus47,
-    });
+    await restrictWorkspaceAdvancedModels(adminAuth, [opus47]);
     await AdvancedModelResource.addGroupAllowedAdvancedModel(adminAuth, {
       groupId: makeSId("group", {
         id: group.id,
@@ -318,9 +392,7 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
 
     await GroupFactory.withMembers(adminAuth, group, [user]);
 
-    await AdvancedModelResource.addWorkspaceAllowedAdvancedModel(adminAuth, {
-      ...opus46,
-    });
+    await restrictWorkspaceAdvancedModels(adminAuth, [opus46]);
     await AdvancedModelResource.addGroupAllowedAdvancedModel(adminAuth, {
       groupId: makeSId("group", {
         id: group.id,
@@ -368,9 +440,6 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
       userId: user.sId,
       ...opus46,
     });
-    await AdvancedModelResource.addWorkspaceAllowedAdvancedModel(adminAuth, {
-      ...opus46,
-    });
 
     const withoutOverride =
       await AdvancedModelResource.resolveAllowedAdvancedModels(userAuth, {
@@ -397,6 +466,7 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
 
     await GroupFactory.withMembers(adminAuth, memberGroup, [user]);
 
+    await restrictWorkspaceAdvancedModels(adminAuth, [opus47]);
     await AdvancedModelResource.addGroupAllowedAdvancedModel(adminAuth, {
       groupId: makeSId("group", {
         id: memberGroup.id,
@@ -428,22 +498,20 @@ describe("AdvancedModelResource.resolveAllowedAdvancedModels", () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
     const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
 
-    await AdvancedModelResource.addWorkspaceAllowedAdvancedModel(adminAuth, {
-      ...opus46,
-    });
-
     const result =
       await AdvancedModelResource.resolveAllowedAdvancedModels(userAuth);
 
-    expect(result.models).toEqual([opus46]);
+    expect(result.models).toEqual(
+      AdvancedModelResource.getAdvancedModels().map((model) => ({
+        providerId: model.providerId,
+        modelId: model.modelId,
+      }))
+    );
     expect(result.hasUserLevelOverride).toBe(false);
   });
 });

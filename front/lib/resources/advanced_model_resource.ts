@@ -1,7 +1,12 @@
 import {
+  advancedModelKey,
   type ResolvedAllowedAdvancedModels,
   resolveAllowedAdvancedModels,
 } from "@app/lib/advanced_models/resolve_allowed";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { isAdvancedModel as isAdvancedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -32,6 +37,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import { Op } from "sequelize";
 
@@ -127,6 +133,14 @@ export class AdvancedModelResource {
       },
     });
 
+    this.emitAdvancedModelAccessUpdatedAuditLog({
+      auth,
+      scope: "user",
+      enabled: true,
+      model: modelRes.value,
+      user,
+    });
+
     return new Ok(undefined);
   }
 
@@ -175,6 +189,14 @@ export class AdvancedModelResource {
       },
     });
 
+    this.emitAdvancedModelAccessUpdatedAuditLog({
+      auth,
+      scope: "user",
+      enabled: false,
+      model: modelRes.value,
+      user,
+    });
+
     return new Ok(undefined);
   }
 
@@ -212,6 +234,14 @@ export class AdvancedModelResource {
         providerId: modelRes.value.providerId,
         modelId: modelRes.value.modelId,
       },
+    });
+
+    this.emitAdvancedModelAccessUpdatedAuditLog({
+      auth,
+      scope: "group",
+      enabled: true,
+      model: modelRes.value,
+      group: groupRes.value,
     });
 
     return new Ok(undefined);
@@ -253,6 +283,14 @@ export class AdvancedModelResource {
       },
     });
 
+    this.emitAdvancedModelAccessUpdatedAuditLog({
+      auth,
+      scope: "group",
+      enabled: false,
+      model: modelRes.value,
+      group: groupRes.value,
+    });
+
     return new Ok(undefined);
   }
 
@@ -268,12 +306,25 @@ export class AdvancedModelResource {
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    await WorkspaceAllowedAdvancedModel.findOrCreate({
+    const existingRow = await WorkspaceAllowedAdvancedModel.findOne({
       where: {
         workspaceId: workspace.id,
         providerId: modelRes.value.providerId,
         modelId: modelRes.value.modelId,
       },
+    });
+
+    if (!existingRow || existingRow.enabled) {
+      return new Ok(undefined);
+    }
+
+    await existingRow.destroy();
+
+    this.emitAdvancedModelAccessUpdatedAuditLog({
+      auth,
+      scope: "workspace",
+      enabled: true,
+      model: modelRes.value,
     });
 
     return new Ok(undefined);
@@ -291,12 +342,31 @@ export class AdvancedModelResource {
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    await WorkspaceAllowedAdvancedModel.destroy({
-      where: {
-        workspaceId: workspace.id,
-        providerId: modelRes.value.providerId,
-        modelId: modelRes.value.modelId,
-      },
+    const [existingRow, created] =
+      await WorkspaceAllowedAdvancedModel.findOrCreate({
+        where: {
+          workspaceId: workspace.id,
+          providerId: modelRes.value.providerId,
+          modelId: modelRes.value.modelId,
+        },
+        defaults: {
+          providerId: modelRes.value.providerId,
+          modelId: modelRes.value.modelId,
+          enabled: false,
+        },
+      });
+
+    if (!created && !existingRow.enabled) {
+      return new Ok(undefined);
+    }
+
+    await existingRow.update({ enabled: false });
+
+    this.emitAdvancedModelAccessUpdatedAuditLog({
+      auth,
+      scope: "workspace",
+      enabled: false,
+      model: modelRes.value,
     });
 
     return new Ok(undefined);
@@ -453,6 +523,79 @@ export class AdvancedModelResource {
     });
   }
 
+  private static getDefaultWorkspaceAllowedAdvancedModels(): AllowedAdvancedModelType[] {
+    return this.getAdvancedModels().map(({ providerId, modelId }) => ({
+      providerId,
+      modelId,
+    }));
+  }
+
+  private static emitAdvancedModelAccessUpdatedAuditLog({
+    auth,
+    scope,
+    enabled,
+    model,
+    user,
+    group,
+  }: {
+    auth: Authenticator;
+    scope: "workspace" | "user" | "group";
+    enabled: boolean;
+    model: ModelConfigurationType;
+    user?: UserResource;
+    group?: GroupResource;
+  }): void {
+    const workspace = auth.getNonNullableWorkspace();
+    const metadata = {
+      provider_id: model.providerId,
+      model_id: model.modelId,
+      enabled: enabled ? "true" : "false",
+    };
+
+    switch (scope) {
+      case "workspace":
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.advanced_model_access_updated",
+          targets: [buildAuditLogTarget("workspace", workspace)],
+          metadata,
+        });
+        break;
+      case "user":
+        assert(user);
+        void emitAuditLogEvent({
+          auth,
+          action: "user.advanced_model_access_updated",
+          targets: [
+            buildAuditLogTarget("workspace", workspace),
+            buildAuditLogTarget("user", {
+              sId: user.sId,
+              name: user.fullName() ?? "unknown",
+            }),
+          ],
+          metadata,
+        });
+        break;
+      case "group":
+        assert(group);
+        void emitAuditLogEvent({
+          auth,
+          action: "group.advanced_model_access_updated",
+          targets: [
+            buildAuditLogTarget("workspace", workspace),
+            buildAuditLogTarget("group", {
+              sId: group.sId,
+              name: group.name,
+            }),
+          ],
+          metadata,
+        });
+        break;
+      default:
+        assertNever(scope);
+    }
+  }
+
   private static async loadWorkspaceAllowedAdvancedModels(
     workspaceId: ModelId
   ): Promise<AllowedAdvancedModelType[]> {
@@ -460,10 +603,28 @@ export class AdvancedModelResource {
       where: { workspaceId },
     });
 
-    return rows.flatMap((row) => {
+    if (rows.length === 0) {
+      return this.getDefaultWorkspaceAllowedAdvancedModels();
+    }
+
+    const disabledModelKeys = new Set<string>();
+    for (const row of rows) {
+      if (row.enabled) {
+        continue;
+      }
+
       const model = this.parseAllowedAdvancedModelRow(row);
-      return model ? [model] : [];
-    });
+      if (model) {
+        disabledModelKeys.add(advancedModelKey(model));
+      }
+    }
+
+    return this.getAdvancedModels()
+      .filter((model) => !disabledModelKeys.has(advancedModelKey(model)))
+      .map(({ providerId, modelId }) => ({
+        providerId,
+        modelId,
+      }));
   }
 
   private static async loadGroupAllowedAdvancedModelsByGroupId({
