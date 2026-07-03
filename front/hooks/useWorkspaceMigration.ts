@@ -28,6 +28,7 @@ export function useWorkspaceMigration({
 
   return {
     pendingMigrationDate: data?.pendingMigrationDate ?? null,
+    willBeRefundedOnEnd: data?.willBeRefundedOnEnd ?? false,
     isMigrationLoading: !error && !data && !disabled,
     isMigrationError: error,
     mutateMigration: mutate,

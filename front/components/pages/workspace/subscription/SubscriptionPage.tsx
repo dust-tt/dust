@@ -393,10 +393,11 @@ export function SubscriptionPage() {
     isWorkspaceWhitelistedBusinessPlan &&
     !isMetronomeCheckout;
 
-  const { pendingMigrationDate, mutateMigration } = useWorkspaceMigration({
-    workspaceId: owner.sId,
-    disabled: !isWorkspaceOnProPlan,
-  });
+  const { pendingMigrationDate, willBeRefundedOnEnd, mutateMigration } =
+    useWorkspaceMigration({
+      workspaceId: owner.sId,
+      disabled: !isWorkspaceOnProPlan,
+    });
   const { cancelMigration, isCancellingMigration } =
     useCancelWorkspaceMigration({ workspaceId: owner.sId });
   const { resumeMigration, isResumingMigration } = useResumeWorkspaceMigration({
@@ -428,16 +429,6 @@ export function SubscriptionPage() {
     !pendingMigrationDate &&
     subscription.endDate !== null &&
     new Date(subscription.endDate).getTime() > Date.now();
-  // A yearly sub is refunded the remaining days when it ends before its
-  // theoretical one-year end — i.e. `endDate` is earlier than the paid-through
-  // date (Stripe `current_period_end`, which the scheduled cancellation does
-  // not change).
-  const willBeRefundedOnEnd =
-    perSeatPricing?.billingPeriod === "yearly" &&
-    subscription.endDate !== null &&
-    perSeatPricing.currentPeriodEndMs !== null &&
-    new Date(subscription.endDate).getTime() <
-      perSeatPricing.currentPeriodEndMs;
 
   const handleCancelMigration = async () => {
     // Yearly subs end on the migration date (not their far-out renewal);
@@ -638,11 +629,21 @@ export function SubscriptionPage() {
               <span className="font-semibold">
                 {scheduledMigrationLabel ?? migrationDate}
               </span>{" "}
-              your plan will move to the new credit-based pricing. To opt out,
-              cancel your subscription below —{" "}
-              {perSeatPricing?.billingPeriod === "yearly"
-                ? "it will then end on that date and you'll be refunded for the remaining days of your current period."
-                : "it will then end at the end of your current billing period instead."}
+              your plan will move to the new credit-based pricing.
+              {perSeatPricing?.billingPeriod === "yearly" ? (
+                <>
+                  {" "}
+                  You'll be refunded for the remaining days of your current
+                  annual period. To opt out, cancel your subscription below — it
+                  will then end on that date without moving to the new pricing.
+                </>
+              ) : (
+                <>
+                  {" "}
+                  To opt out, cancel your subscription below — it will then end
+                  at the end of your current billing period instead.
+                </>
+              )}
             </ContentMessage>
           ) : null}
           <>

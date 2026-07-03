@@ -12,7 +12,11 @@ import {
   reactivateMetronomeContract,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { scheduleSubscriptionCancellation } from "@app/lib/plans/stripe";
+import {
+  getStripeSubscription,
+  scheduleSubscriptionCancellation,
+  YEARLY_MIGRATION_REFUND_METADATA_KEY,
+} from "@app/lib/plans/stripe";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
@@ -25,7 +29,41 @@ export type WorkspaceMigrationStatus = {
   // ISO date the pending migration will activate, or null when there is no
   // pending migration (never scheduled, or cancelled).
   pendingMigrationDate: string | null;
+  // Whether the Stripe subscription is marked to be refunded (prorated) when it
+  // ends — i.e. a yearly sub cut over/short by the migration. Reliable signal
+  // (the migration stamps it), unlike comparing the current period end.
+  willBeRefundedOnEnd: boolean;
 };
+
+/**
+ * Read the workspace's migration state for the billing UI: the pending
+ * migration date (if any) and whether the subscription will be refunded when it
+ * ends (yearly subs cut over/short by the migration carry a Stripe marker).
+ */
+export async function getWorkspaceMigrationStatus(
+  auth: Authenticator
+): Promise<WorkspaceMigrationStatus> {
+  const workspace = auth.getNonNullableWorkspace();
+  const pending = await SubscriptionResource.fetchPendingByWorkspaceModelId(
+    workspace.id
+  );
+
+  let willBeRefundedOnEnd = false;
+  const subscription = auth.subscriptionResource();
+  if (subscription?.stripeSubscriptionId) {
+    const stripeSubscription = await getStripeSubscription(
+      subscription.stripeSubscriptionId
+    );
+    willBeRefundedOnEnd =
+      stripeSubscription?.metadata?.[YEARLY_MIGRATION_REFUND_METADATA_KEY] ===
+      "true";
+  }
+
+  return {
+    pendingMigrationDate: pending?.startDate?.toISOString() ?? null,
+    willBeRefundedOnEnd,
+  };
+}
 
 export type MigrationLifecycleErrorKind =
   // Bad input or precondition not met (no pending migration, not Stripe-billed,
