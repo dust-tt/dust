@@ -622,8 +622,10 @@ export function SubscriptionPage() {
                 {scheduledMigrationLabel ?? migrationDate}
               </span>{" "}
               your plan will move to the new credit-based pricing. To opt out,
-              cancel your subscription below — it will then end at the end of
-              your current billing period instead.
+              cancel your subscription below —{" "}
+              {perSeatPricing?.billingPeriod === "yearly"
+                ? "it will then end on that date and you'll be refunded for the remaining days of your current period."
+                : "it will then end at the end of your current billing period instead."}
             </ContentMessage>
           ) : null}
           <>
