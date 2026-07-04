@@ -260,7 +260,6 @@ describe("processToolResults", () => {
 
     const { outputItems, generatedFiles } = await processToolResults(auth, {
       action,
-      conversation,
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
@@ -290,7 +289,6 @@ describe("processToolResults", () => {
 
     const { outputItems, generatedFiles } = await processToolResults(auth, {
       action,
-      conversation,
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [
@@ -323,7 +321,6 @@ describe("processToolResults", () => {
 
     const { outputItems } = await processToolResults(auth, {
       action,
-      conversation,
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: smallText }],
@@ -347,7 +344,6 @@ describe("processToolResults", () => {
 
     const { outputItems } = await processToolResults(auth, {
       action,
-      conversation,
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
@@ -369,7 +365,6 @@ describe("processToolResults", () => {
 
     const { outputItems } = await processToolResults(auth, {
       action,
-      conversation,
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [
@@ -413,7 +408,6 @@ describe("processToolResults", () => {
 
     await processToolResults(auth, {
       action,
-      conversation,
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [
@@ -445,7 +439,6 @@ describe("processToolResults", () => {
 
     await processToolResults(auth, {
       action,
-      conversation,
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: largeText }],
@@ -472,7 +465,6 @@ describe("processToolResults", () => {
 
     await processToolResults(auth, {
       action,
-      conversation,
       localLogger: logger.child({ test: true }),
       toolContext,
       toolCallResultContent: [{ type: "text", text: largeJson }],
