@@ -32,6 +32,14 @@ const APPLY_PATCH_VERSION = "0.1.0";
 // Modern x86_64 build (requires AVX2). Switch to the baseline variant if a
 // future sandbox CPU lacks it.
 const BUN_VERSION = "1.3.14";
+// LibreOffice "Fresh" PPA. The Ubuntu 24.04 base ships LibreOffice 24.2, whose
+// PDF layout engine places text differently from a current desktop LibreOffice
+// (26.x). Since the pptx QA reads word positions off the soffice-rendered PDF to
+// confirm text collisions, the engine version has to be pinned and reproducible
+// — and close to what authors run — or the same deck detects collisions on one
+// machine and not another. This assumes an Ubuntu base and build-time egress to
+// launchpad.net; if PPAs are blocked, install the TDF .deb bundle instead.
+const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
@@ -278,9 +286,25 @@ SHELLEOF`,
   })
   // Create profile directory and copy profile scripts
   // The other tools are installed in bedrock
+  // Bump LibreOffice past the distro's 24.2 to a current release so the
+  // soffice PDF render (which the pptx QA reads word positions from) matches a
+  // modern desktop engine.
+  .runCmd(
+    "apt-get update && apt-get install -y software-properties-common && " +
+      `add-apt-repository -y ${LIBREOFFICE_PPA} && apt-get update`,
+    { user: "root" }
+  )
+  // Metric-compatible font substitutes so soffice lays text out at the same
+  // positions as the MS fonts it stands in for — Carlito=Calibri,
+  // Caladea=Cambria, Liberation=Arial/Times/Courier — plus Noto as a broad
+  // fallback. Without these, a Calibri/Cambria deck (the PowerPoint defaults)
+  // reflows under a non-metric fallback and the QA misses real text collisions.
+  // fc-cache rebuilds the fontconfig cache so the new fonts resolve at runtime.
   .runCmd(
     "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
-      "libreoffice poppler-utils qpdf",
+      "libreoffice poppler-utils qpdf " +
+      "fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 " +
+      "fonts-noto-core && fc-cache -f",
     { user: "root" }
   )
   .registerTool([

@@ -1156,9 +1156,11 @@ def _slide_findings_lines(
 
     if words:
         shapes = [(e[0], e[1], e[2]) for e in entries]
+        confirmed_pairs = set()
         for c in pdf_text.cross_shape_overprints(words, shapes):
             n_severe += 1
             over, hit = c["over"], c["hit"]
+            confirmed_pairs.add(frozenset((over, hit)))
             if c["symmetric"]:
                 severe.append(
                     f"  [!] text-on-text — {q(over)} and {q(hit)} overprint "
@@ -1183,6 +1185,24 @@ def _slide_findings_lines(
                     f"      Possible fixes: shorten #{over}, lower its font "
                     f"size{shrink}, or move #{hit} clear."
                 )
+        # A geometric spill the render did NOT confirm is not necessarily clean.
+        # Substitute fonts (the deck's real face is often absent at render time)
+        # reflow the text so it never overflows on the rendered page, hiding a
+        # real overprint the declared geometry still predicts. Surface such a
+        # spill as a review item rather than letting the render silently clear
+        # it. Peer overlaps are excluded — those are usually designed overlays,
+        # exactly what reading the render is trusted to filter out.
+        for f in findings.get("overlaps", []):
+            if not f["text_on_text"] or f["kind"] != "spill":
+                continue
+            if frozenset((f["over"], f["hit"])) in confirmed_pairs:
+                continue
+            advisory.append(
+                f"  [i] {q(f['over'])} overflows its box onto {q(f['hit'])} by "
+                f"{round(f['coverage'] * 100)}% at declared geometry, but the "
+                "render didn't confirm text-on-text — if the deck's fonts were "
+                "substituted the render can understate the overlap; verify."
+            )
     else:
         # No extractable rendered text (e.g. text exported as curves): can't
         # confirm against glyphs, so surface the box-overlap candidates for a
