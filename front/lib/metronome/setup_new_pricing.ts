@@ -122,7 +122,57 @@ export const NEW_METRICS: MetricDef[] = [
       [USAGE_TYPE_GROUP_KEY],
     ],
   },
-  // Phase 2 token metrics removed — will be added when Pricing Index is ready.
+  // v2 replacements for the two billing metrics above: the AI Usage / Tool
+  // Usage products will be repointed to these (billable_metric_name in
+  // setup_common.ts) instead of growing group_keys on the originals, which
+  // Metronome cannot recreate without a historical-usage reflow. A spend
+  // alert requires its metric to be attached to a product with real spend —
+  // an unattached metric has nothing to threshold against — so the
+  // api_key_name-filtered alert needs to live on the metric the product
+  // actually bills through, not a separate non-billing metric.
+  // Group keys: `[user_id, usage_type(, tool_category)]` covers the
+  // product's own presentation_group_key (`user_id`) + pricing_group_key
+  // (`usage_type` / `[usage_type, tool_category]`) — Metronome requires
+  // those to be present together in one compound group key or rating
+  // breaks. `[api_key_name, usage_type(, tool_category)]` covers the
+  // api_key_name-filtered spend alert for the same reason: every property
+  // used in the alert's group_filter and in the pricing_group_key must be
+  // present together in one compound group key, or the alert silently never
+  // fires (see Slack thread
+  // https://dust4ai.slack.com/archives/C0AGNMLBRB5/p1782740593425549).
+  {
+    name: "Tool Invocations v2",
+    event_type_filter: { in_values: ["tool_use_v3"] },
+    property_filters: [
+      { name: "count", exists: true },
+      { name: USAGE_TYPE_GROUP_KEY, exists: true },
+      { name: "tool_category", exists: true },
+      { name: "user_id", exists: true },
+      { name: "api_key_name", exists: true },
+    ],
+    aggregation_type: "SUM",
+    aggregation_key: "count",
+    group_keys: [
+      ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
+      ["api_key_name", USAGE_TYPE_GROUP_KEY, "tool_category"],
+    ],
+  },
+  {
+    name: "LLM Provider Cost AWU v2",
+    event_type_filter: { in_values: ["llm_usage_v3"] },
+    property_filters: [
+      { name: "cost_awu", exists: true },
+      { name: USAGE_TYPE_GROUP_KEY, exists: true },
+      { name: "user_id", exists: true },
+      { name: "api_key_name", exists: true },
+    ],
+    aggregation_type: "SUM",
+    aggregation_key: "cost_awu",
+    group_keys: [
+      ["user_id", USAGE_TYPE_GROUP_KEY],
+      ["api_key_name", USAGE_TYPE_GROUP_KEY],
+    ],
+  },
 ];
 
 // Per-tier AWU price for Tool Usage rates. Shared across all AWU-priced rate cards
