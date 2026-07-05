@@ -3,7 +3,6 @@ import {
   SwitchContractBodySchema,
   switchContract,
 } from "@app/lib/api/poke/switch_contract";
-import { getMembersCount } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import {
   ceilToHourISO,
@@ -316,19 +315,30 @@ export async function migrateWorkspaceToBusiness(
 
   const pricing = await subscription.getPerSeatPricing();
   if (!pricing || pricing.currentPeriodEndMs === null) {
-    // `getPerSeatPricing` returns null for a 0-quantity subscription (falsy
-    // `item.quantity`), which is an empty workspace rather than a genuinely
-    // unreadable price. Distinguish the two so the logs are actionable.
-    const activeMembersCount = await getMembersCount(auth, {
-      activeOnly: true,
-    });
-    return new Ok({
-      status: "skipped",
-      reason:
-        activeMembersCount === 0
-          ? "workspace has no active seats"
-          : "could not resolve per-seat Stripe pricing",
-    });
+    // `getPerSeatPricing` returns null for several reasons. Inspect the Stripe
+    // subscription's seat quantity to classify: a 0-quantity subscription is an
+    // empty workspace (benign skip). Anything else — a non-per-seat price
+    // (metered / enterprise MAU), missing currency option, or a subscription we
+    // can't read — is unexpected for a Pro per-seat workspace and is surfaced as
+    // an error rather than a silent skip.
+    const stripeSub = await getStripeSubscription(
+      subscription.stripeSubscriptionId
+    );
+    const seatQuantity = stripeSub?.items?.data[0]?.quantity ?? null;
+    if (seatQuantity === 0) {
+      return new Ok({
+        status: "skipped",
+        reason: "workspace has no active seats",
+      });
+    }
+    return new Err(
+      new Error(
+        "Could not resolve per-seat Stripe pricing for subscription " +
+          `${subscription.stripeSubscriptionId} (seat quantity ` +
+          `${seatQuantity ?? "unknown"}) — unexpected price shape ` +
+          "(e.g. metered / enterprise MAU or missing currency option)."
+      )
+    );
   }
   const { billingPeriod } = pricing;
   const currentPeriodEndMs = pricing.currentPeriodEndMs;
