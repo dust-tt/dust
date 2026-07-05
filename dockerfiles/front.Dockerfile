@@ -51,7 +51,7 @@ RUN npx esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --al
 
 # Compile the profiler script so `npm run debug:profiler` runs a pre-built bundle
 # on production pods instead of transforming TypeScript at runtime.
-RUN npx esbuild scripts/debug/run_profiler.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/run_profiler.js --sourcemap
+RUN npx esbuild scripts/debug/run_profiler.ts --bundle --platform=node --target=node24 --alias:@app=. --packages=external --outfile=dist/run_profiler.js --sourcemap
 
 # Copy front-api source (server.ts, app.ts, routes/, middleware/)
 WORKDIR /app/front-api

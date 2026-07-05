@@ -32,7 +32,9 @@ makeScript(
     logger.info(`Profiling pod ${podName}...`);
 
     try {
-      const command = `kubectl exec -n ${namespace} ${podName} -- npm run debug:profiler -- --execute`;
+      // The server binds to HOSTNAME (the pod name), not localhost, so the
+      // profiler must target the pod name to reach it.
+      const command = `kubectl exec -n ${namespace} ${podName} -- npm run debug:profiler -- --execute --host ${podName}`;
       const output = execKubectl(command);
 
       logger.info(`Profiling output: ${output}`);
