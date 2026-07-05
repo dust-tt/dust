@@ -1308,6 +1308,7 @@ export async function syncSeatCount({
   planCode,
   startingAt,
   contract,
+  assumeEmptySeats,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1318,6 +1319,10 @@ export async function syncSeatCount({
   // segments always use their own `startAt` regardless of this value.
   startingAt?: string;
   contract?: CachedContract;
+  // Skip the per-subscription seat-state reads and treat every segment as
+  // empty. Only safe for a freshly provisioned contract (no prior assignments)
+  // — passed by switchContract when the contract was newly created.
+  assumeEmptySeats?: boolean;
 }): Promise<Result<undefined, Error>> {
   let didMutateSeatData = false;
 
@@ -1573,6 +1578,7 @@ export async function syncSeatCount({
             startingAt: segmentStartingAt,
             coveringDate,
             workspaceId: workspace.sId,
+            assumeEmptySeats,
           });
           if (result.isErr()) {
             return new Err(result.error);
@@ -1695,6 +1701,7 @@ async function reconcileSeatBasedSegment({
   startingAt,
   coveringDate,
   workspaceId,
+  assumeEmptySeats,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1705,18 +1712,30 @@ async function reconcileSeatBasedSegment({
   startingAt?: string;
   coveringDate?: Date;
   workspaceId: string;
+  // Skip the Metronome seat-state read and treat the segment as empty. Only
+  // safe for a freshly provisioned contract (no prior assignments at any
+  // timestamp) — set by switchContract when the contract was newly created
+  // (not recovered).
+  assumeEmptySeats?: boolean;
 }): Promise<Result<boolean, Error>> {
-  const currentResult = await getMetronomeSubscriptionSeatState({
-    metronomeCustomerId,
-    contractId,
-    subscriptionId,
-    coveringDate,
-  });
-  if (currentResult.isErr()) {
-    return new Err(currentResult.error);
+  let assignedSeatIds: string[];
+  let currentUnassigned: number;
+  if (assumeEmptySeats) {
+    assignedSeatIds = [];
+    currentUnassigned = 0;
+  } else {
+    const currentResult = await getMetronomeSubscriptionSeatState({
+      metronomeCustomerId,
+      contractId,
+      subscriptionId,
+      coveringDate,
+    });
+    if (currentResult.isErr()) {
+      return new Err(currentResult.error);
+    }
+    assignedSeatIds = currentResult.value.assignedSeatIds;
+    currentUnassigned = currentResult.value.unassignedSeats;
   }
-  const { assignedSeatIds, unassignedSeats: currentUnassigned } =
-    currentResult.value;
 
   // `maxSeats` is deliberately not enforced here: it caps new assignments
   // (`seat_limit_reached` upstream), never the synced state. Every member who

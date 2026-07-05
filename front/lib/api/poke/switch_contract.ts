@@ -718,6 +718,9 @@ type PostProvisionCtx = {
   stripeSubscriptionId: string | null;
   pkg: MetronomePackageSummary;
   pkgSeatByType: Map<string, PackageSeatConfig>;
+  // The contract was freshly created (not recovered), so it has no prior seat
+  // assignments — the seat sync can skip the per-subscription state reads.
+  contractNewlyCreated: boolean;
   body: SwitchContractBody;
 };
 
@@ -1010,6 +1013,7 @@ async function stepSeatSync({
   metronomeContractId,
   ownerLight,
   alignedStart,
+  contractNewlyCreated,
   body,
 }: PostProvisionCtx): Promise<string | null> {
   const result = await syncSeatCount({
@@ -1018,6 +1022,7 @@ async function stepSeatSync({
     workspace: ownerLight,
     startingAt: alignedStart.toISOString(),
     planCode: body.planCode,
+    assumeEmptySeats: contractNewlyCreated,
   });
   if (result.isErr()) {
     return `seat_sync: ${result.error.message}`;
@@ -1157,7 +1162,7 @@ export async function switchContract({
       )
     );
   }
-  const { metronomeContractId } = provisionResult.value;
+  const { metronomeContractId, recovered } = provisionResult.value;
 
   const alignedStart = new Date(
     swapAt === "current-hour"
@@ -1179,6 +1184,7 @@ export async function switchContract({
     stripeSubscriptionId: currentSubscription?.stripeSubscriptionId ?? null,
     pkg,
     pkgSeatByType,
+    contractNewlyCreated: !recovered,
     body,
   };
 
