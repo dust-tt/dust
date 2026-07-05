@@ -3,6 +3,7 @@ import {
   SwitchContractBodySchema,
   switchContract,
 } from "@app/lib/api/poke/switch_contract";
+import { getMembersCount } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import {
   ceilToHourISO,
@@ -302,9 +303,18 @@ export async function migrateWorkspaceToBusiness(
 
   const pricing = await subscription.getPerSeatPricing();
   if (!pricing || pricing.currentPeriodEndMs === null) {
+    // `getPerSeatPricing` returns null for a 0-quantity subscription (falsy
+    // `item.quantity`), which is an empty workspace rather than a genuinely
+    // unreadable price. Distinguish the two so the logs are actionable.
+    const activeMembersCount = await getMembersCount(auth, {
+      activeOnly: true,
+    });
     return new Ok({
       status: "skipped",
-      reason: "could not resolve per-seat Stripe pricing",
+      reason:
+        activeMembersCount === 0
+          ? "workspace has no active seats"
+          : "could not resolve per-seat Stripe pricing",
     });
   }
   const { billingPeriod } = pricing;
