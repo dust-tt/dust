@@ -92,7 +92,7 @@ if (isDevelopment() || isTest()) {
     isAuditLogsAllowed: false,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
-    maxDataSourcesDocumentsSizeMb: 2,
+    maxDataSourcesDocumentsSizeMb: 5,
     trialPeriodDays: 14,
     canUseProduct: true,
     isByok: false,
