@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
-  it("returns 403 when the caller is not an admin", async () => {
+  it("returns 403 when the caller is a user", async () => {
     const workspace = await makeMetronomeWorkspace();
     await createPrivateApiMockRequest({
       method: "POST",
@@ -57,6 +57,33 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
     expect(response.status).toBe(403);
     expect((await response.json()).error.type).toBe("workspace_auth_error");
     expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("allows a business admin to launch the workflow", async () => {
+    const workspace = await makeMetronomeWorkspace();
+    const { auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "business_admin",
+      workspace,
+    });
+    await FeatureFlagFactory.basic(auth, "pricing_groups");
+
+    const member = await UserFactory.basic();
+    vi.mocked(UserResource.searchAllUsers).mockResolvedValue(
+      new Ok({ users: [member], total: 1 })
+    );
+
+    const response = await post(workspace.sId, {
+      selection: { mode: "ids", userIds: [member.sId] },
+      limit: { kind: "limited", awuCredits: 1000 },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      workflowId: "wf_test_bulk",
+      memberCount: 1,
+    });
+    expect(bulkClient.runBulkSetUserSpendLimitWorkflow).toHaveBeenCalled();
   });
 
   it("returns 403 when the pricing_groups flag is off", async () => {
