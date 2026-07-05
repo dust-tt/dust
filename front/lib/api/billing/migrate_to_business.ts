@@ -328,14 +328,19 @@ export async function migrateWorkspaceToBusiness(
   // PRO_PLAN_SEAT_39 (the enterprise seat-based legacy plan) always migrates to
   // the legacy-large Business plan regardless of current usage.
   let targetPlan = deps.businessPlan;
+  // Human-readable explanation of the plan choice, surfaced in the log below.
+  let planChoiceReason: string;
   if (isBusinessPlan(subscription.getPlan())) {
     targetPlan = deps.businessLegacyLargePlan;
+    planChoiceReason = "PRO_PLAN_SEAT_39 always uses legacy-large Business";
   } else {
     const standardFit = await checkWorkspaceFitsPlanLimits(
       auth,
       deps.businessPlan
     );
-    if (!standardFit.fits) {
+    if (standardFit.fits) {
+      planChoiceReason = "workspace fits standard Business limits";
+    } else {
       const largeFit = await checkWorkspaceFitsPlanLimits(
         auth,
         deps.businessLegacyLargePlan
@@ -349,8 +354,15 @@ export async function migrateWorkspaceToBusiness(
         });
       }
       targetPlan = deps.businessLegacyLargePlan;
+      planChoiceReason = `standard Business limits exceeded (${standardFit.violations.join(
+        ", "
+      )})`;
     }
   }
+  logger.info(
+    { workspaceId: workspace.sId, planCode: targetPlan.code, planChoiceReason },
+    `[migrate-business] Plan selected: ${targetPlan.code} — ${planChoiceReason}`
+  );
 
   const packageAlias = businessPackageAliasForCurrency(pricing.seatCurrency);
   if (!packageAlias) {
