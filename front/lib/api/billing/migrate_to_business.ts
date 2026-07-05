@@ -18,7 +18,10 @@ import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE,
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  isBusinessPlan,
+  PRO_PLAN_LARGE_FILES_10SPACES_CODE,
+  PRO_PLAN_LARGE_FILES_CODE,
+  PRO_PLAN_PLUS_SEAT_29_CODE,
+  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -40,6 +43,16 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 // `contract.start` webhook at activation, so the amounts reflect the
 // workspace's state at migration time rather than at migration-scheduling time.
 export const FREE_MIGRATION_AWU_CREDITS_PER_USER = 2000;
+
+// Legacy Pro plan codes that always migrate to the legacy-large Business plan
+// (their seats/features exceed the standard Business plan), regardless of the
+// workspace's current usage.
+const FORCE_LEGACY_LARGE_PLAN_CODES = new Set<string>([
+  PRO_PLAN_SEAT_39_CODE,
+  PRO_PLAN_LARGE_FILES_CODE,
+  PRO_PLAN_LARGE_FILES_10SPACES_CODE,
+  PRO_PLAN_PLUS_SEAT_29_CODE,
+]);
 
 // Default rollout window [start, end) for the legacy Pro → Business migration.
 // The batch script accepts overrides; the user-facing resume flow uses these.
@@ -325,14 +338,15 @@ export async function migrateWorkspaceToBusiness(
   // legacy-large Business plan, whose limits fit any PRO_* workspace, so the
   // move never downgrades the workspace below its current usage.
   //
-  // PRO_PLAN_SEAT_39 (the enterprise seat-based legacy plan) always migrates to
+  // A few legacy Pro plans (see FORCE_LEGACY_LARGE_PLAN_CODES) always migrate to
   // the legacy-large Business plan regardless of current usage.
+  const currentPlanCode = subscription.getPlan().code;
   let targetPlan = deps.businessPlan;
   // Human-readable explanation of the plan choice, surfaced in the log below.
   let planChoiceReason: string;
-  if (isBusinessPlan(subscription.getPlan())) {
+  if (FORCE_LEGACY_LARGE_PLAN_CODES.has(currentPlanCode)) {
     targetPlan = deps.businessLegacyLargePlan;
-    planChoiceReason = "PRO_PLAN_SEAT_39 always uses legacy-large Business";
+    planChoiceReason = `${currentPlanCode} always uses legacy-large Business`;
   } else {
     const standardFit = await checkWorkspaceFitsPlanLimits(
       auth,

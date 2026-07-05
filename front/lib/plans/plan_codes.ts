@@ -12,6 +12,11 @@ export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
 export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
+// Legacy pro plans (kept for the legacy Pro → Business migration).
+export const PRO_PLAN_LARGE_FILES_10SPACES_CODE =
+  "PRO_PLAN_LARGE_FILES_10SPACES";
+export const PRO_PLAN_PLUS_SEAT_29_CODE = "PRO_PLAN_PLUS_SEAT_29";
+
 // Credit-priced plans:
 export const CREDIT_PRICED_BUSINESS_PLAN_CODE = "CP_BUSINESS_PLAN";
 // Business variant whose limits are permissive enough to fit any legacy PRO_*
