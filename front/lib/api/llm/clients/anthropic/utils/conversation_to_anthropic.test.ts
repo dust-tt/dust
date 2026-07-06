@@ -30,6 +30,20 @@ const baseSpec: AgentActionSpecification = {
   inputSchema: { type: "object", properties: {} },
 };
 
+const replayOnlySpec: AgentActionSpecification = {
+  name: "github__create_issue",
+  description:
+    "Replay-only placeholder for a historical tool call. " +
+    "This tool is not available for new calls.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    required: [],
+    additionalProperties: true,
+  },
+  eager: true,
+};
+
 describe("toTool", () => {
   it("defers a non-eager tool when tool search is enabled", () => {
     const tool = toTool(baseSpec, { toolSearchEnabled: true });
@@ -114,6 +128,39 @@ describe("toToolsParam", () => {
     expect(forced && "defer_loading" in forced && forced.defer_loading).toBe(
       false
     );
+  });
+
+  it("keeps a replay-only placeholder specification eager", () => {
+    const tools = toToolsParam([replayOnlySpec], undefined, {
+      toolSearchEnabled: true,
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({
+      name: "github__create_issue",
+      description: replayOnlySpec.description,
+      eager_input_streaming: true,
+      input_schema: replayOnlySpec.inputSchema,
+    });
+    expect(tools[0]).not.toHaveProperty("defer_loading");
+  });
+
+  it("does not defer a replay-only placeholder when other tools are deferred", () => {
+    const tools = toToolsParam([replayOnlySpec, coldSpec], undefined, {
+      toolSearchEnabled: true,
+    });
+
+    expect(tools[0].type).toBe(TOOL_SEARCH_TYPE);
+
+    const replayTool = tools.find((tool) => tool.name === replayOnlySpec.name);
+    expect(replayTool).toMatchObject({
+      name: "github__create_issue",
+      input_schema: replayOnlySpec.inputSchema,
+    });
+    expect(replayTool).not.toHaveProperty("defer_loading");
+
+    const deferredTool = tools.find((tool) => tool.name === coldSpec.name);
+    expect(deferredTool).toHaveProperty("defer_loading", true);
   });
 });
 
