@@ -75,7 +75,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
@@ -355,9 +355,20 @@ export default function AgentBuilder({
     mcpServerViews,
   });
 
+  // Editors currently set in the form, which reflect pending (unsaved) changes
+  // such as the user adding themselves through the Editors panel. Saving persists
+  // these editors in the same request, so the gate must consider them alongside
+  // the already-persisted editors returned by the SWR hook.
+  const formEditors = useWatch({
+    control: form.control,
+    name: "agentSettings.editors",
+  });
+
   const isAdminExistingAgent =
     !!agentConfiguration && !duplicateAgentId && isAdmin;
-  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
+  const isCurrentUserEditor =
+    editors.some((editor) => editor.sId === user.sId) ||
+    (formEditors ?? []).some((editor) => editor.sId === user.sId);
   const isAdminNonEditor =
     isAdminExistingAgent &&
     !isEditorsLoading &&

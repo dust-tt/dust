@@ -54,7 +54,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
@@ -129,8 +129,19 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
+  // Editors currently set in the form, which reflect pending (unsaved) changes
+  // such as the user adding themselves through the Editors panel. Saving persists
+  // these editors in the same flow, so the gate must consider them alongside the
+  // already-persisted editors returned by the SWR hook.
+  const formEditors = useWatch({
+    control: form.control,
+    name: "editors",
+  });
+
   const isAdminExistingSkill = !!skill && isAdmin(owner);
-  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
+  const isCurrentUserEditor =
+    editors.some((editor) => editor.sId === user.sId) ||
+    (formEditors ?? []).some((editor) => editor.sId === user.sId);
   const isAdminNonEditor =
     isAdminExistingSkill &&
     !isEditorsLoading &&
