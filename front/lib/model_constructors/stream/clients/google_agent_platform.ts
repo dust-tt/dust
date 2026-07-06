@@ -24,13 +24,13 @@ import { GoogleGenAI } from "@google/genai";
 // the same place — it passes no location, so `@google/genai` defaults to
 // `global`. Extend with a specific region (e.g. `europe-west1`) once these
 // models become available there.
-export type AgentPlatformGoogleLocation = "global";
+export type GoogleAgentPlatformLocation = "global";
 
 // Gemini-on-Vertex transport. Same @google/genai SDK and converters as the AI
 // Studio client; only the client construction differs (Vertex project +
 // location instead of an API key). Mirrors the legacy `useVertex` branch and is
 // the path non-BYOK plans depend on.
-export abstract class AgentPlatformGoogleStream extends WithGoogleGenAIInputConverter(
+export abstract class GoogleAgentPlatformStream extends WithGoogleGenAIInputConverter(
   WithGoogleGenAIOutputConverter(
     StreamEndpoint<
       GenerateContentParameters,
@@ -41,13 +41,13 @@ export abstract class AgentPlatformGoogleStream extends WithGoogleGenAIInputConv
 ) {
   // Narrow `this.constructor` so the per-endpoint static below is visible.
   declare ["constructor"]: BaseEndpointConfiguration<GoogleAiStudioInputConfig> & {
-    regionalEndpoint: AgentPlatformGoogleLocation;
+    regionalEndpoint: GoogleAgentPlatformLocation;
   };
 
   static readonly providerId = GOOGLE_AI_STUDIO_PROVIDER_ID;
   static readonly api = AGENT_PLATFORM_API;
 
-  static readonly regionalEndpoint: AgentPlatformGoogleLocation;
+  static readonly regionalEndpoint: GoogleAgentPlatformLocation;
 
   static readonly configSchema = googleAiStudioConfigSchema;
 

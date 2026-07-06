@@ -43,7 +43,7 @@ const MODEL_MAPPING: Partial<Record<ModelId, Model>> = {
   [CLAUDE_HAIKU_4_5_MODEL_ID]: "claude-haiku-4-5@20251001",
 };
 
-export abstract class AgentPlatformStream extends WithAnthropicAIInputConverter(
+export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputConverter(
   WithAnthropicAIOutputConverter(
     StreamEndpoint<
       MessageCreateParamsNonStreaming,

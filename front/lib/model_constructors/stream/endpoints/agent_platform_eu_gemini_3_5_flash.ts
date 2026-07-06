@@ -1,10 +1,10 @@
 import { WithGoogleAiStudioGeminiThreeDotFiveFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_5_flash";
-import { AgentPlatformGoogleStream } from "@app/lib/model_constructors/stream/clients/agent_platform_google";
+import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/google_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
 
 export class AgentPlatformEuropeGeminiThreeDotFiveFlashStream extends WithGoogleAiStudioGeminiThreeDotFiveFlashConfig(
-  AgentPlatformGoogleStream
+  GoogleAgentPlatformStream
 ) {
   static readonly tokenPricing = {
     cacheCreated: 1.0,

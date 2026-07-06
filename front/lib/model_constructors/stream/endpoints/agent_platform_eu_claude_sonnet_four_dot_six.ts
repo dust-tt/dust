@@ -1,9 +1,9 @@
 import { WithAnthropicClaudeSonnetFourDotSixConfig } from "@app/lib/model_constructors/providers/anthropic/models/claude_sonnet_four_dot_six";
-import { AgentPlatformStream } from "@app/lib/model_constructors/stream/clients/agent_platform";
+import { AnthropicAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/anthropic_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 
 export class AgentPlatformEuropeClaudeSonnetFourDotSixStream extends WithAnthropicClaudeSonnetFourDotSixConfig(
-  AgentPlatformStream
+  AnthropicAgentPlatformStream
 ) {
   // https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing#europe-west1
   static readonly tokenPricing = {
