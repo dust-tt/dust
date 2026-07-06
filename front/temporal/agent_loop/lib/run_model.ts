@@ -33,6 +33,8 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
+import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -123,6 +125,21 @@ function getReplayedToolNames(
         for (const content of message.contents) {
           if (content.type === "function_call") {
             toolNames.add(content.value.name);
+          }
+          if (
+            content.type === "provider_passthrough" &&
+            content.value.provider === ANTHROPIC_PROVIDER_ID
+          ) {
+            const block = parseAnthropicToolSearchBlock(content.value.block);
+
+            if (
+              block?.type === "tool_search_tool_result" &&
+              block.content.type === "tool_search_tool_search_result"
+            ) {
+              for (const ref of block.content.tool_references) {
+                toolNames.add(ref.tool_name);
+              }
+            }
           }
         }
         break;
