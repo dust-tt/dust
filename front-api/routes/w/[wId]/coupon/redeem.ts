@@ -1,4 +1,4 @@
-import { redeemCreditsCoupon } from "@app/lib/metronome/coupons";
+import { redeemPoolTopupCoupon } from "@app/lib/metronome/coupons";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponType } from "@app/types/coupon";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -44,7 +44,7 @@ app.post(
       });
     }
 
-    const result = await redeemCreditsCoupon(auth, { coupon });
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
     if (result.isErr()) {
       const err = result.error;
       if (err instanceof Error) {

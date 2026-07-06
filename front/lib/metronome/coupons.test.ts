@@ -4,12 +4,12 @@ import {
   CREDIT_TYPE_USD_ID,
 } from "@app/lib/metronome/constants";
 import {
-  createCouponCredit,
+  createSeatCouponCredit,
   endCouponCredit,
   getCreditTypeFromContract,
   getCreditTypeFromPackage,
   redeemCoupon,
-  redeemCreditsCoupon,
+  redeemPoolTopupCoupon,
   revokeCouponRedemption,
 } from "@app/lib/metronome/coupons";
 import { SEAT_TAG } from "@app/lib/metronome/setup_common";
@@ -343,14 +343,14 @@ describe("getCreditTypeFromPackage", () => {
 });
 
 // ---------------------------------------------------------------------------
-// createCouponCredit
+// createSeatCouponCredit
 // ---------------------------------------------------------------------------
 
-describe("createCouponCredit", () => {
+describe("createSeatCouponCredit", () => {
   it("creates 1 credit spanning 1 month for a once coupon (durationMonths = null)", async () => {
     const coupon = makeCoupon({ durationMonths: null });
 
-    const result = await createCouponCredit({
+    const result = await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -376,7 +376,7 @@ describe("createCouponCredit", () => {
   it("passes EUR amount as whole units (no ×100 ratio) for EUR credit type", async () => {
     const coupon = makeCoupon({ amount: 10, durationMonths: null });
 
-    await createCouponCredit({
+    await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -396,7 +396,7 @@ describe("createCouponCredit", () => {
   it("uses correct date boundaries for a 3-month repeating coupon", async () => {
     const coupon = makeCoupon({ durationMonths: 3 });
 
-    await createCouponCredit({
+    await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -417,7 +417,7 @@ describe("createCouponCredit", () => {
   it("uses correct 1-month date boundaries for a once coupon (durationMonths = null)", async () => {
     const coupon = makeCoupon({ durationMonths: null });
 
-    await createCouponCredit({
+    await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -441,7 +441,7 @@ describe("createCouponCredit", () => {
 
     const coupon = makeCoupon({ durationMonths: 2 });
 
-    const result = await createCouponCredit({
+    const result = await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -460,7 +460,7 @@ describe("createCouponCredit", () => {
 
     const coupon = makeCoupon({ durationMonths: 3 });
 
-    const result = await createCouponCredit({
+    const result = await createSeatCouponCredit({
       metronomeCustomerId: "cust-1",
       coupon,
       redemptionId: REDEMPTION_ID,
@@ -794,7 +794,7 @@ describe("redeemCreditsCoupon", () => {
       new Ok({ creditId: "awu-credit-1" })
     );
 
-    const result = await redeemCreditsCoupon(auth, { coupon });
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
 
     expect(result.isOk()).toBe(true);
     if (!result.isOk()) {
@@ -830,7 +830,7 @@ describe("redeemCreditsCoupon", () => {
     mockGetActiveContract.mockResolvedValueOnce(null);
     mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "awu-credit-1" }));
 
-    const result = await redeemCreditsCoupon(auth, { coupon });
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
 
     expect(result.isOk()).toBe(true);
     if (!result.isOk()) {
@@ -850,7 +850,7 @@ describe("redeemCreditsCoupon", () => {
     const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create({ discountType: "seat" });
 
-    const result = await redeemCreditsCoupon(auth, { coupon });
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {
@@ -869,7 +869,7 @@ describe("redeemCreditsCoupon", () => {
       discountType: "credit_pool_top_up",
     });
 
-    const result = await redeemCreditsCoupon(auth, { coupon });
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {
@@ -887,7 +887,7 @@ describe("redeemCreditsCoupon", () => {
       new Err(new Error("metronome down"))
     );
 
-    const result = await redeemCreditsCoupon(auth, { coupon });
+    const result = await redeemPoolTopupCoupon(auth, { coupon });
     expect(result.isErr()).toBe(true);
 
     const redemptions = await CouponRedemptionResource.listAllByCoupon(coupon);
@@ -906,10 +906,10 @@ describe("redeemCreditsCoupon", () => {
       new Ok({ creditId: "awu-credit-2" })
     );
 
-    const first = await redeemCreditsCoupon(auth, { coupon });
+    const first = await redeemPoolTopupCoupon(auth, { coupon });
     expect(first.isOk()).toBe(true);
 
-    const second = await redeemCreditsCoupon(auth, { coupon });
+    const second = await redeemPoolTopupCoupon(auth, { coupon });
     expect(second.isErr()).toBe(true);
     if (!second.isErr()) {
       return;
