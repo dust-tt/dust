@@ -1,3 +1,4 @@
+import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -50,7 +51,6 @@ import {
   UserAllowedAdvancedModel,
   WorkspaceAllowedAdvancedModel,
 } from "@app/lib/models/allowed_advanced_model";
-import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
