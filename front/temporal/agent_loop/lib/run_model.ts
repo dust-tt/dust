@@ -324,11 +324,13 @@ export async function runModel(
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
-  // If we are on the last step, we don't show any action.
-  // This will force the agent to run the generation.
-  const availableActions = isLastStep
-    ? []
-    : filteredMcpActions.flatMap((s) => s.tools);
+  // On the last step we force the agent to run the generation: the tools are
+  // still sent, so the request keeps the same shape as previous steps (stable
+  // tool definitions preserve prompt caching and keep tool references in the
+  // replayed history resolvable), but the model is forbidden from calling them
+  // (tool choice "none").
+  const disableToolUse = isLastStep;
+  const availableActions = filteredMcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (agentConfiguration.actions.length || availableActions.length > 0) {
@@ -611,6 +613,7 @@ export async function runModel(
     conversation,
     hasConditionalJITTools,
     toolSearchEnabled,
+    disableToolUse,
     cacheDiagnosticsEnabled: featureFlags.includes(
       "anthropic_cache_diagnostics"
     ),

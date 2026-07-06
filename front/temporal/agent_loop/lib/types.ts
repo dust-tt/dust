@@ -45,6 +45,9 @@ export type GetOutputRequestParams = {
   // When true, the Anthropic client defers non-eager tools behind tool search.
   // Provider-agnostic signal: clients without tool-search support ignore it.
   toolSearchEnabled: boolean;
+  // When true, the tools are sent but the model is forbidden from calling them
+  // (tool choice "none"). Set on the last step to force the final generation.
+  disableToolUse: boolean;
   // When true, opt this step's Anthropic call into prompt-cache diagnostics and
   // thread the previous step's response id via Redis (see cache_diagnostics.ts).
   cacheDiagnosticsEnabled: boolean;

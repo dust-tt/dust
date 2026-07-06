@@ -16,6 +16,7 @@ import {
   userImageMessageToPart,
   userTextMessageToPart,
 } from "@app/lib/model_constructors/sdk/google_genai/converters/input/utils";
+import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   Payload,
   SystemTextMessage,
@@ -60,13 +61,7 @@ export function WithGoogleGenAIInputConverter<
       config: GoogleAiStudioInputConfig
     ): Promise<GenerateContentParameters> {
       const { conversation } = payload;
-      const {
-        tools = [],
-        temperature,
-        reasoning,
-        forceTool,
-        outputFormat,
-      } = config;
+      const { tools = [], temperature, reasoning, outputFormat } = config;
 
       return {
         model: this.constructor.modelId,
@@ -82,7 +77,10 @@ export function WithGoogleGenAIInputConverter<
             tools.length > 0
               ? [{ functionDeclarations: tools.map(toFunctionDeclaration) }]
               : [],
-          toolConfig: forceToolNameToToolConfig(tools, forceTool),
+          toolConfig: forceToolNameToToolConfig(
+            tools,
+            toToolChoiceInput(config)
+          ),
           thinkingConfig: reasoning
             ? effortToThinkingConfig(reasoning.effort)
             : { includeThoughts: true },

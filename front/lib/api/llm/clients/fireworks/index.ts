@@ -45,12 +45,10 @@ export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
     });
   }
 
-  protected buildStreamRequestPayload({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): ChatCompletionCreateParamsStreaming {
+  protected buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): ChatCompletionCreateParamsStreaming {
+    const { conversation, prompt, specifications } = streamParameters;
     const tools =
       specifications.length > 0 ? toTools(specifications) : undefined;
 
@@ -66,7 +64,7 @@ export class FireworksLLM extends LLM<ChatCompletionCreateParamsStreaming> {
         this.reasoningEffort,
         this.modelConfig.useNativeLightReasoning
       ),
-      tool_choice: toToolChoiceParam(specifications, forceToolCall),
+      tool_choice: toToolChoiceParam(specifications, streamParameters),
       ...(tools ? { tools } : {}),
       response_format: toOutputFormatParam(this.responseFormat),
     };

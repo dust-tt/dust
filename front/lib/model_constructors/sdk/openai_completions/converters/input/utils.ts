@@ -1,5 +1,6 @@
 import type {
   OutputFormat,
+  ToolChoiceInput,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -231,11 +232,17 @@ export function toTool(tool: ToolSpecification): ChatCompletionTool {
 
 export function forceToolNameToToolChoice(
   tools: ToolSpecification[],
-  forceTool: string | undefined
+  { forceTool, disableToolUse }: ToolChoiceInput
 ): ChatCompletionToolChoiceOption {
-  return forceTool && tools.some((tool) => tool.name === forceTool)
-    ? { type: "function", function: { name: forceTool } }
-    : "auto";
+  if (forceTool && tools.some((tool) => tool.name === forceTool)) {
+    return { type: "function", function: { name: forceTool } };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return "auto";
 }
 
 // Maps our reasoning effort to the chat-completions `reasoning_effort` value, or

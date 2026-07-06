@@ -26,6 +26,7 @@ import {
   toolSpecsToAnthropicAITools,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
+import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   Payload,
   SystemTextMessage,
@@ -109,7 +110,10 @@ export function WithAnthropicAIInputConverter<
           : system,
         thinking: thinkingConfig.thinking,
         tools: anthropicTools,
-        tool_choice: forceToolNameToToolChoice(tools, forceTool),
+        tool_choice: forceToolNameToToolChoice(
+          tools,
+          toToolChoiceInput(config)
+        ),
         temperature,
         ...(Object.keys(outputConfig).length > 0
           ? { output_config: outputConfig }
