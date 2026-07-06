@@ -15,7 +15,10 @@ import {
   isClientSideMCPToolConfiguration,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
-import { COMMON_UTILITIES_SERVER_NAME } from "@app/lib/api/actions/servers/common_utilities/metadata";
+import {
+  COMMON_UTILITIES_SERVER_NAME,
+  SET_CONVERSATION_TITLE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import {
   CONVERSATION_CAT_FILE_ACTION_NAME,
   CONVERSATION_FILES_SERVER_NAME,
@@ -45,8 +48,6 @@ import type {
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import moment from "moment-timezone";
-
-const SET_CONVERSATION_TITLE_TOOL_NAME = "set_conversation_title";
 
 // This section is included in the system prompt, which benefits from prompt caching.
 // To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
