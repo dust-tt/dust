@@ -966,13 +966,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return spaceBasedAccessible;
     }
 
-    const user = auth.user();
-    if (!user) {
-      throw new Error(
-        "User not found while auth method is not api key, system api key, or internal"
-      );
-    }
-
     const participantRestrictedConversations = spaceBasedAccessible.filter(
       (conversation) =>
         this.shouldApplyPrivateByDefaultUrlRestriction(conversation) &&
@@ -985,17 +978,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return spaceBasedAccessible;
     }
 
-    // For all participant-restricted conversations, check if the user is a participant.
-    const participations = await ConversationParticipantModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        userId: user.id,
-        conversationId: {
-          [Op.in]: participantRestrictedConversations.map((c) => c.id),
-        },
-      },
-      attributes: ["conversationId"],
-    });
+    // For all participant-restricted conversations, check if the user is a participant. A userless
+    // authenticator (e.g. a userless sandbox token driven by a non-human actor, or a session/oauth
+    // request with no matching Dust user) can never be a participant, so it sees none of them. This
+    // mirrors the null-user handling in canUserAccessPrivateByDefaultConversation.
+    const user = auth.user();
+    const participations = user
+      ? await ConversationParticipantModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            userId: user.id,
+            conversationId: {
+              [Op.in]: participantRestrictedConversations.map((c) => c.id),
+            },
+          },
+          attributes: ["conversationId"],
+        })
+      : [];
 
     const participantConversationIds = new Set(
       participations.map((p) => p.conversationId)
