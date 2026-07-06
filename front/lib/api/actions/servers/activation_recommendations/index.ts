@@ -51,8 +51,14 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
 
       if (!rec) {
         return new Err(
+          new MCPError(`Recommendation not found: ${recommendationId}.`)
+        );
+      }
+
+      if (rec.userId !== auth.getNonNullableUser().id) {
+        return new Err(
           new MCPError(
-            `Recommendation not found: ${recommendationId}.`
+            `Cannot update recommendation ${recommendationId}: not owned by the calling user.`
           )
         );
       }
