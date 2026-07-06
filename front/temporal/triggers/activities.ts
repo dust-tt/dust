@@ -438,7 +438,7 @@ export async function runWakeUpActivity({
       { status: wakeUp.status, wakeUpId, workspaceId },
       "Cancelling wake-up: conversation not found."
     );
-    await wakeUp.markCancelled(auth);
+    await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
     return;
   }
 
@@ -453,7 +453,7 @@ export async function runWakeUpActivity({
       },
       "Cancelling wake-up: conversation not accessible."
     );
-    await wakeUp.markCancelled(auth);
+    await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
     return;
   }
 
@@ -494,7 +494,7 @@ export async function runWakeUpActivity({
         },
         "Cancelling wake-up: agent cannot be invoked."
       );
-      await wakeUp.markCancelled(auth);
+      await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
       return;
     }
 
@@ -503,7 +503,7 @@ export async function runWakeUpActivity({
 
   await wakeUp.markFired(auth);
 
-  const cleanupRes = await wakeUp.cleanupTemporalIfCronExpired(auth);
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
   if (cleanupRes.isErr()) {
     logger.error(
       {
@@ -512,6 +512,29 @@ export async function runWakeUpActivity({
         error: normalizeError(cleanupRes.error),
       },
       "Failed cleaning up wake-up temporal state after fire."
+    );
+  }
+}
+
+// Marks a wake-up cancelled and, for cron wake-ups, deletes the backing
+// Temporal schedule so it stops firing. We do not use WakeUpResource.cancel
+// here: for one-shot wake-ups that would cancel the very workflow this activity
+// runs in. Deleting the cron schedule is safe from within a scheduled run.
+async function cancelWakeUpAndCleanupSchedule(
+  auth: Authenticator,
+  wakeUp: WakeUpResource
+): Promise<void> {
+  await wakeUp.markCancelled(auth);
+
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
+  if (cleanupRes.isErr()) {
+    logger.error(
+      {
+        wakeUpId: wakeUp.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: normalizeError(cleanupRes.error),
+      },
+      "Failed deleting wake-up schedule after cancelling."
     );
   }
 }
@@ -539,4 +562,16 @@ export async function expireWakeUpActivity({
   const { auth, wakeUp } = wakeUpAndAuthRes.value;
 
   await wakeUp.markExpired(auth);
+
+  const cleanupRes = await wakeUp.cleanupTemporalScheduleIfCronTerminal(auth);
+  if (cleanupRes.isErr()) {
+    logger.error(
+      {
+        wakeUpId,
+        workspaceId,
+        error: normalizeError(cleanupRes.error),
+      },
+      "Failed deleting wake-up schedule after expiring."
+    );
+  }
 }

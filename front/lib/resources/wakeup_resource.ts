@@ -658,10 +658,17 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
-  async cleanupTemporalIfCronExpired(
+  async cleanupTemporalScheduleIfCronTerminal(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    if (this.scheduleType !== "cron" || this.status !== "expired") {
+    // Once the wake-up reaches a terminal state (expired or cancelled) the
+    // schedule must be deleted, otherwise Temporal keeps spawning daily
+    // workflows that no-op forever. cancelTemporalWorkflow deletes the schedule
+    // for cron and is idempotent (ScheduleNotFound is treated as success).
+    if (
+      this.scheduleType !== "cron" ||
+      (this.status !== "expired" && this.status !== "cancelled")
+    ) {
       return new Ok(undefined);
     }
 
