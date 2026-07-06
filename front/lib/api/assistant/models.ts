@@ -248,7 +248,31 @@ export function resolveModelSelection(
   if (!enabled) {
     return null;
   }
-  return toResolvedModel(enabled, selection.reasoningEffort);
+  // Honor an explicit effort only if the model supports it; otherwise fall back
+  // to its default (raw API clients can send an unsupported effort).
+  const effort =
+    selection.reasoningEffort &&
+    enabled.supportedReasoningEfforts[selection.reasoningEffort]
+      ? selection.reasoningEffort
+      : undefined;
+  return toResolvedModel(enabled, effort);
+}
+
+// Drops agent model settings the picked override can't honor: a structured-output
+// responseFormat inherited onto a model with `supportsResponseFormat: false` makes
+// the run error or silently ignore the schema.
+export function reconcileModelSettings<T extends { responseFormat?: string }>(
+  requested: ResolvedRequestedModel,
+  settings: T
+): T {
+  const config = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.providerId === requested.providerId && m.modelId === requested.modelId
+  );
+  if (config?.supportsResponseFormat) {
+    return settings;
+  }
+  return { ...settings, responseFormat: undefined };
 }
 
 // Rebuilds a `ResolvedRequestedModel` from the raw agent-message columns, or null

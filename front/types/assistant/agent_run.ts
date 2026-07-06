@@ -4,6 +4,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { reconcileModelSettings } from "@app/lib/api/assistant/models";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -329,16 +330,16 @@ export async function getAgentLoopDataWithAuth(
 
   // Apply the per-message model override from the input-bar picker, if any. This
   // is the single choke point every downstream consumer reads for the run model
-  // (run_model, prompt commands, ...). Temperature and other model settings are
-  // inherited from the agent's configuration; only provider/model/effort change.
+  // (run_model, prompt commands, ...). Settings are inherited from the agent's
+  // configuration, then reconciled against the picked model's capabilities.
   const { requestedModel } = agentMessage;
   const agentModel = requestedModel
-    ? {
+    ? reconcileModelSettings(requestedModel, {
         ...agentConfigModel,
         providerId: requestedModel.providerId,
         modelId: requestedModel.modelId,
         reasoningEffort: requestedModel.reasoningEffort,
-      }
+      })
     : agentConfigModel;
 
   const model = getSupportedModelConfig(agentModel);

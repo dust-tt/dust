@@ -4,8 +4,11 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
-import { requestedAgentModelFromColumns } from "@app/lib/api/assistant/models";
-import type { Authenticator } from "@app/lib/auth";
+import {
+  requestedAgentModelFromColumns,
+  resolveModelSelection,
+} from "@app/lib/api/assistant/models";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessageModel,
   CompactionMessageModel,
@@ -289,9 +292,15 @@ export const createAgentMessages = async (
     case "retry":
       {
         const agentConfiguration = metadata.agentMessage.configuration;
-        // Preserve the per-message model override so a retry re-runs on the same
-        // picked model rather than falling back to the agent's configured one.
+        // Preserve the per-message model override, but re-validate it: a model
+        // enabled at first send may have since been disabled for the workspace,
+        // in which case the retry falls back to the agent's configured model.
         const retriedModel = metadata.agentMessage.requestedModel;
+        const revalidatedModel = retriedModel
+          ? resolveModelSelection(auth, retriedModel, {
+              featureFlags: await getFeatureFlags(auth),
+            })
+          : null;
         const agentMessageRow = await AgentMessageModel.create(
           {
             status: "created",
@@ -299,9 +308,9 @@ export const createAgentMessages = async (
             agentConfigurationVersion: agentConfiguration.version,
             workspaceId: owner.id,
             skipToolsValidation: metadata.agentMessage.skipToolsValidation,
-            requestedProviderId: retriedModel?.providerId ?? null,
-            requestedModelId: retriedModel?.modelId ?? null,
-            requestedReasoningEffort: retriedModel?.reasoningEffort ?? null,
+            requestedProviderId: revalidatedModel?.providerId ?? null,
+            requestedModelId: revalidatedModel?.modelId ?? null,
+            requestedReasoningEffort: revalidatedModel?.reasoningEffort ?? null,
           },
           { transaction }
         );
