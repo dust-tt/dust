@@ -130,7 +130,13 @@ async function retrieveGoogleFileContent(
       );
     }
 
-    return <string>contentRes.data;
+    if (typeof contentRes.data !== "string") {
+      throw new Error(
+        `Unexpected exported content type: ${typeof contentRes.data}`
+      );
+    }
+
+    return contentRes.data;
   }
 
   if (mimeType && mimeType.startsWith("text/")) {
@@ -145,7 +151,13 @@ async function retrieveGoogleFileContent(
       );
     }
 
-    return <string>contentRes.data;
+    if (typeof contentRes.data !== "string") {
+      throw new Error(
+        `Unexpected downloaded content type: ${typeof contentRes.data}`
+      );
+    }
+
+    return contentRes.data;
   }
 
   throw new Error(`Unsupported transcript mime type: ${mimeType}`);
