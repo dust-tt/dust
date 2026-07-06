@@ -1441,7 +1441,11 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
   GLOBAL_AGENTS_SID.MISTRAL_SMALL,
   GLOBAL_AGENTS_SID.NOTION,
+  GLOBAL_AGENTS_SID.O1,
+  GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
   GLOBAL_AGENTS_SID.O1_MINI,
+  GLOBAL_AGENTS_SID.O3,
+  GLOBAL_AGENTS_SID.O3_MINI,
   GLOBAL_AGENTS_SID.GPT4,
   GLOBAL_AGENTS_SID.SLACK,
   // Hidden helper sub-agent, only invoked via run_agent by deep-dive
@@ -1532,19 +1536,6 @@ export async function getGlobalAgents(
 
   const flags = await getFeatureFlags(auth);
 
-  if (!flags.includes("openai_o1_feature")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O1
-    );
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O3
-    );
-  }
-  if (!flags.includes("openai_o1_high_reasoning_feature")) {
-    agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
-    );
-  }
   if (!flags.includes("workspace_analytics")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.ANALYST
