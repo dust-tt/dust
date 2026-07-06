@@ -98,6 +98,7 @@ import {
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -185,6 +186,7 @@ export function loadAllModels() {
     ExternalViewerSessionModel,
     DustAppSecretModel,
     GroupSpaceModel,
+    GroupPermissionModel,
     WebhookSourceModel,
     WebhookSourcesViewModel,
     TriggerModel,
