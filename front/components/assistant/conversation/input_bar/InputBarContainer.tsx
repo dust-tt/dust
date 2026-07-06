@@ -347,41 +347,6 @@ const InputBarContainer = ({
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
-  // On mobile the bottom button row scrolls horizontally under the pinned
-  // voice/send cluster. We fade its right edge only while there is more content
-  // to scroll to, so the fade reads as "there's more" rather than clipping the
-  // last button when everything already fits.
-  const [hasButtonRowOverflow, setHasButtonRowOverflow] = useState(false);
-  // Track whether the mobile button row can still scroll right, to toggle the
-  // right-edge fade. We use a callback ref (rather than useEffect) so setup runs
-  // exactly when the row mounts/unmounts — the row is conditionally rendered
-  // while recording, and observing the row and its content catches both viewport
-  // resizes and changes to the set of buttons.
-  const buttonRowCleanupRef = useRef<(() => void) | null>(null);
-  const buttonRowRef = useCallback((el: HTMLDivElement | null) => {
-    buttonRowCleanupRef.current?.();
-    buttonRowCleanupRef.current = null;
-    if (!el) {
-      setHasButtonRowOverflow(false);
-      return;
-    }
-    const update = () => {
-      setHasButtonRowOverflow(
-        el.scrollLeft + el.clientWidth < el.scrollWidth - 1
-      );
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    if (el.firstElementChild) {
-      observer.observe(el.firstElementChild);
-    }
-    el.addEventListener("scroll", update, { passive: true });
-    buttonRowCleanupRef.current = () => {
-      observer.disconnect();
-      el.removeEventListener("scroll", update);
-    };
-  }, []);
   const clientType = useClientType();
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
 
@@ -1679,24 +1644,13 @@ const InputBarContainer = ({
                 className={cn(
                   "flex w-full items-center px-2",
                   // The voice/send cluster is absolutely positioned at the
-                  // bottom-right. On mobile the button row would otherwise slide
-                  // underneath it, so reserve that space and let the row scroll.
+                  // bottom-right. On mobile, reserve that space so the button
+                  // row doesn't slide underneath it.
                   isMobile && "pr-24"
                 )}
               >
                 {!isRecording && (
-                  <div
-                    ref={buttonRowRef}
-                    className={cn(
-                      "flex items-center",
-                      isMobile && "min-w-0 overflow-x-auto scrollbar-hide",
-                      // Fade the right edge (only while there's more to scroll to)
-                      // so it's clear the row continues under the send cluster.
-                      isMobile &&
-                        hasButtonRowOverflow &&
-                        "[-webkit-mask-image:linear-gradient(to_right,black_calc(100%-56px),transparent)] mask-[linear-gradient(to_right,black_calc(100%-56px),transparent)]"
-                    )}
-                  >
+                  <div className="flex items-center">
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
