@@ -99,7 +99,7 @@ export function getToolBillingInfo(
 export const FREE_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>(["agent_sidekick"]);
 
-function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
+export function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
   if (origin == null) {
     return false;
   }
