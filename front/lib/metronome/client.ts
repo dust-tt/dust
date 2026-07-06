@@ -52,7 +52,10 @@ export function getMetronomeClient(): Metronome {
     if (!bearerToken) {
       throw new Error("METRONOME_API_KEY is not set");
     }
-    cachedClient = new Metronome({ bearerToken });
+    // The SDK auto-retries 429/5xx with exponential backoff (honoring
+    // `Retry-After`); raise the default (2) so bulk jobs survive sustained
+    // rate-limit pressure without hard-failing.
+    cachedClient = new Metronome({ bearerToken, maxRetries: 5 });
   }
   return cachedClient;
 }
@@ -806,7 +809,7 @@ export async function createMetronomeContract({
   // webhook carries flagged non-recurring balances forward (see
   // `carryOverContractBalancesOnRenewal` / `CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY`).
   fromContractId?: string;
-}): Promise<Result<{ contractId: string }, Error>> {
+}): Promise<Result<{ contractId: string; recovered: boolean }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
       new Error(
@@ -920,7 +923,7 @@ export async function createMetronomeContract({
       ? "[Metronome] Contract recovered"
       : "[Metronome] Contract created"
   );
-  return new Ok({ contractId });
+  return new Ok({ contractId, recovered });
 }
 
 /**

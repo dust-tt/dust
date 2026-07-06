@@ -17,7 +17,10 @@ import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE,
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  isBusinessPlan,
+  PRO_PLAN_LARGE_FILES_10SPACES_CODE,
+  PRO_PLAN_LARGE_FILES_CODE,
+  PRO_PLAN_PLUS_SEAT_29_CODE,
+  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -39,6 +42,16 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 // `contract.start` webhook at activation, so the amounts reflect the
 // workspace's state at migration time rather than at migration-scheduling time.
 export const FREE_MIGRATION_AWU_CREDITS_PER_USER = 2000;
+
+// Legacy Pro plan codes that always migrate to the legacy-large Business plan
+// (their seats/features exceed the standard Business plan), regardless of the
+// workspace's current usage.
+const FORCE_LEGACY_LARGE_PLAN_CODES = new Set<string>([
+  PRO_PLAN_SEAT_39_CODE,
+  PRO_PLAN_LARGE_FILES_CODE,
+  PRO_PLAN_LARGE_FILES_10SPACES_CODE,
+  PRO_PLAN_PLUS_SEAT_29_CODE,
+]);
 
 // Default rollout window [start, end) for the legacy Pro → Business migration.
 // The batch script accepts overrides; the user-facing resume flow uses these.
@@ -302,10 +315,30 @@ export async function migrateWorkspaceToBusiness(
 
   const pricing = await subscription.getPerSeatPricing();
   if (!pricing || pricing.currentPeriodEndMs === null) {
-    return new Ok({
-      status: "skipped",
-      reason: "could not resolve per-seat Stripe pricing",
-    });
+    // `getPerSeatPricing` returns null for several reasons. Inspect the Stripe
+    // subscription's seat quantity to classify: a 0-quantity subscription is an
+    // empty workspace (benign skip). Anything else — a non-per-seat price
+    // (metered / enterprise MAU), missing currency option, or a subscription we
+    // can't read — is unexpected for a Pro per-seat workspace and is surfaced as
+    // an error rather than a silent skip.
+    const stripeSub = await getStripeSubscription(
+      subscription.stripeSubscriptionId
+    );
+    const seatQuantity = stripeSub?.items?.data[0]?.quantity ?? null;
+    if (seatQuantity === 0) {
+      return new Ok({
+        status: "skipped",
+        reason: "workspace has no active seats",
+      });
+    }
+    return new Err(
+      new Error(
+        "Could not resolve per-seat Stripe pricing for subscription " +
+          `${subscription.stripeSubscriptionId} (seat quantity ` +
+          `${seatQuantity ?? "unknown"}) — unexpected price shape ` +
+          "(e.g. metered / enterprise MAU or missing currency option)."
+      )
+    );
   }
   const { billingPeriod } = pricing;
   const currentPeriodEndMs = pricing.currentPeriodEndMs;
@@ -315,17 +348,23 @@ export async function migrateWorkspaceToBusiness(
   // legacy-large Business plan, whose limits fit any PRO_* workspace, so the
   // move never downgrades the workspace below its current usage.
   //
-  // PRO_PLAN_SEAT_39 (the enterprise seat-based legacy plan) always migrates to
+  // A few legacy Pro plans (see FORCE_LEGACY_LARGE_PLAN_CODES) always migrate to
   // the legacy-large Business plan regardless of current usage.
+  const currentPlanCode = subscription.getPlan().code;
   let targetPlan = deps.businessPlan;
-  if (isBusinessPlan(subscription.getPlan())) {
+  // Human-readable explanation of the plan choice, surfaced in the log below.
+  let planChoiceReason: string;
+  if (FORCE_LEGACY_LARGE_PLAN_CODES.has(currentPlanCode)) {
     targetPlan = deps.businessLegacyLargePlan;
+    planChoiceReason = `${currentPlanCode} always uses legacy-large Business`;
   } else {
     const standardFit = await checkWorkspaceFitsPlanLimits(
       auth,
       deps.businessPlan
     );
-    if (!standardFit.fits) {
+    if (standardFit.fits) {
+      planChoiceReason = "workspace fits standard Business limits";
+    } else {
       const largeFit = await checkWorkspaceFitsPlanLimits(
         auth,
         deps.businessLegacyLargePlan
@@ -339,8 +378,15 @@ export async function migrateWorkspaceToBusiness(
         });
       }
       targetPlan = deps.businessLegacyLargePlan;
+      planChoiceReason = `standard Business limits exceeded (${standardFit.violations.join(
+        ", "
+      )})`;
     }
   }
+  logger.info(
+    { workspaceId: workspace.sId, planCode: targetPlan.code, planChoiceReason },
+    `[migrate-business] Plan selected: ${targetPlan.code} — ${planChoiceReason}`
+  );
 
   const packageAlias = businessPackageAliasForCurrency(pricing.seatCurrency);
   if (!packageAlias) {

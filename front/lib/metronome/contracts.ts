@@ -214,7 +214,9 @@ export async function provisionMetronomeContract({
   enableSeatSync?: boolean;
   fromContractId?: string;
   displayedName?: string;
-}): Promise<Result<{ metronomeContractId: string }, Error>> {
+}): Promise<
+  Result<{ metronomeContractId: string; recovered: boolean }, Error>
+> {
   const alignedStart = new Date(
     swapAt === "current-hour"
       ? floorToHourISO(startingAt)
@@ -247,7 +249,7 @@ export async function provisionMetronomeContract({
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
   }
-  const { contractId: metronomeContractId } = contractResult.value;
+  const { contractId: metronomeContractId, recovered } = contractResult.value;
 
   const contractsResult = await listMetronomeContracts(metronomeCustomerId);
   if (contractsResult.isErr()) {
@@ -335,7 +337,7 @@ export async function provisionMetronomeContract({
   // credit_state_dispatcher would create a cycle through auth →
   // subscription_resource → contracts.
 
-  return new Ok({ metronomeContractId });
+  return new Ok({ metronomeContractId, recovered });
 }
 
 /**

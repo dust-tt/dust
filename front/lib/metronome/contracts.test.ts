@@ -119,7 +119,7 @@ beforeEach(() => {
 
   mockCreateMetronomeContract.mockReset();
   mockCreateMetronomeContract.mockResolvedValue(
-    new Ok({ contractId: "m-contract" })
+    new Ok({ contractId: "m-contract", recovered: false })
   );
 
   mockScheduleMetronomeContractEnd.mockReset();
