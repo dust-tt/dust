@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 // Set to null when there's nothing to promote.
 // =============================================================================
 const CURRENT_PROMO: PromoConfig | null = {
-  id: "product-update-pods-jul1",
-  image: "/static/landing/SEO_Marketing_Webinar_Banner.png",
-  link: "https://watch.getcontrast.io/register/dust-pods-hot-off-the-grill?utm_source=website",
+  id: "supercharge-revops-jul16",
+  image: "/static/landing/RevOps_Webinar_Banner.jpeg",
+  link: "https://watch.getcontrast.io/register/dust-supercharge-revops-with-dust-2?utm_source=website",
   badge: "Online Event",
-  title: "Product Update - Pods",
-  time: "July 1 · 5:30pm CEST / 8:30am PDT",
+  title: "Supercharge RevOps with Dust",
+  time: "July 16 · 9:00am PST / 6:00pm CEST",
   linkLabel: "Register Now",
-  // Banner auto-hides after this date (July 1st 7:00 PM Paris / CEST).
-  expiresAt: new Date("2026-07-01T19:00:00+02:00"),
+  // Banner auto-hides after this date (a few hours after the July 16th event).
+  expiresAt: new Date("2026-07-16T13:00:00-08:00"),
 };
 // =============================================================================
 
