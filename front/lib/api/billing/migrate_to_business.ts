@@ -11,6 +11,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   BUSINESS_EUR_PACKAGE_ALIAS,
+  BUSINESS_GBP_PACKAGE_ALIAS,
   BUSINESS_USD_PACKAGE_ALIAS,
 } from "@app/lib/metronome/types";
 import { PlanModel } from "@app/lib/models/plan";
@@ -66,6 +67,8 @@ function businessPackageAliasForCurrency(currency: string): string | null {
       return BUSINESS_USD_PACKAGE_ALIAS;
     case "EUR":
       return BUSINESS_EUR_PACKAGE_ALIAS;
+    case "GBP":
+      return BUSINESS_GBP_PACKAGE_ALIAS;
     default:
       return null;
   }

@@ -236,6 +236,7 @@ export const PROD_CREDIT_TYPE_PROG_USD_ID =
 export const CURRENCY_TO_CREDIT_TYPE_ID: Record<string, string> = {
   usd: CREDIT_TYPE_USD_ID,
   eur: CREDIT_TYPE_EUR_ID,
+  gbp: CREDIT_TYPE_GBP_ID,
 };
 
 // --- Accessors ---

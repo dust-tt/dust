@@ -57,16 +57,6 @@ import {
   DEFAULT_AWU_EXCESS_RECURRING_AMOUNT,
 } from "@app/lib/metronome/types";
 
-// GBP is not (yet) a global `SupportedCurrency`, so its AWU pricing lives here
-// in the metronome setup rather than in the shared currency helpers
-// (`getOverageAwuRate` / `AWU_PRICE_PER_CREDIT`). Numbers mirror the EUR config:
-// GBP is a non-USD, whole-currency-unit pricing unit in Metronome, so seat
-// prices reuse the same `CP_*` amounts (no cents ×100) and the overage AWU
-// conversion is `2 × price-per-credit` (matching `getOverageAwuRate`'s ×2
-// multiplier).
-const GBP_AWU_PRICE_PER_CREDIT = 0.0075;
-const GBP_OVERAGE_AWU_RATE = GBP_AWU_PRICE_PER_CREDIT * 2;
-
 export const NEW_METRICS: MetricDef[] = [
   // Tool invocation metric — counts tool uses, group keys cover both user and
   // programmatic events. `is_programmatic_usage` is the authoritative split
@@ -508,7 +498,7 @@ export function getNewRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: GBP_OVERAGE_AWU_RATE,
+          fiat_per_custom_credit: getOverageAwuRate("gbp"),
         },
       ],
       rates: [

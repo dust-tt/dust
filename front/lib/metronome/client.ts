@@ -629,6 +629,7 @@ const TIER_SORT_ORDER: Record<MetronomePackageTier, number> = {
 const CURRENCY_SORT_ORDER: Record<SupportedCurrency, number> = {
   usd: 0,
   eur: 1,
+  gbp: 2,
 };
 
 function comparePackagesForDisplay(

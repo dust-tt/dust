@@ -94,6 +94,7 @@ export async function getStripePricingData(
   const currencyOptions: StripePricingData["currencyOptions"] = {
     usd: { unitAmount: 0 },
     eur: { unitAmount: 0 },
+    gbp: { unitAmount: 0 },
   };
 
   for (const currency of SUPPORTED_CURRENCIES) {
