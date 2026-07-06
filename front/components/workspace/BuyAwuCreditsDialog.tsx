@@ -16,7 +16,7 @@ import {
 } from "@app/lib/metronome/amounts";
 import {
   useAwuPurchaseStatus,
-  useRedeemCreditsCoupon,
+  useRedeemPoolTopupCoupon,
 } from "@app/lib/swr/credits";
 import { useValidateCoupon } from "@app/lib/swr/workspaces";
 import type { CouponType } from "@app/types/coupon";
@@ -132,7 +132,7 @@ function UseCouponTab({
   const [couponError, setCouponError] = useState<string>("");
   const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const { validateCoupon } = useValidateCoupon({ workspaceId });
-  const { redeemCreditsCoupon } = useRedeemCreditsCoupon({ workspaceId });
+  const { redeemPoolTopupCoupon } = useRedeemPoolTopupCoupon({ workspaceId });
 
   // For a "credits" coupon, `amount` is the number of bonus AWU credits granted.
   const bonusCredits = checkedCoupon?.amount ?? 0;
@@ -167,7 +167,7 @@ function UseCouponTab({
       return;
     }
     setCouponState("redeeming");
-    const result = await redeemCreditsCoupon(checkedCoupon.code);
+    const result = await redeemPoolTopupCoupon(checkedCoupon.code);
     switch (result.status) {
       case "success":
         setCouponState("success");
@@ -180,7 +180,7 @@ function UseCouponTab({
       default:
         assertNeverAndIgnore(result);
     }
-  }, [checkedCoupon, redeemCreditsCoupon, onSuccess]);
+  }, [checkedCoupon, redeemPoolTopupCoupon, onSuccess]);
 
   const resetCouponInput = useCallback(() => {
     setCheckedCoupon(null);

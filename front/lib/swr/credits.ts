@@ -345,14 +345,14 @@ export function useAwuPurchaseInfo({
   };
 }
 
-export type RedeemCreditsCouponOutcome =
+export type RedeemPoolTopupCouponOutcome =
   | { status: "success" }
   | { status: "error"; message: string };
 
 // Redeems a "credits" coupon (the "Use coupon" Top-Up tab). Grants free AWU
 // credits synchronously — no payment involved. Refreshes the pool summary on
 // success.
-export function useRedeemCreditsCoupon({
+export function useRedeemPoolTopupCoupon({
   workspaceId,
 }: {
   workspaceId: string;
@@ -362,8 +362,8 @@ export function useRedeemCreditsCoupon({
     disabled: true,
   });
 
-  const redeemCreditsCoupon = useCallback(
-    async (code: string): Promise<RedeemCreditsCouponOutcome> => {
+  const redeemPoolTopupCoupon = useCallback(
+    async (code: string): Promise<RedeemPoolTopupCouponOutcome> => {
       try {
         const response = await clientFetch(
           `/api/w/${workspaceId}/coupon/redeem`,
@@ -394,7 +394,7 @@ export function useRedeemCreditsCoupon({
     [workspaceId, mutateAwuPoolSummary]
   );
 
-  return { redeemCreditsCoupon };
+  return { redeemPoolTopupCoupon };
 }
 
 export function useMyUsage({

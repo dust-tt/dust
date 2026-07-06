@@ -234,7 +234,7 @@ export type RedeemPoolTopupCouponError =
 
 // Redeem a "credit_pool_top_up" coupon as a standalone, synchronous action (the "Use
 // coupon" Top-Up tab): no payment is involved, the coupon simply grants free
-// AWU credits to the workspace pool. Mirrors `redeemCoupon` (the subscription
+// AWU credits to the workspace pool. Mirrors `redeemSeatCoupon` (the subscription
 // path) end-to-end: validate → check for an existing redemption → create the
 // pending redemption (incrementing the count) → grant the credit → mark active.
 // On a Metronome failure the pending redemption is rolled back so the count is
@@ -357,11 +357,11 @@ export async function endCouponCredit({
   return new Ok(undefined);
 }
 
-export type RedeemCouponError =
+export type RedeemSeatCouponError =
   | { code: "workspace_not_on_metronome" }
   | { code: "coupon_validation_failed"; reason: CouponValidationError };
 
-export async function redeemCoupon(
+export async function redeemSeatCoupon(
   auth: Authenticator,
   {
     coupon,
@@ -370,7 +370,7 @@ export async function redeemCoupon(
     coupon: CouponResource;
     metronomePackageAlias?: string;
   }
-): Promise<Result<CouponRedemptionResource, RedeemCouponError | Error>> {
+): Promise<Result<CouponRedemptionResource, RedeemSeatCouponError | Error>> {
   const validation = coupon.validateRedemptionForContext("subscription");
   if (validation.isErr()) {
     return new Err({
@@ -398,10 +398,11 @@ export async function redeemCoupon(
   }
 
   let creditTypeIdResult;
+  let contract: CachedContract | null = null;
   if (metronomePackageAlias) {
     creditTypeIdResult = await getCreditTypeFromPackage(metronomePackageAlias);
   } else {
-    const contract = await getActiveContract(workspace.sId);
+    contract = await getActiveContract(workspace.sId);
     if (!contract) {
       return new Err(
         new Error("No active Metronome contract found for workspace")
@@ -424,6 +425,7 @@ export async function redeemCoupon(
 
   const creditResult = await createSeatCouponCredit({
     metronomeCustomerId,
+    metronomeContractId: contract ? contract.id : undefined,
     coupon,
     redemptionId: redemption.sId,
     redeemedAt: redemption.redeemedAt,
