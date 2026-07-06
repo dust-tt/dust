@@ -15,17 +15,12 @@ import {
   createTicket,
   deleteTask,
   getAssociatedMeetings,
-  getCompany,
-  getContact,
   getCurrentUserId,
-  getDeal,
   getEmailCampaign,
   getFilePublicUrl,
-  getLatestObjects,
   getMarketingEmail,
   getMarketingEmailStatisticsHistogram,
   getMeeting,
-  getObjectByEmail,
   getObjectProperties,
   getUserActivity,
   getUserDetails,
@@ -36,7 +31,6 @@ import {
   listMarketingEmails,
   listOwners,
   MAX_COUNT_LIMIT,
-  MAX_LIMIT,
   removeAssociation,
   searchCrmObjects,
   searchOwners,
@@ -55,8 +49,6 @@ import {
 import { HUBSPOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/hubspot/metadata";
 import {
   formatHubSpotCreateSuccess,
-  formatHubSpotGetSuccess,
-  formatHubSpotObjectsAsText,
   formatHubSpotSearchResults,
   formatHubSpotUpdateSuccess,
   formatOwnersAsText,
@@ -84,49 +76,6 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         { type: "text" as const, text: "Properties retrieved successfully" },
         { type: "text" as const, text: formattedText },
       ]);
-    });
-  },
-
-  get_object_by_email: async ({ objectType, email }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const object = await getObjectByEmail(accessToken, objectType, email);
-      if (!object) {
-        return new Err(new MCPError(ERROR_MESSAGES.OBJECT_NOT_FOUND));
-      }
-      // Handle different object types properly
-      if ("email" in object) {
-        // This is a SimplePublicObject
-        const formatted = formatHubSpotGetSuccess(object as any, objectType);
-        return new Ok([
-          { type: "text" as const, text: formatted.message },
-          {
-            type: "text" as const,
-            text: JSON.stringify(formatted.result, null, 2),
-          },
-        ]);
-      } else {
-        // This is a PublicOwner - return simpler format
-        const owner = object as any;
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `${objectType.slice(0, -1)} retrieved successfully`,
-          },
-          {
-            type: "text" as const,
-            text: JSON.stringify(
-              {
-                id: owner.id,
-                email: owner.email,
-                firstName: owner.firstName,
-                lastName: owner.lastName,
-              },
-              null,
-              2
-            ),
-          },
-        ]);
-      }
     });
   },
 
@@ -186,70 +135,6 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
           text: `Found ${count} ${objectType} matching the specified filters`,
         },
         { type: "text" as const, text: count.toString() },
-      ]);
-    });
-  },
-
-  get_latest_objects: async ({ objectType, limit = MAX_LIMIT }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const objects = await getLatestObjects(accessToken, objectType, limit);
-      if (!objects.length) {
-        return new Err(new MCPError(ERROR_MESSAGES.NO_OBJECTS_FOUND));
-      }
-      const formattedText = formatHubSpotObjectsAsText(objects, objectType);
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "Latest objects retrieved successfully",
-        },
-        { type: "text" as const, text: formattedText },
-      ]);
-    });
-  },
-
-  get_contact: async ({ contactId }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const result = await getContact(accessToken, contactId);
-      if (!result) {
-        return new Err(new MCPError(ERROR_MESSAGES.OBJECT_NOT_FOUND));
-      }
-      const formatted = formatHubSpotGetSuccess(result, "contacts");
-      return new Ok([
-        { type: "text" as const, text: formatted.message },
-        {
-          type: "text" as const,
-          text: JSON.stringify(formatted.result, null, 2),
-        },
-      ]);
-    });
-  },
-
-  get_company: async ({ companyId, extraProperties }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const result = await getCompany(accessToken, companyId, extraProperties);
-      if (!result) {
-        return new Err(new MCPError(ERROR_MESSAGES.OBJECT_NOT_FOUND));
-      }
-      const formatted = formatHubSpotGetSuccess(result, "companies");
-      return new Ok([
-        { type: "text" as const, text: formatted.message },
-        {
-          type: "text" as const,
-          text: JSON.stringify(formatted.result, null, 2),
-        },
-      ]);
-    });
-  },
-
-  get_deal: async ({ dealId, extraProperties }, extra) => {
-    return withAuth(extra, async (accessToken) => {
-      const result = await getDeal(accessToken, dealId, extraProperties);
-      if (!result) {
-        return new Err(new MCPError(ERROR_MESSAGES.OBJECT_NOT_FOUND));
-      }
-      return new Ok([
-        { type: "text" as const, text: "Deal retrieved successfully." },
-        { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
   },

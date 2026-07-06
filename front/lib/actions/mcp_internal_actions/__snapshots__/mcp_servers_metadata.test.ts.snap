@@ -1001,19 +1001,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "get_company": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "get_contact": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
     "get_current_user_id": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "get_deal": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -1033,10 +1021,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "get_latest_objects": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
     "get_marketing_email": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -1046,10 +1030,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "get_meeting": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "get_object_by_email": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2791,19 +2771,14 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "delete_task": "high",
     "export_crm_objects_csv": "never_ask",
     "get_associated_meetings": "never_ask",
-    "get_company": "never_ask",
-    "get_contact": "never_ask",
     "get_current_user_id": "never_ask",
-    "get_deal": "never_ask",
     "get_email_campaign": "never_ask",
     "get_file_public_url": "never_ask",
     "get_hubspot_link": "never_ask",
     "get_hubspot_portal_id": "never_ask",
-    "get_latest_objects": "never_ask",
     "get_marketing_email": "never_ask",
     "get_marketing_email_statistics": "never_ask",
     "get_meeting": "never_ask",
-    "get_object_by_email": "never_ask",
     "get_object_properties": "never_ask",
     "get_user_activity": "never_ask",
     "list_association_labels": "never_ask",
