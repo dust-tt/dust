@@ -1,18 +1,21 @@
+import * as enabledModels from "@app/lib/advanced_models/enabled_models";
+import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import {
   getWhitelistedProviders,
-  pickPreferredLargeModel,
-  resolveModel,
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
+import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
@@ -209,7 +212,7 @@ describe("resolveModel", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const { resolvedModel, modelResolutionMethod } = resolveModel(auth, {
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       selection: {
         providerId: GPT_5_5_MODEL_CONFIG.providerId,
         modelId: GPT_5_5_MODEL_CONFIG.modelId,
@@ -233,7 +236,7 @@ describe("resolveModel", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const { resolvedModel, modelResolutionMethod } = resolveModel(auth, {
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       configuration: makeAgentConfiguration({
         providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
@@ -254,7 +257,7 @@ describe("resolveModel", () => {
     vi.spyOn(regionConfig, "getCurrentRegion").mockReturnValue("europe-west1");
     const auth = await enterpriseRegionalOnlyAuth();
 
-    const { resolvedModel, modelResolutionMethod } = resolveModel(auth, {
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       configuration: makeAgentConfiguration({
         providerId: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId,
@@ -275,7 +278,7 @@ describe("resolveModel", () => {
     vi.spyOn(regionConfig, "getCurrentRegion").mockReturnValue("europe-west1");
     const auth = await enterpriseRegionalOnlyAuth();
 
-    const { resolvedModel, modelResolutionMethod } = resolveModel(auth, {
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       selection: {
         providerId: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId,
@@ -300,7 +303,7 @@ describe("resolveModel", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const { resolvedModel } = resolveModel(auth, {
+    const { resolvedModel } = await resolveModel(auth, {
       selection: {
         providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
@@ -320,7 +323,7 @@ describe("resolveModel", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const { resolvedModel } = resolveModel(auth, {
+    const { resolvedModel } = await resolveModel(auth, {
       selection: {
         providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
@@ -336,6 +339,86 @@ describe("resolveModel", () => {
     expect(resolvedModel.reasoningEffort).toBe(
       CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort
     );
+  });
+
+  it("resolves an auto agent configuration to a concrete model when models_picker is enabled", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await FeatureFlagFactory.basic(auth, "models_picker");
+
+    const getAutoModelSpy = vi.spyOn(enabledModels, "getAutoModelForAuth");
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+      }),
+      featureFlags: ["models_picker"],
+    });
+
+    expect(getAutoModelSpy).toHaveBeenCalledOnce();
+    expect(modelResolutionMethod).toBe("auto");
+    expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
+    expect(resolvedModel).toEqual({
+      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      reasoningEffort:
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    });
+  });
+
+  it("resolves an auto user selection to a concrete model when models_picker is enabled", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await FeatureFlagFactory.basic(auth, "models_picker");
+
+    const getAutoModelSpy = vi.spyOn(enabledModels, "getAutoModelForAuth");
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      selection: {
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+      },
+      configuration: makeAgentConfiguration({
+        providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      }),
+      featureFlags: ["models_picker"],
+    });
+
+    expect(getAutoModelSpy).toHaveBeenCalledOnce();
+    expect(modelResolutionMethod).toBe("auto");
+    expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
+    expect(resolvedModel).toEqual({
+      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      reasoningEffort:
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    });
+  });
+
+  it("falls back to a preferred large model when the agent is on auto without models_picker", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const getAutoModelSpy = vi.spyOn(enabledModels, "getAutoModelForAuth");
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+      }),
+      featureFlags: [],
+    });
+
+    expect(getAutoModelSpy).not.toHaveBeenCalled();
+    expect(modelResolutionMethod).toBe("agent");
+    expect(resolvedModel).toEqual({
+      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
+      reasoningEffort:
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    });
   });
 });
 

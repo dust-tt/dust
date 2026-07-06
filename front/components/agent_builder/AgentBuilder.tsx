@@ -649,7 +649,7 @@ function AgentBuilderForm({
     );
     sendNotification({
       title: `Agent ${agentConfiguration ? "edition" : "creation"} failed.`,
-      description: "There was an error validating the form.",
+      description: errorMessage,
       type: "error",
     });
   };

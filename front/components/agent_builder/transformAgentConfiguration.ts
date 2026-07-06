@@ -117,10 +117,10 @@ export function transformTemplateToFormData(
       modelSettings: {
         providerId:
           template.presetProviderId ??
-          defaultFormData.generationSettings.modelSettings.providerId,
+          defaultFormData.generationSettings.modelSettings?.providerId,
         modelId:
           template.presetModelId ??
-          defaultFormData.generationSettings.modelSettings.modelId,
+          defaultFormData.generationSettings.modelSettings?.modelId,
       },
       temperature: template.presetTemperature
         ? AGENT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature]

@@ -4,10 +4,8 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
-import {
-  resolvedModelFromAgentMessageRow,
-  resolveModel,
-} from "@app/lib/api/assistant/models";
+import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
+import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -468,7 +466,7 @@ export const createAgentMessages = async (
               { transaction }
             );
 
-            const { resolvedModel, modelResolutionMethod } = resolveModel(
+            const { resolvedModel, modelResolutionMethod } = await resolveModel(
               auth,
               {
                 selection: metadata.userMessage.requestedModel ?? undefined,

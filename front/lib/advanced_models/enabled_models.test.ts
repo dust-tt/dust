@@ -14,6 +14,7 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
@@ -120,6 +121,16 @@ describe("withModelSelectability", () => {
 });
 
 describe("getDefaultModelFromEnabledModels", () => {
+  it("prefers auto when it is selectable", () => {
+    const defaultModel = getDefaultModelFromEnabledModels([
+      { ...AUTO_MODEL_CONFIG, isSelectable: true },
+      { ...CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG, isSelectable: true },
+    ]);
+
+    expect(defaultModel.modelId).toBe(AUTO_MODEL_CONFIG.modelId);
+    expect(defaultModel.isSelectable).toBe(true);
+  });
+
   it("picks the first selectable model in the preferred order", () => {
     const defaultModel = getDefaultModelFromEnabledModels([
       { ...GPT_5_5_MODEL_CONFIG, isSelectable: true },
