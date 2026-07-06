@@ -104,10 +104,12 @@ HELP_TEXT = (
     "                    slides then QA them together rather than one call each.\n"
     "                    Prints each slide's #id-tagged text AND a boxed diagnostic\n"
     "                    render (boxes labeled '#id', red wash where boxes overlap),\n"
-    "                    plus a collision check: a text-on-text overprint is\n"
-    "                    confirmed against the rendered PDF's word positions before\n"
-    "                    it is flagged [!] (= fix before delivery), so tight-but-\n"
-    "                    clear neighbours and box-only overlaps don't false-alarm.\n"
+    "                    plus text checks read off the rendered PDF's word\n"
+    "                    positions: [!] (fix before delivery) for a confirmed\n"
+    "                    text-on-text overprint, [w] (review) when a box doesn't\n"
+    "                    contain its own text, and [i] (FYI) for softer advisories\n"
+    "                    — so tight-but-clear neighbours and box-only overlaps\n"
+    "                    don't false-alarm, and only [!] gates delivery.\n"
     "                    The render is published to the conversation as a JPEG whose\n"
     "                    path is printed per slide (a files__cat-readable image).\n"
     "  --slide N[,N,...] Show one or more slides' shapes (1-indexed; takes a\n"
@@ -1125,6 +1127,14 @@ def _text_shape_entries(slide: Slide):
     return out
 
 
+_OVERFLOW_EDGE_PHRASE = {
+    "below": "below its box",
+    "above": "above its box",
+    "right": "past its right edge",
+    "left": "past its left edge",
+}
+
+
 def _slide_findings_lines(
     slide: Slide,
     idx: int,
@@ -1133,15 +1143,20 @@ def _slide_findings_lines(
 ) -> List[str]:
     """Format one slide's QA findings as a tiered, consequence-first block.
 
-    Collisions are read straight off the renderer's word positions (`words` from
-    the soffice PDF): a `[!]` fires when two DIFFERENT shapes' strongly-attributed
-    words overprint (`pdf_text.cross_shape_overprints`). Reading where the glyphs
-    actually landed — instead of estimating wrap from char counts or arguing about
-    box geometry — is what keeps false positives down: same-run overlaps
-    (superscripts, footnote markers, emoji) and box overlaps in empty space never
-    qualify. If the rendered text can't be read (text exported as curves), the box
-    overlaps fall back to `[i]` "couldn't confirm". Decorative-marker
-    misalignments are `[i]`; a clean slide says so."""
+    Read straight off the renderer's word positions (`words` from the soffice
+    PDF), in three tiers:
+      [!] fix before delivery — two DIFFERENT shapes' strongly-attributed words
+          overprint (`pdf_text.cross_shape_overprints`).
+      [w] review — a shape's OWN words land outside its OWN box
+          (`pdf_text.self_overflows`): the box doesn't contain its text. Usually
+          a real defect, sometimes decorative overflow into empty space, so the
+          model decides — it does NOT gate delivery.
+      [i] FYI — an unconfirmed geometric spill, a box overlap the render couldn't
+          read (text exported as curves), or a drifted decorative marker.
+    Reading where the glyphs actually landed — instead of estimating wrap from
+    char counts or arguing about box geometry — is what keeps false positives
+    down: same-run overlaps (superscripts, footnote markers, emoji) and box
+    overlaps in empty space never qualify as `[!]`. A clean slide says so."""
     entries = _text_shape_entries(slide)
     label = {e[0]: e[3] for e in entries}
     autofit_off = {e[0]: e[4] for e in entries}
@@ -1151,16 +1166,20 @@ def _slide_findings_lines(
         return f'#{sid} "{lbl}"' if lbl else f"#{sid}"
 
     severe: List[str] = []
+    review: List[str] = []
     advisory: List[str] = []
     n_severe = 0
+    n_review = 0
 
     if words:
         shapes = [(e[0], e[1], e[2]) for e in entries]
         confirmed_pairs = set()
+        confirmed_sids = set()
         for c in pdf_text.cross_shape_overprints(words, shapes):
             n_severe += 1
             over, hit = c["over"], c["hit"]
             confirmed_pairs.add(frozenset((over, hit)))
+            confirmed_sids.update((over, hit))
             if c["symmetric"]:
                 severe.append(
                     f"  [!] text-on-text — {q(over)} and {q(hit)} overprint "
@@ -1203,6 +1222,23 @@ def _slide_findings_lines(
                 "render didn't confirm text-on-text — if the deck's fonts were "
                 "substituted the render can understate the overlap; verify."
             )
+        # A shape whose own rendered words fall outside its own box: the box
+        # doesn't contain its text, but the overflow lands in empty space (a
+        # neighbour hit is a [!] collision above, so those shapes are skipped).
+        for f in pdf_text.self_overflows(words, shapes):
+            if f["sid"] in confirmed_sids:
+                continue
+            n_review += 1
+            where = _OVERFLOW_EDGE_PHRASE[f["edge"]]
+            review.append(
+                f"  [w] {q(f['sid'])} — text runs ~{f['over_in']:.2f}in {where} "
+                f"(rendered \"{f['word']}\" lands outside it)."
+            )
+            review.append(
+                "      The box doesn't contain its text: resize it, or shorten / "
+                "shrink-to-fit the copy. Fine if it's decorative overflow into "
+                "empty space."
+            )
     else:
         # No extractable rendered text (e.g. text exported as curves): can't
         # confirm against glyphs, so surface the box-overlap candidates for a
@@ -1228,7 +1264,13 @@ def _slide_findings_lines(
             f"{'s' if n_severe != 1 else ''} "
             f"(red wash in the slide {idx} render above):"
         )
-        return [header] + severe + advisory
+        return [header] + severe + review + advisory
+    if review:
+        header = (
+            f"[w] slide {idx} — {n_review} box"
+            f"{'es' if n_review != 1 else ''} that don't contain their text:"
+        )
+        return [header] + review + advisory
     if advisory:
         return [
             f"[i] slide {idx} — {len(advisory)} item"
@@ -1286,7 +1328,9 @@ def _boxed_render(
     lines = [f"[Rendered {len(published)} slide{plural}, bbox overlay:]"]
     lines.extend(render_publish.render_view_lines(published))
     if digest:
-        lines.append("[Collision check — [!] = fix before delivery:]")
+        lines.append(
+            "[Text checks — [!] fix before delivery · [w] review · [i] FYI:]"
+        )
         lines.extend(digest)
     return "\n".join(lines)
 

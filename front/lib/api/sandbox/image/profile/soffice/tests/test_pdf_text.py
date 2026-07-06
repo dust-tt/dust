@@ -116,6 +116,61 @@ def test_cross_shape_side_by_side_not_a_collision():
     assert P.cross_shape_overprints(words, shapes) == []
 
 
+# --- self_overflows: a box that doesn't contain its OWN rendered text ---
+
+
+def test_self_overflow_dropped_line_below_flagged():
+    # a wrapped line rendered entirely below the box bottom (0.5in) -> "below".
+    shapes = [shp(1, 0, 0, 1, 0.5, {"alpha"})]
+    words = [wb(0.1, 0.6, 0.4, 0.9, "alpha")]
+    res = P.self_overflows(words, shapes)
+    assert len(res) == 1
+    assert res[0]["sid"] == 1 and res[0]["edge"] == "below"
+    assert round(res[0]["over_in"], 2) == 0.40  # word.bottom 0.9 - box bottom 0.5
+
+
+def test_self_overflow_descender_poke_not_flagged():
+    # a word dipping only 0.05in past the bottom (< the half-line/floor gate) is a
+    # descender or a wide substitute glyph, not a dropped line -> ignored.
+    shapes = [shp(1, 0, 0, 1, 0.5, {"alpha"})]
+    words = [wb(0.1, 0.45, 0.4, 0.55, "alpha")]
+    assert P.self_overflows(words, shapes) == []
+
+
+def test_self_overflow_contained_word_clean():
+    shapes = [shp(1, 0, 0, 1, 1, {"alpha"})]
+    words = [wb(0.1, 0.1, 0.4, 0.4, "alpha")]
+    assert P.self_overflows(words, shapes) == []
+
+
+def test_self_overflow_weak_attribution_excluded():
+    # an unmatched token only nearest-boxes (weak) -> not trusted for overflow,
+    # same discipline as cross_shape_overprints.
+    shapes = [shp(1, 0, 0, 1, 0.5, {"alpha"})]
+    words = [wb(0.1, 0.6, 0.4, 0.9, "zzz")]
+    assert P.self_overflows(words, shapes) == []
+
+
+def test_self_overflow_right_edge_flagged():
+    # copy running past a narrow box's right edge (0.5in) by 0.3in -> "right".
+    shapes = [shp(1, 0, 0, 0.5, 1, {"alpha"})]
+    words = [wb(0.55, 0.1, 0.8, 0.4, "alpha")]
+    res = P.self_overflows(words, shapes)
+    assert len(res) == 1 and res[0]["edge"] == "right"
+    assert round(res[0]["over_in"], 2) == 0.30
+
+
+def test_self_overflow_one_entry_per_shape_worst_kept():
+    # two overflowing words for one shape -> a single finding, the worst kept.
+    shapes = [shp(1, 0, 0, 1, 0.5, {"alpha", "beta"})]
+    words = [wb(0.1, 0.55, 0.4, 0.75, "alpha"),  # 0.25in below
+             wb(0.1, 0.60, 0.4, 0.95, "beta")]   # 0.45in below (worse)
+    res = P.self_overflows(words, shapes)
+    assert len(res) == 1
+    assert res[0]["edge"] == "below" and res[0]["word"] == "beta"
+    assert round(res[0]["over_in"], 2) == 0.45
+
+
 if __name__ == "__main__":
     tests = [
         v for k, v in sorted(globals().items())

@@ -212,3 +212,55 @@ def cross_shape_overprints(words, shapes, y_fraction: float = OVERPRINT_Y_FRACTI
             "word_over": w_over.text, "word_hit": w_hit.text,
         })
     return out
+
+
+# A rendered word must poke at least this far past its OWN box's side before the
+# box is judged to not contain its text. Generous on purpose: LibreOffice
+# substitutes the deck's real (often absent) font and substitutes run wide, so a
+# small horizontal spill is a render artefact, not a defect.
+_SELF_OVERFLOW_H_EPS_EMU = EMU_PER_INCH // 10  # ~0.10in
+# Floor for the vertical gate; the real gate is half the word's own height so it
+# scales with the type size — a whole wrapped line dropping below the box clears
+# it, a descender or a tall substitute glyph does not.
+_SELF_OVERFLOW_V_FLOOR_EMU = EMU_PER_INCH // 12  # ~0.08in
+
+# Longest edge first so the reported edge is deterministic when a word clears the
+# gate on more than one side.
+_OVERFLOW_EDGES = ("below", "above", "right", "left")
+
+
+def self_overflows(words, shapes):
+    """Shapes whose OWN rendered text lands outside their OWN declared box — the
+    box doesn't contain its text (a wrapped line dropped below a one-line box,
+    copy running past a side). Read straight off the rendered word positions with
+    STRONG attribution only, same as cross_shape_overprints, so short/common
+    tokens can't fabricate an overflow. One dict per shape (worst edge kept):
+        {sid, edge, over_in, word}
+    where edge is 'below' | 'above' | 'right' | 'left' and over_in is how far
+    (inches) the text extends past that edge.
+
+    This is self-contained overflow into whatever space surrounds the box; a
+    spill that lands on ANOTHER shape's text is a cross_shape_overprints
+    collision instead, and the caller drops any shape already named there."""
+    boxes = {s[0]: s[1] for s in shapes}
+    worst = {}  # sid -> (over_emu, edge, word_text)
+    for w in words:
+        sid, strong = attribute_word(w, shapes)
+        if sid is None or not strong or sid not in boxes:
+            continue
+        left, top, right, bottom = boxes[sid]
+        v_gate = max(_SELF_OVERFLOW_V_FLOOR_EMU, (w.bottom - w.top) // 2)
+        by_edge = {
+            "below": (w.bottom - bottom, v_gate),
+            "above": (top - w.top, v_gate),
+            "right": (w.right - right, _SELF_OVERFLOW_H_EPS_EMU),
+            "left": (left - w.left, _SELF_OVERFLOW_H_EPS_EMU),
+        }
+        for edge in _OVERFLOW_EDGES:
+            over, gate = by_edge[edge]
+            if over >= gate and (sid not in worst or over > worst[sid][0]):
+                worst[sid] = (over, edge, w.text)
+    return [
+        {"sid": sid, "edge": edge, "over_in": over / EMU_PER_INCH, "word": word}
+        for sid, (over, edge, word) in worst.items()
+    ]
