@@ -8,8 +8,8 @@ import {
   endCouponCredit,
   getCreditTypeFromContract,
   getCreditTypeFromPackage,
-  redeemSeatCoupon,
   redeemPoolTopupCoupon,
+  redeemSeatCoupon,
   revokeCouponRedemption,
 } from "@app/lib/metronome/coupons";
 import { SEAT_TAG } from "@app/lib/metronome/setup_common";

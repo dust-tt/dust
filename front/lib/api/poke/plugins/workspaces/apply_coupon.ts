@@ -1,5 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { redeemSeatCoupon, redeemPoolTopupCoupon } from "@app/lib/metronome/coupons";
+import {
+  redeemPoolTopupCoupon,
+  redeemSeatCoupon,
+} from "@app/lib/metronome/coupons";
 import type { CouponValidationError } from "@app/lib/resources/coupon_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { Err, Ok } from "@app/types/shared/result";

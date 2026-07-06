@@ -425,7 +425,7 @@ export async function redeemSeatCoupon(
 
   const creditResult = await createSeatCouponCredit({
     metronomeCustomerId,
-    metronomeContractId: contract ? contract.id : undefined,
+    metronomeContractId: contract?.id,
     coupon,
     redemptionId: redemption.sId,
     redeemedAt: redemption.redeemedAt,
