@@ -817,6 +817,7 @@ describe("getStripePricingData", () => {
       currencyOptions: {
         usd: { unitAmount: 1000 },
         eur: { unitAmount: 900 },
+        gbp: { unitAmount: 0 },
       },
     });
   });
@@ -836,6 +837,7 @@ describe("getStripePricingData", () => {
       currencyOptions: {
         usd: { unitAmount: 1000 },
         eur: { unitAmount: 0 },
+        gbp: { unitAmount: 0 },
       },
     });
   });
