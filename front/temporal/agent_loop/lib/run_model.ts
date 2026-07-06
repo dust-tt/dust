@@ -74,7 +74,10 @@ import type {
   AgentMessageType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import { isTextContent } from "@app/types/assistant/generation";
+import {
+  isTextContent,
+  type ModelConversationTypeMultiActions,
+} from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -107,6 +110,20 @@ function concatWithNewlineBoundary(
     return previous + "\n" + current;
   }
   return previous + current;
+}
+
+function getReplayedToolNames(
+  modelConversation: ModelConversationTypeMultiActions
+): string[] {
+  return Array.from(
+    new Set(
+      modelConversation.messages
+        .filter((message) => message.role === "assistant")
+        .flatMap((message) => message.contents)
+        .filter((content) => content.type === "function_call")
+        .map((content) => content.value.name)
+    )
+  );
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
@@ -415,14 +432,14 @@ export async function runModel(
   // deferred behind tool search is an Anthropic-specific policy applied in the
   // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
   const toolSearchEnabled = featureFlags.includes("anthropic_tool_search");
-  const specifications: AgentActionSpecification[] = availableActions.map((a) =>
-    buildToolSpecification(a)
+  const baseSpecifications: AgentActionSpecification[] = availableActions.map(
+    (a) => buildToolSpecification(a)
   );
 
   // Count the number of tokens used by the functions presented to the model.
   // This is a rough estimate of the number of tokens.
   const tools = JSON.stringify(
-    specifications.map((s) => ({
+    baseSpecifications.map((s) => ({
       name: s.name,
       description: s.description,
       inputSchema: s.inputSchema,
@@ -472,6 +489,45 @@ export async function runModel(
 
     return null;
   }
+
+  const replayedToolNames = getReplayedToolNames(
+    modelConversationRes.value.modelConversation
+  );
+  const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
+  const missingReplayedToolNames = replayedToolNames.filter(
+    (name) => !currentToolNames.has(name)
+  );
+
+  if (missingReplayedToolNames.length > 0) {
+    localLogger.info(
+      {
+        missingReplayedToolNames,
+        replayedToolNames,
+      },
+      "Replayed tools missing from current specifications"
+    );
+  }
+
+  const specifications = baseSpecifications;
+  // TODO(2026-07-06 aubin): uncomment once we confirm we need this.
+  // const specifications = [
+  //   ...baseSpecifications.map((spec) =>
+  //     replayedToolNames.includes(spec.name) ? { ...spec, eager: true } : spec
+  //   ),
+  //   ...missingReplayedToolNames.map((name) => ({
+  //     name,
+  //     description:
+  //       "Replay-only placeholder for a historical tool call. " +
+  //       "This tool is not available for new calls.",
+  //     inputSchema: {
+  //       type: "object",
+  //       properties: {},
+  //       required: [],
+  //       additionalProperties: true,
+  //     },
+  //     eager: true,
+  //   })),
+  // ];
 
   // Temporarily adding this to check if we can consider contents property only in llms
   const unexpectedMessage =
