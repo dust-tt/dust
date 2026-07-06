@@ -44,6 +44,10 @@ import type {
   PostStartPodTaskResponseBody,
 } from "@app/types/api/projects/tasks";
 import type {
+  GetPodEgressPolicyResponseBody,
+  PutPodEgressPolicyResponseBody,
+} from "@app/types/api/sandbox/egress_policy";
+import type {
   CheckNameResponseBody,
   PatchPodMetadataBodyType,
 } from "@app/types/api/spaces";
@@ -57,6 +61,8 @@ import type {
   PodTaskStatus,
   PodTaskType,
 } from "@app/types/project_task";
+import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
+import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -1346,4 +1352,93 @@ export function useStarPod({
     },
     [workspaceId, podId, mutatePodConversationsSummary, sendNotification]
   );
+}
+
+function podEgressPolicyUrl(workspaceId: string, podId: string) {
+  return `/api/w/${workspaceId}/spaces/${podId}/sandbox/egress-policy`;
+}
+
+export function usePodEgressPolicy({
+  owner,
+  podId,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const policyFetcher: Fetcher<GetPodEgressPolicyResponseBody> = fetcher;
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    podEgressPolicyUrl(owner.sId, podId),
+    policyFetcher,
+    { disabled }
+  );
+
+  return {
+    policy: data?.policy ?? EMPTY_EGRESS_POLICY,
+    isPodEgressPolicyLoading: disabled ? false : isLoading,
+    isPodEgressPolicyError: !!error,
+    mutatePodEgressPolicy: mutate,
+  };
+}
+
+export function useUpdatePodEgressPolicy({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpdatingPodEgressPolicy, setIsUpdating] = useState(false);
+  const { mutatePodEgressPolicy } = usePodEgressPolicy({
+    owner,
+    podId,
+    disabled: true,
+  });
+
+  const updatePodEgressPolicy = async (
+    policy: EgressPolicy
+  ): Promise<boolean> => {
+    setIsUpdating(true);
+    try {
+      const response = await clientFetch(podEgressPolicyUrl(owner.sId, podId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(policy),
+      });
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to update Pod network policy",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PutPodEgressPolicyResponseBody = await response.json();
+      await mutatePodEgressPolicy({ policy: data.policy }, false);
+      sendNotification({
+        type: "success",
+        title: "Pod network policy updated",
+        description:
+          "Sandbox egress policy changes will be applied by the proxy cache shortly.",
+      });
+      return true;
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to update Pod network policy",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return { updatePodEgressPolicy, isUpdatingPodEgressPolicy };
 }
