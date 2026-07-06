@@ -195,7 +195,12 @@ async fn handle_connection_inner(
     if !default_allows
         && !state
             .policy_provider
-            .evaluate(token.w_id.as_deref(), sb_id, &request.domain)
+            .evaluate(
+                token.w_id.as_deref(),
+                token.space_id.as_deref(),
+                sb_id,
+                &request.domain,
+            )
             .await
     {
         deny(

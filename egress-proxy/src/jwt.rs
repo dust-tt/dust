@@ -15,6 +15,9 @@ pub struct JwtValidator {
 pub struct ValidatedToken {
     pub sb_id: Option<String>,
     pub w_id: Option<String>,
+    // Pod space sId, set for pod (Shared Computer) sandboxes so their
+    // space-level policy file (`pods/{spaceId}.json`) can be evaluated.
+    pub space_id: Option<String>,
     pub action: Option<String>,
 }
 
@@ -34,6 +37,8 @@ struct Claims {
     sb_id: Option<String>,
     #[serde(rename = "wId")]
     w_id: Option<String>,
+    #[serde(rename = "spaceId")]
+    space_id: Option<String>,
     action: Option<String>,
     exp: usize,
 }
@@ -91,6 +96,15 @@ fn claims_to_validated_token(
         }
     });
 
+    let space_id = claims.space_id.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+
     let action = claims.action.and_then(|value| {
         let trimmed = value.trim();
         if trimmed.is_empty() {
@@ -103,6 +117,7 @@ fn claims_to_validated_token(
     Ok(ValidatedToken {
         sb_id,
         w_id,
+        space_id,
         action,
     })
 }
@@ -141,6 +156,8 @@ mod tests {
         sb_id: Option<&'a str>,
         #[serde(rename = "wId", skip_serializing_if = "Option::is_none")]
         w_id: Option<&'a str>,
+        #[serde(rename = "spaceId", skip_serializing_if = "Option::is_none")]
+        space_id: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
         action: Option<&'a str>,
         iss: &'a str,
@@ -168,6 +185,7 @@ mod tests {
         let token = token_with_claims(TestClaims {
             sb_id: None,
             w_id: None,
+            space_id: None,
             action: Some("invalidate-policy"),
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,
@@ -226,6 +244,7 @@ mod tests {
         let token = token_with_claims(TestClaims {
             sb_id: None,
             w_id: Some("workspace"),
+            space_id: None,
             action: Some("invalidate-policy"),
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,
@@ -241,9 +260,65 @@ mod tests {
             ValidatedToken {
                 sb_id: None,
                 w_id: Some("workspace".to_string()),
+                space_id: None,
                 action: Some("invalidate-policy".to_string()),
             }
         );
+    }
+
+    #[test]
+    fn validates_pod_token_with_space_id() {
+        let validator = JwtValidator::new("secret");
+        let token = token_with_claims(TestClaims {
+            sb_id: Some("sbx"),
+            w_id: Some("workspace"),
+            space_id: Some("space"),
+            action: None,
+            iss: EXPECTED_ISSUER,
+            aud: EXPECTED_AUDIENCE,
+            exp: future_exp(60),
+        });
+
+        let validated = validator
+            .validate(&token)
+            .expect("token with spaceId should validate");
+
+        assert_eq!(validated.sb_id.as_deref(), Some("sbx"));
+        assert_eq!(validated.w_id.as_deref(), Some("workspace"));
+        assert_eq!(validated.space_id.as_deref(), Some("space"));
+    }
+
+    #[test]
+    fn accepts_tokens_without_space_id() {
+        // Back-compat: tokens minted by older front builds carry no spaceId.
+        let validator = JwtValidator::new("secret");
+        let token = sandbox_token("secret", "sbx", Some("workspace"), 60);
+
+        let validated = validator
+            .validate(&token)
+            .expect("token without spaceId should validate");
+
+        assert_eq!(validated.space_id, None);
+    }
+
+    #[test]
+    fn normalizes_empty_space_id_to_none() {
+        let validator = JwtValidator::new("secret");
+        let token = token_with_claims(TestClaims {
+            sb_id: Some("sbx"),
+            w_id: Some("workspace"),
+            space_id: Some("   "),
+            action: None,
+            iss: EXPECTED_ISSUER,
+            aud: EXPECTED_AUDIENCE,
+            exp: future_exp(60),
+        });
+
+        let validated = validator
+            .validate(&token)
+            .expect("empty spaceId should normalize to None");
+
+        assert_eq!(validated.space_id, None);
     }
 
     #[test]
@@ -263,6 +338,7 @@ mod tests {
         let token = token_with_claims(TestClaims {
             sb_id: Some("sbx"),
             w_id: Some("workspace"),
+            space_id: None,
             action: None,
             iss: EXPECTED_ISSUER,
             aud: "wrong",
@@ -284,6 +360,7 @@ mod tests {
         let claims = TestClaims {
             sb_id: Some(sb_id),
             w_id,
+            space_id: None,
             action: None,
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,

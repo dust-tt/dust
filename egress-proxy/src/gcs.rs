@@ -78,7 +78,22 @@ impl GcsPolicyProvider {
             .await
     }
 
-    pub async fn evaluate(&self, w_id: Option<&str>, sb_id: &str, domain: &str) -> bool {
+    // Pod (Shared Computer) policy, keyed by the pod's space sId. Unlike the
+    // per-sandbox file this one survives sandbox destroy/recreate cycles.
+    pub async fn get_pod_policy(&self, space_id: &str) -> Result<Option<Policy>> {
+        self.get_policy(&format!("p:{space_id}"), &format!("pods/{space_id}.json"))
+            .await
+    }
+
+    // A domain is allowed if ANY of the workspace, pod, or sandbox policies
+    // allows it. Every lookup fails closed: a GCS error never grants.
+    pub async fn evaluate(
+        &self,
+        w_id: Option<&str>,
+        space_id: Option<&str>,
+        sb_id: &str,
+        domain: &str,
+    ) -> bool {
         let workspace_allows = match w_id {
             Some(workspace_id) => match self.get_workspace_policy(workspace_id).await {
                 Ok(Some(policy)) => policy.allows(domain),
@@ -92,6 +107,22 @@ impl GcsPolicyProvider {
         };
 
         if workspace_allows {
+            return true;
+        }
+
+        let pod_allows = match space_id {
+            Some(space_id) => match self.get_pod_policy(space_id).await {
+                Ok(Some(policy)) => policy.allows(domain),
+                Ok(None) => false,
+                Err(error) => {
+                    warn!(error = %error, space_id, "pod policy lookup failed");
+                    false
+                }
+            },
+            None => false,
+        };
+
+        if pod_allows {
             return true;
         }
 

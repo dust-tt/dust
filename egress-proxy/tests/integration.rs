@@ -61,10 +61,12 @@ enum MockGcsResponse {
 #[derive(Default)]
 struct MockPolicies {
     workspace: Option<MockGcsResponse>,
+    pod: Option<MockGcsResponse>,
     sandbox: Option<MockGcsResponse>,
 }
 
 const TEST_WORKSPACE_ID: &str = "workspace-456";
+const TEST_SPACE_ID: &str = "space-789";
 
 #[derive(Debug, Serialize)]
 struct TestClaims {
@@ -72,6 +74,8 @@ struct TestClaims {
     sb_id: Option<String>,
     #[serde(rename = "wId", skip_serializing_if = "Option::is_none")]
     w_id: Option<String>,
+    #[serde(rename = "spaceId", skip_serializing_if = "Option::is_none")]
+    space_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     action: Option<String>,
     iss: String,
@@ -184,6 +188,7 @@ async fn workspace_policy_allows_domain() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: Some(policy_response(&["localhost"])),
+            pod: None,
             sandbox: None,
         },
         None,
@@ -219,6 +224,7 @@ async fn sandbox_policy_allows_when_workspace_has_no_policy() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
+            pod: None,
             sandbox: Some(policy_response(&["localhost"])),
         },
         None,
@@ -248,10 +254,131 @@ async fn sandbox_policy_allows_when_workspace_has_no_policy() -> Result<()> {
 }
 
 #[tokio::test]
+async fn pod_policy_allows_when_workspace_and_sandbox_do_not() -> Result<()> {
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: Some(policy_response(&["other.example.com"])),
+            pod: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_token_with_space(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"ping").await?;
+    let mut echoed = [0; 4];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"ping");
+
+    drop(stream);
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn pod_policy_ignored_without_space_id_claim() -> Result<()> {
+    // Back-compat / fail-closed: a token without the spaceId claim must not
+    // pick up pod-level grants, even when the pod policy file exists.
+    let (upstream_port, _upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            pod: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_token_with_workspace(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn denied_when_no_policy_allows_domain_with_space_id() -> Result<()> {
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: Some(policy_response(&["other.example.com"])),
+            pod: Some(policy_response(&["another.example.com"])),
+            sandbox: Some(policy_response(&["third.example.com"])),
+        },
+        None,
+        false,
+        "production",
+    )
+    .await?;
+    let token = make_token_with_space(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", 254).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn pod_gcs_failure_falls_back_to_sandbox() -> Result<()> {
+    // A pod policy lookup error fails closed for the pod policy but the union
+    // still consults the sandbox policy.
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            pod: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
+            sandbox: Some(policy_response(&["localhost"])),
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_token_with_space(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"ping").await?;
+    let mut echoed = [0; 4];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"ping");
+
+    drop(stream);
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[tokio::test]
 async fn denied_when_neither_workspace_nor_sandbox_allows_domain() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: Some(policy_response(&["other.example.com"])),
+            pod: None,
             sandbox: Some(policy_response(&["another.example.com"])),
         },
         None,
@@ -274,6 +401,7 @@ async fn workspace_gcs_failure_falls_back_to_sandbox() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
+            pod: None,
             sandbox: Some(policy_response(&["localhost"])),
         },
         None,
@@ -307,6 +435,7 @@ async fn sandbox_gcs_failure_denies_connection() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
+            pod: None,
             sandbox: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
         },
         None,
@@ -390,6 +519,7 @@ async fn invalid_issuer_returns_deny() -> Result<()> {
         FullClaims {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            space_id: None,
             action: None,
             iss: "wrong-front",
             aud: "dust-egress-proxy",
@@ -411,6 +541,7 @@ async fn invalid_audience_returns_deny() -> Result<()> {
         FullClaims {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            space_id: None,
             action: None,
             iss: "dust-front",
             aud: "wrong-audience",
@@ -432,6 +563,7 @@ async fn empty_sandbox_id_claim_returns_deny() -> Result<()> {
         FullClaims {
             sb_id: Some("   "),
             w_id: None,
+            space_id: None,
             action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -754,6 +886,7 @@ async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: Some(policy_response(&["localhost"])),
+            pod: None,
             sandbox: None,
         },
         None,
@@ -833,6 +966,79 @@ async fn invalidate_policy_rejects_token_with_both_wid_and_sbid() -> Result<()> 
         FullClaims {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
+            space_id: None,
+            action: Some("invalidate-policy"),
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds: 60,
+        },
+    );
+
+    let status =
+        http_post_status(proxy.health_addr, "/invalidate-policy", "", Some(&token)).await?;
+
+    assert_eq!(status, 400);
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_evicts_cached_pod_entry() -> Result<()> {
+    let (upstream_port, _upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            pod: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+
+    // First request populates the cache with a pod policy allowing "localhost".
+    let token = make_token_with_space(SECRET, 60);
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+    assert_eq!(response, Some(ALLOW_RESPONSE));
+
+    // Change the backing GCS pod policy to deny "localhost".
+    {
+        let mut objects = proxy.mock_gcs.as_ref().unwrap().objects.write().unwrap();
+        objects.insert(
+            format!("pods/{TEST_SPACE_ID}.json"),
+            policy_response(&["other.example.com"]),
+        );
+    }
+
+    // Invalidate the pod cache entry via a spaceId-keyed invalidation token.
+    let admin_token = make_pod_invalidation_token(SECRET, 60);
+    let status = http_post_status(
+        proxy.health_addr,
+        "/invalidate-policy",
+        "",
+        Some(&admin_token),
+    )
+    .await?;
+    assert_eq!(status, 200);
+
+    // After invalidation the proxy re-fetches and the new policy denies.
+    let token = make_token_with_space(SECRET, 60);
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+    assert_eq!(response, Some(DENY_RESPONSE));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_token_with_wid_and_spaceid() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+    let token = make_token_with_claims(
+        SECRET,
+        FullClaims {
+            sb_id: None,
+            w_id: Some(TEST_WORKSPACE_ID),
+            space_id: Some(TEST_SPACE_ID),
             action: Some("invalidate-policy"),
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -894,6 +1100,7 @@ async fn start_proxy_with_sandbox_policy(
     start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
+            pod: None,
             sandbox: Some(policy_response(allowed_domains)),
         },
         None,
@@ -958,6 +1165,9 @@ async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> 
     let mut objects = HashMap::new();
     if let Some(workspace) = policies.workspace {
         objects.insert(format!("workspaces/{TEST_WORKSPACE_ID}.json"), workspace);
+    }
+    if let Some(pod) = policies.pod {
+        objects.insert(format!("pods/{TEST_SPACE_ID}.json"), pod);
     }
     if let Some(sandbox) = policies.sandbox {
         objects.insert(format!("sandboxes/{TEST_SANDBOX_ID}.json"), sandbox);
@@ -1184,6 +1394,7 @@ fn make_token(secret: &str, exp_offset_seconds: i64) -> String {
         FullClaims {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            space_id: None,
             action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1198,6 +1409,7 @@ fn make_token_with_workspace(secret: &str, exp_offset_seconds: i64) -> String {
         FullClaims {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
+            space_id: None,
             action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1212,6 +1424,37 @@ fn make_invalidation_token(secret: &str, exp_offset_seconds: i64) -> String {
         FullClaims {
             sb_id: None,
             w_id: Some(TEST_WORKSPACE_ID),
+            space_id: None,
+            action: Some("invalidate-policy"),
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+fn make_token_with_space(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: Some(TEST_SANDBOX_ID),
+            w_id: Some(TEST_WORKSPACE_ID),
+            space_id: Some(TEST_SPACE_ID),
+            action: None,
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+fn make_pod_invalidation_token(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: None,
+            w_id: None,
+            space_id: Some(TEST_SPACE_ID),
             action: Some("invalidate-policy"),
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1233,6 +1476,7 @@ fn make_token_with_claims(secret: &str, claims: FullClaims<'_>) -> String {
     let claims = TestClaims {
         sb_id: claims.sb_id.map(|s| s.to_string()),
         w_id: claims.w_id.map(|s| s.to_string()),
+        space_id: claims.space_id.map(|s| s.to_string()),
         action: claims.action.map(|s| s.to_string()),
         iss: claims.iss.to_string(),
         aud: claims.aud.to_string(),
@@ -1256,6 +1500,7 @@ struct TestCerts {
 struct FullClaims<'a> {
     sb_id: Option<&'a str>,
     w_id: Option<&'a str>,
+    space_id: Option<&'a str>,
     action: Option<&'a str>,
     iss: &'a str,
     aud: &'a str,

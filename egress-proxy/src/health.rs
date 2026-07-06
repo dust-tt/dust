@@ -77,12 +77,18 @@ async fn invalidate_policy(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    // Derive the cache key from claims: exactly one of wId or sbId must be set.
-    let cache_key = match (validated.w_id.as_deref(), validated.sb_id.as_deref()) {
-        (Some(w_id), None) => format!("w:{w_id}"),
-        (None, Some(sb_id)) => format!("s:{sb_id}"),
+    // Derive the cache key from claims: exactly one of wId, spaceId, or sbId
+    // must be set.
+    let cache_key = match (
+        validated.w_id.as_deref(),
+        validated.space_id.as_deref(),
+        validated.sb_id.as_deref(),
+    ) {
+        (Some(w_id), None, None) => format!("w:{w_id}"),
+        (None, Some(space_id), None) => format!("p:{space_id}"),
+        (None, None, Some(sb_id)) => format!("s:{sb_id}"),
         _ => {
-            warn!("invalidate-policy: token must have exactly one of wId or sbId");
+            warn!("invalidate-policy: token must have exactly one of wId, spaceId, or sbId");
             return Err(StatusCode::BAD_REQUEST);
         }
     };
