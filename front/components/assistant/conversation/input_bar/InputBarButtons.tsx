@@ -6,6 +6,7 @@ import type useCustomEditor from "@app/components/editor/input_bar/useCustomEdit
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -28,7 +29,6 @@ import {
   InfoCircle,
   Robot,
   Tooltip,
-  XClose,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -97,6 +97,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   onAttachmentsPickerOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
+  const isMobile = useIsMobile();
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -120,6 +121,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         handleSingleAgentSelect(toRichAgentMentionType(c));
       }}
       agents={allAgents}
+      selectedAgentId={selectedAgent?.id}
+      onDeselect={onAgentRemove}
       showDropdownArrow={false}
       side={conversation ? "top" : "bottom"}
       showFooterButtons={
@@ -141,9 +144,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-            <span className="grow truncate notranslate">
-              {selectedAgent.label}
-            </span>
+            {!isMobile && (
+              <span className="grow truncate notranslate">
+                {selectedAgent.label}
+              </span>
+            )}
             {isDefaultAgentUnavailable && (
               <Tooltip
                 tooltipTriggerAsChild
@@ -165,22 +170,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                 label={defaultAgentUnavailableLabel}
               />
             )}
-            <button
-              type="button"
-              aria-label="Remove agent"
-              className="p-0.5 text-faint hover:text-foreground transition-colors duration-200"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onAgentRemove();
-              }}
-            >
-              <XClose className="h-3 w-3" />
-            </button>
           </div>
         ) : (
           <Button
@@ -245,6 +234,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         />
       </>
     );
+
   return (
     <>
       {agentButton}
