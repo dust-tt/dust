@@ -808,6 +808,7 @@ describe("getStripePricingData", () => {
       currency_options: {
         usd: { unit_amount: 1000 },
         eur: { unit_amount: 900 },
+        gbp: { unit_amount: 800 },
       },
     });
 
@@ -817,13 +818,13 @@ describe("getStripePricingData", () => {
       currencyOptions: {
         usd: { unitAmount: 1000 },
         eur: { unitAmount: 900 },
-        gbp: { unitAmount: 0 },
+        gbp: { unitAmount: 800 },
       },
     });
   });
 
   it("should not throw when a supported currency option is missing", async () => {
-    // Price configured with USD only; EUR has no currency option.
+    // Price configured with USD only; EUR and GBP have no currency option.
     mockPrices.retrieve.mockResolvedValue({
       unit_amount: 1000,
       currency_options: {
