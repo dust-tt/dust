@@ -744,7 +744,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
-        { type: "text" as const, text: "Lead (as Deal) created successfully." },
+        { type: "text" as const, text: "Lead created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });

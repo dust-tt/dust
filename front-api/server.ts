@@ -1,3 +1,6 @@
+// Imported first: logs a "sign of life" before instrumentation and the app
+// module graph load, so startup probe failures leave a trace in the logs.
+import "./lib/startup-log";
 import "./lib/tracer-config";
 import "./lib/instrumentation-config";
 
@@ -16,6 +19,10 @@ setupGlobalErrorHandler(logger);
 const dev = isDevelopment();
 const port = parseInt(process.env.PORT ?? "3000", 10);
 const hostname = process.env.HOSTNAME ?? "localhost";
+
+// The app module graph is fully imported by this point; log before binding the
+// socket so a hang between here and "listening" isolates the bind step.
+logger.info({ port, hostname, dev }, "front-api starting HTTP server");
 
 const server = serve({ fetch: honoApp.fetch, port, hostname }, () => {
   // performance.nodeTiming is measured from process start, so we can split

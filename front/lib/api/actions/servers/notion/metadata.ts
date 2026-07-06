@@ -242,6 +242,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Searching Notion",
       done: "Search Notion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   retrieve_page: {
     description: "Retrieve a Notion page by its ID.",
@@ -253,6 +255,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion page",
       done: "Retrieve Notion page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   retrieve_database_schema: {
     description:
@@ -265,6 +269,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion database schema",
       done: "Retrieve Notion database schema",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   retrieve_database_content: {
     description:
@@ -284,6 +290,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion database content",
       done: "Retrieve Notion database content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   query_database: {
     description: "Query a Notion database.",
@@ -302,6 +310,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Querying Notion database",
       done: "Query Notion database",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_page: {
     description: "Create a new Notion page.",
@@ -318,6 +328,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Creating Notion page",
       done: "Create Notion page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   insert_row_into_database: {
     description: "Create a new Notion page in a database.",
@@ -332,6 +344,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Inserting Notion row",
       done: "Insert Notion row",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_database: {
     description: "Create a new Notion database (table).",
@@ -353,6 +367,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Creating Notion database",
       done: "Create Notion database",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_page: {
     description: "Update a Notion page's properties.",
@@ -365,6 +381,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Updating Notion page",
       done: "Update Notion page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   retrieve_block: {
     description: "Retrieve a Notion block by its ID.",
@@ -376,6 +394,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion block",
       done: "Retrieve Notion block",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   retrieve_block_children: {
     description: "Retrieve the children of a Notion block or page by its ID.",
@@ -392,6 +412,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion block children",
       done: "Retrieve Notion block children",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_page_content: {
     description:
@@ -413,6 +435,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Adding Notion page content",
       done: "Add Notion page content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_comment: {
     description:
@@ -438,6 +462,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Adding comment on Notion",
       done: "Add comment on Notion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_block: {
     description:
@@ -450,6 +476,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Notion block",
       done: "Delete Notion block",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_page: {
     description:
@@ -462,6 +490,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Notion page",
       done: "Delete Notion page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   fetch_comments: {
     description:
@@ -476,6 +506,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Fetching comments from Notion",
       done: "Fetch comments from Notion",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_row_database: {
     description:
@@ -489,6 +521,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Updating Notion row",
       done: "Update Notion row",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_schema_database: {
     description:
@@ -502,6 +536,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Updating Notion database schema",
       done: "Update Notion database schema",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_users: {
     description: "List all users in the Notion workspace.",
@@ -511,6 +547,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Listing Notion users",
       done: "List Notion users",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_about_user: {
     description: "Get information about a specific user by userId.",
@@ -522,6 +560,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Notion user info",
       done: "Retrieve Notion user info",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -542,6 +582,8 @@ export const NOTION_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(NOTION_TOOLS_METADATA).map((t) => [t.name, t.stake])

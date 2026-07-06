@@ -86,6 +86,8 @@ export default async function createServer(
         running: "Listing Dust App configuration",
         done: "List Dust App configuration",
       },
+      toolCostCategory: "basic",
+      freeUsage: false,
       handler: async () => {
         return new Ok([
           {
@@ -129,6 +131,8 @@ export default async function createServer(
         running: "Running Dust app",
         done: "Run Dust app",
       },
+      toolCostCategory: "basic",
+      freeUsage: false,
       handler: async (params) => {
         const content: (
           | TextContent
@@ -245,6 +249,8 @@ export default async function createServer(
         running: "Running Dust app",
         done: "Run Dust app",
       },
+      toolCostCategory: "basic",
+      freeUsage: false,
       handler: async () => {
         return new Ok([
           {

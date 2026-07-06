@@ -109,6 +109,8 @@ export function makeExtractDataBaseToolsMetadata({
         running: "Extracting data from documents",
         done: "Extract data from documents",
       },
+      toolCostCategory: "advanced",
+      freeUsage: false,
     },
   });
 }
@@ -147,6 +149,8 @@ export function makeExtractDataToolsWithTagsMetadata({
         running: "Finding tags",
         done: "Find tags",
       },
+      toolCostCategory: "advanced",
+      freeUsage: false,
     },
   });
 }
@@ -193,6 +197,8 @@ export const EXTRACT_DATA_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(EXTRACT_DATA_BASE_TOOLS_METADATA).map((t) => [

@@ -1,7 +1,7 @@
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
+import { isAdmin, isBuilder, isBusinessAdmin } from "@app/types/user";
 import type { AuthError } from "@extension/shared/services/auth";
 import { useAuthHook } from "@extension/ui/components/auth/useAuth";
 import type { ReactNode } from "react";
@@ -166,6 +166,7 @@ export function ExtensionAuthProvider({
       workspace,
       subscription: EXTENSION_SUBSCRIPTION,
       isAdmin: isAdmin(workspace),
+      isBusinessAdmin: isBusinessAdmin(workspace),
       isBuilder: isBuilder(workspace),
       featureFlags,
       vizUrl: process.env.VIZ_PUBLIC_URL ?? "",

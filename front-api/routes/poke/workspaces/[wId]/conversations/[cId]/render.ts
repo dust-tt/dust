@@ -2,7 +2,6 @@ import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -193,16 +192,6 @@ app.post(
       fallbackPrompt += ".";
     }
 
-    const agentsList = agentConfiguration.instructions?.includes(
-      "{ASSISTANTS_LIST}"
-    )
-      ? await getAgentConfigurationsForView({
-          auth,
-          agentsGetView: auth.user() ? "list" : "all",
-          variant: "light",
-        })
-      : null;
-
     const projectContext = await constructProjectContext(auth, {
       conversation,
     });
@@ -216,7 +205,6 @@ app.post(
       model,
       hasAvailableActions: availableActions.length > 0,
       errorContext: mcpToolsListingError,
-      agentsList,
       conversation,
       serverToolsAndInstructions,
       systemSkills,

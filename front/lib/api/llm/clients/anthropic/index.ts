@@ -18,6 +18,7 @@ import {
   streamLLMEvents,
 } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
+  detectAnthropicToolSearchEnableSkillConflict,
   toMessage,
   toToolsParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
@@ -211,6 +212,18 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       specifications,
       forceToolCall,
     } = streamParameters;
+
+    if (detectAnthropicToolSearchEnableSkillConflict(conversation.messages)) {
+      logger.warn(
+        {
+          ...this.metadata,
+          toolSearchEnabled,
+          messageCount: conversation.messages.length,
+        },
+        "[tool-search] Anthropic request contains unresolved tool search after enable_skill"
+      );
+    }
+
     const messages = await concurrentExecutor(
       conversation.messages,
       (msg, index) =>

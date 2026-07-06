@@ -39,6 +39,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Creating val",
       done: "Create val",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_val: {
     description:
@@ -51,6 +53,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving val",
       done: "Retrieve val",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_vals: {
     description:
@@ -81,6 +85,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Listing vals",
       done: "List vals",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_vals: {
     description:
@@ -108,6 +114,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Searching vals",
       done: "Search vals",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_val_files: {
     description:
@@ -138,6 +146,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Listing val files",
       done: "List val files",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_file_content: {
     description:
@@ -153,6 +163,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving file content",
       done: "Retrieve file content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_file: {
     description:
@@ -168,6 +180,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Deleting file",
       done: "Delete file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_file_content: {
     description:
@@ -187,6 +201,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Updating file content",
       done: "Update file content",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   write_file: {
     description:
@@ -216,6 +232,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Writing file",
       done: "Write file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_file: {
     description:
@@ -231,6 +249,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Creating file",
       done: "Create file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   call_http_endpoint: {
     description:
@@ -257,6 +277,8 @@ export const VAL_TOWN_TOOLS_METADATA = createToolsRecord({
       running: "Calling HTTP endpoint",
       done: "Call HTTP endpoint",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -276,6 +298,8 @@ export const VAL_TOWN_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(VAL_TOWN_TOOLS_METADATA).map((t) => [t.name, t.stake])

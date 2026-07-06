@@ -1382,10 +1382,16 @@ export async function syncSeatCount({
     const legacy = !isCreditPricedPlanPrefix(planCode);
 
     // userSId → current seat type (the seat they are on right now).
+    //
+    // Only count memberships that are active in the same sense as the Stripe
+    // seat count (`getMembersCountForWorkspace({ activeOnly: true })`): the seat
+    // window is open AND `firstUsedAt` is set. This excludes provisioned members
+    // who have never used the workspace, so Metronome and Stripe bill the same
+    // set of seats.
     const currentSeatByUserSId = new Map<string, MembershipSeatType>();
     for (const m of activeMemberships) {
       const userSId = m.user?.sId;
-      if (userSId) {
+      if (userSId && m.firstUsedAt !== null) {
         currentSeatByUserSId.set(userSId, m.seatType);
       }
     }
@@ -1398,7 +1404,12 @@ export async function syncSeatCount({
     const scheduledChanges: ScheduledChange[] = [];
     for (const m of futureMemberships) {
       const userSId = m.user?.sId;
-      if (userSId) {
+      // Same `firstUsedAt` filter as the current-seat map above: a scheduled
+      // change carries the current row's `firstUsedAt` (see `scheduleSeatChange`),
+      // so provisioned-but-never-used members (SCIM on enterprise contracts) are
+      // scheduled by contract switches / migrations yet must stay uncounted, just
+      // like Stripe. Without this the future segment would re-introduce them.
+      if (userSId && m.firstUsedAt !== null) {
         scheduledChanges.push({
           userSId,
           newSeatType: m.seatType,

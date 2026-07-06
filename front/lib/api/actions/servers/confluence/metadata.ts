@@ -16,6 +16,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Getting current Confluence user",
       done: "Get current Confluence user",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_spaces: {
     description:
@@ -26,6 +28,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Confluence spaces",
       done: "List Confluence spaces",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_pages: {
     description:
@@ -53,6 +57,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Searching Confluence pages",
       done: "Search Confluence pages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_page: {
     description:
@@ -72,6 +78,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Confluence page",
       done: "Retrieve Confluence page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_page: {
     description:
@@ -107,6 +115,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Confluence page",
       done: "Create Confluence page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_page: {
     description:
@@ -156,6 +166,8 @@ export const CONFLUENCE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Confluence page",
       done: "Update Confluence page",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -176,6 +188,8 @@ export const CONFLUENCE_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(CONFLUENCE_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -11,7 +11,7 @@ function seatTypeUrl(wId: string, uId: string) {
 
 describe("PATCH /api/w/:wId/members/:uId/seat-type", () => {
   describe("auth", () => {
-    it("returns 403 when caller is not an admin", async () => {
+    it("returns 403 when caller is a user", async () => {
       const { workspace, user } = await createPrivateApiMockRequest({
         method: "PATCH",
         role: "user",
@@ -102,6 +102,32 @@ describe("PATCH /api/w/:wId/members/:uId/seat-type", () => {
       await createPrivateApiMockRequest({
         method: "PATCH",
         role: "admin",
+        workspace,
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const response = await honoApp.request(
+        seatTypeUrl(workspace.sId, targetUser.sId),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ seatType: "pro" }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).seatType).toBe("pro");
+    });
+
+    it("returns 200 when a business admin upgrades another member to pro", async () => {
+      const workspace = await WorkspaceFactory.metronome();
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "business_admin",
         workspace,
       });
 

@@ -14,26 +14,28 @@ export const AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
       running: "Getting agent info",
       done: "Get agent info",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
-export const AGENT_SIDEKICK_AGENT_STATE_SERVER_INFO = {
-  name: "agent_sidekick_agent_state" as const,
-  version: "1.0.0",
-  description:
-    "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools.",
-  authorization: null,
-  icon: "ActionRobotIcon" as const,
-  documentationUrl: null,
-};
-
 export const AGENT_SIDEKICK_AGENT_STATE_SERVER = {
-  serverInfo: AGENT_SIDEKICK_AGENT_STATE_SERVER_INFO,
+  serverInfo: {
+    name: "agent_sidekick_agent_state",
+    version: "1.0.0",
+    description:
+      "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools.",
+    authorization: null,
+    icon: "ActionRobotIcon",
+    documentationUrl: null,
+  },
   tools: Object.values(AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_SIDEKICK_AGENT_STATE_TOOLS_METADATA).map((t) => [

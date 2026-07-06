@@ -24,7 +24,7 @@ import {
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
-import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
+import { TOOL_COST_CATEGORIES } from "@app/lib/metronome/events";
 import {
   BILLING_CYCLE_CONFIG,
   BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
@@ -122,82 +122,12 @@ export const NEW_METRICS: MetricDef[] = [
       [USAGE_TYPE_GROUP_KEY],
     ],
   },
-  // "(non-free)" twins of the two metrics above. Identical event filter,
-  // aggregation, and group keys, but the `usage_type` property filter also
-  // excludes free-tagged events (`not_in_values: ["free"]`) so they are never
-  // aggregated — any future paid usage_type is still included. `exists: true`
-  // is kept because Metronome requires every group-key property to have a
-  // matching required (`exists`) property filter. These are NOT attached to any
-  // product/rate (they carry no billing meaning); they exist so the usage graph
-  // can show usage excluding free without needing a group-key combining each
-  // dimension with `usage_type` (the billing metrics above are already at
-  // Metronome's 7 group-key cap and can't take more).
-  {
-    name: "Tool Invocations (non-free)",
-    event_type_filter: { in_values: ["tool_use_v3"] },
-    property_filters: [
-      { name: "count", exists: true },
-      {
-        name: USAGE_TYPE_GROUP_KEY,
-        exists: true,
-        not_in_values: [USAGE_TYPE_FREE],
-      },
-      { name: "tool_category", exists: true },
-      { name: "tool_group", exists: true },
-      { name: "user_id", exists: true },
-      { name: "api_key_name", exists: true },
-      { name: "origin", exists: true },
-      { name: "agent_id", exists: true },
-      { name: "mcp_server_id", exists: true },
-    ],
-    aggregation_type: "SUM",
-    aggregation_key: "count",
-    // Same 7 group keys as "Tool Invocations" — see note there.
-    group_keys: [
-      ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
-      ["user_id"],
-      ["tool_category"],
-      ["api_key_name", "tool_category"],
-      ["origin", "tool_category"],
-      ["agent_id", "tool_category"],
-      [USAGE_TYPE_GROUP_KEY, "tool_category"],
-    ],
-  },
-  {
-    name: "LLM Provider Cost AWU (non-free)",
-    event_type_filter: { in_values: ["llm_usage_v3"] },
-    property_filters: [
-      { name: "cost_awu", exists: true },
-      {
-        name: USAGE_TYPE_GROUP_KEY,
-        exists: true,
-        not_in_values: [USAGE_TYPE_FREE],
-      },
-      { name: "user_id", exists: true },
-      { name: "api_key_name", exists: true },
-      { name: "model_id", exists: true },
-      { name: "origin", exists: true },
-      { name: "agent_id", exists: true },
-    ],
-    aggregation_type: "SUM",
-    aggregation_key: "cost_awu",
-    // Same 7 group keys as "LLM Provider Cost AWU" — see note there.
-    group_keys: [
-      ["user_id", USAGE_TYPE_GROUP_KEY],
-      ["user_id"],
-      ["api_key_name"],
-      ["model_id"],
-      ["origin"],
-      ["agent_id"],
-      [USAGE_TYPE_GROUP_KEY],
-    ],
-  },
   // Phase 2 token metrics removed — will be added when Pricing Index is ready.
 ];
 
 // Per-tier AWU price for Tool Usage rates. Shared across all AWU-priced rate cards
-const TOOL_CATEGORY_PRICES_AWU: Record<
-  (typeof TOOL_CATEGORIES)[number],
+const TOOL_COST_CATEGORY_PRICES_AWU: Record<
+  (typeof TOOL_COST_CATEGORIES)[number],
   number
 > = {
   basic: 1,
@@ -210,14 +140,14 @@ const TOOL_CATEGORY_PRICES_AWU: Record<
 const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC] as const;
 
 function buildAwuToolUsageRates(): RateDef[] {
-  return TOOL_CATEGORIES.flatMap((category): RateDef[] => [
+  return TOOL_COST_CATEGORIES.flatMap((category): RateDef[] => [
     ...PAID_USAGE_TYPES.map(
       (usageType): RateDef => ({
         product_name: "Tool Usage",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
-        price: TOOL_CATEGORY_PRICES_AWU[category],
+        price: TOOL_COST_CATEGORY_PRICES_AWU[category],
         credit_type_id: getCreditTypeAwuId(),
         pricing_group_values: {
           tool_category: category,

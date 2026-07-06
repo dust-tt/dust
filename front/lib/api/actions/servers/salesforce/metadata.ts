@@ -22,6 +22,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Executing Salesforce query",
       done: "Execute Salesforce query",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_objects: {
     description:
@@ -39,6 +41,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Salesforce objects",
       done: "List Salesforce objects",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   describe_object: {
     description:
@@ -54,6 +58,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Describing Salesforce object",
       done: "Describe Salesforce object",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_object: {
     description:
@@ -80,6 +86,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Salesforce records",
       done: "Create Salesforce records",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_object: {
     description:
@@ -112,6 +120,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Salesforce records",
       done: "Update Salesforce records",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_attachments: {
     description:
@@ -125,6 +135,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Listing attachments on Salesforce",
       done: "List attachments on Salesforce",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   read_attachment: {
     description:
@@ -141,6 +153,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
       running: "Reading attachment from Salesforce",
       done: "Read attachment from Salesforce",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -161,6 +175,8 @@ export const SALESFORCE_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SALESFORCE_TOOLS_METADATA).map((t) => [t.name, t.stake])

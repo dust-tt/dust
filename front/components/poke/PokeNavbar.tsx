@@ -67,6 +67,7 @@ function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
         </LinkWrapper>
         <div className="flex flex-row gap-4">
           <Button href="/poke/plans" variant="ghost" label="Plans" />
+          <Button href="/poke/coupons" variant="ghost" label="Coupons" />
           <Button href="/poke/templates" variant="ghost" label="Templates" />
           <Button href="/poke/plugins" variant="ghost" label="Plugins" />
           <Button href="/poke/kill" variant="ghost" label="Kill Switches" />

@@ -37,6 +37,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       running: "Reading file from data source",
       done: "Read file from data source",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
   [FILESYSTEM_LIST_TOOL_NAME]: {
@@ -51,6 +53,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       running: "Listing data source contents",
       done: "List data source contents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
   [FILESYSTEM_SEARCH_TOOL_NAME]: {
@@ -66,6 +70,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       running: "Searching data sources",
       done: "Search data sources",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
   [FILESYSTEM_FIND_TOOL_NAME]: {
@@ -80,6 +86,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       running: "Finding in data sources",
       done: "Find in data sources",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
   [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
@@ -94,6 +102,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
       running: "Locating content in hierarchy",
       done: "Locate content in hierarchy",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
     enableAlerting: true,
   },
 });
@@ -131,6 +141,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA =
         running: "Finding tags",
         done: "Find tags",
       },
+      toolCostCategory: "advanced",
+      freeUsage: false,
       enableAlerting: true,
     },
   });
@@ -149,6 +161,8 @@ export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA).map((t) => [

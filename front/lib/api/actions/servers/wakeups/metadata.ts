@@ -46,6 +46,8 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
       running: "Scheduling wake-up",
       done: "Schedule wake-up",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   list_wakeups: {
     description:
@@ -59,6 +61,8 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
       running: "Listing wake-ups",
       done: "List wake-ups",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   cancel_wakeup: {
     description:
@@ -78,6 +82,8 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
       running: "Cancelling wake-up",
       done: "Cancel wake-up",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -96,6 +102,8 @@ export const WAKEUPS_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(WAKEUPS_TOOLS_METADATA).map((t) => [t.name, t.stake])

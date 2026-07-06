@@ -15,6 +15,7 @@ export type GetPokeWorkspaceAuthContextResponseType = {
   workspace: LightWorkspaceType;
   subscription: SubscriptionType;
   isAdmin: true; // Superusers have admin privileges
+  isBusinessAdmin: true; // Superusers have business admin privileges
   isBuilder: true; // Superusers have builder privileges
   isSuperUser: true;
 };

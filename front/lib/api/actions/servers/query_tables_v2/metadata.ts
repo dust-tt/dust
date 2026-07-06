@@ -44,6 +44,8 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
       running: "Listing available tables",
       done: "List available tables",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [GET_DATABASE_SCHEMA_TOOL_NAME]: {
     description:
@@ -58,6 +60,8 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
       running: "Getting database schema",
       done: "Get database schema",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: {
     description:
@@ -88,6 +92,8 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
       running: "Executing database query",
       done: "Execute database query",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -107,6 +113,8 @@ export const QUERY_TABLES_V2_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(QUERY_TABLES_V2_TOOLS_METADATA).map((t) => [t.name, t.stake])
