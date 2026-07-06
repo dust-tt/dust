@@ -2291,6 +2291,16 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
+  "user_analytics": {
+    "get_personal_usage": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_activity": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
   "user_mentions": {
     "get_mention_markdown": {
       "freeUsage": true,
