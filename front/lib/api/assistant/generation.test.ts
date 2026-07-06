@@ -368,6 +368,35 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("source message");
   });
 
+  it("should mention the conversation title tool in conversation prompts", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+      serverToolsAndInstructions: [
+        { serverName: "common_utilities", tools: [] },
+      ],
+    };
+
+    const conversationText = systemPromptToText(
+      constructPromptMultiActions(authenticator1, {
+        ...params,
+        conversation: conversation1,
+      })
+    );
+    expect(conversationText).toContain(
+      "You are in the context of a conversation with the user."
+    );
+    expect(conversationText).toContain(
+      "common_utilities__set_conversation_title"
+    );
+  });
+
   it("should inject the formatting prompt by default and drop it when disabled", () => {
     // Pick a model that actually carries a formatting prompt (OpenAI models do).
     const modelWithFormatting = getSupportedModelConfigs().find(
