@@ -7,12 +7,18 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
+// "suggested": shown to the user, no action taken yet
+// "executed": user ran the recommended action immediately (one-off)
+// "dismissed": user declined the recommendation
+// "skill_created": user promoted the recommendation into a skill (createdSkillId is set)
+// "trigger_created": user promoted the recommendation into a trigger (createdTriggerId is set)
+// skill_created and trigger_created are independent terminal states, not a sequence
 export type ActivationRecommendationStatus =
-  | "pending"
-  | "accepted"
-  | "rejected"
-  | "saved"
-  | "recurring";
+  | "suggested"
+  | "executed"
+  | "dismissed"
+  | "skill_created"
+  | "trigger_created";
 
 export class ActivationRecommendationModel extends WorkspaceAwareModel<ActivationRecommendationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -23,11 +29,12 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
   declare content: string;
   declare rationale: string;
 
+  // The conversation in which the recommendation was (originally) made
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
-  // FK to skill_configurations.id — the skill artifact associated with this recommendation.
-  declare artifactSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
-  // FK to triggers.id — the trigger artifact associated with this recommendation.
-  declare artifactTriggerId: ForeignKey<TriggerModel["id"]> | null;
+  // FK to the skill created as a result of this recommendation (set when status = "skill_created")
+  declare createdSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
+  // FK to the trigger created as a result of this recommendation (set when status = "trigger_created")
+  declare createdTriggerId: ForeignKey<TriggerModel["id"]> | null;
 }
 
 ActivationRecommendationModel.init(
@@ -62,11 +69,11 @@ ActivationRecommendationModel.init(
       type: DataTypes.BIGINT,
       allowNull: true,
     },
-    artifactSkillId: {
+    createdSkillId: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
-    artifactTriggerId: {
+    createdTriggerId: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
@@ -88,11 +95,11 @@ ActivationRecommendationModel.init(
         concurrently: true,
       },
       {
-        fields: ["artifactSkillId"],
+        fields: ["createdSkillId"],
         concurrently: true,
       },
       {
-        fields: ["artifactTriggerId"],
+        fields: ["createdTriggerId"],
         concurrently: true,
       },
     ],
@@ -118,19 +125,19 @@ ConversationModel.hasMany(ActivationRecommendationModel, {
 });
 
 ActivationRecommendationModel.belongsTo(SkillConfigurationModel, {
-  foreignKey: { name: "artifactSkillId", allowNull: true },
+  foreignKey: { name: "createdSkillId", allowNull: true },
   onDelete: "SET NULL",
 });
 SkillConfigurationModel.hasMany(ActivationRecommendationModel, {
-  foreignKey: { name: "artifactSkillId", allowNull: true },
+  foreignKey: { name: "createdSkillId", allowNull: true },
   onDelete: "SET NULL",
 });
 
 ActivationRecommendationModel.belongsTo(TriggerModel, {
-  foreignKey: { name: "artifactTriggerId", allowNull: true },
+  foreignKey: { name: "createdTriggerId", allowNull: true },
   onDelete: "SET NULL",
 });
 TriggerModel.hasMany(ActivationRecommendationModel, {
-  foreignKey: { name: "artifactTriggerId", allowNull: true },
+  foreignKey: { name: "createdTriggerId", allowNull: true },
   onDelete: "SET NULL",
 });
