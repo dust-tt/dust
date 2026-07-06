@@ -1,5 +1,5 @@
 #!/opt/venv/bin/python3
-"""pptx_inspect — paginated structural inspection of .pptx decks.
+"""pptx_inspect - paginated structural inspection of .pptx decks.
 
 Backed by python-pptx for slide/shape/placeholder/text traversal; the
 shared `ooxml` helpers and stdlib `zipfile` are used for chart titles
@@ -10,15 +10,20 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
+import secrets
 import sys
 import zipfile
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import ooxml
+import pdf_text
 import render
+import render_publish
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.enum.text import MSO_AUTO_SIZE
 from pptx.presentation import Presentation as PresentationType
 from pptx.shapes.base import BaseShape
 from pptx.slide import Slide
@@ -28,28 +33,61 @@ from utils import (
     flatten_text,
     format_size,
     pad,
+    parse_slide_patterns,
     safe_output,
 )
 
-P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
+from pptx_geometry import _text_extent_box, emu_to_inches, format_box, shape_kind
+
+from pptx_typography import (
+    _read_clr_map,
+    _read_layout_chain,
+    _read_theme_for_master,
+    _resolve_scheme_color,
+    format_placeholder_defaults,
+    placeholder_type,
+    resolve_placeholder_defaults,
+    text_frame_lines,
+)
+
+from pptx_render_boxes import _annotate_boxes
+
+from pptx_audit import (
+    BARE_MARGIN,
+    BARE_RATE,
+    CoverRect,
+    DENSITY_TOLERANCE,
+    DeckFidelity,
+    IMAGERY_RICH_TEMPLATE,
+    IMAGERY_STRIP_RATIO,
+    MIN_SLIDES_FOR_CONTENT_AUDIT,
+    SHAPE_RETENTION_FLOOR,
+    SlideContext,
+    _count_slides,
+    _cover_candidates,
+    _deck_fidelity,
+    _deck_structural_tally,
+    _drop_audit,
+    _effective_font_size_pt,
+    _fit_tokens,
+    _has_embedded_blip,
+    _is_leftover_suspect,
+    _listed_slide_count,
+    _package_names,
+    _shape_text_iter,
+    _shape_warning_markers,
+    _slot_audit,
+    slide_word_count,
+)
+
 
 DEFAULT_MAX_SHAPES = 200
-EMU_PER_INCH = 914_400
-EDGE_EPSILON_EMU = 45_720  # 0.05" tolerance before flagging edge overflow.
 
-# Glyphs commonly typed as manual bullets at the start of a paragraph. When
-# they appear inside a placeholder whose layout already renders a bullet,
-# the result is a doubled marker ("● • text"); see the bullet-glyph lint.
-BULLET_PREFIXES = ("•", "·", "*", "-", "–")
-
-
-class SlideContext(NamedTuple):
-    width_emu: int
-    height_emu: int
 
 USAGE = (
-    "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] "
-    "[--render] [--max-shapes N] [--offset N]"
+    "pptx_inspect <file> [--qa N[,N,...]] [--slide N[,N,...]] [--layouts] [--text] "
+    "[--media] [--render] [--render-dir DIR] [--compare FILE] "
+    "[--max-shapes N] [--offset N]"
 )
 
 HELP_TEXT = (
@@ -61,410 +99,57 @@ HELP_TEXT = (
     "  file              Path to .pptx deck (required)\n"
     "\n"
     "Options:\n"
-    "  --slide N         Show one slide's shapes (1-indexed): kind, position,\n"
-    "                    size, text, formatting, placeholder type.\n"
+    "  --qa N[,N,...]    QA gate - run after a round of edits. Takes one slide or a\n"
+    "                    pattern (e.g. 2,5,7-9); QA-ing several at once shares a\n"
+    "                    single render pass (the PDF is cached), so edit a batch of\n"
+    "                    slides then QA them together rather than one call each.\n"
+    "                    Prints each slide's #id-tagged text AND a boxed diagnostic\n"
+    "                    render (boxes labeled '#id', red wash where boxes overlap),\n"
+    "                    plus text checks read off the rendered PDF's word\n"
+    "                    positions: [!] (fix before delivery) for a confirmed\n"
+    "                    text-on-text overprint, [w] (review) when a box doesn't\n"
+    "                    contain its own text, and [i] (FYI) for softer advisories\n"
+    "                    - so tight-but-clear neighbours and box-only overlaps\n"
+    "                    don't false-alarm, and only [!] gates delivery.\n"
+    "                    The render is published to the conversation as a JPEG whose\n"
+    "                    path is printed per slide (a files__cat-readable image),\n"
+    "                    stamped with a READBACK CODE that appears only in the\n"
+    "                    pixels: open each render and quote its code to prove you\n"
+    "                    viewed it. The text checks are a structural pre-check, not\n"
+    "                    the visual pass - the readback is the gate.\n"
+    "  --slide N[,N,...] Show one or more slides' shapes (1-indexed; takes a\n"
+    "                    pattern like 2,5,7-9). Per shape: kind, position, size,\n"
+    "                    text, formatting, placeholder type, and a text-fit\n"
+    "                    estimate (holds~Nch@Spt / ~Nch/line@Spt), with a [!] TEXT\n"
+    "                    OVERSET flag when text won't fit. Inspect every slide you\n"
+    "                    plan to edit in one call rather than one call each.\n"
     "  --layouts         List slide masters and their layouts with placeholder slots,\n"
     "                    including each placeholder's resolved default typeface,\n"
     "                    size, weight, color, and alignment (from layout / master /\n"
     "                    theme inheritance).\n"
     "  --text            Extract readable text per slide (preserves slide/shape boundaries).\n"
     "  --media           List embedded media (images, audio, video) with file sizes.\n"
-    "  --render          Rasterize slides to JPEG (100 dpi) via LibreOffice + pdftoppm.\n"
-    "                    Outputs to /tmp/pptx_render/<deck>/slide-NNN.jpg and prints\n"
-    "                    one absolute path per slide. Combine with --slide N to\n"
-    "                    render just one slide for fast post-fix re-checks.\n"
+    "  --render          Rasterize slide(s) to a plain JPEG (no overlay), published\n"
+    "                    to the conversation. Combine with --slide N[,N,...] to\n"
+    "                    render just those slides in one shared pass (the deck is\n"
+    "                    converted once, then cached); omit --slide for the whole\n"
+    "                    deck. For QA use --qa instead - it adds the boxes.\n"
+    "  --render-dir DIR  Base dir renders are published under, as\n"
+    "                    DIR/.pptx_render/<deck>/ (default: /files/conversation).\n"
+    "  --compare FILE    Compare <file> (your edited output) against FILE (the\n"
+    "                    source/template): slide count, embedded media, embedded\n"
+    "                    fonts, imagery/layout/density, and per-shape content-slot\n"
+    "                    fidelity (text written into the template's spacer\n"
+    "                    paragraphs). Ends with a [QA: PASS/FAIL] verdict.\n"
     "  --max-shapes N    Maximum shapes to print in slide view (default 200).\n"
     "  --offset N        Skip first N shapes in slide view (default 0).\n"
     "\n"
     "Output (slide view, one shape per line, paragraphs indented):\n"
     "  <id>  <kind>  <left,top inWxinH>  [ph=<type>]  <summary>\n"
-    "    p<level>: <text>  [<font hints>]\n"
-    "Empty shapes are skipped; long text is ellipsized."
+    "    p[i]: <text>  [<font hints>]\n"
+    "Paragraphs are addressed by index p[i]; empty spacer paragraphs are shown\n"
+    "(trailing ones collapsed to a count); long text is ellipsized."
 )
-
-
-def emu_to_inches(emu: Optional[int]) -> Optional[float]:
-    if emu is None:
-        return None
-    return emu / EMU_PER_INCH
-
-
-def format_box(shape: BaseShape) -> str:
-    left = emu_to_inches(shape.left)
-    top = emu_to_inches(shape.top)
-    width = emu_to_inches(shape.width)
-    height = emu_to_inches(shape.height)
-    if None in (left, top, width, height):
-        return "(?,?)"
-    return f"({left:.1f},{top:.1f}) {width:.1f}x{height:.1f}\""
-
-
-def shape_kind(shape: BaseShape) -> str:
-    if shape.has_chart:
-        return "chart"
-    if shape.has_table:
-        return "table"
-    st = shape.shape_type
-    if st == MSO_SHAPE_TYPE.PICTURE:
-        return "pic"
-    if st == MSO_SHAPE_TYPE.GROUP:
-        return "group"
-    if st == MSO_SHAPE_TYPE.TEXT_BOX:
-        return "text"
-    if st == MSO_SHAPE_TYPE.PLACEHOLDER:
-        return "ph"
-    if st == MSO_SHAPE_TYPE.AUTO_SHAPE:
-        return "auto"
-    if st == MSO_SHAPE_TYPE.LINE:
-        return "line"
-    if st == MSO_SHAPE_TYPE.FREEFORM:
-        return "free"
-    if st == MSO_SHAPE_TYPE.MEDIA:
-        return "media"
-    name = getattr(st, "name", None)
-    return name.lower() if name else "shape"
-
-
-def placeholder_type(shape: BaseShape) -> Optional[str]:
-    if not getattr(shape, "is_placeholder", False):
-        return None
-    # `placeholder_format` raises ValueError on non-placeholder shapes,
-    # which we already filtered out above.
-    pf = shape.placeholder_format
-    t = getattr(pf, "type", None)
-    if t is None:
-        return None
-    name = getattr(t, "name", None)
-    return name.lower() if name else None
-
-
-def font_argb(run) -> Optional[str]:
-    font = getattr(run, "font", None)
-    if font is None:
-        return None
-    color = getattr(font, "color", None)
-    if color is None:
-        return None
-    # color.rgb raises AttributeError when the color is theme-based
-    # rather than explicit RGB; we treat both as "not set".
-    try:
-        rgb = color.rgb
-    except (AttributeError, TypeError, ValueError):
-        return None
-    if rgb is None:
-        return None
-    return str(rgb).upper()
-
-
-# ---------------------------------------------------------------------------
-# Theme / placeholder default resolution.
-#
-# python-pptx does not surface the effective typography of an empty layout
-# placeholder — that information lives in the layout's <a:lstStyle>, falling
-# back to the master's matching placeholder, the master's titleStyle /
-# bodyStyle / otherStyle, and finally the theme's major/minor font + color
-# scheme. The helpers below walk that chain directly off the zip so we can
-# print "this title placeholder defaults to Lexend 28pt bold #F8FAFC".
-# ---------------------------------------------------------------------------
-
-
-def _qp(local: str) -> str:
-    return f"{{{P_NS}}}{local}"
-
-
-def _read_clr_map(master_xml) -> Dict[str, str]:
-    """Map placeholder color tokens (bg1, tx1, accent1...) to theme tokens
-    (lt1/dk1/accent1...) via the master's <p:clrMap>."""
-    if master_xml is None:
-        return {}
-    clr_map = master_xml.find(_qp("clrMap"))
-    if clr_map is None:
-        return {}
-    return {k: v for k, v in clr_map.attrib.items() if not k.startswith("{")}
-
-
-def _resolve_scheme_color(
-    scheme_token: str,
-    clr_map: Dict[str, str],
-    theme_colors: Dict[str, str],
-) -> Optional[str]:
-    target = clr_map.get(scheme_token, scheme_token)
-    hex_val = theme_colors.get(target)
-    return hex_val or None
-
-
-def _solid_fill_hex(
-    elem,
-    clr_map: Dict[str, str],
-    theme_colors: Dict[str, str],
-) -> Optional[str]:
-    """Resolve <a:solidFill> on a defRPr-like element to a 6-hex color."""
-    if elem is None:
-        return None
-    fill = elem.find(ooxml.qa("solidFill"))
-    if fill is None:
-        return None
-    srgb = fill.find(ooxml.qa("srgbClr"))
-    if srgb is not None:
-        return srgb.attrib.get("val", "").upper() or None
-    scheme = fill.find(ooxml.qa("schemeClr"))
-    if scheme is not None:
-        return _resolve_scheme_color(scheme.attrib.get("val", ""), clr_map, theme_colors)
-    return None
-
-
-def _ph_type_default_kind(ph_type: Optional[str]) -> str:
-    """Pick which master *Style block applies when nothing else matches."""
-    if ph_type in ("title", "ctrtitle", "ctr_title", "center_title"):
-        return "title"
-    if ph_type in ("body", "subtitle", "subTitle", "obj"):
-        return "body"
-    return "other"
-
-
-def _find_ph_sp(parent, ph_idx: Optional[int], ph_type: Optional[str]):
-    """Find a <p:sp> in `parent` whose <p:ph> matches the given idx/type."""
-    if parent is None:
-        return None
-    for sp in parent.iter(_qp("sp")):
-        ph = sp.find(f"{_qp('nvSpPr')}/{_qp('nvPr')}/{_qp('ph')}")
-        if ph is None:
-            continue
-        sp_idx_raw = ph.attrib.get("idx")
-        sp_idx = int(sp_idx_raw) if sp_idx_raw and sp_idx_raw.isdigit() else 0
-        sp_type = (ph.attrib.get("type") or "").lower()
-        if ph_idx is not None and sp_idx == ph_idx:
-            return sp
-        if ph_type and sp_type == ph_type:
-            return sp
-    return None
-
-
-def _lvl1_defrpr(sp):
-    """Return (lvl1pPr_element, defRPr_element) from the <a:lstStyle> of a
-    placeholder shape. Either may be None."""
-    if sp is None:
-        return None, None
-    lst = sp.find(f"{_qp('txBody')}/{ooxml.qa('lstStyle')}")
-    if lst is None:
-        return None, None
-    lvl1 = lst.find(ooxml.qa("lvl1pPr"))
-    if lvl1 is None:
-        return None, None
-    def_rpr = lvl1.find(ooxml.qa("defRPr"))
-    return lvl1, def_rpr
-
-
-def _master_style_defrpr(master_xml, kind: str):
-    """Pull <a:lvl1pPr>/<a:defRPr> from <p:titleStyle> / <p:bodyStyle> /
-    <p:otherStyle> on the master."""
-    if master_xml is None:
-        return None, None
-    style_name = {
-        "title": "titleStyle",
-        "body": "bodyStyle",
-        "other": "otherStyle",
-    }[kind]
-    style = master_xml.find(f"{_qp('txStyles')}/{_qp(style_name)}")
-    if style is None:
-        return None, None
-    lvl1 = style.find(ooxml.qa("lvl1pPr"))
-    if lvl1 is None:
-        return None, None
-    def_rpr = lvl1.find(ooxml.qa("defRPr"))
-    return lvl1, def_rpr
-
-
-def resolve_placeholder_defaults(
-    layout_xml,
-    master_xml,
-    theme_xml,
-    clr_map: Dict[str, str],
-    theme_colors: Dict[str, str],
-    ph_idx: Optional[int],
-    ph_type: Optional[str],
-) -> Dict[str, Optional[str]]:
-    """Walk layout placeholder -> master placeholder -> master *Style ->
-    theme to compute the effective default typography of a placeholder."""
-    kind = _ph_type_default_kind(ph_type)
-
-    chain = []
-    chain.append(_lvl1_defrpr(_find_ph_sp(layout_xml, ph_idx, ph_type)))
-    chain.append(_lvl1_defrpr(_find_ph_sp(master_xml, ph_idx, ph_type)))
-    chain.append(_master_style_defrpr(master_xml, kind))
-
-    typeface: Optional[str] = None
-    size_pt: Optional[float] = None
-    bold: Optional[bool] = None
-    color_hex: Optional[str] = None
-    align: Optional[str] = None
-
-    for lvl1, def_rpr in chain:
-        if lvl1 is not None and align is None:
-            algn = lvl1.attrib.get("algn")
-            if algn:
-                align = algn
-        if def_rpr is None:
-            continue
-        if typeface is None:
-            latin = def_rpr.find(ooxml.qa("latin"))
-            if latin is not None:
-                typeface = latin.attrib.get("typeface") or None
-        if size_pt is None:
-            sz = def_rpr.attrib.get("sz")
-            if sz and sz.isdigit():
-                size_pt = int(sz) / 100.0
-        if bold is None:
-            b = def_rpr.attrib.get("b")
-            if b in ("1", "true"):
-                bold = True
-            elif b in ("0", "false"):
-                bold = False
-        if color_hex is None:
-            color_hex = _solid_fill_hex(def_rpr, clr_map, theme_colors)
-
-    if typeface is None:
-        typeface = ooxml.theme_font(
-            theme_xml, "major" if kind == "title" else "minor")
-
-    return {
-        "typeface": typeface,
-        "size_pt": size_pt,
-        "bold": bold,
-        "color": color_hex,
-        "align": align,
-    }
-
-
-def format_placeholder_defaults(defaults: Dict[str, Optional[str]]) -> str:
-    parts: List[str] = []
-    if defaults.get("typeface"):
-        parts.append(str(defaults["typeface"]))
-    size_pt = defaults.get("size_pt")
-    if size_pt is not None:
-        if float(size_pt).is_integer():
-            parts.append(f"{int(size_pt)}pt")
-        else:
-            parts.append(f"{size_pt:.1f}pt")
-    if defaults.get("bold"):
-        parts.append("bold")
-    color = defaults.get("color")
-    if color:
-        parts.append(f"#{color}")
-    align = defaults.get("align")
-    if align:
-        parts.append(f"algn={align}")
-    return " ".join(parts)
-
-
-# ---------------------------------------------------------------------------
-# Package-level XML access (lazy: most code paths don't need it).
-# ---------------------------------------------------------------------------
-
-
-def _slide_master_rel_target(zf: zipfile.ZipFile, master_path: str, rel_type_tail: str) -> Optional[str]:
-    rels = ooxml.parse_rels(zf, ooxml.rels_path_for(master_path))
-    if not rels:
-        return None
-    rels_xml = ooxml.read_xml(zf, ooxml.rels_path_for(master_path))
-    if rels_xml is None:
-        return None
-    for rel in rels_xml.findall("pr:Relationship", ooxml.NS):
-        rtype = rel.attrib.get("Type", "")
-        if rtype.endswith(rel_type_tail):
-            return ooxml.resolve_rel_target(ooxml.rels_path_for(master_path), rel.attrib["Target"])
-    return None
-
-
-def _read_theme_for_master(zf: zipfile.ZipFile, master_path: str):
-    theme_path = _slide_master_rel_target(zf, master_path, "/theme")
-    if not theme_path:
-        return None, None
-    return theme_path, ooxml.read_xml(zf, theme_path)
-
-
-def _layout_master_path(zf: zipfile.ZipFile, layout_path: str) -> Optional[str]:
-    return _slide_master_rel_target(zf, layout_path, "/slideMaster")
-
-
-def _read_layout_chain(
-    zf: zipfile.ZipFile, layout_path: str
-) -> Tuple[Optional[object], Optional[object], Optional[object], Dict[str, str], Dict[str, str]]:
-    layout_xml = ooxml.read_xml(zf, layout_path)
-    master_path = _layout_master_path(zf, layout_path)
-    master_xml = ooxml.read_xml(zf, master_path) if master_path else None
-    theme_xml = None
-    if master_path:
-        _, theme_xml = _read_theme_for_master(zf, master_path)
-    clr_map = _read_clr_map(master_xml)
-    theme_colors = ooxml.theme_colors_by_name(theme_xml)
-    return layout_xml, master_xml, theme_xml, clr_map, theme_colors
-
-
-def font_hints(run) -> str:
-    font = getattr(run, "font", None)
-    if font is None:
-        return ""
-    parts: List[str] = []
-    name = getattr(font, "name", None)
-    if name:
-        parts.append(name)
-    size = getattr(font, "size", None)
-    if size is not None:
-        parts.append(f"{int(size.pt)}pt")
-    if getattr(font, "bold", None):
-        parts.append("bold")
-    if getattr(font, "italic", None):
-        parts.append("italic")
-    if getattr(font, "underline", None):
-        parts.append("underline")
-    argb = font_argb(run)
-    if argb and argb not in ("000000", "FF000000"):
-        parts.append(f"color:{argb}")
-    return ", ".join(parts)
-
-
-def paragraph_runs_summary(paragraph) -> str:
-    """First run's font hints, as a stand-in for paragraph formatting."""
-    for run in paragraph.runs:
-        hints = font_hints(run)
-        if hints:
-            return hints
-    return ""
-
-
-def paragraph_alignment(paragraph) -> Optional[str]:
-    alignment = getattr(paragraph, "alignment", None)
-    if alignment is None:
-        return None
-    name = getattr(alignment, "name", None)
-    return name.lower() if name else None
-
-
-def text_frame_lines(shape: BaseShape, indent: str = "  ") -> List[str]:
-    if not shape.has_text_frame:
-        return []
-    is_placeholder = placeholder_type(shape) is not None
-    lines: List[str] = []
-    for paragraph in shape.text_frame.paragraphs:
-        text = flatten_text(paragraph.text or "").strip()
-        if not text:
-            continue
-        level = paragraph.level or 0
-        attrs: List[str] = []
-        hints = paragraph_runs_summary(paragraph)
-        if hints:
-            attrs.append(hints)
-        algn = paragraph_alignment(paragraph)
-        if algn:
-            attrs.append(f"algn={algn}")
-        if is_placeholder and _starts_with_bullet_glyph(text):
-            attrs.append("[!] manual bullet glyph in placeholder — remove")
-        line = f"{indent}p{level}: {ellipsize(text, TEXT_PREVIEW_LIMIT)}"
-        if attrs:
-            line += f"  [{', '.join(attrs)}]"
-        lines.append(line)
-    return lines
 
 
 def picture_summary(shape: BaseShape) -> str:
@@ -558,38 +243,6 @@ def slide_is_hidden(slide: Slide) -> bool:
     return slide.element.get("show") == "0"
 
 
-def _shape_text_iter(shape: BaseShape) -> Iterable[str]:
-    kind = shape_kind(shape)
-    if kind == "group":
-        for inner in shape.shapes:
-            yield from _shape_text_iter(inner)
-        return
-    if kind == "table":
-        for row in shape.table.rows:
-            for cell in row.cells:
-                yield cell.text or ""
-        return
-    if shape.has_text_frame:
-        for paragraph in shape.text_frame.paragraphs:
-            yield paragraph.text or ""
-
-
-def slide_word_count(slide: Slide) -> int:
-    count = 0
-    for shape in slide.shapes:
-        for text in _shape_text_iter(shape):
-            count += len(text.split())
-    return count
-
-
-def _starts_with_bullet_glyph(text: str) -> bool:
-    if len(text) < 2:
-        return False
-    if text[0] not in BULLET_PREFIXES:
-        return False
-    return text[1].isspace()
-
-
 def count_shapes_by_kind(shapes: Iterable[BaseShape]) -> dict:
     counts = {"text": 0, "pic": 0, "chart": 0, "table": 0, "other": 0}
     for shape in shapes:
@@ -599,6 +252,8 @@ def count_shapes_by_kind(shapes: Iterable[BaseShape]) -> dict:
             counts["table"] += 1
         elif shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
             counts["pic"] += 1
+        elif _has_embedded_blip(getattr(shape, "_element", None)):
+            counts["pic"] += 1  # picture placeholder / picture-filled shape
         elif shape.has_text_frame and (shape.text_frame.text or "").strip():
             counts["text"] += 1
         else:
@@ -606,56 +261,13 @@ def count_shapes_by_kind(shapes: Iterable[BaseShape]) -> dict:
     return counts
 
 
-CoverRect = Tuple[int, int, int, int, int]  # (shape_id, left, top, width, height)
-
-
-def _cover_candidates(shapes: Iterable[BaseShape]) -> List[CoverRect]:
-    """Bounding boxes of non-placeholder shapes on the slide, used to decide
-    whether an empty placeholder is actually covered by visible content."""
-    out: List[CoverRect] = []
-    for shape in shapes:
-        if placeholder_type(shape) is not None:
-            continue
-        left, top, width, height = (
-            shape.left,
-            shape.top,
-            shape.width,
-            shape.height,
-        )
-        if None in (left, top, width, height):
-            continue
-        out.append((shape.shape_id, left, top, width, height))
-    return out
-
-
-def _find_covering_shape(
-    placeholder: BaseShape, candidates: List[CoverRect]
-) -> Optional[int]:
-    """Return the shape_id of a non-placeholder shape whose bounding box
-    covers ≥50% of the placeholder's box, or None if no shape does. Used to
-    flip the empty-placeholder marker from "populate" to "delete"."""
-    pl_left = placeholder.left
-    pl_top = placeholder.top
-    pl_w = placeholder.width
-    pl_h = placeholder.height
-    if None in (pl_left, pl_top, pl_w, pl_h) or pl_w <= 0 or pl_h <= 0:
-        return None
-    pl_right = pl_left + pl_w
-    pl_bottom = pl_top + pl_h
-    pl_area = pl_w * pl_h
-    for shape_id, left, top, w, h in candidates:
-        ix = max(0, min(pl_right, left + w) - max(pl_left, left))
-        iy = max(0, min(pl_bottom, top + h) - max(pl_top, top))
-        if ix * iy * 2 >= pl_area:
-            return shape_id
-    return None
-
-
 def describe_shape(
     shape: BaseShape,
     *,
     ctx: Optional[SlideContext] = None,
     cover_candidates: Optional[List[CoverRect]] = None,
+    all_boxes: Optional[List[CoverRect]] = None,
+    layout_chain=None,
     indent: str = "",
 ) -> List[str]:
     kind = shape_kind(shape)
@@ -682,7 +294,9 @@ def describe_shape(
             # Cover detection doesn't translate into groups: children's
             # coordinates are group-local, and "siblings" inside the group
             # are typically arranged on purpose. Drop the candidate list.
-            sub_lines.extend(describe_shape(inner, ctx=ctx, indent="    "))
+            sub_lines.extend(
+                describe_shape(inner, ctx=ctx, layout_chain=layout_chain, indent="    ")
+            )
         if shape.has_text_frame:
             sub_lines.extend(text_frame_lines(shape, indent="  "))
     else:
@@ -696,53 +310,30 @@ def describe_shape(
 
     if summary:
         parts.append(summary)
-    for marker in _shape_warning_markers(shape, ph, ctx, cover_candidates):
-        parts.append(marker)
-
-    head = indent + "  ".join(parts).rstrip()
-    return [head] + [indent + line for line in sub_lines]
-
-
-def _shape_warning_markers(
-    shape: BaseShape,
-    ph: Optional[str],
-    ctx: Optional[SlideContext],
-    cover_candidates: Optional[List[CoverRect]] = None,
-) -> List[str]:
-    markers: List[str] = []
-    if ctx is not None:
-        left, top, width, height = (
-            shape.left,
-            shape.top,
-            shape.width,
-            shape.height,
-        )
-        if None not in (left, top, width, height):
-            if (
-                left + width > ctx.width_emu + EDGE_EPSILON_EMU
-                or top + height > ctx.height_emu + EDGE_EPSILON_EMU
-            ):
-                markers.append("[!] extends past slide edge")
-    if ph and shape.has_text_frame:
+    # Vertical anchor (how text sits in its box): surfaced so floating text - a
+    # short string anchored top in a much taller box - is diagnosable alongside
+    # the boxed render. Explicit value when set; text boxes/auto shapes default
+    # to top; placeholders inherit (left unstated).
+    if kind != "group" and shape.has_text_frame:
         has_text = any(
             (p.text or "").strip() for p in shape.text_frame.paragraphs
         )
-        if not has_text:
-            cover_id = (
-                _find_covering_shape(shape, cover_candidates)
-                if cover_candidates
-                else None
-            )
-            if cover_id is not None:
-                markers.append(
-                    f"[!] EMPTY PLACEHOLDER COVERED BY shape #{cover_id} — "
-                    "delete the placeholder"
-                )
-            else:
-                markers.append(
-                    "[!] EMPTY PLACEHOLDER — will render layout prompt text"
-                )
-    return markers
+        if has_text:
+            va = getattr(shape.text_frame, "vertical_anchor", None)
+            va_name = getattr(va, "name", None)
+            if va_name:
+                parts.append(f"vanchor={va_name.lower()}")
+            elif not ph:
+                parts.append("vanchor=top")
+    for marker in _shape_warning_markers(
+        shape, ph, ctx, cover_candidates, all_boxes
+    ):
+        parts.append(marker)
+    for token in _fit_tokens(shape, layout_chain):
+        parts.append(token)
+
+    head = indent + "  ".join(parts).rstrip()
+    return [head] + [indent + line for line in sub_lines]
 
 
 TITLE_PH_TYPES = frozenset({"title", "ctr_title", "center_title", "centertitle"})
@@ -783,7 +374,7 @@ def _theme_summary_line(file_path: str) -> Optional[str]:
 
         def _resolved(token: str) -> str:
             hx = _resolve_scheme_color(token, clr_map, theme_colors)
-            return f"#{hx}" if hx else "—"
+            return f"#{hx}" if hx else "-"
 
         accents = " ".join(_resolved(f"accent{i}") for i in range(1, 7))
         parts = [
@@ -820,7 +411,7 @@ def _deck_fonts_line(prs: PresentationType, file_path: str) -> Optional[str]:
     layouts and report them alongside the theme's major/minor fallback.
 
     The theme's `major:`/`minor:` typefaces from <a:fontScheme> are only what
-    runs outside placeholders inherit — many decks (e.g. the Dust template)
+    runs outside placeholders inherit - many decks (e.g. the Dust template)
     declare Arial there but override every layout with Lexend. Reporting
     them as the deck's font misleads the agent into picking Arial for
     custom shapes. So we surface what the layouts actually resolve to, and
@@ -911,7 +502,7 @@ def _deck_fonts_line(prs: PresentationType, file_path: str) -> Optional[str]:
         parts.append(f"body={body_str}")
     if show_fallback:
         parts.append(
-            f"theme-fallback={fallback_major or '—'}/{fallback_minor or '—'}"
+            f"theme-fallback={fallback_major or '-'}/{fallback_minor or '-'}"
         )
     if not parts:
         return None
@@ -978,6 +569,7 @@ def find_slide(prs: PresentationType, idx: int) -> Slide:
 
 def print_slide(
     prs: PresentationType,
+    file_path: str,
     idx: int,
     offset: int,
     max_shapes: int,
@@ -1004,10 +596,26 @@ def print_slide(
         height_emu=prs.slide_height or 0,
     )
     cover_candidates = _cover_candidates(shapes)
+    all_boxes: List[CoverRect] = [
+        (s.shape_id, s.left, s.top, s.width, s.height)
+        for s in shapes
+        if None not in (s.left, s.top, s.width, s.height)
+    ]
+
+    # Resolve the slide's layout chain once so fit estimates can use each
+    # placeholder's inherited font size. Parsed elements outlive the zip.
+    layout_chain = _resolve_layout_chain(file_path, slide)
+
     end = min(total, offset + max_shapes)
     for shape in shapes[offset:end]:
         lines.extend(
-            describe_shape(shape, ctx=ctx, cover_candidates=cover_candidates)
+            describe_shape(
+                shape,
+                ctx=ctx,
+                cover_candidates=cover_candidates,
+                all_boxes=all_boxes,
+                layout_chain=layout_chain,
+            )
         )
 
     if end < total:
@@ -1030,12 +638,64 @@ def print_slide(
     return "\n".join(lines)
 
 
+def print_slides(
+    prs: PresentationType,
+    file_path: str,
+    slide_nos: List[int],
+    offset: int,
+    max_shapes: int,
+) -> str:
+    """Structural view of one or more slides (from a --slide N[,N,...] pattern),
+    one block per slide, so a whole batch can be inspected before editing in a
+    single call rather than one call each."""
+    return "\n\n".join(
+        print_slide(prs, file_path, idx, offset, max_shapes)
+        for idx in slide_nos
+    )
+
+
 def _layout_part_path(layout) -> Optional[str]:
     """Layout XML path inside the .pptx zip, e.g. 'ppt/slideLayouts/slideLayout3.xml'."""
     partname = getattr(getattr(layout, "part", None), "partname", None)
     if partname is None:
         return None
     return str(partname).lstrip("/")
+
+
+def _resolve_layout_chain(file_path: str, slide: Slide):
+    """The slide's (layout, master, theme, clr_map, theme_colors) chain, used to
+    resolve placeholder-inherited font sizes. Parsed elements outlive the zip.
+    None when the package or its layout part can't be read."""
+    try:
+        zf: Optional[zipfile.ZipFile] = zipfile.ZipFile(file_path)
+    except (zipfile.BadZipFile, OSError):
+        return None
+    with zf:
+        layout_path = _layout_part_path(slide.slide_layout)
+        if not layout_path:
+            return None
+        return _read_layout_chain(zf, layout_path)
+
+
+def _text_extent_boxes(file_path: str, slide: Slide) -> Dict[int, Tuple[int, int, int, int]]:
+    """Map shape_id -> the box (EMU) grown to wrap a text shape's rendered copy,
+    for the shapes whose copy overflows the declared box. Feeds the --qa overlay
+    so it wraps the actual text and catches overflow-into-neighbour overlaps.
+    Empty when nothing overflows."""
+    layout_chain = _resolve_layout_chain(file_path, slide)
+    out: Dict[int, Tuple[int, int, int, int]] = {}
+    for shape in slide.shapes:
+        if not shape.has_text_frame:
+            continue
+        if not any((p.text or "").strip() for p in shape.text_frame.paragraphs):
+            continue
+        size_pt = _effective_font_size_pt(shape, layout_chain)
+        if size_pt is None:
+            continue
+        box = _text_extent_box(shape, size_pt)
+        if box is not None:
+            out[shape.shape_id] = box
+    return out
 
 
 def print_layouts(prs: PresentationType, file_path: str) -> str:
@@ -1099,10 +759,31 @@ def print_layouts(prs: PresentationType, file_path: str) -> str:
     return "\n".join(lines)
 
 
-def print_text(prs: PresentationType) -> str:
+# Text that looks like un-filled template scaffolding: bracketed/angled
+# prompts, lorem/placeholder fillers. Repeated-across-slides copy (e.g.
+# "Subject title", "Summary") is detected separately in print_text.
+def print_text(prs: PresentationType, slide_idx: Optional[int] = None) -> str:
+    # Pass 1: find distinctive copy repeated across the deck - template
+    # scaffolding the author forgot to replace ("Subject title", "Summary",
+    # "Title of the slide"). Count total occurrences (catches repeats within a
+    # single slide too); require length >= 8 so content words ("Dust") don't trip.
+    repeat_counts: Dict[str, int] = {}
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            for raw in _shape_text_iter(shape):
+                t = flatten_text(raw).strip()
+                if len(t) >= 8:
+                    repeat_counts[t] = repeat_counts.get(t, 0) + 1
+    repeated = sorted(
+        (t for t, c in repeat_counts.items() if c >= 3),
+        key=lambda t: -repeat_counts[t],
+    )
+
     blocks: List[str] = []
     total_chars = 0
     for idx, slide in enumerate(prs.slides, start=1):
+        if slide_idx is not None and idx != slide_idx:
+            continue
         slide_lines: List[str] = []
         for shape in slide.shapes:
             slide_lines.extend(_collect_text(shape))
@@ -1115,7 +796,7 @@ def print_text(prs: PresentationType) -> str:
                     f"  [notes] {ellipsize(notes, TEXT_PREVIEW_LIMIT)}")
         if slide_lines:
             title = slide_title(slide)
-            header = f"# Slide {idx}"
+            header = f"# Slide {idx} (words:{slide_word_count(slide)})"
             if title:
                 header += f': "{ellipsize(title, 60)}"'
             blocks.append(header)
@@ -1126,7 +807,16 @@ def print_text(prs: PresentationType) -> str:
         return "[No text in deck]"
     if blocks and blocks[-1] == "":
         blocks.pop()
-    return f"[Text: {total_chars} chars across {len(prs.slides)} slides]\n\n" + "\n".join(blocks)
+    scope = (f"slide {slide_idx}" if slide_idx is not None
+             else f"{len(prs.slides)} slides")
+    head = f"[Text: {total_chars} chars | {scope} | each line is tagged with " \
+           "its shape #id - match against the --qa box labels for readback]"
+    if repeated:
+        shown = ", ".join(
+            f'"{ellipsize(t, 30)}" x{repeat_counts[t]}' for t in repeated[:6]
+        )
+        head += f"\n[i] copy repeated 3+ times: {shown}"
+    return head + "\n\n" + "\n".join(blocks)
 
 
 def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
@@ -1136,9 +826,10 @@ def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
         for inner in shape.shapes:
             lines.extend(_collect_text(inner, indent))
         return lines
+    sid = shape.shape_id
     if kind == "table":
         _, cell_lines = table_summary(shape)
-        lines.extend(cell_lines)
+        lines.extend(f"{indent}#{sid} {cl.strip()}" for cl in cell_lines)
         return lines
     if shape.has_text_frame:
         for paragraph in shape.text_frame.paragraphs:
@@ -1146,10 +837,219 @@ def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
             if not text:
                 continue
             level = paragraph.level or 0
+            mark = " [leftover?]" if _is_leftover_suspect(text) else ""
             lines.append(
-                f"{indent}p{level}: {ellipsize(text, TEXT_PREVIEW_LIMIT)}"
+                f"{indent}#{sid} p{level}: "
+                f"{ellipsize(text, TEXT_PREVIEW_LIMIT)}{mark}"
             )
     return lines
+
+
+def print_compare(file_path: str, source_path: str) -> str:
+    """Compare the edited deck (file_path) against its source/template
+    (source_path) and gate the result. Surfaces the regressions that mean the
+    deck no longer respects the template: orphaned slide parts (hand-deleted
+    instead of via pptx_slides), embedded media or fonts dropped, the template's
+    imagery stripped, slides collapsed onto one catch-all layout, or density
+    blown past the template's ceiling. Ends with a [QA: PASS/FAIL] verdict -
+    do not deliver until it reads PASS."""
+    out_media = _package_names(file_path, "ppt/media/")
+    src_media = _package_names(source_path, "ppt/media/")
+    out_fonts = _package_names(file_path, "ppt/fonts/")
+    src_fonts = _package_names(source_path, "ppt/fonts/")
+    if None in (out_media, src_media, out_fonts, src_fonts):
+        return "[Compare: could not read one of the files as a .pptx package]"
+
+    def delta(out_n: int, src_n: int) -> str:
+        d = out_n - src_n
+        return f"{d:+d}" if d else "0"
+
+    blockers = 0
+
+    # Parse each deck independently so one failing to parse doesn't silently
+    # blind the whole audit. python-pptx reads only the slide list; the zip may
+    # hold more parts.
+    def _fid(path: str) -> Optional[DeckFidelity]:
+        try:
+            return _deck_fidelity(Presentation(path))
+        except Exception:  # noqa: BLE001 - degrade visibly rather than crash
+            return None
+
+    out_fid = _fid(file_path)
+    src_fid = _fid(source_path)
+
+    out_zip = _count_slides(file_path)
+    src_zip = _count_slides(source_path)
+    out_listed = out_fid.total if out_fid else (_listed_slide_count(file_path) or out_zip)
+    src_listed = src_fid.total if src_fid else (_listed_slide_count(source_path) or src_zip)
+
+    lines = [
+        f"[Compare: {os.path.basename(file_path)}  vs source "
+        f"{os.path.basename(source_path)}]",
+        f"  slides:  {pad(str(out_listed), 4)} (source {src_listed})  "
+        f"{delta(out_listed, src_listed)}",
+    ]
+
+    # Orphaned slide parts: in the package but not in the slide list. This is
+    # the signature of deleting slides by hand (removing sldIds) instead of
+    # `pptx_slides --delete`, which would drop the parts and their media too.
+    orphans = out_zip - out_listed
+    if orphans > 0:
+        blockers += 1
+        lines.append(
+            f"  orphans: [!] {orphans} slide part(s) in the package but not in the "
+            "slide list (orphaned)"
+        )
+
+    # A deck we cannot parse cannot be audited - say so loudly and block, so a
+    # parse failure can never masquerade as a clean PASS.
+    if out_fid is None or src_fid is None:
+        blockers += 1
+        which = "the edited deck" if out_fid is None else "the template"
+        lines.append(
+            f"  audit:   [!] degraded - could not parse {which} with python-pptx; "
+            "imagery / bare-canvas / density not checked"
+        )
+
+    dropped_media = sorted(src_media - out_media)
+    lines.append(
+        f"  media:   {pad(str(len(out_media)), 4)} (source "
+        f"{len(src_media)})  {delta(len(out_media), len(src_media))}"
+    )
+    if dropped_media:
+        lines.append(
+            f"    {len(dropped_media)} media in source not in output:"
+        )
+        for name in dropped_media:
+            lines.append(f"      - {name[len('ppt/media/'):]}")
+
+    dropped_fonts = sorted(src_fonts - out_fonts)
+    lines.append(
+        f"  fonts:   {pad(str(len(out_fonts)), 4)} (source "
+        f"{len(src_fonts)})  {delta(len(out_fonts), len(src_fonts))}"
+    )
+    if dropped_fonts:
+        blockers += 1
+        lines.append(
+            f"    [!] {len(dropped_fonts)} embedded font part(s) in source not in "
+            "output:"
+        )
+        for name in dropped_fonts:
+            lines.append(f"      - {name[len('ppt/fonts/'):]}")
+
+    if out_fid and src_fid and out_fid.total and src_fid.total:
+        audit_content = out_fid.total > MIN_SLIDES_FOR_CONTENT_AUDIT
+
+        # Imagery: did the rendered slides keep the template's pictures/charts/
+        # tables, or get rebuilt as text on the background?
+        src_rate = src_fid.imagery_slides / src_fid.total
+        out_rate = out_fid.imagery_slides / out_fid.total
+        lines.append(
+            f"  imagery: pics/charts/tables on {out_fid.imagery_slides}/"
+            f"{out_fid.total} slides ({out_fid.imagery_objs} objects; template "
+            f"{src_fid.imagery_slides}/{src_fid.total})"
+        )
+        if audit_content and src_rate >= IMAGERY_RICH_TEMPLATE and out_rate < src_rate * IMAGERY_STRIP_RATIO:
+            blockers += 1
+            lines.append(
+                f"    [!] imagery below template - {out_fid.imagery_slides}/"
+                f"{out_fid.total} output slides carry images vs "
+                f"{src_fid.imagery_slides}/{src_fid.total} in the template"
+            )
+
+        # Bare canvas: slides hand-drawn with no template placeholders and no
+        # imagery - the signature of rebuilding on a blank layout. Judged
+        # relative to the template, since some templates ship shape-built slides.
+        out_bare = out_fid.bare_slides / out_fid.total
+        src_bare = src_fid.bare_slides / src_fid.total
+        lines.append(
+            f"  layouts: {len(out_fid.layout_counts)} used; "
+            f"{out_fid.bare_slides}/{out_fid.total} slides on an empty canvas "
+            f"(template {src_fid.bare_slides}/{src_fid.total})"
+        )
+        if audit_content and out_bare >= BARE_RATE and out_bare > src_bare + BARE_MARGIN:
+            blockers += 1
+            lines.append(
+                f"    [!] {out_fid.bare_slides}/{out_fid.total} slides have no "
+                f"placeholders and no imagery (template {src_fid.bare_slides}/"
+                f"{src_fid.total})"
+            )
+
+        # Density: the template's max words/slide is a hard ceiling.
+        if out_fid.word_counts and src_fid.word_counts:
+            ceiling = max(src_fid.word_counts)
+            out_max = max(out_fid.word_counts)
+            over = [
+                (i + 1, w)
+                for i, w in enumerate(out_fid.word_counts)
+                if w > ceiling * DENSITY_TOLERANCE
+            ]
+            lines.append(
+                f"  density: max {out_max} words/slide "
+                f"(template ceiling {ceiling})"
+            )
+            if over:
+                blockers += 1
+                listing = ", ".join(f"{i}({w})" for i, w in over)
+                lines.append(
+                    f"    [!] {len(over)} slide(s) over template ceiling of "
+                    f"{ceiling} words: {listing}"
+                )
+
+        # Per-slide structural issues, rolled up (informational - some may be
+        # inherited from the template; the per-slide view judges each).
+        tally = _deck_structural_tally(file_path)
+        if tally:
+            total = tally["stacked"] + tally["distorted"] + tally["off_slide"]
+            lines.append(
+                f"  shapes:  {total} structural issue(s) across slides - "
+                f"stacked:{tally['stacked']} distorted-img:{tally['distorted']} "
+                f"off-slide:{tally['off_slide']}"
+            )
+
+    # Content-slot fidelity: text written into the template's interior spacer
+    # paragraphs (the wrong-slot fill). Deterministic from the paragraph
+    # skeletons - no estimation - so it gates as a blocker.
+    slot_findings = _slot_audit(file_path, source_path)
+    if slot_findings:
+        lines.append(
+            f"  slots:   [!] {len(slot_findings)} text box(es) filled the "
+            "template's spacer paragraphs"
+        )
+        for slide_no, sid, spacers, content in slot_findings:
+            blockers += 1
+            filled = ", ".join(f"p[{i}]" for i in sorted(spacers))
+            slots = ", ".join(f"p[{i}]" for i in sorted(content))
+            lines.append(
+                f"    [!] slide {slide_no} #{sid}: filled spacer {filled}; "
+                f"template content slots {slots}"
+            )
+
+    # Shape retention: a cloned slide that dropped most of its exemplar's shapes
+    # has been gutted rather than adapted. Advisory ([i]), not a blocker -
+    # trimming surplus is expected and heavy adaptation is sometimes right.
+    drops = _drop_audit(file_path, source_path)
+    if drops:
+        lines.append(
+            f"  reuse:   [i] {len(drops)} slide(s) kept "
+            f"<{int(SHAPE_RETENTION_FLOOR * 100)}% of their exemplar's shapes"
+        )
+        for out_no, src_no, kept, dropped in drops:
+            lines.append(
+                f"    [i] slide {out_no} (from template slide {src_no}): "
+                f"kept {kept}, dropped {dropped} exemplar shape(s)"
+            )
+
+    lines.append("")
+    if blockers:
+        lines.append(
+            f"[QA: FAIL - {blockers} blocker{'s' if blockers != 1 else ''} "
+            "([!] above)]"
+        )
+    else:
+        lines.append("[QA: PASS]")
+
+    return "\n".join(lines)
 
 
 def print_media(path: str) -> str:
@@ -1172,31 +1072,375 @@ def print_media(path: str) -> str:
     return "\n".join(lines)
 
 
-def print_render(
+# pptx QA / preview renders are published onto the conversation/pod mount
+# (where the model can open them with files__cat) under this dot-prefixed
+# subdir; the shared publish machinery lives in render_publish.
+_VIEW_SUBDIR = ".pptx_render"
+
+
+def _collect_tokens(shape: BaseShape) -> set:
+    """Comparison tokens of a shape's text (group child text folded in), used to
+    attribute a rendered PDF word back to its source shape."""
+    tokens: set = set()
+    if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        for child in shape.shapes:
+            tokens |= _collect_tokens(child)
+    elif getattr(shape, "has_text_frame", False):
+        for word in (shape.text_frame.text or "").split():
+            tok = pdf_text.norm_token(word)
+            if tok:
+                tokens.add(tok)
+    return tokens
+
+
+def _shape_text_label(shape: BaseShape) -> str:
+    """A short readable label for a text shape (first non-empty child for a
+    group), used in the collision digest's `#id "text"` references."""
+    if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        for child in shape.shapes:
+            label = _shape_text_label(child)
+            if label:
+                return label
+        return ""
+    if getattr(shape, "has_text_frame", False):
+        return ellipsize(flatten_text(shape.text_frame.text or "").strip(), 30)
+    return ""
+
+
+def _autofit_off(shape: BaseShape) -> bool:
+    """True when the shape explicitly won't auto-shrink its text (noAutofit) -
+    surfaced as a fix hint on the overflowing shape."""
+    return (
+        getattr(shape, "has_text_frame", False)
+        and shape.text_frame.auto_size == MSO_AUTO_SIZE.NONE
+    )
+
+
+def _text_shape_entries(slide: Slide):
+    """Per top-level text-bearing shape: (id, declared_box_emu, token_set, label,
+    autofit_off). Feeds the cross-shape overprint detector (id, box, tokens) and
+    the digest wording (label, autofit)."""
+    out = []
+    for sh in slide.shapes:
+        if None in (sh.left, sh.top, sh.width, sh.height):
+            continue
+        tokens = _collect_tokens(sh)
+        if not tokens:
+            continue
+        box = (sh.left, sh.top, sh.left + sh.width, sh.top + sh.height)
+        out.append((sh.shape_id, box, tokens, _shape_text_label(sh), _autofit_off(sh)))
+    return out
+
+
+_OVERFLOW_EDGE_PHRASE = {
+    "below": "below its box",
+    "above": "above its box",
+    "right": "past its right edge",
+    "left": "past its left edge",
+}
+
+
+def _slide_findings_lines(
+    slide: Slide,
+    idx: int,
+    findings: dict,
+    words: Optional[List[pdf_text.WordBox]],
+) -> List[str]:
+    """Format one slide's QA findings as a tiered, consequence-first block.
+
+    Read straight off the renderer's word positions (`words` from the soffice
+    PDF), in three tiers:
+      [!] fix before delivery - two DIFFERENT shapes' strongly-attributed words
+          overprint (`pdf_text.cross_shape_overprints`).
+      [w] review - a shape's OWN words land outside its OWN box
+          (`pdf_text.self_overflows`): the box doesn't contain its text. Usually
+          a real defect, sometimes decorative overflow into empty space, so the
+          model decides - it does NOT gate delivery.
+      [i] FYI - an unconfirmed geometric spill, a box overlap the render couldn't
+          read (text exported as curves), or a drifted decorative marker.
+    Reading where the glyphs actually landed - instead of estimating wrap from
+    char counts or arguing about box geometry - is what keeps false positives
+    down: same-run overlaps (superscripts, footnote markers, emoji) and box
+    overlaps in empty space never qualify as `[!]`. A clean slide says so."""
+    entries = _text_shape_entries(slide)
+    label = {e[0]: e[3] for e in entries}
+    autofit_off = {e[0]: e[4] for e in entries}
+
+    def q(sid: int) -> str:
+        lbl = label.get(sid)
+        return f'#{sid} "{lbl}"' if lbl else f"#{sid}"
+
+    severe: List[str] = []
+    review: List[str] = []
+    advisory: List[str] = []
+    n_severe = 0
+    n_review = 0
+
+    if words:
+        shapes = [(e[0], e[1], e[2]) for e in entries]
+        confirmed_pairs = set()
+        confirmed_sids = set()
+        for c in pdf_text.cross_shape_overprints(words, shapes):
+            n_severe += 1
+            over, hit = c["over"], c["hit"]
+            confirmed_pairs.add(frozenset((over, hit)))
+            confirmed_sids.update((over, hit))
+            if c["symmetric"]:
+                severe.append(
+                    f"  [!] text-on-text - {q(over)} and {q(hit)} overprint "
+                    f"(rendered \"{c['word_over']}\" lands on \"{c['word_hit']}\")."
+                )
+                severe.append(
+                    "      Possible fixes: separate the two boxes, or "
+                    "shrink/reposition one."
+                )
+            else:
+                shrink = (
+                    ", enable shrink-to-fit (it's set to no-autofit)"
+                    if autofit_off.get(over)
+                    else ""
+                )
+                severe.append(
+                    f"  [!] text-on-text - {q(over)} overflows its box onto "
+                    f"{q(hit)} (rendered \"{c['word_over']}\" sits on "
+                    f"\"{c['word_hit']}\")."
+                )
+                severe.append(
+                    f"      Possible fixes: shorten #{over}, lower its font "
+                    f"size{shrink}, or move #{hit} clear."
+                )
+        # A geometric spill the render did NOT confirm is not necessarily clean.
+        # Substitute fonts (the deck's real face is often absent at render time)
+        # reflow the text so it never overflows on the rendered page, hiding a
+        # real overprint the declared geometry still predicts. Surface such a
+        # spill as a review item rather than letting the render silently clear
+        # it. Peer overlaps are excluded - those are usually designed overlays,
+        # exactly what reading the render is trusted to filter out.
+        for f in findings.get("overlaps", []):
+            if not f["text_on_text"] or f["kind"] != "spill":
+                continue
+            if frozenset((f["over"], f["hit"])) in confirmed_pairs:
+                continue
+            advisory.append(
+                f"  [i] {q(f['over'])} overflows its box onto {q(f['hit'])} by "
+                f"{round(f['coverage'] * 100)}% at declared geometry, but the "
+                "render didn't confirm text-on-text - if the deck's fonts were "
+                "substituted the render can understate the overlap; verify."
+            )
+        # A shape whose own rendered words fall outside its own box: the box
+        # doesn't contain its text, but the overflow lands in empty space (a
+        # neighbour hit is a [!] collision above, so those shapes are skipped).
+        for f in pdf_text.self_overflows(words, shapes):
+            if f["sid"] in confirmed_sids:
+                continue
+            n_review += 1
+            where = _OVERFLOW_EDGE_PHRASE[f["edge"]]
+            review.append(
+                f"  [w] {q(f['sid'])} - text runs ~{f['over_in']:.2f}in {where} "
+                f"(rendered \"{f['word']}\" lands outside it)."
+            )
+            review.append(
+                "      The box doesn't contain its text: resize it, or shorten / "
+                "shrink-to-fit the copy. Fine if it's decorative overflow into "
+                "empty space."
+            )
+    else:
+        # No extractable rendered text (e.g. text exported as curves): can't
+        # confirm against glyphs, so surface the box-overlap candidates for a
+        # manual look rather than confirming or silently clearing them.
+        for f in findings.get("overlaps", []):
+            if not f["text_on_text"]:
+                continue
+            advisory.append(
+                f"  [i] {q(f['over'])} and {q(f['hit'])} boxes overlap by "
+                f"{round(f['coverage'] * 100)}% - couldn't read the rendered "
+                "text to confirm; check the render."
+            )
+
+    for sid, off in findings.get("markers", []):
+        advisory.append(
+            f"  [i] {q(sid)} marker has no text row within {off:.2f}in - "
+            "check its alignment in the render."
+        )
+
+    if severe:
+        header = (
+            f"[!] slide {idx} - {n_severe} collision"
+            f"{'s' if n_severe != 1 else ''} "
+            f"(red wash in the slide {idx} render above):"
+        )
+        return [header] + severe + review + advisory
+    if review:
+        header = (
+            f"[w] slide {idx} - {n_review} box"
+            f"{'es' if n_review != 1 else ''} that don't contain their text:"
+        )
+        return [header] + review + advisory
+    if advisory:
+        return [
+            f"[i] slide {idx} - {len(advisory)} item"
+            f"{'s' if len(advisory) != 1 else ''} to review:"
+        ] + advisory
+    return [f"[slide {idx}: no collisions in pre-check - open the render to QA]"]
+
+
+def _boxed_render(
     file_path: str,
     prs: PresentationType,
     slide_idx: Optional[int],
+    render_dir: str = "/files/conversation",
 ) -> str:
+    """Render slide(s) with the bounding-box overlay + pixel-metrics digest -
+    the diagnostic half of QA. Reached via --qa, not exposed on its own."""
     total_slides = len(prs.slides)
-    if slide_idx is not None and (slide_idx < 1 or slide_idx > total_slides):
-        raise ValueError(
-            f"slide index out of range: {slide_idx} "
-            f"(deck has {total_slides} slides)"
-        )
-
     out_dir, rendered = render.render_via_soffice(
         file_path,
         out_root=Path("/tmp/pptx_render"),
         item_name="slide",
         item_idx=slide_idx,
     )
-    plural = "" if len(rendered) == 1 else "s"
-    lines = [
-        f"[Rendered: {len(rendered)} slide{plural} | jpeg @ 100 dpi | {out_dir}]"
-    ]
+    # The soffice PDF (cached beside the rasters) carries the renderer's exact
+    # word positions; reading them lets the collision check confirm overprints
+    # against where glyphs actually landed rather than estimated box geometry.
+    pdf_path = out_dir / f"{out_dir.name}.pdf"
+    digest: List[str] = []
+    annotated: List[Path] = []
     for p in rendered:
-        lines.append(str(p))
+        m = re.search(r"-(\d+)\.", p.name)
+        idx = int(m.group(1)) if m else None
+        res = None
+        if idx is not None and 1 <= idx <= total_slides:
+            slide = prs.slides[idx - 1]
+            res = _annotate_boxes(
+                p, slide,
+                prs.slide_width or 0, prs.slide_height or 0,
+                effective_boxes=_text_extent_boxes(file_path, slide),
+                # A fresh per-render code, stamped into the pixels only: quoting
+                # it back is the proof the model actually opened the render.
+                readback_code=secrets.token_hex(2).upper(),
+            )
+        if res:
+            ap, findings = res
+            annotated.append(ap)
+            words = pdf_text.page_word_boxes(pdf_path, idx)
+            digest.extend(
+                _slide_findings_lines(prs.slides[idx - 1], idx, findings, words)
+            )
+        else:
+            annotated.append(p)
+    basename = os.path.splitext(os.path.basename(file_path))[0]
+    published = render_publish.publish_renders(
+        basename, annotated, render_dir, _VIEW_SUBDIR
+    )
+    plural = "" if len(published) == 1 else "s"
+    lines = [f"[Rendered {len(published)} slide{plural}, bbox overlay:]"]
+    lines.extend(render_publish.render_view_lines(published))
+
+    viewable = [scoped for _, scoped in published if scoped]
+    if len(viewable) < len(published):
+        # A render that is not on the conversation mount cannot be opened with
+        # files__cat, so the visual readback - the actual QA gate - is impossible.
+        # Say so as a blocker instead of letting the pre-checks below read as a
+        # pass.
+        lines.append(
+            "[!] some renders are NOT viewable (not on the conversation mount): "
+            "the visual readback cannot be performed, so QA is INCOMPLETE for "
+            "those slides. Run against a deck under /files/conversation."
+        )
+
+    if digest:
+        # These are structural/pixel pre-checks read off box geometry and the
+        # PDF's word positions - a useful filter, but NOT the visual pass. "No
+        # collisions" here does not mean the slide is right; only opening the
+        # render and reading each box back does.
+        lines.append(
+            "[Structural pre-checks - NOT a visual pass; open the render to QA. "
+            "[!] fix before delivery · [w] review · [i] FYI:]"
+        )
+        lines.extend(digest)
+
+    if viewable:
+        lines.append(
+            "[Readback (required): open each render above with files__cat and "
+            "quote the READBACK CODE stamped across its top. The code is only in "
+            "the image - a slide whose code you cannot quote has not been read "
+            "back, and is not done.]"
+        )
     return "\n".join(lines)
+
+
+def print_render(
+    file_path: str,
+    prs: PresentationType,
+    slide_nos: Optional[List[int]],
+    render_dir: str = "/files/conversation",
+) -> str:
+    """Plain rasterized slide(s) - no overlay - for a quick visual look. Pass a
+    list of 1-based slide numbers (from a --slide N[,N,...] pattern) to rasterize
+    just those in one shared pass - the deck is converted to PDF once and the PDF
+    is reused across the slides - or None for the whole deck. The boxed diagnostic
+    render is part of --qa, not here."""
+    total_slides = len(prs.slides)
+    rendered: List[Path] = []
+    if slide_nos is None:
+        _, rendered = render.render_via_soffice(
+            file_path,
+            out_root=Path("/tmp/pptx_render"),
+            item_name="slide",
+            item_idx=None,
+        )
+    else:
+        for idx in slide_nos:
+            if idx < 1 or idx > total_slides:
+                raise ValueError(
+                    f"slide index out of range: {idx} "
+                    f"(deck has {total_slides} slides)"
+                )
+            _, one = render.render_via_soffice(
+                file_path,
+                out_root=Path("/tmp/pptx_render"),
+                item_name="slide",
+                item_idx=idx,
+            )
+            rendered.extend(one)
+    basename = os.path.splitext(os.path.basename(file_path))[0]
+    published = render_publish.publish_renders(
+        basename, rendered, render_dir, _VIEW_SUBDIR
+    )
+    plural = "" if len(published) == 1 else "s"
+    lines = [f"[Rendered {len(published)} slide{plural} @ 100 dpi:]"]
+    lines.extend(render_publish.render_view_lines(published))
+    return "\n".join(lines)
+
+
+def print_qa(
+    file_path: str,
+    prs: PresentationType,
+    slide_nos: List[int],
+    render_dir: str = "/files/conversation",
+) -> str:
+    """QA gate - run after a round of edits. Accepts one slide or several (a
+    pattern like `2,5,7-9`); for each, bundles the slide's authoritative text
+    (#id-tagged, to read back) with the boxed diagnostic render so they are
+    checked together. QA-ing several slides at once shares a single soffice
+    conversion (the PDF is cached after the first render), so batching the
+    changed slides is much faster than one call per slide. Each slide's render is
+    published to the conversation (its scoped path is printed below the text)."""
+    total_slides = len(prs.slides)
+    for slide_idx in slide_nos:
+        if slide_idx < 1 or slide_idx > total_slides:
+            raise ValueError(
+                f"slide index out of range: {slide_idx} "
+                f"(deck has {total_slides} slides)"
+            )
+    blocks = [
+        f"[QA slide {slide_idx} - #id text + render path:]\n\n"
+        + print_text(prs, slide_idx)
+        + "\n\n"
+        + _boxed_render(file_path, prs, slide_idx, render_dir)
+        for slide_idx in slide_nos
+    ]
+    return "\n\n".join(blocks)
 
 
 def main() -> int:
@@ -1206,11 +1450,19 @@ def main() -> int:
         add_help=False,
     )
     parser.add_argument("file", nargs="?")
-    parser.add_argument("--slide", type=int)
+    parser.add_argument("--slide", metavar="N[,N,...]")
     parser.add_argument("--layouts", action="store_true")
     parser.add_argument("--text", action="store_true")
     parser.add_argument("--media", action="store_true")
     parser.add_argument("--render", action="store_true")
+    parser.add_argument("--qa", metavar="N[,N,...]")
+    parser.add_argument(
+        "--render-dir",
+        dest="render_dir",
+        metavar="DIR",
+        default="/files/conversation",
+    )
+    parser.add_argument("--compare")
     parser.add_argument("--max-shapes", type=int, default=DEFAULT_MAX_SHAPES)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--help", "-h", action="store_true", dest="help_flag")
@@ -1235,6 +1487,9 @@ def main() -> int:
     if args.offset < 0:
         sys.stderr.write("Error: --offset must be >= 0\n")
         return 1
+    if args.compare is not None and not os.path.isfile(args.compare):
+        sys.stderr.write(f"Error: --compare file not found: {args.compare}\n")
+        return 1
 
     file_header = (
         f"[File: {os.path.basename(args.file)} | "
@@ -1243,16 +1498,26 @@ def main() -> int:
 
     if args.media:
         body = print_media(args.file)
+    elif args.compare is not None:
+        body = print_compare(args.file, args.compare)
     else:
         prs = Presentation(args.file)
-        if args.render:
-            body = print_render(args.file, prs, args.slide)
+        if args.qa is not None:
+            body = print_qa(
+                args.file, prs, parse_slide_patterns(args.qa), args.render_dir
+            )
+        elif args.render:
+            slide_nos = parse_slide_patterns(args.slide) if args.slide else None
+            body = print_render(args.file, prs, slide_nos, args.render_dir)
         elif args.layouts:
             body = print_layouts(prs, args.file)
         elif args.text:
             body = print_text(prs)
         elif args.slide is not None:
-            body = print_slide(prs, args.slide, args.offset, args.max_shapes)
+            body = print_slides(
+                prs, args.file, parse_slide_patterns(args.slide),
+                args.offset, args.max_shapes,
+            )
         else:
             body = print_overview(prs, args.file)
 
