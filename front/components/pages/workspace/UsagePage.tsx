@@ -19,6 +19,7 @@ import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
+import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
 import { AdvancedModelsSettingsCard } from "@app/components/workspace/usage/AdvancedModelsSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
@@ -983,6 +984,9 @@ export function UsagePage() {
             {isWorkspaceAdmin && pricingGroupsEnabled && (
               <TabsTrigger value="groups" label="Groups" />
             )}
+            {isWorkspaceAdmin && isCreditPriced && (
+              <TabsTrigger value="top-ups" label="Top-ups history" />
+            )}
             {isWorkspaceAdmin && (
               <TabsTrigger value="settings" label="Settings" />
             )}
@@ -1053,6 +1057,12 @@ export function UsagePage() {
           {isWorkspaceAdmin && pricingGroupsEnabled && (
             <TabsContent value="groups">
               <GroupsUsageTable owner={owner} readOnly={isReadOnly} />
+            </TabsContent>
+          )}
+
+          {isWorkspaceAdmin && isCreditPriced && (
+            <TabsContent value="top-ups">
+              <TopUpsHistoryTable owner={owner} />
             </TabsContent>
           )}
 

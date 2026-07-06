@@ -7,6 +7,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
+import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
@@ -255,6 +256,30 @@ export function useAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+export function useAwuTopUpsHistory({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const topUpsFetcher: Fetcher<GetAwuTopUpsHistoryResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/top-ups`,
+    topUpsFetcher,
+    { disabled }
+  );
+
+  return {
+    topUps: data?.topUps ?? emptyArray(),
+    isTopUpsHistoryLoading: !error && !data && !disabled,
+    isTopUpsHistoryError: error,
+    mutateTopUpsHistory: mutate,
   };
 }
 
