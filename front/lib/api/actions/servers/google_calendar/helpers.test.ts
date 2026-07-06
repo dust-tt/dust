@@ -109,3 +109,36 @@ describe("enrichEventWithDayOfWeek - timezone handling", () => {
     expect(enriched.start?.eventDayOfWeek).toBe("Tuesday");
   });
 });
+
+describe("formatEventAsText - timezone handling", () => {
+  it("does not throw when the event carries a UTC offset timeZone", () => {
+    const enriched = enrichEventWithDayOfWeek(
+      {
+        summary: "Timed meeting",
+        start: { dateTime: "2026-06-30T10:00:00Z", timeZone: "GMT+02:00" },
+        end: { dateTime: "2026-06-30T11:00:00Z", timeZone: "GMT+02:00" },
+      },
+      normalizeTimezone("GMT+02:00")
+    );
+
+    expect(() => formatEventAsText(enriched)).not.toThrow();
+
+    const text = formatEventAsText(enriched);
+    expect(text).toContain("Start: Tuesday, June 30, 2026 at 12:00 PM");
+    expect(text).toContain("End: Tuesday, June 30, 2026 at 1:00 PM");
+  });
+
+  it("still formats correctly when the event timeZone is a valid IANA name", () => {
+    const enriched = enrichEventWithDayOfWeek(
+      {
+        summary: "Timed meeting",
+        start: { dateTime: "2026-06-30T10:00:00Z", timeZone: "Europe/Paris" },
+        end: { dateTime: "2026-06-30T11:00:00Z", timeZone: "Europe/Paris" },
+      },
+      "Europe/Paris"
+    );
+
+    const text = formatEventAsText(enriched);
+    expect(text).toContain("Start: Tuesday, June 30, 2026 at 12:00 PM");
+  });
+});

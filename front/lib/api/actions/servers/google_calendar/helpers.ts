@@ -211,7 +211,7 @@ export function isGoogleCalendarEvent(
 function formatDayOfWeek(date: Date, timezone?: string): string {
   return date.toLocaleDateString("en-US", {
     weekday: "long",
-    timeZone: timezone,
+    timeZone: normalizeTimezone(timezone) ?? undefined,
   });
 }
 
@@ -220,7 +220,7 @@ function formatDate(date: Date, timezone?: string): string {
     month: "long",
     day: "numeric",
     year: "numeric",
-    timeZone: timezone,
+    timeZone: normalizeTimezone(timezone) ?? undefined,
   });
 }
 
@@ -228,7 +228,7 @@ function formatTime(date: Date, timezone?: string): string {
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    timeZone: timezone,
+    timeZone: normalizeTimezone(timezone) ?? undefined,
   });
 }
 
