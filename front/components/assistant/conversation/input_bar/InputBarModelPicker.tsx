@@ -4,10 +4,7 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useModels } from "@app/lib/swr/models";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
-import {
-  CLAUDE_OPUS_4_8_MODEL_ID,
-  CLAUDE_SONNET_4_6_MODEL_ID,
-} from "@app/types/assistant/models/anthropic";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type {
@@ -41,106 +38,77 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
+import capitalize from "lodash/capitalize";
 import type { ReactElement, ReactNode } from "react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 
-// Models pinned at the top of the list under "Suggested", in display order. Each
-// pin is a concrete model + reasoning-effort pair (there can be several pins for
-// the same model). A pin is only shown if the workspace actually has the model
-// and it supports the given reasoning effort.
 const SUGGESTED_PINS: {
   providerId: ModelProviderIdType;
   modelId: string;
   effort: ReasoningEffort;
-  // Overrides the default per-effort recommendation for this pin. When omitted,
-  // the effort's recommendation from REASONING_EFFORT_INFO is used.
-  recommendation?: string;
+  recommendation: string;
 }[] = [
   {
     providerId: "anthropic",
     modelId: CLAUDE_SONNET_4_6_MODEL_ID,
     effort: "light",
+    recommendation:
+      "Quick answers. Recommended for easy retrieval, light analysis or general questions.",
   },
   {
     providerId: "anthropic",
     modelId: CLAUDE_SONNET_4_6_MODEL_ID,
     effort: "medium",
+    recommendation:
+      "Everyday tasks. Recommended for multi-step tasks, Frames, analysis.",
   },
   {
     providerId: "openai",
     modelId: GPT_5_5_MODEL_ID,
-    effort: "medium",
-    recommendation:
-      "Recommended for quality retrieval, complex analysis and Frames",
-  },
-  {
-    providerId: "anthropic",
-    modelId: CLAUDE_OPUS_4_8_MODEL_ID,
     effort: "high",
+    recommendation:
+      "Hard problems. Recommended for high quality retrieval, complex analysis and Frames",
   },
 ];
 
-// Tooltip shown on the "Auto" row.
 const AUTO_TOOLTIP =
   "Dust selects and switches model for cost efficient performance and reliability. When an agent is created using a specific model, we use this model.";
 
 // Per reasoning-effort blurbs shown in each model's hover tooltip: what the
 // effort does, and what it is recommended for.
-const REASONING_EFFORT_INFO: Record<
-  ReasoningEffort,
-  { reasoning: string; recommendation: string }
-> = {
+const REASONING_EFFORT_INFO: Record<ReasoningEffort, { reasoning: string }> = {
   none: {
     reasoning: "No additional reasoning, for the fastest responses",
-    recommendation: "Recommended for simple, high-volume tasks",
   },
   light: {
-    reasoning: "Light reasoning effort, resulting in less tokens produced",
-    recommendation:
-      "Recommended for easy retrieval, light analysis or general questions",
+    reasoning: "Light reasoning effort, faster responses.",
   },
   medium: {
-    reasoning: "Medium reasoning effort, balancing speed and quality",
-    recommendation: "Recommended for everyday work and multi-step tasks",
+    reasoning: "Medium reasoning effort, balancing speed and quality.",
   },
   high: {
-    reasoning: "High reasoning effort, producing more tokens",
-    recommendation:
-      "Recommended for complex, multi-step reasoning and hard problems",
+    reasoning: "High reasoning effort, longer wait times but higher quality.",
   },
 };
 
-// A concrete model + reasoning-effort pair rendered as a single line.
 interface ModelLine {
   model: ModelConfigurationType;
   effort: ReasoningEffort;
 }
 
-// A suggested line additionally carries the recommendation blurb shown in its
-// tooltip. Only suggested lines show a recommendation; "More models" lines do
-// not.
 interface SuggestedLine extends ModelLine {
   recommendation: string;
 }
 
-// The "More models" list grouped by provider, then by model, so it can be
-// rendered as a submenu per provider with one section per model.
 interface ProviderGroup {
   providerId: ModelProviderIdType;
   models: { model: ModelConfigurationType; efforts: ReasoningEffort[] }[];
 }
 
-// Either "Auto" (follow the agent's configured model, i.e. no override) or a
-// concrete model + reasoning-effort pick.
 type Selection =
   | { kind: "auto" }
   | { kind: "model"; model: ModelConfigurationType; effort: ReasoningEffort };
 
-// The reasoning efforts a user can actually pick for a model. "none" means "no
-// reasoning"; when a model also supports real reasoning efforts we drop the bare
-// "none" option so the user has to pick an explicit effort rather than "just the
-// model" (e.g. no plain "GPT-5.4 Mini" when Light/Medium/High exist). "none" is
-// only offered when it is the model's sole supported effort.
 function getSelectableReasoningEfforts(
   model: ModelConfigurationType
 ): ReasoningEffort[] {
@@ -149,9 +117,6 @@ function getSelectableReasoningEfforts(
   return withReasoning.length > 0 ? withReasoning : efforts;
 }
 
-// A model + effort combo identity. `modelId` is not unique across providers, and
-// the same model appears once per reasoning effort, so key on all three. Used for
-// radio values and de-duplicating pinned combos out of the "More models" list.
 function getLineKey(
   providerId: string,
   modelId: string,
@@ -160,13 +125,6 @@ function getLineKey(
   return `${providerId}/${modelId}/${effort}`;
 }
 
-// e.g. "Light", "Medium", "High". "none" has no meaningful label.
-function capitalizeEffort(effort: ReasoningEffort): string {
-  return effort.charAt(0).toUpperCase() + effort.slice(1);
-}
-
-// e.g. "Claude Sonnet 4.6 High". Models with no reasoning effort ("none") show
-// just their display name.
 function getLineLabel(selection: Selection): string {
   if (selection.kind === "auto") {
     return "Auto";
@@ -177,12 +135,10 @@ function getLineLabel(selection: Selection): string {
     return model.displayName;
   }
 
-  return `${model.displayName} ${capitalizeEffort(effort)}`;
+  return `${model.displayName} ${capitalize(effort)}`;
 }
 
-// Converts the picker's local selection into the API model selection sent on
-// message send. "Auto" means no override (run the agent's configured model),
-// i.e. undefined.
+// Converts the picker's local selection into the API model selection
 function toModelSelection(
   selection: Selection
 ): ModelSelectionType | undefined {
@@ -200,7 +156,7 @@ function toModelSelection(
       return undefined;
   }
 }
-
+// TODO: test for EU
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
   owner: LightWorkspaceType;
@@ -210,9 +166,6 @@ interface InputBarModelPickerProps {
   // conversation screen where there is room below.
   side?: "top" | "bottom";
   disabled?: boolean;
-  // Notified with the API model selection whenever the picker changes (including
-  // resets), so the parent can attach it to the next message send. `undefined`
-  // means no override (run the agent's configured model).
   onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
 }
 
@@ -231,39 +184,43 @@ export function InputBarModelPicker({
 
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
-  // The list of models is hidden while "Auto" is on; toggling Auto off (or
-  // searching) reveals it without yet committing a model pick.
+
+  // The list of models is hidden while "Auto" is on.
   const [expanded, setExpanded] = useState(false);
   const [selection, setSelection] = useState<Selection>({ kind: "auto" });
+
   // On mobile there are no nested submenus: the "More models" providers expand
   // inline below their name. This tracks the single provider currently expanded.
   const [expandedProvider, setExpandedProvider] =
     useState<ModelProviderIdType | null>(null);
+
+  // Commit a selection and notify the parent so it can attach (or, for "auto",
+  // clear) the per-message model override on the next send. Called from the
+  // user-driven handlers below and from the agent-change reset. `onSelectionChange`
+  // only stashes the value in a parent ref, so calling it here — including during
+  // the render-time reset — triggers no parent re-render.
+  const commitSelection = (next: Selection) => {
+    setSelection(next);
+    onSelectionChange?.(toModelSelection(next));
+  };
 
   // Reset to Auto when the agent changes: a per-message override should not leak
   // across agents.
   const agentModelKey = agentModel
     ? `${agentModel.providerId}/${agentModel.modelId}`
     : null;
-  const [prevAgentModelKey, setPrevAgentModelKey] = useState(agentModelKey);
-  if (agentModelKey !== prevAgentModelKey) {
-    setPrevAgentModelKey(agentModelKey);
-    setSelection({ kind: "auto" });
+  const prevAgentModelKeyRef = useRef(agentModelKey);
+  if (agentModelKey !== prevAgentModelKeyRef.current) {
+    prevAgentModelKeyRef.current = agentModelKey;
+    commitSelection({ kind: "auto" });
     setExpanded(false);
   }
-
-  // Keep the parent in sync with the current selection (including the reset
-  // above) so it can attach the override to the next message send.
-  useEffect(() => {
-    onSelectionChange?.(toModelSelection(selection));
-  }, [selection, onSelectionChange]);
 
   const { models, isModelsLoading } = useModels({
     owner,
     disabled: !hasModelsPicker,
   });
 
-  // Every model expanded into one line per available reasoning effort.
   const allLines = useMemo<ModelLine[]>(
     () =>
       models.flatMap((model) =>
@@ -295,19 +252,13 @@ export function InputBarModelPicker({
           {
             model,
             effort: pin.effort,
-            recommendation:
-              pin.recommendation ??
-              REASONING_EFFORT_INFO[pin.effort].recommendation,
+            recommendation: pin.recommendation,
           },
         ];
       }),
     [models]
   );
 
-  // "More models" lists every model/effort grouped by provider then model,
-  // preserving encounter order, so it can be rendered as one submenu per provider
-  // with one section per model. Models pinned in "Suggested" are intentionally
-  // still shown here too.
   const moreByProvider = useMemo<ProviderGroup[]>(() => {
     const providers = new Map<
       ModelProviderIdType,
@@ -374,13 +325,11 @@ export function InputBarModelPicker({
       ? getModelProviderLogo(selection.model.providerId, isDark)
       : undefined;
 
-  // Clicking anywhere on the Auto row toggles it: off reveals the model list
-  // (without committing a pick yet), on resets back to the agent's model.
   const toggleAuto = () => {
     if (isAutoOn) {
       setExpanded(true);
     } else {
-      setSelection({ kind: "auto" });
+      commitSelection({ kind: "auto" });
       setExpanded(false);
     }
   };
@@ -408,9 +357,6 @@ export function InputBarModelPicker({
     );
   };
 
-  // A model line rendered with the model name and the reasoning effort shown as a
-  // badge to the right. No provider logo. Reused across the "Suggested" section,
-  // flat search results, and the provider submenus.
   const renderModelLine = (line: ModelLine, recommendation?: string) => {
     const key = getLineKey(
       line.model.providerId,
@@ -437,7 +383,7 @@ export function InputBarModelPicker({
       <DropdownMenuRadioItem
         value={key}
         onClick={() =>
-          setSelection({
+          commitSelection({
             kind: "model",
             model: line.model,
             effort: line.effort,
@@ -447,7 +393,7 @@ export function InputBarModelPicker({
         <span className="flex grow items-center gap-2">
           <span className="line-clamp-1">{line.model.displayName}</span>
           {line.effort !== "none" && (
-            <Chip size="mini" label={capitalizeEffort(line.effort)} />
+            <Chip size="mini" label={capitalize(line.effort)} />
           )}
         </span>
       </DropdownMenuRadioItem>
