@@ -11,6 +11,7 @@ import type {
   ThinkingConfigEnabled,
   Tool,
   ToolChoiceAuto,
+  ToolChoiceNone,
   ToolChoiceTool,
   ToolResultBlockParam,
   ToolUseBlockParam,
@@ -21,6 +22,7 @@ import type { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/mo
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import type {
   OutputFormat,
+  ToolChoiceInput,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -419,11 +421,19 @@ export function toolSpecsToAnthropicAITools(
 
 export function forceToolNameToToolChoice(
   tools: ToolSpecification[],
-  forceTool: string | undefined
-): ToolChoiceAuto | ToolChoiceTool {
-  return forceTool && tools.some((tool) => tool.name === forceTool)
-    ? { type: "tool", name: forceTool }
-    : { type: "auto" };
+  { forceTool, disableToolUse }: ToolChoiceInput
+): ToolChoiceAuto | ToolChoiceTool | ToolChoiceNone {
+  if (forceTool && tools.some((tool) => tool.name === forceTool)) {
+    return { type: "tool", name: forceTool };
+  }
+
+  // The tools stay in the request so historical tool_search_tool_result references keep resolving,
+  // but tool calls are forbidden to force a final generation (last agent step).
+  if (disableToolUse) {
+    return { type: "none" };
+  }
+
+  return { type: "auto" };
 }
 
 function effortToAnthropicEffort(

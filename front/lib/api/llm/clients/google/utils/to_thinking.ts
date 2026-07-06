@@ -4,6 +4,7 @@ import {
   GOOGLE_AI_STUDIO_MODEL_CONFIGS,
   GOOGLE_AI_STUDIO_PROVIDER_ID,
 } from "@app/lib/api/llm/clients/google/types";
+import type { ExclusiveToolChoiceParameters } from "@app/lib/api/llm/types/options";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -40,16 +41,26 @@ export function toThinkingConfig({
 
 export function toToolConfigParam(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
+  { forceToolCall, disableToolUse }: ExclusiveToolChoiceParameters
 ): ToolConfig | undefined {
-  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
-    ? {
-        functionCallingConfig: {
-          allowedFunctionNames: [forceToolCall],
-          mode: FunctionCallingConfigMode.ANY,
-        },
-      }
-    : undefined;
+  if (forceToolCall && specifications.some((s) => s.name === forceToolCall)) {
+    return {
+      functionCallingConfig: {
+        allowedFunctionNames: [forceToolCall],
+        mode: FunctionCallingConfigMode.ANY,
+      },
+    };
+  }
+
+  if (disableToolUse) {
+    return {
+      functionCallingConfig: {
+        mode: FunctionCallingConfigMode.NONE,
+      },
+    };
+  }
+
+  return undefined;
 }
 
 export function toResponseSchemaParam(

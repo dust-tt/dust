@@ -23,6 +23,7 @@ import { handleGenericError } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
+  ExclusiveToolChoiceParameters,
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
@@ -35,12 +36,13 @@ import assert from "assert";
 import { z } from "zod";
 import { handleError } from "./utils/errors";
 
-interface GoogleGenerateContentRequestParams {
-  conversation: LLMStreamParameters["conversation"];
-  prompt: LLMStreamParameters["prompt"];
-  specifications: LLMStreamParameters["specifications"];
-  forceToolCall: LLMStreamParameters["forceToolCall"];
-}
+// Type alias (not an interface) because the tool choice part is a mutually
+// exclusive union, which interfaces cannot extend.
+type GoogleGenerateContentRequestParams = Pick<
+  LLMStreamParameters,
+  "conversation" | "prompt" | "specifications"
+> &
+  ExclusiveToolChoiceParameters;
 
 export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
   private client: GoogleGenAI;
@@ -85,7 +87,7 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
   private buildGenerateContentConfig(
     specifications: LLMStreamParameters["specifications"],
     prompt: LLMStreamParameters["prompt"],
-    forceToolCall: LLMStreamParameters["forceToolCall"]
+    toolChoice: ExclusiveToolChoiceParameters
   ) {
     return {
       temperature: this.temperature ?? undefined,
@@ -105,26 +107,18 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
         reasoningEffort: this.reasoningEffort,
         useNativeLightReasoning: this.modelConfig.useNativeLightReasoning,
       }),
-      toolConfig: toToolConfigParam(specifications, forceToolCall),
+      toolConfig: toToolConfigParam(specifications, toolChoice),
       // Structured response format
       responseMimeType: this.responseFormat ? "application/json" : undefined,
       responseSchema: toResponseSchemaParam(this.responseFormat),
     };
   }
 
-  protected buildStreamRequestPayload({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): GoogleGenerateContentRequestParams {
-    // Just capture the parameters; content conversion happens in sendRequest
-    return {
-      conversation,
-      prompt,
-      specifications,
-      forceToolCall,
-    };
+  protected buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): GoogleGenerateContentRequestParams {
+    // Just capture the parameters, content conversion happens in sendRequest
+    return streamParameters;
   }
 
   protected async *sendRequest(
@@ -143,7 +137,7 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
           config: this.buildGenerateContentConfig(
             payload.specifications,
             payload.prompt,
-            payload.forceToolCall
+            payload
           ),
         });
 
@@ -195,19 +189,17 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     const params = Array.from(conversations.values());
 
     const inlinedRequests = [];
-    for (const {
-      conversation,
-      prompt,
-      specifications,
-      forceToolCall,
-    } of params) {
-      const contents = await toContents(conversation.messages, this.modelId);
+    for (const streamParameters of params) {
+      const contents = await toContents(
+        streamParameters.conversation.messages,
+        this.modelId
+      );
       inlinedRequests.push({
         contents,
         config: this.buildGenerateContentConfig(
-          specifications,
-          prompt,
-          forceToolCall
+          streamParameters.specifications,
+          streamParameters.prompt,
+          streamParameters
         ),
       });
     }

@@ -1,6 +1,7 @@
 import type { GeminiSupportedReasoningEffort } from "@app/lib/model_constructors/providers/google_ai_studio/reasoning_efforts";
 import type {
   OutputFormat,
+  ToolChoiceInput,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -320,16 +321,26 @@ export function outputFormatToResponseSchema(
 
 export function forceToolNameToToolConfig(
   tools: ToolSpecification[],
-  forceTool: string | undefined
+  { forceTool, disableToolUse }: ToolChoiceInput
 ): ToolConfig | undefined {
-  return forceTool && tools.some((tool) => tool.name === forceTool)
-    ? {
-        functionCallingConfig: {
-          allowedFunctionNames: [forceTool],
-          mode: FunctionCallingConfigMode.ANY,
-        },
-      }
-    : undefined;
+  if (forceTool && tools.some((tool) => tool.name === forceTool)) {
+    return {
+      functionCallingConfig: {
+        allowedFunctionNames: [forceTool],
+        mode: FunctionCallingConfigMode.ANY,
+      },
+    };
+  }
+
+  if (disableToolUse) {
+    return {
+      functionCallingConfig: {
+        mode: FunctionCallingConfigMode.NONE,
+      },
+    };
+  }
+
+  return undefined;
 }
 
 export function effortToThinkingConfig(

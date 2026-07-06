@@ -1,4 +1,5 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { ExclusiveToolChoiceParameters } from "@app/lib/api/llm/types/options";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import {
   ReasoningEffort,
@@ -9,11 +10,17 @@ import type { ToolChoiceEnum } from "@mistralai/mistralai/models/components/tool
 
 export function toToolChoiceParam(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
+  { forceToolCall, disableToolUse }: ExclusiveToolChoiceParameters
 ): ToolChoice | ToolChoiceEnum {
-  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
-    ? { type: "function", function: { name: forceToolCall } }
-    : ("auto" as const);
+  if (forceToolCall && specifications.some((s) => s.name === forceToolCall)) {
+    return { type: "function", function: { name: forceToolCall } };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return "auto";
 }
 
 export function toResponseFormatParam(

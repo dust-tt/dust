@@ -868,30 +868,40 @@ describe("forceToolNameToToolChoice", () => {
   ];
 
   it("forces the named tool when it exists", () => {
-    expect(forceToolNameToToolChoice(tools, "beta")).toEqual({
+    expect(forceToolNameToToolChoice(tools, { forceTool: "beta" })).toEqual({
       type: "tool",
       name: "beta",
     });
   });
 
   it("falls back to auto when the forced tool does not exist", () => {
-    expect(forceToolNameToToolChoice(tools, "gamma")).toEqual({
+    expect(forceToolNameToToolChoice(tools, { forceTool: "gamma" })).toEqual({
       type: "auto",
     });
   });
 
   it("falls back to auto when no tool is forced", () => {
-    expect(forceToolNameToToolChoice(tools, undefined)).toEqual({
+    expect(forceToolNameToToolChoice(tools, {})).toEqual({
       type: "auto",
     });
   });
 
   it("falls back to auto when forceTool is an empty string", () => {
-    expect(forceToolNameToToolChoice(tools, "")).toEqual({ type: "auto" });
+    expect(forceToolNameToToolChoice(tools, { forceTool: "" })).toEqual({
+      type: "auto",
+    });
   });
 
   it("falls back to auto when the tools list is empty", () => {
-    expect(forceToolNameToToolChoice([], "alpha")).toEqual({ type: "auto" });
+    expect(forceToolNameToToolChoice([], { forceTool: "alpha" })).toEqual({
+      type: "auto",
+    });
+  });
+
+  it("returns none when tool use is disabled", () => {
+    expect(forceToolNameToToolChoice(tools, { disableToolUse: true })).toEqual({
+      type: "none",
+    });
   });
 });
 

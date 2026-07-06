@@ -201,14 +201,18 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     });
   }
 
-  private async buildBaseRequestPayload({
-    conversation,
-    hasConditionalJITTools,
-    toolSearchEnabled,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): Promise<MessageCreateParamsNonStreaming> {
+  private async buildBaseRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): Promise<MessageCreateParamsNonStreaming> {
+    const {
+      conversation,
+      hasConditionalJITTools,
+      toolSearchEnabled,
+      prompt,
+      specifications,
+      forceToolCall,
+    } = streamParameters;
+
     if (detectAnthropicToolSearchEnableSkillConflict(conversation.messages)) {
       logger.warn(
         {
@@ -292,7 +296,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       temperature: this.temperature ?? undefined,
       tools,
       max_tokens: this.modelConfig.generationTokensCount,
-      tool_choice: toToolChoiceParam(specifications, forceToolCall),
+      tool_choice: toToolChoiceParam(specifications, streamParameters),
     };
   }
 

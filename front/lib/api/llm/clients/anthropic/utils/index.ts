@@ -9,6 +9,7 @@ import type {
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
+import type { ExclusiveToolChoiceParameters } from "@app/lib/api/llm/types/options";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -108,14 +109,20 @@ export function toThinkingConfig(
 
 export function toToolChoiceParam(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
+  { forceToolCall, disableToolUse }: ExclusiveToolChoiceParameters
 ): ToolChoice {
-  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
-    ? {
-        type: "tool" as const,
-        name: forceToolCall,
-      }
-    : { type: "auto" };
+  if (forceToolCall && specifications.some((s) => s.name === forceToolCall)) {
+    return {
+      type: "tool",
+      name: forceToolCall,
+    };
+  }
+
+  if (disableToolUse) {
+    return { type: "none" };
+  }
+
+  return { type: "auto" };
 }
 
 export function toOutputFormatParam(

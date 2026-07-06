@@ -15,6 +15,7 @@ import {
   userTextMessageToMessage,
 } from "@app/lib/model_constructors/sdk/openai_completions/converters/input/utils";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
+import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
 
@@ -44,13 +45,7 @@ export function WithOpenAICompletionsInputConverter<
       config: InputConfig
     ): ChatCompletionCreateParamsNonStreaming {
       const { conversation } = payload;
-      const {
-        tools = [],
-        temperature,
-        reasoning,
-        forceTool,
-        outputFormat,
-      } = config;
+      const { tools = [], temperature, reasoning, outputFormat } = config;
 
       const reasoningEffort = reasoning
         ? toReasoningEffortParam(reasoning.effort)
@@ -63,7 +58,10 @@ export function WithOpenAICompletionsInputConverter<
         model: this.constructor.modelId,
         messages: conversationToOpenAICompletionsMessages(conversation, this),
         temperature,
-        tool_choice: forceToolNameToToolChoice(tools, forceTool),
+        tool_choice: forceToolNameToToolChoice(
+          tools,
+          toToolChoiceInput(config)
+        ),
         ...(tools.length > 0 ? { tools: tools.map(toTool) } : {}),
         ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
         ...(outputFormat
