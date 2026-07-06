@@ -1,10 +1,7 @@
 // @vitest-environment node
 
 import { AnthropicGlobalClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_global_claude_opus_four_dot_seven";
-import {
-  INPUT_CONFIGURATION_ERROR,
-  SUCCESS,
-} from "@app/lib/model_constructors/test/cases";
+import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
@@ -57,9 +54,7 @@ export const AnthropicGlobalClaudeOpusFourDotSevenStreamSetup: StreamSetup = {
     "calc/calc/t-default/r-none/force-tool": null,
 
     "reasoning/no-tools/t-default/r-none": null,
-    // Opus 4.7's adaptive thinking declines to reason at `low` effort on this
-    // prompt, so we only assert the stream completes.
-    "reasoning/no-tools/t-default/r-low": [SUCCESS],
+    "reasoning/no-tools/t-default/r-low": null,
 
     "output-format/json-schema/t-default/r-none": null,
     "output-format/json-schema/t-default/r-high": null,
