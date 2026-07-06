@@ -6,6 +6,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   CREDIT_TYPE_EUR_ID,
+  CREDIT_TYPE_GBP_ID,
   CREDIT_TYPE_USD_ID,
   getCreditTypeAwuId,
 } from "@app/lib/metronome/constants";
@@ -28,6 +29,9 @@ function creditTypeIdToCurrency(
   }
   if (creditTypeId === CREDIT_TYPE_EUR_ID) {
     return "eur";
+  }
+  if (creditTypeId === CREDIT_TYPE_GBP_ID) {
+    return "gbp";
   }
   return null;
 }
