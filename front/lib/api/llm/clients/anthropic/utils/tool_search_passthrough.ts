@@ -7,7 +7,7 @@ import type {
 import logger from "@app/logger/logger";
 import { z } from "zod";
 
-const TOOL_SEARCH_SERVER_TOOL_NAMES = [
+export const TOOL_SEARCH_SERVER_TOOL_NAMES = [
   "tool_search_tool_bm25",
   "tool_search_tool_regex",
 ] as const;
