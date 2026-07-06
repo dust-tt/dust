@@ -140,37 +140,67 @@ export const NEW_METRICS: MetricDef[] = [
   // present together in one compound group key, or the alert silently never
   // fires (see Slack thread
   // https://dust4ai.slack.com/archives/C0AGNMLBRB5/p1782740593425549).
+  // Bare `[usage_type(, tool_category)]` covers workspace-wide programmatic
+  // spend totals (programmatic_awu_usage.ts) — a low-cardinality, global
+  // grouping unrelated to any single user/key, so it needs its own compound
+  // key rather than piggybacking on the user_id/api_key_name ones. Bare
+  // `[api_key_name(, tool_category)]` (no usage_type) is also kept so
+  // per_api_key_usage.ts's existing query — which still targets whichever
+  // metric ID `getMetricToolInvocationsId()`/`getMetricLlmProviderCostAwuId()`
+  // resolve to per environment (the live billing metrics in prod today, v2
+  // only once repointed) — keeps working unchanged against either shape.
+  // `[agent_id, usage_type(, tool_category)]` is reserved now, unused today,
+  // for a possible future agent_id-filtered spend alert (same compound-key
+  // requirement as the api_key_name alert above). Once v2 goes live in prod
+  // and accumulates real usage, adding a group key means another
+  // archive/recreate + Metronome backfill — reserving it now while v2 still
+  // has no meaningful historical usage avoids paying that cost twice.
   {
     name: "Tool Invocations v2",
     event_type_filter: { in_values: ["tool_use_v3"] },
+    // Same property_filters as "Tool Invocations" above.
     property_filters: [
       { name: "count", exists: true },
       { name: USAGE_TYPE_GROUP_KEY, exists: true },
       { name: "tool_category", exists: true },
+      { name: "tool_group", exists: true },
       { name: "user_id", exists: true },
       { name: "api_key_name", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+      { name: "mcp_server_id", exists: true },
     ],
     aggregation_type: "SUM",
     aggregation_key: "count",
     group_keys: [
       ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
       ["api_key_name", USAGE_TYPE_GROUP_KEY, "tool_category"],
+      [USAGE_TYPE_GROUP_KEY, "tool_category"],
+      ["api_key_name", "tool_category"],
+      ["agent_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
     ],
   },
   {
     name: "LLM Provider Cost AWU v2",
     event_type_filter: { in_values: ["llm_usage_v3"] },
+    // Same property_filters as "LLM Provider Cost AWU" above.
     property_filters: [
       { name: "cost_awu", exists: true },
       { name: USAGE_TYPE_GROUP_KEY, exists: true },
       { name: "user_id", exists: true },
       { name: "api_key_name", exists: true },
+      { name: "model_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
     ],
     aggregation_type: "SUM",
     aggregation_key: "cost_awu",
     group_keys: [
       ["user_id", USAGE_TYPE_GROUP_KEY],
       ["api_key_name", USAGE_TYPE_GROUP_KEY],
+      ["agent_id", USAGE_TYPE_GROUP_KEY],
+      [USAGE_TYPE_GROUP_KEY],
+      ["api_key_name"],
     ],
   },
 ];
