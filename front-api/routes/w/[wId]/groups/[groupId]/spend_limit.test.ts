@@ -118,6 +118,25 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       expect(response.status).toBe(403);
       expect((await response.json()).error.type).toBe("workspace_auth_error");
     });
+
+    it("returns 403 for a business admin (admin-only write)", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const group = await makeProvisionedGroup(workspace);
+      const { auth } = await createPrivateApiMockRequest({
+        method: "PUT",
+        role: "business_admin",
+        workspace,
+      });
+      await FeatureFlagFactory.basic(auth, "pricing_groups");
+
+      const response = await putLimit(workspace.sId, group.sId, {
+        kind: "limited",
+        awuCredits: 1500,
+      });
+
+      expect(response.status).toBe(403);
+      expect((await response.json()).error.type).toBe("workspace_auth_error");
+    });
   });
 
   describe("input validation", () => {
