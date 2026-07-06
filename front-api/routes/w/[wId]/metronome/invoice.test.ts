@@ -22,14 +22,14 @@ function invoiceLinesUrl(wId: string) {
 }
 
 async function setActiveSubscriptionBilling({
-  workspaceId,
+  workspaceModelId,
   metronomeContractId,
 }: {
-  workspaceId: number;
+  workspaceModelId: number;
   metronomeContractId: string;
 }) {
   const currentSubscription =
-    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspaceId);
+    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspaceModelId);
 
   if (!currentSubscription) {
     throw new Error("Expected an active subscription.");
@@ -40,7 +40,7 @@ async function setActiveSubscriptionBilling({
   await SubscriptionResource.makeNew(
     {
       sId: generateRandomModelSId(),
-      workspaceId,
+      workspaceId: workspaceModelId,
       planId: currentSubscription.planId,
       status: "active",
       trialing: false,
@@ -53,7 +53,7 @@ async function setActiveSubscriptionBilling({
   );
 
   const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
-    workspaceId,
+    workspaceModelId,
     "m-customer"
   );
 
@@ -97,7 +97,7 @@ describe("/api/w/[wId]/metronome/invoice/lines", () => {
     });
 
     await setActiveSubscriptionBilling({
-      workspaceId: workspace.id,
+      workspaceModelId: workspace.id,
       metronomeContractId: "m-contract-lines",
     });
 
@@ -168,7 +168,7 @@ describe("/api/w/[wId]/metronome/invoice/lines", () => {
     });
 
     await setActiveSubscriptionBilling({
-      workspaceId: workspace.id,
+      workspaceModelId: workspace.id,
       metronomeContractId: "m-contract-merge",
     });
 
