@@ -6,6 +6,7 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import {
   FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_GLM_5P2_MODEL_CONFIG,
@@ -55,4 +56,5 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
   FIREWORKS_GLM_5P2_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
 ] as const;

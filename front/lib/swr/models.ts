@@ -16,7 +16,7 @@ export function useModels({
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/models`,
     modelsFetcher,
-    { disabled }
+    { disabled, revalidateOnFocus: false }
   );
 
   return {

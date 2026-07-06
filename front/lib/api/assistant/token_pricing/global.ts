@@ -381,6 +381,14 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0,
     output: 0,
   },
+  // Fake model for auto selection.
+  // This model is not real and is used to select the best model for the task.
+  // It is not used for actual generation.
+  auto: {
+    input: 0,
+    output: 0,
+    cache_read_input_tokens: 0,
+  },
 };
 
 const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {

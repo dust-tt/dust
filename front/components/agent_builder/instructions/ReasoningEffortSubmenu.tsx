@@ -51,10 +51,10 @@ export function ReasoningEffortSubmenu({
     () =>
       models.find(
         (m) =>
-          m.modelId === modelSettings.modelId &&
-          m.providerId === modelSettings.providerId
+          m.modelId === modelSettings?.modelId &&
+          m.providerId === modelSettings?.providerId
       ),
-    [models, modelSettings.modelId, modelSettings.providerId]
+    [models, modelSettings?.modelId, modelSettings?.providerId]
   );
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export function ReasoningEffortSubmenu({
         modelConfig.supportedReasoningEfforts
       );
 
-      if (!availableEfforts.includes(currentEffort)) {
+      if (!currentEffort || !availableEfforts.includes(currentEffort)) {
         field.onChange(modelConfig.defaultReasoningEffort);
       }
     }
@@ -92,7 +92,7 @@ export function ReasoningEffortSubmenu({
       <DropdownMenuPortal>
         <DropdownMenuSubContent className="w-80">
           <DropdownMenuLabel label="Select reasoning effort" />
-          <DropdownMenuRadioGroup value={field.value}>
+          <DropdownMenuRadioGroup value={field.value ?? undefined}>
             {availableEfforts.map((effort) => (
               <DropdownMenuRadioItem
                 key={effort}

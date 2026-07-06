@@ -27,7 +27,7 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
-import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
+import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -779,7 +779,7 @@ export async function postUserMessage(
       });
     }
 
-    const isProviderEnabled = isProviderWhitelisted(
+    const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
       agentConfig.model.providerId
     );
@@ -1274,7 +1274,7 @@ export async function editUserMessage(
       });
     }
 
-    const isProviderEnabled = isProviderWhitelisted(
+    const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
       agentConfig.model.providerId
     );

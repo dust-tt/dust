@@ -1,3 +1,4 @@
+import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
@@ -87,7 +88,7 @@ export function isModelEnabled(
 ) {
   return (
     isModelAvailable(m, { featureFlags, plan, regionalModelsOnly, region }) &&
-    whitelistedProviders.has(m.providerId)
+    isProviderWhitelisted(whitelistedProviders, m.providerId)
   );
 }
 
