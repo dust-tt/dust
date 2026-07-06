@@ -10,7 +10,7 @@ import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -28,24 +28,6 @@ function activationPodNameForUser(
 ): string {
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
   return `${fullName}${ACTIVATION_POD_NAME_PREFIX}`;
-}
-
-// Adds the user to the pod as an editor.
-async function addUserAsEditor(
-  auth: Authenticator,
-  pod: SpaceResource,
-  user: UserResource
-): Promise<Result<{ added: boolean }, Error>> {
-  const res = await pod.addEditors(auth, { userIds: [user.sId] });
-  if (res.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to add the user as an editor of the pod: ${res.error.message}`
-      )
-    );
-  }
-
-  return new Ok({ added: res.value.length > 0 });
 }
 
 // Select the pod's default skills.
@@ -78,23 +60,6 @@ function formatDefaultSkillsSuffix(skillNames: string[]): string {
     return "";
   }
   return ` Set ${skillNames.length} default skill(s): ${skillNames.join(", ")}.`;
-}
-
-// Record user's email in project_metadata to check for idempotency.
-async function recordActivationPodMemberEmail(
-  auth: Authenticator,
-  pod: SpaceResource,
-  email: string
-): Promise<void> {
-  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
-  if (metadata) {
-    await metadata.updateActivationPodMemberEmail(email);
-  } else {
-    await ProjectMetadataResource.makeNew(auth, pod, {
-      description: null,
-      activationPodMemberEmail: email,
-    });
-  }
 }
 
 // Writes pod-wide agent instructions to the pod's AGENTS.md file.
@@ -238,46 +203,6 @@ export const joinActivationPodPlugin = createPlugin({
     const podLink = (space: SpaceResource) =>
       `/poke/${workspace.sId}/spaces/${space.sId}`;
 
-    const existingMetadata =
-      await ProjectMetadataResource.fetchByActivationPodMemberEmail(
-        auth,
-        user.email
-      );
-    const existingPod = existingMetadata
-      ? ((
-          await SpaceResource.fetchByModelIds(auth, [existingMetadata.spaceId])
-        )[0] ?? null)
-      : null;
-    if (existingPod) {
-      const editorResult = await addUserAsEditor(auth, existingPod, user);
-      if (editorResult.isErr()) {
-        return editorResult;
-      }
-
-      joinActivationPodLogger.info(
-        {
-          action: "join_activation_pod",
-          created: false,
-          addedAsEditor: editorResult.value.added,
-          spaceId: existingPod.sId,
-          userId: user.sId,
-          workspaceId: workspace.sId,
-        },
-        "Returned existing Activation Pod via poke"
-      );
-
-      return new Ok({
-        display: "textWithLink",
-        value:
-          `Activation Pod already exists for ${email}. ` +
-          (editorResult.value.added
-            ? "The user was missing and has been added as an editor."
-            : "The user is already an editor."),
-        link: podLink(existingPod),
-        linkText: "Open Pod in Poke",
-      });
-    }
-
     const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -294,8 +219,6 @@ export const joinActivationPodPlugin = createPlugin({
       return new Err(new Error(createResult.error.message));
     }
     const pod = createResult.value;
-
-    await recordActivationPodMemberEmail(auth, pod, user.email);
 
     const skillsResult = await setPodDefaultSkills(auth, pod, selectedSkillIds);
     if (skillsResult.isErr()) {
