@@ -33,7 +33,8 @@
     { "name": "files", "id": 1033 },
     { "name": "skill_authoring", "id": 1034 },
     { "name": "workspace_analytics", "id": 1035 },
-    { "name": "sandbox_functions", "id": 1037 }
+    { "name": "sandbox_functions", "id": 1037 },
+    { "name": "user_analytics", "id": 1039 }
   ],
   "manual": [
     { "name": "github", "id": 1 },

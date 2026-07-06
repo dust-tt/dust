@@ -1,10 +1,28 @@
+import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
+import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
+import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import logger from "@app/logger/logger";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isFavoritePlatform } from "@app/types/favorite_platforms";
+import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
+import { isStringArray } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
-const ACTIVATION_INSTRUCTIONS = `
-Recommend the next best action for the user to get more value from Dust. Help them execute it in this conversation, then offer to convert it into a habit (a saved skill and a recurring schedule).
+const ACTIVATION_BEHAVIOR = `
+Recommend the next best action for the user to get more value from Dust. Help them execute it in this conversation, then offer to convert it into a saved skill and a recurring schedule.
 
-Before recommending, read any available context to determine the user's intention for activation.
+## User Context
+
+Before providing a new use case for the user, you MUST acquire context to inform your recommendation:
+- Call \`get_personal_usage\` to understand what the user has already used in the last 30 days.
+- Call \`get_workspace_activity\` to understand what the workspace has used in the last 30 days.
+- Call \`list_skills\` to see what skills are pinned or available.
+
+Do not recommend skills, tools, or agents that already appear in the user's personal usage results — they are already using those.
+- Account for the data already provided to you, including user job type, user preferred tools, and the existing tools
 
 ## Recommend
 
@@ -44,6 +62,64 @@ After surfacing a recommendation, always end with one-click options:
 - Present recommendations naturally. Do not explain the priority tiers, the skill-pinning mechanism, or how this works. The user should feel like they're getting personalized suggestions, not being processed through a funnel.
 `.trim();
 
+async function buildActivationContext(
+  auth: Authenticator,
+  spaceIds: string[]
+): Promise<string> {
+  const parts: string[] = [];
+
+  const user = auth.user();
+  if (user) {
+    const owner = auth.getNonNullableWorkspace();
+    const [jobTypeMeta, platformsMeta] = await Promise.all([
+      user.getMetadata("job_type"),
+      user.getMetadata("favorite_platforms", owner.id),
+    ]);
+
+    const jobType = isJobType(jobTypeMeta?.value) ? jobTypeMeta.value : null;
+    if (jobType) {
+      parts.push(`User role: ${JOB_TYPE_LABELS[jobType]}`);
+    }
+
+    if (platformsMeta?.value) {
+      const parsed = safeParseJSON(platformsMeta.value);
+      if (
+        parsed.isOk() &&
+        isStringArray(parsed.value) &&
+        parsed.value.every(isFavoritePlatform)
+      ) {
+        const platforms = parsed.value;
+        if (platforms.length > 0) {
+          parts.push(`Preferred tools: ${platforms.join(", ")}`);
+        }
+      }
+    }
+  }
+
+  const allToolsets =
+    await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
+      auth,
+      spaceIds,
+      { includeGlobalSpace: true }
+    );
+  const availableToolsets = allToolsets.filter((toolset) => {
+    const mcpServerView = toolset.toJSON();
+    return (
+      isJITMCPServerView(mcpServerView) &&
+      mcpServerView.server.availability !== "auto_hidden_builder"
+    );
+  });
+  if (availableToolsets.length > 0) {
+    parts.push(buildToolsetsContext(availableToolsets));
+  }
+
+  if (parts.length === 0) {
+    return "";
+  }
+
+  return parts.join("\n\n");
+}
+
 export const activationSkill = {
   sId: "activation",
   name: "Activation",
@@ -53,14 +129,28 @@ export const activationSkill = {
     "Use when the user wants a recommendation on what to try next in Dust. " +
     "Surfaces one action at a time from available workspace skills and agents, then helps the user " +
     "execute it, save it as a reusable skill, and set it up as a recurring schedule.",
-  instructions: ACTIVATION_INSTRUCTIONS,
+  fetchInstructions: async (
+    auth: Authenticator,
+    { spaceIds }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
+  ): Promise<string> => {
+    let context = "";
+    try {
+      context = await buildActivationContext(auth, spaceIds);
+    } catch (err) {
+      logger.warn({ err }, "Failed to build activation context");
+    }
+    return context
+      ? `${context}\n\n${ACTIVATION_BEHAVIOR}`
+      : ACTIVATION_BEHAVIOR;
+  },
   mcpServers: [
+    { name: "user_analytics" },
     { name: "agent_router" },
     { name: "skill_authoring" },
     { name: "schedules_management" },
     { name: "files" },
   ],
-  version: 1,
+  version: 2,
   icon: "ActionRocketIcon",
   isRestricted: async (auth) => {
     const flags = await getFeatureFlags(auth);
