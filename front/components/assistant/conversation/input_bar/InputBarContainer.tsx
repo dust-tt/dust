@@ -1640,15 +1640,7 @@ const InputBarContainer = ({
               ))}
             </div>
             <div className="relative flex min-h-8 w-full items-center justify-between">
-              <div
-                className={cn(
-                  "flex w-full items-center px-2",
-                  // The voice/send cluster is absolutely positioned at the
-                  // bottom-right. On mobile, reserve that space so the button
-                  // row doesn't slide underneath it.
-                  isMobile && "pr-24"
-                )}
-              >
+              <div className={cn("flex w-full items-center px-2")}>
                 {!isRecording && (
                   <div className="flex items-center">
                     <InputBarButtons
