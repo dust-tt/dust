@@ -16,14 +16,18 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const ACTIVATION_POD_NAME_PREFIX = "Activation Pod - ";
+const ACTIVATION_POD_NAME_PREFIX = "'s Activation Pod";
 
 const joinActivationPodLogger = logger.child({
   activity: "join-activation-pod",
 });
 
-function activationPodNameForEmail(email: string): string {
-  return `${ACTIVATION_POD_NAME_PREFIX}${email}`;
+function activationPodNameForUser(
+  firstName: string,
+  lastName: string | null
+): string {
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+  return `${fullName}${ACTIVATION_POD_NAME_PREFIX}`;
 }
 
 // Adds the user to the pod as an editor.
@@ -74,6 +78,23 @@ function formatDefaultSkillsSuffix(skillNames: string[]): string {
     return "";
   }
   return ` Set ${skillNames.length} default skill(s): ${skillNames.join(", ")}.`;
+}
+
+// Record user's email in project_metadata to check for idempotency.
+async function recordActivationPodMemberEmail(
+  auth: Authenticator,
+  pod: SpaceResource,
+  email: string
+): Promise<void> {
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+  if (metadata) {
+    await metadata.updateActivationPodMemberEmail(email);
+  } else {
+    await ProjectMetadataResource.makeNew(auth, pod, {
+      description: null,
+      activationPodMemberEmail: email,
+    });
+  }
 }
 
 // Writes pod-wide agent instructions to the pod's AGENTS.md file.
@@ -209,19 +230,24 @@ export const joinActivationPodPlugin = createPlugin({
       });
     if (!membership) {
       return new Err(
-        new Error(
-          `User "${user.username}" is not an active member of this workspace.`
-        )
+        new Error(`"${email}" is not an active member of this workspace.`)
       );
     }
 
-    const podName = activationPodNameForEmail(user.email);
+    const podName = activationPodNameForUser(user.firstName, user.lastName);
     const podLink = (space: SpaceResource) =>
       `/poke/${workspace.sId}/spaces/${space.sId}`;
 
-    // If the activation pod already exists, return it (after making sure the user is invited).
-    const existingPods = await SpaceResource.listProjectSpaces(auth);
-    const existingPod = existingPods.find((space) => space.name === podName);
+    const existingMetadata =
+      await ProjectMetadataResource.fetchByActivationPodMemberEmail(
+        auth,
+        user.email
+      );
+    const existingPod = existingMetadata
+      ? ((
+          await SpaceResource.fetchByModelIds(auth, [existingMetadata.spaceId])
+        )[0] ?? null)
+      : null;
     if (existingPod) {
       const editorResult = await addUserAsEditor(auth, existingPod, user);
       if (editorResult.isErr()) {
@@ -264,7 +290,7 @@ export const joinActivationPodPlugin = createPlugin({
       return new Ok({
         display: "textWithLink",
         value:
-          `Activation Pod already exists for ${user.username}. ` +
+          `Activation Pod already exists for ${email}. ` +
           (editorResult.value.added
             ? "The user was missing and has been added as an editor."
             : "The user is already an editor.") +
@@ -292,6 +318,8 @@ export const joinActivationPodPlugin = createPlugin({
     }
     const pod = createResult.value;
 
+    await recordActivationPodMemberEmail(auth, pod, user.email);
+
     const skillsResult = await setPodDefaultSkills(auth, pod, selectedSkillIds);
     if (skillsResult.isErr()) {
       return skillsResult;
@@ -318,7 +346,7 @@ export const joinActivationPodPlugin = createPlugin({
     return new Ok({
       display: "textWithLink",
       value:
-        `Created Activation Pod for ${user.username} and added them as an editor.` +
+        `Created Activation Pod for ${email} and added them as an editor.` +
         formatDefaultSkillsSuffix(skillsResult.value.skillNames) +
         formatAgentsMdSuffix(agentsMdResult.value.written),
       link: podLink(pod),
