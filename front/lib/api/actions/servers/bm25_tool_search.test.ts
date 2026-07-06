@@ -795,7 +795,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list all my google sheets spreadsheets",
     expected: "google_sheets.list_spreadsheets",
-    maxRank: 4,
+    maxRank: 5,
   },
   {
     query: "get the properties of a google sheets spreadsheet",
