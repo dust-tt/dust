@@ -35,14 +35,12 @@ import {
   Bell01,
   Button,
   ContentMessageInline,
-  cn,
   Dialog,
   DialogClose,
   DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   Edit04,
@@ -106,7 +104,7 @@ function SectionContent({
 }: SectionContentProps) {
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
-      <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-8">
+      <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pb-8 pt-5 sm:px-6 sm:pt-8">
         <header className="flex flex-col gap-1">
           <h2 className="heading-2xl text-foreground">{title}</h2>
           {description && (
@@ -456,6 +454,10 @@ function CustomizationSection() {
     [isMac]
   );
 
+  const [portalContainer] = useState<HTMLElement | undefined>(() =>
+    typeof document !== "undefined" ? document.body : undefined
+  );
+
   const [localTheme, setLocalTheme] = useState(currentTheme ?? "system");
   const [submitKey, setSubmitKey] = useState<"enter" | "cmd+enter">(() => {
     if (typeof window === "undefined") {
@@ -518,25 +520,23 @@ function CustomizationSection() {
                 className="w-fit"
               />
             </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  icon={Sun}
-                  label="Light"
-                  onClick={() => setLocalTheme("light")}
-                />
-                <DropdownMenuItem
-                  icon={Moon01}
-                  label="Dark"
-                  onClick={() => setLocalTheme("dark")}
-                />
-                <DropdownMenuItem
-                  icon={Sun}
-                  label="System"
-                  onClick={() => setLocalTheme("system")}
-                />
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
+            <DropdownMenuContent mountPortalContainer={portalContainer}>
+              <DropdownMenuItem
+                icon={Sun}
+                label="Light"
+                onClick={() => setLocalTheme("light")}
+              />
+              <DropdownMenuItem
+                icon={Moon01}
+                label="Dark"
+                onClick={() => setLocalTheme("dark")}
+              />
+              <DropdownMenuItem
+                icon={Sun}
+                label="System"
+                onClick={() => setLocalTheme("system")}
+              />
+            </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
@@ -556,20 +556,16 @@ function CustomizationSection() {
                 />
               </div>
             </DropdownMenuTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
-                  Enter
-                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
-                  {modEnterMenuLabel}
-                  <DropdownMenuShortcut>
-                    {modEnterShortcut}
-                  </DropdownMenuShortcut>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuPortal>
+            <DropdownMenuContent mountPortalContainer={portalContainer}>
+              <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
+                Enter
+                <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
+                {modEnterMenuLabel}
+                <DropdownMenuShortcut>{modEnterShortcut}</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
@@ -772,40 +768,38 @@ export function UserSettingsPopover({
       <DialogContent
         size="2xl"
         height="xl"
-        className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:duration-200 data-[state=closed]:duration-150 data-[state=open]:ease-out data-[state=closed]:ease-in motion-reduce:animate-none"
+        className="h-[90vh] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:duration-200 data-[state=closed]:duration-150 data-[state=open]:ease-out data-[state=closed]:ease-in motion-reduce:animate-none"
       >
         <div className="flex h-full flex-col overflow-hidden sm:flex-row">
-          {/* Mobile: horizontal tab strip */}
-          <nav className="flex flex-shrink-0 items-center border-b border-border dark:border-border-dark bg-muted-background sm:hidden">
-            <DialogClose asChild>
-              <Button
-                variant="ghost"
-                size="xmini"
-                icon={XClose}
-                className="flex-shrink-0 px-2"
-              />
-            </DialogClose>
-            <div className="flex flex-1">
-              {navItems.map(({ section, icon: Icon, label }) => (
-                <button
-                  key={section}
-                  type="button"
-                  onClick={() => setActiveSection(section)}
-                  className={cn(
-                    "flex flex-1 flex-col items-center gap-1 py-2 transition-colors",
-                    activeSection === section
-                      ? "bg-highlight-100 text-highlight-600"
-                      : "text-muted-foreground hover:bg-muted-background"
-                  )}
-                >
-                  <span className="flex size-4 items-center justify-center">
-                    <Icon />
-                  </span>
-                  <span className="line-clamp-1 text-xs">{label}</span>
-                </button>
-              ))}
+          {/* Mobile: top horizontal tab menu with an underline on the active tab */}
+          <div className="flex flex-shrink-0 flex-col border-b border-border dark:border-border-dark sm:hidden">
+            <div className="flex flex-shrink-0 items-center justify-end p-2">
+              <DialogClose asChild>
+                <Button variant="ghost" size="mini" icon={XClose} />
+              </DialogClose>
             </div>
-          </nav>
+            <Tabs
+              value={activeSection}
+              onValueChange={(value) => {
+                const item = navItems.find((i) => i.section === value);
+                if (item) {
+                  setActiveSection(item.section);
+                }
+              }}
+              className="px-2"
+            >
+              <TabsList>
+                {navItems.map(({ section, icon, label }) => (
+                  <TabsTrigger
+                    key={section}
+                    value={section}
+                    icon={icon}
+                    label={label}
+                  />
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
 
           {/* Desktop: vertical sidebar */}
           <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">

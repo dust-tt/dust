@@ -20,7 +20,7 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Control } from "react-hook-form";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -119,6 +119,10 @@ export function SoundNotificationPreferences({
   const { field: enabledField } = useController({ name: "enabled", control });
   const { field: soundField } = useController({ name: "sound", control });
 
+  const [portalContainer] = useState<HTMLElement | undefined>(() =>
+    typeof document !== "undefined" ? document.body : undefined
+  );
+
   const handlePlay = () => {
     const audio = new Audio(
       `/sounds/${encodeURIComponent(soundField.value)}.mp3`
@@ -173,7 +177,7 @@ export function SoundNotificationPreferences({
                   disabled={disabled || !enabledField.value}
                 />
               </DropdownMenuTrigger>
-              <DropdownMenuContent mountPortal={false}>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
                 {SOUND_NOTIFICATION_OPTIONS.map((sound) => (
                   <DropdownMenuItem
                     key={sound}
