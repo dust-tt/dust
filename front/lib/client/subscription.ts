@@ -4,6 +4,7 @@ import type { KillSwitchType } from "@app/lib/poke/types";
 import { useGeolocation } from "@app/lib/swr/geo";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useKillSwitches } from "../swr/kill";
 
 // If mention the price of the PRO plan in a few different places in the code base,
@@ -54,7 +55,17 @@ export function formatPriceWithCurrency(
   price: number,
   currency: SupportedCurrency
 ): string {
-  return currency === "usd" ? `$${price}` : `${price}€`;
+  switch (currency) {
+    case "usd":
+      return `$${price}`;
+    case "eur":
+      return `${price}€`;
+    case "gbp":
+      return `£${price}`;
+    default:
+      assertNeverAndIgnore(currency);
+      return `$${price}`;
+  }
 }
 
 /**
