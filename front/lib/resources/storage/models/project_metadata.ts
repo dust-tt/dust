@@ -24,6 +24,12 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   /** sId of the agent pre-selected for new conversations in this pod. Null = @dust. */
   declare defaultAgentId: CreationOptional<string | null>;
   declare defaultSkillsIds: CreationOptional<string[] | null>;
+  /**
+   * Pod-level sandbox egress allowlist. Merged into the pod sandbox's egress
+   * policy at activation, on top of the workspace-level allowlist. Same domain
+   * format as `EgressPolicy.allowedDomains`.
+   */
+  declare podNetworkAllowedDomains: CreationOptional<string[]>;
 }
 
 ProjectMetadataModel.init(
@@ -74,6 +80,11 @@ ProjectMetadataModel.init(
       allowNull: true,
       defaultValue: null,
       field: "defaultSkillsIds",
+    },
+    podNetworkAllowedDomains: {
+      type: DataTypes.ARRAY(DANGEROUSLY_UNBOUNDED_TEXT),
+      allowNull: false,
+      defaultValue: [],
     },
   },
   {

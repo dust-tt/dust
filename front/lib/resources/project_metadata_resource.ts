@@ -226,6 +226,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ defaultAgentId }, transaction);
   }
 
+  async updatePodNetworkAllowedDomains(
+    podNetworkAllowedDomains: string[],
+    transaction?: Transaction
+  ) {
+    await this.update({ podNetworkAllowedDomains }, transaction);
+  }
+
   async setDefaultSkills(
     auth: Authenticator,
     skills: SkillResource[],
