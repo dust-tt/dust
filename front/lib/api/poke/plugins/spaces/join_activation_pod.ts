@@ -254,32 +254,11 @@ export const joinActivationPodPlugin = createPlugin({
         return editorResult;
       }
 
-      const skillsResult = await setPodDefaultSkills(
-        auth,
-        existingPod,
-        selectedSkillIds
-      );
-      if (skillsResult.isErr()) {
-        return skillsResult;
-      }
-
-      const agentsMdResult = await setPodAgentsMd(
-        auth,
-        existingPod,
-        user,
-        agentsMd
-      );
-      if (agentsMdResult.isErr()) {
-        return agentsMdResult;
-      }
-
       joinActivationPodLogger.info(
         {
           action: "join_activation_pod",
           created: false,
           addedAsEditor: editorResult.value.added,
-          defaultSkills: skillsResult.value.skillNames,
-          agentsMdWritten: agentsMdResult.value.written,
           spaceId: existingPod.sId,
           userId: user.sId,
           workspaceId: workspace.sId,
@@ -293,9 +272,7 @@ export const joinActivationPodPlugin = createPlugin({
           `Activation Pod already exists for ${email}. ` +
           (editorResult.value.added
             ? "The user was missing and has been added as an editor."
-            : "The user is already an editor.") +
-          formatDefaultSkillsSuffix(skillsResult.value.skillNames) +
-          formatAgentsMdSuffix(agentsMdResult.value.written),
+            : "The user is already an editor."),
         link: podLink(existingPod),
         linkText: "Open Pod in Poke",
       });
