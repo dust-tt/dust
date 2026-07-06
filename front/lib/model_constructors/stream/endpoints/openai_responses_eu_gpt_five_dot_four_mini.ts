@@ -1,0 +1,24 @@
+import { OPENAI_EU_BASE_URL } from "@app/lib/model_constructors/providers/openai/base_url";
+import { WithOpenAIGptFiveDotFourMiniConfig } from "@app/lib/model_constructors/providers/openai/models/gpt_five_dot_four_mini";
+import { OpenAIResponsesStream } from "@app/lib/model_constructors/stream/clients/openai_responses";
+import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
+import { EUROPE } from "@app/lib/model_constructors/types/regions";
+
+export class OpenAIResponsesEuropeGptFiveDotFourMiniStream extends WithOpenAIGptFiveDotFourMiniConfig(
+  OpenAIResponsesStream
+) {
+  // https://developers.openai.com/api/docs/models/gpt-5.4-mini
+  static readonly tokenPricing = {
+    cacheHit: 0.075,
+    standardInput: 0.75,
+    standardOutput: 4.5,
+  };
+
+  static readonly region = EUROPE;
+
+  static readonly id = this.buildId();
+
+  protected readonly baseUrl = OPENAI_EU_BASE_URL;
+}
+
+OpenAIResponsesEuropeGptFiveDotFourMiniStream satisfies StreamEndpointConstructor;
