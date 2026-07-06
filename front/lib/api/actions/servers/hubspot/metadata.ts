@@ -23,6 +23,7 @@ const searchableObjectTypes = [
   "quotes",
   "feedback_submissions",
   "tickets",
+  "leads",
 ] as const;
 
 const filterSchema = z.object({
@@ -261,7 +262,7 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   search_crm_objects: {
     description:
-      "Find HubSpot contacts, companies, deals, and activity records when " +
+      "Find HubSpot contacts, companies, deals, leads, and activity records when " +
       "you do not know the object ID. " +
       "Use this to find contacts at a company, search deals by close date, " +
       "or locate tasks, notes, meetings, calls, and emails. " +
@@ -682,14 +683,11 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     freeUsage: false,
   },
   create_lead: {
-    description:
-      "Create a new lead in Hubspot (as a Deal), with optional associations. Ensure properties correctly define it as a lead.",
+    description: "Create a new lead in Hubspot, with optional associations.",
     schema: {
       properties: z
         .record(z.string())
-        .describe(
-          "Properties for the lead (deal), including those that identify it as a lead."
-        ),
+        .describe("An object containing the properties for the lead."),
       associations: z
         .array(associationSchema)
         .optional()
