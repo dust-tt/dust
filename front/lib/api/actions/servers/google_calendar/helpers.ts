@@ -211,7 +211,7 @@ export function isGoogleCalendarEvent(
 function formatDayOfWeek(date: Date, timezone?: string): string {
   return date.toLocaleDateString("en-US", {
     weekday: "long",
-    timeZone: normalizeTimezone(timezone) ?? undefined,
+    timeZone: timezone,
   });
 }
 
@@ -220,7 +220,7 @@ function formatDate(date: Date, timezone?: string): string {
     month: "long",
     day: "numeric",
     year: "numeric",
-    timeZone: normalizeTimezone(timezone) ?? undefined,
+    timeZone: timezone,
   });
 }
 
@@ -228,8 +228,20 @@ function formatTime(date: Date, timezone?: string): string {
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    timeZone: normalizeTimezone(timezone) ?? undefined,
+    timeZone: timezone,
   });
+}
+
+function formatTimedEventDateTime(dateTime: string, timeZone?: string): string {
+  const date = new Date(dateTime);
+  const normalizedZone = normalizeTimezone(timeZone);
+
+  if (timeZone && !normalizedZone) {
+    return dateTime;
+  }
+
+  const zone = normalizedZone ?? undefined;
+  return `${formatDate(date, zone)} at ${formatTime(date, zone)}`;
 }
 
 export function enrichEventWithDayOfWeek(
@@ -288,12 +300,12 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
         lines.push(`Date: ${start.eventDayOfWeek}, ${start.date}`);
       } else {
         if (start.dateTime) {
-          const startDate = new Date(start.dateTime);
-          const timezone = start.timeZone ?? undefined;
-          const timeStr = formatTime(startDate, timezone);
-          const dateStr = formatDate(startDate, timezone);
+          const formatted = formatTimedEventDateTime(
+            start.dateTime,
+            start.timeZone
+          );
           lines.push(
-            `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr}${start.timeZone ? ` (${start.timeZone})` : ""}`
+            `Start: ${start.eventDayOfWeek}, ${formatted}${start.timeZone ? ` (${start.timeZone})` : ""}`
           );
         }
       }
@@ -311,12 +323,12 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
         lines.push(`End: ${end.eventDayOfWeek}, ${end.date}`);
       } else {
         if (end.dateTime) {
-          const endDate = new Date(end.dateTime);
-          const timezone = end.timeZone ?? undefined;
-          const timeStr = formatTime(endDate, timezone);
-          const dateStr = formatDate(endDate, timezone);
+          const formatted = formatTimedEventDateTime(
+            end.dateTime,
+            end.timeZone
+          );
           lines.push(
-            `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr}${end.timeZone ? ` (${end.timeZone})` : ""}`
+            `End: ${end.eventDayOfWeek}, ${formatted}${end.timeZone ? ` (${end.timeZone})` : ""}`
           );
         }
       }

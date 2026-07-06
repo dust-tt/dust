@@ -141,4 +141,31 @@ describe("formatEventAsText - timezone handling", () => {
     const text = formatEventAsText(enriched);
     expect(text).toContain("Start: Tuesday, June 30, 2026 at 12:00 PM");
   });
+
+  it("keeps the raw timestamp when the event timeZone cannot be resolved", () => {
+    const enriched = enrichEventWithDayOfWeek(
+      {
+        summary: "Timed meeting",
+        start: {
+          dateTime: "2026-06-30T10:00:00Z",
+          timeZone: "Romance Standard Time",
+        },
+        end: {
+          dateTime: "2026-06-30T11:00:00Z",
+          timeZone: "Romance Standard Time",
+        },
+      },
+      normalizeTimezone("GMT+02:00")
+    );
+
+    expect(() => formatEventAsText(enriched)).not.toThrow();
+
+    const text = formatEventAsText(enriched);
+    // The raw ISO timestamp (whose offset is authoritative) is preserved
+    // rather than silently reformatted in the server's local timezone.
+    expect(text).toContain(
+      "Start: Tuesday, 2026-06-30T10:00:00Z (Romance Standard Time)"
+    );
+    expect(text).not.toContain("at 12:00 PM");
+  });
 });
