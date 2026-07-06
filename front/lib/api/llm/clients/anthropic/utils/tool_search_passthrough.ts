@@ -111,10 +111,15 @@ export function parseAnthropicToolSearchBlock(
 //     tool search block is valid at all: the results carry tool_reference blocks the API cannot
 //     expand.
 //   - With it, completed pairs (a server_tool_use with its tool_search_tool_result) must be
-//     replayed verbatim.
+//     replayed verbatim. A pair can span two assistant messages: when a pending search is resumed,
+//     its result opens the next assistant turn, with the tool_result continuation in between. Both
+//     halves must be kept, so pairing is computed across the whole replay, not per message.
 //   - A dangling server_tool_use (a search the API never ran, e.g. because the turn ended on a
 //     client tool call or was interrupted) is valid only on the final assistant message when the
 //     continuation is exclusively tool_result blocks. The API then resumes the search.
+//   - A tool_search_tool_result without its server_tool_use earlier in the replay is always
+//     rejected, so a result whose matching use was stripped (or never persisted) must be stripped
+//     with it.
 //
 // This sanitizer keeps the replayable blocks and strips the rest, unbricking conversations that
 // captured a pending search. The model simply searches again when it needs the tools. Stripping is
@@ -136,19 +141,23 @@ function isToolSearchToolResultBlock(
   return block.type === "tool_search_tool_result";
 }
 
-function getDanglingServerToolUseIds(
-  content: ContentBlockParam[]
-): Set<string> {
-  const resultIds = new Set(
-    content.filter(isToolSearchToolResultBlock).map((b) => b.tool_use_id)
-  );
+// Ids of every tool search result across the whole replay. A server_tool_use is dangling only
+// when no result matches it anywhere, since a resumed search completes in a later assistant
+// message than the one that issued it.
+function collectToolSearchResultIds(messages: MessageParam[]): Set<string> {
+  const resultIds = new Set<string>();
+  for (const message of messages) {
+    if (message.role !== "assistant" || typeof message.content === "string") {
+      continue;
+    }
+    for (const block of message.content) {
+      if (isToolSearchToolResultBlock(block)) {
+        resultIds.add(block.tool_use_id);
+      }
+    }
+  }
 
-  return new Set(
-    content
-      .filter(isToolSearchServerToolUseBlock)
-      .filter((b) => !resultIds.has(b.id))
-      .map((b) => b.id)
-  );
+  return resultIds;
 }
 
 function isToolResultOnlyUserMessage(message: MessageParam): boolean {
@@ -226,10 +235,15 @@ export function stripUnreplayableToolSearchBlocks(
   { toolSearchInRequest }: StripUnreplayableToolSearchBlocksOptions
 ): MessageParam[] {
   const resumableAssistantIndex = findResumableAssistantIndex(messages);
+  const resultIds = collectToolSearchResultIds(messages);
 
   let strippedServerToolUseCount = 0;
   let strippedResultCount = 0;
   let droppedMessageCount = 0;
+
+  // A server_tool_use always precedes its result in the replay, so by the time a result block is
+  // reached its use has already been kept or stripped.
+  const keptServerToolUseIds = new Set<string>();
 
   const sanitized: MessageParam[] = [];
   for (const [index, message] of messages.entries()) {
@@ -238,16 +252,16 @@ export function stripUnreplayableToolSearchBlocks(
       continue;
     }
 
-    const danglingIds = getDanglingServerToolUseIds(message.content);
     const danglingIsResumable =
       toolSearchInRequest && index === resumableAssistantIndex;
 
     const content = message.content.filter((block) => {
       if (isToolSearchServerToolUseBlock(block)) {
-        const keep =
-          toolSearchInRequest &&
-          (!danglingIds.has(block.id) || danglingIsResumable);
-        if (!keep) {
+        const dangling = !resultIds.has(block.id);
+        const keep = toolSearchInRequest && (!dangling || danglingIsResumable);
+        if (keep) {
+          keptServerToolUseIds.add(block.id);
+        } else {
           strippedServerToolUseCount++;
         }
 
@@ -255,13 +269,13 @@ export function stripUnreplayableToolSearchBlocks(
       }
 
       if (isToolSearchToolResultBlock(block)) {
-        if (!toolSearchInRequest) {
+        const keep =
+          toolSearchInRequest && keptServerToolUseIds.has(block.tool_use_id);
+        if (!keep) {
           strippedResultCount++;
-
-          return false;
         }
 
-        return true;
+        return keep;
       }
 
       return true;
