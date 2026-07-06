@@ -8,10 +8,12 @@ export class OpenAIResponsesEuropeGptFiveDotFourStream extends WithOpenAIGptFive
   OpenAIResponsesStream
 ) {
   // https://developers.openai.com/api/docs/models/gpt-5.4
+  // Regional (data residency) endpoints are charged a 10% uplift for models
+  // released on or after March 5, 2026.
   static readonly tokenPricing = {
-    cacheHit: 0.25,
-    standardInput: 2.5,
-    standardOutput: 15.0,
+    cacheHit: 0.275,
+    standardInput: 2.75,
+    standardOutput: 16.5,
   };
 
   static readonly region = EUROPE;
