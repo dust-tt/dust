@@ -169,6 +169,24 @@ function getReplayedToolNames(
   return [...toolNames];
 }
 
+function buildReplayOnlyToolSpecification(
+  name: string
+): AgentActionSpecification {
+  return {
+    name,
+    description:
+      "Replay-only placeholder for a historical tool call. " +
+      "This tool is not available for new calls.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: true,
+    },
+    eager: true,
+  };
+}
+
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 export async function runModel(
@@ -527,6 +545,7 @@ export async function runModel(
   const replayedToolNames = getReplayedToolNames(
     modelConversationRes.value.modelConversation
   );
+  const replayedToolNameSet = new Set(replayedToolNames);
   const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
   const missingReplayedToolNames = replayedToolNames.filter(
     (name) => !currentToolNames.has(name)
@@ -542,26 +561,14 @@ export async function runModel(
     );
   }
 
-  const specifications = baseSpecifications;
-  // TODO(2026-07-06 aubin): uncomment once we confirm we need this.
-  // const specifications = [
-  //   ...baseSpecifications.map((spec) =>
-  //     replayedToolNames.includes(spec.name) ? { ...spec, eager: true } : spec
-  //   ),
-  //   ...missingReplayedToolNames.map((name) => ({
-  //     name,
-  //     description:
-  //       "Replay-only placeholder for a historical tool call. " +
-  //       "This tool is not available for new calls.",
-  //     inputSchema: {
-  //       type: "object",
-  //       properties: {},
-  //       required: [],
-  //       additionalProperties: true,
-  //     },
-  //     eager: true,
-  //   })),
-  // ];
+  const specifications: AgentActionSpecification[] = [
+    ...baseSpecifications.map((spec) =>
+      replayedToolNameSet.has(spec.name) ? { ...spec, eager: true } : spec
+    ),
+    ...missingReplayedToolNames.map((name) =>
+      buildReplayOnlyToolSpecification(name)
+    ),
+  ];
 
   // Temporarily adding this to check if we can consider contents property only in llms
   const unexpectedMessage =
