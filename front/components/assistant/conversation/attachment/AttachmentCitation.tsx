@@ -4,10 +4,7 @@ import { PreviewableCitation } from "@app/components/assistant/conversation/atta
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  isInteractiveContentType,
-  isPresentationContentType,
-} from "@app/types/files";
+import { isInteractiveContentType, opensInSidePanel } from "@app/types/files";
 import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
@@ -99,13 +96,13 @@ export function AttachmentCitation({
     );
   }
 
-  // Presentations (PowerPoint): open the resizable side panel instead of the
-  // center preview dialog. Requires a file path (the PDF-preview conversion is
+  // Some formats (e.g. presentations) open the resizable side panel instead of
+  // the center preview dialog. Requires a file path (the preview conversion is
   // only served on the path-based route) and the side panel provider.
   if (
     filePath &&
     !isLoading &&
-    isPresentationContentType(contentType) &&
+    opensInSidePanel(contentType) &&
     sidePanel != null
   ) {
     return (

@@ -14,22 +14,12 @@ import {
   type ConversationWithoutContentType,
   isPodConversation,
 } from "@app/types/assistant/conversation";
-import { isPresentationContentType } from "@app/types/files";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, XClose } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
 const POD_CONVERSATION_SCOPE_ROOTS = ["conversation", "pod"] as const;
-
-type FilePanelTarget = "presentation";
-
-function getFilePanelTarget(entry: FileEntry): FilePanelTarget | null {
-  if (isPresentationContentType(entry.contentType)) {
-    return "presentation";
-  }
-  return null;
-}
 
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
@@ -85,17 +75,11 @@ export function ConversationFileExplorer({
 
   const onOpenInPanel = useCallback(
     (entry: FileEntry): boolean => {
-      const target = getFilePanelTarget(entry);
-      switch (target) {
-        case "presentation":
-          openPanel({ type: "file_preview", filePath: entry.path });
-          return true;
-        case null:
-          return false;
-        default:
-          assertNeverAndIgnore(target);
-          return false;
+      if (opensInSidePanel(entry.contentType)) {
+        openPanel({ type: "file_preview", filePath: entry.path });
+        return true;
       }
+      return false;
     },
     [openPanel]
   );
