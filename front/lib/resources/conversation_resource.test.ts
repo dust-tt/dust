@@ -1811,6 +1811,75 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     );
   });
 
+  it("should not throw and should filter participant-restricted conversations for a userless sandbox token when private conversation URLs are private by default", async () => {
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+    const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    // Top-level conversation subject to the participants_only restriction.
+    const participantRequiredConversation = await ConversationFactory.create(
+      refreshedAdminAuth,
+      {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(2)],
+      }
+    );
+
+    // Sub-conversation (depth 1) is exempt from the restriction and stays
+    // visible, proving the userless auth filters selectively rather than
+    // returning nothing.
+    const subConversation = await ConversationFactory.create(
+      refreshedAdminAuth,
+      {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(2)],
+      }
+    );
+    await ConversationModel.update(
+      { depth: 1 },
+      { where: { workspaceId: workspace.id, sId: subConversation.sId } }
+    );
+
+    // Userless sandbox token: conversation driven by a non-human actor (no uId).
+    const userlessSandboxAuthRes = await Authenticator.fromSandboxToken(
+      {
+        wId: workspace.sId,
+        cId: participantRequiredConversation.sId,
+        aId: agents[0].sId,
+        mId: "test-message-id-userless",
+        sbId: "test-sandbox-id-userless",
+        execId: "test-exec-id-userless",
+        actionId: "test-action-id-userless",
+      },
+      workspace.sId
+    );
+    assert(
+      userlessSandboxAuthRes.isOk(),
+      "Failed to create userless sandbox authenticator"
+    );
+    const userlessSandboxAuth = userlessSandboxAuthRes.value;
+    expect(userlessSandboxAuth.authMethod()).toBe("sandbox_token");
+    expect(userlessSandboxAuth.user()).toBeNull();
+
+    // Must not throw (previously threw "User not found while auth method is not
+    // api key, system api key, or internal"). A userless actor is never a
+    // participant, so the participants_only conversation is excluded while the
+    // exempt sub-conversation remains visible.
+    const conversations =
+      await ConversationResource.listAll(userlessSandboxAuth);
+    const conversationIds = conversations.map((c) => c.sId);
+    expect(conversationIds).not.toContain(participantRequiredConversation.sId);
+    expect(conversationIds).toContain(subConversation.sId);
+  });
+
   it("should allow API key auth to fetch a conversation it created when private URLs are enabled by default", async () => {
     const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
       privateConversationUrlsByDefault: true,
