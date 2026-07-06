@@ -46,6 +46,8 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
       running: "Creating plan",
       done: "Plan created",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   edit_plan: {
     description:
@@ -72,6 +74,8 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
       running: "Updating plan",
       done: "Plan updated",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   close_plan: {
     description:
@@ -93,6 +97,8 @@ export const PLAN_MODE_TOOLS_METADATA = createToolsRecord({
       running: "Closing plan",
       done: "Plan closed",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -113,6 +119,8 @@ export const PLAN_MODE_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(PLAN_MODE_TOOLS_METADATA).map((t) => [t.name, t.stake])

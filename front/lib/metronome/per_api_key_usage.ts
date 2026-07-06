@@ -5,8 +5,8 @@ import {
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
-  isToolCategory,
-  TOOL_CATEGORY_AWU_WEIGHTS,
+  isToolCostCategory,
+  TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
 import { buildUsageQuerySegments } from "@app/lib/metronome/per_user_usage";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -151,11 +151,11 @@ export async function fetchPerApiKeyAwuUsage({
       new Date(entry.startingOn).getTime() < cycleStartMs ||
       new Date(entry.startingOn).getTime() >= cycleEndMs ||
       !category ||
-      !isToolCategory(category)
+      !isToolCostCategory(category)
     ) {
       continue;
     }
-    const awuSpent = entry.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
+    const awuSpent = entry.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
     perKey.set(keyName, (perKey.get(keyName) ?? 0) + awuSpent);
   }
 

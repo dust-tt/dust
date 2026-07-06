@@ -60,6 +60,8 @@ const CAT_FILE_TOOL = {
     running: "Reading file from conversation",
     done: "Read file from conversation",
   },
+  toolCostCategory: "advanced" as const,
+  freeUsage: false,
 };
 
 export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
@@ -74,6 +76,8 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
       running: "Listing files in conversation",
       done: "List files in conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [CONVERSATION_CAT_FILE_ACTION_NAME]: CAT_FILE_TOOL,
   [CONVERSATION_SEARCH_FILES_ACTION_NAME]: {
@@ -93,6 +97,8 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
       running: "Searching files in conversation",
       done: "Search files in conversation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -114,6 +120,8 @@ export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM =
         running: "Listing conversation attachments",
         done: "List conversation attachments",
       },
+      toolCostCategory: "basic",
+      freeUsage: true,
     },
     [CONVERSATION_CAT_FILE_ACTION_NAME]: CAT_FILE_TOOL,
   });
@@ -142,6 +150,8 @@ export const CONVERSATION_FILES_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     ALL_CONVERSATION_FILES_TOOLS.map((t) => [t.name, t.stake])

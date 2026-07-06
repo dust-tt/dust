@@ -147,6 +147,8 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
       running: "Transcribing audio",
       done: "Transcribe audio",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   text_to_speech: {
     description: "Generate speech audio from a text prompt with desired voice.",
@@ -189,6 +191,8 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
       running: "Generating speech",
       done: "Generate speech",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   text_to_dialogue: {
     description: "Generate dialogue audio from multiple lines with speakers.",
@@ -229,6 +233,8 @@ export const SPEECH_GENERATOR_TOOLS_METADATA = createToolsRecord({
       running: "Generating dialogue",
       done: "Generate dialogue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -246,6 +252,8 @@ export const SPEECH_GENERATOR_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SPEECH_GENERATOR_TOOLS_METADATA).map((t) => [t.name, t.stake])

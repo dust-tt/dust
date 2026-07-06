@@ -26,12 +26,16 @@ const TEST_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: { running: "Running", done: "Ran" },
+    toolCostCategory: "basic" as const,
+    freeUsage: false,
   },
   open_tool: {
     description: "Unguarded test tool.",
     schema: {},
     stake: "never_ask",
     displayLabels: { running: "Running", done: "Ran" },
+    toolCostCategory: "basic" as const,
+    freeUsage: false,
   },
 });
 

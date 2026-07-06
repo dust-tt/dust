@@ -39,6 +39,8 @@ export const EXA_TOOLS_METADATA = createToolsRecord({
       running: "Searching for people",
       done: "Search people",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_companies: {
     description:
@@ -74,6 +76,8 @@ export const EXA_TOOLS_METADATA = createToolsRecord({
       running: "Searching for companies",
       done: "Search companies",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -94,6 +98,8 @@ export const EXA_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(EXA_TOOLS_METADATA).map((t) => [t.name, t.stake])

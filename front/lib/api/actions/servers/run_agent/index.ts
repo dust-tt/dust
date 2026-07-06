@@ -898,6 +898,8 @@ async function createServer(
           done: "No child agent configured",
         },
         schema: RUN_AGENT_CONFIGURABLE_PROPERTIES,
+        toolCostCategory: "basic" as const,
+        freeUsage: false,
         handler: async () => new Err(new MCPError("No child agent configured")),
       },
       {

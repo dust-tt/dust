@@ -57,6 +57,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Listing Google calendars",
       done: "List Google calendars",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_events: {
     description:
@@ -89,6 +91,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Listing Google Calendar events",
       done: "List Google Calendar events",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_event: {
     description:
@@ -105,6 +109,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Google Calendar event",
       done: "Retrieve Google Calendar event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_event: {
     description:
@@ -152,6 +158,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Creating Google Calendar event",
       done: "Create Google Calendar event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_event: {
     description:
@@ -196,6 +204,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Updating Google Calendar event",
       done: "Update Google Calendar event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_event: {
     description: "Delete, cancel, or remove an event from a Google Calendar.",
@@ -211,6 +221,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Google Calendar event",
       done: "Delete Google Calendar event",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   check_availability: {
     description:
@@ -278,6 +290,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Checking Google Calendar availability",
       done: "Check Google Calendar availability",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_user_timezones: {
     description:
@@ -293,6 +307,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       running: "Checking Google Calendar user timezones",
       done: "Check Google Calendar user timezones",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -316,6 +332,8 @@ export const GOOGLE_CALENDAR_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => [t.name, t.stake])

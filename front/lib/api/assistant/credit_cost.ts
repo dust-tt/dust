@@ -1,6 +1,7 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@app/types/assistant/conversation";
 
 interface CreditActionMinimalInput {
+  toolName: string;
   internalMCPServerName: InternalMCPServerNameType | null;
   status: ToolExecutionStatus;
 }
@@ -117,6 +119,7 @@ export async function computeAndStoreAgentMessageCredits(
   const costCredits = computeAgentMessageCredits({
     runUsages,
     actions: actions.map((action) => ({
+      toolName: getToolNameFromFunctionCallName(action.functionCallName),
       internalMCPServerName: action.metadata.internalMCPServerName,
       status: action.status,
     })),

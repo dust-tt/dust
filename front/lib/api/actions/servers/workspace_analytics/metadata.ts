@@ -128,6 +128,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving top agents",
       done: "Retrieved top agents",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   get_top_users: {
     description:
@@ -142,6 +144,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving top users",
       done: "Retrieved top users",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   get_agent_details: {
     description:
@@ -155,6 +159,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving agent details",
       done: "Retrieved agent details",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   get_top_skills: {
     description:
@@ -168,6 +174,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving top skills",
       done: "Retrieved top skills",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   get_top_tools: {
     description:
@@ -183,6 +191,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving top tools",
       done: "Retrieved top tools",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   get_source_breakdown: {
     description:
@@ -202,6 +212,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving source breakdown",
       done: "Retrieved source breakdown",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   get_credit_usage: {
     description:
@@ -219,6 +231,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Estimating credit usage",
       done: "Estimated credit usage",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   get_credit_timeseries: {
     description:
@@ -238,6 +252,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Estimating credit trend",
       done: "Estimated credit trend",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   get_usage_timeseries: {
     description:
@@ -252,6 +268,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving usage time series",
       done: "Retrieved usage time series",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
 });
 
@@ -271,6 +289,8 @@ export const WORKSPACE_ANALYTICS_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(WORKSPACE_ANALYTICS_TOOLS_METADATA).map((t) => [

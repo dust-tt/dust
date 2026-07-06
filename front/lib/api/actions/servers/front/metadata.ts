@@ -27,6 +27,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Searching Front conversations",
       done: "Search Front conversations",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_conversation: {
     description:
@@ -42,6 +44,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Front conversation",
       done: "Retrieve Front conversation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_conversation_messages: {
     description:
@@ -57,6 +61,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Front messages",
       done: "Retrieve Front messages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_contact: {
     description:
@@ -77,6 +83,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Looking up Front contact",
       done: "Look up Front contact",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_tags: {
     description: "Get all available tags for categorizing conversations.",
@@ -86,6 +94,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Listing Front tags",
       done: "List Front tags",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_teammates: {
     description:
@@ -96,6 +106,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Listing Front teammates",
       done: "List Front teammates",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_customer_history: {
     description:
@@ -117,6 +129,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Front customer history",
       done: "Retrieve Front customer history",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_inboxes: {
     description: "Get all inboxes/channels available in the workspace.",
@@ -126,6 +140,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Listing Front inboxes",
       done: "List Front inboxes",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_conversation_drafts: {
     description:
@@ -140,6 +156,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Front conversation drafts",
       done: "Retrieve Front conversation drafts",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_conversation: {
     description: "Start a new outbound conversation with a customer.",
@@ -160,6 +178,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Creating Front conversation",
       done: "Create Front conversation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_draft: {
     description:
@@ -177,6 +197,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Creating draft on Front",
       done: "Create draft on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_draft: {
     description:
@@ -198,6 +220,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Deleting draft on Front",
       done: "Delete draft on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_tags: {
     description:
@@ -213,6 +237,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Adding tags on Front",
       done: "Add tags on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_comment: {
     description:
@@ -230,6 +256,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Adding comment on Front",
       done: "Add comment on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   add_links: {
     description:
@@ -245,6 +273,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Linking Front conversations",
       done: "Link Front conversations",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   send_message: {
     description:
@@ -270,6 +300,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Sending message on Front",
       done: "Send message on Front",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_conversation_status: {
     description:
@@ -287,6 +319,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Updating Front conversation status",
       done: "Update Front conversation status",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   assign_conversation: {
     description: "Assign a conversation to a specific teammate for handling.",
@@ -299,6 +333,8 @@ export const FRONT_TOOLS_METADATA = createToolsRecord({
       running: "Assigning Front conversation",
       done: "Assign Front conversation",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -317,6 +353,8 @@ export const FRONT_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FRONT_TOOLS_METADATA).map((t) => [t.name, t.stake])
