@@ -223,4 +223,114 @@ describe("GroupPermissionResource", () => {
       expect(remaining).toEqual([]);
     });
   });
+
+  describe("grantOnAllResourcesOfType", () => {
+    it("writes a type-wide (-1) grant and dedupes on repeat", async () => {
+      await GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+        group: groupA,
+        permissionType: "create",
+        resourceType: "agent",
+      });
+      await GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+        group: groupA,
+        permissionType: "create",
+        resourceType: "agent",
+      });
+
+      const grants = await GroupPermissionResource.listForGroups(auth, {
+        groupIds: [groupA.id],
+      });
+      expect(grants).toHaveLength(1);
+      expect(grants[0].resourceId).toBe(-1);
+    });
+
+    it("rejects a verb the registry does not allow", async () => {
+      await expect(
+        GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+          group: groupA,
+          permissionType: "read",
+          resourceType: "billing",
+        })
+      ).rejects.toThrow(/not allowed/);
+    });
+
+    it("revokeOnAllResourcesOfType removes the -1 row", async () => {
+      await GroupPermissionResource.grantOnAllResourcesOfType(auth, {
+        group: groupA,
+        permissionType: "admin",
+        resourceType: "billing",
+      });
+      await GroupPermissionResource.revokeOnAllResourcesOfType(auth, {
+        group: groupA,
+        permissionType: "admin",
+        resourceType: "billing",
+      });
+
+      const grants = await GroupPermissionResource.listForGroups(auth, {
+        groupIds: [groupA.id],
+      });
+      expect(grants).toHaveLength(0);
+    });
+  });
+
+  describe("batch writes", () => {
+    it("grantOnAllResourcesOfTypeForGroups writes one -1 row per group", async () => {
+      await GroupPermissionResource.grantOnAllResourcesOfTypeForGroups(auth, {
+        groups: [groupA, groupB],
+        permissionType: "create",
+        resourceType: "skill",
+      });
+
+      const grants = await GroupPermissionResource.listForGroups(auth, {
+        groupIds: [groupA.id, groupB.id],
+      });
+      expect(grants).toHaveLength(2);
+      expect(grants.every((g) => g.resourceId === -1)).toBe(true);
+    });
+
+    it("grantMany dedupes duplicate instance grants via the unique index", async () => {
+      await GroupPermissionResource.grantMany(auth, {
+        grants: [
+          {
+            group: groupA,
+            permissionType: "read",
+            resourceType: "space",
+            resourceId: 1,
+          },
+          {
+            group: groupA,
+            permissionType: "read",
+            resourceType: "space",
+            resourceId: 1,
+          },
+          {
+            group: groupA,
+            permissionType: "read",
+            resourceType: "space",
+            resourceId: 2,
+          },
+        ],
+      });
+
+      const grants = await GroupPermissionResource.listForGroups(auth, {
+        groupIds: [groupA.id],
+      });
+      expect(grants).toHaveLength(2);
+    });
+
+    it("grantMany rejects a -1 grant", async () => {
+      await expect(
+        GroupPermissionResource.grantMany(auth, {
+          grants: [
+            {
+              group: groupA,
+              permissionType: "read",
+              resourceType: "space",
+              resourceId: -1,
+            },
+          ],
+        })
+      ).rejects.toThrow(/instance-level/);
+    });
+  });
 });
