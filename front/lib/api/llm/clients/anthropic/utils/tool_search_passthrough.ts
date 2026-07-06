@@ -107,24 +107,22 @@ export function parseAnthropicToolSearchBlock(
 // The API constrains how tool search blocks can be replayed, and rejects the whole request with a
 // 400 when a constraint is violated:
 //
-//   - Without the tool search tool in the request (auxiliary calls such as title generation), no
-//     tool search block is valid at all: the results carry tool_reference blocks the API cannot
-//     expand.
-//   - With it, completed pairs (a server_tool_use with its tool_search_tool_result) must be
-//     replayed verbatim. A pair can span two assistant messages: when a pending search is resumed,
-//     its result opens the next assistant turn, with the tool_result continuation in between. Both
-//     halves must be kept, so pairing is computed across the whole replay, not per message.
+//   - Completed pairs (a server_tool_use with its tool_search_tool_result) must be replayed
+//     verbatim, even when the current request no longer carries the tool search server tool. A pair
+//     can span two assistant messages: when a pending search is resumed, its result opens the next
+//     assistant turn, with the tool_result continuation in between. Both halves must be kept, so
+//     pairing is computed across the whole replay, not per message.
 //   - A dangling server_tool_use (a search the API never ran, e.g. because the turn ended on a
-//     client tool call or was interrupted) is valid only on the final assistant message when the
-//     continuation is exclusively tool_result blocks. The API then resumes the search.
+//     client tool call or was interrupted) is valid only when the request still carries the tool
+//     search server tool, it is on the final assistant message, and the continuation is exclusively
+//     tool_result blocks. The API then resumes the search.
 //   - A tool_search_tool_result without its server_tool_use earlier in the replay is always
 //     rejected, so a result whose matching use was stripped (or never persisted) must be stripped
 //     with it.
 //
-// This sanitizer keeps the replayable blocks and strips the rest, unbricking conversations that
-// captured a pending search. The model simply searches again when it needs the tools. Stripping is
-// verified safe next to signed thinking blocks: signatures cover the thinking blocks themselves,
-// not their siblings (see scripts/debug_tool_search_steering_pending_search.ts).
+// This sanitizer keeps completed pairs in place and strips dangling or unpaired blocks. Completed
+// pairs can sit between signed thinking blocks, so removing them changes the latest assistant
+// message shape.
 
 function isToolSearchServerToolUseBlock(
   block: ContentBlockParam
@@ -223,7 +221,8 @@ function mergeConsecutiveSameRoleMessages(
 }
 
 interface StripUnreplayableToolSearchBlocksOptions {
-  // Whether the request being built carries the tool search server tool.
+  // Whether the request being built carries the tool search server tool, allowing dangling final
+  // assistant searches to resume.
   toolSearchInRequest: boolean;
 }
 
@@ -258,7 +257,7 @@ export function stripUnreplayableToolSearchBlocks(
     const content = message.content.filter((block) => {
       if (isToolSearchServerToolUseBlock(block)) {
         const dangling = !resultIds.has(block.id);
-        const keep = toolSearchInRequest && (!dangling || danglingIsResumable);
+        const keep = !dangling || danglingIsResumable;
         if (keep) {
           keptServerToolUseIds.add(block.id);
         } else {
@@ -269,8 +268,7 @@ export function stripUnreplayableToolSearchBlocks(
       }
 
       if (isToolSearchToolResultBlock(block)) {
-        const keep =
-          toolSearchInRequest && keptServerToolUseIds.has(block.tool_use_id);
+        const keep = keptServerToolUseIds.has(block.tool_use_id);
         if (!keep) {
           strippedResultCount++;
         }

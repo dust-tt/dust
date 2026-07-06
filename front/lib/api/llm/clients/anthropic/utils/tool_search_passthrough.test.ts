@@ -230,13 +230,14 @@ describe("stripUnreplayableToolSearchBlocks", () => {
     expect(blockTypes(sanitized[1])).toEqual(["tool_use"]);
   });
 
-  it("strips every tool search block when the request has no tool search tool", () => {
+  it("keeps completed pairs between thinking blocks when the request has no tool search tool", () => {
     const messages = [
       user(text("Find my meetings.")),
       assistant(
-        text("Searching."),
+        thinking(),
         search("srv_1"),
         searchResult("srv_1"),
+        { type: "thinking", thinking: "more reasoning", signature: "sig-2" },
         toolUse("tool_1")
       ),
       user(toolResult("tool_1")),
@@ -246,13 +247,20 @@ describe("stripUnreplayableToolSearchBlocks", () => {
       toolSearchInRequest: false,
     });
 
-    expect(blockTypes(sanitized[1])).toEqual(["text", "tool_use"]);
+    expect(sanitized).toBe(messages);
+    expect(blockTypes(sanitized[1])).toEqual([
+      "thinking",
+      "server_tool_use",
+      "tool_search_tool_result",
+      "thinking",
+      "tool_use",
+    ]);
   });
 
-  it("drops a message emptied by stripping and merges its same-role neighbors", () => {
+  it("drops a message emptied by stripping a dangling search and merges its same-role neighbors", () => {
     const messages = [
       user(text("Find my meetings.")),
-      assistant(search("srv_1"), searchResult("srv_1")),
+      assistant(search("srv_1")),
       user(text("Thanks, now summarize.")),
     ];
 
