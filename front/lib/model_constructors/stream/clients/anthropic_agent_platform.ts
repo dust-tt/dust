@@ -28,7 +28,7 @@ import { z } from "zod";
 // Can be extended later (e.g. "us", "asia-east1"...)
 export type AgentPlatformRegionalEndpoint = "global" | "eu";
 
-const configSchema = inputConfigSchema.extend({
+export const anthropicAgentPlatformConfigSchema = inputConfigSchema.extend({
   reasoning: z
     .object({
       effort: z.enum([
@@ -62,8 +62,9 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
 
   static readonly regionalEndpoint: AgentPlatformRegionalEndpoint;
 
-  static readonly configSchema: z.ZodType<z.infer<typeof configSchema>> =
-    configSchema;
+  static readonly configSchema: z.ZodType<
+    z.infer<typeof anthropicAgentPlatformConfigSchema>
+  > = anthropicAgentPlatformConfigSchema;
 
   private readonly client: AnthropicVertex;
 

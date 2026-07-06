@@ -1,5 +1,9 @@
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { AgentPlatformEuropeClaudeHaikuFourDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_haiku_four_dot_five";
+import { AgentPlatformEuropeClaudeOpusFourDotEightStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_opus_four_dot_eight";
+import { AgentPlatformEuropeClaudeOpusFourDotSevenStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_opus_four_dot_seven";
+import { AgentPlatformEuropeClaudeOpusFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_opus_four_dot_six";
+import { AgentPlatformEuropeClaudeSonnetFiveStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_five";
 import { AgentPlatformEuropeClaudeSonnetFourDotSixStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_claude_sonnet_four_dot_six";
 import { AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_1_flash_lite";
 import { AgentPlatformEuropeGeminiThreeDotFiveFlashStream } from "@app/lib/model_constructors/stream/endpoints/agent_platform_eu_gemini_3_5_flash";
@@ -41,6 +45,14 @@ import { TogetheraiGlobalLlama3370BInstructTurboStream } from "@app/lib/model_co
 export const STREAM_ENDPOINTS = {
   [AgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
     AgentPlatformEuropeClaudeHaikuFourDotFiveStream,
+  [AgentPlatformEuropeClaudeOpusFourDotEightStream.id]:
+    AgentPlatformEuropeClaudeOpusFourDotEightStream,
+  [AgentPlatformEuropeClaudeOpusFourDotSevenStream.id]:
+    AgentPlatformEuropeClaudeOpusFourDotSevenStream,
+  [AgentPlatformEuropeClaudeOpusFourDotSixStream.id]:
+    AgentPlatformEuropeClaudeOpusFourDotSixStream,
+  [AgentPlatformEuropeClaudeSonnetFiveStream.id]:
+    AgentPlatformEuropeClaudeSonnetFiveStream,
   [AgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
     AgentPlatformEuropeClaudeSonnetFourDotSixStream,
   [AgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:
