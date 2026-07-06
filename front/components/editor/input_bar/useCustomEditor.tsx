@@ -469,7 +469,7 @@ export const buildEditorExtensions = ({
         return placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
       },
       emptyNodeClass:
-        "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+        "first:before:text-muted-foreground first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
     }),
     PastedAttachmentExtension.configure({
       onInlineText,

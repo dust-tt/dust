@@ -48,9 +48,27 @@ describe("GET /api/w/:wId/advanced_models", () => {
 
 describe("POST/DELETE /api/w/:wId/advanced_models/allowed/workspace", () => {
   const advancedModel = AdvancedModelResource.getAdvancedModels()[0];
+  const allAdvancedModels = AdvancedModelResource.getAdvancedModels().map(
+    (model) => ({
+      providerId: model.providerId,
+      modelId: model.modelId,
+    })
+  );
 
   it("allows admins to add, list, and remove workspace allowed models", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const initialListResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/advanced_models/allowed/workspace`
+    );
+    expect(initialListResponse.status).toBe(200);
+    expect(
+      GetWorkspaceAllowedAdvancedModelsResponseBodySchema.parse(
+        await initialListResponse.json()
+      )
+    ).toEqual({
+      models: allAdvancedModels,
+    });
 
     const addResponse = await honoApp.request(
       `/api/w/${workspace.sId}/advanced_models/allowed/workspace`,
@@ -74,12 +92,7 @@ describe("POST/DELETE /api/w/:wId/advanced_models/allowed/workspace", () => {
         await listResponse.json()
       )
     ).toEqual({
-      models: [
-        {
-          providerId: advancedModel.providerId,
-          modelId: advancedModel.modelId,
-        },
-      ],
+      models: allAdvancedModels,
     });
 
     const deleteResponse = await honoApp.request(
@@ -94,6 +107,22 @@ describe("POST/DELETE /api/w/:wId/advanced_models/allowed/workspace", () => {
       }
     );
     expect(deleteResponse.status).toBe(204);
+
+    const finalListResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/advanced_models/allowed/workspace`
+    );
+    expect(finalListResponse.status).toBe(200);
+    expect(
+      GetWorkspaceAllowedAdvancedModelsResponseBodySchema.parse(
+        await finalListResponse.json()
+      )
+    ).toEqual({
+      models: allAdvancedModels.filter(
+        (model) =>
+          model.providerId !== advancedModel.providerId ||
+          model.modelId !== advancedModel.modelId
+      ),
+    });
   });
 });
 

@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { ExclusiveToolChoiceParameters } from "@app/lib/api/llm/types/options";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import type {
@@ -208,11 +209,17 @@ export function toReasoningParam(
 
 export function toToolChoiceParam(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
+  { forceToolCall, disableToolUse }: ExclusiveToolChoiceParameters
 ): ChatCompletionToolChoiceOption {
-  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
-    ? { type: "function", function: { name: forceToolCall } }
-    : ("auto" as const);
+  if (forceToolCall && specifications.some((s) => s.name === forceToolCall)) {
+    return { type: "function", function: { name: forceToolCall } };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return "auto";
 }
 
 export function toOutputFormatParam(

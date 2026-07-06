@@ -5,6 +5,7 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { MetronomeInvoiceLineItem } from "@app/lib/metronome/invoice";
+import { isAppliedCreditLineItem } from "@app/lib/metronome/invoice";
 import {
   FREE_SEAT_PRODUCT_NAME,
   MAX_SEAT_PRODUCT_NAME,
@@ -12,6 +13,7 @@ import {
   WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
 import { useMetronomeInvoiceLines } from "@app/lib/swr/workspaces";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import {
   Avatar,
   ChevronDown,
@@ -27,6 +29,7 @@ import { useSubscriptionContext } from "./SubscriptionContext";
 
 interface InvoiceRow {
   name: string;
+  period: string | null;
   quantity: string;
   cost: string;
   subtotal: string;
@@ -54,6 +57,14 @@ const PRODUCT_NAME_TO_SEAT_TYPE: Record<string, string> = {
   [OVERAGE_NAME]: "overage",
 };
 
+function formatLineItemPeriod(item: MetronomeInvoiceLineItem): string | null {
+  if (item.periodStartMs == null || item.periodEndMs == null) {
+    return null;
+  }
+  const period = `${formatTimestampToFriendlyDate(item.periodStartMs, "compactWithDay")} → ${formatTimestampToFriendlyDate(item.periodEndMs, "compactWithDay")}`;
+  return item.isProrated ? `Prorated · ${period}` : period;
+}
+
 function formatLineItem(
   item: MetronomeInvoiceLineItem,
   currency: string
@@ -61,6 +72,7 @@ function formatLineItem(
   const isOverage = item.name === CREDITS_CONVERSION_NAME;
   return {
     name: isOverage ? OVERAGE_NAME : item.name,
+    period: formatLineItemPeriod(item),
     quantity:
       item.quantity !== null
         ? `${item.quantity.toLocaleString()}${isOverage ? " credits" : ""}`
@@ -116,11 +128,21 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
                 iconColor={avatarColors.iconColor}
               />
             ) : null}
-            <span
-              className={cn("text-sm", row.original.isBold && "font-semibold")}
-            >
-              {name}
-            </span>
+            <div className="flex flex-col">
+              <span
+                className={cn(
+                  "text-sm",
+                  row.original.isBold && "font-semibold"
+                )}
+              >
+                {name}
+              </span>
+              {row.original.period ? (
+                <span className="text-xs text-muted-foreground">
+                  {row.original.period}
+                </span>
+              ) : null}
+            </div>
           </div>
         );
       },
@@ -202,9 +224,19 @@ export function NextInvoicePreview() {
     });
   };
 
-  // Group items by name, preserving insertion order.
+  // Applied commits/credits (coupons, free credits, commitments) are negative
+  // lines rendered after the charges, so a discounted — possibly 0.00 — total
+  // remains understandable.
+  const chargeItems = invoiceLines.lineItems.filter(
+    (item) => !isAppliedCreditLineItem(item)
+  );
+  const creditItems = invoiceLines.lineItems.filter((item) =>
+    isAppliedCreditLineItem(item)
+  );
+
+  // Group charge items by name, preserving insertion order.
   const groups = new Map<string, MetronomeInvoiceLineItem[]>();
-  for (const item of invoiceLines.lineItems) {
+  for (const item of chargeItems) {
     const existing = groups.get(item.name);
     if (existing) {
       existing.push(item);
@@ -224,6 +256,7 @@ export function NextInvoicePreview() {
         name === CREDITS_CONVERSION_NAME ? OVERAGE_NAME : name;
       rows.push({
         name: displayName,
+        period: null,
         quantity: "",
         cost: "",
         subtotal: formatAmount(subtotalCents, currency),
@@ -239,15 +272,34 @@ export function NextInvoicePreview() {
     }
   }
 
-  const totalCents = invoiceLines.lineItems.reduce(
+  const chargesTotalCents = chargeItems.reduce(
     (sum, item) => sum + item.totalCents,
     0
   );
+  const creditsTotalCents = creditItems.reduce(
+    (sum, item) => sum + item.totalCents,
+    0
+  );
+
+  if (creditItems.length > 0) {
+    rows.push({
+      name: "Subtotal",
+      period: null,
+      quantity: "",
+      cost: "",
+      subtotal: formatAmount(chargesTotalCents, currency),
+    });
+    for (const item of creditItems) {
+      rows.push(formatLineItem(item, currency));
+    }
+  }
+
   rows.push({
     name: "Total",
+    period: null,
     quantity: "",
     cost: "",
-    subtotal: formatAmount(totalCents, currency),
+    subtotal: formatAmount(chargesTotalCents + creditsTotalCents, currency),
     isBold: true,
   });
 

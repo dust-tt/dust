@@ -12,6 +12,8 @@ import {
   createMeeting,
   createNote,
   createTask,
+  createTicket,
+  deleteTask,
   getAssociatedMeetings,
   getCompany,
   getContact,
@@ -27,6 +29,7 @@ import {
   getObjectProperties,
   getUserActivity,
   getUserDetails,
+  listAssociationLabels,
   listAssociations,
   listEmailCampaigns,
   listEmailEvents,
@@ -40,6 +43,7 @@ import {
   updateCompany,
   updateContact,
   updateDeal,
+  updateTask,
 } from "@app/lib/api/actions/servers/hubspot/client";
 import {
   ERROR_MESSAGES,
@@ -487,6 +491,23 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  list_association_labels: async ({ fromObjectType, toObjectType }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await listAssociationLabels({
+        accessToken,
+        fromObjectType,
+        toObjectType,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Association labels retrieved successfully between ${fromObjectType} and ${toObjectType}`,
+        },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
   get_current_user_id: async (_params, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await getCurrentUserId(accessToken);
@@ -697,6 +718,24 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
     });
   },
 
+  create_ticket: async ({ properties, associations }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await createTicket({
+        accessToken,
+        properties,
+        associations,
+      });
+      const formatted = formatHubSpotCreateSuccess(result, "tickets");
+      return new Ok([
+        { type: "text" as const, text: formatted.message },
+        {
+          type: "text" as const,
+          text: JSON.stringify(formatted.result, null, 2),
+        },
+      ]);
+    });
+  },
+
   create_lead: async ({ properties, associations }, extra) => {
     return withAuth(extra, async (accessToken) => {
       const result = await createLead({
@@ -705,7 +744,7 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         associations,
       });
       return new Ok([
-        { type: "text" as const, text: "Lead (as Deal) created successfully." },
+        { type: "text" as const, text: "Lead created successfully." },
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
       ]);
     });
@@ -772,7 +811,14 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
   },
 
   create_association: async (
-    { fromObjectType, fromObjectId, toObjectType, toObjectId },
+    {
+      fromObjectType,
+      fromObjectId,
+      toObjectType,
+      toObjectId,
+      associationCategory,
+      associationTypeId,
+    },
     extra
   ) => {
     return withAuth(extra, async (accessToken) => {
@@ -782,6 +828,8 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
         fromObjectId,
         toObjectType,
         toObjectId,
+        associationCategory,
+        associationTypeId,
       });
       return new Ok([
         {
@@ -834,6 +882,53 @@ const handlers: ToolHandlers<typeof HUBSPOT_TOOLS_METADATA> = {
       });
       return new Ok([
         { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  update_task: async ({ taskId, properties }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await updateTask({
+        accessToken,
+        taskId,
+        properties,
+      });
+      return new Ok([
+        { type: "text" as const, text: "Task updated successfully." },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  complete_task: async ({ taskId }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      const result = await updateTask({
+        accessToken,
+        taskId,
+        properties: { hs_task_status: "COMPLETED" },
+      });
+      return new Ok([
+        { type: "text" as const, text: "Task marked as completed." },
+        { type: "text" as const, text: JSON.stringify(result, null, 2) },
+      ]);
+    });
+  },
+
+  delete_task: async ({ taskId }, extra) => {
+    return withAuth(extra, async (accessToken) => {
+      await deleteTask({
+        accessToken,
+        taskId,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Task ${taskId} deleted successfully.`,
+        },
+        {
+          type: "text" as const,
+          text: JSON.stringify({ success: true }, null, 2),
+        },
       ]);
     });
   },

@@ -452,6 +452,19 @@ export class CreditResource extends BaseResource<CreditModel> {
     );
   }
 
+  async updateExpirationDate(
+    auth: Authenticator,
+    expirationDate: Date,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<[affectedCount: number]> {
+    return this.update(
+      {
+        expirationDate,
+      },
+      transaction
+    );
+  }
+
   async setMetronomeCreditId(
     metronomeCreditId: string,
     { transaction }: { transaction?: Transaction } = {}

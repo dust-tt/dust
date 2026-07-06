@@ -116,7 +116,7 @@ function SectionContent({
         {children}
       </div>
       {footer && (
-        <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border dark:border-border-dark px-6 py-4">
           {footer}
         </div>
       )}
@@ -149,7 +149,7 @@ interface UsageSectionProps {
 }
 
 function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
-  const { isAdmin, subscription } = useAuth();
+  const { isAdmin, isBusinessAdmin, subscription } = useAuth();
 
   const isCreditBased = isCreditPricedPlan(subscription.plan);
 
@@ -164,7 +164,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
 
   const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
     owner,
-    disabled: isAdmin || !isCreditBased,
+    disabled: isBusinessAdmin || !isCreditBased,
   });
 
   const seatName =
@@ -197,8 +197,8 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
               owner={owner}
               hasPendingUpgradeRequest={hasPendingUpgradeRequest}
               variant="button"
-              isAdmin={isAdmin}
-              onAdminNavigate={onClose}
+              isBusinessAdmin={isBusinessAdmin}
+              onBusinessAdminNavigate={onClose}
             />
           </div>
           <Separator />
@@ -256,7 +256,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
       )}
 
       {isAdmin && (
-        <section className="flex items-center justify-between border-b border-border pb-4">
+        <section className="flex items-center justify-between border-b border-border dark:border-border-dark pb-4">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-semibold text-foreground">
               Invoices
@@ -776,7 +776,7 @@ export function UserSettingsPopover({
       >
         <div className="flex h-full flex-col overflow-hidden sm:flex-row">
           {/* Mobile: horizontal tab strip */}
-          <nav className="flex flex-shrink-0 items-center border-b border-border bg-muted-background sm:hidden">
+          <nav className="flex flex-shrink-0 items-center border-b border-border dark:border-border-dark bg-muted-background sm:hidden">
             <DialogClose asChild>
               <Button
                 variant="ghost"
@@ -808,7 +808,7 @@ export function UserSettingsPopover({
           </nav>
 
           {/* Desktop: vertical sidebar */}
-          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-muted-background sm:flex">
+          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
                 <Button variant="ghost" size="mini" icon={XClose} />

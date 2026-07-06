@@ -80,9 +80,9 @@ export function PaymentMethodRow({
   onRestart,
 }: PaymentMethodRowProps) {
   return (
-    <div className="flex w-full items-center justify-between rounded-xl bg-gray-50 p-3">
+    <div className="flex w-full items-center justify-between rounded-xl bg-muted-background p-3">
       <div className="flex items-center gap-2">
-        <div className="overflow-hidden rounded-[4px] border border-gray-100">
+        <div className="overflow-hidden rounded-[4px] border border-border">
           {paymentMethod.type === "card" ? (
             <CardBrandIcon brand={paymentMethod.brand} width={34} height={24} />
           ) : (

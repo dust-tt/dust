@@ -5,6 +5,7 @@ import {
   OPENAI_MODEL_CONFIGS,
 } from "@app/lib/api/llm/clients/openai/types";
 import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
+import type { ExclusiveToolChoiceParameters } from "@app/lib/api/llm/types/options";
 import {
   parseReasoningMetadata,
   parseResponseFormatSchema,
@@ -215,14 +216,20 @@ export function toReasoning(
 
 export function toToolOption(
   specifications: AgentActionSpecification[],
-  forceToolCall: string | undefined
-): ToolChoiceFunction | undefined {
-  return forceToolCall && specifications.some((s) => s.name === forceToolCall)
-    ? {
-        type: "function" as const,
-        name: forceToolCall,
-      }
-    : undefined;
+  { forceToolCall, disableToolUse }: ExclusiveToolChoiceParameters
+): ToolChoiceFunction | "none" | undefined {
+  if (forceToolCall && specifications.some((s) => s.name === forceToolCall)) {
+    return {
+      type: "function",
+      name: forceToolCall,
+    };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return undefined;
 }
 
 export function toResponseFormat(

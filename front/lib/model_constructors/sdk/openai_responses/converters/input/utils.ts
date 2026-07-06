@@ -2,6 +2,7 @@ import { isOpenAISupportedReasoningEffort } from "@app/lib/model_constructors/pr
 import type {
   OutputFormat,
   Reasoning,
+  ToolChoiceInput,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -219,11 +220,17 @@ export function toFunctionTool(tool: ToolSpecification): FunctionTool {
 
 export function forceToolToToolChoice(
   tools: ToolSpecification[],
-  forceTool: string | undefined
-): ToolChoiceFunction | "auto" {
-  return forceTool && tools.some((tool) => tool.name === forceTool)
-    ? { type: "function", name: forceTool }
-    : "auto";
+  { forceTool, disableToolUse }: ToolChoiceInput
+): ToolChoiceFunction | "auto" | "none" {
+  if (forceTool && tools.some((tool) => tool.name === forceTool)) {
+    return { type: "function", name: forceTool };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return "auto";
 }
 
 export function outputFormatToResponseFormat(

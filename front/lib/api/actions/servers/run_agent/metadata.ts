@@ -163,6 +163,8 @@ export const RUN_AGENT_SERVER = {
         running: "Running agent",
         done: "Run agent",
       },
+      toolCostCategory: "basic",
+      freeUsage: false,
     },
   ],
   // Default stake for dynamically created run_agent tools.

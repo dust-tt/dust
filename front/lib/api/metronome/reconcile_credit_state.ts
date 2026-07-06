@@ -293,26 +293,41 @@ export async function reconcileProgrammatic({
   const config = await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
     workspace.id
   );
-  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  // Distinguish "no cap configured" (null) from an explicit hard cap of 0:
+  // null means programmatic usage is unrestricted at the cap level, whereas 0
+  // is an explicit block. Collapsing both to 0 would wrongly deplete workspaces
+  // that never set a programmatic cap.
+  const monthlyCapCredits = config?.programmaticMonthlyCapAwuCredits ?? null;
 
   const previousState = workspace.programmaticCreditState;
 
-  // Cap of 0/null → always depleted; no spend to read.
-  if (monthlyCapCredits === 0 || !metronomeContractId) {
+  // States that don't require reading live spend:
+  //  - explicit hard cap of 0 → always depleted (programmatic API blocked).
+  //  - no cap configured (null), or no contract to meter spend against →
+  //    programmatic usage is unrestricted at the cap level; stay "active" and
+  //    let the pool gate (isApiBlocked) decide. This keeps PAYG programmatic
+  //    usage running when the pool is in overage and no programmatic cap is set.
+  if (
+    monthlyCapCredits === null ||
+    monthlyCapCredits === 0 ||
+    !metronomeContractId
+  ) {
+    const expectedState: WorkspaceProgrammaticCreditState =
+      monthlyCapCredits === 0 ? "depleted" : "active";
     if (execute) {
-      await setProgrammaticCreditStateReconciled(workspace, "depleted");
+      await setProgrammaticCreditStateReconciled(workspace, expectedState);
       void clearWorkspaceProgrammaticWarningReached(workspace.sId);
     }
     const newState = workspace.programmaticCreditState;
     return new Ok({
       target: "programmatic",
       previousState,
-      expectedState: "depleted",
+      expectedState,
       newState,
-      wasInvalid: previousState !== "depleted",
+      wasInvalid: previousState !== expectedState,
       corrected: previousState !== newState,
       executed: execute,
-      monthlyCapCredits,
+      monthlyCapCredits: monthlyCapCredits ?? 0,
       spentAwuCredits: null,
     });
   }

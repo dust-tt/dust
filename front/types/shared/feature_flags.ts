@@ -126,10 +126,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to OpenAI o1 model",
     stage: "on_demand",
   },
-  openai_o1_high_reasoning_feature: {
-    description: "Access to OpenAI o1 high reasoning model",
-    stage: "on_demand",
-  },
   openai_usage_mcp: {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
@@ -180,14 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
   },
-  gemini_3_1_pro_feature: {
-    description: "Access to Gemini 3.1 Pro model in the agent builder",
-    stage: "on_demand",
-  },
-  hootl_subscriptions: {
-    description: "Subscription feature for Schedule & Triggers.",
-    stage: "dust_only",
-  },
   slack_enhanced_default_agent: {
     description:
       "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
@@ -235,12 +223,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   conversations_slack_notifications: {
     description: "Enable slack notifications",
     stage: "dust_only",
-  },
-  anthropic_reasoning_token_count: {
-    description:
-      "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
-    // Not really on_demand but we want to be able to enable it for customers
-    stage: "on_demand",
   },
   reinforced_agents: {
     description:
@@ -299,17 +281,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Allow users to explicitly select restricted Spaces from the conversation input bar.",
     stage: "dust_only",
-  },
-  new_file_explorer: {
-    description:
-      "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
-    stage: "dust_only",
-  },
-  force_us_api_url: {
-    description:
-      "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
-      "as its backend for this workspace",
-    stage: "on_demand",
   },
   disable_formatting_prompt: {
     description:

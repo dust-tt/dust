@@ -264,7 +264,7 @@ beforeEach(() => {
     ])
   );
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
-    new Ok({ metronomeContractId: NEW_CONTRACT_ID })
+    new Ok({ metronomeContractId: NEW_CONTRACT_ID, recovered: false })
   );
   vi.mocked(remapMembershipSeatTypesForContract).mockResolvedValue(
     new Ok(undefined)
@@ -501,7 +501,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     // Second schedule with a different (business) target → ends P1, creates P2.
     const SECOND_CONTRACT_ID = "contract_new_zzz";
     vi.mocked(provisionMetronomeContract).mockResolvedValueOnce(
-      new Ok({ metronomeContractId: SECOND_CONTRACT_ID })
+      new Ok({ metronomeContractId: SECOND_CONTRACT_ID, recovered: false })
     );
     const secondResponse = await postSwitchContract(
       workspace.sId,

@@ -14,6 +14,7 @@ import {
   userImageMessageToMessage,
   userTextMessageToMessage,
 } from "@app/lib/model_constructors/sdk/mistralai/converters/input/utils";
+import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import type { ChatCompletionStreamRequest } from "@mistralai/mistralai/models/components";
 
@@ -42,13 +43,7 @@ export function WithMistralAIInputConverter<
       config: MistralInputConfig
     ): ChatCompletionStreamRequest {
       const { conversation } = payload;
-      const {
-        tools = [],
-        temperature,
-        reasoning,
-        forceTool,
-        outputFormat,
-      } = config;
+      const { tools = [], temperature, reasoning, outputFormat } = config;
 
       // Mistral is not sent an explicit max-output cap (matching the legacy
       // client); it uses its own default. `reasoning_effort` is only sent when
@@ -58,7 +53,7 @@ export function WithMistralAIInputConverter<
         messages: conversationToMistralAIMessages(conversation, this),
         temperature,
         tools: tools.map(toTool),
-        toolChoice: forceToolNameToToolChoice(tools, forceTool),
+        toolChoice: forceToolNameToToolChoice(tools, toToolChoiceInput(config)),
         ...(reasoning ? { reasoningEffort: reasoning.effort } : {}),
         ...(outputFormat
           ? { responseFormat: outputFormatToResponseFormat(outputFormat) }

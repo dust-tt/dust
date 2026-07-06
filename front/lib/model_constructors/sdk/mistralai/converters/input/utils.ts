@@ -1,5 +1,6 @@
 import type {
   OutputFormat,
+  ToolChoiceInput,
   ToolSpecification,
 } from "@app/lib/model_constructors/types/input/configuration";
 import type {
@@ -225,11 +226,17 @@ export function toTool(tool: ToolSpecification): Tool {
 
 export function forceToolNameToToolChoice(
   tools: ToolSpecification[],
-  forceTool: string | undefined
-): ToolChoice | "auto" {
-  return forceTool && tools.some((tool) => tool.name === forceTool)
-    ? { type: "function", function: { name: forceTool } }
-    : "auto";
+  { forceTool, disableToolUse }: ToolChoiceInput
+): ToolChoice | "auto" | "none" {
+  if (forceTool && tools.some((tool) => tool.name === forceTool)) {
+    return { type: "function", function: { name: forceTool } };
+  }
+
+  if (disableToolUse) {
+    return "none";
+  }
+
+  return "auto";
 }
 
 export function outputFormatToResponseFormat(

@@ -1548,6 +1548,12 @@ describe("sanitizeFileSystemName", () => {
     const nfc = "café".normalize("NFC");
     expect(sanitizeFileSystemName(nfd)).toBe(nfc);
   });
+
+  it("replaces slashes with underscores", () => {
+    expect(sanitizeFileSystemName("q1/2024 report.pdf")).toBe(
+      "q1_2024 report.pdf"
+    );
+  });
 });
 
 describe("DustFileSystem.normalizeScopedPath strips control characters", () => {

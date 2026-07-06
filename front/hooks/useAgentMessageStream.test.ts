@@ -817,7 +817,7 @@ describe("useAgentMessageStream", () => {
       );
     });
 
-    // All three attempts are the SAME step (Temporal retries), so only the final
+    // All three attempts are the same step (Temporal retries), so only the final
     // attempt's thinking step survives — the earlier ones are dropped instead of
     // flooding the timeline with duplicates (the ticket-9287 bug).
     expect(currentMessage.streaming.inlineActivitySteps).toEqual([
@@ -997,6 +997,181 @@ describe("useAgentMessageStream", () => {
         content: "Final step-1 reasoning.",
         id: expect.stringContaining("thinking-pre-"),
         step: 1,
+      },
+    ]);
+  });
+
+  it("does not re-append steps when the message remounts and replays history", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    const mountHook = () =>
+      renderHook(() =>
+        useAgentMessageStream({
+          agentMessage: currentMessage,
+          conversationId: "conv_123",
+          isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+          owner: mockOwner,
+          streamId: "stream_123",
+        })
+      );
+
+    // The history the server replays on every (re)connect: step 0 CoT → tool.
+    const history = [
+      {
+        eventId: "1-0",
+        data: {
+          type: "generation_tokens",
+          created: Date.now(),
+          configurationId: "agent_123",
+          messageId: currentMessage.sId,
+          text: "Reasoning about step 0.",
+          classification: "chain_of_thought",
+          traceId: "t0",
+          step: 0,
+        },
+      },
+      {
+        eventId: "2-0",
+        data: {
+          type: "tool_params",
+          created: Date.now(),
+          configurationId: "agent_123",
+          messageId: currentMessage.sId,
+          action: makeStreamAction({ id: 1, sId: "act_1" }),
+          runIds: [],
+          step: 0,
+        },
+      },
+    ];
+
+    const { unmount } = mountHook();
+    act(() => history.forEach((e) => onEventCallback!(JSON.stringify(e))));
+
+    const stepsAfterFirstMount =
+      currentMessage.streaming.inlineActivitySteps.length;
+    expect(stepsAfterFirstMount).toBeGreaterThan(0);
+
+    // Simulate a Virtuoso remount: unmount, mount a fresh hook instance for the
+    // same message (its steps persist in currentMessage), and replay the same
+    // history the server resends on reconnect.
+    unmount();
+    mountHook();
+    act(() => history.forEach((e) => onEventCallback!(JSON.stringify(e))));
+
+    expect(currentMessage.streaming.inlineActivitySteps.length).toBe(
+      stepsAfterFirstMount
+    );
+  });
+
+  it("commits the active CoT when tool_params arrives right after a remount", () => {
+    // Regression: after a remount the parser refs (lastClassification, ...) are
+    // reset. The replay must re-run so a live tool_params still flushes the
+    // in-progress CoT into a step instead of dropping it.
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    const mountHook = () =>
+      renderHook(() =>
+        useAgentMessageStream({
+          agentMessage: currentMessage,
+          conversationId: "conv_123",
+          isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+          owner: mockOwner,
+          streamId: "stream_123",
+        })
+      );
+
+    const cotEvent = {
+      eventId: "1-0",
+      data: {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: "agent_123",
+        messageId: currentMessage.sId,
+        text: "Reasoning before the tool.",
+        classification: "chain_of_thought",
+        traceId: "t0",
+        step: 0,
+      },
+    };
+    const toolParamsEvent = {
+      eventId: "2-0",
+      data: {
+        type: "tool_params",
+        created: Date.now(),
+        configurationId: "agent_123",
+        messageId: currentMessage.sId,
+        action: makeStreamAction({ id: 1, sId: "act_1" }),
+        runIds: [],
+        step: 0,
+      },
+    };
+
+    // First mount: only the CoT arrives — it stays active, not yet flushed.
+    const { unmount } = mountHook();
+    act(() => onEventCallback!(JSON.stringify(cotEvent)));
+    expect(currentMessage.streaming.inlineActivitySteps).toHaveLength(0);
+
+    // Remount: the server replays the CoT (rebuilding parser state), then the
+    // live tool_params flushes it.
+    unmount();
+    mountHook();
+    act(() => {
+      onEventCallback!(JSON.stringify(cotEvent));
+      onEventCallback!(JSON.stringify(toolParamsEvent));
+    });
+
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual([
+      {
+        type: "thinking",
+        content: "Reasoning before the tool.",
+        id: expect.stringContaining("thinking-toolparams-"),
+        step: 0,
       },
     ]);
   });

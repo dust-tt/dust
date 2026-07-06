@@ -460,6 +460,81 @@ describe("promoteNoneSeatTypesForContract", () => {
       })
     ).toEqual(["pro", "workspace_yearly"]);
   });
+
+  // `forceSeatType` — legacy contract migration: force every `none` onto a paid
+  // seat, preempting committed placement.
+  it("forces every none member onto the forced seat when there is no commitment", () => {
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        forceSeatType: "pro",
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("forces every none member onto the forced seat, preempting committed placement", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 8000, entitled: true },
+        { seatType: "workspace_yearly", entitled: true },
+      ],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 2, maxSeats: null }],
+    ]);
+    // Committed workspace_yearly capacity would otherwise absorb the none
+    // members, but forceSeatType preempts it → all land on pro.
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none"],
+        seatLimits,
+        forceSeatType: "pro",
+      })
+    ).toEqual(["pro", "pro"]);
+  });
+
+  it("forces onto a non-promotable seat the contract bills (e.g. max)", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [{ seatType: "max", awu: 40000, entitled: true }],
+    });
+    // `max` is never auto-assigned, but an explicit force onto it is honored
+    // since the contract bills it.
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract: c,
+        productSeatTypes: pt,
+        seatTypes: ["none", "none"],
+        forceSeatType: "max",
+      })
+    ).toEqual(["max", "max"]);
+  });
+
+  it("does not force onto a seat type the contract does not bill", () => {
+    // `pro_yearly` is not on this monthly contract → no promotion.
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["none", "none"],
+        forceSeatType: "pro_yearly",
+      })
+    ).toEqual(["none", "none"]);
+  });
+
+  it("leaves non-none targets untouched when forcing", () => {
+    expect(
+      promoteNoneSeatTypesForContract({
+        contract,
+        productSeatTypes,
+        seatTypes: ["pro", "none", "free"],
+        forceSeatType: "pro",
+      })
+    ).toEqual(["pro", "pro", "free"]);
+  });
 });
 
 describe("classifySeatChange", () => {

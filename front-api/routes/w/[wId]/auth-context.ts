@@ -74,6 +74,7 @@ app.get(
       workspace,
       subscription,
       isAdmin: auth.isAdmin(),
+      isBusinessAdmin: auth.isBusinessAdmin(),
       isBuilder: auth.isBuilder(),
       featureFlags,
       ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),

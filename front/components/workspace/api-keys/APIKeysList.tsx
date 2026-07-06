@@ -74,7 +74,7 @@ export const APIKeysList = ({
                           "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                           key.status === "active"
                             ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
+                            : "bg-muted text-foreground"
                         )}
                       >
                         {key.status === "active" ? "active" : "revoked"}

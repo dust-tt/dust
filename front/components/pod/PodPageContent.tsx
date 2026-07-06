@@ -12,23 +12,16 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";
 import type { PodTab } from "@app/hooks/useSpaceProjectTabs";
-import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import type { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { LightConversationType } from "@app/types/assistant/conversation";
-import {
-  isAgentMessageType,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
 import { TabsContent } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
@@ -155,48 +148,7 @@ export function PodPageContent({
         { shallow: true }
       );
 
-      const lightConversation: LightConversationType = {
-        ...conversationRes.value,
-        content: removeNulls(
-          conversationRes.value.content.map((v) => {
-            const lastVersion = v[v.length - 1];
-            if (isUserMessageType(lastVersion)) {
-              return {
-                ...lastVersion,
-                contentFragments: [],
-              };
-            }
-            if (isAgentMessageType(lastVersion)) {
-              return getLightAgentMessageFromAgentMessage(lastVersion);
-            }
-            return null;
-          })
-        ),
-      };
-
-      await mutateConversations(
-        (currentData) => {
-          if (!currentData || currentData.length === 0) {
-            return [
-              {
-                conversations: [lightConversation],
-                hasMore: false,
-                lastValue: null,
-                isEmpty: false,
-              },
-            ];
-          }
-          const [firstPage, ...restPages] = currentData;
-          return [
-            {
-              ...firstPage,
-              conversations: [lightConversation, ...firstPage.conversations],
-            },
-            ...restPages,
-          ];
-        },
-        { revalidate: false }
-      );
+      void mutateConversations();
 
       return new Ok(undefined);
     },

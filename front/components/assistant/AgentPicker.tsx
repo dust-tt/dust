@@ -67,19 +67,22 @@ export function AgentPicker({
       }}
     >
       <DropdownMenuTrigger asChild>
-        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-        {pickerButton ? (
-          pickerButton
-        ) : (
-          <Button
-            icon={Robot}
-            variant="ghost-secondary"
-            isSelect={showDropdownArrow}
-            size={size}
-            tooltip="Pick an agent"
-            disabled={disabled || isLoading}
-          />
-        )}
+        {/* Stable anchor across pickerButton swaps: prevents a top-left flash on close. */}
+        <div className="inline-flex">
+          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+          {pickerButton ? (
+            pickerButton
+          ) : (
+            <Button
+              icon={Robot}
+              variant="ghost-secondary"
+              isSelect={showDropdownArrow}
+              size={size}
+              tooltip="Pick an agent"
+              disabled={disabled || isLoading}
+            />
+          )}
+        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="h-96 w-80"

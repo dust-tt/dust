@@ -7,7 +7,11 @@ function LoadingBlock({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-opacity-pulse rounded-md", "bg-muted", className)}
+      className={cn(
+        "animate-opacity-pulse rounded-md",
+        "bg-loading",
+        className
+      )}
       {...props}
     />
   );

@@ -19,6 +19,7 @@ import {
   getProductPrepaidCommitId,
   getProductSeatSubscriptionCommitId,
   HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY,
+  LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY,
   oneYearAfter,
 } from "@app/lib/metronome/constants";
 import {
@@ -36,6 +37,7 @@ import {
 } from "@app/lib/metronome/types";
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import {
+  CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE,
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   isEnterprisePlanPrefix,
   isProPlanPrefix,
@@ -140,6 +142,13 @@ export const SwitchContractBodySchema = z.object({
   promoteNoneSeatsTo: z
     .custom<MembershipSeatType>(isMembershipSeatType)
     .optional(),
+  // Optional: when set, marks the (future-dated) contract for the legacy →
+  // Business credit migration. At `contract.start`, the webhook converts the
+  // workspace's remaining convertible legacy credits to AWU ($1 = 100 AWU) and
+  // grants this many free AWU per workspace member — computed then, so the
+  // amounts reflect the workspace's state at migration time. Stamped as the
+  // `LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY` custom field on the contract.
+  legacyMigrationFreeAwuCreditsPerUser: z.number().int().min(0).optional(),
   seats: z
     .array(
       z.object({
@@ -202,6 +211,7 @@ function classifyPlanCode(planCode: string): MetronomePackageTier {
   }
   if (
     planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE ||
+    planCode === CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE ||
     planCode === PRO_PLAN_SEAT_39_CODE
   ) {
     return "business";
@@ -708,6 +718,9 @@ type PostProvisionCtx = {
   stripeSubscriptionId: string | null;
   pkg: MetronomePackageSummary;
   pkgSeatByType: Map<string, PackageSeatConfig>;
+  // The contract was freshly created (not recovered), so it has no prior seat
+  // assignments — the seat sync can skip the per-subscription state reads.
+  contractNewlyCreated: boolean;
   body: SwitchContractBody;
 };
 
@@ -1000,6 +1013,7 @@ async function stepSeatSync({
   metronomeContractId,
   ownerLight,
   alignedStart,
+  contractNewlyCreated,
   body,
 }: PostProvisionCtx): Promise<string | null> {
   const result = await syncSeatCount({
@@ -1008,6 +1022,7 @@ async function stepSeatSync({
     workspace: ownerLight,
     startingAt: alignedStart.toISOString(),
     planCode: body.planCode,
+    assumeEmptySeats: contractNewlyCreated,
   });
   if (result.isErr()) {
     return `seat_sync: ${result.error.message}`;
@@ -1113,6 +1128,17 @@ export async function switchContract({
   // Disable the internal seat sync — switchContract always runs its own
   // remap + sync at the end (after seat-rate overrides), so the contract sees
   // the final effective entitlements.
+  const additionalCustomFields: Record<string, string> = {};
+  if (body.hubspotDealId) {
+    additionalCustomFields[HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY] =
+      body.hubspotDealId;
+  }
+  if (body.legacyMigrationFreeAwuCreditsPerUser !== undefined) {
+    additionalCustomFields[LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY] = String(
+      body.legacyMigrationFreeAwuCreditsPerUser
+    );
+  }
+
   const provisionResult = await provisionMetronomeContract({
     metronomeCustomerId,
     workspace: ownerLight,
@@ -1123,9 +1149,10 @@ export async function switchContract({
     planCode: body.planCode,
     fromContractId: currentSubscription?.metronomeContractId ?? undefined,
     enableSeatSync: false,
-    additionalCustomFields: body.hubspotDealId
-      ? { [HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY]: body.hubspotDealId }
-      : undefined,
+    additionalCustomFields:
+      Object.keys(additionalCustomFields).length > 0
+        ? additionalCustomFields
+        : undefined,
   });
   if (provisionResult.isErr()) {
     return new Err(
@@ -1135,7 +1162,7 @@ export async function switchContract({
       )
     );
   }
-  const { metronomeContractId } = provisionResult.value;
+  const { metronomeContractId, recovered } = provisionResult.value;
 
   const alignedStart = new Date(
     swapAt === "current-hour"
@@ -1157,6 +1184,7 @@ export async function switchContract({
     stripeSubscriptionId: currentSubscription?.stripeSubscriptionId ?? null,
     pkg,
     pkgSeatByType,
+    contractNewlyCreated: !recovered,
     body,
   };
 

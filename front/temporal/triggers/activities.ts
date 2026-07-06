@@ -13,6 +13,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -28,6 +29,7 @@ import {
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -48,11 +50,24 @@ async function createConversationForAgentConfiguration({
   lastRunAt: Date | null;
   webhookRequest: WebhookRequestResource | null;
 }): Promise<Result<ConversationType, APIErrorWithContentfulStatusCode>> {
+  let spaceModelId: ModelId | null = null;
+  if (trigger.spaceId) {
+    const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
+    if (pod && pod.isProject() && (pod.isOpen() || pod.isMember(auth))) {
+      spaceModelId = pod.id;
+    } else {
+      logger.warn(
+        { triggerId: trigger.sId, spaceId: trigger.spaceId },
+        "Trigger's pod is no longer accessible; falling back to default (my conversations)."
+      );
+    }
+  }
+
   const newConversation = await createConversation(auth, {
     title: null,
     visibility: "unlisted",
     triggerId: trigger.id,
-    spaceId: null,
+    spaceId: spaceModelId,
   });
 
   const baseContext = {

@@ -55,10 +55,16 @@ export type { FileSystemEntry } from "@app/types/api/file_system/types";
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F-\x9F]/g;
 
-// Strip control characters, trim whitespace, and NFC-normalize. macOS uploads commonly arrive
-// in NFD; NFC normalization keeps paths stable when consumers echo them back.
+// Strip control characters, replace path separators, trim whitespace, and NFC-normalize.
+// macOS uploads commonly arrive in NFD; NFC normalization keeps paths stable when consumers
+// echo them back. "/" is replaced with "_" since it would otherwise be interpreted as a path
+// separator when the name is used as a path segment.
 export function sanitizeFileSystemName(name: string): string {
-  return name.replace(CONTROL_CHAR_RE, "").trim().normalize("NFC");
+  return name
+    .replace(CONTROL_CHAR_RE, "")
+    .replace(/\//g, "_")
+    .trim()
+    .normalize("NFC");
 }
 
 type ParsedScopedPrefix =

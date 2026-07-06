@@ -126,6 +126,7 @@ export class WorkspaceAllowedAdvancedModel extends WorkspaceAwareModel<Workspace
 
   declare providerId: ModelProviderIdType;
   declare modelId: ModelIdType;
+  declare enabled: CreationOptional<boolean>;
 }
 
 WorkspaceAllowedAdvancedModel.init(
@@ -147,6 +148,11 @@ WorkspaceAllowedAdvancedModel.init(
     modelId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    enabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
   },
   {

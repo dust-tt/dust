@@ -23,6 +23,7 @@ import {
   dispatchSeatBalanceResolved,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
+import { applyLegacyCreditMigrationAtActivation } from "@app/lib/api/metronome/legacy_credit_migration";
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { ensureWorkOSOrganizationForPaidPlan } from "@app/lib/api/workos/organization";
@@ -64,6 +65,7 @@ import {
   fromFreeMetronomeUserId,
   getCreditTypeAwuId,
   getProductExcessCreditsId,
+  LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   PLAN_CODE_CUSTOM_FIELD_KEY,
@@ -777,6 +779,50 @@ async function handlePerUserSpendThresholdEvent({
   return new Ok(undefined);
 }
 
+// If the started contract was stamped for the legacy → Business migration,
+// convert the workspace's convertible legacy credits to AWU and grant the
+// per-user free bonus — computed now, so the amounts reflect the workspace's
+// state at activation. Shared by both `contract.start` swap paths (pending row
+// activation and immediate swap). Best-effort: failures are logged, never throw.
+async function applyStampedLegacyCreditMigration({
+  auth,
+  workspace,
+  contract,
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  auth: Authenticator;
+  workspace: WorkspaceResource;
+  contract: {
+    custom_fields?: Record<string, string> | null;
+    starting_at: string;
+  };
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<void> {
+  const stamped =
+    contract.custom_fields?.[LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY];
+  if (stamped === undefined) {
+    return;
+  }
+  const freeAwuCreditsPerUser = Number.parseInt(stamped, 10);
+  if (!Number.isFinite(freeAwuCreditsPerUser)) {
+    logger.error(
+      { metronomeContractId, workspaceId: workspace.sId, stamped },
+      "[Metronome Webhook] contract.start: invalid legacy credit migration custom field, skipping credit migration"
+    );
+    return;
+  }
+  await applyLegacyCreditMigrationAtActivation({
+    auth,
+    workspace: renderLightWorkspaceType({ workspace }),
+    metronomeCustomerId,
+    metronomeContractId,
+    startingAt: new Date(contract.starting_at),
+    freeAwuCreditsPerUser,
+  });
+}
+
 export async function processMetronomeWebhook({
   event,
   workspace,
@@ -1363,11 +1409,7 @@ export async function processMetronomeWebhook({
 
     case "credit.segment.start":
     case "credit.edit": {
-      const {
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        credit_id: creditId,
-      } = event;
+      const { customer_id: metronomeCustomerId, credit_id: creditId } = event;
 
       const creditResult = await getMetronomeCredit({
         metronomeCustomerId,
@@ -1406,25 +1448,10 @@ export async function processMetronomeWebhook({
         }
       }
 
-      if (event.type === "credit.segment.start") {
-        // Special case: only a contract-bound managed free credit drives the
-        // free monthly/yearly credit grant. Customer-level credits with no
-        // parent contract can't be the managed free credit, so stop here.
-        if (!contractId) {
-          break;
-        }
-
-        const grantResult = await handleFreeCreditSegmentGrant({
-          workspace,
-          metronomeCustomerId,
-          contractId,
-          creditId,
-          segmentId: event.segment_id,
-        });
-        if (grantResult.isErr()) {
-          return grantResult;
-        }
-      }
+      // The free monthly/yearly credit grant is now driven by the Stripe
+      // `customer.subscription.updated` webhook (see
+      // `grantFreeCreditsForSubscription`), which creates the DB credit and
+      // syncs the amount back into Metronome. We no longer grant it here.
       break;
     }
 
@@ -1623,6 +1650,14 @@ export async function processMetronomeWebhook({
           workspace.sId
         );
         await restoreWorkspaceAfterSubscription(auth);
+
+        await applyStampedLegacyCreditMigration({
+          auth,
+          workspace,
+          contract: contractResult.value,
+          metronomeCustomerId: customerId,
+          metronomeContractId: contractId,
+        });
         await ensureWorkOSOrganizationForPaidPlan({
           workspace: renderLightWorkspaceType({ workspace }),
           planCode: targetPlan.code,
@@ -1682,6 +1717,15 @@ export async function processMetronomeWebhook({
       // triggers. Idempotent — safe to call regardless of prior state.
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       await restoreWorkspaceAfterSubscription(auth);
+
+      await applyStampedLegacyCreditMigration({
+        auth,
+        workspace,
+        contract: contractResult.value,
+        metronomeCustomerId: customerId,
+        metronomeContractId: contractId,
+      });
+
       emitSubscriptionChangedAuditEvent({
         auth,
         planCode: targetPlan.code,

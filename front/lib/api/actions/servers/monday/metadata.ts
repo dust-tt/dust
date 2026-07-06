@@ -14,6 +14,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Listing Monday boards",
       done: "List Monday boards",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_board_items: {
     description:
@@ -26,6 +28,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday board items",
       done: "Retrieve Monday board items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_item_details: {
     description:
@@ -38,6 +42,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday item details",
       done: "Retrieve Monday item details",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   search_items: {
     description:
@@ -76,6 +82,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Searching Monday items",
       done: "Search Monday items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_items_by_column_value: {
     description: "Retrieve items from a board by column value",
@@ -89,6 +97,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday items by column value",
       done: "Retrieve Monday items by column value",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   find_user_by_name: {
     description: "Find a Monday.com user by name",
@@ -100,6 +110,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Finding Monday user",
       done: "Find Monday user",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_board_values: {
     description:
@@ -112,6 +124,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday board details",
       done: "Retrieve Monday board details",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_column_values: {
     description: "Retrieve column values for a specific item and column",
@@ -125,6 +139,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday column values",
       done: "Retrieve Monday column values",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_file_column_values: {
     description: "Retrieve file column values for a specific item and column",
@@ -139,6 +155,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday file column values",
       done: "Retrieve Monday file column values",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_group_details: {
     description:
@@ -152,6 +170,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday group details",
       done: "Retrieve Monday group details",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_subitem_values: {
     description: "Retrieve subitems for a specific Monday.com item",
@@ -163,6 +183,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday subitems",
       done: "Retrieve Monday subitems",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_user_details: {
     description: "Retrieve details about a specific Monday.com user",
@@ -174,6 +196,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday user details",
       done: "Retrieve Monday user details",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_activity_logs: {
     description:
@@ -200,6 +224,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday activity logs",
       done: "Retrieve Monday activity logs",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_board_analytics: {
     description:
@@ -212,6 +238,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Monday board analytics",
       done: "Retrieve Monday board analytics",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_item: {
     description: "Create a new item in a Monday.com board",
@@ -234,6 +262,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Creating Monday item",
       done: "Create Monday item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_item: {
     description: "Update column values of an existing Monday.com item",
@@ -250,6 +280,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Updating Monday item",
       done: "Update Monday item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_item_name: {
     description: "Update the name of a Monday.com item",
@@ -262,6 +294,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Updating Monday item name",
       done: "Update Monday item name",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_update: {
     description: "Add an update (comment) to a Monday.com item",
@@ -274,6 +308,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Adding Monday update",
       done: "Add Monday update",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_board: {
     description: "Create a new board in Monday.com",
@@ -297,6 +333,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Creating Monday board",
       done: "Create Monday board",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_column: {
     description: "Create a new column in a Monday.com board",
@@ -316,6 +354,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Creating Monday column",
       done: "Create Monday column",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_group: {
     description: "Create a new group in a Monday.com board",
@@ -332,6 +372,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Creating Monday group",
       done: "Create Monday group",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_subitem: {
     description: "Create a new subitem for a Monday.com item",
@@ -348,6 +390,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Creating Monday subitem",
       done: "Create Monday subitem",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_subitem: {
     description: "Update column values of a Monday.com subitem",
@@ -362,6 +406,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Updating Monday subitem",
       done: "Update Monday subitem",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   duplicate_group: {
     description: "Duplicate a group in a Monday.com board",
@@ -382,6 +428,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Duplicating Monday group",
       done: "Duplicate Monday group",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   upload_file_to_column: {
     description: "Upload a file to a Monday.com column",
@@ -395,6 +443,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Uploading file to Monday",
       done: "Upload file to Monday",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_item: {
     description: "Delete a Monday.com item",
@@ -406,6 +456,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Monday item",
       done: "Delete Monday item",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_group: {
     description: "Delete a group from a Monday.com board",
@@ -418,6 +470,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Monday group",
       done: "Delete Monday group",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   move_item_to_board: {
     description:
@@ -447,6 +501,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Moving Monday item to board",
       done: "Move Monday item to board",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_multiple_items: {
     description:
@@ -474,6 +530,8 @@ export const MONDAY_TOOLS_METADATA = createToolsRecord({
       running: "Creating multiple Monday items",
       done: "Create multiple Monday items",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -495,6 +553,8 @@ export const MONDAY_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MONDAY_TOOLS_METADATA).map((t) => [t.name, t.stake])

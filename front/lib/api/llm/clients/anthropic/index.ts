@@ -18,6 +18,7 @@ import {
   streamLLMEvents,
 } from "@app/lib/api/llm/clients/anthropic/utils/anthropic_to_events";
 import {
+  detectAnthropicToolSearchEnableSkillConflict,
   toMessage,
   toToolsParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
@@ -26,6 +27,7 @@ import {
   handleInvalidToolJsonAnthropicError,
   isAnthropicErrorUnableToParseToolParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/errors";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import {
   getInferenceClient,
   getModel,
@@ -200,14 +202,29 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     });
   }
 
-  private async buildBaseRequestPayload({
-    conversation,
-    hasConditionalJITTools,
-    toolSearchEnabled,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): Promise<MessageCreateParamsNonStreaming> {
+  private async buildBaseRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): Promise<MessageCreateParamsNonStreaming> {
+    const {
+      conversation,
+      hasConditionalJITTools,
+      toolSearchEnabled,
+      prompt,
+      specifications,
+      forceToolCall,
+    } = streamParameters;
+
+    if (detectAnthropicToolSearchEnableSkillConflict(conversation.messages)) {
+      logger.warn(
+        {
+          ...this.metadata,
+          toolSearchEnabled,
+          messageCount: conversation.messages.length,
+        },
+        "[tool-search] Anthropic request contains unresolved tool search after enable_skill"
+      );
+    }
+
     const messages = await concurrentExecutor(
       conversation.messages,
       (msg, index) =>
@@ -276,11 +293,13 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       model: this.modelId,
       ...thinkingConfig,
       system,
-      messages,
+      messages: stripUnreplayableToolSearchBlocks(messages, {
+        toolSearchInRequest: includesToolSearchTool(tools),
+      }),
       temperature: this.temperature ?? undefined,
       tools,
       max_tokens: this.modelConfig.generationTokensCount,
-      tool_choice: toToolChoiceParam(specifications, forceToolCall),
+      tool_choice: toToolChoiceParam(specifications, streamParameters),
     };
   }
 

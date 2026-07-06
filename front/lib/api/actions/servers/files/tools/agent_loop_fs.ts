@@ -1,5 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,7 +13,9 @@ type ToolConversationExtra = Pick<ToolHandlerExtra, "toolContext">;
 export function requireAgentLoopConversation(
   extra: ToolConversationExtra
 ): Result<ConversationWithoutContentType, MCPError> {
-  const conversation = extra.toolContext?.runContext?.conversation;
+  const conversation = isAgentLoopRunContext(extra.toolContext?.runContext)
+    ? extra.toolContext?.runContext?.conversation
+    : null;
   if (!conversation) {
     return new Err(
       new MCPError("No conversation context available.", { tracked: false })

@@ -49,6 +49,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Listing supported formats",
       done: "List supported formats",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   convert_file_format: {
     description:
@@ -78,6 +80,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Converting file",
       done: "Convert file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   generate_file: {
     description:
@@ -107,6 +111,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Generating file",
       done: "Generate file",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -124,6 +130,8 @@ export const FILE_GENERATION_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FILE_GENERATION_TOOLS_METADATA).map((t) => [t.name, t.stake])

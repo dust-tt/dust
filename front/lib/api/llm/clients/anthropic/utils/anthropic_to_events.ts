@@ -46,6 +46,11 @@ const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
 const INVALID_JSON_MARKER = "JSON: ";
 const INVALID_TOOL_JSON_NEEDLE = "Unable to parse tool parameter JSON";
 
+type StreamStateContainer = {
+  state: StreamState;
+  toolSearchQueriesByToolUseId: Map<string, string | undefined>;
+};
+
 // Extract the prompt-cache diagnostics reason from a message_start, when the
 // request opted into diagnostics (beta header + `diagnostics.previous_message_id`).
 // `diagnostics` is null when there was nothing to compare or no divergence.
@@ -69,7 +74,10 @@ export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
-  const stateContainer: { state: StreamState } = { state: null };
+  const stateContainer: StreamStateContainer = {
+    state: null,
+    toolSearchQueriesByToolUseId: new Map<string, string | undefined>(),
+  };
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
   const aggregate = new SuccessAggregate();
   // Accumulate token usage to return later
@@ -147,7 +155,7 @@ export async function* streamLLMEvents(
 
 function* handleMessageStreamEvent(
   messageStreamEvent: BetaRawMessageStreamEvent,
-  stateContainer: { state: StreamState },
+  stateContainer: StreamStateContainer,
   metadata: LLMClientMetadata,
   tokenUsageAccumulator: Required<TokenUsage>
 ): Generator<LLMEvent> {
@@ -217,7 +225,7 @@ function* handleMessageStreamEvent(
 
 function* handleContentBlockStart(
   event: Extract<BetaRawMessageStreamEvent, { type: "content_block_start" }>,
-  stateContainer: { state: StreamState },
+  stateContainer: StreamStateContainer,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   assert(
@@ -273,11 +281,19 @@ function* handleContentBlockStart(
       };
       return;
 
-    case "tool_search_tool_result":
+    case "tool_search_tool_result": {
       // Emit a passthrough so the block replays verbatim, and log the discovered
-      // references. State stays null, so the matching stop is a no-op.
+      // references with the matching query. State stays null, so the matching
+      // stop is a no-op.
+      const query = stateContainer.toolSearchQueriesByToolUseId.get(
+        event.content_block.tool_use_id
+      );
+      stateContainer.toolSearchQueriesByToolUseId.delete(
+        event.content_block.tool_use_id
+      );
       logToolSearchResult({
         content: event.content_block.content,
+        query,
         logFields: metadata,
       });
       yield providerPassthrough(
@@ -289,6 +305,7 @@ function* handleContentBlockStart(
         metadata
       );
       return;
+    }
 
     case "web_search_tool_result":
     case "web_fetch_tool_result":
@@ -318,7 +335,7 @@ function* handleContentBlockStart(
 
 function* handleContentBlockDelta(
   event: Extract<BetaRawMessageStreamEvent, { type: "content_block_delta" }>,
-  stateContainer: { state: StreamState },
+  stateContainer: StreamStateContainer,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   validateContentBlockIndex(stateContainer.state, event);
@@ -363,7 +380,7 @@ function* handleContentBlockDelta(
 
 function* handleContentBlockStop(
   event: Extract<MessageStreamEvent, { type: "content_block_stop" }>,
-  stateContainer: { state: StreamState },
+  stateContainer: StreamStateContainer,
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   // A null state here means the block's content_block_start was ignored (e.g.
@@ -424,12 +441,16 @@ function* handleContentBlockStop(
     }
 
     case "tool_search": {
-      logToolSearchQuery({
+      const query = logToolSearchQuery({
         rawInput: stateContainer.state.accumulator,
         toolName: stateContainer.state.toolName,
         tags: toolSearchTags(metadata),
         logFields: metadata,
       });
+      stateContainer.toolSearchQueriesByToolUseId.set(
+        stateContainer.state.toolId,
+        query
+      );
       // Replay the server_tool_use block verbatim so interleaved thinking
       // signatures stay valid, falling back to an empty input if the query
       // failed to parse.

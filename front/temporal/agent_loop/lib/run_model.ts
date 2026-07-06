@@ -7,8 +7,8 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
+import { getAdvancedModelAccessErrorForAgentConfiguration } from "@app/lib/advanced_models/access";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -32,6 +32,8 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
+import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
+import { parseAnthropicToolSearchBlock } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -73,7 +75,10 @@ import type {
   AgentMessageType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import { isTextContent } from "@app/types/assistant/generation";
+import {
+  isTextContent,
+  type ModelConversationTypeMultiActions,
+} from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -83,11 +88,26 @@ import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
-const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
-  "web",
-  "slack",
-  "extension",
-  "agent_sidekick",
+const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
+  "api",
+  "cli",
+  "cli_programmatic",
+  "email",
+  "excel",
+  "gsheet",
+  "make",
+  "n8n",
+  "powerpoint",
+  "raycast",
+  "slack_workflow",
+  "teams",
+  "transcript",
+  "zapier",
+  "zendesk",
+  "onboarding_conversation",
+  "reinforced_skill_notification",
+  "reinforcement",
+  "branch_anchor",
 ];
 
 // Concatenate two content strings, ensuring at least one whitespace character
@@ -106,6 +126,47 @@ function concatWithNewlineBoundary(
     return previous + "\n" + current;
   }
   return previous + current;
+}
+
+function getReplayedToolNames(
+  modelConversation: ModelConversationTypeMultiActions
+): string[] {
+  const toolNames = new Set<string>();
+
+  for (const message of modelConversation.messages) {
+    switch (message.role) {
+      case "assistant":
+        for (const content of message.contents) {
+          if (content.type === "function_call") {
+            toolNames.add(content.value.name);
+          }
+          if (
+            content.type === "provider_passthrough" &&
+            content.value.provider === ANTHROPIC_PROVIDER_ID
+          ) {
+            const block = parseAnthropicToolSearchBlock(content.value.block);
+
+            if (
+              block?.type === "tool_search_tool_result" &&
+              block.content.type === "tool_search_tool_search_result"
+            ) {
+              for (const ref of block.content.tool_references) {
+                toolNames.add(ref.tool_name);
+              }
+            }
+          }
+        }
+        break;
+      case "function":
+      case "compaction":
+      case "user":
+        break;
+      default:
+        assertNever(message);
+    }
+  }
+
+  return [...toolNames];
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
@@ -222,6 +283,23 @@ export async function runModel(
     return null;
   }
 
+  const featureFlags = await getFeatureFlags(auth);
+
+  if (step === 0) {
+    const accessError = await getAdvancedModelAccessErrorForAgentConfiguration(
+      auth,
+      {
+        agentName: agentConfiguration.name,
+        model,
+        featureFlags,
+      }
+    );
+    if (accessError) {
+      await publishAgentError(accessError);
+      return null;
+    }
+  }
+
   const {
     enabledSkills,
     systemSkills,
@@ -293,11 +371,11 @@ export async function runModel(
     );
   }
 
-  // Filter out ask_user_question when no human is available to answer: origins that don't
-  // support interactive questions, or sub-agent runs (conversation depth > 0) where the
+  // Filter out ask_user_question when no human is available to answer: origins with no
+  // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
   // "user" is the parent agent rather than a human.
   const supportsInteractiveQuestions =
-    ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(userMessage.context.origin) &&
+    !ASK_USER_QUESTION_BLOCKED_ORIGINS.includes(userMessage.context.origin) &&
     conversation.depth === 0;
 
   const filteredMcpActions = supportsInteractiveQuestions
@@ -306,11 +384,13 @@ export async function runModel(
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
-  // If we are on the last step, we don't show any action.
-  // This will force the agent to run the generation.
-  const availableActions = isLastStep
-    ? []
-    : filteredMcpActions.flatMap((s) => s.tools);
+  // On the last step we force the agent to run the generation: the tools are
+  // still sent, so the request keeps the same shape as previous steps (stable
+  // tool definitions preserve prompt caching and keep tool references in the
+  // replayed history resolvable), but the model is forbidden from calling them
+  // (tool choice "none").
+  const disableToolUse = isLastStep;
+  const availableActions = filteredMcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (agentConfiguration.actions.length || availableActions.length > 0) {
@@ -318,16 +398,6 @@ export async function runModel(
   } else {
     fallbackPrompt += ".";
   }
-
-  const agentsList = agentConfiguration.instructions?.includes(
-    "{ASSISTANTS_LIST}"
-  )
-    ? await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: auth.user() ? "list" : "all",
-        variant: "light",
-      })
-    : null;
 
   let toolsetsContext: string | undefined;
   const hasToolsetsAction = agentConfiguration.actions.some((action) =>
@@ -365,7 +435,6 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const featureFlags = await getFeatureFlags(auth);
   const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
   const disableFormattingPrompt = featureFlags.includes(
     "disable_formatting_prompt"
@@ -378,12 +447,9 @@ export async function runModel(
     model,
     hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
-    agentsList,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,
-    enabledSkills,
-    equippedSkills,
     toolsetsContext,
     userContext,
     workspaceContext,
@@ -400,14 +466,14 @@ export async function runModel(
   // deferred behind tool search is an Anthropic-specific policy applied in the
   // Anthropic client, gated on `toolSearchEnabled` (threaded through below).
   const toolSearchEnabled = featureFlags.includes("anthropic_tool_search");
-  const specifications: AgentActionSpecification[] = availableActions.map((a) =>
-    buildToolSpecification(a)
+  const baseSpecifications: AgentActionSpecification[] = availableActions.map(
+    (a) => buildToolSpecification(a)
   );
 
   // Count the number of tokens used by the functions presented to the model.
   // This is a rough estimate of the number of tokens.
   const tools = JSON.stringify(
-    specifications.map((s) => ({
+    baseSpecifications.map((s) => ({
       name: s.name,
       description: s.description,
       inputSchema: s.inputSchema,
@@ -457,6 +523,45 @@ export async function runModel(
 
     return null;
   }
+
+  const replayedToolNames = getReplayedToolNames(
+    modelConversationRes.value.modelConversation
+  );
+  const currentToolNames = new Set(baseSpecifications.map((spec) => spec.name));
+  const missingReplayedToolNames = replayedToolNames.filter(
+    (name) => !currentToolNames.has(name)
+  );
+
+  if (missingReplayedToolNames.length > 0) {
+    localLogger.info(
+      {
+        missingReplayedToolNames,
+        replayedToolNames,
+      },
+      "Replayed tools missing from current specifications"
+    );
+  }
+
+  const specifications = baseSpecifications;
+  // TODO(2026-07-06 aubin): uncomment once we confirm we need this.
+  // const specifications = [
+  //   ...baseSpecifications.map((spec) =>
+  //     replayedToolNames.includes(spec.name) ? { ...spec, eager: true } : spec
+  //   ),
+  //   ...missingReplayedToolNames.map((name) => ({
+  //     name,
+  //     description:
+  //       "Replay-only placeholder for a historical tool call. " +
+  //       "This tool is not available for new calls.",
+  //     inputSchema: {
+  //       type: "object",
+  //       properties: {},
+  //       required: [],
+  //       additionalProperties: true,
+  //     },
+  //     eager: true,
+  //   })),
+  // ];
 
   // Temporarily adding this to check if we can consider contents property only in llms
   const unexpectedMessage =
@@ -567,10 +672,7 @@ export async function runModel(
     "[LLM stream] Starting (agent loop)"
   );
 
-  if (
-    modelConversationRes.value.prunedContext === true &&
-    !agentMessage.prunedContext
-  ) {
+  if (modelConversationRes.value.prunedContext && !agentMessage.prunedContext) {
     await updateAgentMessageDBAndMemory(auth, {
       agentMessage,
       update: {
@@ -599,6 +701,7 @@ export async function runModel(
     conversation,
     hasConditionalJITTools,
     toolSearchEnabled,
+    disableToolUse,
     cacheDiagnosticsEnabled: featureFlags.includes(
       "anthropic_cache_diagnostics"
     ),

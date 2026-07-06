@@ -22,7 +22,7 @@ function makeExtra(
   conversation: ConversationType
 ): ToolHandlerExtra {
   const toolContext = {
-    runContext: { conversation },
+    runContext: { contextType: "agent_loop", conversation },
   } as unknown as ToolContextType;
   return { auth, toolContext } as unknown as ToolHandlerExtra;
 }

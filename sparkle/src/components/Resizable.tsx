@@ -51,7 +51,7 @@ const ResizableHandle = ({
       <div
         className={cn(
           "absolute flex h-6 w-2 items-center justify-center rounded-2xl",
-          "border border-gray-100 bg-background"
+          "border border-border bg-background"
         )}
       >
         <div className="w-px" />

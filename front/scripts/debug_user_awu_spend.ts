@@ -31,8 +31,8 @@ import {
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
-  isToolCategory,
-  TOOL_CATEGORY_AWU_WEIGHTS,
+  isToolCostCategory,
+  TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
@@ -197,10 +197,10 @@ makeScript(
     let toolTrimmed = 0;
     for (const e of toolResult.value) {
       const category = e.group?.["tool_category"];
-      if (e.value === null || !category || !isToolCategory(category)) {
+      if (e.value === null || !category || !isToolCostCategory(category)) {
         continue;
       }
-      const awuSpent = e.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
+      const awuSpent = e.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
       const tsMs = new Date(e.startingOn).getTime();
       const usageType = e.group?.[USAGE_TYPE_GROUP_KEY] ?? "?";
       const trimmed = tsMs < cycleStartMs;
@@ -277,12 +277,12 @@ makeScript(
           e.group?.["user_id"] !== userId ||
           e.value === null ||
           !category ||
-          !isToolCategory(category) ||
+          !isToolCostCategory(category) ||
           new Date(e.startingOn).getTime() < cycleStartMs
         ) {
           continue;
         }
-        canonTool += e.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
+        canonTool += e.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
       }
     }
     logger.info(
@@ -389,12 +389,12 @@ makeScript(
           e.value === null ||
           e.group?.[USAGE_TYPE_GROUP_KEY] === "free" ||
           !category ||
-          !isToolCategory(category) ||
+          !isToolCostCategory(category) ||
           new Date(e.startingOn).getTime() < cycleStartMs
         ) {
           continue;
         }
-        fixTool += e.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
+        fixTool += e.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
       }
     }
     logger.info(

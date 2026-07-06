@@ -10,12 +10,18 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
+import {
+  EditAdvancedModelsModal,
+  type EditAdvancedModelsTarget,
+} from "@app/components/workspace/EditAdvancedModelsModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
+import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
+import { AdvancedModelsSettingsCard } from "@app/components/workspace/usage/AdvancedModelsSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
@@ -27,6 +33,7 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { buildAdvancedModelDisplayNameMap } from "@app/lib/client/advanced_models";
 import { formatCredits } from "@app/lib/client/credits";
 import {
   isCreditPricedFreePlan,
@@ -35,6 +42,12 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import {
+  useAdvancedModels,
+  useGroupAllowedAdvancedModels,
+  useUserAllowedAdvancedModels,
+  useWorkspaceAllowedAdvancedModels,
+} from "@app/lib/swr/advanced_models";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
@@ -54,7 +67,7 @@ import {
 } from "@app/lib/swr/upgrade_requests";
 import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
-  useAwuUsage,
+  useAwuUsageFromAnalytics,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -212,6 +225,8 @@ export function UsagePage() {
   );
   const [editSpendLimitMember, setEditSpendLimitMember] =
     useState<MemberUsageType | null>(null);
+  const [editAdvancedModelsTarget, setEditAdvancedModelsTarget] =
+    useState<EditAdvancedModelsTarget | null>(null);
   const [
     totalAllowedUsagePendingMemberIds,
     setTotalAllowedUsagePendingMemberIds,
@@ -225,15 +240,13 @@ export function UsagePage() {
       }),
     []
   );
-  // Admin-only Requests tab: pending member-initiated upgrade requests, resolved
-  // by approving (via the seat / spend-limit modals) or denying.
   const isWorkspaceAdmin = isAdmin(owner);
+  const modelsPickerEnabled = hasFeature("models_picker") && isWorkspaceAdmin;
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
   const { upgradeRequests, isUpgradeRequestsLoading } = useUpgradeRequests({
     workspaceId: owner.sId,
-    disabled: !isWorkspaceAdmin,
   });
 
   const filteredUpgradeRequests = useMemo(() => {
@@ -281,6 +294,23 @@ export function UsagePage() {
     (member: MemberUsageType) => {
       setPendingApproveRequestId(null);
       setEditSpendLimitMember(member);
+    },
+    []
+  );
+  const handleEditAdvancedModelsFromTable = useCallback(
+    (member: MemberUsageType) => {
+      setEditAdvancedModelsTarget({
+        scope: "user",
+        userId: member.sId,
+        name: member.name,
+        image: member.image,
+      });
+    },
+    []
+  );
+  const handleEditWorkspaceAdvancedModels = useCallback(
+    (target: Extract<EditAdvancedModelsTarget, { scope: "workspace" }>) => {
+      setEditAdvancedModelsTarget(target);
     },
     []
   );
@@ -380,19 +410,34 @@ export function UsagePage() {
   // Legacy contracts have no pool credits or commits, so the pool summary's
   // overage figure is meaningless. In read-only mode we instead show the
   // period's raw consumption from the AWU usage analytics endpoint (the same
-  // data the chart below renders), summing its ungrouped "total" series for the
-  // current billing cycle.
-  const { awuUsageData } = useAwuUsage({
+  // ES-backed data the usage charts use), summing its ungrouped "total" series
+  // over the current billing cycle.
+  const daysSinceCycleStart = useMemo(() => {
+    const now = new Date();
+    // Clamp the cycle day to 28 to avoid short-month edge cases — this only
+    // feeds a read-only estimate of the period's consumption.
+    const startDay = Math.min(billingCycleStartDay ?? 1, 28);
+    const start = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), startDay)
+    );
+    if (start.getTime() > now.getTime()) {
+      start.setUTCMonth(start.getUTCMonth() - 1);
+    }
+    return Math.max(
+      1,
+      Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    );
+  }, [billingCycleStartDay]);
+  const { awuUsageData } = useAwuUsageFromAnalytics({
     workspaceId: owner.sId,
-    billingCycleStartDay: billingCycleStartDay ?? 1,
-    windowSize: "DAY",
+    granularity: "day",
+    days: daysSinceCycleStart,
     disabled: !isReadOnly,
   });
   const periodSpendCredits = useMemo(
     () =>
       (awuUsageData?.points ?? []).reduce(
-        (sum, point) =>
-          sum + point.groups.reduce((s, group) => s + group.valueCredits, 0),
+        (sum, point) => sum + (point.values.total ?? 0),
         0
       ),
     [awuUsageData]
@@ -417,10 +462,74 @@ export function UsagePage() {
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
-    disabled: !isWorkspaceAdmin || !pricingGroupsEnabled,
+    disabled: !pricingGroupsEnabled && !modelsPickerEnabled,
   });
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
+
+  const { models: advancedModelsCatalog } = useAdvancedModels({
+    owner,
+    disabled: !modelsPickerEnabled,
+  });
+  const { users: userAllowedAdvancedModels } = useUserAllowedAdvancedModels({
+    owner,
+    disabled: !modelsPickerEnabled,
+  });
+  const { groups: groupAllowedAdvancedModels } = useGroupAllowedAdvancedModels({
+    owner,
+    disabled: !modelsPickerEnabled,
+  });
+  const { models: workspaceAllowedAdvancedModels } =
+    useWorkspaceAllowedAdvancedModels({
+      owner,
+      disabled: !modelsPickerEnabled,
+    });
+  const advancedModelDisplayNameByKey = useMemo(
+    () => buildAdvancedModelDisplayNameMap(advancedModelsCatalog),
+    [advancedModelsCatalog]
+  );
+  const userAllowedAdvancedModelsByUserId = useMemo(() => {
+    const map: Record<
+      string,
+      (typeof userAllowedAdvancedModels)[number]["models"]
+    > = {};
+    for (const entry of userAllowedAdvancedModels) {
+      map[entry.userId] = entry.models;
+    }
+    return map;
+  }, [userAllowedAdvancedModels]);
+  const groupAdvancedModelsByGroupId = useMemo(() => {
+    const map: Record<
+      string,
+      (typeof groupAllowedAdvancedModels)[number]["models"]
+    > = {};
+    for (const entry of groupAllowedAdvancedModels) {
+      map[entry.groupId] = entry.models;
+    }
+    return map;
+  }, [groupAllowedAdvancedModels]);
+  const groupNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of groups) {
+      map.set(group.name, group.sId);
+    }
+    return map;
+  }, [groups]);
+
+  const handleEditGroupAdvancedModels = useCallback(() => {
+    if (!groupFilter) {
+      return;
+    }
+    const group = groups.find((g) => g.sId === groupFilter);
+    if (!group) {
+      return;
+    }
+    setEditAdvancedModelsTarget({
+      scope: "group",
+      groupId: group.sId,
+      name: group.name,
+    });
+  }, [groupFilter, groups]);
 
   // Cross-page selection for batch actions on the members table. Resets when the
   // filter identity changes (the "all matching" set is no longer the same).
@@ -723,19 +832,26 @@ export function UsagePage() {
       isRefreshing={isMembersUsageRefreshing}
       readOnly={isReadOnly}
       showSpendLimit={!isFreePlanWorkspace}
+      showAdvancedModelsColumn={modelsPickerEnabled}
+      userAllowedAdvancedModelsByUserId={userAllowedAdvancedModelsByUserId}
+      groupAdvancedModelsByGroupId={groupAdvancedModelsByGroupId}
+      workspaceAllowedAdvancedModels={workspaceAllowedAdvancedModels}
+      groupNameToId={groupNameToId}
+      advancedModelDisplayNameByKey={advancedModelDisplayNameByKey}
       totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
       seatChangePendingMemberIds={seatChangePendingMemberIds}
       isSeatBased={isSeatBased}
       onChangeSeat={handleChangeSeatFromTable}
       onRemoveSeat={onRemoveSeat}
       onEditSpendLimit={handleEditSpendLimitFromTable}
+      onEditAdvancedModels={handleEditAdvancedModelsFromTable}
       pagination={pagination}
       setPagination={setPagination}
       totalRowCount={totalMembersUsage}
       sorting={sorting}
       setSorting={handleSetSorting}
       showGroupsColumn={pricingGroupsEnabled && groups.length > 0}
-      enableSelection={pricingGroupsEnabled && isWorkspaceAdmin && !isReadOnly}
+      enableSelection={pricingGroupsEnabled && !isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
     />
@@ -770,7 +886,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <div className="flex items-center justify-between">
           <Page.Header title="Usage" icon={PieChart01} />
-          {!isReadOnly && usageSettings.topUpEnabled && (
+          {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
             <Button
               label="Top up"
               icon={ArrowUp}
@@ -868,70 +984,73 @@ export function UsagePage() {
             {isWorkspaceAdmin && pricingGroupsEnabled && (
               <TabsTrigger value="groups" label="Groups" />
             )}
-            <TabsTrigger value="settings" label="Settings" />
+            {isWorkspaceAdmin && isCreditPriced && (
+              <TabsTrigger value="top-ups" label="Top-ups history" />
+            )}
+            {isWorkspaceAdmin && (
+              <TabsTrigger value="settings" label="Settings" />
+            )}
           </TabsList>
 
           <TabsContent value="members">
             <Page.Vertical gap="sm" align="stretch">
               {searchAndInviteRow}
-              {isWorkspaceAdmin ? (
-                <div className="flex flex-col gap-2">
-                  <div className="flex flex-row items-center justify-between gap-2">
-                    <ButtonsSwitchList
-                      size="xs"
-                      defaultValue="members"
-                      onValueChange={(v) =>
-                        setMembersTab(v === "requests" ? "requests" : "members")
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-row items-center justify-between gap-2">
+                  <ButtonsSwitchList
+                    size="xs"
+                    defaultValue="members"
+                    onValueChange={(v: string) =>
+                      setMembersTab(v === "requests" ? "requests" : "members")
+                    }
+                  >
+                    <ButtonsSwitch value="members" label="Members" />
+                    <ButtonsSwitch
+                      value="requests"
+                      label="Requests"
+                      isCounter
+                      counterValue={
+                        filteredUpgradeRequests.length > 0
+                          ? String(filteredUpgradeRequests.length)
+                          : undefined
                       }
-                    >
-                      <ButtonsSwitch value="members" label="Members" />
-                      <ButtonsSwitch
-                        value="requests"
-                        label="Requests"
-                        isCounter
-                        counterValue={
-                          filteredUpgradeRequests.length > 0
-                            ? String(filteredUpgradeRequests.length)
-                            : undefined
-                        }
-                      />
-                    </ButtonsSwitchList>
-                    {membersTab === "members" && (
-                      <div className="flex flex-row items-center gap-2">
-                        {groupsFilterDropdown}
-                        {seatFilterDropdown}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 pt-2">
-                    {membersTab === "members" ? (
-                      <>
-                        {selectionBanner}
-                        {membersTable}
-                      </>
-                    ) : (
-                      <UpgradeRequestsTable
-                        requests={filteredUpgradeRequests}
-                        isLoading={isUpgradeRequestsLoading}
-                        seatPlans={seatPlans}
-                        pendingRequestIds={resolvingRequestIds}
-                        onUpgradePlan={handleUpgradePlanRequest}
-                        onEditLimit={handleEditLimitRequest}
-                        onDeny={handleDenyRequest}
-                      />
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {seatFilterDropdown && (
-                    <div className="flex flex-row justify-end">
+                    />
+                  </ButtonsSwitchList>
+                  {membersTab === "members" && (
+                    <div className="flex flex-row items-center gap-2">
+                      {groupsFilterDropdown}
+                      {modelsPickerEnabled && groupFilter && (
+                        <Button
+                          label="Edit group advanced models"
+                          variant="outline"
+                          size="sm"
+                          disabled={isReadOnly}
+                          onClick={handleEditGroupAdvancedModels}
+                        />
+                      )}
                       {seatFilterDropdown}
                     </div>
                   )}
-                  {membersTable}
-                </>
-              )}
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  {membersTab === "members" ? (
+                    <>
+                      {selectionBanner}
+                      {membersTable}
+                    </>
+                  ) : (
+                    <UpgradeRequestsTable
+                      requests={filteredUpgradeRequests}
+                      isLoading={isUpgradeRequestsLoading}
+                      seatPlans={seatPlans}
+                      pendingRequestIds={resolvingRequestIds}
+                      onUpgradePlan={handleUpgradePlanRequest}
+                      onEditLimit={handleEditLimitRequest}
+                      onDeny={handleDenyRequest}
+                    />
+                  )}
+                </div>
+              </div>
             </Page.Vertical>
           </TabsContent>
 
@@ -941,28 +1060,45 @@ export function UsagePage() {
             </TabsContent>
           )}
 
-          <TabsContent value="settings">
-            <div className="flex flex-col gap-10">
-              <UsageSettingsCard
-                workspaceId={owner.sId}
-                readOnly={isReadOnly}
-                hasPool={hasPool}
-              />
-              <LockedSection
-                locked={!isAwuPoolSummaryLoading && !hasPool}
-                className="flex flex-col gap-10"
-              >
-                <UsageProgrammaticLimitCard
+          {isWorkspaceAdmin && isCreditPriced && (
+            <TabsContent value="top-ups">
+              <TopUpsHistoryTable owner={owner} />
+            </TabsContent>
+          )}
+
+          {isWorkspaceAdmin && (
+            <TabsContent value="settings">
+              <div className="flex flex-col gap-10">
+                <UsageSettingsCard
                   workspaceId={owner.sId}
                   readOnly={isReadOnly}
+                  hasPool={hasPool}
                 />
-                <UsageNotificationsCard
-                  workspaceId={owner.sId}
-                  readOnly={isReadOnly}
-                />
-              </LockedSection>
-            </div>
-          </TabsContent>
+                {modelsPickerEnabled && (
+                  <AdvancedModelsSettingsCard
+                    owner={owner}
+                    readOnly={isReadOnly}
+                    onEditWorkspaceAdvancedModels={
+                      handleEditWorkspaceAdvancedModels
+                    }
+                  />
+                )}
+                <LockedSection
+                  locked={!isAwuPoolSummaryLoading && !hasPool}
+                  className="flex flex-col gap-10"
+                >
+                  <UsageProgrammaticLimitCard
+                    workspaceId={owner.sId}
+                    readOnly={isReadOnly}
+                  />
+                  <UsageNotificationsCard
+                    workspaceId={owner.sId}
+                    readOnly={isReadOnly}
+                  />
+                </LockedSection>
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
@@ -1007,6 +1143,13 @@ export function UsagePage() {
         onClose={() => setIsBulkSpendLimitOpen(false)}
         memberCount={selection.selectedCount}
         onValidate={handleBulkSpendLimitValidate}
+      />
+      <EditAdvancedModelsModal
+        isOpen={editAdvancedModelsTarget !== null}
+        onClose={() => setEditAdvancedModelsTarget(null)}
+        owner={owner}
+        target={editAdvancedModelsTarget}
+        readOnly={isReadOnly}
       />
     </>
   );

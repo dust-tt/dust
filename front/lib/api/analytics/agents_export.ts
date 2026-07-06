@@ -31,6 +31,7 @@ interface AgentMetadataRow {
   modelId: string;
   providerId: string;
   authorEmail: string | null;
+  editorEmails: string[] | null;
   lastEdit: string;
 }
 
@@ -42,11 +43,26 @@ export interface AgentExportRow {
   modelId: string;
   providerId: string;
   authorEmails: string;
+  // Emails of every user who edited any version of the agent
+  // Returned as an array in JSON; CSV renders it joined with "; "
+  editorEmails: string[];
   messages: number;
   distinctUsersReached: number;
   distinctConversations: number;
   lastEdit: string;
   credits: number;
+}
+
+// CSV projection of AgentExportRow: the CSV serializer only handles scalar
+// cells, so the array-valued editorEmails is joined into a single
+// comma-separated string. The serializer then wraps it in double quotes
+// automatically since the cell contains commas.
+export type AgentExportCsvRow = Omit<AgentExportRow, "editorEmails"> & {
+  editorEmails: string;
+};
+
+export function toAgentExportCsvRow(row: AgentExportRow): AgentExportCsvRow {
+  return { ...row, editorEmails: row.editorEmails.join(",") };
 }
 
 export const AGENT_EXPORT_HEADERS: (keyof AgentExportRow)[] = [
@@ -57,6 +73,7 @@ export const AGENT_EXPORT_HEADERS: (keyof AgentExportRow)[] = [
   "modelId",
   "providerId",
   "authorEmails",
+  "editorEmails",
   "messages",
   "distinctUsersReached",
   "distinctConversations",
@@ -119,7 +136,8 @@ export async function fetchAgentExportRows(
     ])
   );
 
-  const scopeFilter = includeHiddenAgents ? "" : `AND ac."scope" != 'hidden'`;
+  const scopeFilter = (alias: string) =>
+    includeHiddenAgents ? "" : `AND ${alias}."scope" != 'hidden'`;
 
   // TODO(BACK5): Migrate to AgentConfigurationResource when a suitable method exists.
   const readReplica = getFrontReplicaDbConnection();
@@ -137,15 +155,36 @@ export async function fetchAgentExportRows(
            ac."modelId",
            ac."providerId",
            aut."email" AS "authorEmail",
+           editors."editorEmails",
            COALESCE(
              CAST(ac."updatedAt" AS DATE),
              CAST(ac."createdAt" AS DATE)
            ) AS "lastEdit"
     FROM "agent_configurations" ac
       LEFT JOIN "users" aut ON ac."authorId" = aut."id"
+      -- Aggregate the emails of every user who authored any version of the
+      -- agent (matching how "lastAuthors" is sourced in recent_authors.ts:
+      -- distinct authorIds across all versions, not just the active one).
+      LEFT JOIN (
+        SELECT av."sId",
+               ARRAY_AGG(DISTINCT edt."email") AS "editorEmails"
+        FROM "agent_configurations" av
+          JOIN "users" edt ON av."authorId" = edt."id"
+        WHERE av."workspaceId" = :wId
+          -- Only aggregate versions of the agents the outer query exports;
+          -- computing editors for archived/draft agents is wasted work.
+          AND av."sId" IN (
+            SELECT act."sId"
+            FROM "agent_configurations" act
+            WHERE act."workspaceId" = :wId
+              AND act."status" = 'active'
+              ${scopeFilter("act")}
+          )
+        GROUP BY av."sId"
+      ) editors ON editors."sId" = ac."sId"
     WHERE ac."workspaceId" = :wId
       AND ac."status" = 'active'
-      ${scopeFilter}
+      ${scopeFilter("ac")}
     `,
     {
       type: QueryTypes.SELECT,
@@ -163,6 +202,7 @@ export async function fetchAgentExportRows(
       modelId: agent.modelId,
       providerId: agent.providerId,
       authorEmails: agent.authorEmail ?? "",
+      editorEmails: agent.editorEmails ?? [],
       messages: metrics?.messages ?? 0,
       distinctUsersReached: metrics?.distinctUsersReached ?? 0,
       distinctConversations: metrics?.distinctConversations ?? 0,
@@ -189,6 +229,7 @@ export async function fetchAgentExportRows(
         modelId: agent.model.modelId,
         providerId: agent.model.providerId,
         authorEmails: "",
+        editorEmails: [],
         messages: metrics?.messages ?? 0,
         distinctUsersReached: metrics?.distinctUsersReached ?? 0,
         distinctConversations: metrics?.distinctConversations ?? 0,

@@ -2,6 +2,7 @@ import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { loadSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
@@ -11,6 +12,7 @@ import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import { Err, Ok } from "@app/types/shared/result";
+import assert from "assert";
 
 function extractSkillIdsFromConversationMessages(
   agentLoopData: AgentLoopExecutionData
@@ -96,9 +98,10 @@ async function findAvailableSkillForAgentLoop({
 
 const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
   [ENABLE_SKILL_TOOL_NAME]: async ({ skillName }, { auth, toolContext }) => {
-    if (!toolContext?.runContext) {
-      return new Err(new MCPError("No conversation context available"));
-    }
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
     const { agentConfiguration, agentMessage, conversation, userMessage } =
       toolContext.runContext;

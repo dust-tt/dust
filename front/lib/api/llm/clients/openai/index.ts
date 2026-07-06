@@ -88,14 +88,10 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
   }
 
   private buildRequestPayload(
-    {
-      conversation,
-      prompt,
-      specifications,
-      forceToolCall,
-    }: LLMStreamParameters,
+    streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
   ): ResponseCreateParamsBase {
+    const { conversation, prompt, specifications } = streamParameters;
     const promptText = systemPromptToText(prompt);
     const reasoning = toReasoning(this.modelId, this.reasoningEffort);
 
@@ -113,7 +109,7 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
         reasoning !== null && reasoning.effort !== "none"
           ? ["reasoning.encrypted_content"]
           : [],
-      tool_choice: toToolOption(specifications, forceToolCall),
+      tool_choice: toToolOption(specifications, streamParameters),
       ...(metadata ? { prompt_cache_key: metadata.conversationId } : {}),
     };
   }

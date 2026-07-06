@@ -4,6 +4,7 @@ import type {
   Model,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
@@ -26,6 +27,7 @@ import {
   toolSpecsToAnthropicAITools,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
+import { toToolChoiceInput } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   Payload,
   SystemTextMessage,
@@ -100,16 +102,24 @@ export function WithAnthropicAIInputConverter<
 
       const system = this.systemMessagesToSystemParam(conversation.system);
 
+      const renderedMessages = await this.conversationToMessages(conversation);
+      const messages = stripUnreplayableToolSearchBlocks(renderedMessages, {
+        toolSearchInRequest: includesToolSearchTool(anthropicTools),
+      });
+
       return {
         model: this.modelIdToApiModelId(this.constructor.modelId),
         max_tokens: this.constructor.maxOutputTokens,
-        messages: await this.conversationToMessages(conversation),
+        messages,
         system: includesToolSearchTool(anthropicTools)
           ? [...system, { type: "text", text: TOOL_SEARCH_INSTRUCTION }]
           : system,
         thinking: thinkingConfig.thinking,
         tools: anthropicTools,
-        tool_choice: forceToolNameToToolChoice(tools, forceTool),
+        tool_choice: forceToolNameToToolChoice(
+          tools,
+          toToolChoiceInput(config)
+        ),
         temperature,
         ...(Object.keys(outputConfig).length > 0
           ? { output_config: outputConfig }

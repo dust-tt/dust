@@ -37,14 +37,20 @@ export const menuStyleClasses = {
   container: cn(
     "rounded-xl border-hovering p-1",
     "border border-border",
-    "bg-background",
+    "bg-overlay-background",
     "text-foreground",
     "z-50 min-w-[8rem]",
+    "origin-[var(--radix-dropdown-menu-content-transform-origin)]"
+  ),
+  // Enter/exit animation applied to the top-level dropdown content only. Nested
+  // sub-menus open instantly so they don't feel sluggish when drilling in.
+  containerAnimation: cn(
+    "duration-200 ease-enter data-[state=closed]:duration-150 motion-reduce:animate-none",
     "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
   ),
   item: cva(
     cn(
-      "relative flex gap-2 cursor-pointer select-none items-center outline-hidden rounded-lg heading-sm transition-colors data-[disabled]:pointer-events-none",
+      "relative flex gap-2 cursor-pointer select-none items-center outline-hidden rounded-lg heading-sm transition-colors duration-150 motion-reduce:transition-none data-[disabled]:pointer-events-none",
       "data-[disabled]:text-primary-400"
     ),
     {
@@ -52,15 +58,17 @@ export const menuStyleClasses = {
         variant: {
           default: cn(
             "p-2",
-            "hover:bg-muted-background",
+            "text-muted-foreground",
+            "hover:bg-hover hover:text-foreground",
             "focus:text-foreground",
-            "focus:bg-muted-background"
+            "focus:bg-hover"
           ),
           tags: cn(
             "p-0.5",
-            "hover:bg-muted-background",
+            "text-muted-foreground",
+            "hover:bg-hover hover:text-foreground",
             "focus:text-foreground",
-            "focus:bg-muted-background"
+            "focus:bg-hover"
           ),
           warning: cn(
             "p-2",
@@ -213,6 +221,9 @@ const DropdownMenuSubTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       menuStyleClasses.item({ variant: "default" }),
+      // Keep the trigger highlighted while its sub-menu is open, so the
+      // hover state doesn't drop when the pointer moves into the sub-menu.
+      "data-[state=open]:bg-hover data-[state=open]:text-foreground",
       inset ? menuStyleClasses.inset : "",
       className
     )}
@@ -246,33 +257,45 @@ interface DropdownMenuSubContentProps
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   DropdownMenuSubContentProps
->(({ className, children, dropdownHeaders, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn(
-      menuStyleClasses.container,
-      "flex flex-col shadow-lg",
-      dropdownHeaders && "h-80 xs:h-96",
-      className
-    )}
-    {...props}
-  >
-    {dropdownHeaders && (
-      <div className="sticky top-0 bg-background">{dropdownHeaders}</div>
-    )}
-    <ScrollArea
-      className="w-full flex-1"
-      hideScrollBar={false}
-      orientation="vertical"
-      viewportClassName={cn(
-        "flex-1",
-        "max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
-      )}
-    >
-      {children}
-    </ScrollArea>
-  </DropdownMenuPrimitive.SubContent>
-));
+>(({ className, children, dropdownHeaders, ...props }, ref) => {
+  const container = useSheetContainer();
+
+  // Always portal: a sub-menu rendered inline sits inside the parent menu's
+  // bg-overlay-background, where the nested-same-surface rule would strip its
+  // elevation shadow. Wrapping in an extra DropdownMenuPortal at the call
+  // site remains harmless.
+  return (
+    <DropdownMenuPrimitive.Portal container={container}>
+      <DropdownMenuPrimitive.SubContent
+        ref={ref}
+        className={cn(
+          menuStyleClasses.container,
+          "flex flex-col",
+          dropdownHeaders && "h-80 xs:h-96",
+          className
+        )}
+        {...props}
+      >
+        {dropdownHeaders && (
+          <div className="sticky top-0 bg-overlay-background">
+            {dropdownHeaders}
+          </div>
+        )}
+        <ScrollArea
+          className="w-full flex-1"
+          hideScrollBar={false}
+          orientation="vertical"
+          viewportClassName={cn(
+            "flex-1",
+            "max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+          )}
+        >
+          {children}
+        </ScrollArea>
+      </DropdownMenuPrimitive.SubContent>
+    </DropdownMenuPrimitive.Portal>
+  );
+});
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
@@ -474,14 +497,15 @@ const DropdownMenuContent = React.forwardRef<
         onKeyDown={handleKeyDown}
         className={cn(
           menuStyleClasses.container,
-          "flex flex-col shadow-md",
+          menuStyleClasses.containerAnimation,
+          "flex flex-col",
           dropdownHeaders && "h-80 xs:h-96", // We use dropdownHeaders for putting search bar, so we can set the height for the container
           className
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
-        <div className="sticky top-0 bg-background">
+        <div className="sticky top-0 bg-overlay-background">
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea
@@ -1056,6 +1080,7 @@ const DropdownTooltipTrigger = React.forwardRef<
         sideOffset={sideOffset}
         className={cn(
           menuStyleClasses.container,
+          menuStyleClasses.containerAnimation,
           "w-48 max-w-sm p-2 shadow-lg"
         )}
       >

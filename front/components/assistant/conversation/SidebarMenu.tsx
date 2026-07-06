@@ -661,20 +661,20 @@ export function AgentSidebarMenu({
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
 
-  const { setAnimate } = useContext(InputBarContext);
+  const { setShouldFocusInput } = useContext(InputBarContext);
 
   const handleNewClick = useCallback(async () => {
     setSidebarOpen(false);
-    const { cId } = router.query;
+    // Already on the new-conversation page: clicking "New" doesn't navigate, so
+    // the input bar isn't remounted and mount-time autofocus won't run. Request
+    // an explicit refocus instead. (activeConversationId is null on "new".)
     const isNewConversation =
-      (router.pathname === "/w/[wId]/conversation/[cId]" ||
-        router.pathname.match(/^\/w\/[^/]+\/conversation\/[^/]+$/)) &&
-      typeof cId === "string" &&
-      cId === "new";
+      router.pathname.match(/^\/w\/[^/]+\/conversation\/[^/]+$/) !== null &&
+      activeConversationId === null;
     if (isNewConversation) {
-      setAnimate(true);
+      setShouldFocusInput(true);
     }
-  }, [setSidebarOpen, router, setAnimate]);
+  }, [setSidebarOpen, router, activeConversationId, setShouldFocusInput]);
 
   const hasTriggeredConversations = useMemo(
     () =>
@@ -1258,7 +1258,7 @@ function UnreadConversationsSection({
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
             hasLighterFont
-            className="hover:s:bg-sidebar-foreground active:s:bg-sidebar-foreground"
+            className="hover:bg-hover active:bg-selected"
           />
         ) : null
       }

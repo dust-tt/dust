@@ -19,9 +19,10 @@ import {
   type HandledToolAbortClassification,
   makeToolInterruptionError,
 } from "@app/lib/actions/tool_interruptions";
-import type {
-  ActionGeneratedFileType,
-  ToolContextType,
+import {
+  type ActionGeneratedFileType,
+  isAgentLoopRunContext,
+  type ToolContextType,
 } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -191,8 +192,8 @@ const runAgent = async (
   }
 ): Promise<ToolHandlerResult> => {
   assert(
-    toolContext?.runContext,
-    "agentLoopContext is required to run the run_agent tool"
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
   );
 
   const abortSignal = signal ?? null;
@@ -504,7 +505,9 @@ const runAgent = async (
       conversationId,
       config.getAppUrl()
     );
-    const { citationsOffset } = toolContext.runContext.stepContext;
+    const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
+      ? toolContext.runContext.stepContext
+      : { citationsOffset: 0 };
 
     const refs = getRefs().slice(
       citationsOffset,
@@ -895,6 +898,8 @@ async function createServer(
           done: "No child agent configured",
         },
         schema: RUN_AGENT_CONFIGURABLE_PROPERTIES,
+        toolCostCategory: "basic" as const,
+        freeUsage: false,
         handler: async () => new Err(new MCPError("No child agent configured")),
       },
       {

@@ -38,6 +38,8 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
       running: "Asking user...",
       done: "User answered",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -55,6 +57,8 @@ export const ASK_USER_QUESTION_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ASK_USER_QUESTION_TOOLS_METADATA).map((t) => [

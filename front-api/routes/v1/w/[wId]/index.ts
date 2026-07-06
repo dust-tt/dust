@@ -14,6 +14,7 @@ import skills from "./skills";
 import spaces from "./spaces";
 import usage from "./usage";
 import verifiedDomains from "./verified_domains";
+import workspaceUsage from "./workspace-usage";
 
 // Mounted at /api/v1/w/:wId. Every route below inherits publicApiAuth, which
 // resolves the Authenticator from sandbox token, OAuth bearer, or API key
@@ -36,5 +37,6 @@ app.route("/skills", skills);
 app.route("/spaces", spaces);
 app.route("/usage", usage);
 app.route("/verified_domains", verifiedDomains);
+app.route("/workspace-usage", workspaceUsage);
 
 export default app;

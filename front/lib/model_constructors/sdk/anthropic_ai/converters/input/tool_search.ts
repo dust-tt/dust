@@ -19,17 +19,23 @@ const TOOL_SEARCH_TOOL_TYPE = TOOL_SEARCH_TOOL.type;
 // Added to the system prompt only when the search tool is in the request. Phrased
 // without naming the bm25 tool so it stays accurate across search implementations.
 //
-// The last sentence steers the model away from mixing a tool search with a
+// The second paragraph steers the model away from mixing a tool search with a
 // regular tool call in the same turn: the API leaves such searches un-run (the
 // turn ends on the tool call), and replaying the un-run blocks is fragile.
+// Skill-enabling tools are called out explicitly because they are the most
+// frequent offender observed in practice.
 export const TOOL_SEARCH_INSTRUCTION =
   "You can search for and load far more tools than are visible to you now, " +
   "including ones that fetch live or account-specific data and act in external " +
   "systems. When a request needs current state, the user's own systems, or an " +
   "action your visible tools cannot take, search for a tool before making " +
   "something up, answering from stale memory, or telling the user it is not " +
-  "possible. Do not combine tool searches with other tool calls in the same " +
-  "turn: search first, wait for the results, then call the tools you need.";
+  "possible.\n\n" +
+  "Never mix tool searches with other tool calls in the same turn. Issuing " +
+  "several searches together is fine, but if you call any other tool " +
+  "(including enabling a skill) in the same turn as a search, the search is " +
+  "discarded and never runs. Search first, wait for the results, and only " +
+  "then call the other tools you need.";
 
 export function includesToolSearchTool(
   tools: ReadonlyArray<{ type?: string | null }>

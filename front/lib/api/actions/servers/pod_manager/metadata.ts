@@ -47,6 +47,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Adding content node to Pod",
       done: "Add content node to Pod",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   remove_content_node: {
     description:
@@ -72,6 +74,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Removing content node from Pod",
       done: "Remove content node from Pod",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   edit_information: {
     description:
@@ -106,6 +110,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Editing Pod information",
       done: "Edit Pod information",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [UPDATE_MEMBERS_TOOL_NAME]: {
     description:
@@ -134,6 +140,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Updating Pod members",
       done: "Update Pod members",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   get_information: {
     description:
@@ -157,6 +165,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Getting Pod information",
       done: "Get Pod information",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [LIST_MEMBERS_TOOL_NAME]: {
     description:
@@ -192,6 +202,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Listing Pod members",
       done: "List Pod members",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   list_pods: {
     description:
@@ -231,6 +243,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Listing Pods",
       done: "List Pods",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   create_pod: {
     description:
@@ -264,6 +278,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Creating Pod",
       done: "Create Pod",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   retrieve_recent_documents: {
     description:
@@ -281,6 +297,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving recent Pod documents",
       done: "Retrieve recent Pod documents",
     },
+    toolCostCategory: "basic",
+    freeUsage: false,
   },
   [SEMANTIC_SEARCH_TOOL_NAME]: {
     description:
@@ -320,6 +338,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Searching Pod",
       done: "Search Pod",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   create_conversation: {
     description:
@@ -357,6 +377,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Creating conversation",
       done: "Create conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   list_conversations: {
     description:
@@ -412,6 +434,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Listing Pod conversations",
       done: "List conversations",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   add_message_to_conversation: {
     description:
@@ -457,6 +481,8 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       running: "Adding message to conversation",
       done: "Add message to conversation",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -477,6 +503,8 @@ export const POD_MANAGER_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(POD_MANAGER_TOOLS_METADATA).map((t) => [t.name, t.stake])

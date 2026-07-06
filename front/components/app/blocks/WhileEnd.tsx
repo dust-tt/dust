@@ -78,7 +78,7 @@ export function While({
     >
       <div className="mx-4 flex w-full flex-col">
         <div className="flex flex-col lg:flex-row lg:space-x-4">
-          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-foreground">
             <div className="flex flex-initial">max_iterations:</div>
             <div className="flex flex-initial font-normal">
               <input
@@ -87,7 +87,7 @@ export function While({
                   "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                   readOnly
                     ? "border-white ring-0 focus:border-white focus:ring-0"
-                    : "border-white focus:border-gray-300 focus:ring-0"
+                    : "border-white focus:border-border-dark focus:ring-0"
                 )}
                 spellCheck={false}
                 readOnly={readOnly}
@@ -97,7 +97,7 @@ export function While({
             </div>
           </div>
         </div>
-        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
+        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-foreground">
           <div className="flex flex-initial items-center">condition :</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">

@@ -20,6 +20,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Statuspage pages",
       done: "List Statuspage pages",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_components: {
     description:
@@ -37,6 +39,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Statuspage components",
       done: "List Statuspage components",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   list_incidents: {
     description:
@@ -62,6 +66,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       running: "Listing Statuspage incidents",
       done: "List Statuspage incidents",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_incident: {
     description:
@@ -84,6 +90,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       running: "Getting Statuspage incident",
       done: "Get Statuspage incident",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_incident: {
     description:
@@ -122,6 +130,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       running: "Creating Statuspage incident",
       done: "Create Statuspage incident",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_incident: {
     description:
@@ -161,6 +171,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       running: "Updating Statuspage incident",
       done: "Update Statuspage incident",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -178,6 +190,8 @@ export const STATUSPAGE_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(STATUSPAGE_TOOLS_METADATA).map((t) => [t.name, t.stake])

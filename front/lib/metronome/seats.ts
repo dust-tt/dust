@@ -1308,6 +1308,7 @@ export async function syncSeatCount({
   planCode,
   startingAt,
   contract,
+  assumeEmptySeats,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1318,6 +1319,10 @@ export async function syncSeatCount({
   // segments always use their own `startAt` regardless of this value.
   startingAt?: string;
   contract?: CachedContract;
+  // Skip the per-subscription seat-state reads and treat every segment as
+  // empty. Only safe for a freshly provisioned contract (no prior assignments)
+  // — passed by switchContract when the contract was newly created.
+  assumeEmptySeats?: boolean;
 }): Promise<Result<undefined, Error>> {
   let didMutateSeatData = false;
 
@@ -1377,10 +1382,16 @@ export async function syncSeatCount({
     const legacy = !isCreditPricedPlanPrefix(planCode);
 
     // userSId → current seat type (the seat they are on right now).
+    //
+    // Only count memberships that are active in the same sense as the Stripe
+    // seat count (`getMembersCountForWorkspace({ activeOnly: true })`): the seat
+    // window is open AND `firstUsedAt` is set. This excludes provisioned members
+    // who have never used the workspace, so Metronome and Stripe bill the same
+    // set of seats.
     const currentSeatByUserSId = new Map<string, MembershipSeatType>();
     for (const m of activeMemberships) {
       const userSId = m.user?.sId;
-      if (userSId) {
+      if (userSId && m.firstUsedAt !== null) {
         currentSeatByUserSId.set(userSId, m.seatType);
       }
     }
@@ -1393,7 +1404,12 @@ export async function syncSeatCount({
     const scheduledChanges: ScheduledChange[] = [];
     for (const m of futureMemberships) {
       const userSId = m.user?.sId;
-      if (userSId) {
+      // Same `firstUsedAt` filter as the current-seat map above: a scheduled
+      // change carries the current row's `firstUsedAt` (see `scheduleSeatChange`),
+      // so provisioned-but-never-used members (SCIM on enterprise contracts) are
+      // scheduled by contract switches / migrations yet must stay uncounted, just
+      // like Stripe. Without this the future segment would re-introduce them.
+      if (userSId && m.firstUsedAt !== null) {
         scheduledChanges.push({
           userSId,
           newSeatType: m.seatType,
@@ -1573,6 +1589,7 @@ export async function syncSeatCount({
             startingAt: segmentStartingAt,
             coveringDate,
             workspaceId: workspace.sId,
+            assumeEmptySeats,
           });
           if (result.isErr()) {
             return new Err(result.error);
@@ -1695,6 +1712,7 @@ async function reconcileSeatBasedSegment({
   startingAt,
   coveringDate,
   workspaceId,
+  assumeEmptySeats,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1705,18 +1723,30 @@ async function reconcileSeatBasedSegment({
   startingAt?: string;
   coveringDate?: Date;
   workspaceId: string;
+  // Skip the Metronome seat-state read and treat the segment as empty. Only
+  // safe for a freshly provisioned contract (no prior assignments at any
+  // timestamp) — set by switchContract when the contract was newly created
+  // (not recovered).
+  assumeEmptySeats?: boolean;
 }): Promise<Result<boolean, Error>> {
-  const currentResult = await getMetronomeSubscriptionSeatState({
-    metronomeCustomerId,
-    contractId,
-    subscriptionId,
-    coveringDate,
-  });
-  if (currentResult.isErr()) {
-    return new Err(currentResult.error);
+  let assignedSeatIds: string[];
+  let currentUnassigned: number;
+  if (assumeEmptySeats) {
+    assignedSeatIds = [];
+    currentUnassigned = 0;
+  } else {
+    const currentResult = await getMetronomeSubscriptionSeatState({
+      metronomeCustomerId,
+      contractId,
+      subscriptionId,
+      coveringDate,
+    });
+    if (currentResult.isErr()) {
+      return new Err(currentResult.error);
+    }
+    assignedSeatIds = currentResult.value.assignedSeatIds;
+    currentUnassigned = currentResult.value.unassignedSeats;
   }
-  const { assignedSeatIds, unassignedSeats: currentUnassigned } =
-    currentResult.value;
 
   // `maxSeats` is deliberately not enforced here: it caps new assignments
   // (`seat_limit_reached` upstream), never the synced state. Every member who

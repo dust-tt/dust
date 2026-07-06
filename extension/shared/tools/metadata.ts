@@ -64,6 +64,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       running: "Getting page content...",
       done: "Page content retrieved",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME]: {
     description:
@@ -88,6 +90,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       running: "Attaching tab content...",
       done: "Tab content attached",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [LIST_BROWSER_TABS_TOOL_NAME]: {
     description:
@@ -101,6 +105,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       running: "Listing browser tabs...",
       done: "Browser tabs listed",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [SWITCH_TO_BROWSER_TAB_TOOL_NAME]: {
     description:
@@ -114,6 +120,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       running: "Activating browser tab...",
       done: "Browser tab activated",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [CLOSE_BROWSER_TAB_TOOL_NAME]: {
     description: `Closes the specified browser tab. Use ${LIST_BROWSER_TABS_TOOL_NAME} to discover tab IDs.`,
@@ -125,6 +133,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       running: "Closing browser tab...",
       done: "Browser tab closed",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [OPEN_BROWSER_TAB_TOOL_NAME]: {
     description: "Opens a new browser tab with the specified URL.",
@@ -136,6 +146,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       running: "Opening new browser tab...",
       done: "Browser tab opened",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [MOVE_BROWSER_TAB_TOOL_NAME]: {
     description:
@@ -154,6 +166,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       running: "Moving browser tab...",
       done: "Browser tab moved",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [RELOAD_BROWSER_TAB_TOOL_NAME]: {
     description:
@@ -167,6 +181,8 @@ export const CHROME_TOOLS_METADATA = createClientToolsRecord({
       running: "Reloading browser tab...",
       done: "Browser tab reloaded",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   [INTERACT_WITH_PAGE_TOOL_NAME]: {
     description: `Interact with a browser tab of the user's browser window.
@@ -222,5 +238,7 @@ Avoid unnecessary actions.`,
       running: "Interacting with page...",
       done: "Page interaction completed",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });

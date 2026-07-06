@@ -1,0 +1,16 @@
+{
+  "action": "user.advanced_model_access_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "enabled": "string",
+    "model_id": "string",
+    "provider_id": "string"
+  }
+}

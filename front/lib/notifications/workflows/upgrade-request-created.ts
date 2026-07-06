@@ -107,20 +107,20 @@ export const upgradeRequestCreatedWorkflow = workflow(
 );
 
 /**
- * Email a workspace's admins that a member requested a spend-limit upgrade. One
- * Novu event is triggered per admin (subscribed by their Dust user sId), deduped
- * via a `transactionId` keyed on the upgrade-request sId so redeliveries don't
+ * Email a workspace's admins and business admins that a member requested a spend-limit
+ * upgrade. One Novu event is triggered per admin (subscribed by their Dust user sId),
+ * deduped via a `transactionId` keyed on the upgrade-request sId so redeliveries don't
  * re-send. Fire-and-forget — errors are logged but don't block the caller.
  */
-export function notifyAdminsUpgradeRequested({
-  admins,
+export function notifyUpgradeRequested({
+  users,
   workspaceId,
   workspaceName,
   requestId,
   requesterName,
   requesterEmail,
 }: {
-  admins: Array<{
+  users: Array<{
     sId: string;
     email: string;
     firstName: string | null;
@@ -132,7 +132,7 @@ export function notifyAdminsUpgradeRequested({
   requesterName: string;
   requesterEmail: string | null;
 }): void {
-  if (admins.length === 0) {
+  if (users.length === 0) {
     return;
   }
 
@@ -146,7 +146,7 @@ export function notifyAdminsUpgradeRequested({
   void getNovuClient()
     .then((novuClient) =>
       novuClient.triggerBulk({
-        events: admins.map((admin) => ({
+        events: users.map((admin) => ({
           workflowId: UPGRADE_REQUEST_CREATED_TRIGGER_ID,
           to: {
             subscriberId: admin.sId,

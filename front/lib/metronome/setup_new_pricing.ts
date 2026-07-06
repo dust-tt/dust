@@ -15,6 +15,7 @@ import {
 import {
   AWU_PRIORITY_SEAT_ALLOCATION,
   CREDIT_TYPE_EUR_ID,
+  CREDIT_TYPE_GBP_ID,
   CREDIT_TYPE_USD_ID,
   MAX_SEAT_MONTHLY_AWU_CREDITS,
   PRO_SEAT_MONTHLY_AWU_CREDITS,
@@ -24,7 +25,7 @@ import {
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
-import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
+import { TOOL_COST_CATEGORIES } from "@app/lib/metronome/events";
 import {
   BILLING_CYCLE_CONFIG,
   BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
@@ -51,6 +52,7 @@ import {
 } from "@app/lib/metronome/setup_common";
 import {
   BUSINESS_EUR_PACKAGE_ALIAS,
+  BUSINESS_GBP_PACKAGE_ALIAS,
   BUSINESS_USD_PACKAGE_ALIAS,
   DEFAULT_AWU_EXCESS_RECURRING_AMOUNT,
 } from "@app/lib/metronome/types";
@@ -122,26 +124,46 @@ export const NEW_METRICS: MetricDef[] = [
       [USAGE_TYPE_GROUP_KEY],
     ],
   },
-  // "(non-free)" twins of the two metrics above. Identical event filter,
-  // aggregation, and group keys, but the `usage_type` property filter also
-  // excludes free-tagged events (`not_in_values: ["free"]`) so they are never
-  // aggregated — any future paid usage_type is still included. `exists: true`
-  // is kept because Metronome requires every group-key property to have a
-  // matching required (`exists`) property filter. These are NOT attached to any
-  // product/rate (they carry no billing meaning); they exist so the usage graph
-  // can show usage excluding free without needing a group-key combining each
-  // dimension with `usage_type` (the billing metrics above are already at
-  // Metronome's 7 group-key cap and can't take more).
+  // v2 replacements for the two billing metrics above: the AI Usage / Tool
+  // Usage products will be repointed to these (billable_metric_name in
+  // setup_common.ts) instead of growing group_keys on the originals, which
+  // Metronome cannot recreate without a historical-usage reflow. A spend
+  // alert requires its metric to be attached to a product with real spend —
+  // an unattached metric has nothing to threshold against — so the
+  // api_key_name-filtered alert needs to live on the metric the product
+  // actually bills through, not a separate non-billing metric.
+  // Group keys: `[user_id, usage_type(, tool_category)]` covers the
+  // product's own presentation_group_key (`user_id`) + pricing_group_key
+  // (`usage_type` / `[usage_type, tool_category]`) — Metronome requires
+  // those to be present together in one compound group key or rating
+  // breaks. `[api_key_name, usage_type(, tool_category)]` covers the
+  // api_key_name-filtered spend alert for the same reason: every property
+  // used in the alert's group_filter and in the pricing_group_key must be
+  // present together in one compound group key, or the alert silently never
+  // fires (see Slack thread
+  // https://dust4ai.slack.com/archives/C0AGNMLBRB5/p1782740593425549).
+  // Bare `[usage_type(, tool_category)]` covers workspace-wide programmatic
+  // spend totals (programmatic_awu_usage.ts) — a low-cardinality, global
+  // grouping unrelated to any single user/key, so it needs its own compound
+  // key rather than piggybacking on the user_id/api_key_name ones. Bare
+  // `[api_key_name(, tool_category)]` (no usage_type) is also kept so
+  // per_api_key_usage.ts's existing query — which still targets whichever
+  // metric ID `getMetricToolInvocationsId()`/`getMetricLlmProviderCostAwuId()`
+  // resolve to per environment (the live billing metrics in prod today, v2
+  // only once repointed) — keeps working unchanged against either shape.
+  // `[agent_id, usage_type(, tool_category)]` is reserved now, unused today,
+  // for a possible future agent_id-filtered spend alert (same compound-key
+  // requirement as the api_key_name alert above). Once v2 goes live in prod
+  // and accumulates real usage, adding a group key means another
+  // archive/recreate + Metronome backfill — reserving it now while v2 still
+  // has no meaningful historical usage avoids paying that cost twice.
   {
-    name: "Tool Invocations (non-free)",
+    name: "Tool Invocations v2",
     event_type_filter: { in_values: ["tool_use_v3"] },
+    // Same property_filters as "Tool Invocations" above.
     property_filters: [
       { name: "count", exists: true },
-      {
-        name: USAGE_TYPE_GROUP_KEY,
-        exists: true,
-        not_in_values: [USAGE_TYPE_FREE],
-      },
+      { name: USAGE_TYPE_GROUP_KEY, exists: true },
       { name: "tool_category", exists: true },
       { name: "tool_group", exists: true },
       { name: "user_id", exists: true },
@@ -152,27 +174,21 @@ export const NEW_METRICS: MetricDef[] = [
     ],
     aggregation_type: "SUM",
     aggregation_key: "count",
-    // Same 7 group keys as "Tool Invocations" — see note there.
     group_keys: [
       ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
-      ["user_id"],
-      ["tool_category"],
-      ["api_key_name", "tool_category"],
-      ["origin", "tool_category"],
-      ["agent_id", "tool_category"],
+      ["api_key_name", USAGE_TYPE_GROUP_KEY, "tool_category"],
       [USAGE_TYPE_GROUP_KEY, "tool_category"],
+      ["api_key_name", "tool_category"],
+      ["agent_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
     ],
   },
   {
-    name: "LLM Provider Cost AWU (non-free)",
+    name: "LLM Provider Cost AWU v2",
     event_type_filter: { in_values: ["llm_usage_v3"] },
+    // Same property_filters as "LLM Provider Cost AWU" above.
     property_filters: [
       { name: "cost_awu", exists: true },
-      {
-        name: USAGE_TYPE_GROUP_KEY,
-        exists: true,
-        not_in_values: [USAGE_TYPE_FREE],
-      },
+      { name: USAGE_TYPE_GROUP_KEY, exists: true },
       { name: "user_id", exists: true },
       { name: "api_key_name", exists: true },
       { name: "model_id", exists: true },
@@ -181,23 +197,19 @@ export const NEW_METRICS: MetricDef[] = [
     ],
     aggregation_type: "SUM",
     aggregation_key: "cost_awu",
-    // Same 7 group keys as "LLM Provider Cost AWU" — see note there.
     group_keys: [
       ["user_id", USAGE_TYPE_GROUP_KEY],
-      ["user_id"],
-      ["api_key_name"],
-      ["model_id"],
-      ["origin"],
-      ["agent_id"],
+      ["api_key_name", USAGE_TYPE_GROUP_KEY],
+      ["agent_id", USAGE_TYPE_GROUP_KEY],
       [USAGE_TYPE_GROUP_KEY],
+      ["api_key_name"],
     ],
   },
-  // Phase 2 token metrics removed — will be added when Pricing Index is ready.
 ];
 
 // Per-tier AWU price for Tool Usage rates. Shared across all AWU-priced rate cards
-const TOOL_CATEGORY_PRICES_AWU: Record<
-  (typeof TOOL_CATEGORIES)[number],
+const TOOL_COST_CATEGORY_PRICES_AWU: Record<
+  (typeof TOOL_COST_CATEGORIES)[number],
   number
 > = {
   basic: 1,
@@ -210,14 +222,14 @@ const TOOL_CATEGORY_PRICES_AWU: Record<
 const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC] as const;
 
 function buildAwuToolUsageRates(): RateDef[] {
-  return TOOL_CATEGORIES.flatMap((category): RateDef[] => [
+  return TOOL_COST_CATEGORIES.flatMap((category): RateDef[] => [
     ...PAID_USAGE_TYPES.map(
       (usageType): RateDef => ({
         product_name: "Tool Usage",
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
-        price: TOOL_CATEGORY_PRICES_AWU[category],
+        price: TOOL_COST_CATEGORY_PRICES_AWU[category],
         credit_type_id: getCreditTypeAwuId(),
         pricing_group_values: {
           tool_category: category,
@@ -486,6 +498,25 @@ export function getNewRateCards(): RateCardDef[] {
         ...buildAwuToolUsageRates(),
       ],
     },
+    // --- Standard GBP: GBP variant of the single non-legacy rate card ---
+    {
+      name: "Standard GBP",
+      description:
+        "Standard non-legacy plan (GBP). Seats priced per-package via overrides + AWU-based AI/Tool usage.",
+      aliases: [{ name: "standard-gbp" }],
+      fiat_credit_type_id: CREDIT_TYPE_GBP_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeAwuId(),
+          fiat_per_custom_credit: getOverageAwuRate("gbp"),
+        },
+      ],
+      rates: [
+        ...buildAllSeatRates(CREDIT_TYPE_GBP_ID),
+        ...buildAwuAiUsageRates(),
+        ...buildAwuToolUsageRates(),
+      ],
+    },
     // Free plan keeps its own rate card — its overage AWU conversion is 0 (free
     // users are never charged for overage), unlike the Standard cards.
     {
@@ -671,6 +702,37 @@ export function getNewPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
+        {
+          product_name: PRO_SEAT_PRODUCT_NAME,
+          price: CP_PRO_SEAT_COST_MONTHLY,
+        },
+        {
+          product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+          price: CP_PRO_SEAT_COST_YEARLY * 12,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME,
+          price: CP_MAX_SEAT_COST_MONTHLY,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+          price: CP_MAX_SEAT_COST_YEARLY * 12,
+        },
+        { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
+      ]),
+      ...BILLING_CYCLE_CONFIG,
+    },
+    // GBP variant of Business — same unit numbers as Business EUR (GBP is a
+    // non-USD whole-unit Metronome pricing unit), only the fiat credit type
+    // differs.
+    {
+      name: "Business GBP",
+      aliases: [{ name: BUSINESS_GBP_PACKAGE_ALIAS }],
+      rate_card_name: "Standard GBP",
+      subscriptions: ALL_SEAT_SUBSCRIPTIONS,
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: getAllSeatRecurringCredits(),
+      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_GBP_ID, [
         {
           product_name: PRO_SEAT_PRODUCT_NAME,
           price: CP_PRO_SEAT_COST_MONTHLY,

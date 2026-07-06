@@ -15,6 +15,7 @@ import membersUsage from "./members-usage";
 import myUsage from "./my-usage";
 import myUsageAnalytics from "./my-usage-analytics";
 import purchase from "./purchase";
+import topUps from "./top-ups";
 import upgradeRequests from "./upgrade-requests";
 import usageConfiguration from "./usage-configuration";
 
@@ -27,6 +28,7 @@ app.route("/members-usage", membersUsage);
 app.route("/my-usage", myUsage);
 app.route("/my-usage-analytics", myUsageAnalytics);
 app.route("/purchase", purchase);
+app.route("/top-ups", topUps);
 app.route("/upgrade-requests", upgradeRequests);
 app.route("/usage-configuration", usageConfiguration);
 

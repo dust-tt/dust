@@ -23,6 +23,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Jira issue fields",
       done: "List Jira issue fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue: {
     description:
@@ -41,6 +43,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira issue",
       done: "Retrieve Jira issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_projects: {
     description: "List Jira projects available in the workspace.",
@@ -50,6 +54,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Jira projects",
       done: "List Jira projects",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_project: {
     description: "Retrieve one Jira project by project key (e.g., 'PROJ').",
@@ -61,6 +67,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira project",
       done: "Retrieve Jira project",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_project_versions: {
     description:
@@ -73,6 +81,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira project versions",
       done: "Retrieve Jira project versions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_transitions: {
     description:
@@ -85,6 +95,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira transitions",
       done: "Retrieve Jira transitions",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issues: {
     description:
@@ -107,6 +119,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Searching Jira issues",
       done: "Search Jira issues",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issues_using_jql: {
     description:
@@ -137,6 +151,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Searching Jira issues with JQL",
       done: "Search Jira issues with JQL",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue_types: {
     description: "Retrieve available issue types for a JIRA project.",
@@ -148,6 +164,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira issue types",
       done: "Retrieve Jira issue types",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue_create_fields: {
     description:
@@ -163,6 +181,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira create fields",
       done: "Retrieve Jira create fields",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_connection_info: {
     description:
@@ -173,6 +193,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira connection info",
       done: "Retrieve Jira connection info",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_issue_link_types: {
     description:
@@ -183,6 +205,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira link types",
       done: "Retrieve Jira link types",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_users: {
     description: "Find or search Jira users by email address or display name.",
@@ -216,6 +240,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Searching Jira users",
       done: "Search Jira users",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   get_attachments: {
     description:
@@ -228,6 +254,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Retrieving Jira attachments",
       done: "Retrieve Jira attachments",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   read_attachment: {
     description:
@@ -241,6 +269,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Reading attachment from Jira",
       done: "Read attachment from Jira",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   // Write operations
@@ -268,6 +298,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Adding comment on Jira",
       done: "Add comment on Jira",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   transition_issue: {
     description:
@@ -281,6 +313,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Transitioning Jira issue",
       done: "Transition Jira issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_issue: {
     description:
@@ -295,6 +329,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Creating Jira issue",
       done: "Create Jira issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   update_issue: {
     description:
@@ -310,6 +346,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Updating Jira issue",
       done: "Update Jira issue",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   create_issue_link: {
     description:
@@ -324,6 +362,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Creating Jira issue link",
       done: "Create Jira issue link",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   delete_issue_link: {
     description: "Delete an existing link between JIRA issues.",
@@ -335,6 +375,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Deleting Jira issue link",
       done: "Delete Jira issue link",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
   upload_attachment: {
     description:
@@ -375,6 +417,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Uploading attachment to Jira",
       done: "Upload attachment to Jira",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 });
 
@@ -395,6 +439,8 @@ export const JIRA_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(JIRA_TOOLS_METADATA).map((t) => [t.name, t.stake])

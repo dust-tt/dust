@@ -100,6 +100,7 @@ export const adminRoutes: RouteObject[] = [
     children: [
       { path: "members", element: <MembersPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
+      { path: "usage", element: <UsagePage /> },
     ],
   },
   {
@@ -113,7 +114,6 @@ export const adminRoutes: RouteObject[] = [
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
-      { path: "usage", element: <UsagePage /> },
       { path: "subscription", element: <SubscriptionPage /> },
       { path: "billing", element: <BillingPage /> },
       { path: "developers/api-keys", element: <APIKeysPage /> },

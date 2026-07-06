@@ -1,5 +1,2503 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`MCP Servers Metadata Snapshot > should have stable tool billing info across all servers 1`] = `
+{
+  "agent_memory": {
+    "compact_memory": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "edit_entries": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "erase_entries": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "record_entries": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "retrieve": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "agent_router": {
+    "list_all_published_agents": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "suggest_agents_for_content": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "agent_sidekick_agent_state": {
+    "get_agent_info": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "agent_sidekick_context": {
+    "describe_mcp": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_agent_feedback": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_agent_insights": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_agent_template": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_available_agents": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_available_models": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_available_skills": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_available_tools": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "inspect_available_agent": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "inspect_conversation": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "inspect_message": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_suggestions": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "search_agent_templates": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "search_knowledge": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "suggest_knowledge": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "suggest_model": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "suggest_prompt_edits": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "suggest_skills": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "suggest_sub_agent": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "suggest_tools": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "update_suggestions_state": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "ashby": {
+    "create_candidate_note": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_referral": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_candidate_notes": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_hire_data": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_interview_feedback": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_referral_form": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_report_data": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_job_postings": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_openings": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_candidates": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_job_posting": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "ask_user_question": {
+    "ask_user_question": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "clari_copilot": {
+    "get_call_details": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_calls": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "common_utilities": {
+    "generate_random_float": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "generate_random_number": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_current_time": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "math_operation": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "set_conversation_title": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "wait": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "confluence": {
+    "create_page": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_current_user": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_page": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_pages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_spaces": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_page": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "conversation_files": {
+    "cat": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_content_nodes_and_tables": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "semantic_search": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "data_sources_file_system": {
+    "cat": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "find": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "locate_in_tree": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "semantic_search": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "data_warehouses": {
+    "describe_tables": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "find": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "query": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "databricks": {
+    "list_warehouses": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "exa_people_and_company": {
+    "search_companies": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_people": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "extract_data": {
+    "extract_information_from_documents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "fathom": {
+    "get_transcript": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_meetings": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "file_generation": {
+    "convert_file_format": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "generate_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_supported_source_formats_for_output_format": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "files": {
+    "cat": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "copy": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "create": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "delete": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "edit": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "extract_text": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "grep": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "move": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "resolve": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "upload_from_url": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "freshservice": {
+    "add_ticket_note": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "add_ticket_reply": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_solution_article": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_ticket": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_ticket_task": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_ticket_task": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_canned_response": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_requester": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_service_item": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_service_item_fields": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_solution_article": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_ticket": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_ticket_approval": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_ticket_read_fields": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_ticket_task": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_ticket_write_fields": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_canned_responses": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_departments": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_oncall_schedules": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_products": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_purchase_orders": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_requesters": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_service_categories": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_service_items": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_sla_policies": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_solution_articles": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_solution_categories": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_solution_folders": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_ticket_approvals": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_ticket_requested_items": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_ticket_tasks": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_tickets": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "request_service_approval": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "request_service_item": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_service_items": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_ticket": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_ticket_task": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "front": {
+    "add_comment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "add_links": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "add_tags": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "assign_conversation": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_conversation": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_draft": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_draft": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_contact": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_conversation": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_conversation_drafts": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_conversation_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_customer_history": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_inboxes": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_tags": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_teammates": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_conversations": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "send_message": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_conversation_status": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "github": {
+    "add_issue_to_project": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "comment_on_discussion": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "comment_on_issue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_discussion": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_issue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_pull_request_review": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_discussion": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_discussion_comments": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issue_custom_fields": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_pull_request": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_discussion_categories": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_discussions": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_issues": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_organization_projects": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_pull_requests": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_advanced": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_issue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "gmail": {
+    "create_draft": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_draft": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_attachment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_drafts": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_labels": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_thread": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "send_mail": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "set_message_labels": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "gong": {
+    "get_call": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_call_transcript": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_calls": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "google_calendar": {
+    "check_availability": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_user_timezones": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_calendars": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_events": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "google_drive": {
+    "append_to_spreadsheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "copy_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_comment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_document": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_folder": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_presentation": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_reply": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_spreadsheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_document_structure": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_file_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_presentation_structure": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_spreadsheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_comments": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_drives": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_file_permissions": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "revoke_file_sharing": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_files": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "share_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_document": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_file_permission": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_presentation": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_spreadsheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "upload_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "google_sheets": {
+    "add_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "append_data": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "clear_range": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "copy_sheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_spreadsheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "format_cells": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_spreadsheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_spreadsheets": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "move_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "rename_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_cells": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "http_client": {
+    "send_request": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "webbrowser": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "websearch": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
+  "hubspot": {
+    "complete_task": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "count_objects_by_properties": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_association": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_communication": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_company": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_contact": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_deal": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_lead": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_meeting": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_note": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_task": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_ticket": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_task": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "export_crm_objects_csv": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_associated_meetings": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_company": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_contact": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_current_user_id": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_deal": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_email_campaign": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_file_public_url": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_hubspot_link": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_hubspot_portal_id": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_latest_objects": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_marketing_email": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_marketing_email_statistics": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_meeting": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_object_by_email": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_object_properties": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_user_activity": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_association_labels": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_associations": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_email_campaigns": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_email_events": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_marketing_emails": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_owners": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "remove_association": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_crm_objects": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_owners": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_company": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_contact": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_deal": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_task": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "image_generation": {
+    "generate_image": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "include_data": {
+    "retrieve_recent_documents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "interactive_content": {
+    "create_interactive_content_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "edit_interactive_content_file": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "export_interactive_content_file": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_interactive_content_file_share_url": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "publish_interactive_content_file": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "rename_interactive_content_file": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "retrieve_interactive_content_file": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "revert_interactive_content_file": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
+  "jira": {
+    "create_comment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_issue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_issue_link": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_issue_link": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_attachments": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_connection_info": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issue_create_fields": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issue_link_types": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issue_read_fields": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issue_types": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issues": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_issues_using_jql": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_project": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_project_versions": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_projects": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_transitions": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_users": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "read_attachment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "transition_issue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_issue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "upload_attachment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "jit_testing": {
+    "jit_all_optionals_and_defaults": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "luma": {
+    "add_guests": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_authenticated_user": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_event_insights": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_guest": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_events": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_guests": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_guests": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "send_invites": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_guest_status": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "microsoft_drive": {
+    "copy_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_file_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_drive_items": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "rename_drive_item": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_drive_items": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_in_files": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_word_document": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "upload_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "microsoft_excel": {
+    "clear_range": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_worksheets": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_excel_files": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "read_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "write_worksheet": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "microsoft_teams": {
+    "get_transcript_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_channels": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_chats": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_meetings": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_teams": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_users": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "post_message": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_messages_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "missing_action_catcher": {},
+  "monday": {
+    "create_board": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_column": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_group": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_item": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_multiple_items": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_subitem": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_update": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_group": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_item": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "duplicate_group": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "find_user_by_name": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_activity_logs": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_board_analytics": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_board_items": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_board_values": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_boards": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_column_values": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_file_column_values": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_group_details": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_item_details": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_items_by_column_value": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_subitem_values": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_user_details": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "move_item_to_board": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_items": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_item": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_item_name": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_subitem": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "upload_file_to_column": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "notion": {
+    "add_page_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_comment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_database": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_page": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_block": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_page": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "fetch_comments": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_about_user": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "insert_row_into_database": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_users": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "query_database": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "retrieve_block": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "retrieve_block_children": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "retrieve_database_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "retrieve_database_schema": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "retrieve_page": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_page": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_row_database": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_schema_database": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "openai_usage": {
+    "get_completions_usage": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_organization_costs": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "outlook": {
+    "create_contact": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_draft": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_draft": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_attachment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_attachments": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_contacts": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_drafts": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_message_body": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_attachments": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_folders": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "move_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "send_mail": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_contact": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "outlook_calendar": {
+    "check_availability": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "check_self_availability": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_user_timezone": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_calendars": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_events": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_event": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "plan_mode": {
+    "close_plan": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "create_plan": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "edit_plan": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "pod_manager": {
+    "add_content_node": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "add_message_to_conversation": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "create_conversation": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "create_pod": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "edit_information": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_information": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_conversations": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_members": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_pods": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "remove_content_node": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "retrieve_recent_documents": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "semantic_search": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "update_members": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "pod_tasks": {
+    "create_tasks": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_tasks": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "start_task_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "update_tasks": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "poke": {
+    "check_notion_page": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "check_slack_channel": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "find_workspace_by_connector_id": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_connector_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_conversation_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_mcp_server_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_agent": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_credits": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_feature_flags": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_members": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_metadata": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_plan_and_subscription": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_skill": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_workspace_spaces": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_data_sources": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_workspace_agents": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_workspace_groups": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_workspace_skills": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "search_workspaces": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "primitive_types_debugger": {
+    "pass_through": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "tool_without_user_config": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "productboard": {
+    "create_entity": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_note": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_configuration": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_note": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_relationships": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "query_entities": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "query_notes": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_entity": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_note": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "query_tables_v2": {
+    "execute_database_query": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_database_schema": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_tables": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "run_agent": {
+    "run_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
+  "run_dust_app": {
+    "run_dust_app": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
+  "salesforce": {
+    "create_object": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "describe_object": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "execute_read_query": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_attachments": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_objects": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "read_attachment": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_object": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "salesloft": {
+    "get_actions": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "sandbox": {
+    "add_egress_domain": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "bash": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "describe_toolset": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "sandbox_functions": {
+    "call": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "publish": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "schedules_management": {
+    "create_schedule": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "disable_schedule": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_schedules": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "search": {
+    "semantic_search": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "skill_authoring": {
+    "create_skill": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_skill": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_skills": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "update_skill": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "skill_management": {
+    "enable_skill": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "slab": {
+    "get_post_contents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_post_metadata": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_topics": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_posts": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "slack": {
+    "archive_channel": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_channel": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_channel_canvases": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "invite_to_channel": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_user_groups": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "post_message": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "read_canvas": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "read_thread_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "schedule_message": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_channels": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_user": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "semantic_search_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "write_canvas": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "slack_bot": {
+    "add_reaction": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "edit_message": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_public_channels": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "post_message": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "read_channel_history": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "read_thread_messages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "remove_reaction": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_user": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "snowflake": {
+    "describe_semantic_view": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "describe_table": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_databases": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_schemas": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_tables": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "query": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "sound_studio": {
+    "generate_sound_effects": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "speech_generator": {
+    "speech_to_text": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "text_to_dialogue": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "text_to_speech": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "statuspage": {
+    "create_incident": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_incident": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_components": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_incidents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_pages": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_incident": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "toolsets": {
+    "enable": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "ukg_ready": {
+    "create_pto_request": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_pto_request": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_accrual_balances": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_employees": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_my_info": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_pto_request_notes": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_pto_requests": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_schedules": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "user_mentions": {
+    "get_mention_markdown": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "search_available_users": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
+  "val_town": {
+    "call_http_endpoint": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_val": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_file_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_val": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_val_files": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_vals": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_vals": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_file_content": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "write_file": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "vanta": {
+    "list_control_documents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_control_tests": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_controls": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_document_resources": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_documents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_framework_controls": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_frameworks": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_integrations": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_people": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_risks": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_test_entities": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_tests": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_vulnerabilities": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "wakeups": {
+    "cancel_wakeup": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_wakeups": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "schedule_wakeup": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
+  "web_search_&_browse": {
+    "webbrowser": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "websearch": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
+  "workday": {
+    "get_workers": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "workspace_analytics": {
+    "get_agent_details": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_credit_timeseries": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_credit_usage": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_source_breakdown": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_top_agents": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_top_skills": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_top_tools": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_top_users": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+    "get_usage_timeseries": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
+  "zendesk": {
+    "draft_reply": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_ticket": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_ticket_fields": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "post_reply": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "search_tickets": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "update_ticket_tags": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+}
+`;
+
 exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across all servers 1`] = `
 {
   "agent_memory": {
@@ -278,6 +2776,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "websearch": "never_ask",
   },
   "hubspot": {
+    "complete_task": "high",
     "count_objects_by_properties": "never_ask",
     "create_association": "high",
     "create_communication": "high",
@@ -288,6 +2787,8 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_meeting": "high",
     "create_note": "high",
     "create_task": "high",
+    "create_ticket": "high",
+    "delete_task": "high",
     "export_crm_objects_csv": "never_ask",
     "get_associated_meetings": "never_ask",
     "get_company": "never_ask",
@@ -305,6 +2806,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_object_by_email": "never_ask",
     "get_object_properties": "never_ask",
     "get_user_activity": "never_ask",
+    "list_association_labels": "never_ask",
     "list_associations": "never_ask",
     "list_email_campaigns": "never_ask",
     "list_email_events": "never_ask",
@@ -316,6 +2818,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_company": "high",
     "update_contact": "high",
     "update_deal": "high",
+    "update_task": "high",
   },
   "image_generation": {
     "generate_image": "never_ask",

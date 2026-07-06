@@ -8,6 +8,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import { getToolNamePrefix } from "@app/lib/actions/tool_name_utils";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
 import apiConfig from "@app/lib/api/config";
@@ -18,9 +19,15 @@ import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   list: async (_, { auth, toolContext }) => {
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
+
     const mcpServerViewIdsFromAgentConfiguration =
       toolContext?.runContext?.agentConfiguration.actions
         .filter(isServerSideMCPServerConfiguration)
@@ -76,6 +83,11 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   },
 
   enable: async ({ toolsetId }, { auth, toolContext }) => {
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
+
     const conversationId = toolContext?.runContext?.conversation.sId;
     if (!conversationId) {
       return new Err(

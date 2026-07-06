@@ -1,10 +1,10 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
@@ -350,7 +350,7 @@ export function FrameRenderer({
   if (error) {
     return (
       <div className="flex h-panel flex-col">
-        <InteractiveContentHeader onClose={onClosePanel} />
+        <ConversationSidePanelHeader onClose={onClosePanel} />
         <CenteredState>
           <p className="text-warning-500">
             Error loading file: {error.message}
@@ -362,7 +362,7 @@ export function FrameRenderer({
 
   return (
     <div className="flex h-panel flex-col">
-      <InteractiveContentHeader onClose={onClosePanel}>
+      <ConversationSidePanelHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
             icon={showCode ? Eye : Terminal}
@@ -416,7 +416,7 @@ export function FrameRenderer({
             )}
           </div>
         </div>
-      </InteractiveContentHeader>
+      </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
         {isLoading ? (

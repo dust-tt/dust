@@ -8,7 +8,10 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import type { ToolContextType } from "@app/lib/actions/types";
-import { isSandboxResumeState } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxResumeState,
+} from "@app/lib/actions/types";
 import {
   SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
   SANDBOX_EXEC_TIMEOUT_BUFFER_MS,
@@ -52,6 +55,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 import { z } from "zod";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
@@ -227,8 +231,9 @@ export async function createSandboxTools(
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: runSandboxBashTool,
     describe_toolset: async ({ format }, { auth, toolContext }) => {
-      const providerId =
-        toolContext?.runContext?.agentConfiguration.model.providerId;
+      const providerId = isAgentLoopRunContext(toolContext?.runContext)
+        ? toolContext.runContext.agentConfiguration.model.providerId
+        : null;
       if (!providerId) {
         return new Err(new MCPError("Missing model provider ID"));
       }
@@ -298,10 +303,12 @@ export async function runSandboxBashTool(
     MCPError
   >
 > {
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
+
   const runContext = toolContext?.runContext;
-  if (!runContext) {
-    return new Err(new MCPError("No conversation context available."));
-  }
   const {
     conversation,
     agentConfiguration,
@@ -484,6 +491,10 @@ export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
   { auth, toolContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
   // Defense-in-depth: createSandboxTools already filters this tool out when
   // the workspace setting is off, so this metadata-only check is enough to
   // reject any caller that bypasses tool-list filtering.
@@ -495,12 +506,10 @@ export async function addEgressDomainTool(
     );
   }
 
-  const conversation = toolContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(new MCPError("No conversation context available."));
-  }
-
-  const ensureResult = await ensureConversationSandboxReady(auth, conversation);
+  const ensureResult = await ensureConversationSandboxReady(
+    auth,
+    toolContext.runContext.conversation
+  );
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }

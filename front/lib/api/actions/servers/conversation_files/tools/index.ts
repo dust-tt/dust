@@ -6,6 +6,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   CONVERSATION_CAT_FILE_ACTION_NAME,
   CONVERSATION_FILES_TOOLS_METADATA,
@@ -44,6 +45,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
 const MAX_CONTENT_SIZE_FOR_LIST_FILES = 1024 * 256; // 256KB.
@@ -91,9 +93,10 @@ const listAttachmentsHandler: ToolHandlers<
   _,
   { auth, toolContext }
 ) => {
-  if (!toolContext?.runContext) {
-    return new Err(new MCPError("No conversation context available"));
-  }
+  assert(
+    isAgentLoopRunContext(toolContext?.runContext),
+    "AgentLoopRunContext expected"
+  );
 
   const conversation = toolContext.runContext.conversation;
   const allAttachments = await listAttachments(auth, { conversation });
@@ -137,9 +140,10 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     { fileId, offset, limit, grep },
     { auth, toolContext }
   ) => {
-    if (!toolContext?.runContext) {
-      return new Err(new MCPError("No conversation context available"));
-    }
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
     const conversation = toolContext.runContext.conversation;
     const model = getSupportedModelConfig(
@@ -273,9 +277,10 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     { query },
     { auth, toolContext }
   ) => {
-    if (!toolContext?.runContext) {
-      return new Err(new MCPError("No conversation context available"));
-    }
+    assert(
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
+    );
 
     const conversation = toolContext.runContext.conversation;
     const attachments = await listAttachments(auth, { conversation });

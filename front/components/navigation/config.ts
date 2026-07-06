@@ -318,7 +318,7 @@ export const subNavigationAdmin = ({
               icon: PieChart01,
               href: `/w/${owner.sId}/usage`,
               current: isCurrent("usage"),
-              disabled: !hasAdminRole,
+              disabled: !hasBusinessAdminRole,
             },
           ]
         : []),

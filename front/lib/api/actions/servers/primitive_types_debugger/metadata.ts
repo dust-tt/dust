@@ -88,6 +88,8 @@ export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
       running: "Running debug tool",
       done: "Run debug tool",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
   pass_through: {
     description: "Pass through inputs for primitive type debugging.",
@@ -97,6 +99,8 @@ export const PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA = createToolsRecord({
       running: "Passing through",
       done: "Pass through",
     },
+    toolCostCategory: "basic",
+    freeUsage: true,
   },
 });
 
@@ -116,6 +120,8 @@ export const PRIMITIVE_TYPES_DEBUGGER_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(PRIMITIVE_TYPES_DEBUGGER_TOOLS_METADATA).map((t) => [

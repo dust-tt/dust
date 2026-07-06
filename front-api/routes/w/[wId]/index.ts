@@ -85,6 +85,7 @@ import verify from "./verify";
 import webhookSources from "./webhook_sources";
 import welcome from "./welcome";
 import workspaceAnalytics from "./workspace-analytics";
+import workspaceUsage from "./workspace-usage";
 
 const WorkspaceNameUpdateBodySchema = z.object({
   name: z.string(),
@@ -805,5 +806,6 @@ app.route("/verification", verification);
 app.route("/verified-domains", verifiedDomains);
 app.route("/webhook_sources", webhookSources);
 app.route("/workspace-analytics", workspaceAnalytics);
+app.route("/workspace-usage", workspaceUsage);
 
 export default app;

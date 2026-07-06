@@ -244,6 +244,13 @@ export function parseThreadingHeaders(rawHeaders: string | null) {
   };
 }
 
+type EmailWebhookErrorLogContext = {
+  userId: string;
+  userEmail: string;
+  workspaceId: string;
+  workspaceName: string;
+};
+
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 export const parseSendgridWebhookContent = async (
   rawBody: Buffer,
@@ -368,10 +375,15 @@ export const parseSendgridWebhookContent = async (
 
 export const replyToError = async (
   email: InboundEmail,
-  error: EmailTriggerError
+  error: EmailTriggerError,
+  context?: EmailWebhookErrorLogContext
 ): Promise<void> => {
   logger.error(
-    { error, envelope: email.envelope },
+    {
+      error,
+      envelope: email.envelope,
+      ...(context ?? {}),
+    },
     "[email] Error handling email."
   );
   const htmlContent =

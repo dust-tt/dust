@@ -1,7 +1,12 @@
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import { isResourceContentWithText } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ToolContextType } from "@app/lib/actions/types";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
+import {
+  conversationScopedPath,
+  podScopedPath,
+  SCOPED_PREFIX_CONVERSATION,
+} from "@app/lib/api/file_system/types";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import {
   resolveResourceOutput,
@@ -12,6 +17,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -19,6 +25,64 @@ export interface PersistedToolOutput {
   contentType: AllSupportedFileContentType;
   fileName: string;
   scopedPath: string;
+}
+
+/**
+ * Builds the DustFileSystem associated with a tool context: the conversation file system when
+ * running in an agent loop, the pod (project space) file system when running in a sandbox
+ * function invocation.
+ */
+async function getDustFileSystemForToolContext(
+  auth: Authenticator,
+  toolContext: ToolContextType
+): Promise<Result<DustFileSystem, Error>> {
+  const { runContext } = toolContext;
+  if (!runContext) {
+    return new Err(
+      new Error("Tool outputs can only be persisted from a tool run context.")
+    );
+  }
+
+  switch (runContext.contextType) {
+    case "agent_loop":
+      return DustFileSystem.forConversation(auth, runContext.conversation);
+    case "sandbox_function":
+      return DustFileSystem.forPod(
+        auth,
+        runContext.invocation.sandboxFunction.space
+      );
+    default:
+      return assertNever(runContext);
+  }
+}
+
+function getToolOutputsScopedPath(
+  toolContext: ToolContextType,
+  fileName: string
+): Result<string, Error> {
+  const { runContext } = toolContext;
+  if (!runContext) {
+    return new Err(
+      new Error("Tool outputs can only be persisted from a tool run context.")
+    );
+  }
+
+  const rel = `${TOOL_OUTPUTS_FOLDER_NAME}/${fileName}`;
+  switch (runContext.contextType) {
+    case "agent_loop":
+      return new Ok(
+        conversationScopedPath({
+          conversationId: runContext.conversation.sId,
+          rel,
+        })
+      );
+    case "sandbox_function":
+      return new Ok(
+        podScopedPath(runContext.invocation.sandboxFunction.space.sId, rel)
+      );
+    default:
+      return assertNever(runContext);
+  }
 }
 
 /**
@@ -59,12 +123,14 @@ export async function writeToConversationFolder(
 }
 
 /**
- * Writes content to the conversation's .tool_outputs folder via DustFileSystem.
- * Returns the scoped path (e.g. "conversation-{cId}/.tool_outputs/{fileName}") on success.
+ * Writes content to the .tool_outputs folder of the file system associated with the tool context
+ * (conversation in an agent loop, pod in a sandbox function invocation) via DustFileSystem.
+ * Returns the scoped path (e.g. "conversation-{cId}/.tool_outputs/{fileName}" or
+ * "pod-{pId}/.tool_outputs/{fileName}") on success.
  */
 export async function writeToToolOutputsFolder(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
+  toolContext: ToolContextType,
   {
     fileName,
     content,
@@ -75,12 +141,17 @@ export async function writeToToolOutputsFolder(
     contentType: AllSupportedFileContentType;
   }
 ): Promise<Result<string, Error>> {
-  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  const fsResult = await getDustFileSystemForToolContext(auth, toolContext);
   if (fsResult.isErr()) {
     return new Err(new Error(fsResult.error.message));
   }
 
-  const scopedPath = `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${TOOL_OUTPUTS_FOLDER_NAME}/${fileName}`;
+  const scopedPathResult = getToolOutputsScopedPath(toolContext, fileName);
+  if (scopedPathResult.isErr()) {
+    return scopedPathResult;
+  }
+  const scopedPath = scopedPathResult.value;
+
   const writeResult = await fsResult.value.write(
     scopedPath,
     content,
@@ -94,14 +165,14 @@ export async function writeToToolOutputsFolder(
 }
 
 /**
- * Attempts to persist a tool output block to the conversation's .tool_outputs folder via
+ * Attempts to persist a tool output block to the tool context's .tool_outputs folder via
  * DustFileSystem. Returns null if the block does not qualify for persistence.
  *
  * Call this as a side effect from processToolResults.
  */
 export async function persistToolOutput(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType,
+  toolContext: ToolContextType,
   block: CallToolResult["content"][number],
   { toolName, serverName }: { toolName: string; serverName: string }
 ): Promise<Result<PersistedToolOutput | null, Error>> {
@@ -112,7 +183,7 @@ export async function persistToolOutput(
     const ext = storageContentType === "application/json" ? ".json" : ".md";
     const fileName = makeFileName({ name: rawName, ext });
 
-    const result = await writeToToolOutputsFolder(auth, conversation, {
+    const result = await writeToToolOutputsFolder(auth, toolContext, {
       fileName,
       content,
       contentType: storageContentType,
@@ -135,7 +206,7 @@ export async function persistToolOutput(
       toolName
     );
 
-    const result = await writeToToolOutputsFolder(auth, conversation, {
+    const result = await writeToToolOutputsFolder(auth, toolContext, {
       fileName,
       content: block.text,
       contentType,
@@ -156,7 +227,7 @@ export async function persistToolOutput(
     const text = block.resource.text;
     const { fileName, contentType } = inferTextFileMetadata(text, toolName);
 
-    const result = await writeToToolOutputsFolder(auth, conversation, {
+    const result = await writeToToolOutputsFolder(auth, toolContext, {
       fileName,
       content: text,
       contentType,

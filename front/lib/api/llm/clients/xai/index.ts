@@ -47,12 +47,10 @@ export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
     });
   }
 
-  protected buildStreamRequestPayload({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): ResponseCreateParamsStreaming {
+  protected buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters
+  ): ResponseCreateParamsStreaming {
+    const { conversation, prompt, specifications } = streamParameters;
     const promptText = systemPromptToText(prompt);
     const reasoning = toReasoning(this.modelId, this.reasoningEffort);
 
@@ -69,7 +67,7 @@ export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
         format: toResponseFormat(this.responseFormat, XAI_PROVIDER_ID),
       },
       include: ["reasoning.encrypted_content"],
-      tool_choice: toToolOption(specifications, forceToolCall),
+      tool_choice: toToolOption(specifications, streamParameters),
     };
     return payload;
   }

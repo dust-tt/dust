@@ -11,6 +11,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { summarizeWithLLM } from "@app/lib/actions/mcp_internal_actions/utils/web_summarization";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -41,22 +42,22 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const MIN_CHARACTERS_TO_SUMMARIZE = 16_000;
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 const DEFAULT_WEBSEARCH_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
+const AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT = 10;
 
 async function handleWebsearch(
   { query }: { query: string },
   extra: ToolHandlerExtra
 ) {
   const { toolContext } = extra;
-  if (!toolContext?.runContext) {
-    return new Err(
-      new MCPError("agentLoopRunContext is required where the tool is called.")
-    );
-  }
 
-  const agentLoopRunContext = toolContext.runContext;
-
-  const { websearchResultCount, citationsOffset } =
-    agentLoopRunContext.stepContext;
+  const { websearchResultCount, citationsOffset } = isAgentLoopRunContext(
+    toolContext?.runContext
+  )
+    ? toolContext.runContext.stepContext
+    : {
+        websearchResultCount: AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT,
+        citationsOffset: 0,
+      };
 
   const rawSearchProvider = (
     (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {}
@@ -161,6 +162,14 @@ async function handleWebbrowser(
   });
 
   if (useSummarization) {
+    if (!isAgentLoopRunContext(toolContext.runContext)) {
+      return new Err(
+        new MCPError(
+          "Summarization cannot be enabled outside of an agent loop context."
+        )
+      );
+    }
+
     const runCtx = toolContext.runContext;
     const { citationsOffset, websearchResultCount } = runCtx.stepContext;
     const refs = getRefs().slice(
@@ -230,11 +239,11 @@ async function handleWebbrowser(
           ext: ".txt",
         });
 
-        const writeResult = await writeToToolOutputsFolder(
-          auth,
-          runCtx.conversation,
-          { fileName, content: fileContent, contentType: "text/plain" }
-        );
+        const writeResult = await writeToToolOutputsFolder(auth, toolContext, {
+          fileName,
+          content: fileContent,
+          contentType: "text/plain",
+        });
 
         if (writeResult.isErr()) {
           throw writeResult.error;

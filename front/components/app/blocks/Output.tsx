@@ -115,9 +115,13 @@ function ValueViewer({
                   <span className="flex flex-row items-center">
                     <ChevronDownIcon className="mt-0.5 h-4 w-4" />
                     {k != null ? (
-                      <span className="mr-1 font-bold text-gray-700">{k}:</span>
+                      <span className="mr-1 font-bold text-foreground">
+                        {k}:
+                      </span>
                     ) : null}
-                    <span className="text-gray-400">{summary(value)}</span>
+                    <span className="text-muted-foreground">
+                      {summary(value)}
+                    </span>
                   </span>
                 </div>
               ) : (
@@ -125,9 +129,13 @@ function ValueViewer({
                   <span className="flex flex-row items-center">
                     <ChevronRightIcon className="mt-0.5 h-4 w-4" />
                     {k != null ? (
-                      <span className="mr-1 font-bold text-gray-700">{k}:</span>
+                      <span className="mr-1 font-bold text-foreground">
+                        {k}:
+                      </span>
                     ) : null}
-                    <span className="text-gray-400">{summary(value)}</span>
+                    <span className="text-muted-foreground">
+                      {summary(value)}
+                    </span>
                   </span>
                 </div>
               )}
@@ -144,9 +152,9 @@ function ValueViewer({
           ) : null}
         </>
       ) : (
-        <div className="ml-2 flex text-sm text-gray-600">
+        <div className="ml-2 flex text-sm text-muted-foreground">
           {k != null ? (
-            <span className="ml-2 mr-1 font-bold text-gray-700">{k}:</span>
+            <span className="ml-2 mr-1 font-bold text-foreground">{k}:</span>
           ) : null}
           <span className="whitespace-pre-wrap">
             {typeof value === "string" ? (

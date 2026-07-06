@@ -1,257 +1,408 @@
-// TextStyles.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-// Define the text sizes and weights
-const textSizes = {
-  xs: "text-xs",
-  sm: "text-sm",
-  md: "text-base",
-  lg: "text-lg",
-  xl: "text-xl",
-};
+import {
+  TokenChip,
+  useComputedStyle,
+  withThemedSurface,
+} from "./foundations-helpers";
 
-const copySizes = {
-  xs: "copy-xs",
-  sm: "copy-sm",
-  base: "copy-base",
-  lg: "copy-lg",
-  xl: "copy-xl",
-};
-
-const extraTextSizes = {
-  "2xl": "text-2xl",
-  "3xl": "text-3xl",
-  "4xl": "text-4xl",
-  "5xl": "text-5xl",
-  "6xl": "text-6xl",
-  "7xl": "text-7xl",
-  "8xl": "text-8xl",
-  "9xl": "text-9xl",
-};
-
-const headingSizes = {
-  base: "heading-base",
-  lg: "heading-lg",
-  xl: "heading-xl",
-  "2xl": "heading-2xl",
-  "3xl": "heading-3xl",
-  "4xl": "heading-4xl",
-  "5xl": "heading-5xl",
-  "6xl": "heading-6xl",
-  "7xl": "heading-7xl",
-  "8xl": "heading-8xl",
-  "9xl": "heading-9xl",
-};
-
-const headingMonoSizes = {
-  lg: "heading-mono-lg",
-  xl: "heading-mono-xl",
-  "2xl": "heading-mono-2xl",
-  "3xl": "heading-mono-3xl",
-  "4xl": "heading-mono-4xl",
-  "5xl": "heading-mono-5xl",
-  "6xl": "heading-mono-6xl",
-  "7xl": "heading-mono-7xl",
-  "8xl": "heading-mono-8xl",
-  "9xl": "heading-mono-9xl",
-};
-
-const fontWeights = {
-  normal: "font-normal",
-  medium: "font-medium",
-  semibold: "font-semibold",
-  bold: "font-bold",
-};
-
-const loremIpsum =
-  "Geist. Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
-
-const copyLoremIpsum = `Geist. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`;
-
-interface TypographyProps {
-  variant: "font-size" | "heading" | "heading-mono" | "copy";
-}
-
-const Typography: React.FC<TypographyProps> = ({ variant }) => {
-  if (variant === "font-size") {
-    return (
-      <div>
-        <div
-          className="grid gap-4 bg-repeat py-8"
-          style={{
-            gridTemplateColumns: `repeat(${Object.keys(fontWeights).length}, minmax(0, 1fr))`,
-          }}
-        >
-          {Object.entries(textSizes).map(([sizeKey, sizeClass]) =>
-            Object.entries(fontWeights).map(([weightKey, weightClass]) => (
-              <div
-                key={`${sizeKey}-${weightKey}`}
-                className={cn(sizeClass, weightClass)}
-              >
-                <div>{`${sizeKey} ${weightKey}`}</div>
-                <p>{loremIpsum}</p>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="mt-6 grid gap-16 bg-repeat py-8">
-          {Object.entries(extraTextSizes).map(([sizeKey, sizeClass]) => (
-            <div key={sizeKey} className={cn(sizeClass, "font-medium")}>
-              <div>{`${sizeKey} medium`}</div>
-              <p>{loremIpsum}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (variant === "copy") {
-    return (
-      <div className="space-y-12 bg-repeat py-8">
-        {Object.entries(copySizes).map(([sizeKey, copyClass]) => (
-          <div key={sizeKey} className="space-y-4">
-            <div className={copyClass}>
-              <div>{`Copy ${sizeKey}`}</div>
-              <div
-                className="mt-2"
-                style={{
-                  maxWidth:
-                    sizeKey === "xs"
-                      ? "20rem"
-                      : sizeKey === "sm"
-                        ? "24rem"
-                        : sizeKey === "base"
-                          ? "32rem"
-                          : sizeKey === "lg"
-                            ? "40rem"
-                            : "48rem",
-                }}
-              >
-                <p>{copyLoremIpsum}</p>
-              </div>
-            </div>
-            <div className={cn(copyClass, "italic")}>
-              <div>{`Copy ${sizeKey} Italic`}</div>
-              <div
-                className="mt-2"
-                style={{
-                  maxWidth:
-                    sizeKey === "xs"
-                      ? "20rem"
-                      : sizeKey === "sm"
-                        ? "24rem"
-                        : sizeKey === "base"
-                          ? "32rem"
-                          : sizeKey === "lg"
-                            ? "40rem"
-                            : "48rem",
-                }}
-              >
-                <p>{copyLoremIpsum}</p>
-              </div>
-            </div>
-            <div className={cn(copyClass, "font-mono")}>
-              <div>{`Copy ${sizeKey} Mono`}</div>
-              <div
-                className="mt-2"
-                style={{
-                  maxWidth:
-                    sizeKey === "xs"
-                      ? "20rem"
-                      : sizeKey === "sm"
-                        ? "24rem"
-                        : sizeKey === "base"
-                          ? "32rem"
-                          : sizeKey === "lg"
-                            ? "40rem"
-                            : "48rem",
-                }}
-              >
-                <p>{copyLoremIpsum}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (variant === "heading-mono") {
-    return (
-      <div className="space-y-8 bg-repeat py-8">
-        {Object.entries(headingMonoSizes).map(([sizeKey, headingClass]) => (
-          <div key={sizeKey} className={headingClass}>
-            <div>{`Heading Mono ${sizeKey}`}</div>
-            <p>{loremIpsum}</p>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-8 bg-repeat py-8">
-      {Object.entries(headingSizes).map(([sizeKey, headingClass]) => (
-        <div key={sizeKey} className={headingClass}>
-          <div>{`Heading ${sizeKey}`}</div>
-          <p>{loremIpsum}</p>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const meta: Meta<typeof Typography> = {
+const meta = {
   title: "Foundations/Typography",
-  component: Typography,
   tags: ["autodocs"],
+  decorators: [withThemedSurface],
   parameters: {
     layout: "padded",
     docs: {
       description: {
-        component: `The Sparkle type scale, rendered in Geist. Covers font sizes (\`text-xs\` to \`text-9xl\`) with weights, heading styles (\`heading-*\` and monospace \`heading-mono-*\`), and copy/body styles (\`copy-*\`, including italic and mono). Use the **variant** control to switch between the font-size, heading, heading-mono, and copy specimens, and reach for these utilities instead of ad-hoc font sizing.`,
+        component: `The Sparkle type system, rendered in Geist. Prefer the composite utilities — \`heading-*\`, \`copy-*\`, \`label-*\` (and monospace \`heading-mono-*\`) — over ad-hoc \`text-*\` + \`font-*\` combinations so weight, line-height, and letter-spacing stay consistent. Each token is shown as a reference row: live specimen, a click-to-copy class chip, its computed value (size / line-height · weight, read from the compiled CSS), and a description of intended use. Compose modifiers like \`italic\` or \`font-mono\` on top of the copy styles when needed.`,
       },
     },
   },
-  args: {
-    variant: "font-size",
-  },
-};
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Add a Default story that matches the expected ID
-export const Default: Story = {
-  args: {
-    variant: "font-size",
-  },
+const MEASURED = [
+  "font-size",
+  "line-height",
+  "font-weight",
+  "font-family",
+] as const;
+
+type TypeRow = {
+  // Utility class documented by the row; the chip copies this.
+  name: string;
+  // Classes applied to the specimen (defaults to `name`).
+  className?: string;
+  sample: string;
+  description?: React.ReactNode;
 };
 
-export const FontSize: Story = {
-  args: {
-    variant: "font-size",
-  },
+// Which computed properties the Value column shows.
+type ValueKind = "metrics" | "family";
+
+const TypeTableRow = ({
+  row,
+  valueKind,
+  withDescription,
+}: {
+  row: TypeRow;
+  valueKind: ValueKind;
+  withDescription: boolean;
+}) => {
+  const ref = React.useRef<HTMLParagraphElement>(null);
+  const measured = useComputedStyle(ref, MEASURED);
+  const value =
+    valueKind === "family"
+      ? measured["font-family"]
+      : measured["font-size"] &&
+        `${measured["font-size"]} / ${measured["line-height"]} · ${measured["font-weight"]}`;
+
+  return (
+    <tr className="border-b border-border last:border-b-0">
+      <td className="w-2/5 py-3 pr-4 align-middle">
+        <p
+          ref={ref}
+          className={cn(
+            row.className ?? row.name,
+            "overflow-hidden text-ellipsis whitespace-nowrap"
+          )}
+        >
+          {row.sample}
+        </p>
+      </td>
+      <td className="py-3 pr-4 align-middle">
+        <TokenChip value={row.name} />
+      </td>
+      <td className="whitespace-nowrap py-3 pr-4 align-middle font-mono text-xs text-muted-foreground">
+        {value || "—"}
+      </td>
+      {withDescription && (
+        <td className="py-3 align-middle text-sm text-muted-foreground">
+          {row.description ?? "—"}
+        </td>
+      )}
+    </tr>
+  );
 };
 
-export const Heading: Story = {
-  args: {
-    variant: "heading",
-  },
+// Mirrors the Colors TokenTable: specimen · copyable chip · live value ·
+// optional description, so every Foundations page reads the same way.
+const TypeTable = ({
+  rows,
+  valueKind = "metrics",
+}: {
+  rows: TypeRow[];
+  valueKind?: ValueKind;
+}) => {
+  const withDescription = rows.some((row) => row.description != null);
+  return (
+    <table className="w-full border-collapse text-left">
+      <thead>
+        <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+          <th className="py-2 pr-4 font-medium">Preview</th>
+          <th className="py-2 pr-4 font-medium">Name</th>
+          <th className="py-2 pr-4 font-medium">Value</th>
+          {withDescription && <th className="py-2 font-medium">Description</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <TypeTableRow
+            key={row.name}
+            row={row}
+            valueKind={valueKind}
+            withDescription={withDescription}
+          />
+        ))}
+      </tbody>
+    </table>
+  );
 };
 
-export const HeadingMono: Story = {
-  args: {
-    variant: "heading-mono",
-  },
+const Section = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-2">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      {description}
+    </div>
+    {children}
+  </div>
+);
+
+const copySentence =
+  "The quick brown fox jumps over the lazy dog and settles in.";
+
+export const FontFamilies: Story = {
+  render: () => (
+    <Section
+      title="Font Families"
+      description={
+        <p className="text-sm text-primary-600">
+          The two families of the system. Everything defaults to Geist; use mono
+          for code, identifiers, and technical values.
+        </p>
+      }
+    >
+      <TypeTable
+        valueKind="family"
+        rows={[
+          {
+            name: "font-sans",
+            className: "font-sans text-xl",
+            sample: "Sparkle",
+            description: "Geist — the default for all product UI.",
+          },
+          {
+            name: "font-mono",
+            className: "font-mono text-xl",
+            sample: "Sparkle",
+            description: "Geist Mono — code, tokens, and technical values.",
+          },
+        ]}
+      />
+    </Section>
+  ),
 };
+
+const rawSizes = [
+  "xs",
+  "sm",
+  "base",
+  "lg",
+  "xl",
+  "2xl",
+  "3xl",
+  "4xl",
+  "5xl",
+  "6xl",
+  "7xl",
+  "8xl",
+  "9xl",
+] as const;
+
+export const FontSizes: Story = {
+  render: () => (
+    <Section
+      title="Font Sizes"
+      description={
+        <p className="text-sm text-primary-600">
+          The raw size scale with its paired line-heights. Prefer the semantic
+          heading / copy / label utilities below; reach for raw sizes only when
+          composing something the semantic styles don't cover.
+        </p>
+      }
+    >
+      <TypeTable
+        rows={rawSizes.map((size) => ({
+          name: `text-${size}`,
+          sample: "Aa",
+        }))}
+      />
+    </Section>
+  ),
+};
+
+export const FontWeights: Story = {
+  render: () => (
+    <Section
+      title="Font Weights"
+      description={
+        <p className="text-sm text-primary-600">
+          Geist is tuned slightly lighter than the usual scale — medium is 450
+          and semibold 550. The semantic utilities already pick the right
+          weight; these are for manual composition.
+        </p>
+      }
+    >
+      <TypeTable
+        rows={[
+          {
+            name: "font-normal",
+            className: "text-xl font-normal",
+            sample: "Aa",
+            description: "400 — body text (what copy-* uses).",
+          },
+          {
+            name: "font-medium",
+            className: "text-xl font-medium",
+            sample: "Aa",
+            description: "450 — labels and buttons (what label-* uses).",
+          },
+          {
+            name: "font-semibold",
+            className: "text-xl font-semibold",
+            sample: "Aa",
+            description: "550 — headings (what heading-* uses).",
+          },
+          {
+            name: "font-bold",
+            className: "text-xl font-bold",
+            sample: "Aa",
+            description: "700 — strong emphasis; use sparingly.",
+          },
+        ]}
+      />
+    </Section>
+  ),
+};
+
+const headingDescriptions: Record<string, string> = {
+  "heading-xs": "Tiny headers: menu group labels, overlines.",
+  "heading-sm": "Menu items, compact card titles.",
+  "heading-base": "Default component heading: dialog sections, list titles.",
+  "heading-lg": "Section titles in pages and panels.",
+  "heading-xl": "Dialog and page titles.",
+  "heading-2xl": "Large page titles.",
+  "heading-3xl": "Hero / marketing headings.",
+};
+
+const headingSizes = [
+  "xs",
+  "sm",
+  "base",
+  "lg",
+  "xl",
+  "2xl",
+  "3xl",
+  "4xl",
+  "5xl",
+  "6xl",
+  "7xl",
+  "8xl",
+  "9xl",
+] as const;
+
+export const Headings: Story = {
+  render: () => (
+    <Section
+      title="Headings"
+      description={
+        <p className="text-sm text-primary-600">
+          Semibold (550) headings across the scale — size, line-height, and
+          letter-spacing are packaged together. Sizes above 3xl are for
+          marketing surfaces.
+        </p>
+      }
+    >
+      <TypeTable
+        rows={headingSizes.map((size) => ({
+          name: `heading-${size}`,
+          sample: "Sparkle",
+          description: headingDescriptions[`heading-${size}`],
+        }))}
+      />
+    </Section>
+  ),
+};
+
+const headingMonoSizes = [
+  "lg",
+  "xl",
+  "2xl",
+  "3xl",
+  "4xl",
+  "5xl",
+  "6xl",
+  "7xl",
+  "8xl",
+  "9xl",
+] as const;
+
+export const HeadingsMono: Story = {
+  render: () => (
+    <Section
+      title="Headings Mono"
+      description={
+        <p className="text-sm text-primary-600">
+          The heading scale in Geist Mono, for technical or editorial accents.
+        </p>
+      }
+    >
+      <TypeTable
+        rows={headingMonoSizes.map((size) => ({
+          name: `heading-mono-${size}`,
+          sample: "Sparkle",
+        }))}
+      />
+    </Section>
+  ),
+};
+
+const copyDescriptions: Record<string, string> = {
+  "copy-xs": "Captions, hints, and metadata.",
+  "copy-sm": "Dense product body text.",
+  "copy-base": "Default body text.",
+  "copy-lg": "Comfortable long-form reading.",
+  "copy-xl": "Intro paragraphs, marketing copy.",
+  "copy-2xl": "Large editorial / marketing copy.",
+};
+
+const copySizes = ["xs", "sm", "base", "lg", "xl", "2xl"] as const;
 
 export const Copy: Story = {
-  args: {
-    variant: "copy",
-  },
+  render: () => (
+    <Section
+      title="Copy"
+      description={
+        <p className="text-sm text-primary-600">
+          Regular-weight (400) body styles. Compose <code>italic</code> or{" "}
+          <code>font-mono</code> on top when a passage needs it.
+        </p>
+      }
+    >
+      <TypeTable
+        rows={copySizes.map((size) => ({
+          name: `copy-${size}`,
+          sample: copySentence,
+          description: copyDescriptions[`copy-${size}`],
+        }))}
+      />
+    </Section>
+  ),
+};
+
+export const Labels: Story = {
+  render: () => (
+    <Section
+      title="Labels"
+      description={
+        <p className="text-sm text-primary-600">
+          Medium-weight (450) styles for interactive and compact UI text.
+        </p>
+      }
+    >
+      <TypeTable
+        rows={[
+          {
+            name: "label-xs",
+            sample: "Label",
+            description: "Chips, counters, and the smallest buttons.",
+          },
+          {
+            name: "label-sm",
+            sample: "Label",
+            description: "Buttons and form labels.",
+          },
+          {
+            name: "label-base",
+            sample: "Label",
+            description: "Larger buttons and prominent labels.",
+          },
+        ]}
+      />
+    </Section>
+  ),
 };

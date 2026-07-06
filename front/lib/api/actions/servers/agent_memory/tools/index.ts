@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   AGENT_MEMORY_COMPACT_TOOL_NAME,
   AGENT_MEMORY_EDIT_TOOL_NAME,
@@ -47,8 +48,8 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      toolContext?.runContext,
-      "agentLoopContext is required to run the memory retrieve tool"
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
     );
     const { agentConfiguration } = toolContext.runContext;
 
@@ -73,8 +74,8 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      toolContext?.runContext,
-      "agentLoopContext is required to run the memory record_entries tool"
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
     );
     const { agentConfiguration } = toolContext.runContext;
 
@@ -105,8 +106,8 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      toolContext?.runContext,
-      "agentLoopContext is required to run the memory erase_entries tool"
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
     );
     const { agentConfiguration } = toolContext.runContext;
 
@@ -129,8 +130,8 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      toolContext?.runContext,
-      "agentLoopContext is required to run the memory edit_entries tool"
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
     );
     const { agentConfiguration } = toolContext.runContext;
 
@@ -161,8 +162,8 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     }
 
     assert(
-      toolContext?.runContext,
-      "agentLoopContext is required to run the memory compact_memory tool"
+      isAgentLoopRunContext(toolContext?.runContext),
+      "AgentLoopRunContext expected"
     );
     const { agentConfiguration } = toolContext.runContext;
 

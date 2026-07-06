@@ -8,9 +8,14 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
 
 const BILLING_INVOICES_PAGE_SIZE = 12;
+// A Stripe customer can be shared by multiple workspaces (several Metronome
+// customers can point to the same Stripe customer). We list more invoices than
+// we display so that filtering by workspace still fills a page.
+const BILLING_INVOICES_SCAN_LIMIT = 100;
 
 function serializeInvoice(invoice: Stripe.Invoice): BillingInvoice {
   return {
@@ -28,6 +33,39 @@ function serializeInvoice(invoice: Stripe.Invoice): BillingInvoice {
     hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
     invoicePdf: invoice.invoice_pdf ?? null,
   };
+}
+
+// A Stripe customer can be shared by several workspaces (multiple Metronome
+// customers pointing to the same Stripe customer), so listing by customer is
+// not enough. An invoice is excluded only when an attribution marker
+// positively ties it to a *different* workspace, checked in the same
+// precedence order as the Stripe webhook handler (`resolveInvoiceCtx`):
+//   - `metadata.workspace_id` — stamped on credit-purchase invoices we create.
+//   - `metadata.metronome_customer_id` — stamped by Metronome on every invoice
+//     it pushes to Stripe.
+//   - `subscription_details.metadata.workspaceId` — stamped on the Stripe
+//     subscription at checkout, snapshotted on its invoices by Stripe.
+// Legacy invoices (pre-Metronome, or created manually in Stripe) carry no
+// marker at all: we keep them rather than hide the workspace's own history.
+function invoiceBelongsToAnotherWorkspace({
+  invoice,
+  owner,
+}: {
+  invoice: Stripe.Invoice;
+  owner: LightWorkspaceType;
+}): boolean {
+  if (invoice.metadata?.workspace_id) {
+    return invoice.metadata.workspace_id !== owner.sId;
+  }
+  if (invoice.metadata?.metronome_customer_id) {
+    return invoice.metadata.metronome_customer_id !== owner.metronomeCustomerId;
+  }
+  const subscriptionWorkspaceId =
+    invoice.subscription_details?.metadata?.workspaceId;
+  if (subscriptionWorkspaceId) {
+    return subscriptionWorkspaceId !== owner.sId;
+  }
+  return false;
 }
 
 export async function listRecentBillingInvoices(
@@ -54,10 +92,17 @@ export async function listRecentBillingInvoices(
   try {
     const invoices = await getStripeClient().invoices.list({
       customer: stripeCustomerIdRes.value,
-      limit: BILLING_INVOICES_PAGE_SIZE,
+      limit: BILLING_INVOICES_SCAN_LIMIT,
     });
 
-    return new Ok(invoices.data.map(serializeInvoice));
+    return new Ok(
+      invoices.data
+        .filter(
+          (invoice) => !invoiceBelongsToAnotherWorkspace({ invoice, owner })
+        )
+        .slice(0, BILLING_INVOICES_PAGE_SIZE)
+        .map(serializeInvoice)
+    );
   } catch (error) {
     return new Err(new Error(errorToString(error)));
   }

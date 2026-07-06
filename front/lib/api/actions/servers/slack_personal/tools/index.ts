@@ -7,7 +7,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
   executeArchiveChannel,
@@ -446,7 +449,11 @@ export function createSlackPersonalTools(
           ]);
         }
 
-        const { citationsOffset } = toolContext.runContext.stepContext;
+        const { citationsOffset } = isAgentLoopRunContext(
+          toolContext.runContext
+        )
+          ? toolContext.runContext.stepContext
+          : { citationsOffset: 0 };
 
         const refs = getRefs().slice(
           citationsOffset,
@@ -522,7 +529,11 @@ export function createSlackPersonalTools(
           ]);
         }
 
-        const { citationsOffset } = toolContext.runContext.stepContext;
+        const { citationsOffset } = isAgentLoopRunContext(
+          toolContext.runContext
+        )
+          ? toolContext.runContext.stepContext
+          : { citationsOffset: 0 };
 
         const refs = getRefs().slice(
           citationsOffset,
@@ -803,9 +814,11 @@ export function createSlackPersonalTools(
         accessToken,
       });
 
-      const { citationsOffset } = toolContext.runContext.stepContext;
+      const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
+        ? toolContext.runContext.stepContext
+        : { citationsOffset: 0 };
 
-      const refs = getRefs().slice(
+      let refs = getRefs().slice(
         citationsOffset,
         citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
       );

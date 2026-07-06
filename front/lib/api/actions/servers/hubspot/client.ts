@@ -781,6 +781,51 @@ export const createDeal = async ({
   return hubspotClient.crm.deals.basicApi.create(dealData);
 };
 
+export const createTicket = async ({
+  accessToken,
+  properties,
+  associations,
+}: {
+  accessToken: string;
+  properties: Record<string, string>;
+  associations?: Array<{
+    toObjectId: string;
+    toObjectType: string;
+  }>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
+    [];
+
+  if (associations && associations.length > 0) {
+    for (const assoc of associations) {
+      const associationTypeId = await getAssociationTypeId(
+        accessToken,
+        "tickets",
+        assoc.toObjectType
+      );
+      builtAssociations.push({
+        to: { id: assoc.toObjectId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId: associationTypeId,
+          },
+        ],
+      });
+    }
+  }
+
+  const ticketData: SimplePublicObjectInputForCreate = {
+    properties,
+    associations: builtAssociations,
+  };
+
+  return hubspotClient.crm.tickets.basicApi.create(ticketData);
+};
+
 export const createNote = async ({
   accessToken,
   properties,
@@ -897,7 +942,7 @@ export const createLead = async ({
     for (const assoc of associations) {
       const associationTypeId = await getAssociationTypeId(
         accessToken,
-        "deals",
+        "leads",
         assoc.toObjectType
       );
       builtAssociations.push({
@@ -918,7 +963,7 @@ export const createLead = async ({
     associations: builtAssociations,
   };
 
-  return hubspotClient.crm.deals.basicApi.create(leadData);
+  return hubspotClient.crm.objects.basicApi.create("leads", leadData);
 };
 
 export const createTask = async ({
@@ -1345,7 +1390,8 @@ export const searchCrmObjects = async ({
     | "quotes"
     | "feedback_submissions"
     | "products"
-    | "tickets";
+    | "tickets"
+    | "leads";
   filters?: Array<HubspotFilter>;
   query?: string;
   propertiesToReturn?: string[];
@@ -1455,6 +1501,12 @@ export const searchCrmObjects = async ({
       case "tickets":
         searchResponse =
           await hubspotClient.crm.tickets.searchApi.doSearch(searchRequest);
+        break;
+      case "leads":
+        searchResponse =
+          await hubspotClient.crm.objects.leads.searchApi.doSearch(
+            searchRequest
+          );
         break;
       default:
         throw new Error(
@@ -1727,6 +1779,58 @@ export const updateDeal = async ({
   }
 };
 
+export const updateTask = async ({
+  accessToken,
+  taskId,
+  properties,
+}: {
+  accessToken: string;
+  taskId: string;
+  properties: Record<string, string>;
+}): Promise<SimplePublicObject> => {
+  const hubspotClient = new Client({ accessToken });
+
+  const updateInput: SimplePublicObjectInput = {
+    properties,
+  };
+
+  try {
+    const result = await hubspotClient.crm.objects.basicApi.update(
+      "tasks",
+      taskId,
+      updateInput
+    );
+
+    return result;
+  } catch (error) {
+    localLogger.error(
+      { error, taskId },
+      `Error updating task with ID ${taskId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+export const deleteTask = async ({
+  accessToken,
+  taskId,
+}: {
+  accessToken: string;
+  taskId: string;
+}): Promise<void> => {
+  const hubspotClient = new Client({ accessToken });
+
+  try {
+    await hubspotClient.crm.objects.basicApi.archive("tasks", taskId);
+  } catch (error) {
+    localLogger.error(
+      { error, taskId },
+      `Error deleting task with ID ${taskId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
 export const getUserDetails = async (accessToken: string) => {
   try {
     // eslint-disable-next-line no-restricted-globals
@@ -1764,12 +1868,16 @@ export const createAssociation = async ({
   fromObjectId,
   toObjectType,
   toObjectId,
+  associationCategory,
+  associationTypeId,
 }: {
   accessToken: string;
   fromObjectType: string;
   fromObjectId: string;
   toObjectType: string;
   toObjectId: string;
+  associationCategory?: AssociationSpecAssociationCategoryEnum;
+  associationTypeId?: number;
 }) => {
   try {
     const hubspotClient = new Client({ accessToken });
@@ -1782,8 +1890,9 @@ export const createAssociation = async ({
       [
         {
           associationCategory:
+            associationCategory ??
             AssociationSpecAssociationCategoryEnum.HubspotDefined,
-          associationTypeId: 1,
+          associationTypeId: associationTypeId ?? 1,
         },
       ]
     );
@@ -1796,6 +1905,29 @@ export const createAssociation = async ({
     );
     throw normalizeError(error);
   }
+};
+
+interface HubSpotAssociationLabel {
+  category: AssociationSpecAssociationCategoryEnum;
+  typeId: number;
+  label?: string;
+}
+
+export const listAssociationLabels = async ({
+  accessToken,
+  fromObjectType,
+  toObjectType,
+}: {
+  accessToken: string;
+  fromObjectType: string;
+  toObjectType: string;
+}): Promise<HubSpotAssociationLabel[]> => {
+  const data = await hubspotApiFetch<{ results: HubSpotAssociationLabel[] }>({
+    accessToken,
+    path: `/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
+  });
+
+  return data.results;
 };
 
 export const listAssociations = async ({

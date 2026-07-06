@@ -12,8 +12,8 @@ import {
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
-  isToolCategory,
-  TOOL_CATEGORY_AWU_WEIGHTS,
+  isToolCostCategory,
+  TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
@@ -165,11 +165,11 @@ export async function fetchProgrammaticAwuSpend({
       entry.group?.[USAGE_TYPE_GROUP_KEY] !== USAGE_TYPE_PROGRAMMATIC ||
       new Date(entry.startingOn).getTime() < cycleStartMs ||
       !category ||
-      !isToolCategory(category)
+      !isToolCostCategory(category)
     ) {
       continue;
     }
-    spentAwuCredits += entry.value * TOOL_CATEGORY_AWU_WEIGHTS[category];
+    spentAwuCredits += entry.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
   }
 
   return new Ok(spentAwuCredits);

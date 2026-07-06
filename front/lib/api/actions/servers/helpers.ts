@@ -1,4 +1,7 @@
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import type { ConversationMetadata } from "@app/types/assistant/conversation";
 
 // TODO(sidekick 2026-01-23): move all sidekick mcp servers and these helpers in dedicated folder
@@ -41,8 +44,9 @@ export function getSidekickMetadataFromContext(
   toolContext?: ToolContextType
 ): SidekickMetadata | null {
   const metadata =
-    toolContext?.runContext?.conversation.metadata ??
-    toolContext?.listToolsContext?.conversation.metadata;
+    (isAgentLoopRunContext(toolContext?.runContext)
+      ? toolContext?.runContext?.conversation.metadata
+      : null) ?? toolContext?.listToolsContext?.conversation.metadata;
 
   return metadata ? extractSidekickMetadata(metadata) : null;
 }
