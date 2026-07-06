@@ -8,7 +8,7 @@ import {
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const FireworksGlobalDeepSeekV4ProStreamSetup: StreamSetup = {
   createInstance: () =>
     new FireworksGlobalDeepSeekV4ProStream({
       FIREWORKS_API_KEY: process.env.DUST_MANAGED_FIREWORKS_API_KEY ?? "",
@@ -65,4 +65,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/fireworks_global_deepseek_v4_pro.test.ts
-runStreamEndpointTests(FireworksGlobalDeepSeekV4ProStream, setup);
+runStreamEndpointTests(FireworksGlobalDeepSeekV4ProStream, FireworksGlobalDeepSeekV4ProStreamSetup);

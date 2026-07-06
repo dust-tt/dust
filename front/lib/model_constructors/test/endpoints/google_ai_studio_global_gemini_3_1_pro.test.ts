@@ -5,7 +5,7 @@ import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/case
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const GoogleAiStudioGlobalGeminiThreeDotOneProStreamSetup: StreamSetup = {
   createInstance: () =>
     new GoogleAiStudioGlobalGeminiThreeDotOneProStream({
       GOOGLE_AI_STUDIO_API_KEY:
@@ -69,4 +69,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/google_ai_studio_global_gemini_3_1_pro.test.ts
-runStreamEndpointTests(GoogleAiStudioGlobalGeminiThreeDotOneProStream, setup);
+runStreamEndpointTests(GoogleAiStudioGlobalGeminiThreeDotOneProStream, GoogleAiStudioGlobalGeminiThreeDotOneProStreamSetup);

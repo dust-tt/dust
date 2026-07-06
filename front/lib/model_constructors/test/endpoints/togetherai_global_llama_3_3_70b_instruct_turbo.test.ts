@@ -5,7 +5,7 @@ import { HAS_NO_REASONING } from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const TogetheraiGlobalLlama3370BInstructTurboStreamSetup: StreamSetup = {
   createInstance: () =>
     new TogetheraiGlobalLlama3370BInstructTurboStream({
       TOGETHERAI_API_KEY: process.env.DUST_MANAGED_TOGETHERAI_API_KEY ?? "",
@@ -66,4 +66,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/togetherai_global_llama_3_3_70b_instruct_turbo.test.ts
-runStreamEndpointTests(TogetheraiGlobalLlama3370BInstructTurboStream, setup);
+runStreamEndpointTests(TogetheraiGlobalLlama3370BInstructTurboStream, TogetheraiGlobalLlama3370BInstructTurboStreamSetup);

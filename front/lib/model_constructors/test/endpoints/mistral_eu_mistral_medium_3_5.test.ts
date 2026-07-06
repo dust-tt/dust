@@ -5,7 +5,7 @@ import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/case
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const MistralEuropeMistralMedium35StreamSetup: StreamSetup = {
   createInstance: () =>
     new MistralEuropeMistralMedium35Stream({
       MISTRAL_API_KEY: process.env.DUST_MANAGED_MISTRAL_API_KEY ?? "",
@@ -64,4 +64,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/mistral_eu_mistral_medium_3_5.test.ts
-runStreamEndpointTests(MistralEuropeMistralMedium35Stream, setup);
+runStreamEndpointTests(MistralEuropeMistralMedium35Stream, MistralEuropeMistralMedium35StreamSetup);

@@ -8,7 +8,7 @@ import {
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const FireworksGlobalGlmFiveDotTwoStreamSetup: StreamSetup = {
   createInstance: () =>
     new FireworksGlobalGlmFiveDotTwoStream({
       FIREWORKS_API_KEY: process.env.DUST_MANAGED_FIREWORKS_API_KEY ?? "",
@@ -65,4 +65,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/fireworks_global_glm_five_dot_two.test.ts
-runStreamEndpointTests(FireworksGlobalGlmFiveDotTwoStream, setup);
+runStreamEndpointTests(FireworksGlobalGlmFiveDotTwoStream, FireworksGlobalGlmFiveDotTwoStreamSetup);

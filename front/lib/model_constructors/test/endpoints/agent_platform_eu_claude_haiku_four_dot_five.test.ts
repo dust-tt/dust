@@ -5,7 +5,7 @@ import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/case
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-const setup: StreamSetup = {
+export const AgentPlatformEuropeClaudeHaikuFourDotFiveStreamSetup: StreamSetup = {
   createInstance: () =>
     new AgentPlatformEuropeClaudeHaikuFourDotFiveStream({
       AGENT_PLATFORM_PROJECT_ID: process.env.VERTEX_AI_PROJECT_ID ?? "",
@@ -66,4 +66,4 @@ const setup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/agent_platform_eu_claude_haiku_four_dot_five.test.ts
-runStreamEndpointTests(AgentPlatformEuropeClaudeHaikuFourDotFiveStream, setup);
+runStreamEndpointTests(AgentPlatformEuropeClaudeHaikuFourDotFiveStream, AgentPlatformEuropeClaudeHaikuFourDotFiveStreamSetup);
