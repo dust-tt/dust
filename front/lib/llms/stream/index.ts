@@ -18,6 +18,15 @@ import { DustMistralEuropeCodestralStream } from "@app/lib/llms/stream/endpoints
 import { DustMistralEuropeMistralLargeStream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_large";
 import { DustMistralEuropeMistralMedium35Stream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_medium_3_5";
 import { DustMistralEuropeMistralSmallStream } from "@app/lib/llms/stream/endpoints/mistral_eu_mistral_small";
+import { DustOpenAIResponsesEuropeGptFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five";
+import { DustOpenAIResponsesEuropeGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_dot_five";
+import { DustOpenAIResponsesEuropeGptFiveDotFourStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_dot_four";
+import { DustOpenAIResponsesEuropeGptFiveDotFourMiniStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_dot_four_mini";
+import { DustOpenAIResponsesEuropeGptFiveDotFourNanoStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_dot_four_nano";
+import { DustOpenAIResponsesEuropeGptFiveDotOneStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_dot_one";
+import { DustOpenAIResponsesEuropeGptFiveDotTwoStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_dot_two";
+import { DustOpenAIResponsesEuropeGptFiveMiniStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_mini";
+import { DustOpenAIResponsesEuropeGptFiveNanoStream } from "@app/lib/llms/stream/endpoints/openai_responses_eu_gpt_five_nano";
 import { DustOpenAIResponsesGlobalGptFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five";
 import { DustOpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { DustOpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/llms/stream/endpoints/openai_responses_global_gpt_five_dot_four";
@@ -37,12 +46,16 @@ import type {
 import type { StreamEndpointId } from "@app/lib/model_constructors/stream";
 
 export const DUST_STREAM_ENDPOINTS = {
+  [DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
+    DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream,
+  [DustAgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
+    DustAgentPlatformEuropeClaudeSonnetFourDotSixStream,
+  [DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:
+    DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream,
+  [DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
+    DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream,
   [DustAnthropicGlobalClaudeFableFiveStream.id]:
     DustAnthropicGlobalClaudeFableFiveStream,
-  [DustAnthropicGlobalClaudeSonnetFiveStream.id]:
-    DustAnthropicGlobalClaudeSonnetFiveStream,
-  [DustAnthropicGlobalClaudeSonnetFourDotSixStream.id]:
-    DustAnthropicGlobalClaudeSonnetFourDotSixStream,
   [DustAnthropicGlobalClaudeHaikuFourDotFiveStream.id]:
     DustAnthropicGlobalClaudeHaikuFourDotFiveStream,
   [DustAnthropicGlobalClaudeOpusFourDotEightStream.id]:
@@ -51,46 +64,60 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicGlobalClaudeOpusFourDotSevenStream,
   [DustAnthropicGlobalClaudeOpusFourDotSixStream.id]:
     DustAnthropicGlobalClaudeOpusFourDotSixStream,
-  [DustAgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
-    DustAgentPlatformEuropeClaudeSonnetFourDotSixStream,
-  [DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:
-    DustAgentPlatformEuropeGeminiThreeDotFiveFlashStream,
-  [DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
-    DustAgentPlatformEuropeGeminiThreeDotOneFlashLiteStream,
-  [DustGoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
-    DustGoogleAiStudioGlobalGeminiThreeDotOneProStream,
-  [DustOpenAIResponsesGlobalGptFiveDotFiveStream.id]:
-    DustOpenAIResponsesGlobalGptFiveDotFiveStream,
-  [DustOpenAIResponsesGlobalGptFiveDotFourStream.id]:
-    DustOpenAIResponsesGlobalGptFiveDotFourStream,
-  [DustOpenAIResponsesGlobalGptFiveDotTwoStream.id]:
-    DustOpenAIResponsesGlobalGptFiveDotTwoStream,
-  [DustOpenAIResponsesGlobalGptFiveStream.id]:
-    DustOpenAIResponsesGlobalGptFiveStream,
-  [DustOpenAIResponsesGlobalGptFiveDotOneStream.id]:
-    DustOpenAIResponsesGlobalGptFiveDotOneStream,
-  [DustOpenAIResponsesGlobalGptFiveDotFourMiniStream.id]:
-    DustOpenAIResponsesGlobalGptFiveDotFourMiniStream,
-  [DustOpenAIResponsesGlobalGptFiveDotFourNanoStream.id]:
-    DustOpenAIResponsesGlobalGptFiveDotFourNanoStream,
-  [DustOpenAIResponsesGlobalGptFiveMiniStream.id]:
-    DustOpenAIResponsesGlobalGptFiveMiniStream,
-  [DustOpenAIResponsesGlobalGptFiveNanoStream.id]:
-    DustOpenAIResponsesGlobalGptFiveNanoStream,
-  [DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
-    DustAgentPlatformEuropeClaudeHaikuFourDotFiveStream,
-  [DustFireworksGlobalGlmFiveDotTwoStream.id]:
-    DustFireworksGlobalGlmFiveDotTwoStream,
+  [DustAnthropicGlobalClaudeSonnetFiveStream.id]:
+    DustAnthropicGlobalClaudeSonnetFiveStream,
+  [DustAnthropicGlobalClaudeSonnetFourDotSixStream.id]:
+    DustAnthropicGlobalClaudeSonnetFourDotSixStream,
   [DustFireworksGlobalDeepSeekV4ProStream.id]:
     DustFireworksGlobalDeepSeekV4ProStream,
+  [DustFireworksGlobalGlmFiveDotTwoStream.id]:
+    DustFireworksGlobalGlmFiveDotTwoStream,
   [DustFireworksGlobalKimiK2Dot5Stream.id]: DustFireworksGlobalKimiK2Dot5Stream,
-  [DustTogetheraiGlobalLlama3370BInstructTurboStream.id]:
-    DustTogetheraiGlobalLlama3370BInstructTurboStream,
+  [DustGoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
+    DustGoogleAiStudioGlobalGeminiThreeDotOneProStream,
+  [DustMistralEuropeCodestralStream.id]: DustMistralEuropeCodestralStream,
   [DustMistralEuropeMistralLargeStream.id]: DustMistralEuropeMistralLargeStream,
   [DustMistralEuropeMistralMedium35Stream.id]:
     DustMistralEuropeMistralMedium35Stream,
   [DustMistralEuropeMistralSmallStream.id]: DustMistralEuropeMistralSmallStream,
-  [DustMistralEuropeCodestralStream.id]: DustMistralEuropeCodestralStream,
+  [DustOpenAIResponsesEuropeGptFiveDotFiveStream.id]:
+    DustOpenAIResponsesEuropeGptFiveDotFiveStream,
+  [DustOpenAIResponsesEuropeGptFiveDotFourMiniStream.id]:
+    DustOpenAIResponsesEuropeGptFiveDotFourMiniStream,
+  [DustOpenAIResponsesEuropeGptFiveDotFourNanoStream.id]:
+    DustOpenAIResponsesEuropeGptFiveDotFourNanoStream,
+  [DustOpenAIResponsesEuropeGptFiveDotFourStream.id]:
+    DustOpenAIResponsesEuropeGptFiveDotFourStream,
+  [DustOpenAIResponsesEuropeGptFiveDotOneStream.id]:
+    DustOpenAIResponsesEuropeGptFiveDotOneStream,
+  [DustOpenAIResponsesEuropeGptFiveDotTwoStream.id]:
+    DustOpenAIResponsesEuropeGptFiveDotTwoStream,
+  [DustOpenAIResponsesEuropeGptFiveMiniStream.id]:
+    DustOpenAIResponsesEuropeGptFiveMiniStream,
+  [DustOpenAIResponsesEuropeGptFiveNanoStream.id]:
+    DustOpenAIResponsesEuropeGptFiveNanoStream,
+  [DustOpenAIResponsesEuropeGptFiveStream.id]:
+    DustOpenAIResponsesEuropeGptFiveStream,
+  [DustOpenAIResponsesGlobalGptFiveDotFiveStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotFiveStream,
+  [DustOpenAIResponsesGlobalGptFiveDotFourMiniStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotFourMiniStream,
+  [DustOpenAIResponsesGlobalGptFiveDotFourNanoStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotFourNanoStream,
+  [DustOpenAIResponsesGlobalGptFiveDotFourStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotFourStream,
+  [DustOpenAIResponsesGlobalGptFiveDotOneStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotOneStream,
+  [DustOpenAIResponsesGlobalGptFiveDotTwoStream.id]:
+    DustOpenAIResponsesGlobalGptFiveDotTwoStream,
+  [DustOpenAIResponsesGlobalGptFiveMiniStream.id]:
+    DustOpenAIResponsesGlobalGptFiveMiniStream,
+  [DustOpenAIResponsesGlobalGptFiveNanoStream.id]:
+    DustOpenAIResponsesGlobalGptFiveNanoStream,
+  [DustOpenAIResponsesGlobalGptFiveStream.id]:
+    DustOpenAIResponsesGlobalGptFiveStream,
+  [DustTogetheraiGlobalLlama3370BInstructTurboStream.id]:
+    DustTogetheraiGlobalLlama3370BInstructTurboStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
 export function getStreamEndpoints(

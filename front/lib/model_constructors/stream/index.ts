@@ -18,6 +18,15 @@ import { MistralEuropeCodestralStream } from "@app/lib/model_constructors/stream
 import { MistralEuropeMistralLargeStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_large";
 import { MistralEuropeMistralMedium35Stream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_medium_3_5";
 import { MistralEuropeMistralSmallStream } from "@app/lib/model_constructors/stream/endpoints/mistral_eu_mistral_small";
+import { OpenAIResponsesEuropeGptFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five";
+import { OpenAIResponsesEuropeGptFiveDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_five";
+import { OpenAIResponsesEuropeGptFiveDotFourStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_four";
+import { OpenAIResponsesEuropeGptFiveDotFourMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_four_mini";
+import { OpenAIResponsesEuropeGptFiveDotFourNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_four_nano";
+import { OpenAIResponsesEuropeGptFiveDotOneStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_one";
+import { OpenAIResponsesEuropeGptFiveDotTwoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_dot_two";
+import { OpenAIResponsesEuropeGptFiveMiniStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_mini";
+import { OpenAIResponsesEuropeGptFiveNanoStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_eu_gpt_five_nano";
 import { OpenAIResponsesGlobalGptFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five";
 import { OpenAIResponsesGlobalGptFiveDotFiveStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_five";
 import { OpenAIResponsesGlobalGptFiveDotFourStream } from "@app/lib/model_constructors/stream/endpoints/openai_responses_global_gpt_five_dot_four";
@@ -30,12 +39,16 @@ import { OpenAIResponsesGlobalGptFiveNanoStream } from "@app/lib/model_construct
 import { TogetheraiGlobalLlama3370BInstructTurboStream } from "@app/lib/model_constructors/stream/endpoints/togetherai_global_llama_3_3_70b_instruct_turbo";
 
 export const STREAM_ENDPOINTS = {
+  [AgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
+    AgentPlatformEuropeClaudeHaikuFourDotFiveStream,
+  [AgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
+    AgentPlatformEuropeClaudeSonnetFourDotSixStream,
+  [AgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:
+    AgentPlatformEuropeGeminiThreeDotFiveFlashStream,
+  [AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
+    AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream,
   [AnthropicGlobalClaudeFableFiveStream.id]:
     AnthropicGlobalClaudeFableFiveStream,
-  [AnthropicGlobalClaudeSonnetFiveStream.id]:
-    AnthropicGlobalClaudeSonnetFiveStream,
-  [AnthropicGlobalClaudeSonnetFourDotSixStream.id]:
-    AnthropicGlobalClaudeSonnetFourDotSixStream,
   [AnthropicGlobalClaudeHaikuFourDotFiveStream.id]:
     AnthropicGlobalClaudeHaikuFourDotFiveStream,
   [AnthropicGlobalClaudeOpusFourDotEightStream.id]:
@@ -44,42 +57,55 @@ export const STREAM_ENDPOINTS = {
     AnthropicGlobalClaudeOpusFourDotSevenStream,
   [AnthropicGlobalClaudeOpusFourDotSixStream.id]:
     AnthropicGlobalClaudeOpusFourDotSixStream,
-  [AgentPlatformEuropeClaudeSonnetFourDotSixStream.id]:
-    AgentPlatformEuropeClaudeSonnetFourDotSixStream,
-  [AgentPlatformEuropeGeminiThreeDotFiveFlashStream.id]:
-    AgentPlatformEuropeGeminiThreeDotFiveFlashStream,
-  [AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream.id]:
-    AgentPlatformEuropeGeminiThreeDotOneFlashLiteStream,
+  [AnthropicGlobalClaudeSonnetFiveStream.id]:
+    AnthropicGlobalClaudeSonnetFiveStream,
+  [AnthropicGlobalClaudeSonnetFourDotSixStream.id]:
+    AnthropicGlobalClaudeSonnetFourDotSixStream,
+  [FireworksGlobalDeepSeekV4ProStream.id]: FireworksGlobalDeepSeekV4ProStream,
+  [FireworksGlobalGlmFiveDotTwoStream.id]: FireworksGlobalGlmFiveDotTwoStream,
+  [FireworksGlobalKimiK2Dot5Stream.id]: FireworksGlobalKimiK2Dot5Stream,
   [GoogleAiStudioGlobalGeminiThreeDotOneProStream.id]:
     GoogleAiStudioGlobalGeminiThreeDotOneProStream,
+  [MistralEuropeCodestralStream.id]: MistralEuropeCodestralStream,
+  [MistralEuropeMistralLargeStream.id]: MistralEuropeMistralLargeStream,
+  [MistralEuropeMistralMedium35Stream.id]: MistralEuropeMistralMedium35Stream,
+  [MistralEuropeMistralSmallStream.id]: MistralEuropeMistralSmallStream,
+  [OpenAIResponsesEuropeGptFiveDotFiveStream.id]:
+    OpenAIResponsesEuropeGptFiveDotFiveStream,
+  [OpenAIResponsesEuropeGptFiveDotFourMiniStream.id]:
+    OpenAIResponsesEuropeGptFiveDotFourMiniStream,
+  [OpenAIResponsesEuropeGptFiveDotFourNanoStream.id]:
+    OpenAIResponsesEuropeGptFiveDotFourNanoStream,
+  [OpenAIResponsesEuropeGptFiveDotFourStream.id]:
+    OpenAIResponsesEuropeGptFiveDotFourStream,
+  [OpenAIResponsesEuropeGptFiveDotOneStream.id]:
+    OpenAIResponsesEuropeGptFiveDotOneStream,
+  [OpenAIResponsesEuropeGptFiveDotTwoStream.id]:
+    OpenAIResponsesEuropeGptFiveDotTwoStream,
+  [OpenAIResponsesEuropeGptFiveMiniStream.id]:
+    OpenAIResponsesEuropeGptFiveMiniStream,
+  [OpenAIResponsesEuropeGptFiveNanoStream.id]:
+    OpenAIResponsesEuropeGptFiveNanoStream,
+  [OpenAIResponsesEuropeGptFiveStream.id]: OpenAIResponsesEuropeGptFiveStream,
   [OpenAIResponsesGlobalGptFiveDotFiveStream.id]:
     OpenAIResponsesGlobalGptFiveDotFiveStream,
-  [OpenAIResponsesGlobalGptFiveDotFourStream.id]:
-    OpenAIResponsesGlobalGptFiveDotFourStream,
-  [OpenAIResponsesGlobalGptFiveDotTwoStream.id]:
-    OpenAIResponsesGlobalGptFiveDotTwoStream,
-  [OpenAIResponsesGlobalGptFiveStream.id]: OpenAIResponsesGlobalGptFiveStream,
-  [OpenAIResponsesGlobalGptFiveDotOneStream.id]:
-    OpenAIResponsesGlobalGptFiveDotOneStream,
   [OpenAIResponsesGlobalGptFiveDotFourMiniStream.id]:
     OpenAIResponsesGlobalGptFiveDotFourMiniStream,
   [OpenAIResponsesGlobalGptFiveDotFourNanoStream.id]:
     OpenAIResponsesGlobalGptFiveDotFourNanoStream,
+  [OpenAIResponsesGlobalGptFiveDotFourStream.id]:
+    OpenAIResponsesGlobalGptFiveDotFourStream,
+  [OpenAIResponsesGlobalGptFiveDotOneStream.id]:
+    OpenAIResponsesGlobalGptFiveDotOneStream,
+  [OpenAIResponsesGlobalGptFiveDotTwoStream.id]:
+    OpenAIResponsesGlobalGptFiveDotTwoStream,
   [OpenAIResponsesGlobalGptFiveMiniStream.id]:
     OpenAIResponsesGlobalGptFiveMiniStream,
   [OpenAIResponsesGlobalGptFiveNanoStream.id]:
     OpenAIResponsesGlobalGptFiveNanoStream,
-  [AgentPlatformEuropeClaudeHaikuFourDotFiveStream.id]:
-    AgentPlatformEuropeClaudeHaikuFourDotFiveStream,
-  [FireworksGlobalGlmFiveDotTwoStream.id]: FireworksGlobalGlmFiveDotTwoStream,
-  [FireworksGlobalDeepSeekV4ProStream.id]: FireworksGlobalDeepSeekV4ProStream,
-  [FireworksGlobalKimiK2Dot5Stream.id]: FireworksGlobalKimiK2Dot5Stream,
+  [OpenAIResponsesGlobalGptFiveStream.id]: OpenAIResponsesGlobalGptFiveStream,
   [TogetheraiGlobalLlama3370BInstructTurboStream.id]:
     TogetheraiGlobalLlama3370BInstructTurboStream,
-  [MistralEuropeMistralLargeStream.id]: MistralEuropeMistralLargeStream,
-  [MistralEuropeMistralMedium35Stream.id]: MistralEuropeMistralMedium35Stream,
-  [MistralEuropeMistralSmallStream.id]: MistralEuropeMistralSmallStream,
-  [MistralEuropeCodestralStream.id]: MistralEuropeCodestralStream,
 } as const satisfies Record<string, StreamEndpointConstructor>;
 
 export type StreamEndpointId = keyof typeof STREAM_ENDPOINTS;
