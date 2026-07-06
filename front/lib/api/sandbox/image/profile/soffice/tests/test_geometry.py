@@ -1,5 +1,5 @@
 """Tier-1 pure-logic tests for pptx_geometry: overlap classification, the
-text-fit estimate, and EMU conversion. No fixtures — tuples and a tiny fake
+text-fit estimate, and EMU conversion. No fixtures - tuples and a tiny fake
 shape. Run directly (`python test_geometry.py`) or under pytest.
 
 Lives in soffice/tests/, a subdir getLocalDirContent skips: it copies only the
@@ -127,7 +127,7 @@ def test_extent_none_when_single_line_snug():
 def test_extent_none_for_borderline_single_line():
     # a 26-char title in a one-line box that the conservative (fit) width holds
     # (~28ch/line @22pt in 4.6") is NOT grown, even though the wider extent width
-    # alone would wrap it — growing it would fabricate a spill onto a neighbour.
+    # alone would wrap it - growing it would fabricate a spill onto a neighbour.
     shape = FakeTextShape(2.7, 1.1, 4.6, 0.4, ["The multiplayer difference"])
     assert G._text_extent_box(shape, 22.0) is None
 
@@ -216,7 +216,7 @@ def test_extent_capped_to_max_growth():
 def test_extent_grows_one_line_title_overflow():
     # regression: a single-paragraph title that wraps from one line to two in a
     # one-line box (a long center title over a subtitle just below) is a real
-    # overflow and must grow down — EXTENT_OVERFLOW_SLACK must not suppress a
+    # overflow and must grow down - EXTENT_OVERFLOW_SLACK must not suppress a
     # one-line overage. Mirrors the deck case "Work doesn't just get done. It
     # gets rewired." in an 8.0x0.8in, 40pt box.
     shape = FakeTextShape(

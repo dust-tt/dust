@@ -19,8 +19,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-// const DUST_BASE_IMAGE_VERSION = "0.8.45";
-const DUST_BASE_IMAGE_VERSION = "jd-slope";
+const DUST_BASE_IMAGE_VERSION = "0.8.50";
 const DSBX_CLI_VERSION = "0.1.32";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
@@ -36,7 +35,7 @@ const BUN_VERSION = "1.3.14";
 // PDF layout engine places text differently from a current desktop LibreOffice
 // (26.x). Since the pptx QA reads word positions off the soffice-rendered PDF to
 // confirm text collisions, the engine version has to be pinned and reproducible
-// — and close to what authors run — or the same deck detects collisions on one
+// - and close to what authors run - or the same deck detects collisions on one
 // machine and not another. This assumes an Ubuntu base and build-time egress to
 // launchpad.net; if PPAs are blocked, install the TDF .deb bundle instead.
 const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
@@ -181,7 +180,7 @@ function getLocalDirContent(
 function getAgentProxiedSetupCommand(): string {
   // setgid bit on shared dirs + default POSIX ACLs ensures files created
   // by either agent or agent-proxied are group-owned by `agent` and
-  // group-writable, regardless of the creating process's umask — avoids
+  // group-writable, regardless of the creating process's umask - avoids
   // a perms handoff footgun during the PR1→PR2 rollout window.
   return [
     "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin",
@@ -295,8 +294,8 @@ SHELLEOF`,
     { user: "root" }
   )
   // Metric-compatible font substitutes so soffice lays text out at the same
-  // positions as the MS fonts it stands in for — Carlito=Calibri,
-  // Caladea=Cambria, Liberation=Arial/Times/Courier — plus Noto as a broad
+  // positions as the MS fonts it stands in for - Carlito=Calibri,
+  // Caladea=Cambria, Liberation=Arial/Times/Courier - plus Noto as a broad
   // fallback. Without these, a Calibri/Cambria deck (the PowerPoint defaults)
   // reflows under a non-metric fallback and the QA misses real text collisions.
   // fc-cache rebuilds the fontconfig cache so the new fonts resolve at runtime.
@@ -646,7 +645,7 @@ SHELLEOF`,
   .registerTool({
     name: "pptx_slides",
     description:
-      "Duplicate, move, or delete .pptx slides without corrupting the package — shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
     usage:
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
@@ -656,7 +655,7 @@ SHELLEOF`,
   .registerTool({
     name: "pptx_slides",
     description:
-      "Duplicate, move, or delete .pptx slides without corrupting the package — shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
+      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
     usage:
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",

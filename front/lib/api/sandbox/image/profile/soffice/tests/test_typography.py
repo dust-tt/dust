@@ -18,7 +18,7 @@ import pptx_typography as T  # noqa: E402
 
 
 def _textbox_with_skeleton():
-    """A box whose paragraphs are: content, spacer, content, spacer, spacer —
+    """A box whose paragraphs are: content, spacer, content, spacer, spacer -
     the interleaved-spacer + trailing-empties shape the skeleton must surface."""
     prs = Presentation()
     slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank

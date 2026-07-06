@@ -1,8 +1,8 @@
 """Geometry primitives for pptx_inspect: EMU/box math, the text-fit estimate,
 and the overlap classifier, plus the shared geometry thresholds.
 
-The no-dependency layer of the inspector — pure box math over python-pptx shapes,
-importing nothing from the other pptx_* modules — so audit/render can build on it
+The no-dependency layer of the inspector - pure box math over python-pptx shapes,
+importing nothing from the other pptx_* modules - so audit/render can build on it
 without an import cycle.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ EMU_PER_INCH = 914_400
 EDGE_EPSILON_EMU = 45_720  # 0.05" tolerance before flagging edge overflow.
 
 # Text-fit estimation. What decides whether text fits is the box geometry at
-# the chosen font size, not the word count — so we estimate how many characters
+# the chosen font size, not the word count - so we estimate how many characters
 # a box holds and surface it, to stop the agent sizing text blindly. It is a
 # rough ESTIMATE (real wrapping depends on glyph metrics / line spacing we don't
 # reproduce), so the overset warning only fires on GROSS overflow of a genuine
@@ -54,7 +54,7 @@ MIN_IMAGE_DPI = 70  # flag pictures displayed below this effective resolution
 #   - otherwise, shallower-axis overlap >= PEER_PENETRATION_EMU -> a partial
 #     peer overlap: could be a designed overlay or an accidental collision, so
 #     it is surfaced as a quantitative [i] ADVISORY (judge it in the render),
-#     never a hard blocker — that would fail the template's own overlays.
+#     never a hard blocker - that would fail the template's own overlays.
 STACKED_CONT = 0.90  # both boxes >= this covered => effectively the same box
 CONTAINMENT_TAU = 0.85  # one box >= this fraction inside the other => fg/bg, ok
 PEER_PENETRATION_EMU = EMU_PER_INCH // 10  # 0.1" shallow-axis overlap to note it
@@ -122,8 +122,8 @@ def _text_extent_box(
     """The box grown to wrap this shape's rendered copy when the text needs more
     lines than the declared box holds (a multi-paragraph or wrapped block in a
     too-short box, like a two-line title in a one-line box). Returns
-    (left, top, width, height) in EMU — kept at the declared top and grown
-    DOWNWARD (a BOTTOM-anchored box, whose text spills up, grown upward) — or
+    (left, top, width, height) in EMU - kept at the declared top and grown
+    DOWNWARD (a BOTTOM-anchored box, whose text spills up, grown upward) - or
     None when the text fits, so callers fall back to the declared box.
 
     Growth triggers on a genuine multi-line overflow (>= EXTENT_OVERFLOW_SLACK
@@ -168,7 +168,7 @@ def _text_extent_box(
     # _fit_estimate) decides WHETHER the copy overflows: borderline copy that
     # only the wider extent width would wrap is left alone, so a one-line title
     # that just fits never fabricates a spill onto whatever sits below it. The
-    # generous width (0.6em — substitute fonts run wide) then decides HOW FAR to
+    # generous width (0.6em - substitute fonts run wide) then decides HOW FAR to
     # grow, so a genuine overflow still overshoots the text rather than
     # under-covering it and missing a real collision.
     lines_trigger = _lines_for(CHAR_WIDTH_EM)
@@ -182,8 +182,8 @@ def _text_extent_box(
     # A genuine multi-line overflow grows the box: the copy must need at least
     # EXTENT_OVERFLOW_SLACK more lines than the box holds and span at least two
     # lines. A single line fits (or is a nominal-height label that overflows by
-    # design) and is never grown. One extra line is real overflow — a two-line
-    # title in a one-line box spills onto whatever sits below it — so it grows;
+    # design) and is never grown. One extra line is real overflow - a two-line
+    # title in a one-line box spills onto whatever sits below it - so it grows;
     # EXTENT_MAX_GROWTH below bounds how far a mis-estimated wrap can take it.
     if lines_trigger < 2 or lines_trigger < lines_avail + EXTENT_OVERFLOW_SLACK:
         return None
@@ -198,7 +198,7 @@ def _text_extent_box(
     # Keep the declared top and grow DOWNWARD for TOP/MIDDLE/inherited anchors: a
     # MIDDLE box is never grown symmetrically, which used to drift it up off its
     # own position. Only a BOTTOM-anchored box, whose text spills upward, grows
-    # up — clamped to the slide top.
+    # up - clamped to the slide top.
     va = getattr(shape.text_frame, "vertical_anchor", None)
     va_name = (getattr(va, "name", None) or "TOP").upper()
     left, top, height = shape.left, shape.top, shape.height
@@ -251,12 +251,12 @@ def _render_collision(
     and a kind the QA digest tiers on.
 
     A peer overlap counts, as before. So does a containment that exists ONLY
-    after a box grew to wrap overflowing text — that text spilled onto a
+    after a box grew to wrap overflowing text - that text spilled onto a
     neighbour. But a containment that already holds at the DECLARED sizes is an
     intentional foreground/background overlay (a label on a card) and does not.
     Returns (flag, penetration_emu, kind) where kind is "spill" (a box overflowed
-    its declared bounds onto a neighbour — almost always a defect), "peer" (a
-    partial overlap already present at declared geometry — often a designed
+    its declared bounds onto a neighbour - almost always a defect), "peer" (a
+    partial overlap already present at declared geometry - often a designed
     overlay), or "" when there is no collision."""
     kind, pen, _ = _classify_overlap(eff_a, eff_b)
     if kind == "peer":

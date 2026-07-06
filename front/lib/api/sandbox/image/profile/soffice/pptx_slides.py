@@ -1,5 +1,5 @@
 #!/opt/venv/bin/python3
-"""pptx_slides — safe slide-level structural edits for .pptx decks.
+"""pptx_slides - safe slide-level structural edits for .pptx decks.
 
 python-pptx has no slide duplicate / move / reorder API, and the common
 community recipes corrupt the package (two slides sharing one chart part,
@@ -19,7 +19,7 @@ A slide pattern P is a comma-separated list of slide numbers and inclusive
 ranges, e.g. `5`, `2,5,8`, `3-7`, or `2,5,7-9`; duplicates clone in the order
 given.
 
-Duplication shares immutable image/media parts (correct — that is what
+Duplication shares immutable image/media parts (correct - that is what
 PowerPoint does) and deep-clones mutable parts (charts and their embedded
 worksheets, SmartArt/diagrams, OLE objects) so each copy is independent.
 Relationship ids in the copied XML are rewritten to the new ids. Speaker
@@ -175,8 +175,8 @@ def op_duplicate(
     # indices; None means "front of the deck" (--after 0).
     anchor = list(sld_id_lst)[after_no - 1] if after_no >= 1 else None
 
-    # Clone every requested slide (each `count` times) to the end first — which
-    # leaves all source indices stable — then move the whole batch, in order, to
+    # Clone every requested slide (each `count` times) to the end first - which
+    # leaves all source indices stable - then move the whole batch, in order, to
     # its destination.
     new_ids = [
         _clone_slide_append(prs, s - 1)

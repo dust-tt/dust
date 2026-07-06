@@ -41,7 +41,7 @@ from pptx_typography import placeholder_type, resolve_placeholder_defaults
 # Drawing-namespace handles for detecting embedded images anywhere in a shape
 # subtree. A populated picture placeholder reports shape_type PLACEHOLDER (not
 # PICTURE), and a picture *fill* on an auto shape or the slide background is not
-# a picture shape at all — but all of them carry a populated <a:blip>.
+# a picture shape at all - but all of them carry a populated <a:blip>.
 A_BLIP = qn("a:blip")
 R_EMBED = qn("r:embed")
 R_LINK = qn("r:link")
@@ -153,12 +153,12 @@ def _fit_tokens(shape: BaseShape, layout_chain) -> List[str]:
     if not _grows_to_fit(shape):
         if used > est.capacity * OVERSET_TOLERANCE:
             tokens.append(
-                f"[!] text overset (est) — ~{used} chars; box holds "
+                f"[!] text overset (est) - ~{used} chars; box holds "
                 f"~{est.capacity} at {size_label}pt"
             )
         elif used < est.capacity * FILL_FLOATING:
             tokens.append(
-                f"[i] underfilled — ~{used} of ~{est.capacity}ch used"
+                f"[i] underfilled - ~{used} of ~{est.capacity}ch used"
             )
     return tokens
 
@@ -166,7 +166,7 @@ def _fit_tokens(shape: BaseShape, layout_chain) -> List[str]:
 def _image_markers(shape: BaseShape) -> List[str]:
     """Aspect-ratio distortion and low-resolution warnings for a picture (or a
     populated picture placeholder). Distortion compares the display box ratio to
-    the image's crop-adjusted native ratio — squished/stretched photos read as
+    the image's crop-adjusted native ratio - squished/stretched photos read as
     sloppy even when nothing overflows."""
     image = getattr(shape, "image", None)
     if image is None:
@@ -194,7 +194,7 @@ def _image_markers(shape: BaseShape) -> List[str]:
         rel = disp_ratio / nat_ratio
         if rel > ASPECT_TOLERANCE or rel < 1 / ASPECT_TOLERANCE:
             markers.append(
-                f"[!] image distorted — box {disp_ratio:.2f}:1 vs image native "
+                f"[!] image distorted - box {disp_ratio:.2f}:1 vs image native "
                 f"{nat_ratio:.2f}:1"
             )
     disp_w_in = w / EMU_PER_INCH
@@ -202,7 +202,7 @@ def _image_markers(shape: BaseShape) -> List[str]:
         eff_dpi = vis_w / disp_w_in
         if eff_dpi < MIN_IMAGE_DPI:
             markers.append(
-                f"[!] low-res image — ~{int(eff_dpi)} dpi at display size"
+                f"[!] low-res image - ~{int(eff_dpi)} dpi at display size"
             )
     return markers
 
@@ -226,7 +226,7 @@ def _overlap_markers(
             (left, top, width, height), (ol, ot, ow, oh)
         )
         if kind == "stacked":
-            out.append(f"[!] stacked with shape #{oid} — boxes coincide")
+            out.append(f"[!] stacked with shape #{oid} - boxes coincide")
         elif kind == "peer":
             out.append(
                 f"[i] overlaps shape #{oid} by {pen / EMU_PER_INCH:.2f}in {axis}"
@@ -347,7 +347,7 @@ def _count_slides(path: str) -> int:
 #
 # `--compare` is the authoritative structural QA gate. Beyond "did you drop
 # media/fonts" it answers "does this deck still respect the template, or did
-# you rebuild it as a wall of text on the template's background?" — the single
+# you rebuild it as a wall of text on the template's background?" - the single
 # most common way template edits go wrong. Each threshold is tuned to flag the
 # rebuilt-as-text failure mode while leaving a faithful reskin alone.
 # ---------------------------------------------------------------------------
@@ -357,7 +357,7 @@ IMAGERY_RICH_TEMPLATE = 0.34
 # Flag when the output keeps less than this fraction of the template's per-slide
 # imagery rate (catches "stripped every picture", output rate 0).
 IMAGERY_STRIP_RATIO = 0.5
-# A "bare" slide has no imagery and no placeholders — content hand-drawn on an
+# A "bare" slide has no imagery and no placeholders - content hand-drawn on an
 # empty canvas. Flag when bare slides exceed this fraction of the output...
 BARE_RATE = 0.34
 # ...and exceed the template's own bare-slide rate by this margin, so a template
@@ -374,7 +374,7 @@ DENSITY_TOLERANCE = 1.15
 # (legitimate clean-room decks bottom out around 0.79 kept), so the advisory
 # only fires well below that: a slide kept < this fraction AND dropped at least
 # SHAPE_DROP_MIN shapes has been gutted rather than adapted. Advisory, not a
-# blocker — heavy adaptation is sometimes the right call.
+# blocker - heavy adaptation is sometimes the right call.
 SHAPE_RETENTION_FLOOR = 0.6
 SHAPE_DROP_MIN = 2
 
@@ -393,7 +393,7 @@ def _imagery_in_shape(shape: BaseShape) -> int:
 
 
 def _slide_bg_has_image(slide: Slide) -> bool:
-    """True if the slide sets its own picture background — a full-bleed image
+    """True if the slide sets its own picture background - a full-bleed image
     that reads as imagery but is not a shape."""
     bg = slide._element.cSld.find(P_BG)
     return _has_embedded_blip(bg) if bg is not None else False
@@ -441,8 +441,8 @@ def _deck_fidelity(prs: PresentationType) -> DeckFidelity:
 
 
 def _listed_slide_count(path: str) -> Optional[int]:
-    """Slides referenced by presentation.xml's <p:sldIdLst> — what actually
-    renders — read without python-pptx, so the orphan check still works when a
+    """Slides referenced by presentation.xml's <p:sldIdLst> - what actually
+    renders - read without python-pptx, so the orphan check still works when a
     deck fails to parse."""
     try:
         zf = zipfile.ZipFile(path)
@@ -462,7 +462,7 @@ def _listed_slide_count(path: str) -> Optional[int]:
 def _deck_structural_tally(path: str) -> Optional[Dict[str, int]]:
     """Roll up per-slide structural issues across the deck: stacked boxes,
     distorted images, and shapes off the slide. Informational at the deck level
-    (some may be inherited from the template), so the agent knows to look — the
+    (some may be inherited from the template), so the agent knows to look - the
     per-slide --slide view is where each is judged and fixed."""
     try:
         prs = Presentation(path)
@@ -495,7 +495,7 @@ def _deck_structural_tally(path: str) -> Optional[Dict[str, int]]:
 
 
 def _content_slot_indices(shape: BaseShape) -> set:
-    """Indices of the non-empty paragraphs in a text frame — the slots that
+    """Indices of the non-empty paragraphs in a text frame - the slots that
     actually carry content (vs the empty spacer paragraphs between them)."""
     if not shape.has_text_frame:
         return set()
@@ -508,7 +508,7 @@ def _content_slot_indices(shape: BaseShape) -> set:
 
 def _filled_spacer_slots(out_shape: BaseShape, src_shape: BaseShape) -> set:
     """Paragraph slots the output filled that are INTERIOR spacers in the
-    template — empty in the template and sitting between its content slots.
+    template - empty in the template and sitting between its content slots.
     Writing here is the wrong-slot fill that breaks color (a new run inherits a
     darker default) and strands the markers pinned to the content rows. Returns
     empty unless the template box has a real skeleton (>=2 content slots), so a

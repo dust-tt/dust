@@ -1,7 +1,7 @@
 """Tests for pdf_text: parsing pdftotext -bbox output and the overprint metric.
 
 The subprocess path (page_word_boxes) is exercised by the live --qa runs; here we
-cover the pure pieces — XHTML parsing and the word-overlap geometry — that decide
+cover the pure pieces - XHTML parsing and the word-overlap geometry - that decide
 whether a candidate collision is a real overprint."""
 import os
 import sys

@@ -1,5 +1,5 @@
 #!/opt/venv/bin/python3
-"""pptx_inspect — paginated structural inspection of .pptx decks.
+"""pptx_inspect - paginated structural inspection of .pptx decks.
 
 Backed by python-pptx for slide/shape/placeholder/text traversal; the
 shared `ooxml` helpers and stdlib `zipfile` are used for chart titles
@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import secrets
 import sys
 import zipfile
 from pathlib import Path
@@ -98,7 +99,7 @@ HELP_TEXT = (
     "  file              Path to .pptx deck (required)\n"
     "\n"
     "Options:\n"
-    "  --qa N[,N,...]    QA gate — run after a round of edits. Takes one slide or a\n"
+    "  --qa N[,N,...]    QA gate - run after a round of edits. Takes one slide or a\n"
     "                    pattern (e.g. 2,5,7-9); QA-ing several at once shares a\n"
     "                    single render pass (the PDF is cached), so edit a batch of\n"
     "                    slides then QA them together rather than one call each.\n"
@@ -108,10 +109,14 @@ HELP_TEXT = (
     "                    positions: [!] (fix before delivery) for a confirmed\n"
     "                    text-on-text overprint, [w] (review) when a box doesn't\n"
     "                    contain its own text, and [i] (FYI) for softer advisories\n"
-    "                    — so tight-but-clear neighbours and box-only overlaps\n"
+    "                    - so tight-but-clear neighbours and box-only overlaps\n"
     "                    don't false-alarm, and only [!] gates delivery.\n"
     "                    The render is published to the conversation as a JPEG whose\n"
-    "                    path is printed per slide (a files__cat-readable image).\n"
+    "                    path is printed per slide (a files__cat-readable image),\n"
+    "                    stamped with a READBACK CODE that appears only in the\n"
+    "                    pixels: open each render and quote its code to prove you\n"
+    "                    viewed it. The text checks are a structural pre-check, not\n"
+    "                    the visual pass - the readback is the gate.\n"
     "  --slide N[,N,...] Show one or more slides' shapes (1-indexed; takes a\n"
     "                    pattern like 2,5,7-9). Per shape: kind, position, size,\n"
     "                    text, formatting, placeholder type, and a text-fit\n"
@@ -128,7 +133,7 @@ HELP_TEXT = (
     "                    to the conversation. Combine with --slide N[,N,...] to\n"
     "                    render just those slides in one shared pass (the deck is\n"
     "                    converted once, then cached); omit --slide for the whole\n"
-    "                    deck. For QA use --qa instead — it adds the boxes.\n"
+    "                    deck. For QA use --qa instead - it adds the boxes.\n"
     "  --render-dir DIR  Base dir renders are published under, as\n"
     "                    DIR/.pptx_render/<deck>/ (default: /files/conversation).\n"
     "  --compare FILE    Compare <file> (your edited output) against FILE (the\n"
@@ -305,8 +310,8 @@ def describe_shape(
 
     if summary:
         parts.append(summary)
-    # Vertical anchor (how text sits in its box): surfaced so floating text — a
-    # short string anchored top in a much taller box — is diagnosable alongside
+    # Vertical anchor (how text sits in its box): surfaced so floating text - a
+    # short string anchored top in a much taller box - is diagnosable alongside
     # the boxed render. Explicit value when set; text boxes/auto shapes default
     # to top; placeholders inherit (left unstated).
     if kind != "group" and shape.has_text_frame:
@@ -369,7 +374,7 @@ def _theme_summary_line(file_path: str) -> Optional[str]:
 
         def _resolved(token: str) -> str:
             hx = _resolve_scheme_color(token, clr_map, theme_colors)
-            return f"#{hx}" if hx else "—"
+            return f"#{hx}" if hx else "-"
 
         accents = " ".join(_resolved(f"accent{i}") for i in range(1, 7))
         parts = [
@@ -406,7 +411,7 @@ def _deck_fonts_line(prs: PresentationType, file_path: str) -> Optional[str]:
     layouts and report them alongside the theme's major/minor fallback.
 
     The theme's `major:`/`minor:` typefaces from <a:fontScheme> are only what
-    runs outside placeholders inherit — many decks (e.g. the Dust template)
+    runs outside placeholders inherit - many decks (e.g. the Dust template)
     declare Arial there but override every layout with Lexend. Reporting
     them as the deck's font misleads the agent into picking Arial for
     custom shapes. So we surface what the layouts actually resolve to, and
@@ -497,7 +502,7 @@ def _deck_fonts_line(prs: PresentationType, file_path: str) -> Optional[str]:
         parts.append(f"body={body_str}")
     if show_fallback:
         parts.append(
-            f"theme-fallback={fallback_major or '—'}/{fallback_minor or '—'}"
+            f"theme-fallback={fallback_major or '-'}/{fallback_minor or '-'}"
         )
     if not parts:
         return None
@@ -758,7 +763,7 @@ def print_layouts(prs: PresentationType, file_path: str) -> str:
 # prompts, lorem/placeholder fillers. Repeated-across-slides copy (e.g.
 # "Subject title", "Summary") is detected separately in print_text.
 def print_text(prs: PresentationType, slide_idx: Optional[int] = None) -> str:
-    # Pass 1: find distinctive copy repeated across the deck — template
+    # Pass 1: find distinctive copy repeated across the deck - template
     # scaffolding the author forgot to replace ("Subject title", "Summary",
     # "Title of the slide"). Count total occurrences (catches repeats within a
     # single slide too); require length >= 8 so content words ("Dust") don't trip.
@@ -805,7 +810,7 @@ def print_text(prs: PresentationType, slide_idx: Optional[int] = None) -> str:
     scope = (f"slide {slide_idx}" if slide_idx is not None
              else f"{len(prs.slides)} slides")
     head = f"[Text: {total_chars} chars | {scope} | each line is tagged with " \
-           "its shape #id — match against the --qa box labels for readback]"
+           "its shape #id - match against the --qa box labels for readback]"
     if repeated:
         shown = ", ".join(
             f'"{ellipsize(t, 30)}" x{repeat_counts[t]}' for t in repeated[:6]
@@ -846,7 +851,7 @@ def print_compare(file_path: str, source_path: str) -> str:
     deck no longer respects the template: orphaned slide parts (hand-deleted
     instead of via pptx_slides), embedded media or fonts dropped, the template's
     imagery stripped, slides collapsed onto one catch-all layout, or density
-    blown past the template's ceiling. Ends with a [QA: PASS/FAIL] verdict —
+    blown past the template's ceiling. Ends with a [QA: PASS/FAIL] verdict -
     do not deliver until it reads PASS."""
     out_media = _package_names(file_path, "ppt/media/")
     src_media = _package_names(source_path, "ppt/media/")
@@ -896,13 +901,13 @@ def print_compare(file_path: str, source_path: str) -> str:
             "slide list (orphaned)"
         )
 
-    # A deck we cannot parse cannot be audited — say so loudly and block, so a
+    # A deck we cannot parse cannot be audited - say so loudly and block, so a
     # parse failure can never masquerade as a clean PASS.
     if out_fid is None or src_fid is None:
         blockers += 1
         which = "the edited deck" if out_fid is None else "the template"
         lines.append(
-            f"  audit:   [!] degraded — could not parse {which} with python-pptx; "
+            f"  audit:   [!] degraded - could not parse {which} with python-pptx; "
             "imagery / bare-canvas / density not checked"
         )
 
@@ -947,13 +952,13 @@ def print_compare(file_path: str, source_path: str) -> str:
         if audit_content and src_rate >= IMAGERY_RICH_TEMPLATE and out_rate < src_rate * IMAGERY_STRIP_RATIO:
             blockers += 1
             lines.append(
-                f"    [!] imagery below template — {out_fid.imagery_slides}/"
+                f"    [!] imagery below template - {out_fid.imagery_slides}/"
                 f"{out_fid.total} output slides carry images vs "
                 f"{src_fid.imagery_slides}/{src_fid.total} in the template"
             )
 
         # Bare canvas: slides hand-drawn with no template placeholders and no
-        # imagery — the signature of rebuilding on a blank layout. Judged
+        # imagery - the signature of rebuilding on a blank layout. Judged
         # relative to the template, since some templates ship shape-built slides.
         out_bare = out_fid.bare_slides / out_fid.total
         src_bare = src_fid.bare_slides / src_fid.total
@@ -991,20 +996,20 @@ def print_compare(file_path: str, source_path: str) -> str:
                     f"{ceiling} words: {listing}"
                 )
 
-        # Per-slide structural issues, rolled up (informational — some may be
+        # Per-slide structural issues, rolled up (informational - some may be
         # inherited from the template; the per-slide view judges each).
         tally = _deck_structural_tally(file_path)
         if tally:
             total = tally["stacked"] + tally["distorted"] + tally["off_slide"]
             lines.append(
-                f"  shapes:  {total} structural issue(s) across slides — "
+                f"  shapes:  {total} structural issue(s) across slides - "
                 f"stacked:{tally['stacked']} distorted-img:{tally['distorted']} "
                 f"off-slide:{tally['off_slide']}"
             )
 
     # Content-slot fidelity: text written into the template's interior spacer
     # paragraphs (the wrong-slot fill). Deterministic from the paragraph
-    # skeletons — no estimation — so it gates as a blocker.
+    # skeletons - no estimation - so it gates as a blocker.
     slot_findings = _slot_audit(file_path, source_path)
     if slot_findings:
         lines.append(
@@ -1021,7 +1026,7 @@ def print_compare(file_path: str, source_path: str) -> str:
             )
 
     # Shape retention: a cloned slide that dropped most of its exemplar's shapes
-    # has been gutted rather than adapted. Advisory ([i]), not a blocker —
+    # has been gutted rather than adapted. Advisory ([i]), not a blocker -
     # trimming surplus is expected and heavy adaptation is sometimes right.
     drops = _drop_audit(file_path, source_path)
     if drops:
@@ -1038,7 +1043,7 @@ def print_compare(file_path: str, source_path: str) -> str:
     lines.append("")
     if blockers:
         lines.append(
-            f"[QA: FAIL — {blockers} blocker{'s' if blockers != 1 else ''} "
+            f"[QA: FAIL - {blockers} blocker{'s' if blockers != 1 else ''} "
             "([!] above)]"
         )
     else:
@@ -1103,7 +1108,7 @@ def _shape_text_label(shape: BaseShape) -> str:
 
 
 def _autofit_off(shape: BaseShape) -> bool:
-    """True when the shape explicitly won't auto-shrink its text (noAutofit) —
+    """True when the shape explicitly won't auto-shrink its text (noAutofit) -
     surfaced as a fix hint on the overflowing shape."""
     return (
         getattr(shape, "has_text_frame", False)
@@ -1145,16 +1150,16 @@ def _slide_findings_lines(
 
     Read straight off the renderer's word positions (`words` from the soffice
     PDF), in three tiers:
-      [!] fix before delivery — two DIFFERENT shapes' strongly-attributed words
+      [!] fix before delivery - two DIFFERENT shapes' strongly-attributed words
           overprint (`pdf_text.cross_shape_overprints`).
-      [w] review — a shape's OWN words land outside its OWN box
+      [w] review - a shape's OWN words land outside its OWN box
           (`pdf_text.self_overflows`): the box doesn't contain its text. Usually
           a real defect, sometimes decorative overflow into empty space, so the
-          model decides — it does NOT gate delivery.
-      [i] FYI — an unconfirmed geometric spill, a box overlap the render couldn't
+          model decides - it does NOT gate delivery.
+      [i] FYI - an unconfirmed geometric spill, a box overlap the render couldn't
           read (text exported as curves), or a drifted decorative marker.
-    Reading where the glyphs actually landed — instead of estimating wrap from
-    char counts or arguing about box geometry — is what keeps false positives
+    Reading where the glyphs actually landed - instead of estimating wrap from
+    char counts or arguing about box geometry - is what keeps false positives
     down: same-run overlaps (superscripts, footnote markers, emoji) and box
     overlaps in empty space never qualify as `[!]`. A clean slide says so."""
     entries = _text_shape_entries(slide)
@@ -1182,7 +1187,7 @@ def _slide_findings_lines(
             confirmed_sids.update((over, hit))
             if c["symmetric"]:
                 severe.append(
-                    f"  [!] text-on-text — {q(over)} and {q(hit)} overprint "
+                    f"  [!] text-on-text - {q(over)} and {q(hit)} overprint "
                     f"(rendered \"{c['word_over']}\" lands on \"{c['word_hit']}\")."
                 )
                 severe.append(
@@ -1196,7 +1201,7 @@ def _slide_findings_lines(
                     else ""
                 )
                 severe.append(
-                    f"  [!] text-on-text — {q(over)} overflows its box onto "
+                    f"  [!] text-on-text - {q(over)} overflows its box onto "
                     f"{q(hit)} (rendered \"{c['word_over']}\" sits on "
                     f"\"{c['word_hit']}\")."
                 )
@@ -1209,7 +1214,7 @@ def _slide_findings_lines(
         # reflow the text so it never overflows on the rendered page, hiding a
         # real overprint the declared geometry still predicts. Surface such a
         # spill as a review item rather than letting the render silently clear
-        # it. Peer overlaps are excluded — those are usually designed overlays,
+        # it. Peer overlaps are excluded - those are usually designed overlays,
         # exactly what reading the render is trusted to filter out.
         for f in findings.get("overlaps", []):
             if not f["text_on_text"] or f["kind"] != "spill":
@@ -1219,7 +1224,7 @@ def _slide_findings_lines(
             advisory.append(
                 f"  [i] {q(f['over'])} overflows its box onto {q(f['hit'])} by "
                 f"{round(f['coverage'] * 100)}% at declared geometry, but the "
-                "render didn't confirm text-on-text — if the deck's fonts were "
+                "render didn't confirm text-on-text - if the deck's fonts were "
                 "substituted the render can understate the overlap; verify."
             )
         # A shape whose own rendered words fall outside its own box: the box
@@ -1231,7 +1236,7 @@ def _slide_findings_lines(
             n_review += 1
             where = _OVERFLOW_EDGE_PHRASE[f["edge"]]
             review.append(
-                f"  [w] {q(f['sid'])} — text runs ~{f['over_in']:.2f}in {where} "
+                f"  [w] {q(f['sid'])} - text runs ~{f['over_in']:.2f}in {where} "
                 f"(rendered \"{f['word']}\" lands outside it)."
             )
             review.append(
@@ -1248,35 +1253,35 @@ def _slide_findings_lines(
                 continue
             advisory.append(
                 f"  [i] {q(f['over'])} and {q(f['hit'])} boxes overlap by "
-                f"{round(f['coverage'] * 100)}% — couldn't read the rendered "
+                f"{round(f['coverage'] * 100)}% - couldn't read the rendered "
                 "text to confirm; check the render."
             )
 
     for sid, off in findings.get("markers", []):
         advisory.append(
-            f"  [i] {q(sid)} marker has no text row within {off:.2f}in — "
+            f"  [i] {q(sid)} marker has no text row within {off:.2f}in - "
             "check its alignment in the render."
         )
 
     if severe:
         header = (
-            f"[!] slide {idx} — {n_severe} collision"
+            f"[!] slide {idx} - {n_severe} collision"
             f"{'s' if n_severe != 1 else ''} "
             f"(red wash in the slide {idx} render above):"
         )
         return [header] + severe + review + advisory
     if review:
         header = (
-            f"[w] slide {idx} — {n_review} box"
+            f"[w] slide {idx} - {n_review} box"
             f"{'es' if n_review != 1 else ''} that don't contain their text:"
         )
         return [header] + review + advisory
     if advisory:
         return [
-            f"[i] slide {idx} — {len(advisory)} item"
+            f"[i] slide {idx} - {len(advisory)} item"
             f"{'s' if len(advisory) != 1 else ''} to review:"
         ] + advisory
-    return [f"[slide {idx}: no text collisions]"]
+    return [f"[slide {idx}: no collisions in pre-check - open the render to QA]"]
 
 
 def _boxed_render(
@@ -1285,7 +1290,7 @@ def _boxed_render(
     slide_idx: Optional[int],
     render_dir: str = "/files/conversation",
 ) -> str:
-    """Render slide(s) with the bounding-box overlay + pixel-metrics digest —
+    """Render slide(s) with the bounding-box overlay + pixel-metrics digest -
     the diagnostic half of QA. Reached via --qa, not exposed on its own."""
     total_slides = len(prs.slides)
     out_dir, rendered = render.render_via_soffice(
@@ -1310,6 +1315,9 @@ def _boxed_render(
                 p, slide,
                 prs.slide_width or 0, prs.slide_height or 0,
                 effective_boxes=_text_extent_boxes(file_path, slide),
+                # A fresh per-render code, stamped into the pixels only: quoting
+                # it back is the proof the model actually opened the render.
+                readback_code=secrets.token_hex(2).upper(),
             )
         if res:
             ap, findings = res
@@ -1327,11 +1335,37 @@ def _boxed_render(
     plural = "" if len(published) == 1 else "s"
     lines = [f"[Rendered {len(published)} slide{plural}, bbox overlay:]"]
     lines.extend(render_publish.render_view_lines(published))
-    if digest:
+
+    viewable = [scoped for _, scoped in published if scoped]
+    if len(viewable) < len(published):
+        # A render that is not on the conversation mount cannot be opened with
+        # files__cat, so the visual readback - the actual QA gate - is impossible.
+        # Say so as a blocker instead of letting the pre-checks below read as a
+        # pass.
         lines.append(
-            "[Text checks — [!] fix before delivery · [w] review · [i] FYI:]"
+            "[!] some renders are NOT viewable (not on the conversation mount): "
+            "the visual readback cannot be performed, so QA is INCOMPLETE for "
+            "those slides. Run against a deck under /files/conversation."
+        )
+
+    if digest:
+        # These are structural/pixel pre-checks read off box geometry and the
+        # PDF's word positions - a useful filter, but NOT the visual pass. "No
+        # collisions" here does not mean the slide is right; only opening the
+        # render and reading each box back does.
+        lines.append(
+            "[Structural pre-checks - NOT a visual pass; open the render to QA. "
+            "[!] fix before delivery · [w] review · [i] FYI:]"
         )
         lines.extend(digest)
+
+    if viewable:
+        lines.append(
+            "[Readback (required): open each render above with files__cat and "
+            "quote the READBACK CODE stamped across its top. The code is only in "
+            "the image - a slide whose code you cannot quote has not been read "
+            "back, and is not done.]"
+        )
     return "\n".join(lines)
 
 
@@ -1341,10 +1375,10 @@ def print_render(
     slide_nos: Optional[List[int]],
     render_dir: str = "/files/conversation",
 ) -> str:
-    """Plain rasterized slide(s) — no overlay — for a quick visual look. Pass a
+    """Plain rasterized slide(s) - no overlay - for a quick visual look. Pass a
     list of 1-based slide numbers (from a --slide N[,N,...] pattern) to rasterize
-    just those in one shared pass — the deck is converted to PDF once and the PDF
-    is reused across the slides — or None for the whole deck. The boxed diagnostic
+    just those in one shared pass - the deck is converted to PDF once and the PDF
+    is reused across the slides - or None for the whole deck. The boxed diagnostic
     render is part of --qa, not here."""
     total_slides = len(prs.slides)
     rendered: List[Path] = []
@@ -1385,7 +1419,7 @@ def print_qa(
     slide_nos: List[int],
     render_dir: str = "/files/conversation",
 ) -> str:
-    """QA gate — run after a round of edits. Accepts one slide or several (a
+    """QA gate - run after a round of edits. Accepts one slide or several (a
     pattern like `2,5,7-9`); for each, bundles the slide's authoritative text
     (#id-tagged, to read back) with the boxed diagnostic render so they are
     checked together. QA-ing several slides at once shares a single soffice
@@ -1400,7 +1434,7 @@ def print_qa(
                 f"(deck has {total_slides} slides)"
             )
     blocks = [
-        f"[QA slide {slide_idx} — #id text + render path:]\n\n"
+        f"[QA slide {slide_idx} - #id text + render path:]\n\n"
         + print_text(prs, slide_idx)
         + "\n\n"
         + _boxed_render(file_path, prs, slide_idx, render_dir)

@@ -1,7 +1,7 @@
 """Tier-1 tests for render_publish: mapping sandbox paths to the files__cat scoped
 form, re-encoding renders as small JPEGs, and the data-only view lines. This is
 the plumbing (shared by pptx_inspect and docx_inspect) that makes QA / preview
-renders viewable by the model — they live under the conversation mount, not /tmp.
+renders viewable by the model - they live under the conversation mount, not /tmp.
 
 Run directly (`python test_publish.py`) or under pytest.
 """
@@ -92,7 +92,7 @@ def test_scoped_path_off_mount_is_none():
     assert RP.scoped_path("/tmp/x/slide.jpg") is None
 
 
-# --- render_view_lines (data only — no imperative, no files__cat) ----------
+# --- render_view_lines (data only - no imperative, no files__cat) ----------
 
 
 def test_render_view_lines_emits_scoped_path_only():

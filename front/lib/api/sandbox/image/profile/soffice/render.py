@@ -101,7 +101,7 @@ def render_via_soffice(
             src.rename(target)
         normalized.append(target)
     # A stale padded variant (slide-8 vs slide-008 from an earlier run) can
-    # normalize onto the same name and be appended twice — de-dupe.
+    # normalize onto the same name and be appended twice - de-dupe.
     normalized = sorted(set(normalized))
     # A single-slide render must return ONLY that slide. The output dir is not
     # cleared for a single page (so post-fix re-checks are fast), which means

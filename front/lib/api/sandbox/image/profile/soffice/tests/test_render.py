@@ -1,6 +1,6 @@
 """Tier-1 pure-logic test for render._pdf_is_fresh: the cache-freshness check
 that lets the per-slide QA loop reuse a converted PDF instead of re-running
-soffice for every slide. No soffice/subprocess — just temp files and mtimes.
+soffice for every slide. No soffice/subprocess - just temp files and mtimes.
 
 Run directly (`python test_render.py`) or under pytest.
 

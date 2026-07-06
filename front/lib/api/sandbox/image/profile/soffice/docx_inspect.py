@@ -1,5 +1,5 @@
 #!/opt/venv/bin/python3
-"""docx_inspect — structural inspection of .docx documents.
+"""docx_inspect - structural inspection of .docx documents.
 
 Backed by python-docx for paragraph/table/section traversal; stdlib
 zipfile + ElementTree for style and field extraction where python-docx
@@ -65,7 +65,7 @@ HELP_TEXT = (
     "  --offset N    Skip first N paragraphs in --paragraphs (default 0).\n"
     "  --page N      Render only the given page (1-indexed) with --render.\n"
     "\n"
-    "Default (no flag): document overview — counts + heading outline."
+    "Default (no flag): document overview - counts + heading outline."
 )
 
 
@@ -95,7 +95,7 @@ def _int(text: Optional[str]) -> Optional[int]:
 
 # ---------------------------------------------------------------------------
 # Styles. Walk basedOn chain collecting the first direct rPr/pPr value for
-# each attribute. No theme resolution, no docDefaults merge — just what
+# each attribute. No theme resolution, no docDefaults merge - just what
 # the named style chain explicitly sets.
 # ---------------------------------------------------------------------------
 
@@ -125,7 +125,7 @@ def _style_name(style) -> str:
 
 
 def _fill_typography(rpr, ppr, target: Dict[str, Optional[str]]) -> None:
-    """Fill in `target` from an rPr/pPr pair — only fields still None.
+    """Fill in `target` from an rPr/pPr pair - only fields still None.
     Earlier (more specific) calls win over later (basedOn ancestor) calls."""
     if rpr is not None:
         rfonts = rpr.find(_qw("rFonts"))

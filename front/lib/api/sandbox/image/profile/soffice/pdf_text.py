@@ -1,15 +1,15 @@
 """Read the renderer's exact word positions from the soffice-produced PDF.
 
 python-pptx cannot lay out text, so the inspector estimates wrapping from
-character counts — and that estimate is the source of false-positive collisions
+character counts - and that estimate is the source of false-positive collisions
 (a title estimated to wrap onto a neighbour that actually fits on one line, two
 wide boxes whose text sits in opposite halves). The PDF soffice already produced
 for the raster render carries LibreOffice's exact per-word coordinates, so a
 candidate collision can be CONFIRMED against where the glyphs really landed
 instead of where an estimate guessed.
 
-Uses poppler's ``pdftotext -bbox`` — the same poppler that provides the
-``pdftoppm`` the render pipeline already shells out to — and parses its XHTML
+Uses poppler's ``pdftotext -bbox`` - the same poppler that provides the
+``pdftoppm`` the render pipeline already shells out to - and parses its XHTML
 with the stdlib. Coordinates come back in EMU so they compare directly against
 python-pptx shape boxes.
 """
@@ -26,8 +26,8 @@ EMU_PER_POINT = EMU_PER_INCH // 72  # 12700; pdftotext -bbox coords are in point
 
 # Vertical overlap (as a share of the shorter word's height) at or above which
 # two rendered words are judged to actually overprint. Two adjacent text lines
-# share only their line-leading — empirically ~0.48 of a line height in
-# LibreOffice's PDF output — while text wrapped on top of text overlaps ~1.00, so
+# share only their line-leading - empirically ~0.48 of a line height in
+# LibreOffice's PDF output - while text wrapped on top of text overlaps ~1.00, so
 # a 0.7 cut sits in the wide gap between "tight neighbours" and "real overprint".
 OVERPRINT_Y_FRACTION = 0.7
 
@@ -116,7 +116,7 @@ def words_overprint(
 
 
 # 0.05in: a word whose box pokes past its shape's declared box by more than this
-# has spilled — used to name the overflowing shape ("over") in a collision.
+# has spilled - used to name the overflowing shape ("over") in a collision.
 _SPILL_EPS_EMU = EMU_PER_INCH // 20
 
 
@@ -130,7 +130,7 @@ def norm_token(word: str) -> str:
 # A shape, for attribution: (shape_id, (left, top, right, bottom) EMU, token_set).
 def attribute_word(word, shapes):
     """Attribute a rendered word to a shape: (shape_id, strong). STRONG = the
-    word's token matches exactly one shape's text — trustworthy even when the
+    word's token matches exactly one shape's text - trustworthy even when the
     word spilled outside its own box, because membership beats position there.
     WEAK = a nearest-box fallback for a common or unmatched token, which must NOT
     be trusted for a cross-shape collision or it fabricates one (a superscript's
@@ -220,7 +220,7 @@ def cross_shape_overprints(words, shapes, y_fraction: float = OVERPRINT_Y_FRACTI
 # small horizontal spill is a render artefact, not a defect.
 _SELF_OVERFLOW_H_EPS_EMU = EMU_PER_INCH // 10  # ~0.10in
 # Floor for the vertical gate; the real gate is half the word's own height so it
-# scales with the type size — a whole wrapped line dropping below the box clears
+# scales with the type size - a whole wrapped line dropping below the box clears
 # it, a descender or a tall substitute glyph does not.
 _SELF_OVERFLOW_V_FLOOR_EMU = EMU_PER_INCH // 12  # ~0.08in
 
@@ -230,7 +230,7 @@ _OVERFLOW_EDGES = ("below", "above", "right", "left")
 
 
 def self_overflows(words, shapes):
-    """Shapes whose OWN rendered text lands outside their OWN declared box — the
+    """Shapes whose OWN rendered text lands outside their OWN declared box - the
     box doesn't contain its text (a wrapped line dropped below a one-line box,
     copy running past a side). Read straight off the rendered word positions with
     STRONG attribution only, same as cross_shape_overprints, so short/common

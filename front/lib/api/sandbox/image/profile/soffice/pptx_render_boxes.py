@@ -2,8 +2,8 @@
 rasterized slide, detect rendered text-row positions by edge density, and flag
 decorative-marker runs left with no text row beside them.
 
-The top layer of the visual QA — depends on geometry (shape_kind,
-_classify_overlap, EMU) and PIL; the CLI calls _annotate_boxes from --render.
+The top layer of the visual QA - depends on geometry (shape_kind,
+_classify_overlap, EMU) and PIL; the CLI calls _annotate_boxes from --qa.
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def _suppress_as_layering(
     the pair ONLY when the two boxes already overlap at their declared geometry.
     A box that grew past its declared bounds and newly spilled onto a full-span
     shape (e.g. an overflowing title onto a full-width subtitle) is a real
-    overflow, not layering, so it is not suppressed here — the caller's
+    overflow, not layering, so it is not suppressed here - the caller's
     collision test surfaces it."""
     if not (
         _is_full_span(a, slide_w_emu, slide_h_emu)
@@ -65,7 +65,7 @@ def _contrast_text(color):
 # Text-row detection by horizontal EDGE density. A box that spans a gradient or
 # blob background has a constant colour-vs-median "ink" baseline that collapses
 # to one fake row, but glyph strokes still produce many sharp horizontal
-# transitions while smooth backgrounds produce ~none — so edge count separates
+# transitions while smooth backgrounds produce ~none - so edge count separates
 # text from background regardless of contrast polarity or gradient. Returns each
 # detected line's vertical centre (px): the input for marker alignment.
 #
@@ -123,7 +123,7 @@ _BOX_PALETTE = [
 
 # Decorative row-markers (checkmarks, bullets, numbers, icons) are placed at
 # FIXED positions to sit beside specific text rows. When filled copy wraps, the
-# rendered rows drift off those positions and a marker strands in empty space —
+# rendered rows drift off those positions and a marker strands in empty space -
 # a defect box-geometry can't see (the marker didn't move; the text reflowed).
 # Detect a marker as a small shape that forms a regular vertical run of >=3
 # beside a text box, then check each one has a rendered text row near it.
@@ -198,8 +198,8 @@ def _overlap_finding(
 ) -> Dict[str, object]:
     """The structured record the QA digest tiers on. Captures which shape
     overflowed onto which ("over" spilled onto "hit"), how much of the engulfed
-    box that covers ON the penetration axis — so the raw inches read back as a
-    percentage ("0.40in" -> "100% of #142's height") — the axis, and whether both
+    box that covers ON the penetration axis - so the raw inches read back as a
+    percentage ("0.40in" -> "100% of #142's height") - the axis, and whether both
     shapes carry text. Text-on-text is the loud, low-false-positive case."""
     ix = min(ea[0] + ea[2], eb[0] + eb[2]) - max(ea[0], eb[0])
     iy = min(ea[1] + ea[3], eb[1] + eb[3]) - max(ea[1], eb[1])
@@ -223,12 +223,51 @@ def _overlap_finding(
     }
 
 
+def _load_font(size: int):
+    """A legible bold font at `size`px: prefer a TrueType bold, then a sized
+    default, falling back to the bitmap default the sandbox always ships."""
+    from PIL import ImageFont
+
+    for loader in (
+        lambda: ImageFont.truetype("DejaVuSans-Bold.ttf", size),
+        lambda: ImageFont.load_default(size=size),  # Pillow >= 10.1
+        ImageFont.load_default,
+    ):
+        try:
+            return loader()
+        except Exception:  # noqa: BLE001 - try the next fallback
+            continue
+    return None
+
+
+def _add_readback_band(img, code: str):
+    """Stamp a proof-of-readback band across the top of the diagnostic render.
+
+    The code lives ONLY in the pixels (it is never printed in the tool's text
+    output), so quoting it back is the one thing that proves the render was
+    actually opened with files__cat. The band is added ABOVE the slide rather
+    than drawn over it, so the stamp never hides content QA has to judge."""
+    from PIL import Image, ImageDraw
+
+    w, h = img.size
+    band = max(40, h // 18)
+    out = Image.new("RGB", (w, h + band), (17, 17, 17))
+    out.paste(img, (0, band))
+    draw = ImageDraw.Draw(out)
+    fsize = max(18, int(band * 0.55))
+    font = _load_font(fsize)
+    text = f"READBACK CODE: {code}   (quote this to prove you opened this render)"
+    draw.text((12, max(0, (band - fsize) // 2)), text, fill=(255, 214, 10), font=font)
+    return out
+
+
 def _annotate_boxes(
     image_path: Path,
     slide: Slide,
     slide_w_emu: int,
     slide_h_emu: int,
     effective_boxes: Optional[Dict[int, BoxEmu]] = None,
+    readback_code: Optional[str] = None,
 ):
     """Overlay each top-level shape's bounding box on the slide image and
     compute pixel metrics. Box positions are read from the file (exact even
@@ -243,13 +282,17 @@ def _annotate_boxes(
     neighbour is caught (a containment that appears only after a box grows is
     spillover, not a designed fg/bg overlay, so it is surfaced not suppressed).
 
+    `readback_code`, when given, is stamped into a band above the slide (only in
+    the pixels, never in the tool's text) so quoting it proves the render was
+    opened - the proof-of-readback for the QA gate.
+
     Returns (out_path, findings) where findings has keys: "overlaps" (a list of
-    _overlap_finding dicts — which shape spilled onto which, the kind, axis,
+    _overlap_finding dicts - which shape spilled onto which, the kind, axis,
     coverage and text-on-text flag) and "markers" [(id, off_in)] (decorative
     markers in a run with no rendered text row near them). None if the image is
     unreadable."""
     try:
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import Image, ImageDraw
     except ImportError:
         return None
     if not slide_w_emu or not slide_h_emu:
@@ -262,19 +305,7 @@ def _annotate_boxes(
     sample = base.convert("RGB")  # clean pixels for metrics (before overlay)
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    # A legible label font: prefer a TrueType bold, then a sized default; the
-    # sandbox may ship neither, so fall back to the bitmap default last.
-    font = None
-    for _loader in (
-        lambda: ImageFont.truetype("DejaVuSans-Bold.ttf", 14),
-        lambda: ImageFont.load_default(size=13),  # Pillow >= 10.1
-        ImageFont.load_default,
-    ):
-        try:
-            font = _loader()
-            break
-        except Exception:  # noqa: BLE001 - try the next fallback
-            continue
+    font = _load_font(14)
 
     findings = {"overlaps": [], "markers": []}
     ppi = width_px / (slide_w_emu / EMU_PER_INCH)
@@ -310,12 +341,12 @@ def _annotate_boxes(
 
     # Shade collision zones on the effective (text-extent) boxes: a peer overlap
     # as before, plus a containment that exists ONLY after a box grew to wrap
-    # overflowing text — that text spilled onto a neighbour (a containment that
+    # overflowing text - that text spilled onto a neighbour (a containment that
     # also holds at declared sizes is an intentional fg/bg overlay, suppressed).
     for i, a in enumerate(shapes):
         for b in shapes[i + 1:]:
             # Banners/backgrounds (full-bleed bands, backdrops) intentionally sit
-            # under content that overlaps them at declared geometry — layering,
+            # under content that overlaps them at declared geometry - layering,
             # not a collision. But an overflowing box that spilled onto a
             # full-span shape (a title grown onto a full-width subtitle) is a
             # real overflow, so suppress only the declared-overlap layering case.
@@ -400,7 +431,10 @@ def _annotate_boxes(
 
     out_path = image_path.with_name(image_path.stem + "-boxes.png")
     try:
-        Image.alpha_composite(base, overlay).convert("RGB").save(out_path)
+        flat = Image.alpha_composite(base, overlay).convert("RGB")
+        if readback_code:
+            flat = _add_readback_band(flat, readback_code)
+        flat.save(out_path)
     except (OSError, ValueError):
         return None
     return out_path, findings

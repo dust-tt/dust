@@ -2,13 +2,13 @@
 them.
 
 Renders are rasterized to /tmp (fast, with a reusable PDF cache) but /tmp is
-invisible to the model — only files under the conversation/pod mount are. So QA /
+invisible to the model - only files under the conversation/pod mount are. So QA /
 preview renders are *published* onto that mount as small JPEGs the model can open
 with the files__cat tool, grouped in a dot-prefixed subdir to keep them apart
 from real deliverables. Shared by pptx_inspect and docx_inspect.
 
 NOTE: the dot-prefixed subdir keeps renders grouped but does NOT by itself hide
-them from the user's file list — the file-system backend's list() filters
+them from the user's file list - the file-system backend's list() filters
 hidden-dir *contents* (see gcs_file_system_backend.ts) to do that.
 """
 
@@ -32,8 +32,8 @@ def mount_for_path(
 ) -> Tuple[Optional[str], Optional[str]]:
     """Resolve the canonical conversation/pod mount a sandbox path lives on.
 
-    Returns ``(canonical_mount_root, scoped_prefix)`` — e.g.
-    ``("/files/conversation-abc", "conversation-abc")`` — where ``scoped_prefix``
+    Returns ``(canonical_mount_root, scoped_prefix)`` - e.g.
+    ``("/files/conversation-abc", "conversation-abc")`` - where ``scoped_prefix``
     is the form the files__cat tool accepts. The legacy aliases
     ``/files/conversation`` and ``/files/pod`` share storage with their
     canonical mount, so we resolve the unique canonical sibling. Returns
@@ -80,7 +80,7 @@ def save_viewable(src: Path, dest_root: Path) -> Path:
         with Image.open(src) as img:
             rgb = img.convert("RGB")
     except (OSError, ValueError):
-        # Odd/unreadable source (rare — the box overlay already passed PIL once):
+        # Odd/unreadable source (rare - the box overlay already passed PIL once):
         # copy the bytes through unchanged so files__cat still gets a valid image.
         dest = dest_root / src.name
         shutil.copyfile(src, dest)
@@ -133,7 +133,7 @@ def render_view_lines(
     published: List[Tuple[Path, Optional[str]]],
     item_name: str = "slide",
 ) -> List[str]:
-    """Per-item ``<label>: <scoped render path>`` lines — data only. What to do
+    """Per-item ``<label>: <scoped render path>`` lines - data only. What to do
     with them (open each with files__cat) is the skill's job, not the tool's. Falls
     back to the local path when a render is not on a resolvable mount."""
     lines: List[str] = []

@@ -1,10 +1,10 @@
 """Typography for pptx_inspect: placeholder-type detection, the layout/master/theme
 default-resolution chain, and per-segment / per-paragraph text formatting.
-(A segment is a span of same-formatted characters — python-pptx calls these
+(A segment is a span of same-formatted characters - python-pptx calls these
 `runs`, so API access keeps `.runs`.)
 
-Depends only on the shared ooxml/utils helpers (and python-pptx) — no
-dependency on the other pptx_* modules — so audit and the CLI build on it.
+Depends only on the shared ooxml/utils helpers (and python-pptx) - no
+dependency on the other pptx_* modules - so audit and the CLI build on it.
 """
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ def segment_color_token(segment) -> Optional[str]:
 # Theme / placeholder default resolution.
 #
 # python-pptx does not surface the effective typography of an empty layout
-# placeholder — that information lives in the layout's <a:lstStyle>, falling
+# placeholder - that information lives in the layout's <a:lstStyle>, falling
 # back to the master's matching placeholder, the master's titleStyle /
 # bodyStyle / otherStyle, and finally the theme's major/minor font + color
 # scheme. The helpers below walk that chain directly off the zip so we can
@@ -372,7 +372,7 @@ def text_frame_lines(shape: BaseShape, indent: str = "  ") -> List[str]:
     is_placeholder = placeholder_type(shape) is not None
     paras = list(shape.text_frame.paragraphs)
     # Paragraphs are addressed by index (text_frame.paragraphs[i]), so label them
-    # p[i] — not by bullet level, which is not an address. Interleaved EMPTY
+    # p[i] - not by bullet level, which is not an address. Interleaved EMPTY
     # paragraphs (spacer lines between content rows) are part of the box's
     # skeleton: they dictate which slots new text must land in and which carry
     # which styling, so surface them rather than dropping them. Trailing empties

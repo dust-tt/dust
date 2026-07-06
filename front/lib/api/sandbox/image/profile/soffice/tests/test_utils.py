@@ -1,6 +1,6 @@
 """Tier-1 pure-logic tests for utils.parse_slide_patterns: the slide-pattern
 parser shared by the inspect scripts (used by `pptx_inspect --qa`). No fixtures
-— just strings. Run directly (`python test_utils.py`) or under pytest.
+- just strings. Run directly (`python test_utils.py`) or under pytest.
 
 Lives in soffice/tests/, a subdir getLocalDirContent skips: it copies only the
 regular files directly in soffice/ (never recursing), so tests never ship in the image. It adds soffice/ to sys.path to import the module.

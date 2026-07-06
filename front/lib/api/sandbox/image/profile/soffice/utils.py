@@ -9,8 +9,8 @@ TEXT_PREVIEW_LIMIT = 80
 
 
 def parse_slide_patterns(raw: str) -> List[int]:
-    """Expand a slide pattern — a comma-separated list of 1-based slide numbers
-    and inclusive `A-B` ranges, e.g. `5`, `2,5,8`, `3-7`, or `2,5,7-9` — into an
+    """Expand a slide pattern - a comma-separated list of 1-based slide numbers
+    and inclusive `A-B` ranges, e.g. `5`, `2,5,8`, `3-7`, or `2,5,7-9` - into an
     ordered, de-duplicated list (first occurrence wins). Validates only the
     pattern syntax; callers check numbers against the deck's slide count. Raises
     ValueError on malformed input or an empty result."""
