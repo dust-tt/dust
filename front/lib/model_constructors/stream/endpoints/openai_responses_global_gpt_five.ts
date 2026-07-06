@@ -1,3 +1,4 @@
+import { OPENAI_GLOBAL_BASE_URL } from "@app/lib/model_constructors/providers/openai/base_url";
 import { WithOpenAIGptFiveConfig } from "@app/lib/model_constructors/providers/openai/models/gpt_five";
 import { OpenAIResponsesStream } from "@app/lib/model_constructors/stream/clients/openai_responses";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
@@ -16,6 +17,8 @@ export class OpenAIResponsesGlobalGptFiveStream extends WithOpenAIGptFiveConfig(
   static readonly region = GLOBAL;
 
   static readonly id = this.buildId();
+
+  protected readonly baseUrl = OPENAI_GLOBAL_BASE_URL;
 }
 
 OpenAIResponsesGlobalGptFiveStream satisfies StreamEndpointConstructor;

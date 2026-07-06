@@ -36,14 +36,23 @@ export abstract class OpenAIResponsesStream extends WithOpenAIResponsesInputConv
 
   static readonly configSchema: z.ZodType<OpenAIInputConfig> = configSchema;
 
-  private readonly client: OpenAI;
+  protected abstract readonly baseUrl: string;
 
-  constructor({ OPENAI_API_KEY, OPENAI_BASE_URL }: Credentials) {
+  private readonly apiKey: string | undefined;
+  private _client: OpenAI | undefined;
+
+  constructor({ OPENAI_API_KEY }: Credentials) {
     super();
-    this.client = new OpenAI({
-      apiKey: OPENAI_API_KEY,
-      baseURL: OPENAI_BASE_URL,
+    this.apiKey = OPENAI_API_KEY;
+  }
+
+  // Lazy: `baseUrl` is an abstract field, only set after subclass initializers run.
+  private get client(): OpenAI {
+    this._client ??= new OpenAI({
+      apiKey: this.apiKey,
+      baseURL: this.baseUrl,
     });
+    return this._client;
   }
 
   async *streamRaw(
