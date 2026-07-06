@@ -135,7 +135,7 @@ function getReplayedToolNames(
     }
   }
 
-  return Array.from(toolNames);
+  return [...toolNames];
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
