@@ -533,23 +533,25 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
-    // Only disable enabled triggers
-    const enabledTriggers = triggers.filter((t) => t.status === "enabled");
-    if (enabledTriggers.length === 0) {
-      return new Ok(undefined);
-    }
-
-    const disabledTriggersResult = await concurrentExecutor(
-      enabledTriggers,
-      async (trigger) => trigger.disable(auth, targetStatus),
+    // Enabled triggers get the full disable (status flip + schedule removal).
+    // Triggers already in a non-enabled status keep their status but still have
+    // their Temporal schedule reconciled: a prior run may have flipped the
+    // status yet failed to remove the schedule (the error is logged and
+    // swallowed), leaving an orphaned schedule that keeps firing.
+    // removeTemporalWorkflow is idempotent, so this is a no-op once the schedule
+    // is gone.
+    const results = await concurrentExecutor(
+      triggers,
+      async (trigger) =>
+        trigger.status === "enabled"
+          ? trigger.disable(auth, targetStatus)
+          : trigger.removeTemporalWorkflow(auth),
       {
         concurrency: 10,
       }
     );
 
-    const failuresCount = disabledTriggersResult.filter((res) =>
-      res.isErr()
-    ).length;
+    const failuresCount = results.filter((res) => res.isErr()).length;
 
     if (failuresCount > 0) {
       return new Err(new Error(`Failed to disable ${failuresCount} triggers`));
@@ -754,47 +756,49 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
   ): Promise<Result<undefined, Error>> {
-    if (this.status === targetStatus) {
-      return new Ok(undefined);
+    // Even when the status is already the target, we still reconcile the
+    // Temporal workflow below: a previous disable may have flipped the status
+    // but failed (or been interrupted) before removing the schedule, leaving an
+    // orphaned schedule that keeps firing. removeTemporalWorkflow is idempotent.
+    if (this.status !== targetStatus) {
+      const previousStatus = this.status;
+
+      try {
+        await this.update({ status: targetStatus });
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+
+      logger.info(
+        {
+          triggerId: this.sId,
+          triggerName: this.name,
+          triggerKind: this.kind,
+          previousStatus,
+          newStatus: targetStatus,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId: this.agentConfigurationId,
+          editorId: this.editor,
+        },
+        `Trigger status changed: ${targetStatus}`
+      );
+
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.disabled",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: this.sId,
+            name: this.name,
+          }),
+        ],
+        metadata: {
+          trigger_type: this.kind,
+          agent_id: this.agentConfigurationId,
+        },
+      });
     }
-
-    const previousStatus = this.status;
-
-    try {
-      await this.update({ status: targetStatus });
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
-
-    logger.info(
-      {
-        triggerId: this.sId,
-        triggerName: this.name,
-        triggerKind: this.kind,
-        previousStatus,
-        newStatus: targetStatus,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        agentConfigurationId: this.agentConfigurationId,
-        editorId: this.editor,
-      },
-      `Trigger status changed: ${targetStatus}`
-    );
-
-    void emitAuditLogEvent({
-      auth,
-      action: "trigger.disabled",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("trigger", {
-          sId: this.sId,
-          name: this.name,
-        }),
-      ],
-      metadata: {
-        trigger_type: this.kind,
-        agent_id: this.agentConfigurationId,
-      },
-    });
 
     // Remove the temporal workflow
     const r = await this.removeTemporalWorkflow(auth);
@@ -813,21 +817,24 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const workspace = auth.getNonNullableWorkspace();
 
     const toUpdate = triggers.filter((t) => t.status !== targetStatus);
-    if (toUpdate.length === 0) {
-      return new Ok(undefined);
+    if (toUpdate.length > 0) {
+      await this.model.update(
+        { status: targetStatus },
+        {
+          where: {
+            id: { [Op.in]: toUpdate.map((t) => t.id) },
+            workspaceId: workspace.id,
+          },
+        }
+      );
     }
 
-    await this.model.update(
-      { status: targetStatus },
-      {
-        where: {
-          id: { [Op.in]: toUpdate.map((t) => t.id) },
-          workspaceId: workspace.id,
-        },
-      }
-    );
-
-    for (const trigger of toUpdate) {
+    // Reconcile the Temporal schedule for every trigger, including those already
+    // at the target status: a prior run may have flipped the status but failed
+    // to remove the schedule (the error is logged and swallowed below), leaving
+    // an orphaned schedule that keeps firing. removeTemporalWorkflow is
+    // idempotent, so this is a no-op once the schedule is gone.
+    for (const trigger of triggers) {
       const r = await trigger.removeTemporalWorkflow(auth);
       if (r.isErr()) {
         logger.error(
