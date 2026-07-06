@@ -9,7 +9,6 @@ import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/typ
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { getAdvancedModelAccessErrorForAgentConfiguration } from "@app/lib/advanced_models/access";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -352,16 +351,6 @@ export async function runModel(
     fallbackPrompt += ".";
   }
 
-  const agentsList = agentConfiguration.instructions?.includes(
-    "{ASSISTANTS_LIST}"
-  )
-    ? await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: auth.user() ? "list" : "all",
-        variant: "light",
-      })
-    : null;
-
   let toolsetsContext: string | undefined;
   const hasToolsetsAction = agentConfiguration.actions.some((action) =>
     isServerSideMCPServerConfigurationWithName(action, "toolsets")
@@ -410,7 +399,6 @@ export async function runModel(
     model,
     hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
-    agentsList,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
     systemSkills,

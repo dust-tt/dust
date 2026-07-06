@@ -31,10 +31,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 import type {
@@ -347,11 +344,9 @@ export function constructGuidelinesSection({
 function constructInstructionsSection({
   agentConfiguration,
   fallbackPrompt,
-  agentsList,
 }: {
   agentConfiguration: AgentConfigurationType;
   fallbackPrompt?: string;
-  agentsList: LightAgentConfigurationType[] | null;
 }): string {
   let instructions = "# INSTRUCTIONS\n\n";
 
@@ -361,31 +356,11 @@ function constructInstructionsSection({
     instructions += `${fallbackPrompt}\n`;
   }
 
-  // Replacement if instructions includes "{ASSISTANTS_LIST}"
-  if (instructions.includes("{ASSISTANTS_LIST}") && agentsList) {
-    instructions = instructions.replaceAll(
-      "{ASSISTANTS_LIST}",
-      agentsList
-        .map((agent) => {
-          let agentDescription = "";
-          agentDescription += `@${agent.name}: `;
-          agentDescription += `${agent.description}`;
-          return agentDescription;
-        })
-        .join("\n")
-    );
-  }
-
   return instructions;
 }
 
 /**
  * Generation of the prompt for agents with multiple actions.
- *
- * `agentsList` is passed by the caller so that if there's an {ASSISTANTS_LIST} in
- * the instructions, it can be replaced appropriately. The Extract action
- * doesn't need that replacement and needs to avoid a dependency on
- * getAgentConfigurations here, so it passes null.
  */
 export function constructPromptMultiActions(
   auth: Authenticator,
@@ -396,7 +371,6 @@ export function constructPromptMultiActions(
     model,
     hasAvailableActions,
     errorContext,
-    agentsList,
     conversation,
     serverToolsAndInstructions,
     systemSkills,
@@ -414,7 +388,6 @@ export function constructPromptMultiActions(
     model: ModelConfigurationType;
     hasAvailableActions: boolean;
     errorContext?: string;
-    agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     systemSkills: SkillResource[];
@@ -442,7 +415,6 @@ export function constructPromptMultiActions(
   const instructionsContent = constructInstructionsSection({
     agentConfiguration,
     fallbackPrompt,
-    agentsList,
   });
 
   const contextSection = constructContextSection({
