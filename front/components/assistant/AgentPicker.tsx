@@ -12,7 +12,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -60,14 +59,9 @@ export function AgentPicker({
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  const selectedAgent = selectedAgentId
-    ? (agents.find((a) => a.sId === selectedAgentId) ?? null)
-    : null;
-  // The selected agent is pinned separately at the top, so keep it out of the
-  // searchable list below to avoid showing it twice.
-  const searchedAgents = filterAndSortAgents(agents, searchText).filter(
-    (a) => a.sId !== selectedAgent?.sId
-  );
+  const searchedAgents = filterAndSortAgents(agents, searchText, {
+    selectedAgentId,
+  });
 
   return (
     <DropdownMenu
@@ -127,46 +121,10 @@ export function AgentPicker({
           </>
         }
       >
-        {selectedAgent && (
-          <>
-            <DropdownMenuLabel label="Selected" />
-            <DropdownMenuItem
-              key={`agent-picker-selected-${selectedAgent.sId}`}
-              icon={() => (
-                <Avatar size="xs" visual={selectedAgent.pictureUrl} />
-              )}
-              label={selectedAgent.name}
-              truncateText
-              className="group py-1 notranslate"
-              endComponent={
-                <div className="flex items-center gap-1">
-                  <Icon visual={Check} size="sm" />
-                  {onAgentDetailsClick && clientType !== "extension" ? (
-                    <Button
-                      icon={DotsHorizontal}
-                      variant="outline"
-                      size="mini"
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        onAgentDetailsClick(selectedAgent.sId);
-                        setIsOpen(false);
-                      }}
-                    />
-                  ) : undefined}
-                </div>
-              }
-              // Clicking the row deselects the agent; keep the picker open so a
-              // different agent can be chosen right away.
-              onClick={() => onDeselect?.()}
-              onSelect={(e) => e.preventDefault()}
-            />
-            <DropdownMenuSeparator />
-          </>
-        )}
-        {searchedAgents.length > 0
-          ? searchedAgents.map((c) => (
+        {searchedAgents.length > 0 ? (
+          searchedAgents.map((c) => {
+            const isSelected = c.sId === selectedAgentId;
+            return (
               <DropdownMenuItem
                 key={`agent-picker-${c.sId}`}
                 icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
@@ -174,35 +132,44 @@ export function AgentPicker({
                 truncateText
                 className="group py-1 notranslate"
                 endComponent={
-                  onAgentDetailsClick && clientType !== "extension" ? (
-                    <Button
-                      icon={DotsHorizontal}
-                      variant="outline"
-                      size="mini"
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        onAgentDetailsClick(c.sId);
-                        setIsOpen(false);
-                      }}
-                    />
-                  ) : undefined
+                  <div className="flex items-center gap-1">
+                    {isSelected && <Icon visual={Check} size="sm" />}
+                    {onAgentDetailsClick && clientType !== "extension" ? (
+                      <Button
+                        icon={DotsHorizontal}
+                        variant="outline"
+                        size="mini"
+                        className="opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onAgentDetailsClick(c.sId);
+                          setIsOpen(false);
+                        }}
+                      />
+                    ) : undefined}
+                  </div>
                 }
                 onClick={() => {
+                  // Clicking the selected agent deselects it; keep the picker
+                  // open so a different agent can be chosen right away.
+                  if (isSelected) {
+                    onDeselect?.();
+                    return;
+                  }
                   onItemClick(c);
                   setSearchText("");
                   setIsOpen(false);
                 }}
+                onSelect={isSelected ? (e) => e.preventDefault() : undefined}
               />
-            ))
-          : // Skip the empty state when a selected agent is pinned and the user
-            // isn't actively searching (the pinned row is the only content).
-            (searchText.trim() !== "" || !selectedAgent) && (
-              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                No results found
-              </div>
-            )}
+            );
+          })
+        ) : (
+          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+            No results found
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
