@@ -1,15 +1,17 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
-import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
-import type { FilePreviewCategory } from "@app/components/file_explorer/utils";
-import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
+import {
+  FilePreviewContent,
+  useFilePreviewContent,
+} from "@app/components/file_explorer/FilePreviewContent";
+import type { FileEntry } from "@app/components/file_explorer/types";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { getFilePathDownloadUrl, getFilePathViewUrl } from "@app/lib/swr/files";
+import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { contentTypeFromFileName } from "@app/types/files";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Download01, Icon } from "@dust-tt/sparkle";
 
@@ -35,19 +37,55 @@ export function FilePreviewPanel({
     options: { disabled: !filePath },
   });
 
-  if (!filePath) {
+  const fileName = filePath ? (filePath.split("/").pop() ?? filePath) : "";
+  const baseUrl = filePath ? getFilePathViewUrl(owner, filePath) : null;
+
+  // Reuse the file-explorer entry when the sandbox listing has loaded so we get
+  // the real content type, fileId, and version. Before it loads (or for files
+  // missing from the listing) fall back to a minimal entry derived from the
+  // file name — Office documents have no in-browser renderer, so the content
+  // type is needed to pick the right preview strategy and icon.
+  const sandboxFile = filePath
+    ? sandboxFiles.find(
+        (f): f is FileSystemFileEntry => !f.isDirectory && f.path === filePath
+      )
+    : undefined;
+  const contentType =
+    sandboxFile?.contentType ?? contentTypeFromFileName(fileName) ?? "";
+
+  const entry: FileEntry | null = !filePath
+    ? null
+    : sandboxFile
+      ? { ...sandboxFile, kind: "file" }
+      : {
+          kind: "file",
+          isDirectory: false,
+          fileName,
+          path: filePath,
+          contentType,
+          fileId: null,
+          thumbnailUrl: null,
+          sizeBytes: 0,
+          lastModifiedMs: 0,
+        };
+
+  const {
+    category,
+    truncatedContent,
+    processedContent,
+    hasError,
+    isContentLoading,
+  } = useFilePreviewContent({
+    entry,
+    fileUrl: baseUrl,
+    enabled: !!filePath,
+  });
+
+  if (!filePath || !entry || !baseUrl) {
     return null;
   }
 
-  const fileName = filePath.split("/").pop() ?? filePath;
-  // Office documents have no in-browser renderer; the file's content type is
-  // derived from its name to pick the right preview strategy and icon.
-  const contentType = contentTypeFromFileName(fileName) ?? "";
-  const { category } = getFilePreviewConfig(contentType);
   const FileIcon = getFileTypeIcon(contentType, fileName);
-
-  const version = sandboxFiles.find((f) => f.path === filePath)?.lastModifiedMs;
-  const baseUrl = getFilePathViewUrl(owner, filePath);
 
   return (
     <div className="flex h-panel min-h-0 flex-col">
@@ -68,58 +106,27 @@ export function FilePreviewPanel({
           />
         </div>
       </ConversationSidePanelHeader>
-      <div className="min-h-0 flex-1 overflow-hidden bg-muted-background">
-        <FilePreviewContent
-          category={category}
-          baseUrl={baseUrl}
-          version={version}
-        />
+      <div className="min-h-0 flex-1 overflow-y-auto bg-muted-background p-4">
+        {hasError ? (
+          <CenteredState>
+            <p className="text-sm text-muted-foreground">
+              Unable to preview this file. You can download it instead.
+            </p>
+          </CenteredState>
+        ) : (
+          <FilePreviewContent
+            category={category}
+            entry={entry}
+            fileContent={truncatedContent}
+            fileUrl={baseUrl}
+            isContentLoading={isContentLoading}
+            isFullWidth
+            markdownContent={processedContent?.text}
+            markdownViewMode="preview"
+            processedContent={processedContent}
+          />
+        )}
       </div>
     </div>
-  );
-}
-
-interface FilePreviewContentProps {
-  category: FilePreviewCategory;
-  baseUrl: string;
-  version: number | undefined;
-}
-
-function FilePreviewContent({
-  category,
-  baseUrl,
-  version,
-}: FilePreviewContentProps) {
-  switch (category) {
-    case "viewer": {
-      // Office documents (presentations, etc.) are rendered as a server-side
-      // PDF conversion (?preview=pdf), available only through the path-based
-      // file route.
-      const url = `${baseUrl}?preview=pdf` + (version ? `&v=${version}` : "");
-      // Slides are wide/landscape; render them at the panel width so they fill
-      // the narrower side panel instead of overflowing or rendering oversized.
-      return <PDFViewer key={url} url={url} isFullWidth />;
-    }
-
-    case "frame":
-    case "code":
-    case "pdf":
-    case "audio":
-    case "markdown":
-    case "delimited":
-    case "text":
-    case "image":
-      break;
-
-    default:
-      assertNeverAndIgnore(category);
-  }
-
-  return (
-    <CenteredState>
-      <p className="text-sm text-muted-foreground">
-        Unable to preview this file. You can download it instead.
-      </p>
-    </CenteredState>
   );
 }
