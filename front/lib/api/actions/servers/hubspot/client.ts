@@ -942,7 +942,7 @@ export const createLead = async ({
     for (const assoc of associations) {
       const associationTypeId = await getAssociationTypeId(
         accessToken,
-        "deals",
+        "leads",
         assoc.toObjectType
       );
       builtAssociations.push({
@@ -963,7 +963,7 @@ export const createLead = async ({
     associations: builtAssociations,
   };
 
-  return hubspotClient.crm.deals.basicApi.create(leadData);
+  return hubspotClient.crm.objects.basicApi.create("leads", leadData);
 };
 
 export const createTask = async ({
@@ -1390,7 +1390,8 @@ export const searchCrmObjects = async ({
     | "quotes"
     | "feedback_submissions"
     | "products"
-    | "tickets";
+    | "tickets"
+    | "leads";
   filters?: Array<HubspotFilter>;
   query?: string;
   propertiesToReturn?: string[];
@@ -1500,6 +1501,12 @@ export const searchCrmObjects = async ({
       case "tickets":
         searchResponse =
           await hubspotClient.crm.tickets.searchApi.doSearch(searchRequest);
+        break;
+      case "leads":
+        searchResponse =
+          await hubspotClient.crm.objects.leads.searchApi.doSearch(
+            searchRequest
+          );
         break;
       default:
         throw new Error(
