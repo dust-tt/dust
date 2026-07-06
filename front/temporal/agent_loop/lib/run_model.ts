@@ -84,11 +84,26 @@ import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
-const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
-  "web",
-  "slack",
-  "extension",
-  "agent_sidekick",
+const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
+  "api",
+  "cli",
+  "cli_programmatic",
+  "email",
+  "excel",
+  "gsheet",
+  "make",
+  "n8n",
+  "powerpoint",
+  "raycast",
+  "slack_workflow",
+  "teams",
+  "transcript",
+  "zapier",
+  "zendesk",
+  "onboarding_conversation",
+  "reinforced_skill_notification",
+  "reinforcement",
+  "branch_anchor",
 ];
 
 // Concatenate two content strings, ensuring at least one whitespace character
@@ -311,11 +326,11 @@ export async function runModel(
     );
   }
 
-  // Filter out ask_user_question when no human is available to answer: origins that don't
-  // support interactive questions, or sub-agent runs (conversation depth > 0) where the
+  // Filter out ask_user_question when no human is available to answer: origins with no
+  // interactive reply surface, or sub-agent runs (conversation depth > 0) where the
   // "user" is the parent agent rather than a human.
   const supportsInteractiveQuestions =
-    ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(userMessage.context.origin) &&
+    !ASK_USER_QUESTION_BLOCKED_ORIGINS.includes(userMessage.context.origin) &&
     conversation.depth === 0;
 
   const filteredMcpActions = supportsInteractiveQuestions
