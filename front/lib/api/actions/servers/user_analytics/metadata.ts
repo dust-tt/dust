@@ -13,6 +13,8 @@ export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "Always scoped to the authenticated user.",
     schema: {},
     stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
     displayLabels: {
       running: "Fetching your usage",
       done: "Fetched your usage",
@@ -24,6 +26,8 @@ export const USER_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "most popular agents by usage rank and trending skills. No individual user attribution.",
     schema: {},
     stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
     displayLabels: {
       running: "Fetching workspace activity",
       done: "Fetched workspace activity",
@@ -46,6 +50,8 @@ export const USER_ANALYTICS_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    toolCostCategory: t.toolCostCategory,
+    freeUsage: t.freeUsage,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(USER_ANALYTICS_TOOLS_METADATA).map((t) => [t.name, t.stake])
