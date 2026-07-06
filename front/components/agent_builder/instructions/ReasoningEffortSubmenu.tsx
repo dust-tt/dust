@@ -1,7 +1,7 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import {
   getAvailableReasoningEfforts,
-  type ModelConfigurationType,
   type ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
@@ -27,7 +27,7 @@ const REASONING_EFFORT_DESCRIPTIONS: Record<ReasoningEffort, string> = {
 };
 
 interface ReasoningEffortSubmenuProps {
-  models: ModelConfigurationType[];
+  models: EnabledModelConfigurationType[];
 }
 
 export function ReasoningEffortSubmenu({
@@ -70,7 +70,7 @@ export function ReasoningEffortSubmenu({
     }
   }, [modelConfig, field]);
 
-  if (!modelConfig) {
+  if (!modelConfig || !modelConfig.isSelectable) {
     return null;
   }
 
