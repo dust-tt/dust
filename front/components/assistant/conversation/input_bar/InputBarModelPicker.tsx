@@ -30,7 +30,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
 import { useMemo, useRef, useState } from "react";
 
-// TODO: test for EU
 interface InputBarModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
   owner: LightWorkspaceType;
