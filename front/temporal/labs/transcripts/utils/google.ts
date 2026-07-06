@@ -111,6 +111,58 @@ export async function retrieveGoogleTranscripts(
   return new Ok(fileIdsToProcess);
 }
 
+const GOOGLE_DOCS_MIME_TYPE = "application/vnd.google-apps.document";
+
+async function retrieveGoogleFileContent(
+  drive: drive_v3.Drive,
+  fileId: string,
+  mimeType: string | null | undefined
+): Promise<string> {
+  if (mimeType === GOOGLE_DOCS_MIME_TYPE) {
+    const contentRes = await drive.files.export({
+      fileId,
+      mimeType: "text/plain",
+    });
+
+    if (contentRes.status !== 200) {
+      throw new Error(
+        `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
+      );
+    }
+
+    if (typeof contentRes.data !== "string") {
+      throw new Error(
+        `Unexpected exported content type: ${typeof contentRes.data}`
+      );
+    }
+
+    return contentRes.data;
+  }
+
+  if (mimeType && mimeType.startsWith("text/")) {
+    const contentRes = await drive.files.get(
+      { fileId, alt: "media" },
+      { responseType: "text" }
+    );
+
+    if (contentRes.status !== 200) {
+      throw new Error(
+        `Error downloading Google file. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
+      );
+    }
+
+    if (typeof contentRes.data !== "string") {
+      throw new Error(
+        `Unexpected downloaded content type: ${typeof contentRes.data}`
+      );
+    }
+
+    return contentRes.data;
+  }
+
+  throw new Error(`Unsupported transcript mime type: ${mimeType}`);
+}
+
 export async function retrieveGoogleTranscriptContent(
   auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
@@ -129,7 +181,7 @@ export async function retrieveGoogleTranscriptContent(
 
   const metadataRes = await drive.files.get({
     fileId: fileId,
-    fields: "name",
+    fields: "name, mimeType",
   });
 
   localLogger.info(
@@ -138,31 +190,23 @@ export async function retrieveGoogleTranscriptContent(
   );
 
   try {
-    const contentRes = await drive.files.export({
-      fileId: fileId,
-      mimeType: "text/plain",
-    });
-
-    if (contentRes.status !== 200) {
-      localLogger.error(
-        { error: contentRes.statusText },
-        "Error exporting Google document."
-      );
-
-      throw new Error(
-        `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
-      );
-    }
-    const fileContentIsAccessible = true;
+    const transcriptContent = await retrieveGoogleFileContent(
+      drive,
+      fileId,
+      metadataRes.data.mimeType
+    );
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const transcriptTitle = metadataRes.data.name || "Untitled";
-    const transcriptContent = <string>contentRes.data;
 
-    return { transcriptTitle, transcriptContent, fileContentIsAccessible };
+    return {
+      transcriptTitle,
+      transcriptContent,
+      fileContentIsAccessible: true,
+    };
   } catch (error) {
     localLogger.error(
-      { fileId, error },
-      "Error exporting Google document. Skipping."
+      { fileId, mimeType: metadataRes.data.mimeType, error },
+      "Error retrieving Google document content. Skipping."
     );
     return {
       transcriptTitle: "",
