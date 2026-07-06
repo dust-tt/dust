@@ -1,7 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -83,7 +83,9 @@ interface PDFViewerProps {
 }
 
 export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const resizeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const [state, dispatch] = useReducer(reducer, initialState);
   const { isFetching, hasError, objectUrl, numPages, currentPage, zoomIdx } =
@@ -157,42 +159,57 @@ export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
     return () => observer.disconnect();
   }, [numPages]);
 
-  useEffect(() => {
-    // The scroll container only mounts once the fetch resolves, so re-run when
-    // those flags flip to pick up the now-available ref.
-    if (!isFullWidth || isFetching || hasError) {
-      return;
-    }
-    const container = scrollRef.current;
-    if (!container) {
-      return;
-    }
+  // Callback ref on the scroll container: keeps `scrollRef` in sync for the
+  // IntersectionObserver above and, when rendering full width, measures the
+  // container via a ResizeObserver. Measuring here (in response to the element
+  // mounting/resizing) instead of in an effect keyed on props avoids adjusting
+  // state on prop changes (react-doctor/no-adjust-state-on-prop-change).
+  const setScrollNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollRef.current = node;
 
-    setContainerWidth(container.clientWidth);
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      if (resizeDebounceRef.current) {
+        clearTimeout(resizeDebounceRef.current);
+        resizeDebounceRef.current = null;
+      }
 
-    // Re-rasterizing the PDF canvas on every resize tick flickers, so debounce
-    // and only commit the new width once the resize settles.
-    let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries.at(0);
-      if (!entry) {
+      if (!node || !isFullWidth) {
         return;
       }
-      const { width } = entry.contentRect;
-      if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
-      }
-      debounceTimeout = setTimeout(() => setContainerWidth(width), 20);
-    });
-    observer.observe(container);
 
-    return () => {
-      observer.disconnect();
-      if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
+      // The container starts hidden (width 0) until the document loads; the
+      // observer picks up the real width once it becomes visible, so only
+      // commit positive widths and let `pageWidth` fall back until then.
+      if (node.clientWidth > 0) {
+        setContainerWidth(node.clientWidth);
       }
-    };
-  }, [isFullWidth, isFetching, hasError]);
+
+      // Re-rasterizing the PDF canvas on every resize tick flickers, so debounce
+      // and only commit the new width once the resize settles.
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries.at(0);
+        if (!entry) {
+          return;
+        }
+        const { width } = entry.contentRect;
+        if (width <= 0) {
+          return;
+        }
+        if (resizeDebounceRef.current) {
+          clearTimeout(resizeDebounceRef.current);
+        }
+        resizeDebounceRef.current = setTimeout(
+          () => setContainerWidth(width),
+          20
+        );
+      });
+      observer.observe(node);
+      resizeObserverRef.current = observer;
+    },
+    [isFullWidth]
+  );
 
   const zoom = ZOOM_LEVELS[zoomIdx] ?? 1.0;
   const pageWidth = isFullWidth
@@ -248,7 +265,7 @@ export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
             </div>
           )}
           <div
-            ref={scrollRef}
+            ref={setScrollNode}
             className={
               numPages !== null
                 ? "flex-1 min-h-0 overflow-auto rounded-lg"
