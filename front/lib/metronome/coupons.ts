@@ -177,11 +177,13 @@ const CREDITS_COUPON_DEFAULT_DURATION_MONTHS = 12;
 // is the number of AWU credits to grant directly (AWU is currency-independent).
 async function createCreditsCouponCredit({
   metronomeCustomerId,
+  metronomeContractId,
   coupon,
   redemptionId,
   redeemedAt,
 }: {
   metronomeCustomerId: string;
+  metronomeContractId?: string;
   coupon: CouponResource;
   redemptionId: string;
   redeemedAt: Date;
@@ -189,7 +191,7 @@ async function createCreditsCouponCredit({
   const durationMonths =
     coupon.durationMonths ?? CREDITS_COUPON_DEFAULT_DURATION_MONTHS;
 
-  const result = await createMetronomeCredit({
+  const sharedParams = {
     metronomeCustomerId,
     productId: getProductFreeCreditId(),
     creditTypeId: getCreditTypeAwuId(),
@@ -197,10 +199,26 @@ async function createCreditsCouponCredit({
     startingAt: floorToHourISO(redeemedAt),
     endingBefore: ceilToHourISO(addMonths(redeemedAt, durationMonths)),
     name: `Coupon: ${coupon.code}`,
-    idempotencyKey: `coupon-credits-${redemptionId}-0`,
     priority: AWU_PRIORITY_PURCHASED_COMMIT,
     applicableProductTags:
       getApplicableProductTagsForDiscountType("credit_pool_top_up"),
+  };
+
+  if (metronomeContractId) {
+    const result = await addCreditToContract({
+      ...sharedParams,
+      metronomeContractId,
+      uniquenessKey: `coupon-credits-${redemptionId}-0`,
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    return new Ok(result.value !== null ? [result.value.creditId] : []);
+  }
+
+  const result = await createMetronomeCredit({
+    ...sharedParams,
+    idempotencyKey: `coupon-credits-${redemptionId}-0`,
   });
 
   if (result.isErr()) {
@@ -252,6 +270,11 @@ export async function redeemCreditsCoupon(
     });
   }
 
+  // Attach the credit to the active contract when there is one so it shows up
+  // on the contract (invoice preview, contract-scoped balances). Fall back to
+  // a customer-level credit otherwise, mirroring `createCouponCredit`.
+  const contract = await getActiveContract(workspace.sId);
+
   const pendingResult = await CouponRedemptionResource.createPending(auth, {
     coupon,
   });
@@ -262,6 +285,7 @@ export async function redeemCreditsCoupon(
 
   const creditResult = await createCreditsCouponCredit({
     metronomeCustomerId,
+    metronomeContractId: contract?.id,
     coupon,
     redemptionId: redemption.sId,
     redeemedAt: redemption.redeemedAt,
