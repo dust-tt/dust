@@ -66,7 +66,7 @@ import {
 } from "@app/lib/swr/upgrade_requests";
 import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
-  useAwuUsage,
+  useAwuUsageFromAnalytics,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -409,19 +409,34 @@ export function UsagePage() {
   // Legacy contracts have no pool credits or commits, so the pool summary's
   // overage figure is meaningless. In read-only mode we instead show the
   // period's raw consumption from the AWU usage analytics endpoint (the same
-  // data the chart below renders), summing its ungrouped "total" series for the
-  // current billing cycle.
-  const { awuUsageData } = useAwuUsage({
+  // ES-backed data the usage charts use), summing its ungrouped "total" series
+  // over the current billing cycle.
+  const daysSinceCycleStart = useMemo(() => {
+    const now = new Date();
+    // Clamp the cycle day to 28 to avoid short-month edge cases — this only
+    // feeds a read-only estimate of the period's consumption.
+    const startDay = Math.min(billingCycleStartDay ?? 1, 28);
+    const start = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), startDay)
+    );
+    if (start.getTime() > now.getTime()) {
+      start.setUTCMonth(start.getUTCMonth() - 1);
+    }
+    return Math.max(
+      1,
+      Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    );
+  }, [billingCycleStartDay]);
+  const { awuUsageData } = useAwuUsageFromAnalytics({
     workspaceId: owner.sId,
-    billingCycleStartDay: billingCycleStartDay ?? 1,
-    windowSize: "DAY",
+    granularity: "day",
+    days: daysSinceCycleStart,
     disabled: !isReadOnly,
   });
   const periodSpendCredits = useMemo(
     () =>
       (awuUsageData?.points ?? []).reduce(
-        (sum, point) =>
-          sum + point.groups.reduce((s, group) => s + group.valueCredits, 0),
+        (sum, point) => sum + (point.values.total ?? 0),
         0
       ),
     [awuUsageData]
