@@ -161,7 +161,7 @@ function SearchPodItem({
       }}
       suffix={
         isArchived ? (
-          <Chip size="mini" color="white" label="Archived" />
+          <Chip size="mini" color="primary" label="Archived" />
         ) : undefined
       }
     />

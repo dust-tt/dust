@@ -26,7 +26,7 @@ interface ToolChipProps {
 }
 
 export function ToolChip({
-  color = "white",
+  color = "primary",
   onClick,
   onRemove,
   title,
@@ -54,7 +54,7 @@ export function ToolErrorChip({ onRemove, title }: ToolErrorChipProps) {
     <Chip
       label={title}
       icon={AlertCircle}
-      color="white"
+      color="primary"
       onRemove={onRemove}
       size="xs"
     />

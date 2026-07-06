@@ -17,7 +17,7 @@ export const investmentConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Investment Firms",
-      color: "blue",
+      color: "highlight",
       icon: BarChart01,
     },
     title: (

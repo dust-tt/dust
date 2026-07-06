@@ -23,7 +23,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "B2B SaaS",
-      color: "rose",
+      color: "warning",
       icon: Building04,
     },
     title: (

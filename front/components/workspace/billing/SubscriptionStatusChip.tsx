@@ -6,12 +6,12 @@ export type SubscriptionStatus = "free" | "active" | "cancelled" | "ended";
 
 const STATUS_CHIP: Record<
   SubscriptionStatus,
-  { label: string; color: "green" | "blue" | "golden" | "rose" }
+  { label: string; color: "success" | "highlight" | "info" | "warning" }
 > = {
-  free: { label: "Free", color: "green" },
-  active: { label: "Active", color: "blue" },
-  cancelled: { label: "Cancelled", color: "golden" },
-  ended: { label: "Ended", color: "rose" },
+  free: { label: "Free", color: "success" },
+  active: { label: "Active", color: "highlight" },
+  cancelled: { label: "Cancelled", color: "info" },
+  ended: { label: "Ended", color: "warning" },
 };
 
 export function SubscriptionStatusChip() {

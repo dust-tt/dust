@@ -63,7 +63,6 @@ export function GithubCodeEnableView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetCodeSyncEnabled(!codeSyncEnabled);
               }}

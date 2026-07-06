@@ -125,7 +125,7 @@ export function FileCitationCard(props: FileCitationCardProps) {
     const chipProps = {
       children: chipContent,
       className: "inline-flex max-w-48 align-middle",
-      color: "white" as const,
+      color: "primary" as const,
       isBusy: isLoading,
       onRemove,
       size: "xs" as const,

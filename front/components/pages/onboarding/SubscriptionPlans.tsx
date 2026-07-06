@@ -153,7 +153,7 @@ export function BillingPeriodSwitch({
         value="yearly"
         label="Yearly"
         className="flex-row-reverse"
-        icon={<Chip size={chipSize} color="blue" label="Save 20%" />}
+        icon={<Chip size={chipSize} color="highlight" label="Save 20%" />}
       />
     </ButtonsSwitchList>
   );

@@ -54,7 +54,7 @@ type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 const USER_VISIBILITY: Record<string, { label: string; color: ChipColor }> = {
   visible: { label: "sent", color: "success" },
   pending: { label: "queued", color: "warning" },
-  deleted: { label: "deleted", color: "rose" },
+  deleted: { label: "deleted", color: "warning" },
 };
 
 const AGENT_STATUS: Record<
@@ -63,7 +63,7 @@ const AGENT_STATUS: Record<
 > = {
   created: { label: "generating", color: "warning" },
   succeeded: { label: "succeeded", color: "success" },
-  failed: { label: "failed", color: "rose" },
+  failed: { label: "failed", color: "warning" },
   cancelled: { label: "cancelled", color: "primary" },
   interrupted: { label: "cancelled", color: "primary" },
   gracefully_stopped: {
@@ -78,7 +78,7 @@ const COMPACTION_STATUS: Record<
 > = {
   created: { label: "generating", color: "warning" },
   succeeded: { label: "succeeded", color: "success" },
-  failed: { label: "failed", color: "rose" },
+  failed: { label: "failed", color: "warning" },
 };
 
 function getLangfuseTraceUrl(langfuseUiBaseUrl: string, runId: string) {
@@ -180,11 +180,11 @@ function getActionStatus(
     case "succeeded":
       return null;
     case "errored":
-      return { label: "error", color: "rose" };
+      return { label: "error", color: "warning" };
     case "denied":
       return { label: "denied", color: "primary" };
     case "running":
-      return { label: "running", color: "blue" };
+      return { label: "running", color: "highlight" };
     case "ready_allowed_explicitly":
     case "ready_allowed_implicitly":
       return { label: "ready", color: "primary" };
@@ -855,7 +855,7 @@ export function ConversationPage() {
                 <div className="flex flex-col space-y-2">
                   <div className="flex items-center space-x-2">
                     <Chip
-                      color="blue"
+                      color="highlight"
                       label={`Tokens used: ${renderResult.tokensUsed}`}
                       size="xs"
                     />
@@ -870,7 +870,7 @@ export function ConversationPage() {
                       size="xs"
                     />
                     <Chip
-                      color="green"
+                      color="success"
                       label={`Tools tokens: ${renderResult.toolsTokenCountApprox}`}
                       size="xs"
                     />

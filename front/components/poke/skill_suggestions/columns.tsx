@@ -124,11 +124,11 @@ export function makeColumnsForSkillSuggestions(
         const state = row.original.state;
         const colorMap: Record<
           string,
-          "info" | "primary" | "warning" | "rose"
+          "info" | "primary" | "warning" | "warning"
         > = {
           pending: "warning",
           approved: "primary",
-          rejected: "rose",
+          rejected: "warning",
           outdated: "info",
         };
         return (

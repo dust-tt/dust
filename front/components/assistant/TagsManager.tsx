@@ -31,7 +31,7 @@ const columns = [
     accessorKey: "name",
     header: "Tag label",
     cell: (info: CellContext<any, string>) => (
-      <Chip label={info.row.original.name} color="golden" />
+      <Chip label={info.row.original.name} color="info" />
     ),
   },
   {

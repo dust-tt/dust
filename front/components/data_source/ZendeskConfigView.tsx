@@ -139,7 +139,6 @@ export function ZendeskConfigView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetNewConfig(
                   ZENDESK_CONFIG_KEYS.SYNC_UNRESOLVED_TICKETS,
@@ -169,7 +168,6 @@ export function ZendeskConfigView({
         action={
           <div className="relative">
             <SliderToggle
-              size="xs"
               onClick={async () => {
                 await handleSetNewConfig(
                   ZENDESK_CONFIG_KEYS.HIDE_CUSTOMER_DETAILS,

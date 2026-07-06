@@ -86,13 +86,13 @@ function MemberChangeRow({
         {action === "add" && role && (
           <Chip
             size="xs"
-            color={role === "editor" ? "blue" : "primary"}
+            color={role === "editor" ? "highlight" : "primary"}
             label={role === "editor" ? "Editor" : "Member"}
           />
         )}
         <Chip
           size="xs"
-          color={action === "add" ? "green" : "rose"}
+          color={action === "add" ? "success" : "warning"}
           label={action === "add" ? "Will add" : "Will remove"}
         />
       </div>

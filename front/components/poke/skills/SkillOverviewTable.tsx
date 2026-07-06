@@ -49,7 +49,7 @@ export function SkillOverviewTable({
                 <Chip
                   key={s.sId}
                   size="sm"
-                  color={s.isRestricted ? "warning" : "blue"}
+                  color={s.isRestricted ? "warning" : "highlight"}
                 >
                   {s.name}
                 </Chip>

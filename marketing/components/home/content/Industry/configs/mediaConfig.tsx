@@ -17,7 +17,7 @@ export const mediaConfig: IndustryPageConfig = {
   hero: {
     chip: {
       label: "Media Companies",
-      color: "blue",
+      color: "highlight",
       icon: BookOpen01,
     },
     title: (

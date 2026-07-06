@@ -698,7 +698,6 @@ export function PodSettingsTab({
                     trigger={
                       <div>
                         <SliderToggle
-                          size="xs"
                           selected={isOpen}
                           onClick={handleVisibilityToggle}
                           disabled
@@ -708,7 +707,6 @@ export function PodSettingsTab({
                   />
                 ) : (
                   <SliderToggle
-                    size="xs"
                     selected={isOpen}
                     onClick={handleVisibilityToggle}
                     disabled={isVisibilityToggleDisabled}

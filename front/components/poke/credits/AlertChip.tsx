@@ -10,12 +10,12 @@ import { Chip, LinkExternal01 } from "@dust-tt/sparkle";
 // label. `in_alarm` (breached) reads red; `ok` (resolved) green; `evaluating`
 // (pending) amber; `null` (unknown) neutral.
 function alertStatusChip(status: MetronomeAlertStatus): {
-  color: "rose" | "success" | "warning" | "info";
+  color: "warning" | "success" | "warning" | "info";
   label: string;
 } {
   switch (status) {
     case "in_alarm":
-      return { color: "rose", label: "in alarm" };
+      return { color: "warning", label: "in alarm" };
     case "ok":
       return { color: "success", label: "ok" };
     case "evaluating":

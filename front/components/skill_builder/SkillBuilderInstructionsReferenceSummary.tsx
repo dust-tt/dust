@@ -77,7 +77,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           label={item.title}
           icon={{ visual: File02 }}
-          color="white"
+          color="primary"
           size="xs"
           className="text-xs"
           onClick={() => onReferenceClick(item)}
@@ -89,7 +89,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           label={item.title}
           icon={getSkillIcon(item.icon)}
-          color="white"
+          color="primary"
           size="xs"
           onClick={() => onReferenceClick(item)}
         />
@@ -100,7 +100,7 @@ function renderReferenceSummaryItem({
           key={`${item.kind}:${item.id}`}
           title={item.title}
           toolIcon={item.icon}
-          color="white"
+          color="primary"
           onClick={() => onReferenceClick(item)}
         />
       );

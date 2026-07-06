@@ -101,7 +101,7 @@ export function KnowledgeDisplayComponent({
 
   if (isFetchingNode || (needsFetch && !isFullKnowledgeItem(item))) {
     return (
-      <Chip label={item.label} color="white" size="xs">
+      <Chip label={item.label} color="primary" size="xs">
         <Spinner size="xs" />
       </Chip>
     );

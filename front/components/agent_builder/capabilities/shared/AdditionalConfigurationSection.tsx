@@ -406,7 +406,6 @@ function ListConfigurationInput({
                 <div className="flex items-center space-x-3">
                   <Checkbox
                     checked={currentValue.includes(option.value)}
-                    size="xs"
                     onCheckedChange={(checked) => {
                       const current = Array.isArray(field.value)
                         ? field.value

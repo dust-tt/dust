@@ -24,6 +24,11 @@ const SUGGEST_TASKS_TOOLTIP_NON_EDITOR = `${SUGGEST_TASKS_TOOLTIP} Only Pod edit
 const LAST_SCAN_NEVER_TOOLTIP =
   "Dust has not run an automatic scan for task suggestions for this Pod yet.";
 
+// Static chip hoisted out of the component so it isn't recreated every render.
+const EXPERIMENTAL_CHIP = (
+  <Chip color="info" label="Experimental" size="mini" />
+);
+
 function lastScanTooltip(lastTodoAnalysisAt: number | null): string {
   if (lastTodoAnalysisAt == null) {
     return LAST_SCAN_NEVER_TOOLTIP;
@@ -138,9 +143,7 @@ export function SuggestedTasksGenerationTile({
         icon={Stars02}
         title="Suggest tasks"
         description="Automatic task suggestions from Pod activity"
-        trailingInTitle={
-          <Chip color="golden" label="Experimental" size="mini" />
-        }
+        trailingInTitle={EXPERIMENTAL_CHIP}
       />
       <div className="flex shrink-0 items-center gap-2">
         <Tooltip
@@ -160,7 +163,6 @@ export function SuggestedTasksGenerationTile({
           trigger={
             <div>
               <SliderToggle
-                size="xs"
                 selected={pod.todoGenerationEnabled}
                 disabled={sliderDisabled}
                 onClick={onToggleClick}

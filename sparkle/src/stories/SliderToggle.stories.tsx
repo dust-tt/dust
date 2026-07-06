@@ -9,7 +9,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `A compact on/off switch for toggling a single setting that takes effect immediately. Reflects state via **selected**, can be **disabled**, and comes in **sm** and **xs** **size**s.
+        component: `A compact on/off switch for toggling a single setting that takes effect immediately. Reflects state via **selected** and can be **disabled**.
 
 **When to use**
 - For binary settings that apply instantly without a separate save action (e.g. enabling a feature in a settings row).
@@ -33,19 +33,11 @@ export const SliderToggleBasic: Story = {
 };
 
 export const SliderExample = () => (
-  <div className="flex flex-col gap-6">
-    <div className="flex items-center gap-2">
-      <Button variant="outline" size="sm" label="Settings" />
-      <SliderToggle size="sm" />
-      <SliderToggle size="sm" selected />
-      <SliderToggle size="sm" disabled />
-    </div>
-
-    <div className="flex items-center gap-2">
-      <Button variant="outline" size="xs" label="Settings" />
-      <SliderToggle size="xs" />
-      <SliderToggle size="xs" selected />
-      <SliderToggle size="xs" disabled />
-    </div>
+  <div className="flex items-center gap-2">
+    <Button variant="outline" size="sm" label="Settings" />
+    <SliderToggle />
+    <SliderToggle selected />
+    <SliderToggle disabled />
+    <SliderToggle selected disabled />
   </div>
 );

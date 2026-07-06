@@ -36,7 +36,7 @@ function getStatusChipColor(status: CouponRedemptionStatus) {
     case "pending":
       return "primary";
     case "failed":
-      return "rose";
+      return "warning";
     case "revoked":
       return "warning";
     default:

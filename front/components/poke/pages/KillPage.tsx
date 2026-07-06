@@ -252,7 +252,6 @@ export function KillPage() {
                         disabled={updatingKillSwitch !== null}
                         onClick={() => void updateKillSwitch(type, !isEnabled)}
                         selected={isEnabled}
-                        size="xs"
                       />
                     )}
                   </div>

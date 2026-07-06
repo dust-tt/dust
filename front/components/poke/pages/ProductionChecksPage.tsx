@@ -36,8 +36,8 @@ const STATUS_CHIP_CONFIG: Record<
   CheckSummaryStatus,
   { color: ComponentProps<typeof Chip>["color"]; label: string }
 > = {
-  ok: { color: "green", label: "OK" },
-  alert: { color: "rose", label: "Alert" },
+  ok: { color: "success", label: "OK" },
+  alert: { color: "warning", label: "Alert" },
   "no-data": { color: "info", label: "No Data" },
 };
 
@@ -45,10 +45,10 @@ const HISTORY_STATUS_CHIP_CONFIG: Record<
   CheckHistoryRun["status"],
   { color: ComponentProps<typeof Chip>["color"]; label: string }
 > = {
-  success: { color: "green", label: "Success" },
-  failure: { color: "rose", label: "Failed" },
+  success: { color: "success", label: "Success" },
+  failure: { color: "warning", label: "Failed" },
   skipped: { color: "info", label: "Skipped" },
-  running: { color: "blue", label: "Running" },
+  running: { color: "highlight", label: "Running" },
 };
 
 const STATUS_CARD_CLASSES: Record<CheckSummaryStatus, string> = {
