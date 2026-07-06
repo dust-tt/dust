@@ -420,7 +420,7 @@ the logic back into the handlers and accept the duplication.
 - WorkOS SDK expects all metadata values as strings. Convert numbers and booleans with `String(value)`
 - Schema files use `"string"` as the value type (e.g., `"role": "string"`)
 
-### [AUDIT6] Always include `getAuditLogContext(auth, req)` as the `context` parameter when a `NextApiRequest` is available
+### [AUDIT6] Always include `getAuditLogContext(auth, req)` as the `context` parameter when an HTTP request is available
 
 - This captures the client IP from `x-forwarded-for` headers
 - In Temporal activities or non-HTTP contexts, omit `context` (defaults to `auth.clientIp() ?? "internal"`) or pass `{ location: "internal" }` for direct emit
@@ -599,9 +599,6 @@ function MCPServerDetails({ owner, disabled }: MCPServerDetailsProps) {
 Reviewer: If you see an SWR hook called unconditionally inside a conditionally visible component,
 require the author to either add a `disabled` prop forwarded to the hook or justify the prefetch
 with a comment.
-
-In NextJS pages, getServerSideProps should not fetch data and return more than what's
-available in authenticator. Rather rely on API endpoint and SWR calls.
 
 ### [REACT3] Any async network operation should have a visual loading state
 

@@ -36,7 +36,7 @@ app.get(
       const redirect = await getWorkspaceRegionRedirect(wId);
 
       // Cross-region is a routing signal, not an error worth logging — match
-      // the /api/w/:wId/auth-context precedent and the original Next handler
+      // the /api/w/:wId/auth-context precedent and the original legacy handler
       // by returning the response shape directly instead of via `apiError`.
       if (redirect) {
         return ctx.json(

@@ -14,7 +14,7 @@ export type DeleteProjectContextFileResponseBody = Record<string, never>;
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context/files/:fileId.
 //
-// The Next handler enforces these as project-only and require write access;
+// The legacy handler enforces these as project-only and require write access;
 // we keep the same checks here.
 const app = workspaceApp();
 

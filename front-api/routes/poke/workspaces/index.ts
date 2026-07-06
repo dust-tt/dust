@@ -11,9 +11,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
 import type { GetPokeWorkspacesResponseBody } from "@app/types/api/poke/workspaces";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -128,28 +126,16 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
     }
 
     let isSearchByPhone = false;
-    // Phone-number search is one of several axes (sId / Stripe sub / email /
-    // domain / phone). Production is fine (front-api's esbuild config bundles
-    // `libphonenumber-js` inline), but the front-api dev runtime (tsx) can
-    // still hit the CJS metadata interop issue. Degrade gracefully so the
-    // other axes keep working in dev.
-    try {
-      const e164PhoneNumber = tryParsePhoneNumber(searchTerm);
-      if (e164PhoneNumber) {
-        const workspaceModelId =
-          await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
-            e164PhoneNumber
-          );
-        if (workspaceModelId) {
-          isSearchByPhone = true;
-          conditions.push({ id: workspaceModelId });
-        }
+    const e164PhoneNumber = tryParsePhoneNumber(searchTerm);
+    if (e164PhoneNumber) {
+      const workspaceModelId =
+        await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
+          e164PhoneNumber
+        );
+      if (workspaceModelId) {
+        isSearchByPhone = true;
+        conditions.push({ id: workspaceModelId });
       }
-    } catch (err) {
-      logger.warn(
-        { err: normalizeError(err) },
-        "Phone number parsing unavailable; skipping phone-search axis"
-      );
     }
 
     if (

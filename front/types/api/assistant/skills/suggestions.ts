@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
 
-// Next.js serializes single query param values as string, multiple as array.
+// Single query param values arrive as a string, multiple as an array.
 const stringOrArrayToArray = z.preprocess(
   (v) => (typeof v === "string" ? [v] : v),
   z.array(StateSchema)

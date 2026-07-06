@@ -26,7 +26,7 @@ export type HandlerResult<T> = Promise<TypedResponse<T | APIErrorResponse>>;
  * the same logging / tracing / statsd side-effects as `apiError` in
  * `front/logger/withlogging.ts`. Use this for every error path in a Hono
  * handler — do not call `ctx.json({ error: ... }, status)` directly, so the
- * observability behavior stays consistent across Next and Hono.
+ * observability behavior stays consistent across the legacy and Hono stacks.
  *
  * Pass `error` when forwarding an underlying exception so its message and
  * stack are captured in the log instead of the synthetic one.
@@ -80,13 +80,13 @@ export function apiError(
  * Hono `onError` handler for unhandled exceptions thrown by middlewares or
  * route handlers. Mirrors the `catch` branch of `withLogging` in
  * `front/logger/withlogging.ts` so the Hono service produces the same
- * "Unhandled API Error" log and `api_errors.count` metric as the Next.js
+ * "Unhandled API Error" log and `api_errors.count` metric as the legacy
  * service when a handler throws.
  *
  * Returns a 500 JSON envelope. The companion `requestLogger` middleware
  * deliberately does NOT emit `requests.count` / `requests.duration.distribution`
  * on the throw path (the throw propagates past its emit code), matching the
- * Next.js behavior where unhandled errors do not contribute to request
+ * legacy behavior where unhandled errors do not contribute to request
  * throughput / latency metrics.
  */
 export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {

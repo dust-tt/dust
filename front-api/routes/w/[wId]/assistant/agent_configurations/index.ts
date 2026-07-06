@@ -159,7 +159,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   const owner = auth.getNonNullableWorkspace();
   const rawQuery = ctx.req.query();
 
-  // Mirror the Next handler: limit is a numeric param but URL params are
+  // Mirror the legacy handler: limit is a numeric param but URL params are
   // strings, so coerce before passing to the schema.
   const queryValidation = GetAgentConfigurationsQuerySchema.safeParse({
     ...rawQuery,
@@ -209,7 +209,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     variant: "light",
     limit,
     sort,
-    // Stripped to stay under Next.js' 4MB API response limit.
+    // Stripped to stay under the 4MB API response limit.
     omitInstructions: true,
   });
   if (withUsage === "true") {

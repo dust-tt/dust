@@ -38,7 +38,7 @@ import {
 
 /**
  * Check if an actual route path matches any of the given route patterns.
- * Supports both Next.js patterns like "/w/[wId]/members" and actual paths like "/w/abc123/members".
+ * Supports both route patterns like "/w/[wId]/members" and actual paths like "/w/abc123/members".
  * @param currentRoute - The actual route path (e.g., "/w/abc123/members")
  * @param patterns - Array of route patterns to match against
  */
@@ -46,7 +46,7 @@ function matchesRoutePattern(
   currentRoute: string,
   patterns: string[]
 ): boolean {
-  // First try exact match (works for Next.js where pathname is the pattern)
+  // First try exact match (works where pathname is the pattern)
   if (patterns.includes(currentRoute)) {
     return true;
   }

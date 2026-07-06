@@ -131,7 +131,7 @@ function verifyCsrfToken(token: string): boolean {
 }
 
 // Only requests originating from the marketing website are allowed. Mirrors the
-// origin/referer check from the former Next.js handler.
+// origin/referer check from the legacy handler.
 function hasAllowedOrigin(ctx: Context): boolean {
   const allowedOrigin = config.getStaticWebsiteUrl();
   const origin = ctx.req.header("origin");

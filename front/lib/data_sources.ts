@@ -14,8 +14,8 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 // Maximum request body size accepted by the document upsert endpoint, in megabytes. 16MB
 // accommodates 5MB document content (MAX_LARGE_DOCUMENT_TXT_LEN in connectors) plus ~3x JSON
-// encoding overhead for escaping. The Next.js body-parser `config` in the documents endpoint must
-// stay in sync with this value (Next requires a string literal there for static analysis).
+// encoding overhead for escaping. The body-parser `config` in the documents endpoint must
+// stay in sync with this value (a string literal is required there for static analysis).
 export const MAX_DOCUMENT_UPSERT_SIZE_MB = 16;
 
 // TODO(DURABLE AGENTS 2025-06-25): Remove RetrievalDocumentResource support.

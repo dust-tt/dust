@@ -45,7 +45,7 @@ export function initializeOpenTelemetryInstrumentation({
 
     sdk.start();
   } catch (error) {
-    // Use console.warn as this code is called in a specific context in Next.js.
+    // Use console.warn as this code is called in a specific early instrumentation context.
     console.warn(
       {
         error: normalizeError(error),

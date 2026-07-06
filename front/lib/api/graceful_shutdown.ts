@@ -5,7 +5,7 @@ let isShuttingDown = false;
 /**
  * Sets up graceful shutdown handlers for SIGTERM and SIGINT signals.
  *
- * This prevents Next.js from immediately closing the HTTP server when receiving SIGTERM. Instead,
+ * This prevents the process from immediately closing the HTTP server when receiving SIGTERM. Instead,
  * we control the shutdown sequence ourselves.
  *
  * Important: This works in conjunction with the Kubernetes preStop hook.
@@ -16,7 +16,7 @@ let isShuttingDown = false;
  * Only after preStop completes does Kubernetes send SIGTERM to this handler.
  * By that point, all operations are done, so we just exit immediately.
  *
- * Without this handler, the Next.js process would sit idle for the full
+ * Without this handler, the process would sit idle for the full
  * terminationGracePeriodSeconds (130s) after the HTTP server closes, wasting resources.
  *
  * Requires: NEXT_MANUAL_SIG_HANDLE=true environment variable

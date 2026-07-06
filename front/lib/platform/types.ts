@@ -8,7 +8,7 @@ export type RouterEventType =
   | "hashChangeComplete";
 
 /**
- * Router events interface - matches Next.js router events
+ * Router events interface - matches the legacy router events
  */
 export interface RouterEvents {
   on: (event: RouterEventType, handler: (url: string) => void) => void;
@@ -36,7 +36,7 @@ export interface UrlObject {
 
 /**
  * Router abstraction interface
- * Wraps Next.js router and React Router
+ * Wraps the legacy router and React Router
  */
 export interface AppRouter {
   push: (

@@ -7,10 +7,10 @@ internals via the `@app/*` path map.
 
 This file documents rules and patterns specific to `front-api`.
 
-`front-api` is the Hono-based service that incrementally takes over routes
-from `front` (Next.js). The strangler dispatch lives in
-`front-api/server.ts`: it checks `isHonoRoute` from `front-api/app.ts`;
-matched requests go to Hono, the rest fall through to Next.
+`front-api` is the Hono-based service that serves the HTTP API, having taken
+over all the routes that previously lived in `front`. It is the sole handler:
+every request is served by Hono (routes are registered in `front-api/app.ts`),
+with no fallback.
 
 ## ROUTING
 

@@ -2,7 +2,7 @@ import type { Env } from "hono";
 import { Hono } from "hono";
 
 // `strict: false` makes Hono treat `/foo` and `/foo/` as the same route,
-// matching Next.js routing behavior (front). Hono is strict by default, which
+// matching the legacy front routing behavior. Hono is strict by default, which
 // would cause requests with trailing slashes to fall through to catch-all
 // 404s.
 const HONO_OPTIONS = {

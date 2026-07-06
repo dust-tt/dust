@@ -158,7 +158,7 @@ app.get("/", ensureIsBuilder(), async (ctx) => {
 });
 
 // Hono does not emit 405 for a matched path with an unsupported method, so we
-// register an explicit fallback to preserve the Next handler's behavior.
+// register an explicit fallback to preserve the legacy handler's behavior.
 app.all("/", (ctx) =>
   apiError(ctx, {
     status_code: 405,

@@ -15,7 +15,7 @@ const MEMBERS_LOOKUP_MAX_IDS = 50;
 
 // @hono/zod-validator's "query" target calls ctx.req.queries() (plural) under
 // the hood and collapses single-value keys to scalar / preserves repeated
-// keys as arrays. Same shape as legacy NextApiRequest.query: ?ids=1 → "1",
+// keys as arrays. Same shape as the legacy request query: ?ids=1 → "1",
 // ?ids=1&ids=2 → ["1", "2"]. The union accepts both branches.
 const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),

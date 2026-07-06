@@ -2,7 +2,7 @@ Dust is a platform to build and operate agents for work. `front` is our main ser
 
 # Tech Stack
 
-- **Framework**: Next.js 14 (Pages Router with SSR)
+- **Framework**: Vite + React 18 (single-page app; the HTTP API is served by the `front-api` Hono service)
 - **Language**: TypeScript (strict mode)
 - **UI**: React 18 with Sparkle Design System (shadcn/ui + Tailwind + Radix)
 - **Styling**: Tailwind CSS 3.x
@@ -19,10 +19,6 @@ front/
 │ ├── api/ # API layer (interfaces between routes and resources)
 │ ├── resources
 │ └── swr/ # SWR hooks for data fetching (migrating to hooks/)
-├── pages/ # Next.js pages and API routes
-│ ├── api/ # API endpoints
-│ ├── api/v1/ # Public API endpoints
-│ └── [other]/ # Page components
 ├── types/ # TypeScript type definitions
 ├── tests/ # Test utilities and factories
 ├── temporal/ # Temporal workflows for background jobs

@@ -7,7 +7,7 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 // `front-api/routes/sse/v1/w/[wId]/assistant/conversations/[cId]/events.ts`,
 // served under the `/api/sse/` prefix that the ingress routes to dedicated
 // front-sse pods. Hono only registers a 307 redirect here so the routing
-// contract matches the Next middleware redirect at the same path.
+// contract matches the legacy middleware redirect at the same path.
 const app = publicApiApp();
 
 /**

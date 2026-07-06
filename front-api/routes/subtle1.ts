@@ -6,7 +6,7 @@ import type { Context } from "hono";
 import { proxy } from "hono/proxy";
 
 // PostHog ingestion reverse proxy, mirroring the `/subtle1` rewrites in
-// front/next.config.js. The obfuscated path name keeps analytics requests
+// front's former routing config. The obfuscated path name keeps analytics requests
 // from being flagged by ad blockers (see PostHogTracker.tsx which points
 // the PostHog client's api_host at `<api base url>/subtle1`).
 const POSTHOG_INGESTION_URL = "https://eu.i.posthog.com";

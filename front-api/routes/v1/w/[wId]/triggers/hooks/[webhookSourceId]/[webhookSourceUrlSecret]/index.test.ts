@@ -177,7 +177,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     // Only POST is registered on the (unauthenticated) triggers sub-app, so a
     // GET falls through to the authenticated /v1/w/:wId app, whose publicApiAuth
-    // rejects the missing credentials with 401 (vs. 405 in the Next handler).
+    // rejects the missing credentials with 401 (vs. 405 in the legacy handler).
     expect(response.status).toBe(401);
   });
 

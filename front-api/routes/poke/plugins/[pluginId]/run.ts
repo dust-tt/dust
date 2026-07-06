@@ -33,7 +33,7 @@ const ParamsSchema = z.object({
 //
 // We extend the poke context with `HttpBindings` so we can hand the raw Node
 // `IncomingMessage` (exposed by `@hono/node-server` on `ctx.env.incoming`) to
-// `formidable.parse(...)` — matching the Next handler.
+// `formidable.parse(...)` — matching the legacy handler.
 const app = createHono<PokeCtx & { Bindings: HttpBindings }>();
 
 /** @ignoreswagger */
@@ -131,7 +131,7 @@ app.post(
 
         // Flatten fields and files into a single object (formidable returns
         // every value as an array; collapse to the first entry to match the
-        // Next handler).
+        // legacy handler).
         formData = Object.fromEntries([
           ...Object.entries(fields).map(([key, value]) => [key, value?.[0]]),
           ...Object.entries(files).map(([key, value]) => [key, value?.[0]]),

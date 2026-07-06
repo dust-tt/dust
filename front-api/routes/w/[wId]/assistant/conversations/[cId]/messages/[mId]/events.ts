@@ -7,7 +7,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 // `front-api/routes/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts`,
 // served under the `/api/sse/` prefix that the ingress routes to dedicated
 // front-sse pods. Hono only registers a 307 redirect here so the routing
-// contract matches the Next middleware redirect at the same path.
+// contract matches the legacy middleware redirect at the same path.
 const app = workspaceApp();
 
 /**

@@ -12,7 +12,7 @@ import formidable from "formidable";
 //
 // We extend the workspace context with `HttpBindings` so we can hand the
 // underlying Node `IncomingMessage` (exposed by `@hono/node-server` on
-// `ctx.env.incoming`) to `formidable.parse(...)` — matching the Next handler.
+// `ctx.env.incoming`) to `formidable.parse(...)` — matching the legacy handler.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 /** @ignoreswagger */

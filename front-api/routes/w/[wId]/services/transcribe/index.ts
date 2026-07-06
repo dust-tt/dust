@@ -19,7 +19,7 @@ export type PostTranscribeResponseBody = { text: string };
 //
 // We extend the workspace context with `HttpBindings` so we can reach the
 // underlying Node `IncomingMessage` via `ctx.env.incoming` and hand it to
-// `formidable.parse(...)` — matching the Next handler exactly, which also
+// `formidable.parse(...)` — matching the legacy handler exactly, which also
 // streamed the multipart body through formidable from the raw request.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 

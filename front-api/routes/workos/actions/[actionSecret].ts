@@ -50,7 +50,7 @@ app.post(
 
     // Validate the client IP address. Hono does not surface
     // `req.socket.remoteAddress`, so we rely on forwarded headers (the same
-    // path the Next handler prioritized via `getClientIpFromHeaders`).
+    // path the legacy handler prioritized via `getClientIpFromHeaders`).
     const headers: Record<string, string | string[] | undefined> = {};
     ctx.req.raw.headers.forEach((value, key) => {
       headers[key] = value;
