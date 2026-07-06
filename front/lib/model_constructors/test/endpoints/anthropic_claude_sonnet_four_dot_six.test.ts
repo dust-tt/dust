@@ -66,4 +66,7 @@ export const AnthropicGlobalClaudeSonnetFourDotSixStreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_sonnet_four_dot_six.test.ts
-runStreamEndpointTests(AnthropicGlobalClaudeSonnetFourDotSixStream, AnthropicGlobalClaudeSonnetFourDotSixStreamSetup);
+runStreamEndpointTests(
+  AnthropicGlobalClaudeSonnetFourDotSixStream,
+  AnthropicGlobalClaudeSonnetFourDotSixStreamSetup
+);

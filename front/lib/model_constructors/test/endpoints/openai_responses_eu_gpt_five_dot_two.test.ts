@@ -67,4 +67,7 @@ export const OpenAIResponsesEuropeGptFiveDotTwoStreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/openai_responses_eu_gpt_five_dot_two.test.ts
-runStreamEndpointTests(OpenAIResponsesEuropeGptFiveDotTwoStream, OpenAIResponsesEuropeGptFiveDotTwoStreamSetup);
+runStreamEndpointTests(
+  OpenAIResponsesEuropeGptFiveDotTwoStream,
+  OpenAIResponsesEuropeGptFiveDotTwoStreamSetup
+);

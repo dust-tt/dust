@@ -66,4 +66,7 @@ export const AnthropicGlobalClaudeOpusFourDotEightStreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_opus_four_dot_eight.test.ts
-runStreamEndpointTests(AnthropicGlobalClaudeOpusFourDotEightStream, AnthropicGlobalClaudeOpusFourDotEightStreamSetup);
+runStreamEndpointTests(
+  AnthropicGlobalClaudeOpusFourDotEightStream,
+  AnthropicGlobalClaudeOpusFourDotEightStreamSetup
+);

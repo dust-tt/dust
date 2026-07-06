@@ -64,4 +64,7 @@ export const MistralEuropeMistralLargeStreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/mistral_eu_mistral_large.test.ts
-runStreamEndpointTests(MistralEuropeMistralLargeStream, MistralEuropeMistralLargeStreamSetup);
+runStreamEndpointTests(
+  MistralEuropeMistralLargeStream,
+  MistralEuropeMistralLargeStreamSetup
+);

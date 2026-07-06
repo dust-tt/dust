@@ -66,4 +66,7 @@ export const AnthropicGlobalClaudeSonnetFiveStreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_sonnet_five.test.ts
-runStreamEndpointTests(AnthropicGlobalClaudeSonnetFiveStream, AnthropicGlobalClaudeSonnetFiveStreamSetup);
+runStreamEndpointTests(
+  AnthropicGlobalClaudeSonnetFiveStream,
+  AnthropicGlobalClaudeSonnetFiveStreamSetup
+);

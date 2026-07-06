@@ -65,4 +65,7 @@ export const FireworksGlobalKimiK2Dot5StreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/fireworks_global_kimi_k2_dot_five.test.ts
-runStreamEndpointTests(FireworksGlobalKimiK2Dot5Stream, FireworksGlobalKimiK2Dot5StreamSetup);
+runStreamEndpointTests(
+  FireworksGlobalKimiK2Dot5Stream,
+  FireworksGlobalKimiK2Dot5StreamSetup
+);

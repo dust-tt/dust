@@ -65,4 +65,7 @@ export const FireworksGlobalGlmFiveDotTwoStreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/fireworks_global_glm_five_dot_two.test.ts
-runStreamEndpointTests(FireworksGlobalGlmFiveDotTwoStream, FireworksGlobalGlmFiveDotTwoStreamSetup);
+runStreamEndpointTests(
+  FireworksGlobalGlmFiveDotTwoStream,
+  FireworksGlobalGlmFiveDotTwoStreamSetup
+);

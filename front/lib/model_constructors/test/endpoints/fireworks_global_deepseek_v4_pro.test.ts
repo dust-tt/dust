@@ -65,4 +65,7 @@ export const FireworksGlobalDeepSeekV4ProStreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/fireworks_global_deepseek_v4_pro.test.ts
-runStreamEndpointTests(FireworksGlobalDeepSeekV4ProStream, FireworksGlobalDeepSeekV4ProStreamSetup);
+runStreamEndpointTests(
+  FireworksGlobalDeepSeekV4ProStream,
+  FireworksGlobalDeepSeekV4ProStreamSetup
+);

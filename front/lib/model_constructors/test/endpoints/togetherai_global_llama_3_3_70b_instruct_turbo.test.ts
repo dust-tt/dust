@@ -66,4 +66,7 @@ export const TogetheraiGlobalLlama3370BInstructTurboStreamSetup: StreamSetup = {
 };
 
 // NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/togetherai_global_llama_3_3_70b_instruct_turbo.test.ts
-runStreamEndpointTests(TogetheraiGlobalLlama3370BInstructTurboStream, TogetheraiGlobalLlama3370BInstructTurboStreamSetup);
+runStreamEndpointTests(
+  TogetheraiGlobalLlama3370BInstructTurboStream,
+  TogetheraiGlobalLlama3370BInstructTurboStreamSetup
+);
