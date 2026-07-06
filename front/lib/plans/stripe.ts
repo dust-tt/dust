@@ -1705,6 +1705,127 @@ function findCommitAppliedLineIds(
 }
 
 /**
+ * Stripe accepts at most 12 decimal places on `unit_amount_decimal`.
+ */
+const STRIPE_MAX_UNIT_AMOUNT_DECIMAL_PLACES = 12;
+
+/**
+ * Round-half-up integer division for positive bigints — the bigint equivalent
+ * of Math.round(numerator / denominator), which is also how Stripe rounds
+ * recomputed line totals. Bigint `/` truncates, so rounding is expressed as
+ * floor((2a + b) / 2b).
+ */
+function divideRoundHalfUp(numerator: bigint, denominator: bigint): bigint {
+  const two = BigInt(2);
+  return (two * numerator + denominator) / (two * denominator);
+}
+
+/**
+ * Metronome pushes invoice items with `unit_amount_decimal` (Stripe's
+ * sub-cent-precision unit price), e.g. "1964.516129032258" cents for a
+ * prorated seat. Stripe renders that unit price verbatim on the
+ * customer-facing invoice, showing a long tail of decimals. Rewrites the
+ * backing invoice item to the shortest unit price — whole cents first, then
+ * increasing sub-cent decimals — that multiplies back (by the unchanged
+ * quantity) to the exact line total (`amount`, integer cents), so both the
+ * displayed quantity and the invoice total are preserved. Any precision with
+ * more than log10(quantity) sub-cent decimals reconstructs the total exactly,
+ * so a match is always found well within Stripe's 12-decimal maximum.
+ */
+async function normalizeSubCentUnitAmount(
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+  line: Stripe.InvoiceLineItem
+): Promise<void> {
+  const unitAmountDecimalCents = line.price?.unit_amount_decimal;
+  if (
+    unitAmountDecimalCents == null ||
+    Number.isInteger(Number(unitAmountDecimalCents))
+  ) {
+    return;
+  }
+
+  const invoiceItemId =
+    typeof line.invoice_item === "string"
+      ? line.invoice_item
+      : line.invoice_item?.id;
+
+  if (!invoiceItemId) {
+    logger.warn(
+      { stripeInvoiceId: invoice.id, lineId: line.id },
+      "[Stripe] Cannot normalize sub-cent unit price: line not backed by an invoice item"
+    );
+    return;
+  }
+
+  const quantity = line.quantity ?? 1;
+  const amountCents = line.amount;
+  if (quantity <= 0) {
+    return;
+  }
+
+  // BigInt throughout: at 12 decimal places the scaled values exceed Number's
+  // safe integer range.
+  const amountBig = BigInt(amountCents);
+  const quantityBig = BigInt(quantity);
+
+  for (
+    let decimalPlaces = 0;
+    decimalPlaces <= STRIPE_MAX_UNIT_AMOUNT_DECIMAL_PLACES;
+    decimalPlaces++
+  ) {
+    // 10^12 is well within Number's safe integer range, so the Number
+    // exponentiation is exact.
+    const scale = BigInt(10 ** decimalPlaces);
+    const scaledUnit = divideRoundHalfUp(amountBig * scale, quantityBig);
+    // Stripe recomputes the line total as round(unit price × quantity); only
+    // keep this precision if that lands back on the exact original total.
+    const reconstructed = divideRoundHalfUp(scaledUnit * quantityBig, scale);
+    if (reconstructed !== amountBig) {
+      continue;
+    }
+
+    const update: Stripe.InvoiceItemUpdateParams =
+      decimalPlaces === 0
+        ? { quantity, unit_amount: Number(scaledUnit) }
+        : {
+            quantity,
+            unit_amount_decimal: `${scaledUnit / scale}.${String(
+              scaledUnit % scale
+            ).padStart(decimalPlaces, "0")}`,
+          };
+
+    logger.info(
+      {
+        stripeInvoiceId: invoice.id,
+        lineId: line.id,
+        invoiceItemId,
+        unitAmountDecimalCents,
+        amountCents,
+        quantity,
+        update,
+      },
+      "[Stripe] Normalizing sub-cent unit price on Metronome invoice line"
+    );
+
+    await stripe.invoiceItems.update(invoiceItemId, update);
+    return;
+  }
+
+  logger.warn(
+    {
+      stripeInvoiceId: invoice.id,
+      lineId: line.id,
+      invoiceItemId,
+      unitAmountDecimalCents,
+      amountCents,
+      quantity,
+    },
+    "[Stripe] Could not shorten sub-cent unit price without changing the line total, leaving line as-is"
+  );
+}
+
+/**
  * Removes from a Metronome-pushed Stripe draft invoice the line items that
  * should not appear on the customer-facing invoice:
  *
@@ -1713,6 +1834,9 @@ function findCommitAppliedLineIds(
  *    `findCommitAppliedLineIds` (see its doc comment).
  * 3. Wrong-currency lines — non-fiat lines (e.g. AWU-priced) that Metronome may
  *    not transfer to Stripe; guard retained for safety.
+ *
+ * Lines that are kept get their unit price shortened via
+ * `normalizeSubCentUnitAmount`. Quantity and total are preserved, so the totals safety check below is unaffected.
  *
  * Filters 1 and 2 cancel each other out: the negative "applied" line and the
  * positive line it offsets have equal and opposite amounts, so removing both
@@ -1769,6 +1893,7 @@ async function cleanMetronomeInvoiceLines(
     );
 
     if (!shouldRemove) {
+      await normalizeSubCentUnitAmount(stripe, invoice, line);
       continue;
     }
 
