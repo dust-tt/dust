@@ -1181,6 +1181,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "get_boards": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "get_connection_info": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -1222,6 +1226,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "get_projects": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_sprints": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },

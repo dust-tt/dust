@@ -401,6 +401,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Jira boards",
       done: "List Jira boards",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   get_sprints: {
@@ -427,6 +429,8 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
       running: "Listing Jira sprints",
       done: "List Jira sprints",
     },
+    toolCostCategory: "advanced",
+    freeUsage: false,
   },
 
   upload_attachment: {
