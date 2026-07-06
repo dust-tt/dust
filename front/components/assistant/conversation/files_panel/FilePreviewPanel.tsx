@@ -68,7 +68,7 @@ export function FilePreviewPanel({
           />
         </div>
       </ConversationSidePanelHeader>
-      <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-0 flex-1 overflow-hidden bg-muted-background">
         <FilePreviewContent
           category={category}
           baseUrl={baseUrl}
@@ -117,7 +117,7 @@ function FilePreviewContent({
 
   return (
     <CenteredState>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-sm text-muted-foreground">
         Unable to preview this file. You can download it instead.
       </p>
     </CenteredState>
