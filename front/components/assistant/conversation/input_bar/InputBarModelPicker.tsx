@@ -21,6 +21,8 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ChevronDown,
+  ChevronRight,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -35,9 +37,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
+  Icon,
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { ReactElement, ReactNode } from "react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 // Models pinned at the top of the list under "Suggested", in display order. Each
@@ -231,6 +235,10 @@ export function InputBarModelPicker({
   // searching) reveals it without yet committing a model pick.
   const [expanded, setExpanded] = useState(false);
   const [selection, setSelection] = useState<Selection>({ kind: "auto" });
+  // On mobile there are no nested submenus: the "More models" providers expand
+  // inline below their name. This tracks the single provider currently expanded.
+  const [expandedProvider, setExpandedProvider] =
+    useState<ModelProviderIdType | null>(null);
 
   // Reset to Auto when the agent changes: a per-message override should not leak
   // across agents.
@@ -381,6 +389,25 @@ export function InputBarModelPicker({
     return null;
   }
 
+  // Wraps a dropdown row in its hover tooltip on desktop. On mobile there is no
+  // hover, so we skip the tooltip entirely and render the row as-is. The `key` is
+  // applied to whichever element ends up outermost so it is valid inside `.map`.
+  const withTooltip = (
+    key: string,
+    description: string,
+    media: ReactNode,
+    child: ReactElement
+  ): ReactElement => {
+    if (isMobile) {
+      return <Fragment key={key}>{child}</Fragment>;
+    }
+    return (
+      <DropdownTooltipTrigger key={key} description={description} media={media}>
+        {child}
+      </DropdownTooltipTrigger>
+    );
+  };
+
   // A model line rendered with the model name and the reasoning effort shown as a
   // badge to the right. No provider logo. Reused across the "Suggested" section,
   // flat search results, and the provider submenus.
@@ -391,46 +418,57 @@ export function InputBarModelPicker({
       line.effort
     );
     const info = REASONING_EFFORT_INFO[line.effort];
-    return (
-      <DropdownTooltipTrigger
-        key={key}
-        description={recommendation ?? ""}
-        media={
-          <div className="flex flex-col gap-3 text-sm">
-            <div>
-              <div className="font-medium text-foreground dark:text-foreground-night">
-                {line.model.displayName}
-              </div>
-              <div className="text-muted-foreground dark:text-muted-foreground-night">
-                {line.model.shortDescription}
-              </div>
-            </div>
-            <div className="text-muted-foreground dark:text-muted-foreground-night">
-              {info.reasoning}
-            </div>
+    return withTooltip(
+      key,
+      recommendation ?? "",
+      <div className="flex flex-col gap-3 text-sm">
+        <div>
+          <div className="font-medium text-foreground dark:text-foreground-night">
+            {line.model.displayName}
           </div>
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
+            {line.model.shortDescription}
+          </div>
+        </div>
+        <div className="text-muted-foreground dark:text-muted-foreground-night">
+          {info.reasoning}
+        </div>
+      </div>,
+      <DropdownMenuRadioItem
+        value={key}
+        onClick={() =>
+          setSelection({
+            kind: "model",
+            model: line.model,
+            effort: line.effort,
+          })
         }
       >
-        <DropdownMenuRadioItem
-          value={key}
-          onClick={() =>
-            setSelection({
-              kind: "model",
-              model: line.model,
-              effort: line.effort,
-            })
-          }
-        >
-          <span className="flex grow items-center gap-2">
-            <span className="line-clamp-1">{line.model.displayName}</span>
-            {line.effort !== "none" && (
-              <Chip size="mini" label={capitalizeEffort(line.effort)} />
-            )}
-          </span>
-        </DropdownMenuRadioItem>
-      </DropdownTooltipTrigger>
+        <span className="flex grow items-center gap-2">
+          <span className="line-clamp-1">{line.model.displayName}</span>
+          {line.effort !== "none" && (
+            <Chip size="mini" label={capitalizeEffort(line.effort)} />
+          )}
+        </span>
+      </DropdownMenuRadioItem>
     );
   };
+
+  // The per-model sections (one label + its effort lines) shown for a provider.
+  // Rendered inside a submenu on desktop and inline under the provider name on
+  // mobile.
+  const renderProviderModels = (provider: ProviderGroup) =>
+    provider.models.map((entry, index) => (
+      <Fragment key={entry.model.modelId}>
+        {index > 0 && <DropdownMenuSeparator />}
+        <DropdownMenuLabel label={entry.model.displayName} />
+        <DropdownMenuRadioGroup value={selectedKey}>
+          {entry.efforts.map((effort) =>
+            renderModelLine({ model: entry.model, effort })
+          )}
+        </DropdownMenuRadioGroup>
+      </Fragment>
+    ));
 
   const hasResults = isSearching
     ? filteredAll.length > 0
@@ -444,6 +482,7 @@ export function InputBarModelPicker({
         if (open) {
           setSearch("");
           setExpanded(false);
+          setExpandedProvider(null);
         }
       }}
     >
@@ -468,16 +507,18 @@ export function InputBarModelPicker({
           />
         </div>
 
-        {showAuto && (
-          <DropdownTooltipTrigger description={AUTO_TOOLTIP}>
+        {showAuto &&
+          withTooltip(
+            "auto",
+            AUTO_TOOLTIP,
+            undefined,
             <DropdownMenuItem
               label="Auto"
               endComponent={<SliderToggle size="xs" selected={isAutoOn} />}
               onClick={toggleAuto}
               onSelect={(e) => e.preventDefault()}
             />
-          </DropdownTooltipTrigger>
-        )}
+          )}
 
         {showList &&
           (isModelsLoading ? (
@@ -512,29 +553,55 @@ export function InputBarModelPicker({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel label="More models" />
-                  {moreByProvider.map((provider) => (
-                    <DropdownMenuSub key={provider.providerId}>
-                      <DropdownMenuSubTrigger
-                        label={getProviderDisplayName(provider.providerId)}
-                        icon={getModelProviderLogo(provider.providerId, isDark)}
-                      />
-                      <DropdownMenuSubContent>
-                        {provider.models.map((entry, index) => (
-                          <Fragment key={entry.model.modelId}>
-                            {index > 0 && <DropdownMenuSeparator />}
-                            <DropdownMenuLabel
-                              label={entry.model.displayName}
+                  {moreByProvider.map((provider) =>
+                    isMobile ? (
+                      // On mobile the provider expands inline below its name
+                      // instead of opening a nested submenu (which is awkward to
+                      // reach on touch).
+                      <Fragment key={provider.providerId}>
+                        <DropdownMenuItem
+                          label={getProviderDisplayName(provider.providerId)}
+                          icon={getModelProviderLogo(
+                            provider.providerId,
+                            isDark
+                          )}
+                          endComponent={
+                            <Icon
+                              visual={
+                                expandedProvider === provider.providerId
+                                  ? ChevronDown
+                                  : ChevronRight
+                              }
+                              size="xs"
                             />
-                            <DropdownMenuRadioGroup value={selectedKey}>
-                              {entry.efforts.map((effort) =>
-                                renderModelLine({ model: entry.model, effort })
-                              )}
-                            </DropdownMenuRadioGroup>
-                          </Fragment>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  ))}
+                          }
+                          onClick={() =>
+                            setExpandedProvider((current) =>
+                              current === provider.providerId
+                                ? null
+                                : provider.providerId
+                            )
+                          }
+                          onSelect={(e) => e.preventDefault()}
+                        />
+                        {expandedProvider === provider.providerId &&
+                          renderProviderModels(provider)}
+                      </Fragment>
+                    ) : (
+                      <DropdownMenuSub key={provider.providerId}>
+                        <DropdownMenuSubTrigger
+                          label={getProviderDisplayName(provider.providerId)}
+                          icon={getModelProviderLogo(
+                            provider.providerId,
+                            isDark
+                          )}
+                        />
+                        <DropdownMenuSubContent>
+                          {renderProviderModels(provider)}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    )
+                  )}
                 </>
               )}
             </>
