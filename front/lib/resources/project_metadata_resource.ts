@@ -95,23 +95,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     return this.fetchBySpaceModelIds(auth, spaceModelIds);
   }
 
-  // Only activation Pods set "activationPodMemberEmail"; for idempotency of the activation pod.
-  static async fetchByActivationPodMemberEmail(
-    auth: Authenticator,
-    activationPodMemberEmail: string
-  ): Promise<ProjectMetadataResource | null> {
-    const model = await ProjectMetadataModel.findOne({
-      where: {
-        activationPodMemberEmail,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-
-    return model
-      ? ProjectMetadataResource.fromModel(model, model.spaceId)
-      : null;
-  }
-
   static async fetchBySpaceModelIds(
     auth: Authenticator,
     spaceModelIds: number[]
@@ -241,13 +224,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     transaction?: Transaction
   ) {
     await this.update({ defaultAgentId }, transaction);
-  }
-
-  async updateActivationPodMemberEmail(
-    activationPodMemberEmail: string | null,
-    transaction?: Transaction
-  ) {
-    await this.update({ activationPodMemberEmail }, transaction);
   }
 
   async setDefaultSkills(
