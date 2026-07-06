@@ -7,9 +7,20 @@ import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockWritePodPolicy } = vi.hoisted(() => ({
+const { mockEmitAuditLogEvent, mockWritePodPolicy } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
   mockWritePodPolicy: vi.fn(),
 }));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+
+  return {
+    ...actual,
+    emitAuditLogEvent: mockEmitAuditLogEvent,
+  };
+});
 
 // Stub the GCS projection so we can assert it fires without a real bucket.
 vi.mock("@app/lib/api/sandbox/egress_policy", async (importOriginal) => {
@@ -91,6 +102,20 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     expect(await getResponse.json()).toEqual({
       policy: { allowedDomains: ["api.github.com", "*.github.com"] },
     });
+
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "pod_egress_policy.updated",
+        metadata: {
+          allowed_domain_count: "2",
+          allowed_domains: "api.github.com,*.github.com",
+        },
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+          expect.objectContaining({ type: "space", id: pod.sId }),
+        ],
+      })
+    );
   });
 
   it("projects the allowlist onto a live pod sandbox", async () => {
@@ -131,6 +156,10 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     });
 
     expect(response.status).toBe(400);
+    // withSpace may emit `space.accessed`, but the policy-update event must not fire.
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "pod_egress_policy.updated" })
+    );
 
     // The invalid write must not have been persisted.
     const getResponse = await getPolicy(workspace.sId, pod.sId);
