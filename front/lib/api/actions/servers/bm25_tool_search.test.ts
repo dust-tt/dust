@@ -635,22 +635,6 @@ const QUERIES: LabeledQuery[] = [
 
   // --- hubspot ---
   {
-    query: "find a hubspot contact by email address",
-    expected: "hubspot.get_object_by_email",
-  },
-  {
-    query: "read hubspot contact 123",
-    expected: "hubspot.get_contact",
-  },
-  {
-    query: "open a hubspot company record",
-    expected: "hubspot.get_company",
-  },
-  {
-    query: "read a hubspot deal by id",
-    expected: "hubspot.get_deal",
-  },
-  {
     query: "search hubspot deals by close date",
     expected: "hubspot.search_crm_objects",
   },

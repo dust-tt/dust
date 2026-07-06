@@ -81,20 +81,6 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  get_object_by_email: {
-    description: `Retrieve a Hubspot object using an email address. Supports ${ALL_OBJECTS.join(", ")}.`,
-    schema: {
-      objectType: z.enum(ALL_OBJECTS),
-      email: z.string().describe("The email address of the object."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Retrieving HubSpot object by email",
-      done: "Retrieve HubSpot object by email",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
   list_owners: {
     description:
       "List all owners (users) in the HubSpot account with their IDs, names, and email addresses. " +
@@ -141,76 +127,6 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Counting HubSpot objects by properties",
       done: "Count HubSpot objects by properties",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  get_latest_objects: {
-    description: `Get latest objects from Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}. Limit is 200.`,
-    schema: {
-      objectType: z.enum(SIMPLE_OBJECTS),
-      limit: z.number().optional(),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Retrieving latest HubSpot objects",
-      done: "Retrieve latest HubSpot objects",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  get_contact: {
-    description:
-      "Open a single HubSpot contact record by its ID and read its properties.",
-    schema: {
-      contactId: z.string().describe("The ID of the contact to retrieve."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Retrieving HubSpot contact",
-      done: "Retrieve HubSpot contact",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  get_company: {
-    description:
-      "Open a single HubSpot company record by its ID and read its properties. " +
-      "Returns default properties plus any additional properties specified.",
-    schema: {
-      companyId: z.string().describe("The ID of the company to retrieve."),
-      extraProperties: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Optional additional properties to retrieve beyond the default set (createdate, domain, name, hubspot_owner_id)."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Retrieving HubSpot company",
-      done: "Retrieve HubSpot company",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  get_deal: {
-    description:
-      "Open a single HubSpot deal record by its ID and read its properties. " +
-      "Returns default properties plus any additional properties specified.",
-    schema: {
-      dealId: z.string().describe("The ID of the deal to retrieve."),
-      extraProperties: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Optional additional properties to retrieve beyond the default set (amount, hubspot_owner_id, closedate, createdate, dealname, dealstage, hs_lastmodifieddate, hs_object_id, pipeline)."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Retrieving HubSpot deal",
-      done: "Retrieve HubSpot deal",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
