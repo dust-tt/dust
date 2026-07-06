@@ -27,6 +27,7 @@ import {
   handleInvalidToolJsonAnthropicError,
   isAnthropicErrorUnableToParseToolParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/errors";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import {
   getInferenceClient,
   getModel,
@@ -292,7 +293,9 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       model: this.modelId,
       ...thinkingConfig,
       system,
-      messages,
+      messages: stripUnreplayableToolSearchBlocks(messages, {
+        toolSearchInRequest: includesToolSearchTool(tools),
+      }),
       temperature: this.temperature ?? undefined,
       tools,
       max_tokens: this.modelConfig.generationTokensCount,

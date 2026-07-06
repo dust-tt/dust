@@ -1,9 +1,16 @@
 import type {
+  ContentBlockParam,
+  MessageParam,
   ServerToolUseBlockParam,
   ToolSearchToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
 import logger from "@app/logger/logger";
 import { z } from "zod";
+
+const TOOL_SEARCH_SERVER_TOOL_NAMES = [
+  "tool_search_tool_bm25",
+  "tool_search_tool_regex",
+] as const;
 
 // Anthropic runs tool search server-side inside a single assistant turn, emitting
 // `server_tool_use` and `tool_search_tool_result` blocks interleaved with the
@@ -23,7 +30,7 @@ const toolReferenceSchema = z.object({
 const serverToolUseSchema = z.object({
   type: z.literal("server_tool_use"),
   id: z.string(),
-  name: z.enum(["tool_search_tool_bm25", "tool_search_tool_regex"]),
+  name: z.enum(TOOL_SEARCH_SERVER_TOOL_NAMES),
   input: z.unknown(),
 });
 
@@ -93,4 +100,200 @@ export function parseAnthropicToolSearchBlock(
     tool_use_id: r.data.tool_use_id,
     content: r.data.content,
   };
+}
+
+// -- Replay sanitation --
+//
+// The API constrains how tool search blocks can be replayed, and rejects the whole request with a
+// 400 when a constraint is violated:
+//
+//   - Without the tool search tool in the request (auxiliary calls such as title generation), no
+//     tool search block is valid at all: the results carry tool_reference blocks the API cannot
+//     expand.
+//   - With it, completed pairs (a server_tool_use with its tool_search_tool_result) must be
+//     replayed verbatim.
+//   - A dangling server_tool_use (a search the API never ran, e.g. because the turn ended on a
+//     client tool call or was interrupted) is valid only on the final assistant message when the
+//     continuation is exclusively tool_result blocks. The API then resumes the search.
+//
+// This sanitizer keeps the replayable blocks and strips the rest, unbricking conversations that
+// captured a pending search. The model simply searches again when it needs the tools. Stripping is
+// verified safe next to signed thinking blocks: signatures cover the thinking blocks themselves,
+// not their siblings (see scripts/debug_tool_search_steering_pending_search.ts).
+
+function isToolSearchServerToolUseBlock(
+  block: ContentBlockParam
+): block is ServerToolUseBlockParam {
+  return (
+    block.type === "server_tool_use" &&
+    TOOL_SEARCH_SERVER_TOOL_NAMES.some((name) => name === block.name)
+  );
+}
+
+function isToolSearchToolResultBlock(
+  block: ContentBlockParam
+): block is ToolSearchToolResultBlockParam {
+  return block.type === "tool_search_tool_result";
+}
+
+function getDanglingServerToolUseIds(
+  content: ContentBlockParam[]
+): Set<string> {
+  const resultIds = new Set(
+    content.filter(isToolSearchToolResultBlock).map((b) => b.tool_use_id)
+  );
+
+  return new Set(
+    content
+      .filter(isToolSearchServerToolUseBlock)
+      .filter((b) => !resultIds.has(b.id))
+      .map((b) => b.id)
+  );
+}
+
+function isToolResultOnlyUserMessage(message: MessageParam): boolean {
+  return (
+    message.role === "user" &&
+    Array.isArray(message.content) &&
+    message.content.length > 0 &&
+    message.content.every((block) => block.type === "tool_result")
+  );
+}
+
+// Index of the final assistant message when its dangling searches are still resumable, meaning
+// every message after it carries exclusively tool_result blocks. -1 when there is no such message.
+function findResumableAssistantIndex(messages: MessageParam[]): number {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role !== "assistant") {
+      continue;
+    }
+
+    for (let j = i + 1; j < messages.length; j++) {
+      if (!isToolResultOnlyUserMessage(messages[j])) {
+        return -1;
+      }
+    }
+    return i;
+  }
+
+  return -1;
+}
+
+function toContentBlocks(
+  content: MessageParam["content"]
+): ContentBlockParam[] {
+  return typeof content === "string"
+    ? [{ type: "text", text: content }]
+    : content;
+}
+
+// Anthropic rejects consecutive same-role messages, so re-merge neighbors after a message was
+// dropped entirely. O(n) in messages. Merging a run of same-role messages re-copies the merged
+// content at each step, but the input arrives with no same-role neighbors (the renderers already
+// merged them), so runs only form around dropped messages and stay short.
+function mergeConsecutiveSameRoleMessages(
+  messages: MessageParam[]
+): MessageParam[] {
+  const merged: MessageParam[] = [];
+  for (const message of messages) {
+    const previous = merged[merged.length - 1];
+    if (previous && previous.role === message.role) {
+      merged[merged.length - 1] = {
+        ...previous,
+        content: [
+          ...toContentBlocks(previous.content),
+          ...toContentBlocks(message.content),
+        ],
+      };
+    } else {
+      merged.push(message);
+    }
+  }
+
+  return merged;
+}
+
+interface StripUnreplayableToolSearchBlocksOptions {
+  // Whether the request being built carries the tool search server tool.
+  toolSearchInRequest: boolean;
+}
+
+// Strips the tool search blocks the API would reject, per the rules above.
+// Returns the input array untouched when nothing needs stripping, so the common path is allocation
+// free and byte identical for prompt caching.
+export function stripUnreplayableToolSearchBlocks(
+  messages: MessageParam[],
+  { toolSearchInRequest }: StripUnreplayableToolSearchBlocksOptions
+): MessageParam[] {
+  const resumableAssistantIndex = findResumableAssistantIndex(messages);
+
+  let strippedServerToolUseCount = 0;
+  let strippedResultCount = 0;
+  let droppedMessageCount = 0;
+
+  const sanitized: MessageParam[] = [];
+  for (const [index, message] of messages.entries()) {
+    if (message.role !== "assistant" || typeof message.content === "string") {
+      sanitized.push(message);
+      continue;
+    }
+
+    const danglingIds = getDanglingServerToolUseIds(message.content);
+    const danglingIsResumable =
+      toolSearchInRequest && index === resumableAssistantIndex;
+
+    const content = message.content.filter((block) => {
+      if (isToolSearchServerToolUseBlock(block)) {
+        const keep =
+          toolSearchInRequest &&
+          (!danglingIds.has(block.id) || danglingIsResumable);
+        if (!keep) {
+          strippedServerToolUseCount++;
+        }
+
+        return keep;
+      }
+
+      if (isToolSearchToolResultBlock(block)) {
+        if (!toolSearchInRequest) {
+          strippedResultCount++;
+
+          return false;
+        }
+
+        return true;
+      }
+
+      return true;
+    });
+
+    if (content.length === 0) {
+      droppedMessageCount++;
+      continue;
+    }
+
+    sanitized.push(
+      content.length === message.content.length
+        ? message
+        : { ...message, content }
+    );
+  }
+
+  if (strippedServerToolUseCount + strippedResultCount === 0) {
+    return messages;
+  }
+
+  logger.warn(
+    {
+      toolSearchInRequest,
+      strippedServerToolUseCount,
+      strippedResultCount,
+      droppedMessageCount,
+    },
+    "[tool-search] Stripped unreplayable tool search blocks from replay"
+  );
+
+  return droppedMessageCount > 0
+    ? mergeConsecutiveSameRoleMessages(sanitized)
+    : sanitized;
 }

@@ -4,6 +4,7 @@ import type {
   Model,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
+import { stripUnreplayableToolSearchBlocks } from "@app/lib/api/llm/clients/anthropic/utils/tool_search_passthrough";
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
@@ -101,10 +102,15 @@ export function WithAnthropicAIInputConverter<
 
       const system = this.systemMessagesToSystemParam(conversation.system);
 
+      const renderedMessages = await this.conversationToMessages(conversation);
+      const messages = stripUnreplayableToolSearchBlocks(renderedMessages, {
+        toolSearchInRequest: includesToolSearchTool(anthropicTools),
+      });
+
       return {
         model: this.modelIdToApiModelId(this.constructor.modelId),
         max_tokens: this.constructor.maxOutputTokens,
-        messages: await this.conversationToMessages(conversation),
+        messages,
         system: includesToolSearchTool(anthropicTools)
           ? [...system, { type: "text", text: TOOL_SEARCH_INSTRUCTION }]
           : system,
