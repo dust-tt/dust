@@ -9,13 +9,14 @@ import {
   EMPTY_EGRESS_POLICY,
   normalizeEgressPolicy,
   normalizeEgressPolicyDomain,
+  normalizeEgressPolicyDomains,
   parseEgressPolicy,
 } from "@app/types/sandbox/egress_policy";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const INVALIDATION_TIMEOUT_MS = 5_000;
-const SANDBOX_POLICY_MAX_DOMAINS = 100;
+export const SANDBOX_POLICY_MAX_DOMAINS = 100;
 
 function getWorkspacePolicyPath(auth: Authenticator): string {
   return `workspaces/${auth.getNonNullableWorkspace().sId}.json`;
@@ -194,6 +195,64 @@ export async function deleteSandboxPolicy(
     void invalidateSandboxPolicyCache(sandboxProviderId);
 
     return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pod egress policy
+//
+// A Pod's Shared Computer runs on one persistent sandbox owned by
+// `PodSandboxAdapter`. Its pod-level allowlist is stored as that sandbox's
+// policy file (`sandboxes/{providerId}.json`) — the same GCS path used by
+// conversation sandboxes, but with different semantics: for conversation
+// sandboxes the file is ephemeral and user-editable via the `add_egress_domain`
+// tool; for pod sandboxes it is admin-configured, sourced from
+// `ProjectMetadata.podNetworkAllowedDomains`, and (re)written by the pod policy
+// manager at sandbox activation. The egress proxy reads it and unions it with
+// the workspace-level allowlist, so no proxy changes are needed.
+// ---------------------------------------------------------------------------
+
+function getPodPolicyPath(podSandboxProviderId: string): string {
+  // Same path as the sandbox policy, different semantics (see block comment).
+  return getSandboxPolicyPath(podSandboxProviderId);
+}
+
+// Writes the pod's configured domains to the pod sandbox's policy file and
+// invalidates the proxy cache. Unlike `addSandboxPolicyDomain` (the user-facing
+// tool, which appends exact domains), this replaces the whole policy with the
+// admin-configured allowlist and — like the workspace-level policy — supports
+// wildcard domains such as `*.github.com`.
+export async function writePodPolicy(
+  podSandboxProviderId: string,
+  domains: string[]
+): Promise<Result<EgressPolicy, Error>> {
+  const normalizedDomains = normalizeEgressPolicyDomains(domains);
+  if (normalizedDomains.isErr()) {
+    return new Err(normalizedDomains.error);
+  }
+
+  if (normalizedDomains.value.length > SANDBOX_POLICY_MAX_DOMAINS) {
+    return new Err(
+      new Error(
+        `Pod egress policy cannot exceed ${SANDBOX_POLICY_MAX_DOMAINS} domains.`
+      )
+    );
+  }
+
+  const policy: EgressPolicy = { allowedDomains: normalizedDomains.value };
+
+  try {
+    await getPolicyBucket().uploadRawContentToBucket({
+      content: JSON.stringify(policy),
+      contentType: "application/json",
+      filePath: getPodPolicyPath(podSandboxProviderId),
+    });
+
+    void invalidateSandboxPolicyCache(podSandboxProviderId);
+
+    return new Ok(policy);
   } catch (error) {
     return new Err(normalizeError(error));
   }

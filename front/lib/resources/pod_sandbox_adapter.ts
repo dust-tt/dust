@@ -1,4 +1,6 @@
+import { writePodPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import {
   type EnsureSandboxResult,
   type SandboxCreateBlob,
@@ -10,6 +12,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import assert from "assert";
@@ -122,13 +125,58 @@ export class PodSandboxAdapter {
   ): Promise<Result<EnsureSandboxResult, Error>> {
     this.assertPod(pod);
 
-    return SandboxResource.ensureActive(auth, {
+    const result = await SandboxResource.ensureActive(auth, {
       lockKey: pod.sId,
       envVars: { SPACE_ID: pod.sId },
       logLabel: "pod",
       fetchSandbox: () => this.fetchSandboxByPod(auth, pod),
       createSandbox: (blob) => this.createSandboxRecordForPod(auth, pod, blob),
     });
+
+    // Write the pod's egress allowlist to the (new) sandbox's policy file. Only
+    // needed when the sandbox was freshly created/recreated (new provider id,
+    // no policy file) or woke from sleep (a persisted file may be stale if the
+    // admin changed the allowlist while it slept). An already-running sandbox
+    // keeps the file written at its last create/wake, and admin updates on a
+    // live sandbox are synced by the API path.
+    //
+    // This runs outside the lifecycle lock (ensureActive released it). That is
+    // safe: pod domains are additive over the workspace allowlist, so the worst
+    // case of a racing/late write is a domain briefly denied until the file and
+    // the proxy's 60s cache catch up — fail-closed. Concurrent writers converge
+    // (last-writer-wins on the same DB-sourced value).
+    if (
+      result.isOk() &&
+      (result.value.freshlyCreated || result.value.wokeFromSleep)
+    ) {
+      await this.writePodEgressPolicy(auth, pod, result.value.sandbox);
+    }
+
+    return result;
+  }
+
+  // Best-effort: failing to write the allowlist falls back to the
+  // workspace-level policy only, which is strictly more restrictive, so we log
+  // rather than block sandbox activation.
+  private static async writePodEgressPolicy(
+    auth: Authenticator,
+    pod: SpaceResource,
+    sandbox: SandboxResource
+  ): Promise<void> {
+    const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+    const domains = metadata?.podNetworkAllowedDomains ?? [];
+
+    const writeResult = await writePodPolicy(sandbox.providerId, domains);
+    if (writeResult.isErr()) {
+      logger.warn(
+        {
+          err: writeResult.error,
+          spaceId: pod.sId,
+          sandboxProviderId: sandbox.providerId,
+        },
+        "Failed to write pod egress policy at sandbox activation."
+      );
+    }
   }
 
   static async pauseSandboxForApproval(
