@@ -10,15 +10,11 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 // "suggested": shown to the user, no action taken yet
 // "executed": user ran the recommended action immediately (one-off)
 // "dismissed": user declined the recommendation
-// "skill_created": user promoted the recommendation into a skill (createdSkillId is set)
-// "trigger_created": user promoted the recommendation into a trigger (createdTriggerId is set)
-// skill_created and trigger_created are independent terminal states, not a sequence
+// Creation outcomes are tracked independently via createdSkillId / createdTriggerId (either or both can be set)
 export type ActivationRecommendationStatus =
   | "suggested"
   | "executed"
-  | "dismissed"
-  | "skill_created"
-  | "trigger_created";
+  | "dismissed";
 
 export class ActivationRecommendationModel extends WorkspaceAwareModel<ActivationRecommendationModel> {
   declare createdAt: CreationOptional<Date>;
