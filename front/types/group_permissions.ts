@@ -1,5 +1,5 @@
 /**
- * Vocabulary for the `group_permissions` table (Admin Governance §1A).
+ * Vocabulary for the `group_permissions` table.
  *
  * All permission grants — resource-level access (spaces, agents, skills) and workspace-level
  * capabilities (billing, identity, …) — live in a single table keyed by a plain-verb

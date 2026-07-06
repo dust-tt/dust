@@ -8,8 +8,8 @@ import type {
 } from "@app/types/group_permissions";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
-// Single table backing all Admin Governance permission grants (design doc §1A). See
-// `@app/types/group_permissions` for the vocabulary and `group_permission_registry` for validity.
+// Single table backing all group permission grants. See `@app/types/group_permissions` for the
+// vocabulary and `group_permission_registry` for validity.
 export class GroupPermissionModel extends WorkspaceAwareModel<GroupPermissionModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
