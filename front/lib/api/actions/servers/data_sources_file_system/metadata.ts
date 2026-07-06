@@ -26,8 +26,11 @@ export const FILESYSTEM_LIST_TOOL_NAME = "list";
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   [FILESYSTEM_CAT_TOOL_NAME]: {
     description:
-      "Read the text content of a connected data source document or page. " +
-      "Useful for exact quotes, source checks, or reading a known item.",
+      "Read the full text content of a connected data source document or page by its nodeId (like 'cat' in Unix). " +
+      `Use to open, view, or read a specific data source file after locating it via '${FILESYSTEM_FIND_TOOL_NAME}', '${FILESYSTEM_LIST_TOOL_NAME}', or '${FILESYSTEM_SEARCH_TOOL_NAME}'. ` +
+      "The nodeId is the unique identifier exposed in the output of all navigation and search tools in this server. " +
+      "The output reports the document's total size. For large documents, use 'grep' to extract only the relevant " +
+      "content rather than paging through the whole document by incrementing 'offset', which exhausts the context window.",
     schema: DataSourceFilesystemCatInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -40,8 +43,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_LIST_TOOL_NAME]: {
     description:
-      "List and browse the direct contents of a connected data source root " +
-      "or folder, such as folders, pages, and documents.",
+      "Browse or explore the direct contents of a folder, section, or container node (like 'ls' in Unix). " +
+      "Use to navigate the data source structure, see what documents or sub-folders are available, " +
+      "or enumerate items inside a known location. Only works on nodes with children (hasChildren: true). " +
+      "Call repeatedly with the 'nodeId' from each result to traverse nested folders step by step.",
     schema: DataSourceFilesystemListInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -54,9 +59,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_SEARCH_TOOL_NAME]: {
     description:
-      "Search connected company data sources semantically for knowledge, " +
-      "content, documents, and topics. Useful when you know what information " +
-      "you need but not the exact page or title.",
+      "Search semantically for information, documents, or content by topic, concept, or meaning within a connected data source. " +
+      "Use to find relevant passages, answer questions, look up knowledge, or retrieve content from " +
+      "connected data sources. Searches all children of the designated nodeIds. " +
+      `Prefer this over '${FILESYSTEM_FIND_TOOL_NAME}' when you know what you're looking for conceptually but not the exact document title.`,
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
     eager: true,
@@ -70,9 +76,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_FIND_TOOL_NAME]: {
     description:
-      "Find connected data source wiki pages, documents, folders, or " +
-      "sections by title. Useful when you know all or part of the item's " +
-      "title.",
+      "Locate a document, page, or folder by searching its title (like 'find' in Unix). " +
+      "Use to find a specific file or wiki page by name when you know (part of) its title — partial matches are supported. " +
+      "Omit the query to enumerate all nodes under a given root. " +
+      `Prefer '${FILESYSTEM_SEARCH_TOOL_NAME}' when looking for content by topic rather than by exact title.`,
     schema: DataSourceFilesystemFindInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -85,8 +92,10 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
   },
   [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
     description:
-      "Show the breadcrumb path of a connected data source item. Useful for " +
-      "understanding where a search result or document sits in the hierarchy.",
+      "Show the full breadcrumb path from a node back to the root of the data source (like 'pwd' in Unix). " +
+      "Use to understand where a document lives in the folder hierarchy, navigate to parent sections, " +
+      "or display the location of a search result. " +
+      "Returns an ordered list of ancestor nodes from root to the target node.",
     schema: DataSourceFilesystemLocateTreeInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
