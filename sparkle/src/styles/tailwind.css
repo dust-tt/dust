@@ -118,11 +118,30 @@
 }
 
 @layer utilities {
-  /* Dark-mode elevation: progressively stronger drop shadows plus faint inset
-     highlight lines, so each raised surface lifts off the one below it. In the
-     utilities layer (and via .dark specificity) so they override the
-     components' own shadow-* utilities in dark mode; light mode keeps those.
-     Ladder: panel < overlay < modal. */
+  /* Surface elevation: progressively stronger drop shadows so each raised
+     surface lifts off the one below it. Light mode uses soft outer shadows;
+     dark mode adds faint inset highlight lines. In the utilities layer (and
+     via .dark specificity in dark mode) so they override shadow-* utilities
+     on the same element. Ladder: panel < overlay < modal. */
+
+  .bg-panel-background {
+    box-shadow: 0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+
+  .bg-overlay-background {
+    box-shadow: 0 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+    0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .bg-modal-background {
+    box-shadow: 0 6px 6px -3px rgba(0, 0, 0, 0.06),
+     0 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+     0 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+     0 0 0 1px rgba(0, 0, 0, 0.06);
+  }   
+
   .dark .bg-panel-background {
     box-shadow:
       0 1px 1px -0.5px rgba(0, 0, 0, 0.18),
@@ -151,13 +170,14 @@
 
   /* A surface nested inside the same surface (e.g. a sticky dialog/dropdown
      header reusing its parent's background color) must not re-cast the
-     elevation shadow — that draws a stray line under the header. Higher
-     specificity than the rules above, so it wins for the nested case only;
-     a genuinely different floating layer (e.g. a dropdown inside a dialog)
+     elevation shadow — that draws a stray line under the header. Applies to
+     both themes: it out-specifies the light rules, and ties with the .dark
+     rules where source order (keep this block after them) breaks the tie.
+     A genuinely different floating layer (e.g. a dropdown inside a dialog)
      keeps its own shadow. */
-  .dark .bg-panel-background .bg-panel-background,
-  .dark .bg-overlay-background .bg-overlay-background,
-  .dark .bg-modal-background .bg-modal-background {
+  .bg-panel-background .bg-panel-background,
+  .bg-overlay-background .bg-overlay-background,
+  .bg-modal-background .bg-modal-background {
     box-shadow: none;
   }
 

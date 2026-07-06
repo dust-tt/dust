@@ -221,6 +221,9 @@ const DropdownMenuSubTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       menuStyleClasses.item({ variant: "default" }),
+      // Keep the trigger highlighted while its sub-menu is open, so the
+      // hover state doesn't drop when the pointer moves into the sub-menu.
+      "data-[state=open]:bg-hover data-[state=open]:text-foreground",
       inset ? menuStyleClasses.inset : "",
       className
     )}
@@ -254,35 +257,45 @@ interface DropdownMenuSubContentProps
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   DropdownMenuSubContentProps
->(({ className, children, dropdownHeaders, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn(
-      menuStyleClasses.container,
-      "flex flex-col shadow-lg",
-      dropdownHeaders && "h-80 xs:h-96",
-      className
-    )}
-    {...props}
-  >
-    {dropdownHeaders && (
-      <div className="sticky top-0 bg-overlay-background">
-        {dropdownHeaders}
-      </div>
-    )}
-    <ScrollArea
-      className="w-full flex-1"
-      hideScrollBar={false}
-      orientation="vertical"
-      viewportClassName={cn(
-        "flex-1",
-        "max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
-      )}
-    >
-      {children}
-    </ScrollArea>
-  </DropdownMenuPrimitive.SubContent>
-));
+>(({ className, children, dropdownHeaders, ...props }, ref) => {
+  const container = useSheetContainer();
+
+  // Always portal: a sub-menu rendered inline sits inside the parent menu's
+  // bg-overlay-background, where the nested-same-surface rule would strip its
+  // elevation shadow. Wrapping in an extra DropdownMenuPortal at the call
+  // site remains harmless.
+  return (
+    <DropdownMenuPrimitive.Portal container={container}>
+      <DropdownMenuPrimitive.SubContent
+        ref={ref}
+        className={cn(
+          menuStyleClasses.container,
+          "flex flex-col",
+          dropdownHeaders && "h-80 xs:h-96",
+          className
+        )}
+        {...props}
+      >
+        {dropdownHeaders && (
+          <div className="sticky top-0 bg-overlay-background">
+            {dropdownHeaders}
+          </div>
+        )}
+        <ScrollArea
+          className="w-full flex-1"
+          hideScrollBar={false}
+          orientation="vertical"
+          viewportClassName={cn(
+            "flex-1",
+            "max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+          )}
+        >
+          {children}
+        </ScrollArea>
+      </DropdownMenuPrimitive.SubContent>
+    </DropdownMenuPrimitive.Portal>
+  );
+});
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
@@ -485,7 +498,7 @@ const DropdownMenuContent = React.forwardRef<
         className={cn(
           menuStyleClasses.container,
           menuStyleClasses.containerAnimation,
-          "flex flex-col shadow-md",
+          "flex flex-col",
           dropdownHeaders && "h-80 xs:h-96", // We use dropdownHeaders for putting search bar, so we can set the height for the container
           className
         )}
