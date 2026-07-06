@@ -55,9 +55,10 @@ const PROD_PRODUCT_SEAT_SUBSCRIPTION_COMMIT =
 
 // --- Credit type IDs (stable across envs unless noted) ---
 
-// USD and EUR are the same in sandbox and production.
+// USD, EUR and GBP are the same in sandbox and production.
 export const CREDIT_TYPE_USD_ID = "2714e483-4ff1-48e4-9e25-ac732e8f24f2";
 export const CREDIT_TYPE_EUR_ID = "58f0be15-cc47-4220-bdaf-072ab0e44f96";
+export const CREDIT_TYPE_GBP_ID = "0f99b795-a801-4653-ad4b-b99922be625d";
 
 export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 
@@ -228,6 +229,7 @@ export const PROD_CREDIT_TYPE_PROG_USD_ID =
 export const CURRENCY_TO_CREDIT_TYPE_ID: Record<string, string> = {
   usd: CREDIT_TYPE_USD_ID,
   eur: CREDIT_TYPE_EUR_ID,
+  gbp: CREDIT_TYPE_GBP_ID,
 };
 
 // --- Accessors ---

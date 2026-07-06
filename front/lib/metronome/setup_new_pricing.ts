@@ -15,6 +15,7 @@ import {
 import {
   AWU_PRIORITY_SEAT_ALLOCATION,
   CREDIT_TYPE_EUR_ID,
+  CREDIT_TYPE_GBP_ID,
   CREDIT_TYPE_USD_ID,
   MAX_SEAT_MONTHLY_AWU_CREDITS,
   PRO_SEAT_MONTHLY_AWU_CREDITS,
@@ -51,6 +52,7 @@ import {
 } from "@app/lib/metronome/setup_common";
 import {
   BUSINESS_EUR_PACKAGE_ALIAS,
+  BUSINESS_GBP_PACKAGE_ALIAS,
   BUSINESS_USD_PACKAGE_ALIAS,
   DEFAULT_AWU_EXCESS_RECURRING_AMOUNT,
 } from "@app/lib/metronome/types";
@@ -496,6 +498,25 @@ export function getNewRateCards(): RateCardDef[] {
         ...buildAwuToolUsageRates(),
       ],
     },
+    // --- Standard GBP: GBP variant of the single non-legacy rate card ---
+    {
+      name: "Standard GBP",
+      description:
+        "Standard non-legacy plan (GBP). Seats priced per-package via overrides + AWU-based AI/Tool usage.",
+      aliases: [{ name: "standard-gbp" }],
+      fiat_credit_type_id: CREDIT_TYPE_GBP_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeAwuId(),
+          fiat_per_custom_credit: getOverageAwuRate("gbp"),
+        },
+      ],
+      rates: [
+        ...buildAllSeatRates(CREDIT_TYPE_GBP_ID),
+        ...buildAwuAiUsageRates(),
+        ...buildAwuToolUsageRates(),
+      ],
+    },
     // Free plan keeps its own rate card — its overage AWU conversion is 0 (free
     // users are never charged for overage), unlike the Standard cards.
     {
@@ -681,6 +702,37 @@ export function getNewPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: getAllSeatRecurringCredits(),
       overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_EUR_ID, [
+        {
+          product_name: PRO_SEAT_PRODUCT_NAME,
+          price: CP_PRO_SEAT_COST_MONTHLY,
+        },
+        {
+          product_name: PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+          price: CP_PRO_SEAT_COST_YEARLY * 12,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME,
+          price: CP_MAX_SEAT_COST_MONTHLY,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX,
+          price: CP_MAX_SEAT_COST_YEARLY * 12,
+        },
+        { product_name: FREE_SEAT_PRODUCT_NAME, price: 0 },
+      ]),
+      ...BILLING_CYCLE_CONFIG,
+    },
+    // GBP variant of Business — same unit numbers as Business EUR (GBP is a
+    // non-USD whole-unit Metronome pricing unit), only the fiat credit type
+    // differs.
+    {
+      name: "Business GBP",
+      aliases: [{ name: BUSINESS_GBP_PACKAGE_ALIAS }],
+      rate_card_name: "Standard GBP",
+      subscriptions: ALL_SEAT_SUBSCRIPTIONS,
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: getAllSeatRecurringCredits(),
+      overrides: buildSeatEntitlementOverrides(CREDIT_TYPE_GBP_ID, [
         {
           product_name: PRO_SEAT_PRODUCT_NAME,
           price: CP_PRO_SEAT_COST_MONTHLY,

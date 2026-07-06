@@ -1,4 +1,4 @@
-export const SUPPORTED_CURRENCIES = ["usd", "eur"] as const;
+export const SUPPORTED_CURRENCIES = ["usd", "eur", "gbp"] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
 export function isSupportedCurrency(value: string): value is SupportedCurrency {
@@ -8,4 +8,5 @@ export function isSupportedCurrency(value: string): value is SupportedCurrency {
 export const CURRENCY_SYMBOLS: Record<SupportedCurrency, string> = {
   usd: "$",
   eur: "€",
+  gbp: "£",
 };
