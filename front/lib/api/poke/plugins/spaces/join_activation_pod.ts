@@ -1,4 +1,10 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
+import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { createPlugin } from "@app/lib/api/poke/types";
+import {
+  getPodAgentsMdScopedPath,
+  POD_AGENTS_MD_MAX_CHARACTER_COUNT,
+} from "@app/lib/api/projects/constants";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -70,19 +76,74 @@ function formatDefaultSkillsSuffix(skillNames: string[]): string {
   return ` Set ${skillNames.length} default skill(s): ${skillNames.join(", ")}.`;
 }
 
+// Writes pod-wide agent instructions to the pod's AGENTS.md file.
+async function setPodAgentsMd(
+  auth: Authenticator,
+  pod: SpaceResource,
+  user: UserResource,
+  instructions: string
+): Promise<Result<{ written: boolean }, Error>> {
+  const trimmed = instructions.trim();
+  if (trimmed.length === 0) {
+    return new Ok({ written: false });
+  }
+
+  if (trimmed.length > POD_AGENTS_MD_MAX_CHARACTER_COUNT) {
+    return new Err(
+      new Error(
+        `AGENTS.md instructions exceed the ${POD_AGENTS_MD_MAX_CHARACTER_COUNT}-character limit.`
+      )
+    );
+  }
+
+  const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    auth.getNonNullableWorkspace().sId
+  );
+
+  const scopedPath = getPodAgentsMdScopedPath(pod.sId);
+  const fsResult = await DustFileSystem.fromScopedPath(editorAuth, scopedPath);
+  if (fsResult.isErr()) {
+    return new Err(
+      new Error(`Failed to open the Pod file system: ${fsResult.error.message}`)
+    );
+  }
+
+  const writeResult = await writeCanonicalFileContent(
+    editorAuth,
+    fsResult.value,
+    scopedPath,
+    Buffer.from(trimmed, "utf8"),
+    "text/markdown"
+  );
+  if (writeResult.isErr()) {
+    return new Err(
+      new Error(
+        `Failed to write the Pod AGENTS.md: ${writeResult.error.message}`
+      )
+    );
+  }
+
+  return new Ok({ written: true });
+}
+
+function formatAgentsMdSuffix(written: boolean): string {
+  return written ? " Saved AGENTS.md instructions." : "";
+}
+
 export const joinActivationPodPlugin = createPlugin({
   manifest: {
     id: "join-activation-pod",
     name: "Join Activation Pod",
     description:
-      "Create a personal activation Pod for a workspace member and invite them to it.",
+      "Create a personal Activation Pod for a workspace member and invite them to it.",
     resourceTypes: ["workspaces"],
     args: {
       userEmail: {
         type: "string",
         label: "User email",
         description:
-          "Email of the workspace member to provision an activation Pod for.",
+          "Email of the workspace member to provision an Activation Pod for.",
       },
       defaultSkillIds: {
         type: "enum",
@@ -92,6 +153,13 @@ export const joinActivationPodPlugin = createPlugin({
         async: true,
         values: [],
         multiple: true,
+      },
+      agentsMdInstructions: {
+        type: "text",
+        label: "AGENTS.md instructions",
+        description:
+          "Optional. Pod-wide instructions saved to the Pod's AGENTS.md file and followed by all " +
+          `agents in the Pod. Max ${POD_AGENTS_MD_MAX_CHARACTER_COUNT} characters.`,
       },
     },
     requiredRoles: ["support"],
@@ -114,13 +182,18 @@ export const joinActivationPodPlugin = createPlugin({
         .sort((a, b) => a.label.localeCompare(b.label)),
     });
   },
-  execute: async (auth, _resource, { userEmail, defaultSkillIds }) => {
+  execute: async (
+    auth,
+    _resource,
+    { userEmail, defaultSkillIds, agentsMdInstructions }
+  ) => {
     const email = userEmail.trim().toLowerCase();
     if (email.length === 0) {
       return new Err(new Error("A user email is required."));
     }
 
     const selectedSkillIds = defaultSkillIds ?? [];
+    const agentsMd = agentsMdInstructions ?? "";
 
     const workspace = auth.getNonNullableWorkspace();
 
@@ -164,17 +237,28 @@ export const joinActivationPodPlugin = createPlugin({
         return skillsResult;
       }
 
+      const agentsMdResult = await setPodAgentsMd(
+        auth,
+        existingPod,
+        user,
+        agentsMd
+      );
+      if (agentsMdResult.isErr()) {
+        return agentsMdResult;
+      }
+
       joinActivationPodLogger.info(
         {
           action: "join_activation_pod",
           created: false,
           addedAsEditor: editorResult.value.added,
           defaultSkills: skillsResult.value.skillNames,
+          agentsMdWritten: agentsMdResult.value.written,
           spaceId: existingPod.sId,
           userId: user.sId,
           workspaceId: workspace.sId,
         },
-        "Returned existing activation pod via poke"
+        "Returned existing Activation Pod via poke"
       );
 
       return new Ok({
@@ -184,7 +268,8 @@ export const joinActivationPodPlugin = createPlugin({
           (editorResult.value.added
             ? "The user was missing and has been added as an editor."
             : "The user is already an editor.") +
-          formatDefaultSkillsSuffix(skillsResult.value.skillNames),
+          formatDefaultSkillsSuffix(skillsResult.value.skillNames) +
+          formatAgentsMdSuffix(agentsMdResult.value.written),
         link: podLink(existingPod),
         linkText: "Open Pod in Poke",
       });
@@ -212,23 +297,30 @@ export const joinActivationPodPlugin = createPlugin({
       return skillsResult;
     }
 
+    const agentsMdResult = await setPodAgentsMd(auth, pod, user, agentsMd);
+    if (agentsMdResult.isErr()) {
+      return agentsMdResult;
+    }
+
     joinActivationPodLogger.info(
       {
         action: "join_activation_pod",
         created: true,
         defaultSkills: skillsResult.value.skillNames,
+        agentsMdWritten: agentsMdResult.value.written,
         spaceId: pod.sId,
         userId: user.sId,
         workspaceId: workspace.sId,
       },
-      "Created activation pod via poke"
+      "Created Activation Pod via poke"
     );
 
     return new Ok({
       display: "textWithLink",
       value:
-        `Created activation Pod for ${user.username} and added them as an editor.` +
-        formatDefaultSkillsSuffix(skillsResult.value.skillNames),
+        `Created Activation Pod for ${user.username} and added them as an editor.` +
+        formatDefaultSkillsSuffix(skillsResult.value.skillNames) +
+        formatAgentsMdSuffix(agentsMdResult.value.written),
       link: podLink(pod),
       linkText: "Open Pod in Poke",
     });
