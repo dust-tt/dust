@@ -30,6 +30,13 @@ interface InstanceGrantSpec {
   transaction?: Transaction;
 }
 
+interface TypeWideGrantSpec {
+  group: GroupResource;
+  permissionType: PermissionType;
+  resourceType: GroupPermissionResourceType;
+  transaction?: Transaction;
+}
+
 interface ListForGroupsSpec {
   groupModelIds: ModelId[];
   permissionType?: PermissionType;
@@ -190,6 +197,133 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     await GroupPermissionModel.destroy({
       where: { workspaceId: auth.getNonNullableWorkspace().id },
     });
+  }
+
+  // Grant a type-wide permission (resourceId = -1: the whole type). Dedicated, explicitly named so a
+  // defaulted -1 can never silently reach `grant`. Idempotent. Used for type-level verbs (e.g.
+  // "create") and for governance capabilities (see the governance-toggle methods).
+  static async grantOnAllResourcesOfType(
+    auth: Authenticator,
+    { group, permissionType, resourceType, transaction }: TypeWideGrantSpec
+  ): Promise<GroupPermissionResource> {
+    this.assertGroupInWorkspace(auth, group);
+    assertValidGrant({
+      permissionType,
+      resourceType,
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    });
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const [row] = await GroupPermissionModel.findOrCreate({
+      where: {
+        workspaceId,
+        groupId: group.id,
+        permissionType,
+        resourceType,
+        resourceId: WHOLE_TYPE_RESOURCE_ID,
+      },
+      transaction,
+    });
+
+    return new this(GroupPermissionModel, row.get());
+  }
+
+  // Batch of grantOnAllResourcesOfType across groups (one INSERT, unique index dedupes). Backs the
+  // governance setGroups transition without an N+1.
+  static async grantOnAllResourcesOfTypeForGroups(
+    auth: Authenticator,
+    {
+      groups,
+      permissionType,
+      resourceType,
+      transaction,
+    }: {
+      groups: GroupResource[];
+      permissionType: PermissionType;
+      resourceType: GroupPermissionResourceType;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    assertValidGrant({
+      permissionType,
+      resourceType,
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    });
+    groups.forEach((group) => this.assertGroupInWorkspace(auth, group));
+    if (groups.length === 0) {
+      return;
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    await GroupPermissionModel.bulkCreate(
+      groups.map((group) => ({
+        workspaceId,
+        groupId: group.id,
+        permissionType,
+        resourceType,
+        resourceId: WHOLE_TYPE_RESOURCE_ID,
+      })),
+      { ignoreDuplicates: true, transaction }
+    );
+  }
+
+  // Revoke a group's type-wide grant. No-op if absent.
+  static async revokeOnAllResourcesOfType(
+    auth: Authenticator,
+    { group, permissionType, resourceType, transaction }: TypeWideGrantSpec
+  ): Promise<void> {
+    await GroupPermissionModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        groupId: group.id,
+        permissionType,
+        resourceType,
+        resourceId: WHOLE_TYPE_RESOURCE_ID,
+      },
+      transaction,
+    });
+  }
+
+  // Batch of instance-level grants (one INSERT, unique index dedupes). Each is validated; -1 is
+  // rejected here as in `grant` — type-wide grants use the dedicated methods above.
+  static async grantMany(
+    auth: Authenticator,
+    {
+      grants,
+      transaction,
+    }: {
+      grants: Array<{
+        group: GroupResource;
+        permissionType: PermissionType;
+        resourceType: GroupPermissionResourceType;
+        resourceId: number;
+      }>;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    if (grants.length === 0) {
+      return;
+    }
+    for (const { group, permissionType, resourceType, resourceId } of grants) {
+      assert(
+        resourceId > 0,
+        "grantMany is instance-level; use the dedicated type-wide methods for -1 grants."
+      );
+      this.assertGroupInWorkspace(auth, group);
+      assertValidGrant({ permissionType, resourceType, resourceId });
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    await GroupPermissionModel.bulkCreate(
+      grants.map(({ group, permissionType, resourceType, resourceId }) => ({
+        workspaceId,
+        groupId: group.id,
+        permissionType,
+        resourceType,
+        resourceId,
+      })),
+      { ignoreDuplicates: true, transaction }
+    );
   }
 
   async delete(
