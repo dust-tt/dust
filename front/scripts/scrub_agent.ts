@@ -1,4 +1,5 @@
 import {
+  cleanupAgentScopedResourcesForHardDeletion,
   listsAgentConfigurationVersions,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
@@ -63,6 +64,15 @@ makeScript(
         versionCount: versions.length,
       },
       "Hard-deleting all versions of the agent."
+    );
+
+    // Clean up the agent-scoped resources keyed by the sId (triggers, wake-ups
+    // and their Temporal schedules, favorites) once before deleting the version
+    // rows: they are shared across all versions, not per-version.
+    await cleanupAgentScopedResourcesForHardDeletion(auth, agentId);
+    logger.info(
+      { workspaceId, agentId },
+      "Agent triggers, wake-ups and favorites cleaned up."
     );
 
     for (const version of versions) {

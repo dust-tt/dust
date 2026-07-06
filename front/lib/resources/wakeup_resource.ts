@@ -338,6 +338,23 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
+  static async listByAgentConfigurationId(
+    auth: Authenticator,
+    agentConfigurationId: string,
+    { status }: { status?: WakeUpStatus | WakeUpStatus[] } = {}
+  ): Promise<WakeUpResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        agentConfigurationId,
+        ...(status !== undefined ? { status } : {}),
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+  }
+
   /**
    * Checks whether the caller can post or edit user messages in a conversation that has active
    * wake-ups. Rejects when any active (scheduled) wake-up is owned by a user other than the current
@@ -486,6 +503,24 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       );
     }
 
+    return this.cancelForCascade(auth, { transaction });
+  }
+
+  /**
+   * Cancels the wake-up (deletes the cron schedule / cancels the pending one-shot
+   * workflow) and marks the row cancelled, WITHOUT the owner/admin permission
+   * check. Intended for system-initiated cascades (agent archive / hard-delete)
+   * where the acting user may not own the wake-up but the agent it targets is
+   * going away, so every wake-up for it must stop.
+   *
+   * Must not be called from within the wake-up's own running workflow (for
+   * one-shot wake-ups this would cancel the current execution); the fire-time
+   * path uses markCancelled + cleanupTemporalScheduleIfCronTerminal instead.
+   */
+  async cancelForCascade(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<void, Error>> {
     if (this.status !== "scheduled") {
       return new Ok(undefined);
     }

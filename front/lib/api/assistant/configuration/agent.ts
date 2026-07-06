@@ -55,6 +55,7 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
@@ -1311,6 +1312,35 @@ export async function createGenericAgentConfiguration(
   return new Ok({ agentConfiguration, subAgentConfiguration });
 }
 
+// Cancels every still-scheduled wake-up targeting the given agent, deleting the
+// backing Temporal schedule (cron) or pending workflow (one-shot). Errors are
+// logged but do not abort the caller; the reconciler worker is the backstop.
+async function cancelWakeUpsForAgent(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+  const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId,
+    { status: "scheduled" }
+  );
+  for (const wakeUp of wakeUps) {
+    const cancelResult = await wakeUp.cancelForCascade(auth);
+    if (cancelResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          agentConfigurationId,
+          wakeUpId: wakeUp.sId,
+          error: cancelResult.error,
+        },
+        `Failed to cancel wake-up ${wakeUp.sId} for agent ${agentConfigurationId}`
+      );
+    }
+  }
+}
+
 export async function archiveAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
@@ -1348,6 +1378,10 @@ export async function archiveAgentConfiguration(
       );
     }
   }
+
+  // Cancel all wake-ups for this agent before archiving so their Temporal
+  // schedules stop firing.
+  await cancelWakeUpsForAgent(auth, agentConfigurationId);
 
   const updated = await AgentConfigurationModel.update(
     { status: "archived" },
@@ -1530,6 +1564,80 @@ export async function restoreAgentConfiguration(
   return new Ok({ restored: updated[0] > 0 });
 }
 
+// Deletes the agent-scoped resources that are keyed by the agent sId (stable
+// across versions) and therefore have no DB foreign key to cascade on: triggers
+// (with their Temporal schedule), wake-ups (with their Temporal schedule /
+// pending workflow) and favorite / agent-user-relation rows.
+//
+// Must only be called when the whole agent (every version) is being terminally
+// hard-deleted, never from a single-version cleanup such as a failed upgrade
+// rollback: those keep the agent alive under the same sId, so wiping these
+// rows would break a live agent. Errors are logged, not thrown; the reconciler
+// worker is the backstop for anything left behind.
+export async function cleanupAgentScopedResourcesForHardDeletion(
+  auth: Authenticator,
+  agentConfigurationId: string
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const triggers = await TriggerResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  for (const trigger of triggers) {
+    const deleteResult = await trigger.delete(auth);
+    if (deleteResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          agentConfigurationId,
+          triggerId: trigger.sId,
+          error: deleteResult.error,
+        },
+        `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${agentConfigurationId}`
+      );
+    }
+  }
+
+  const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+    auth,
+    agentConfigurationId
+  );
+  for (const wakeUp of wakeUps) {
+    const cancelResult = await wakeUp.cancelForCascade(auth);
+    if (cancelResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          agentConfigurationId,
+          wakeUpId: wakeUp.sId,
+          error: cancelResult.error,
+        },
+        `Failed to cancel wake-up ${wakeUp.sId} while hard-deleting agent ${agentConfigurationId}`
+      );
+    }
+    const deleteResult = await wakeUp.delete(auth);
+    if (deleteResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          agentConfigurationId,
+          wakeUpId: wakeUp.sId,
+          error: deleteResult.error,
+        },
+        `Failed to delete wake-up ${wakeUp.sId} while hard-deleting agent ${agentConfigurationId}`
+      );
+    }
+  }
+
+  await AgentUserRelationModel.destroy({
+    where: {
+      agentConfiguration: agentConfigurationId,
+      workspaceId: workspace.id,
+    },
+  });
+}
+
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
@@ -1654,6 +1762,19 @@ export async function batchHardDeletePendingAgentConfigurations(
     // Delete agent suggestions before agents (FK constraint)
     await AgentSuggestionModel.destroy({
       where: { agentConfigurationId: agentIds, workspaceId },
+      transaction: t,
+    });
+
+    // Favorite / agent-user-relation rows are keyed by the agent sId with no
+    // foreign key, so they do not cascade on delete. Pending agents cannot own
+    // triggers or wake-ups (those require an active agent), so a bulk delete of
+    // the relation rows is enough here; the reconciler worker backstops the
+    // rest.
+    await AgentUserRelationModel.destroy({
+      where: {
+        agentConfiguration: agents.map((a) => a.sId),
+        workspaceId,
+      },
       transaction: t,
     });
 

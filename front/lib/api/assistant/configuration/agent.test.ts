@@ -1,24 +1,34 @@
 import {
   archiveAgentConfiguration,
+  cleanupAgentScopedResourcesForHardDeletion,
   createAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
   restoreAgentConfiguration,
   updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
+import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentUserRelationModel,
+} from "@app/lib/models/agent/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import * as scheduleClient from "@app/temporal/triggers/schedule_client";
+import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { describe, expect, it } from "vitest";
+import { Ok } from "@app/types/shared/result";
+import { describe, expect, it, vi } from "vitest";
 
 describe("createAgentConfiguration with pending agent", () => {
   it("converts pending agent to active when agentConfigurationId points to a pending agent", async () => {
@@ -330,6 +340,149 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
         "Agent configuration is not archived"
       );
     }
+  });
+
+  it("cancels scheduled wake-ups when archiving", async () => {
+    const launchSpy = vi
+      .spyOn(wakeUpClient, "launchOrScheduleWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+    const cancelSpy = vi
+      .spyOn(wakeUpClient, "cancelWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const wakeUpResult = await WakeUpResource.makeNew(
+      authenticator,
+      {
+        scheduleType: "cron",
+        fireAt: null,
+        cronExpression: "0 7 * * *",
+        cronTimezone: "Europe/Paris",
+        reason: "Daily wake-up",
+      },
+      conversation,
+      agent
+    );
+    if (wakeUpResult.isErr()) {
+      throw new Error(
+        `Failed to create test wake-up: ${wakeUpResult.error.message}`
+      );
+    }
+
+    const archived = await archiveAgentConfiguration(authenticator, agent.sId);
+    expect(archived).toBe(true);
+
+    expect(cancelSpy).toHaveBeenCalled();
+    const refetched = await WakeUpResource.fetchById(
+      authenticator,
+      wakeUpResult.value.sId
+    );
+    expect(refetched?.status).toBe("cancelled");
+
+    launchSpy.mockRestore();
+    cancelSpy.mockRestore();
+  });
+});
+
+describe("cleanupAgentScopedResourcesForHardDeletion", () => {
+  it("removes triggers, wake-ups and favorites for the agent", async () => {
+    const mockCreateSchedule = vi
+      .spyOn(scheduleClient, "createOrUpdateAgentSchedule")
+      .mockResolvedValue(new Ok("workflow-id"));
+    const mockDeleteSchedule = vi
+      .spyOn(scheduleClient, "deleteTriggerSchedule")
+      .mockResolvedValue(new Ok(undefined));
+    const launchSpy = vi
+      .spyOn(wakeUpClient, "launchOrScheduleWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+    const cancelSpy = vi
+      .spyOn(wakeUpClient, "cancelWakeUpTemporalWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    const triggerResult = await TriggerResource.makeNew(authenticator, {
+      id: 300,
+      workspaceId: workspace.id,
+      name: "Schedule Trigger",
+      kind: "schedule",
+      agentConfigurationId: agent.sId,
+      editor: user.id,
+      customPrompt: null,
+      status: "enabled",
+      configuration: {
+        cron: "0 9 * * 1",
+        timezone: "UTC",
+      },
+      origin: "user",
+    });
+    expect(triggerResult.isOk()).toBe(true);
+
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const wakeUpResult = await WakeUpResource.makeNew(
+      authenticator,
+      {
+        scheduleType: "cron",
+        fireAt: null,
+        cronExpression: "0 7 * * *",
+        cronTimezone: "Europe/Paris",
+        reason: "Daily wake-up",
+      },
+      conversation,
+      agent
+    );
+    expect(wakeUpResult.isOk()).toBe(true);
+
+    const favoriteResult = await setAgentUserFavorite({
+      auth: authenticator,
+      agentId: agent.sId,
+      userFavorite: true,
+    });
+    expect(favoriteResult.isOk()).toBe(true);
+
+    await cleanupAgentScopedResourcesForHardDeletion(authenticator, agent.sId);
+
+    const remainingTriggers = await TriggerResource.listByAgentConfigurationId(
+      authenticator,
+      agent.sId
+    );
+    expect(remainingTriggers).toHaveLength(0);
+
+    const remainingWakeUps = await WakeUpResource.listByAgentConfigurationId(
+      authenticator,
+      agent.sId
+    );
+    expect(remainingWakeUps).toHaveLength(0);
+
+    const remainingFavorites = await AgentUserRelationModel.findAll({
+      where: {
+        agentConfiguration: agent.sId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(remainingFavorites).toHaveLength(0);
+
+    expect(mockDeleteSchedule).toHaveBeenCalled();
+    expect(cancelSpy).toHaveBeenCalled();
+
+    mockCreateSchedule.mockRestore();
+    mockDeleteSchedule.mockRestore();
+    launchSpy.mockRestore();
+    cancelSpy.mockRestore();
   });
 });
 
