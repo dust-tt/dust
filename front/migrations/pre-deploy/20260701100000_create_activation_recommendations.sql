@@ -20,146 +20,137 @@ CREATE TABLE "public"."activation_recommendations" (
 	"updatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
 	"workspaceId" bigint NOT NULL,
 	"userId" bigint NOT NULL,
-	"status" character varying(50) NOT NULL DEFAULT 'pending',
-	"content" text NOT NULL,
-	"rationale" text NOT NULL,
-	"conversationModelId" bigint,
-	"skillModelId" bigint,
-	"triggerModelId" bigint,
+	"status" character varying(50) NOT NULL,
+	"content" character varying(4096) NOT NULL,
+	"rationale" character varying(4096) NOT NULL,
+	"conversationId" bigint,
+	"artifactSkillId" bigint,
+	"artifactTriggerId" bigint,
 	"id" bigint DEFAULT nextval('activation_recommendations_id_seq'::regclass) NOT NULL
 );
 
 /*
 Statement 2
 */
-SET SESSION statement_timeout = 3000;
-SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."activation_recommendations"
-	ADD CONSTRAINT "activation_recommendations_status_check"
-	CHECK (status IN ('pending', 'accepted', 'rejected', 'saved', 'recurring'));
-
-/*
-Statement 3
-*/
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
 CREATE UNIQUE INDEX CONCURRENTLY activation_recommendations_pkey ON public.activation_recommendations USING btree (id);
 
 /*
-Statement 4
+Statement 3
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_pkey" PRIMARY KEY USING INDEX "activation_recommendations_pkey";
 
 /*
-Statement 5
+Statement 4
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
 CREATE INDEX CONCURRENTLY "idx_activation_recommendations_user" ON public.activation_recommendations USING btree ("userId");
 
 /*
-Statement 6
+Statement 5
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
 CREATE INDEX CONCURRENTLY "activation_recommendations_workspace_id" ON public.activation_recommendations USING btree ("workspaceId");
 
 /*
+Statement 6
+*/
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE INDEX CONCURRENTLY "activation_recommendations_conversation_id" ON public.activation_recommendations USING btree ("conversationId");
+
+/*
 Statement 7
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
-CREATE INDEX CONCURRENTLY "activation_recommendations_conversation_model_id" ON public.activation_recommendations USING btree ("conversationModelId");
+CREATE INDEX CONCURRENTLY "activation_recommendations_artifact_skill_id" ON public.activation_recommendations USING btree ("artifactSkillId");
 
 /*
 Statement 8
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
-CREATE INDEX CONCURRENTLY "activation_recommendations_skill_model_id" ON public.activation_recommendations USING btree ("skillModelId");
+CREATE INDEX CONCURRENTLY "activation_recommendations_artifact_trigger_id" ON public.activation_recommendations USING btree ("artifactTriggerId");
 
 /*
 Statement 9
-*/
-SET SESSION statement_timeout = 1200000;
-SET SESSION lock_timeout = 3000;
-CREATE INDEX CONCURRENTLY "activation_recommendations_trigger_model_id" ON public.activation_recommendations USING btree ("triggerModelId");
-
-/*
-Statement 10
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER SEQUENCE "public"."activation_recommendations_id_seq" OWNED BY "public"."activation_recommendations"."id";
 
 /*
-Statement 11
+Statement 10
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 /*
-Statement 12
+Statement 11
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."activation_recommendations" VALIDATE CONSTRAINT "activation_recommendations_workspaceId_fkey";
 
 /*
-Statement 13
+Statement 12
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_userId_fkey" FOREIGN KEY ("userId") REFERENCES users(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 /*
-Statement 14
+Statement 13
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."activation_recommendations" VALIDATE CONSTRAINT "activation_recommendations_userId_fkey";
 
 /*
+Statement 14
+*/
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES conversations(id) ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
+
+/*
 Statement 15
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_conversationModelId_fkey" FOREIGN KEY ("conversationModelId") REFERENCES conversations(id) ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
+ALTER TABLE "public"."activation_recommendations" VALIDATE CONSTRAINT "activation_recommendations_conversationId_fkey";
 
 /*
 Statement 16
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."activation_recommendations" VALIDATE CONSTRAINT "activation_recommendations_conversationModelId_fkey";
+ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_artifactSkillId_fkey" FOREIGN KEY ("artifactSkillId") REFERENCES skill_configurations(id) ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
 
 /*
 Statement 17
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_skillModelId_fkey" FOREIGN KEY ("skillModelId") REFERENCES skill_configurations(id) ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
+ALTER TABLE "public"."activation_recommendations" VALIDATE CONSTRAINT "activation_recommendations_artifactSkillId_fkey";
 
 /*
 Statement 18
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."activation_recommendations" VALIDATE CONSTRAINT "activation_recommendations_skillModelId_fkey";
+ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_artifactTriggerId_fkey" FOREIGN KEY ("artifactTriggerId") REFERENCES triggers(id) ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
 
 /*
 Statement 19
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."activation_recommendations" ADD CONSTRAINT "activation_recommendations_triggerModelId_fkey" FOREIGN KEY ("triggerModelId") REFERENCES triggers(id) ON UPDATE CASCADE ON DELETE SET NULL NOT VALID;
-
-/*
-Statement 20
-*/
-SET SESSION statement_timeout = 3000;
-SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."activation_recommendations" VALIDATE CONSTRAINT "activation_recommendations_triggerModelId_fkey";
+ALTER TABLE "public"."activation_recommendations" VALIDATE CONSTRAINT "activation_recommendations_artifactTriggerId_fkey";

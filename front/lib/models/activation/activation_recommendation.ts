@@ -5,7 +5,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
 
 export type ActivationRecommendationStatus =
   | "pending"
@@ -23,14 +23,11 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
   declare content: string;
   declare rationale: string;
 
-  declare conversationModelId: ForeignKey<ConversationModel["id"]> | null;
-  declare skillModelId: ForeignKey<SkillConfigurationModel["id"]> | null;
-  declare triggerModelId: ForeignKey<TriggerModel["id"]> | null;
-
-  declare user: NonAttribute<UserModel>;
-  declare conversation: NonAttribute<ConversationModel | null>;
-  declare skillConfiguration: NonAttribute<SkillConfigurationModel | null>;
-  declare trigger: NonAttribute<TriggerModel | null>;
+  declare conversationId: ForeignKey<ConversationModel["id"]> | null;
+  // FK to skill_configurations.id — the skill artifact associated with this recommendation.
+  declare artifactSkillId: ForeignKey<SkillConfigurationModel["id"]> | null;
+  // FK to triggers.id — the trigger artifact associated with this recommendation.
+  declare artifactTriggerId: ForeignKey<TriggerModel["id"]> | null;
 }
 
 ActivationRecommendationModel.init(
@@ -52,7 +49,6 @@ ActivationRecommendationModel.init(
     status: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "pending",
     },
     content: {
       type: DataTypes.STRING(4096),
@@ -62,15 +58,15 @@ ActivationRecommendationModel.init(
       type: DataTypes.STRING(4096),
       allowNull: false,
     },
-    conversationModelId: {
+    conversationId: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
-    skillModelId: {
+    artifactSkillId: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
-    triggerModelId: {
+    artifactTriggerId: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
@@ -88,15 +84,15 @@ ActivationRecommendationModel.init(
         concurrently: true,
       },
       {
-        fields: ["conversationModelId"],
+        fields: ["conversationId"],
         concurrently: true,
       },
       {
-        fields: ["skillModelId"],
+        fields: ["artifactSkillId"],
         concurrently: true,
       },
       {
-        fields: ["triggerModelId"],
+        fields: ["artifactTriggerId"],
         concurrently: true,
       },
     ],
@@ -106,7 +102,6 @@ ActivationRecommendationModel.init(
 ActivationRecommendationModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
-  as: "user",
 });
 UserModel.hasMany(ActivationRecommendationModel, {
   foreignKey: { name: "userId", allowNull: false },
@@ -114,31 +109,28 @@ UserModel.hasMany(ActivationRecommendationModel, {
 });
 
 ActivationRecommendationModel.belongsTo(ConversationModel, {
-  foreignKey: { name: "conversationModelId", allowNull: true },
+  foreignKey: { name: "conversationId", allowNull: true },
   onDelete: "SET NULL",
-  as: "conversation",
 });
 ConversationModel.hasMany(ActivationRecommendationModel, {
-  foreignKey: { name: "conversationModelId", allowNull: true },
+  foreignKey: { name: "conversationId", allowNull: true },
   onDelete: "SET NULL",
 });
 
 ActivationRecommendationModel.belongsTo(SkillConfigurationModel, {
-  foreignKey: { name: "skillModelId", allowNull: true },
+  foreignKey: { name: "artifactSkillId", allowNull: true },
   onDelete: "SET NULL",
-  as: "skillConfiguration",
 });
 SkillConfigurationModel.hasMany(ActivationRecommendationModel, {
-  foreignKey: { name: "skillModelId", allowNull: true },
+  foreignKey: { name: "artifactSkillId", allowNull: true },
   onDelete: "SET NULL",
 });
 
 ActivationRecommendationModel.belongsTo(TriggerModel, {
-  foreignKey: { name: "triggerModelId", allowNull: true },
+  foreignKey: { name: "artifactTriggerId", allowNull: true },
   onDelete: "SET NULL",
-  as: "trigger",
 });
 TriggerModel.hasMany(ActivationRecommendationModel, {
-  foreignKey: { name: "triggerModelId", allowNull: true },
+  foreignKey: { name: "artifactTriggerId", allowNull: true },
   onDelete: "SET NULL",
 });
