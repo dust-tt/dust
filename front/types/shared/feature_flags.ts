@@ -126,10 +126,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to OpenAI o1 model",
     stage: "on_demand",
   },
-  openai_o1_high_reasoning_feature: {
-    description: "Access to OpenAI o1 high reasoning model",
-    stage: "on_demand",
-  },
   openai_usage_mcp: {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
