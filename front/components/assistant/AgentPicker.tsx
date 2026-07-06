@@ -35,8 +35,6 @@ interface AgentPickerProps {
   disabled?: boolean;
   mountPortal?: boolean;
   onOpenChange?: (open: boolean) => void;
-  // When set, the matching agent is pinned at the top of the list under
-  // "Selected" with a toggle to deselect it (via `onDeselect`).
   selectedAgentId?: string | null;
   onDeselect?: () => void;
 }
