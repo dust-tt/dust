@@ -65,6 +65,7 @@ import {
   isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import {
@@ -137,6 +138,7 @@ export const INPUT_BAR_ACTIONS = [
   "attachment",
   "agents-list",
   "agents-list-with-actions",
+  "model-picker",
   "turn-into-agent",
   "voice",
   "fullscreen",
@@ -217,6 +219,9 @@ export interface InputBarContainerProps {
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
+  onModelSelectionChange?: (
+    modelSelection: ModelSelectionType | undefined
+  ) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetMCPServerViews: () => void;
@@ -266,6 +271,7 @@ const InputBarContainer = ({
   onNodeUnselect,
   attachedNodes,
   onMCPServerViewSelect,
+  onModelSelectionChange,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   onResetMCPServerViews,
@@ -341,6 +347,41 @@ const InputBarContainer = ({
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
+  // On mobile the bottom button row scrolls horizontally under the pinned
+  // voice/send cluster. We fade its right edge only while there is more content
+  // to scroll to, so the fade reads as "there's more" rather than clipping the
+  // last button when everything already fits.
+  const [hasButtonRowOverflow, setHasButtonRowOverflow] = useState(false);
+  // Track whether the mobile button row can still scroll right, to toggle the
+  // right-edge fade. We use a callback ref (rather than useEffect) so setup runs
+  // exactly when the row mounts/unmounts — the row is conditionally rendered
+  // while recording, and observing the row and its content catches both viewport
+  // resizes and changes to the set of buttons.
+  const buttonRowCleanupRef = useRef<(() => void) | null>(null);
+  const buttonRowRef = useCallback((el: HTMLDivElement | null) => {
+    buttonRowCleanupRef.current?.();
+    buttonRowCleanupRef.current = null;
+    if (!el) {
+      setHasButtonRowOverflow(false);
+      return;
+    }
+    const update = () => {
+      setHasButtonRowOverflow(
+        el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+      );
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    if (el.firstElementChild) {
+      observer.observe(el.firstElementChild);
+    }
+    el.addEventListener("scroll", update, { passive: true });
+    buttonRowCleanupRef.current = () => {
+      observer.disconnect();
+      el.removeEventListener("scroll", update);
+    };
+  }, []);
   const clientType = useClientType();
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
 
@@ -1554,6 +1595,32 @@ const InputBarContainer = ({
         }}
       >
         <div className="flex w-0 flex-grow flex-col">
+          {!isRecording && editor && (
+            <div
+              className={cn("relative flex px-0 pt-1", !isMobile && "hidden")}
+            >
+              <Button
+                variant="ghost-secondary"
+                icon={Type01}
+                size={buttonSize}
+                onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+              />
+              <Toolbar
+                variant="overlay"
+                className={cn(
+                  isToolbarOpen
+                    ? "pointer-events-auto w-full"
+                    : "pointer-events-none hidden"
+                )}
+                onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  setIsToolbarOpen(false);
+                }}
+              >
+                <ToolBarContent editor={editor} />
+              </Toolbar>
+            </div>
+          )}
           <div className="relative">
             <EditorContent
               editor={editor}
@@ -1608,38 +1675,28 @@ const InputBarContainer = ({
               ))}
             </div>
             <div className="relative flex min-h-8 w-full items-center justify-between">
-              {!isRecording && editor && (
-                <Toolbar
-                  variant="overlay"
-                  className={cn(
-                    isToolbarOpen
-                      ? "pointer-events-auto w-full"
-                      : "pointer-events-none hidden w-[120px]",
-                    !isMobile && "hidden"
-                  )}
-                  onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    setIsToolbarOpen(false);
-                  }}
-                >
-                  <ToolBarContent editor={editor} />
-                </Toolbar>
-              )}
               <div
                 className={cn(
                   "flex w-full items-center px-2",
-                  isToolbarOpen && "opacity-0"
+                  // The voice/send cluster is absolutely positioned at the
+                  // bottom-right. On mobile the button row would otherwise slide
+                  // underneath it, so reserve that space and let the row scroll.
+                  isMobile && "pr-24"
                 )}
               >
                 {!isRecording && (
-                  <div className="flex items-center">
-                    <Button
-                      variant="ghost-secondary"
-                      icon={Type01}
-                      size={buttonSize}
-                      className={cn("flex", !isMobile && "hidden")}
-                      onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-                    />
+                  <div
+                    ref={buttonRowRef}
+                    className={cn(
+                      "flex items-center",
+                      isMobile && "min-w-0 overflow-x-auto scrollbar-hide",
+                      // Fade the right edge (only while there's more to scroll to)
+                      // so it's clear the row continues under the send cluster.
+                      isMobile &&
+                        hasButtonRowOverflow &&
+                        "[-webkit-mask-image:linear-gradient(to_right,black_calc(100%-56px),transparent)] mask-[linear-gradient(to_right,black_calc(100%-56px),transparent)]"
+                    )}
+                  >
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
@@ -1657,6 +1714,7 @@ const InputBarContainer = ({
                       isInputDisabled={disableInput}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}
+                      onModelSelectionChange={onModelSelectionChange}
                       onNodeSelect={onNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}

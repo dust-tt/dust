@@ -318,7 +318,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   models_picker: {
     description:
-      "Model picker in the conversation input bar: pick a specific model.",
+      "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
     stage: "dust_only",
   },
   activation_skill: {
