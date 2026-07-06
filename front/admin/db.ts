@@ -50,6 +50,7 @@ import {
   UserAllowedAdvancedModel,
   WorkspaceAllowedAdvancedModel,
 } from "@app/lib/models/allowed_advanced_model";
+import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -286,6 +287,7 @@ export function loadAllModels() {
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
     WorkspaceSeatLimitModel,
+    ActivationRecommendationModel,
   ];
 }
 
