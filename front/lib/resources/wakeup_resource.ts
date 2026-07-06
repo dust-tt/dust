@@ -267,21 +267,30 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return new Ok(wakeUp);
   }
 
+  static async fetchByIds(
+    auth: Authenticator,
+    wakeUpIds: string[]
+  ): Promise<WakeUpResource[]> {
+    const ids = wakeUpIds
+      .map((sId) => getResourceIdFromSId(sId))
+      .filter((id): id is number => id !== null);
+
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: {
+        id: ids,
+      },
+    });
+  }
+
   static async fetchById(
     auth: Authenticator,
     wakeUpId: string
   ): Promise<WakeUpResource | null> {
-    const modelId = getResourceIdFromSId(wakeUpId);
-    if (!modelId) {
-      return null;
-    }
-
-    const [wakeUp] = await this.baseFetch(auth, {
-      where: {
-        id: modelId,
-      },
-    });
-
+    const [wakeUp] = await this.fetchByIds(auth, [wakeUpId]);
     return wakeUp ?? null;
   }
 

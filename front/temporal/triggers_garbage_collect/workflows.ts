@@ -8,6 +8,18 @@ const { webhookCleanupActivity } = proxyActivities<typeof activities>({
   },
 });
 
+const { orphanedScheduleCleanupActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
+  heartbeatTimeout: "2 minutes",
+  retry: {
+    nonRetryableErrorTypes: ["TriggerNonRetryableError"],
+  },
+});
+
 export async function webhookCleanupWorkflow() {
   await webhookCleanupActivity();
+}
+
+export async function orphanedScheduleCleanupWorkflow() {
+  await orphanedScheduleCleanupActivity();
 }

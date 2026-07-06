@@ -1,4 +1,7 @@
-import { createOrUpdateWebhookCleanupSchedule } from "@app/temporal/triggers_garbage_collect/client";
+import {
+  createOrUpdateOrphanedScheduleCleanupSchedule,
+  createOrUpdateWebhookCleanupSchedule,
+} from "@app/temporal/triggers_garbage_collect/client";
 import parseArgs from "minimist";
 
 const main = async () => {
@@ -11,6 +14,7 @@ const main = async () => {
   switch (command) {
     case "start":
       await createOrUpdateWebhookCleanupSchedule();
+      await createOrUpdateOrphanedScheduleCleanupSchedule();
       return;
     default:
       console.log("Unknown command, possible values: `start`");

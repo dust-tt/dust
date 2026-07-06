@@ -27,6 +27,8 @@ export function makeWakeUpWorkflowId({
   return `wakeup-${workspaceId}-${wakeUpId}`;
 }
 
+export const WAKEUP_SCHEDULE_ID_PREFIX = "wakeup-schedule-";
+
 export function makeWakeUpScheduleId({
   workspaceId,
   wakeUpId,
@@ -34,7 +36,27 @@ export function makeWakeUpScheduleId({
   workspaceId: string;
   wakeUpId: string;
 }): string {
-  return `wakeup-schedule-${workspaceId}-${wakeUpId}`;
+  return `${WAKEUP_SCHEDULE_ID_PREFIX}${workspaceId}-${wakeUpId}`;
+}
+
+// Reverses makeWakeUpScheduleId. Returns null when the id does not match the
+// wake-up schedule format. sIds contain no "-", so the first "-" after the
+// prefix separates the workspace sId from the wake-up sId.
+export function parseWakeUpScheduleId(
+  scheduleId: string
+): { workspaceId: string; wakeUpId: string } | null {
+  if (!scheduleId.startsWith(WAKEUP_SCHEDULE_ID_PREFIX)) {
+    return null;
+  }
+  const rest = scheduleId.slice(WAKEUP_SCHEDULE_ID_PREFIX.length);
+  const separatorIndex = rest.indexOf("-");
+  if (separatorIndex <= 0 || separatorIndex === rest.length - 1) {
+    return null;
+  }
+  return {
+    workspaceId: rest.slice(0, separatorIndex),
+    wakeUpId: rest.slice(separatorIndex + 1),
+  };
 }
 
 export async function launchOrScheduleWakeUpTemporalWorkflow(

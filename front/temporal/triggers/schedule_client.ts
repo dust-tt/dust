@@ -115,11 +115,33 @@ function getTriggerScheduleOptions(
   };
 }
 
+export const TRIGGER_SCHEDULE_ID_PREFIX = "agent-schedule-";
+
 export function makeTriggerScheduleId(
   workspaceId: string,
   triggerId: string
 ): string {
-  return `agent-schedule-${workspaceId}-${triggerId}`;
+  return `${TRIGGER_SCHEDULE_ID_PREFIX}${workspaceId}-${triggerId}`;
+}
+
+// Reverses makeTriggerScheduleId. Returns null when the id does not match the
+// trigger schedule format. sIds contain no "-", so the first "-" after the
+// prefix separates the workspace sId from the trigger sId.
+export function parseTriggerScheduleId(
+  scheduleId: string
+): { workspaceId: string; triggerId: string } | null {
+  if (!scheduleId.startsWith(TRIGGER_SCHEDULE_ID_PREFIX)) {
+    return null;
+  }
+  const rest = scheduleId.slice(TRIGGER_SCHEDULE_ID_PREFIX.length);
+  const separatorIndex = rest.indexOf("-");
+  if (separatorIndex <= 0 || separatorIndex === rest.length - 1) {
+    return null;
+  }
+  return {
+    workspaceId: rest.slice(0, separatorIndex),
+    triggerId: rest.slice(separatorIndex + 1),
+  };
 }
 
 export async function createOrUpdateAgentSchedule({
