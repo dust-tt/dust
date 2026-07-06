@@ -41,13 +41,13 @@ export type GroupPermissionResourceType =
 export const WHOLE_TYPE_RESOURCE_ID = -1;
 
 export function isPermissionType(value: unknown): value is PermissionType {
-  return PERMISSION_TYPES.includes(value as PermissionType);
+  return PERMISSION_TYPES.some((permission) => permission === value);
 }
 
 export function isGroupPermissionResourceType(
   value: unknown
 ): value is GroupPermissionResourceType {
-  return GROUP_PERMISSION_RESOURCE_TYPES.includes(
-    value as GroupPermissionResourceType
+  return GROUP_PERMISSION_RESOURCE_TYPES.some(
+    (resourceType) => resourceType === value
   );
 }

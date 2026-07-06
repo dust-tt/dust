@@ -21,14 +21,12 @@ CREATE TABLE "public"."group_permissions"
     CHECK ("resourceId" = -1 OR "resourceType" NOT IN ('billing', 'identity', 'audit_log', '*'))
 );
 
--- Dedupes grants and covers the "does this group have this grant" direction.
-CREATE UNIQUE INDEX CONCURRENTLY "group_permissions_ws_group_ptype_rtype_rid_unique"
-  ON "public"."group_permissions" ("workspaceId", "groupId", "permissionType", "resourceType", "resourceId");
+-- Dedupes grants and covers the "does this group have this grant" direction. groupId already
+-- scopes the workspace (a group belongs to one workspace), so workspaceId is omitted; the leading
+-- groupId also serves as the FK index (BACK13) for group deletion.
+CREATE UNIQUE INDEX CONCURRENTLY "group_permissions_group_ptype_rtype_rid_unique"
+  ON "public"."group_permissions" ("groupId", "permissionType", "resourceType", "resourceId");
 
 -- "who can act on resource X" direction.
 CREATE INDEX CONCURRENTLY "group_permissions_ws_rtype_rid"
   ON "public"."group_permissions" ("workspaceId", "resourceType", "resourceId");
-
--- FK index (BACK13): groups are deletable, avoid a table scan on group deletion.
-CREATE INDEX CONCURRENTLY "group_permissions_group_id"
-  ON "public"."group_permissions" ("groupId");

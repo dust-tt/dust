@@ -62,29 +62,19 @@ GroupPermissionModel.init(
     modelName: "group_permissions",
     sequelize: frontSequelize,
     indexes: [
-      // Dedupes grants and covers the "does this group have this grant" direction.
+      // Dedupes grants and covers the "does this group have this grant" direction. A group belongs
+      // to a single workspace, so groupId already scopes the workspace — no need for workspaceId
+      // here. Its leading groupId also serves as the FK index (BACK13) for group deletion.
       // Explicit name kept in sync with the migration so schema diffing stays clean.
       {
-        name: "group_permissions_ws_group_ptype_rtype_rid_unique",
+        name: "group_permissions_group_ptype_rtype_rid_unique",
         unique: true,
-        fields: [
-          "workspaceId",
-          "groupId",
-          "permissionType",
-          "resourceType",
-          "resourceId",
-        ],
+        fields: ["groupId", "permissionType", "resourceType", "resourceId"],
       },
       // "who can act on resource X" direction.
       {
         name: "group_permissions_ws_rtype_rid",
         fields: ["workspaceId", "resourceType", "resourceId"],
-      },
-      // FK index (BACK13): groups are deletable, avoid a table scan on group deletion.
-      {
-        name: "group_permissions_group_id",
-        fields: ["groupId"],
-        concurrently: true,
       },
     ],
   }
