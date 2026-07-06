@@ -134,6 +134,7 @@ describe("applyCouponPlugin.execute", () => {
     if (result.isOk()) {
       expect(result.value.display).toBe("text");
       expect(result.value.value).toContain(coupon.code);
+      expect(result.value.value).toContain("seat discount");
     }
 
     const redemptions = await CouponRedemptionResource.listAllByCoupon(coupon);
@@ -143,6 +144,53 @@ describe("applyCouponPlugin.execute", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: "coupon.redeemed" })
     );
+  });
+
+  it("applies a valid credit_pool_top_up coupon → active redemption, type shown in output, audit event emitted", async () => {
+    const { auth } = await makeWorkspaceWithMetronome();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+      amount: 5000,
+    });
+    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "awu-credit-1" }));
+
+    const result = await applyCouponPlugin.execute(auth, null, {
+      couponCode: coupon.code,
+      confirm: true,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.display).toBe("text");
+      expect(result.value.value).toContain(coupon.code);
+      expect(result.value.value).toContain("usage credit top-up");
+    }
+
+    const redemptions = await CouponRedemptionResource.listAllByCoupon(coupon);
+    expect(redemptions).toHaveLength(1);
+    expect(redemptions[0].status).toBe("active");
+
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "coupon.redeemed" })
+    );
+  });
+
+  it("returns Err with workspace_not_on_metronome message for credit_pool_top_up coupon when no Metronome customer ID", async () => {
+    const { auth } = await makeWorkspaceNoMetronome();
+    const coupon = await CouponFactory.create({
+      discountType: "credit_pool_top_up",
+      amount: 5000,
+    });
+
+    const result = await applyCouponPlugin.execute(auth, null, {
+      couponCode: coupon.code,
+      confirm: true,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toMatch(/not provisioned on Metronome/i);
+    }
   });
 
   it("returns Err when coupon code is not found", async () => {
