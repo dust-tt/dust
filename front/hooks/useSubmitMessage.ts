@@ -6,6 +6,7 @@ import type {
   SubmitMessageError,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -31,6 +32,7 @@ export function useSubmitMessage({
       clientSideMCPServerIds?: string[];
       origin?: ClientMessageOrigin;
       skipToolsValidation?: boolean;
+      modelSelection?: ModelSelectionType;
     }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> => {
       if (!conversationId) {
         return new Err({
@@ -47,6 +49,7 @@ export function useSubmitMessage({
         clientSideMCPServerIds,
         origin: messageOrigin,
         skipToolsValidation,
+        modelSelection,
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
 
@@ -135,6 +138,7 @@ export function useSubmitMessage({
             },
             mentions,
             skipToolsValidation,
+            modelSelection,
           }),
         }
       );

@@ -77,6 +77,7 @@ import {
   isRichAgentMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
@@ -1122,7 +1123,9 @@ export const ConversationViewer = ({
     async (
       input: string,
       mentions: RichMention[],
-      contentFragments: ContentFragmentsType
+      contentFragments: ContentFragmentsType,
+      _selectedMCPServerViewIds?: string[],
+      modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (!virtuosoMessageListRef?.current) {
         return new Err({
@@ -1151,6 +1154,7 @@ export const ConversationViewer = ({
             clientSideMCPServerIds ??
             agentBuilderContext?.clientSideMCPServerIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
+          modelSelection,
         };
 
         const lastMessageRank = Math.max(
