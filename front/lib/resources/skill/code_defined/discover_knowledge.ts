@@ -4,68 +4,62 @@ import {
 } from "@app/lib/resources/skill/code_defined/shared";
 
 const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
-  "Default behavior: start with `semantic_search`. It is usually faster " +
-  "than browsing because it searches across the knowledge base directly.\n" +
-  "Provide `nodeIds` only when you already know the relevant folder(s), " +
-  "document(s), or page(s) to target; otherwise, search across all available " +
-  "content and refine your query before exploring the data source hierarchy.\n" +
-  "\n" +
-  "Company data filesystem concepts:\n" +
-  "- Connected company data is represented as a tree of nodes. A node can be " +
-  "a data source root, folder, section, document or page.\n" +
-  "- Tool outputs expose exact `nodeId` values. Use those IDs as `nodeId`, " +
-  "`rootNodeId`, or `nodeIds` inputs; do not use human-readable titles as " +
-  "IDs.\n" +
-  "- A result with `hasChildren: true` can be expanded with " +
-  "`list`, searched under with `find`, or used as a scope for " +
-  "`semantic_search`.\n" +
-  "\n" +
-  "Company data filesystem tools:\n" +
-  "- `semantic_search`: searches document and " +
-  "page content by meaning. Start here to answer a question or find relevant " +
-  "passages; pass `nodeIds` only to restrict search to known folders, " +
-  "documents, pages, and their children.\n" +
-  "- `list`: lists direct children of a data " +
-  "source root or folder. Use it for structure, sibling documents, or " +
-  "exhaustive browsing; pass `nodeId: null` for data source roots, then pass " +
-  "a returned `nodeId` to move down one level.\n" +
-  "- `find`: searches node titles within a data source tree or `rootNodeId` " +
-  "scope. Use it when you know all or part of a folder, document, or page " +
-  "title; omit `rootNodeId` to search all configured data source trees.\n" +
-  "- `locate_in_tree`: shows the full path from " +
-  "a node to its data source root. Use it to understand where a search " +
-  "result sits, identify parent folders, or cite a location.\n" +
-  "- `cat`: reads one document or page by " +
-  "`nodeId`. Use it for exact quotes, source checks, or verifying facts; " +
-  "always provide a `limit` (max 10,000 characters), use `grep` for relevant " +
-  "lines, and use `offset` only for focused chunks.\n" +
-  "\n" +
-  "Data warehouses (tables and schemas):\n" +
-  "- Content is organized hierarchically: warehouse -> database -> schema " +
-  "-> tables. Schemas can be arbitrarily nested.\n" +
-  "- `list`: lists direct contents of a " +
-  "warehouse, database, or schema. Use it to browse the warehouse hierarchy; " +
-  "if no `nodeId` is provided, it lists all available warehouses.\n" +
-  "- `find`: searches tables, schemas, and " +
-  "databases by name. Use it when you know all or part of a table, schema, " +
-  "or database name (e.g., 'sales' finds 'sales_2024', " +
-  "'monthly_sales_report').\n" +
-  "- `describe_tables`: returns table " +
-  "schemas, DBML definitions, SQL dialect guidelines, and example rows. Use " +
-  "it before writing SQL; all described tables must be from the same " +
-  "warehouse.\n" +
-  "- `query`: executes SQL queries. Use it after `describe_tables`; " +
-  "the query must respect the provided SQL dialect and all tables in the " +
-  "query must be from the same warehouse.\n" +
-  "\n" +
-  "In order to properly use the data warehouses, it is useful to also search " +
-  "through company data with `semantic_search` " +
-  "in case there is some documentation available about the tables, some " +
-  "additional semantic layer, or some code that may define how the tables " +
-  "are built in the first place.\n" +
-  "Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.\n" +
-  "Warehouses are identified as 'warehouse-<dataSourceId>'.\n" +
-  'A dataSourceId typically starts with the prefix "dts_".\n';
+  [
+    "Default behavior: start with `semantic_search`. It is usually faster than",
+    "browsing because it searches across the knowledge base directly.",
+    "Provide `nodeIds` only when you already know the relevant folder(s),",
+    "document(s), or page(s) to target; otherwise, search across all available",
+    "content and refine your query before exploring the data source hierarchy.",
+    "",
+    "Company data filesystem concepts:",
+    "- Connected company data is represented as a tree of nodes. A node can be a",
+    "  data source root, folder, section, document or page.",
+    "- Tool outputs expose exact `nodeId` values. Use those IDs as `nodeId`,",
+    "  `rootNodeId`, or `nodeIds` inputs; do not use human-readable titles as IDs.",
+    "- A result with `hasChildren: true` can be expanded with `list`, searched",
+    "  under with `find`, or used as a scope for `semantic_search`.",
+    "",
+    "Company data filesystem tools:",
+    "- `semantic_search`: searches document and page content by meaning. Start",
+    "  here to answer a question or find relevant passages; pass `nodeIds` only",
+    "  to restrict search to known folders, documents, pages, and their children.",
+    "- `list`: lists direct children of a data source root or folder. Use it for",
+    "  structure, sibling documents, or exhaustive browsing; pass `nodeId: null`",
+    "  for data source roots, then pass a returned `nodeId` to move down one level.",
+    "- `find`: searches node titles within a data source tree or `rootNodeId`",
+    "  scope. Use it when you know all or part of a folder, document, or page",
+    "  title; omit `rootNodeId` to search all configured data source trees.",
+    "- `locate_in_tree`: shows the full path from a node to its data source root.",
+    "  Use it to understand where a search result sits, identify parent folders,",
+    "  or cite a location.",
+    "- `cat`: reads one document or page by `nodeId`. Use it for exact quotes,",
+    "  source checks, or verifying facts; always provide a `limit` (max 10,000",
+    "  characters), use `grep` for relevant lines, and use `offset` only for",
+    "  focused chunks.",
+    "",
+    "Data warehouses (tables and schemas):",
+    "- Content is organized hierarchically: warehouse -> database -> schema ->",
+    "  tables. Schemas can be arbitrarily nested.",
+    "- `list`: lists direct contents of a warehouse, database, or schema. Use it",
+    "  to browse the warehouse hierarchy; if no `nodeId` is provided, it lists",
+    "  all available warehouses.",
+    "- `find`: searches tables, schemas, and databases by name. Use it when you",
+    "  know all or part of a table, schema, or database name (e.g., 'sales' finds",
+    "  'sales_2024', 'monthly_sales_report').",
+    "- `describe_tables`: returns table schemas, DBML definitions, SQL dialect",
+    "  guidelines, and example rows. Use it before writing SQL; all described",
+    "  tables must be from the same warehouse.",
+    "- `query`: executes SQL queries. Use it after `describe_tables`; the query",
+    "  must respect the provided SQL dialect and all tables in the query must be",
+    "  from the same warehouse.",
+    "",
+    "To use data warehouses properly, also search company data with",
+    "`semantic_search` for table documentation, semantic layers, or code that",
+    "defines how tables are built.",
+    "Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.",
+    "Warehouses are identified as 'warehouse-<dataSourceId>'.",
+    'A dataSourceId typically starts with the prefix "dts_".',
+  ].join("\n") + "\n";
 
 export const discoverKnowledgeSkill = {
   sId: "discover_knowledge",
