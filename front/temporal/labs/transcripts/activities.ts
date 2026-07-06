@@ -110,7 +110,6 @@ export async function retrieveNewTranscriptsActivity(
         localLogger
       );
       if (googleTranscriptsRes.isErr()) {
-        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
         throw new TranscriptNonRetryableError(
           `Error retrieving Google transcripts: ${googleTranscriptsRes.error.message}`
         );
