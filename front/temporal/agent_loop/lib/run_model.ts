@@ -115,15 +115,27 @@ function concatWithNewlineBoundary(
 function getReplayedToolNames(
   modelConversation: ModelConversationTypeMultiActions
 ): string[] {
-  return Array.from(
-    new Set(
-      modelConversation.messages
-        .filter((message) => message.role === "assistant")
-        .flatMap((message) => message.contents)
-        .filter((content) => content.type === "function_call")
-        .map((content) => content.value.name)
-    )
-  );
+  const toolNames = new Set<string>();
+
+  for (const message of modelConversation.messages) {
+    switch (message.role) {
+      case "assistant":
+        for (const content of message.contents) {
+          if (content.type === "function_call") {
+            toolNames.add(content.value.name);
+          }
+        }
+        break;
+      case "function":
+      case "compaction":
+      case "user":
+        break;
+      default:
+        assertNever(message);
+    }
+  }
+
+  return Array.from(toolNames);
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
