@@ -54,12 +54,17 @@ export const applyCouponPlugin = createPlugin({
 
     const { discountType } = coupon;
 
-    const result =
-      discountType === "seat"
-        ? await redeemCoupon(auth, { coupon })
-        : discountType === "credit_pool_top_up"
-          ? await redeemCreditsCoupon(auth, { coupon })
-          : assertNever(discountType); // exhaustive check — compile-time safety for future types
+    let result;
+    switch (discountType) {
+      case "seat":
+        result = await redeemCoupon(auth, { coupon });
+        break;
+      case "credit_pool_top_up":
+        result = await redeemCreditsCoupon(auth, { coupon });
+        break;
+      default:
+        return assertNever(discountType);
+    }
 
     if (result.isErr()) {
       const err = result.error;
@@ -70,10 +75,18 @@ export const applyCouponPlugin = createPlugin({
     }
 
     const redemption = result.value;
-    const typeLabel =
-      discountType === "seat"
-        ? "seat discount (subscription)"
-        : "usage credit top-up (AWU)";
+
+    let typeLabel;
+    switch (discountType) {
+      case "seat":
+        typeLabel = "seat discount (subscription)";
+        break;
+      case "credit_pool_top_up":
+        typeLabel = "usage credit top-up (AWU)";
+        break;
+      default:
+        return assertNever(discountType);
+    }
 
     return new Ok({
       display: "text",
