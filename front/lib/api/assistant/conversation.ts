@@ -67,6 +67,7 @@ import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
+import { isFreeOrigin } from "@app/lib/metronome/events";
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
@@ -2510,40 +2511,47 @@ async function checkMessagesLimit(
         },
       });
     }
-    if (blockedReason === "user_cap_reached") {
-      return new Err({
-        status_code: 403,
-        api_error: {
-          type: "user_cap_reached",
-          message: "You have reached your personal usage cap.",
-        },
-      });
-    }
-    if (blockedReason === "credits_exhausted") {
-      return new Err({
-        status_code: 403,
-        api_error: {
-          type: "credits_exhausted",
-          message: "Your workspace has run out of credits.",
-        },
-      });
-    }
+    // Free origins (e.g. Sidekick) produce only free, non-billable usage, so
+    // the credit-state caps and pool-balance concurrency limit don't apply — a
+    // capped user or a credit-exhausted workspace can still use them. The
+    // `no_seat` gate above is intentionally left outside this exemption since
+    // it reflects membership, not credit state.
+    if (!isFreeOrigin(context.origin)) {
+      if (blockedReason === "user_cap_reached") {
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "user_cap_reached",
+            message: "You have reached your personal usage cap.",
+          },
+        });
+      }
+      if (blockedReason === "credits_exhausted") {
+        return new Err({
+          status_code: 403,
+          api_error: {
+            type: "credits_exhausted",
+            message: "Your workspace has run out of credits.",
+          },
+        });
+      }
 
-    // Pre-emptive concurrency limit based on pool credit state. Prevents
-    // close-to-0 attacks where many requests are sent simultaneously before
-    // Metronome debits settle.
-    const poolLimit = await checkPoolCreditConcurrencyLimit(auth);
-    if (poolLimit.isLimitReached && poolLimit.limitType) {
-      return new Err({
-        status_code: 429,
-        api_error: {
-          type: poolLimit.limitType,
-          message: getMessageLimitErrorMessage({
-            limitType: poolLimit.limitType,
-            message: poolLimit.message,
-          }),
-        },
-      });
+      // Pre-emptive concurrency limit based on pool credit state. Prevents
+      // close-to-0 attacks where many requests are sent simultaneously before
+      // Metronome debits settle.
+      const poolLimit = await checkPoolCreditConcurrencyLimit(auth);
+      if (poolLimit.isLimitReached && poolLimit.limitType) {
+        return new Err({
+          status_code: 429,
+          api_error: {
+            type: poolLimit.limitType,
+            message: getMessageLimitErrorMessage({
+              limitType: poolLimit.limitType,
+              message: poolLimit.message,
+            }),
+          },
+        });
+      }
     }
 
     // Programmatic monthly cap: block programmatic calls when the cap is reached.
