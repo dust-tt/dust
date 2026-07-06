@@ -31,6 +31,7 @@ export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
 // Aliases for new packages
 export const BUSINESS_USD_PACKAGE_ALIAS = "business-usd";
 export const BUSINESS_EUR_PACKAGE_ALIAS = "business-eur";
+export const BUSINESS_GBP_PACKAGE_ALIAS = "business-gbp";
 
 export type MetronomePackageTier = "free" | "pro" | "business" | "enterprise";
 
