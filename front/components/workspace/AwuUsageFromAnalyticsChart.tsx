@@ -26,6 +26,7 @@ import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
   Chip,
@@ -91,13 +92,77 @@ function getColorClassName(
   return getIndexedColor(groupKey, allKeys);
 }
 
-function formatTimestamp(timestamp: number, granularity: Granularity): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function formatUtcMonthDay(date: Date): string {
+  return date.toLocaleDateString("en-US", {
     month: "short",
-    day: granularity === "month" ? undefined : "numeric",
-    year: granularity === "month" ? "numeric" : undefined,
+    day: "numeric",
     timeZone: "UTC",
   });
+}
+
+// Weekly and monthly buckets slide with the trailing window, so the first and
+// last buckets are usually truncated (e.g. on Jul 6, "last 30 days" covers
+// "Jun 6 - 30" and "Jul 1 - 6"). Label buckets with the exact dates covered,
+// clamped to the window, to avoid suggesting full calendar periods.
+export function formatBucketRange(
+  bucketStartMs: number,
+  granularity: "week" | "month",
+  days: number
+): string {
+  const now = new Date();
+  const todayMs = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  );
+  // Mirrors the server-side window from daysToInstantRange(days, "UTC").
+  const windowStartMs = todayMs - (days - 1) * DAY_MS;
+
+  const bucketStart = new Date(bucketStartMs);
+  const bucketEndMs =
+    granularity === "week"
+      ? bucketStartMs + 6 * DAY_MS
+      : Date.UTC(
+          bucketStart.getUTCFullYear(),
+          bucketStart.getUTCMonth() + 1,
+          0
+        );
+
+  const startDate = new Date(Math.max(bucketStartMs, windowStartMs));
+  const endDate = new Date(Math.min(bucketEndMs, todayMs));
+
+  if (startDate.getTime() >= endDate.getTime()) {
+    // Single day like "Jun 30"
+    return formatUtcMonthDay(startDate);
+  }
+  if (
+    startDate.getUTCFullYear() === endDate.getUTCFullYear() &&
+    startDate.getUTCMonth() === endDate.getUTCMonth()
+  ) {
+    // Several days in same month like "Jun 6 - 30"
+    return `${formatUtcMonthDay(startDate)} - ${endDate.getUTCDate()}`;
+  }
+  // Cross months period like "Jun 29 - July 5"
+  return `${formatUtcMonthDay(startDate)} - ${formatUtcMonthDay(endDate)}`;
+}
+
+function formatTimestamp(
+  timestamp: number,
+  granularity: Granularity,
+  days: number
+): string {
+  switch (granularity) {
+    case "day":
+      return formatUtcMonthDay(new Date(timestamp));
+    case "week":
+    case "month":
+      return formatBucketRange(timestamp, granularity, days);
+    default:
+      assertNeverAndIgnore(granularity);
+      return formatUtcMonthDay(new Date(timestamp));
+  }
 }
 
 export interface BaseAwuUsageFromAnalyticsChartProps {
@@ -253,6 +318,7 @@ interface UsageChartBarsProps {
   groupBy: AnalyticsGroupBy | undefined;
   groups: { groupKey: string; name: string }[];
   granularity: Granularity;
+  days: number;
   // Injected by the parent ResponsiveContainer (via cloneElement) and forwarded
   // to BarChart. Without forwarding, BarChart has no dimensions and renders
   // blank.
@@ -267,6 +333,7 @@ function UsageChartBars({
   groupBy,
   groups,
   granularity,
+  days,
   width,
   height,
 }: UsageChartBarsProps) {
@@ -286,7 +353,7 @@ function UsageChartBars({
         axisLine={false}
         tickMargin={8}
         minTickGap={16}
-        tickFormatter={(value) => formatTimestamp(value, granularity)}
+        tickFormatter={(value) => formatTimestamp(value, granularity, days)}
       />
       <YAxis
         className="text-xs text-muted-foreground"
@@ -302,6 +369,7 @@ function UsageChartBars({
             groupBy={groupBy}
             groups={groups}
             granularity={granularity}
+            days={days}
           />
         )}
         cursor={false}
@@ -576,6 +644,7 @@ export function BaseAwuUsageFromAnalyticsChart({
         groupBy={groupBy}
         groups={groups}
         granularity={granularity}
+        days={days}
       />
     </ChartContainer>
   );
@@ -676,9 +745,10 @@ function CreditTooltip(
     groupBy: AnalyticsGroupBy | undefined;
     groups: { groupKey: string; name: string }[];
     granularity: Granularity;
+    days: number;
   }
 ): JSX.Element | null {
-  const { active, payload, groupBy, groups, granularity } = props;
+  const { active, payload, groupBy, groups, granularity, days } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -721,7 +791,7 @@ function CreditTooltip(
 
   return (
     <ChartTooltipCard
-      title={formatTimestamp(data.timestamp, granularity)}
+      title={formatTimestamp(data.timestamp, granularity, days)}
       rows={rows}
     />
   );
