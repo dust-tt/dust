@@ -4,6 +4,7 @@ import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSou
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
+import { useBuilderEditorGate } from "@app/components/shared/BuilderEditorGateContext";
 import { getPublishingRestrictionForOwner } from "@app/lib/api/assistant/publishing_restrictions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isBuilder } from "@app/types/user";
@@ -17,6 +18,7 @@ import {
   EyeOff,
   SlackLogo,
   Users01,
+  UsersPlus,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
@@ -48,6 +50,8 @@ export function AccessSection() {
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
   const { featureFlags } = useFeatureFlags();
+  const { isEditorGateVisible, isAddingSelfAsEditor, onAddSelfAsEditor } =
+    useBuilderEditorGate();
 
   const {
     disabled: publishingToggleDisabled,
@@ -71,22 +75,43 @@ export function AccessSection() {
   return (
     <SettingSectionContainer title="Editors & Access">
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          icon={Users01}
-          label="Editors"
-          onClick={() => setIsEditorsOpen(true)}
-          type="button"
-        />
-        <ManageUsersPanel
-          isOpen={isEditorsOpen}
-          setIsOpen={setIsEditorsOpen}
-          owner={owner}
-          mode="editors-only"
-          editors={editors || []}
-          onEditorsChange={onChangeEditors}
-        />
+        {isEditorGateVisible ? (
+          <Button
+            variant="outline"
+            size="sm"
+            icon={UsersPlus}
+            label={
+              isAddingSelfAsEditor
+                ? "Becoming an editor..."
+                : "Become an editor"
+            }
+            isLoading={isAddingSelfAsEditor}
+            disabled={isAddingSelfAsEditor}
+            onClick={() => {
+              void onAddSelfAsEditor();
+            }}
+            type="button"
+          />
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Users01}
+              label="Editors"
+              onClick={() => setIsEditorsOpen(true)}
+              type="button"
+            />
+            <ManageUsersPanel
+              isOpen={isEditorsOpen}
+              setIsOpen={setIsEditorsOpen}
+              owner={owner}
+              mode="editors-only"
+              editors={editors || []}
+              onEditorsChange={onChangeEditors}
+            />
+          </>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

@@ -1,3 +1,4 @@
+import { BuilderEditorGateProvider } from "@app/components/shared/BuilderEditorGateContext";
 import {
   BuilderEditorGateMessage,
   BuilderEditorLoadErrorMessage,
@@ -53,8 +54,8 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
@@ -129,19 +130,8 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
-  // Editors currently set in the form, which reflect pending (unsaved) changes
-  // such as the user adding themselves through the Editors panel. Saving persists
-  // these editors in the same flow, so the gate must consider them alongside the
-  // already-persisted editors returned by the SWR hook.
-  const formEditors = useWatch({
-    control: form.control,
-    name: "editors",
-  });
-
   const isAdminExistingSkill = !!skill && isAdmin(owner);
-  const isCurrentUserEditor =
-    editors.some((editor) => editor.sId === user.sId) ||
-    (formEditors ?? []).some((editor) => editor.sId === user.sId);
+  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
   const isAdminNonEditor =
     isAdminExistingSkill &&
     !isEditorsLoading &&
@@ -153,7 +143,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
 
   useNavigationLock(isDirty && !isSaving);
 
-  const handleAddSelfAsEditor = async () => {
+  const handleAddSelfAsEditor = useCallback(async (): Promise<void> => {
     if (!skill || isAddingSelfAsEditor) {
       return;
     }
@@ -164,7 +154,16 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     } finally {
       setIsAddingSelfAsEditor(false);
     }
-  };
+  }, [skill, isAddingSelfAsEditor, updateSkillEditors, user.sId]);
+
+  const editorGateValue = useMemo(
+    () => ({
+      isEditorGateVisible: isAdminNonEditor,
+      isAddingSelfAsEditor,
+      onAddSelfAsEditor: handleAddSelfAsEditor,
+    }),
+    [isAdminNonEditor, isAddingSelfAsEditor, handleAddSelfAsEditor]
+  );
 
   const handleSubmit = async (data: SkillBuilderFormData) => {
     if (isEditorLocked) {
@@ -341,39 +340,43 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   return (
     <SkillBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <SkillVersionComparisonProvider>
-          <div
-            className={cn(
-              "flex h-dvh flex-row",
-              "bg-background text-foreground"
-            )}
-          >
-            {showSuggestionsPanel ? (
-              <ResizablePanelGroup
-                id="skill-builder-layout"
-                direction="horizontal"
-                className="h-full w-full"
-              >
-                <ResizablePanel defaultSize={65} minSize={40}>
-                  <div className="h-full w-full overflow-y-auto">
-                    {leftPanel}
-                  </div>
-                </ResizablePanel>
-
-                <>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+        <BuilderEditorGateProvider value={editorGateValue}>
+          <SkillVersionComparisonProvider>
+            <div
+              className={cn(
+                "flex h-dvh flex-row",
+                "bg-background text-foreground"
+              )}
+            >
+              {showSuggestionsPanel ? (
+                <ResizablePanelGroup
+                  id="skill-builder-layout"
+                  direction="horizontal"
+                  className="h-full w-full"
+                >
+                  <ResizablePanel defaultSize={65} minSize={40}>
                     <div className="h-full w-full overflow-y-auto">
-                      <SkillBuilderSuggestionsPanel disabled={isEditorLocked} />
+                      {leftPanel}
                     </div>
                   </ResizablePanel>
-                </>
-              </ResizablePanelGroup>
-            ) : (
-              leftPanel
-            )}
-          </div>
-        </SkillVersionComparisonProvider>
+
+                  <>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+                      <div className="h-full w-full overflow-y-auto">
+                        <SkillBuilderSuggestionsPanel
+                          disabled={isEditorLocked}
+                        />
+                      </div>
+                    </ResizablePanel>
+                  </>
+                </ResizablePanelGroup>
+              ) : (
+                leftPanel
+              )}
+            </div>
+          </SkillVersionComparisonProvider>
+        </BuilderEditorGateProvider>
       </FormProvider>
     </SkillBuilderFormContext.Provider>
   );

@@ -33,6 +33,7 @@ import {
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConfirmContext } from "@app/components/Confirm";
+import { BuilderEditorGateProvider } from "@app/components/shared/BuilderEditorGateContext";
 import {
   BuilderEditorGateMessage,
   BuilderEditorLoadErrorMessage,
@@ -75,7 +76,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 function processActionsFromStorage(
   actions: AgentBuilderMCPConfigurationWithId[]
@@ -355,20 +356,9 @@ export default function AgentBuilder({
     mcpServerViews,
   });
 
-  // Editors currently set in the form, which reflect pending (unsaved) changes
-  // such as the user adding themselves through the Editors panel. Saving persists
-  // these editors in the same request, so the gate must consider them alongside
-  // the already-persisted editors returned by the SWR hook.
-  const formEditors = useWatch({
-    control: form.control,
-    name: "agentSettings.editors",
-  });
-
   const isAdminExistingAgent =
     !!agentConfiguration && !duplicateAgentId && isAdmin;
-  const isCurrentUserEditor =
-    editors.some((editor) => editor.sId === user.sId) ||
-    (formEditors ?? []).some((editor) => editor.sId === user.sId);
+  const isCurrentUserEditor = editors.some((editor) => editor.sId === user.sId);
   const isAdminNonEditor =
     isAdminExistingAgent &&
     !isEditorsLoading &&
@@ -404,7 +394,7 @@ export default function AgentBuilder({
     });
   }, [isEditorsError, isEditorsLoading, sendNotification]);
 
-  const handleAddSelfAsEditor = async () => {
+  const handleAddSelfAsEditor = useCallback(async (): Promise<void> => {
     if (!agentConfiguration || isAddingSelfAsEditor) {
       return;
     }
@@ -415,7 +405,16 @@ export default function AgentBuilder({
     } finally {
       setIsAddingSelfAsEditor(false);
     }
-  };
+  }, [agentConfiguration, isAddingSelfAsEditor, updateEditors, user.sId]);
+
+  const editorGateValue = useMemo(
+    () => ({
+      isEditorGateVisible: isAdminNonEditor,
+      isAddingSelfAsEditor,
+      onAddSelfAsEditor: handleAddSelfAsEditor,
+    }),
+    [isAdminNonEditor, isAddingSelfAsEditor, handleAddSelfAsEditor]
+  );
 
   useEffect(() => {
     const createdParam = router.query.showCreatedDialog;
@@ -663,41 +662,43 @@ export default function AgentBuilder({
           agentConfigurationId={suggestionsAgentId}
           disabled={isEditorLocked}
         >
-          <AgentBuilderContent
-            agentConfiguration={agentConfiguration}
-            pendingAgentId={pendingAgentId}
-            title={title}
-            handleCancel={handleCancel}
-            saveLabel={saveLabel}
-            handleSave={handleSave}
-            isSaveDisabled={isSaveDisabled}
-            isEditorLocked={isEditorLocked}
-            isEditorLoadErrorVisible={isAdminExistingAgent && isEditorsError}
-            isEditorGateVisible={isAdminNonEditor}
-            isAddingSelfAsEditor={isAddingSelfAsEditor}
-            onAddSelfAsEditor={() => {
-              void handleAddSelfAsEditor();
-            }}
-            onRetryEditors={() => {
-              void mutateEditors();
-            }}
-            isTriggersLoading={isTriggersLoading}
-            dialogProps={dialogProps}
-            isCreatedDialogOpen={isCreatedDialogOpen}
-            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-            isNewAgent={!!duplicateAgentId || !agentConfiguration}
-            isDuplicate={!!duplicateAgentId}
-            templateInfo={
-              assistantTemplate
-                ? {
-                    templateId: assistantTemplate.sId,
-                    sidekickInstructions:
-                      assistantTemplate.sidekickInstructions,
-                  }
-                : undefined
-            }
-            conversationId={conversationId}
-          />
+          <BuilderEditorGateProvider value={editorGateValue}>
+            <AgentBuilderContent
+              agentConfiguration={agentConfiguration}
+              pendingAgentId={pendingAgentId}
+              title={title}
+              handleCancel={handleCancel}
+              saveLabel={saveLabel}
+              handleSave={handleSave}
+              isSaveDisabled={isSaveDisabled}
+              isEditorLocked={isEditorLocked}
+              isEditorLoadErrorVisible={isAdminExistingAgent && isEditorsError}
+              isEditorGateVisible={isAdminNonEditor}
+              isAddingSelfAsEditor={isAddingSelfAsEditor}
+              onAddSelfAsEditor={() => {
+                void handleAddSelfAsEditor();
+              }}
+              onRetryEditors={() => {
+                void mutateEditors();
+              }}
+              isTriggersLoading={isTriggersLoading}
+              dialogProps={dialogProps}
+              isCreatedDialogOpen={isCreatedDialogOpen}
+              setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+              isNewAgent={!!duplicateAgentId || !agentConfiguration}
+              isDuplicate={!!duplicateAgentId}
+              templateInfo={
+                assistantTemplate
+                  ? {
+                      templateId: assistantTemplate.sId,
+                      sidekickInstructions:
+                        assistantTemplate.sidekickInstructions,
+                    }
+                  : undefined
+              }
+              conversationId={conversationId}
+            />
+          </BuilderEditorGateProvider>
         </SidekickSuggestionsProvider>
       </FormProvider>
     </AgentBuilderFormContext.Provider>
