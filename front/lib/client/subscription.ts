@@ -4,7 +4,6 @@ import type { KillSwitchType } from "@app/lib/poke/types";
 import { useGeolocation } from "@app/lib/swr/geo";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useKillSwitches } from "../swr/kill";
 
 // If mention the price of the PRO plan in a few different places in the code base,
@@ -51,23 +50,6 @@ export function useIsMetronomeCheckout(): boolean {
   return computeIsMetronomeCheckout({ featureFlags, killSwitches });
 }
 
-export function formatPriceWithCurrency(
-  price: number,
-  currency: SupportedCurrency
-): string {
-  switch (currency) {
-    case "usd":
-      return `$${price}`;
-    case "eur":
-      return `${price}€`;
-    case "gbp":
-      return `£${price}`;
-    default:
-      assertNeverAndIgnore(currency);
-      return `$${price}`;
-  }
-}
-
 /**
  * Hook that resolves the user's billing currency from IP geolocation.
  *
@@ -101,7 +83,7 @@ export function useUserBillingCurrency(): SupportedCurrency {
  */
 export function usePriceWithCurrency(price: number): string {
   const currency = useUserBillingCurrency();
-  return formatPriceWithCurrency(price, currency);
+  return getPriceAsString({ currency, priceInCents: price * 100 });
 }
 
 export interface BillingCycle {
@@ -194,6 +176,8 @@ export const getPriceAsString = ({
       return `$${price}`;
     case "eur":
       return `${price}€`;
+    case "gbp":
+      return `£${price}`;
     default:
       return `${price}${currency}`;
   }

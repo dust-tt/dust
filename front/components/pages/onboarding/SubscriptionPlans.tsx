@@ -8,7 +8,7 @@ import {
   CP_MAX_SEAT_COST_YEARLY,
   CP_PRO_SEAT_COST_MONTHLY,
   CP_PRO_SEAT_COST_YEARLY,
-  formatPriceWithCurrency,
+  getPriceAsString,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
 import {
@@ -218,7 +218,7 @@ export function PaidPlanCards({
         name={seatTypeDisplayName("pro")}
         credits={PRO_SEAT_MONTHLY_AWU_CREDITS.toLocaleString()}
         creditsLabel="credits/mo"
-        priceLabel={`${formatPriceWithCurrency(proSeatCost, currency)}/seat/mo · billed ${period}`}
+        priceLabel={`${getPriceAsString({ currency, priceInCents: proSeatCost * 100 })}/seat/mo · billed ${period}`}
         features={["Refills every month", "Full access to every Dust feature"]}
         action={
           <Button
@@ -242,7 +242,7 @@ export function PaidPlanCards({
         name={seatTypeDisplayName("max")}
         credits={MAX_SEAT_MONTHLY_AWU_CREDITS.toLocaleString()}
         creditsLabel="credits/mo"
-        priceLabel={`${formatPriceWithCurrency(maxSeatCost, currency)}/seat/mo · billed ${period}`}
+        priceLabel={`${getPriceAsString({ currency, priceInCents: maxSeatCost * 100 })}/seat/mo · billed ${period}`}
         features={["Refills every month", "Full access to every Dust feature"]}
         action={
           <Button
