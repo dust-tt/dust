@@ -444,6 +444,14 @@ type FileFormat = {
    * - Any file type that could contain executable code
    */
   isSafeToDisplay: boolean;
+  /**
+   * When true, this format opens in the resizable conversation side panel
+   * (like frames) rather than the cramped file preview modal. This is the
+   * source of truth for the open-in-side-panel behavior per content type.
+   * Note: the side panel preview relies on the path-based conversion route, so
+   * a file path is still required at the call site.
+   */
+  opensInSidePanel?: boolean;
   // When set, restricts which upload use cases expose this format in their file picker.
   // Possible values: conversation, avatar, tool_output, skill_attachment, upsert_document,
   // folders_document, upsert_table, project_context. Omit to allow in all contexts.
@@ -544,11 +552,13 @@ export const FILE_FORMATS = {
     cat: "data",
     exts: [".ppt", ".pptx"],
     isSafeToDisplay: true,
+    opensInSidePanel: true,
   },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
     cat: "data",
     exts: [".ppt", ".pptx"],
     isSafeToDisplay: true,
+    opensInSidePanel: true,
   },
   "application/pdf": { cat: "data", exts: [".pdf"], isSafeToDisplay: true },
   "application/vnd.google-apps.document": {
@@ -1034,6 +1044,10 @@ export function isPdfContentType(contentType: string): boolean {
 
 export function isMarkdownContentType(contentType: string): boolean {
   return contentType === "text/markdown";
+}
+
+export function opensInSidePanel(contentType: string): boolean {
+  return getFileFormat(contentType)?.opensInSidePanel ?? false;
 }
 
 /**

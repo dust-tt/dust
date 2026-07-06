@@ -1,7 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -76,10 +76,17 @@ function reducer(state: State, action: Action): State {
 
 interface PDFViewerProps {
   url: string;
+  // When true, pages render at the container width (no manual zoom controls).
+  // Useful in narrow containers like the side panel, where slides should fill
+  // the available space rather than render at a fixed zoom level.
+  isFullWidth?: boolean;
 }
 
-export function PDFViewer({ url }: PDFViewerProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+export function PDFViewer({ url, isFullWidth = false }: PDFViewerProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const resizeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const [state, dispatch] = useReducer(reducer, initialState);
   const { isFetching, hasError, objectUrl, numPages, currentPage, zoomIdx } =
     state;
@@ -152,8 +159,62 @@ export function PDFViewer({ url }: PDFViewerProps) {
     return () => observer.disconnect();
   }, [numPages]);
 
+  // Callback ref on the scroll container: keeps `scrollRef` in sync for the
+  // IntersectionObserver above and, when rendering full width, measures the
+  // container via a ResizeObserver. Measuring here (in response to the element
+  // mounting/resizing) instead of in an effect keyed on props avoids adjusting
+  // state on prop changes (react-doctor/no-adjust-state-on-prop-change).
+  const setScrollNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollRef.current = node;
+
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      if (resizeDebounceRef.current) {
+        clearTimeout(resizeDebounceRef.current);
+        resizeDebounceRef.current = null;
+      }
+
+      if (!node || !isFullWidth) {
+        return;
+      }
+
+      // The container starts hidden (width 0) until the document loads; the
+      // observer picks up the real width once it becomes visible, so only
+      // commit positive widths and let `pageWidth` fall back until then.
+      if (node.clientWidth > 0) {
+        setContainerWidth(node.clientWidth);
+      }
+
+      // Re-rasterizing the PDF canvas on every resize tick flickers, so debounce
+      // and only commit the new width once the resize settles.
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries.at(0);
+        if (!entry) {
+          return;
+        }
+        const { width } = entry.contentRect;
+        if (width <= 0) {
+          return;
+        }
+        if (resizeDebounceRef.current) {
+          clearTimeout(resizeDebounceRef.current);
+        }
+        resizeDebounceRef.current = setTimeout(
+          () => setContainerWidth(width),
+          20
+        );
+      });
+      observer.observe(node);
+      resizeObserverRef.current = observer;
+    },
+    [isFullWidth]
+  );
+
   const zoom = ZOOM_LEVELS[zoomIdx] ?? 1.0;
-  const pageWidth = Math.round(BASE_PAGE_WIDTH * zoom);
+  const pageWidth = isFullWidth
+    ? (containerWidth ?? BASE_PAGE_WIDTH)
+    : Math.round(BASE_PAGE_WIDTH * zoom);
 
   const isLoading = isFetching || (!hasError && numPages === null);
 
@@ -178,34 +239,36 @@ export function PDFViewer({ url }: PDFViewerProps) {
               <span className="text-xs text-muted-foreground">
                 Page {currentPage} of {numPages}
               </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  label="-"
-                  disabled={zoomIdx <= 0}
-                  onClick={() => dispatch({ type: "zoom_out" })}
-                  tooltip="Zoom out"
-                />
-                <span className="w-10 text-center text-xs text-muted-foreground">
-                  {Math.round(zoom * 100)}%
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  label="+"
-                  disabled={zoomIdx >= ZOOM_LEVELS.length - 1}
-                  onClick={() => dispatch({ type: "zoom_in" })}
-                  tooltip="Zoom in"
-                />
-              </div>
+              {!isFullWidth && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    label="-"
+                    disabled={zoomIdx <= 0}
+                    onClick={() => dispatch({ type: "zoom_out" })}
+                    tooltip="Zoom out"
+                  />
+                  <span className="w-10 text-center text-xs text-muted-foreground">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    label="+"
+                    disabled={zoomIdx >= ZOOM_LEVELS.length - 1}
+                    onClick={() => dispatch({ type: "zoom_in" })}
+                    tooltip="Zoom in"
+                  />
+                </div>
+              )}
             </div>
           )}
           <div
-            ref={scrollRef}
+            ref={setScrollNode}
             className={
               numPages !== null
-                ? "flex-1 min-h-0 overflow-y-auto rounded-lg"
+                ? "flex-1 min-h-0 overflow-auto rounded-lg"
                 : "hidden"
             }
           >
@@ -218,7 +281,10 @@ export function PDFViewer({ url }: PDFViewerProps) {
               loading={null}
               error={null}
             >
-              <div className="flex flex-col items-center gap-4 py-4">
+              {/* w-fit + min-w-full keeps pages centered when they fit, but
+                  anchors their left edge to the scroll origin when a page is
+                  wider than the viewport, so the left edge stays reachable. */}
+              <div className="flex w-fit min-w-full flex-col items-center gap-4 py-4">
                 {Array.from({ length: numPages ?? 0 }, (_, i) => (
                   <div key={i + 1} data-page-number={i + 1}>
                     <Page

@@ -1,6 +1,6 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
-import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { AlertCircle, ContentMessage } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -18,7 +18,7 @@ export function UnsupportedContentRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <InteractiveContentHeader onClose={closePanel} />
+      <ConversationSidePanelHeader onClose={closePanel} />
 
       <div className="flex-1 overflow-hidden">
         <CenteredState>

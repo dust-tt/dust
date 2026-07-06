@@ -2,15 +2,15 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Button, XClose } from "@dust-tt/sparkle";
 import type React from "react";
 
-interface InteractiveContentHeaderProps {
+interface ConversationSidePanelHeaderProps {
   children?: React.ReactNode;
   onClose?: () => void;
 }
 
-export function InteractiveContentHeader({
+export function ConversationSidePanelHeader({
   children,
   onClose,
-}: InteractiveContentHeaderProps) {
+}: ConversationSidePanelHeaderProps) {
   return (
     <AppLayoutTitle className="bg-panel-background @container">
       <div className="flex h-full items-center">

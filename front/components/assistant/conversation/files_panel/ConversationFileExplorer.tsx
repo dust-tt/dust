@@ -1,6 +1,9 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
-import type { FileExplorerPathEntry } from "@app/components/file_explorer/types";
+import type {
+  FileEntry,
+  FileExplorerPathEntry,
+} from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -11,6 +14,7 @@ import {
   type ConversationWithoutContentType,
   isPodConversation,
 } from "@app/types/assistant/conversation";
+import { opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, XClose } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
@@ -69,6 +73,17 @@ export function ConversationFileExplorer({
     [openPanel]
   );
 
+  const onOpenInPanel = useCallback(
+    (entry: FileEntry): boolean => {
+      if (opensInSidePanel(entry.contentType)) {
+        openPanel({ type: "file_preview", filePath: entry.path });
+        return true;
+      }
+      return false;
+    },
+    [openPanel]
+  );
+
   return (
     <div className="flex h-panel min-h-0 flex-col">
       <AppLayoutTitle>
@@ -98,6 +113,7 @@ export function ConversationFileExplorer({
           getFileUrl={getFileUrl}
           onFileDownload={onFileDownload}
           onOpenInteractive={onOpenInteractive}
+          onOpenInPanel={onOpenInPanel}
           owner={owner}
           virtualScopeRoots={isPod ? POD_CONVERSATION_SCOPE_ROOTS : undefined}
         />
