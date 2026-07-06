@@ -8,6 +8,7 @@ import {
 import type {
   GetMetronomeInvoiceLinesResponseBody,
   GetMetronomeInvoiceResponseBody,
+  MetronomeInvoiceLineItem,
   MetronomeInvoiceSummary,
 } from "@app/lib/metronome/invoice";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -58,6 +59,48 @@ async function findCurrentInvoice(
     return startMs <= nowMs && nowMs < endMs;
   });
   return new Ok(invoice);
+}
+
+// When a credit partially covers a charge, Metronome splits the charge line
+// into a covered portion (fractional quantity, carrying
+// applied_commit_or_credit) and the uncovered remainder. Similarly, a single
+// coupon applied to several products yields one applied-credit line per
+// product. Merge those splits back so the invoice reads as one line per
+// charge and one line per coupon/credit.
+function mergeLineItems(
+  lineItems: MetronomeInvoiceLineItem[]
+): MetronomeInvoiceLineItem[] {
+  const merged: MetronomeInvoiceLineItem[] = [];
+  const indexByKey = new Map<string, number>();
+  for (const item of lineItems) {
+    // Lines merge only when everything but the quantity/total matches (for
+    // applied-credit lines, unit price and quantity are always null, so this
+    // amounts to merging by coupon/credit name and period).
+    const key = JSON.stringify([
+      item.name,
+      item.type,
+      item.unitPriceCents,
+      item.isProrated,
+      item.periodStartMs,
+      item.periodEndMs,
+    ]);
+    const index = indexByKey.get(key);
+    if (index === undefined) {
+      indexByKey.set(key, merged.length);
+      merged.push(item);
+      continue;
+    }
+    const existing = merged[index];
+    merged[index] = {
+      ...existing,
+      quantity:
+        existing.quantity !== null && item.quantity !== null
+          ? existing.quantity + item.quantity
+          : null,
+      totalCents: existing.totalCents + item.totalCents,
+    };
+  }
+  return merged;
 }
 
 // Mounted at /api/w/:wId/metronome/invoice.
@@ -181,13 +224,15 @@ app.get(
 
     const currency = creditTypeIdToCurrency(invoice.credit_type.id);
 
-    const lineItems = invoice.line_items
+    const mappedLineItems = invoice.line_items
       .filter((item) => {
         const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
         return !!currency && !!itemCurrency && itemCurrency === currency;
       })
-      .filter((item) => item.total >= 0.01)
-      .filter((item) => !item.applied_commit_or_credit)
+      // Keep negative lines: applied commits/credits (coupons, free credits,
+      // commitments) explain why the invoice total is lower than the sum of
+      // the charge lines. Only drop sub-cent noise.
+      .filter((item) => Math.abs(item.total) >= 0.01)
       .map((item) => {
         const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
         return {
@@ -212,7 +257,7 @@ app.get(
         };
       });
 
-    return ctx.json({ currency, lineItems });
+    return ctx.json({ currency, lineItems: mergeLineItems(mappedLineItems) });
   }
 );
 

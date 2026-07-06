@@ -5,6 +5,7 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { MetronomeInvoiceLineItem } from "@app/lib/metronome/invoice";
+import { isAppliedCreditLineItem } from "@app/lib/metronome/invoice";
 import {
   FREE_SEAT_PRODUCT_NAME,
   MAX_SEAT_PRODUCT_NAME,
@@ -223,9 +224,19 @@ export function NextInvoicePreview() {
     });
   };
 
-  // Group items by name, preserving insertion order.
+  // Applied commits/credits (coupons, free credits, commitments) are negative
+  // lines rendered after the charges, so a discounted — possibly 0.00 — total
+  // remains understandable.
+  const chargeItems = invoiceLines.lineItems.filter(
+    (item) => !isAppliedCreditLineItem(item)
+  );
+  const creditItems = invoiceLines.lineItems.filter((item) =>
+    isAppliedCreditLineItem(item)
+  );
+
+  // Group charge items by name, preserving insertion order.
   const groups = new Map<string, MetronomeInvoiceLineItem[]>();
-  for (const item of invoiceLines.lineItems) {
+  for (const item of chargeItems) {
     const existing = groups.get(item.name);
     if (existing) {
       existing.push(item);
@@ -261,16 +272,34 @@ export function NextInvoicePreview() {
     }
   }
 
-  const totalCents = invoiceLines.lineItems.reduce(
+  const chargesTotalCents = chargeItems.reduce(
     (sum, item) => sum + item.totalCents,
     0
   );
+  const creditsTotalCents = creditItems.reduce(
+    (sum, item) => sum + item.totalCents,
+    0
+  );
+
+  if (creditItems.length > 0) {
+    rows.push({
+      name: "Subtotal",
+      period: null,
+      quantity: "",
+      cost: "",
+      subtotal: formatAmount(chargesTotalCents, currency),
+    });
+    for (const item of creditItems) {
+      rows.push(formatLineItem(item, currency));
+    }
+  }
+
   rows.push({
     name: "Total",
     period: null,
     quantity: "",
     cost: "",
-    subtotal: formatAmount(totalCents, currency),
+    subtotal: formatAmount(chargesTotalCents + creditsTotalCents, currency),
     isBold: true,
   });
 
