@@ -24,14 +24,15 @@ const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   "folder or data source matters as a collection, when search feels too broad, " +
   "or when nearby sibling documents may be relevant.\n" +
   "- `find`: best for title-based discovery. Use it when the user remembers a " +
-  "folder, document, page, or section name, or when a named area should be " +
-  "located before reading or browsing around it.\n" +
+  "full or partial folder, document, page, or section name, or when a named " +
+  "area should be located before reading or browsing around it.\n" +
   "- `locate_in_tree`: best for orientation and provenance. Use it after search " +
   "or find results to understand where an item lives, disambiguate similarly " +
   "named documents, or cite the source location.\n" +
   "- `cat`: best for reading a known document or page. Use it for exact " +
   "wording, source checks, factual verification, and details that search " +
-  "snippets may omit.\n" +
+  "snippets may omit. It is a follow-up tool, not the right starting point " +
+  "for broad discovery.\n" +
   "\n" +
   "Data warehouses (tables and schemas):\n" +
   "- Warehouse content is organized as warehouse -> database -> schema -> " +
@@ -43,12 +44,14 @@ const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   "- `list`: best for mapping an unfamiliar warehouse. Use it to understand " +
   "which databases, schemas, and tables exist before choosing a direction.\n" +
   "- `find`: best for name-based discovery. Use it when the user mentions a " +
-  "table, schema, database, or business noun that may appear in object names.\n" +
+  "full or partial table, schema, database, or business noun that may appear " +
+  "in object names.\n" +
   "- `describe_tables`: best for deciding whether tables fit the question. It " +
-  "gives columns, types, examples, and SQL dialect guidance before querying.\n" +
+  "gives columns, types, examples, and SQL dialect guidance before querying. " +
+  "Tables described together should come from the same warehouse.\n" +
   "- `query`: best for computing answers from known tables: counts, " +
   "aggregates, joins, filters, rankings, trends, and other SQL-backed " +
-  "analysis.\n" +
+  "analysis. Tables queried together should come from the same warehouse.\n" +
   "\n" +
   "Warehouse questions often need business context. Pair warehouse tools with " +
   "`semantic_search` when table documentation, semantic layers, metric " +
