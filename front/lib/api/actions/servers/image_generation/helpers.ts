@@ -11,7 +11,10 @@ import {
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
+import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -25,11 +28,14 @@ import {
   MAX_FILE_SIZES,
   stripFileExtension,
 } from "@app/types/files";
+import { isCreditPricedPlan } from "@app/types/plan";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
+import { randomUUID } from "crypto";
 
 export type ImageGenerationErrorCode =
   | "api_error"
@@ -152,8 +158,15 @@ export async function checkImageGenerationRateLimit(
   workspace: WorkspaceType,
   providerId: ModelProviderIdType
 ): Promise<Ok<void> | Err<MCPError>> {
-  const { limits } = auth.getNonNullablePlan();
-  const { maxImagesPerWeek } = limits.capabilities.images;
+  const plan = auth.getNonNullablePlan();
+
+  // Credit-priced plans have no weekly image cap: every image is metered and
+  // paid for in credits, so credits are the throttle.
+  if (isCreditPricedPlan(plan)) {
+    return new Ok(undefined);
+  }
+
+  const { maxImagesPerWeek } = plan.limits.capabilities.images;
 
   const remaining = await rateLimiter({
     key: `${IMAGE_GENERATION_RATE_LIMITER_KEY}_${workspace.sId}`,
@@ -181,25 +194,69 @@ export async function checkImageGenerationRateLimit(
   return new Ok(undefined);
 }
 
-export function trackTokenUsage({
-  inputTokens,
-  outputTokens,
-  providerId,
-}: {
-  inputTokens: number;
-  outputTokens: number;
-  providerId: ModelProviderIdType;
-}): void {
-  getStatsDClient().increment(
-    "tools.image_generation.usage.input_tokens",
-    inputTokens,
-    [`provider:${providerId}`]
-  );
-  getStatsDClient().increment(
-    "tools.image_generation.usage.output_tokens",
-    outputTokens,
-    [`provider:${providerId}`]
-  );
+/**
+ * Record the image model's usage as a run usage, like any LLM call. The run is
+ * attached to the action's stepContext so the agent loop accumulates it into
+ * the agent message runIds — from there the existing usage pipeline (Metronome
+ * llm_usage events, credit cost, programmatic usage, analytics) picks it up
+ * like any other LLM usage of the message.
+ */
+export async function recordImageGenerationRunUsage(
+  auth: Authenticator,
+  {
+    usageMetadata,
+    modelId,
+    providerId,
+    actionId,
+  }: {
+    usageMetadata: { inputTokens: number; outputTokens: number };
+    modelId: ImageModelIdType;
+    providerId: ModelProviderIdType;
+    actionId: ModelId | null;
+  }
+): Promise<string> {
+  const costMicroUsd = computeTokensCostForUsageInMicroUsd({
+    modelId,
+    promptTokens: usageMetadata.inputTokens,
+    completionTokens: usageMetadata.outputTokens,
+    cachedTokens: null,
+  });
+
+  const dustRunId = createLLMTraceId(randomUUID());
+  const run = await RunResource.makeNew({
+    appId: null,
+    dustRunId,
+    runType: "deploy",
+    useWorkspaceCredentials: false,
+    workspaceId: auth.getNonNullableWorkspace().id,
+  });
+
+  await run.recordRunUsage(auth, [
+    {
+      providerId,
+      modelId,
+      promptTokens: usageMetadata.inputTokens,
+      completionTokens: usageMetadata.outputTokens,
+      cachedTokens: null,
+      costMicroUsd,
+      isBatch: false,
+    },
+  ]);
+
+  if (actionId !== null) {
+    const action = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      actionId
+    );
+    if (action) {
+      await action.updateStepContext({
+        ...action.stepContext,
+        runIds: [...(action.stepContext.runIds ?? []), dustRunId],
+      });
+    }
+  }
+
+  return dustRunId;
 }
 
 export async function uploadAndFormatImageResponse(

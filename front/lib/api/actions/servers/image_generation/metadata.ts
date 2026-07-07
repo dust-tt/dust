@@ -78,7 +78,9 @@ export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
       running: "Generating image",
       done: "Generate image",
     },
-    toolCostCategory: "advanced",
+    // Standard tool cost: the image model's actual cost is billed separately
+    // as LLM usage (see recordImageGenerationRunUsage in helpers.ts).
+    toolCostCategory: "basic",
     freeUsage: false,
   },
 });

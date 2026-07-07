@@ -4,13 +4,16 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { ToolContextType } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  type ToolContextType,
+} from "@app/lib/actions/types";
 import {
   checkImageGenerationRateLimit,
   computeImageGenerationCostDetails,
   processImageFileIds,
+  recordImageGenerationRunUsage,
   sendImageProgressNotification,
-  trackTokenUsage,
   uploadAndFormatImageResponse,
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
@@ -150,9 +153,14 @@ export function createImageGenerationTools(
 
       const { images, usageMetadata } = generationResult.value;
 
-      trackTokenUsage({
-        ...usageMetadata,
+      await recordImageGenerationRunUsage(auth, {
+        usageMetadata,
+        modelId: imageGenerationModel.modelId,
         providerId: imageGenerationModel.providerId,
+        actionId:
+          toolContext && isAgentLoopRunContext(toolContext.runContext)
+            ? toolContext.runContext.currentAction.id
+            : null,
       });
 
       const { inputTokens, outputTokens, totalTokens, costDetails } =

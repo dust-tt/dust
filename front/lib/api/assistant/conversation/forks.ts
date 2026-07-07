@@ -41,6 +41,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { isModelId } from "@app/types/assistant/models/models";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
@@ -109,7 +110,9 @@ async function getForkCompactionModel(
       ? (await sourceMessageRun.run.listRunUsages(auth))[0]
       : null;
 
-  if (sourceUsage) {
+  // Run usages may belong to image models (e.g. image generation runs), which
+  // cannot be used for compaction — fall back to the small model in that case.
+  if (sourceUsage && isModelId(sourceUsage.modelId)) {
     return {
       providerId: sourceUsage.providerId,
       modelId: sourceUsage.modelId,

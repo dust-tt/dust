@@ -34,6 +34,8 @@ if (isDevelopment() || isTest()) {
     maxAwuCredits: -1,
     maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
+    // Ignored at enforcement: credit-priced plans have no weekly image cap
+    // (see checkImageGenerationRateLimit).
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 100,
     maxFreeUsersInWorkspace: 100,
@@ -71,6 +73,8 @@ if (isDevelopment() || isTest()) {
     maxAwuCredits: -1,
     maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
+    // Ignored at enforcement: credit-priced plans have no weekly image cap
+    // (see checkImageGenerationRateLimit).
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
     maxFreeUsersInWorkspace: -1,
@@ -110,6 +114,8 @@ if (isDevelopment() || isTest()) {
     maxFreeUsersInWorkspace: 5,
     maxLifetimeFreeUsersInWorkspace: 5,
     maxVaultsInWorkspace: 5,
+    // Ignored at enforcement: credit-priced plans have no weekly image cap
+    // (see checkImageGenerationRateLimit).
     maxImagesPerWeek: 100,
     isSlackbotAllowed: true,
     isManagedConfluenceAllowed: true,
@@ -139,6 +145,8 @@ if (isDevelopment() || isTest()) {
     maxAwuCredits: -1,
     maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
+    // Ignored at enforcement: credit-priced plans have no weekly image cap
+    // (see checkImageGenerationRateLimit).
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: -1,
     maxFreeUsersInWorkspace: -1,
