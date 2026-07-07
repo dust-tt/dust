@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Type-only import: erased at compile time, so front never bundles cli code and the
 // runner's zod 4 never meets front's zod 3.
-import type { FunctionStateManifest } from "../../../../cli/dust-sandbox/functions-runner/manifest_types";
+import type { FunctionStateManifest as RunnerFunctionStateManifest } from "../../../../cli/dust-sandbox/functions-runner/manifest_types";
 
 // Zod parser for manifest.v1, produced by the dsbx build runner. The shape is authored
 // once, in cli/dust-sandbox/functions-runner/manifest_types.ts; the assertions at the
@@ -48,7 +48,7 @@ const databaseManifestSchema = z.object({
   tables: z.record(safeNameKey, manifestTableSchema),
 });
 
-export const functionManifestsSchema = z.object({
+export const functionStateManifestSchema = z.object({
   version: z.literal(1),
   databases: z.record(
     z.string().regex(POD_DATABASE_NAME_REGEX),
@@ -60,12 +60,16 @@ export type ManifestColumn = z.infer<typeof manifestColumnSchema>;
 export type ManifestIndex = z.infer<typeof manifestIndexSchema>;
 export type ManifestTable = z.infer<typeof manifestTableSchema>;
 export type DatabaseManifest = z.infer<typeof databaseManifestSchema>;
-export type FunctionManifests = z.infer<typeof functionManifestsSchema>;
+export type FunctionStateManifest = z.infer<typeof functionStateManifestSchema>;
 
 // Compile-time drift tripwires: the zod mirror must infer exactly the runner's manifest
 // shape, in both directions.
 type Extends<A, B> = A extends B ? true : false;
-const _mirrorCoversRunner: Extends<FunctionStateManifest, FunctionManifests> =
-  true;
-const _runnerCoversMirror: Extends<FunctionManifests, FunctionStateManifest> =
-  true;
+const _mirrorCoversRunner: Extends<
+  RunnerFunctionStateManifest,
+  FunctionStateManifest
+> = true;
+const _runnerCoversMirror: Extends<
+  FunctionStateManifest,
+  RunnerFunctionStateManifest
+> = true;

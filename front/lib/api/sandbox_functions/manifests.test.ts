@@ -1,5 +1,5 @@
 import {
-  functionManifestsSchema,
+  functionStateManifestSchema,
   POD_DATABASE_NAME_REGEX,
 } from "@app/lib/api/sandbox_functions/manifests";
 import { describe, expect, it } from "vitest";
@@ -17,7 +17,7 @@ describe("manifest.v1 mirror", () => {
   });
 
   it("parses a valid manifest", () => {
-    const result = functionManifestsSchema.safeParse({
+    const result = functionStateManifestSchema.safeParse({
       version: 1,
       databases: {
         chat: {
@@ -45,7 +45,7 @@ describe("manifest.v1 mirror", () => {
 
   it("rejects every runner-reserved object key as a table name", () => {
     for (const key of RESERVED_OBJECT_KEYS) {
-      const result = functionManifestsSchema.safeParse({
+      const result = functionStateManifestSchema.safeParse({
         version: 1,
         databases: {
           chat: {

@@ -4,8 +4,8 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
-import type { FunctionManifests } from "@app/lib/api/sandbox_functions/manifests";
-import { functionManifestsSchema } from "@app/lib/api/sandbox_functions/manifests";
+import type { FunctionStateManifest } from "@app/lib/api/sandbox_functions/manifests";
+import { functionStateManifestSchema } from "@app/lib/api/sandbox_functions/manifests";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";
@@ -26,7 +26,7 @@ export interface SandboxFunctionBuildResult {
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
   // Per-database manifests (manifest.v1); null when the function declares no databases.
-  manifests: FunctionManifests | null;
+  manifests: FunctionStateManifest | null;
 }
 
 // dsbx writes the bundle and schema to files (sandbox stdout can be truncated) and prints only
@@ -51,7 +51,7 @@ const functionSchemaFileSchema = z.object({
   description: z.string().nullable(),
   input_schema: jsonSchemaValue.nullable(),
   output_schema: jsonSchemaValue.nullable(),
-  databases: functionManifestsSchema.optional(),
+  databases: functionStateManifestSchema.optional(),
 });
 
 // Manifest rejections (manifest.v1 typed build errors) map to the model-correctable
