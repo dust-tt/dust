@@ -1636,7 +1636,12 @@ export async function finalizeInvoice(
   const stripe = getStripeClient();
 
   try {
-    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+    // Explicitly re-enable auto_advance so Stripe proceeds with its
+    // post-finalization workflow (auto-charge or auto-send), in case the
+    // invoice had it disabled (e.g. frozen while editing a Metronome draft).
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, {
+      auto_advance: true,
+    });
     return new Ok(finalizedInvoice);
   } catch (error) {
     logger.error(
