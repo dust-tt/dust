@@ -50,6 +50,7 @@ const SwitchContractFormSchema = z
     metronomePackageId: z.string().min(1, "Required"),
     planCode: z.string().min(1, "Required"),
     hubspotDealId: z.string().optional(),
+    purchaseOrderId: z.string().optional(),
     startingAt: z.string().optional(),
     // How the enterprise contract's start moment is resolved:
     //  - "immediately": swap at the current hour (no startingAt sent).
@@ -244,6 +245,7 @@ export default function SwitchContractDialog({
       metronomePackageId: "",
       planCode: "",
       hubspotDealId: "",
+      purchaseOrderId: "",
       startingAt: "",
       startMode: "select",
       stripeCustomerId: stripeCustomerId ?? "",
@@ -543,12 +545,16 @@ export default function SwitchContractDialog({
     (values: SwitchContractFormValues) => {
       const trimmedStripe = values.stripeCustomerId.trim();
       const trimmedHubspotDealId = values.hubspotDealId?.trim();
+      const trimmedPurchaseOrderId = values.purchaseOrderId?.trim();
       const cleaned: SwitchContractBodyInput = {
         metronomePackageId: values.metronomePackageId.trim(),
         planCode: values.planCode.trim(),
         paygEnabled: values.paygEnabled,
         ...(trimmedHubspotDealId
           ? { hubspotDealId: trimmedHubspotDealId }
+          : {}),
+        ...(trimmedPurchaseOrderId
+          ? { purchaseOrderId: trimmedPurchaseOrderId }
           : {}),
       };
       // The operator can omit the Stripe customer — the resulting Metronome
@@ -778,6 +784,18 @@ export default function SwitchContractDialog({
                     name="hubspotDealId"
                     hideLabel
                     placeholder="e.g., 12345678901"
+                  />
+                  <Label className="text-sm">
+                    Purchase order
+                    <span className="ml-1 text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  <InputField
+                    control={form.control}
+                    name="purchaseOrderId"
+                    hideLabel
+                    placeholder="PO number"
                   />
                   {isCurrencyLoading && (
                     <div className="col-span-2 flex items-center gap-2 text-sm text-muted-foreground">

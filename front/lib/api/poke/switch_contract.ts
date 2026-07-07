@@ -13,6 +13,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
+  AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
@@ -133,6 +134,10 @@ export const SwitchContractBodySchema = z.object({
   // Metronome as a custom field so contracts can be joined back to HubSpot deals
   // for ARR reporting.
   hubspotDealId: z.string().optional(),
+  // Optional PO number, forwarded to Metronome as a contract-level custom
+  // field for finance reconciliation against the Stripe invoices Metronome
+  // generates for this contract.
+  purchaseOrderId: z.string().optional(),
   // Optional: when set, memberships that would otherwise stay on `none` after
   // the seat remap (e.g. legacy members with no explicit seat) are forced onto
   // this seat type, provided the new contract bills it — preempting the
@@ -1132,6 +1137,10 @@ export async function switchContract({
   if (body.hubspotDealId) {
     additionalCustomFields[HUBSPOT_DEAL_ID_CUSTOM_FIELD_KEY] =
       body.hubspotDealId;
+  }
+  if (body.purchaseOrderId) {
+    additionalCustomFields[AWU_PURCHASE_ORDER_ID_CUSTOM_FIELD_KEY] =
+      body.purchaseOrderId;
   }
   if (body.legacyMigrationFreeAwuCreditsPerUser !== undefined) {
     additionalCustomFields[LEGACY_CREDIT_MIGRATION_CUSTOM_FIELD_KEY] = String(
