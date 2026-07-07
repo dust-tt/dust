@@ -29,10 +29,9 @@ const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   "- `locate_in_tree`: best for orientation and provenance. Use it after search " +
   "or find results to understand where an item lives, disambiguate similarly " +
   "named documents, or cite the source location.\n" +
-  "- `cat`: best for reading a known document or page. Use it for exact " +
-  "wording, source checks, factual verification, and details that search " +
-  "snippets may omit, especially after a result has identified the right " +
-  "source.\n" +
+  "- `cat`: reads the content of a known document or page. It is useful when " +
+  "a search or navigation result points to a source you want to inspect " +
+  "directly.\n" +
   "\n" +
   "Data warehouses (tables and schemas):\n" +
   "- Warehouse content is organized as warehouse -> database -> schema -> " +
