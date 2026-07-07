@@ -19,7 +19,6 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "anthropic"
   | "mistral"
   | "google_ai_studio"
-  | "togetherai"
   | "deepseek"
   | "fireworks"
   | "xai"
@@ -79,11 +78,6 @@ export type KnownModelLLMId =
   | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
   | "gemini-3.5-flash"
-  | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
-  | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
-  | "Qwen/QwQ-32B-Preview" // togetherai
-  | "Qwen/Qwen2-72B-Instruct" // togetherai
-  | "deepseek-ai/DeepSeek-V3" // togetherai
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks

@@ -10,7 +10,6 @@ export type ModelProviderIdType =
   | "anthropic"
   | "mistral"
   | "google_ai_studio"
-  | "togetherai"
   | "deepseek"
   | "fireworks"
   | "xai"

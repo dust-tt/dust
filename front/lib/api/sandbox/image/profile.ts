@@ -20,7 +20,6 @@ export function providerToProfile(
     case "anthropic":
     case "mistral":
     case "deepseek":
-    case "togetherai":
     case "xai":
     case "fireworks":
     case "noop":
