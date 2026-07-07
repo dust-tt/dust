@@ -1500,7 +1500,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // to equipped candidates for the current agent loop. `findAll` already
     // drops restricted skills, so a flag-gated skill only shows up once its
     // feature flag is on.
-    const autoEnabledSystemSkillRefs: {
+    const autoEnabledSkillRefs: {
       globalSkillId: string;
       customSkillId: null;
     }[] = [];
@@ -1519,7 +1519,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         })
       ) {
         case "enabled":
-          autoEnabledSystemSkillRefs.push({
+          autoEnabledSkillRefs.push({
             globalSkillId: def.sId,
             customSkillId: null,
           });
@@ -1535,24 +1535,32 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     }
 
-    const autoEnabledSystemSkills = autoEnabledSystemSkillRefs.length
-      ? await this.fetchBySkillReferences(auth, autoEnabledSystemSkillRefs, {
+    const autoEnabledSkills = autoEnabledSkillRefs.length
+      ? await this.fetchBySkillReferences(auth, autoEnabledSkillRefs, {
           agentLoopData,
         })
       : [];
 
+    const autoEquippedSkills = autoEquippedSkillRefs.length
+      ? await this.fetchBySkillReferences(auth, autoEquippedSkillRefs, {
+        agentLoopData,
+        withInstructions: false,
+        withTools: false,
+      })
+      : [];
+
     const systemSkillsFromAgent = allAgentSkills.filter((s) => s.isSystemSkill);
     const systemSkillIds = new Set(
-      [...systemSkillsFromAgent, ...autoEnabledSystemSkills].map(skill.sId)
+      [...systemSkillsFromAgent, ...autoEnabledSkills].map(
+        (skill) => skill.sId
+      )
     );
-    const isSystemSkillForLoop = (skill: SkillResource) =>
-      systemSkillIds.has(skill.sId);
 
     // Active baseline skills for this loop: configured system skills, plus
     // code-defined skills that this context promotes to system prompt content.
     const systemSkills = [
       ...new Map(
-        [...systemSkillsFromAgent, ...autoEnabledSystemSkills].map((s) => [
+        [...systemSkillsFromAgent, ...autoEnabledSkills].map((s) => [
           s.sId,
           s,
         ])
@@ -1563,15 +1571,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // come from the agent configuration, context auto-equipping, Pod defaults,
     // and discoverable skills. System prompt skills are never enable-able.
     const agentEquippedSkills = allAgentSkills.filter(
-      (s) => !isSystemSkillForLoop(s)
+      (s) => !systemSkillIds.has(s.sId)
     );
-    const autoEquippedSkills = autoEquippedSkillRefs.length
-      ? await this.fetchBySkillReferences(auth, autoEquippedSkillRefs, {
-          agentLoopData,
-          withInstructions: false,
-          withTools: false,
-        })
-      : [];
 
     const equippedSkillsById = new Map<string, SkillResource>();
     for (const skill of [
@@ -1580,7 +1581,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...podDefaultSkills,
       ...agentEquippedSkills,
     ]) {
-      if (!isSystemSkillForLoop(skill) && !equippedSkillsById.has(skill.sId)) {
+      if (
+        !systemSkillIds.has(skill.sId) &&
+        !equippedSkillsById.has(skill.sId)
+      ) {
         equippedSkillsById.set(skill.sId, skill);
       }
     }
@@ -1588,7 +1592,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return {
       systemSkills: systemSkills.sort(sortByName),
       enabledSkills: conversationEnabledSkills
-        .filter((s) => !isSystemSkillForLoop(s))
+        .filter((s) => !systemSkillIds.has(s.sId))
         .sort(sortByName),
       equippedSkills: [...equippedSkillsById.values()].sort(sortByName),
     };
