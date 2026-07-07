@@ -1509,12 +1509,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...(await GlobalSkillsRegistry.findAll(auth)),
     ];
 
-    type CodeDefinedSkillReference = {
+    const autoEnabledRefs: { globalSkillId: string; customSkillId: null }[] =
+      [];
+    const autoEquippedCandidateRefs: {
       globalSkillId: string;
       customSkillId: null;
-    };
-    const autoEnabledRefs: CodeDefinedSkillReference[] = [];
-    const autoEquippedCandidateRefs: CodeDefinedSkillReference[] = [];
+    }[] = [];
     for (const def of codeDefinedDefs) {
       const autoMode = def.getAutoModeForAgentLoop?.({
         agentConfiguration,
