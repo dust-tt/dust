@@ -68,17 +68,9 @@ export type SkillDefinition<
   | WithStaticInstructions<BaseSkillDefinition<T>>
   | WithDynamicInstructions<BaseSkillDefinition<T>>;
 
-type ProjectSkillDefinition = SkillDefinition & {
+export type GlobalSkillDefinition = SkillDefinition & {
   readonly kind: "global";
-  readonly sId: "projects";
 };
-
-// Global skills are equip-able by the agent, not added to the system prompt automatically.
-// Pods are the exception: the same code-defined skill is equip-able outside Pods and system
-// prompt content inside Pod conversations.
-export type GlobalSkillDefinition =
-  | (SkillDefinition<"equipped"> & { readonly kind: "global" })
-  | ProjectSkillDefinition;
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
 export type SystemSkillDefinition = SkillDefinition<"enabled"> & {
   readonly kind: "system";
