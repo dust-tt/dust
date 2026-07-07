@@ -15,8 +15,31 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { is } from "drizzle-orm";
 import { getTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
+import {
+  type DatabaseManifest,
+  DB_NAME_REGEX,
+  type FunctionStateManifest,
+  type ManifestColumn,
+  type ManifestError,
+  type ManifestErrorKind,
+  type ManifestIndex,
+  type ManifestTable,
+  RESERVED_OBJECT_KEYS,
+} from "./manifest_types.ts";
 
-export const DB_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+// The manifest shape (types + name constants) lives in manifest_types.ts, the dependency-free
+// single source of truth that front's zod mirror is checked against. Re-exported here so
+// runner-side consumers keep a single import point.
+export {
+  type DatabaseManifest,
+  DB_NAME_REGEX,
+  type FunctionStateManifest,
+  type ManifestColumn,
+  type ManifestError,
+  type ManifestErrorKind,
+  type ManifestIndex,
+  type ManifestTable,
+} from "./manifest_types.ts";
 
 // Table-name prefixes drizzle-kit's introspection ignores (plus SQLite internals): a table
 // named this way would pass build and first reconcile, then be invisible to every subsequent
@@ -28,20 +51,6 @@ const RESERVED_TABLE_PREFIXES = [
   "_cf_",
   "libsql_",
 ];
-
-// Model-authored names become plain-object keys in manifests (runner + front + JSONB); these
-// keys would collide with Object.prototype machinery.
-const RESERVED_OBJECT_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-
-export type ManifestErrorKind =
-  | "databases_declaration_invalid"
-  | "database_schema_unresolvable"
-  | "database_schema_invalid";
-
-export interface ManifestError {
-  kind: ManifestErrorKind;
-  message: string;
-}
 
 export type ManifestResult<T> =
   | { ok: true; value: T }
@@ -75,35 +84,6 @@ function safeNameError(
     };
   }
   return null;
-}
-
-export interface ManifestColumn {
-  type: string;
-  mode: string | null;
-  notNull: boolean;
-  hasDefault: boolean;
-  primaryKey: boolean;
-  autoIncrement: boolean;
-}
-
-export interface ManifestIndex {
-  unique: boolean;
-  columns: string[];
-}
-
-export interface ManifestTable {
-  columns: Record<string, ManifestColumn>;
-  indexes: Record<string, ManifestIndex>;
-}
-
-export interface DatabaseManifest {
-  schemaFile: string;
-  tables: Record<string, ManifestTable>;
-}
-
-export interface FunctionStateManifest {
-  version: 1;
-  databases: Record<string, DatabaseManifest>;
 }
 
 // Column `mode` is the row<->JS (de)serialization contract. Most drizzle sqlite column classes
