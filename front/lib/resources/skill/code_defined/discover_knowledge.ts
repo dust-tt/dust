@@ -36,6 +36,10 @@ const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   "Data warehouses (tables and schemas):\n" +
   "- Warehouse content is organized as warehouse -> database -> schema -> " +
   "tables. Schemas can be nested.\n" +
+  "- Warehouse and table IDs are synthetic identifiers, not display names. " +
+  "Warehouse IDs look like `warehouse-<dataSourceId>`, table IDs look like " +
+  "`table-<dataSourceId>-<nodeId>`, and dataSourceId values typically start " +
+  "with `dts_`.\n" +
   "- `list`: best for mapping an unfamiliar warehouse. Use it to understand " +
   "which databases, schemas, and tables exist before choosing a direction.\n" +
   "- `find`: best for name-based discovery. Use it when the user mentions a " +
@@ -54,9 +58,11 @@ export const discoverKnowledgeSkill = {
   sId: "discover_knowledge",
   name: "Discover Knowledge",
   userFacingDescription:
-    "Search across all your company documents and data warehouses to surface the information you need without manual configuration.",
+    "Search across all your company documents and data warehouses to surface " +
+    "the information you need without manual configuration.",
   agentFacingDescription:
-    "Search documents, browse folder hierarchies, read file contents, and query data warehouse tables with SQL.",
+    "Search documents, browse folder hierarchies, read file contents, and " +
+    "query data warehouse tables with SQL.",
   instructions: DISCOVER_KNOWLEDGE_INSTRUCTIONS,
   mcpServers: [
     {
