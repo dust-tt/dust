@@ -218,35 +218,43 @@ function findDisallowedSpecialTagChanges(
 }
 
 const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
-  [LIST_SKILLS_TOOL_NAME]: async (_params, { auth }) => {
+  [LIST_SKILLS_TOOL_NAME]: async ({ cursor, limit }, { auth }) => {
     const user = requireInteractiveBuilder(auth);
     if (user.isErr()) {
       return new Err(user.error);
     }
 
-    const skills = await SkillResource.listByWorkspace(auth, {
+    const allSkills = await SkillResource.listByWorkspace(auth, {
       status: "active",
       onlyCustom: true,
       withInstructions: false,
       withTools: false,
     });
 
-    const summaries = skills
-      .filter((skill) => skill.canWrite(auth))
-      .map((skill) => ({
-        sId: skill.sId,
-        name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription,
-        userFacingDescription: skill.userFacingDescription,
-        icon: skill.icon,
-      }));
+    const writable = allSkills.filter((skill) => skill.canWrite(auth));
+    const pageSize = Math.min(limit ?? 20, 50);
+    const offset = cursor
+      ? parseInt(Buffer.from(cursor, "base64").toString(), 10)
+      : 0;
+    const page = writable.slice(offset, offset + pageSize);
+    const nextOffset = offset + pageSize;
+    const nextCursor =
+      nextOffset < writable.length
+        ? Buffer.from(String(nextOffset)).toString("base64")
+        : null;
+
+    const summaries = page.map((skill) => ({
+      sId: skill.sId,
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+    }));
 
     return new Ok([
-      {
-        type: "text" as const,
-        text: `Found ${summaries.length} active custom skill${summaries.length === 1 ? "" : "s"}.`,
-      },
-      makeJsonText({ skills: summaries }),
+      makeJsonText({
+        total: writable.length,
+        skills: summaries,
+        nextCursor,
+      }),
     ]);
   },
 

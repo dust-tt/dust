@@ -120,11 +120,11 @@ describe("skill_authoring tools", () => {
     if (listResult.isErr()) {
       throw listResult.error;
     }
-    expect(listResult.value[1]?.type).toBe("text");
-    if (listResult.value[1]?.type !== "text") {
+    expect(listResult.value[0]?.type).toBe("text");
+    if (listResult.value[0]?.type !== "text") {
       throw new Error("Expected JSON text output.");
     }
-    expect(JSON.parse(listResult.value[1].text)).toMatchObject({
+    expect(JSON.parse(listResult.value[0].text)).toMatchObject({
       skills: [
         expect.objectContaining({
           sId: output.resource.skillId,
@@ -168,11 +168,11 @@ describe("skill_authoring tools", () => {
     if (otherListResult.isErr()) {
       throw otherListResult.error;
     }
-    expect(otherListResult.value[1]?.type).toBe("text");
-    if (otherListResult.value[1]?.type !== "text") {
+    expect(otherListResult.value[0]?.type).toBe("text");
+    if (otherListResult.value[0]?.type !== "text") {
       throw new Error("Expected JSON text output.");
     }
-    expect(JSON.parse(otherListResult.value[1].text)).toMatchObject({
+    expect(JSON.parse(otherListResult.value[0].text)).toMatchObject({
       skills: [],
     });
 

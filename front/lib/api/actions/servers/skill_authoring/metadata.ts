@@ -13,8 +13,22 @@ export const UPDATE_SKILL_TOOL_NAME = "update_skill" as const;
 export const SKILL_AUTHORING_TOOLS_METADATA = createToolsRecord({
   [LIST_SKILLS_TOOL_NAME]: {
     description:
-      "List active custom Skills in this workspace. Returns lightweight summaries so you can find the skill id to inspect or update.",
-    schema: {},
+      "List active custom Skills in this workspace. Returns lightweight summaries (sId, name, agentFacingDescription) paginated. Pass the returned `nextCursor` to fetch the next page.",
+    schema: {
+      cursor: z
+        .string()
+        .optional()
+        .describe(
+          "Pagination cursor from a previous call. Omit for the first page."
+        ),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .max(50)
+        .optional()
+        .describe("Skills per page. Default 20, max 50."),
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing skills",
