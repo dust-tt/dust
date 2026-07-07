@@ -52,9 +52,23 @@ export function getAdaptiveConcurrency(
   maxFileSize: number,
   defaultConcurrency: number
 ): number {
-  const maxFoundFileSize = files
-    .filter((file) => file.size && file.size <= maxFileSize)
-    .reduce((max, file) => Math.max(max, file.size ?? 0), 0);
+  const maxFoundFileSize = files.reduce((max, file) => {
+    // Files with a known size over the limit are skipped before download, so they
+    // consume no memory and should not lower concurrency.
+    if (file.size && file.size > maxFileSize) {
+      return max;
+    }
+    // Files with an unknown size (e.g. Google-native Docs/Slides, which the Drive
+    // API does not report a size for) are treated as worst-case: they can be huge
+    // once exported and are fully buffered in memory, so they must not silently
+    // get maximum concurrency.
+    const effectiveSize = file.size ?? maxFileSize;
+    return Math.max(max, effectiveSize);
+  }, 0);
+
+  if (maxFoundFileSize === 0) {
+    return defaultConcurrency;
+  }
 
   return Math.min(
     Math.floor(maxFileSize / maxFoundFileSize),

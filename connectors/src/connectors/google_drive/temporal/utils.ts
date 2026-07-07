@@ -348,6 +348,27 @@ export async function _getLabels(
   return [];
 }
 
+// Detects the errors raised when a file exceeds the download size cap. Google-native docs
+// (Slides/Docs) report no size in their metadata, so the pre-download guard cannot catch them; we
+// cap the download itself via gaxios `maxContentLength`, which makes node-fetch abort mid-stream
+// with a `max-size` error. `ERR_OUT_OF_RANGE` is the older reactive case where Node fails to
+// allocate a buffer/string for a huge response.
+export function isFileTooLargeToDownloadError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if ("type" in error && error.type === "max-size") {
+    return true;
+  }
+
+  if ("code" in error && error.code === "ERR_OUT_OF_RANGE") {
+    return true;
+  }
+
+  return false;
+}
+
 export function isSharedDriveNotFoundError(error: unknown): boolean {
   if (!(error instanceof GaxiosError)) {
     return false;
