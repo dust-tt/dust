@@ -90,7 +90,8 @@ export async function processToolNotification(
 
   // Handle store_resource notifications by creating output items immediately (fire-and-forget GCS).
   if (isStoreResourceProgressOutput(output)) {
-    // Sandbox function actions have no per-block output items (single output at completion).
+    // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
+    // sandbox function run context.
     assert(
       isAgentLoopRunContext(runContext),
       "store_resource notifications require an agent loop run context."
@@ -441,8 +442,6 @@ export async function processToolResults(
     }
   );
 
-  // Sandbox function actions have no per-block output items (single output written at
-  // completion); their persistence will be wired in the sandbox function runner.
   // TODO(SANDBOX_FUNCTIONS): persist sandbox function outputs (writeOutput) when running in a
   // sandbox function run context.
   assert(
