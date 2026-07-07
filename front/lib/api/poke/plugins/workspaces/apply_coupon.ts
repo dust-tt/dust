@@ -1,5 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { redeemCoupon, redeemCreditsCoupon } from "@app/lib/metronome/coupons";
+import {
+  redeemPoolTopupCoupon,
+  redeemSeatCoupon,
+} from "@app/lib/metronome/coupons";
 import type { CouponValidationError } from "@app/lib/resources/coupon_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { Err, Ok } from "@app/types/shared/result";
@@ -57,10 +60,10 @@ export const applyCouponPlugin = createPlugin({
     let result;
     switch (discountType) {
       case "seat":
-        result = await redeemCoupon(auth, { coupon });
+        result = await redeemSeatCoupon(auth, { coupon });
         break;
       case "credit_pool_top_up":
-        result = await redeemCreditsCoupon(auth, { coupon });
+        result = await redeemPoolTopupCoupon(auth, { coupon });
         break;
       default:
         return assertNever(discountType);

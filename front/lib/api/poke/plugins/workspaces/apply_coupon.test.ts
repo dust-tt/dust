@@ -2,7 +2,7 @@ import { applyCouponPlugin } from "@app/lib/api/poke/plugins/workspaces/apply_co
 import { revokeCouponPlugin } from "@app/lib/api/poke/plugins/workspaces/revoke_coupon";
 import { Authenticator } from "@app/lib/auth";
 import { CREDIT_TYPE_USD_ID } from "@app/lib/metronome/constants";
-import { redeemCoupon } from "@app/lib/metronome/coupons";
+import { redeemSeatCoupon } from "@app/lib/metronome/coupons";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { CouponFactory } from "@app/tests/utils/CouponFactory";
@@ -243,7 +243,7 @@ describe("revokeCouponPlugin.execute", () => {
     const { auth } = await makeWorkspaceWithMetronome();
     const coupon = await CouponFactory.create();
 
-    const redeemResult = await redeemCoupon(auth, { coupon });
+    const redeemResult = await redeemSeatCoupon(auth, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;
@@ -289,7 +289,7 @@ describe("revokeCouponPlugin.execute", () => {
     const { auth: authB } = await makeWorkspaceWithMetronome();
     const coupon = await CouponFactory.create();
 
-    const redeemResult = await redeemCoupon(authA, { coupon });
+    const redeemResult = await redeemSeatCoupon(authA, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;
@@ -309,7 +309,7 @@ describe("revokeCouponPlugin.execute", () => {
     const { auth } = await makeWorkspaceWithMetronome();
     const coupon = await CouponFactory.create();
 
-    const redeemResult = await redeemCoupon(auth, { coupon });
+    const redeemResult = await redeemSeatCoupon(auth, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;
@@ -336,7 +336,7 @@ describe("revokeCouponPlugin.execute", () => {
     const { auth } = await makeWorkspaceWithMetronome();
     const coupon = await CouponFactory.create();
 
-    const redeemResult = await redeemCoupon(auth, { coupon });
+    const redeemResult = await redeemSeatCoupon(auth, { coupon });
     expect(redeemResult.isOk()).toBe(true);
     if (!redeemResult.isOk()) {
       return;

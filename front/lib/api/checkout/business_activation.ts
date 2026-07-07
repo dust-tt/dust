@@ -36,7 +36,7 @@ import {
   provisionPaymentGatedActivationContract,
 } from "@app/lib/metronome/contracts";
 import {
-  createCouponCredit,
+  createSeatCouponCredit,
   getCreditTypeFromPackage,
 } from "@app/lib/metronome/coupons";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -457,7 +457,7 @@ export async function handleSubscriptionActivationSuccess({
       );
       if (creditTypeResult.isOk()) {
         const { creditTypeId, currency } = creditTypeResult.value;
-        const creditResult = await createCouponCredit({
+        const creditResult = await createSeatCouponCredit({
           metronomeCustomerId: workspace.metronomeCustomerId!,
           metronomeContractId: contractId,
           coupon,
