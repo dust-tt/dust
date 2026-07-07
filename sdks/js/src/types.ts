@@ -704,6 +704,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "allow_sso"
   | "custom_model_feature"
+  | "data_source_search_document_time_frame"
   | "anthropic_vertex_fallback"
   | "anthropic_cache_diagnostics"
   | "anthropic_tool_search"
