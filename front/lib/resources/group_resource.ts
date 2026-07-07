@@ -2357,6 +2357,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return auth.canWrite(this.requestedPermissions());
   }
 
+  canAdmin(auth: Authenticator): boolean {
+    return auth.canAdmin(this.requestedPermissions());
+  }
+
   isSystem(): boolean {
     return this.kind === "system";
   }
