@@ -239,20 +239,42 @@ export type MCPErrorEvent = {
   };
 };
 
-export type ToolNotificationEvent = {
+type ToolNotificationEventBase = {
   type: "tool_notification";
   created: number;
-  configurationId: string;
-  conversationId: string;
-  messageId: string;
   action: AgentMCPActionWithOutputType;
   notification: ProgressNotificationContentType;
 };
 
+// Tool notification emitted when running a tool within an agent loop. Published on the
+// conversation message channel, hence the conversation-scoped identifiers.
+export type AgentLoopToolNotificationEvent = ToolNotificationEventBase & {
+  configurationId: string;
+  conversationId: string;
+  messageId: string;
+};
+
+// Tool notification emitted when running a tool within a sandbox function invocation.
+export type SandboxFunctionToolNotificationEvent = ToolNotificationEventBase & {
+  sandboxFunctionId: string;
+  invocationId: string;
+};
+
+export type ToolNotificationEvent =
+  | AgentLoopToolNotificationEvent
+  | SandboxFunctionToolNotificationEvent;
+
+export function isAgentLoopToolNotificationEvent(
+  event: ToolNotificationEvent
+): event is AgentLoopToolNotificationEvent {
+  return "messageId" in event;
+}
+
+// AgentActionRunningEvents are events related action execution within an agent loop.
 export type AgentActionRunningEvents =
   | MCPParamsEvent
   | MCPApproveExecutionEvent
-  | ToolNotificationEvent;
+  | AgentLoopToolNotificationEvent;
 
 const MAX_DESCRIPTION_LENGTH = 1024;
 

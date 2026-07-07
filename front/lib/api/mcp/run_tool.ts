@@ -114,7 +114,7 @@ export async function* runToolWithStreaming(
         const { event, storedItems } = await processToolNotification(
           auth,
           notification,
-          { action, agentConfiguration, conversation, agentMessage }
+          { action, toolContext: { runContext: agentLoopRunContext } }
         );
         intermediateOutputItems.push(...storedItems);
         return event;
