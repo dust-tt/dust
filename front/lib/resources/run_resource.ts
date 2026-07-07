@@ -16,6 +16,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
+import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -226,7 +227,7 @@ export class RunResource extends BaseResource<RunModel> {
       runModelId: usage.runId,
       runKey: runKeyByModelId.get(usage.runId) ?? null,
       completionTokens: usage.completionTokens,
-      modelId: usage.modelId as ModelIdType,
+      modelId: usage.modelId as ModelIdType | ImageModelIdType,
       promptTokens: usage.promptTokens,
       providerId: usage.providerId as ModelProviderIdType,
       cachedTokens: usage.cachedTokens,
@@ -472,7 +473,7 @@ function addCreatedAtClause(where: WhereOptions<RunModel>) {
 
 export interface RunUsageType {
   completionTokens: number;
-  modelId: ModelIdType;
+  modelId: ModelIdType | ImageModelIdType;
   promptTokens: number;
   providerId: ModelProviderIdType;
   cachedTokens: number | null;

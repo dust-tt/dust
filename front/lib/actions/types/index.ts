@@ -119,6 +119,10 @@ export type StepContext = {
   resumeState: Record<string, unknown> | null;
   retrievalTopK: number;
   websearchResultCount: number;
+  // Dust run IDs of LLM runs made by the tool itself (e.g. image generation).
+  // Flowed back to the agent loop so the runs are billed like any other LLM
+  // usage of the agent message.
+  runIds?: string[];
 };
 
 type ActionGeneratedFileBase = {
