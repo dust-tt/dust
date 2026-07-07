@@ -1264,17 +1264,7 @@ function AgentMessageContent({
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
-      action_card: getActionCardPlugin(
-        {
-          onAction: async (message) => {
-            await onQuickReplySend(message);
-          },
-          onDismiss: async (message) => {
-            await onQuickReplySend(message);
-          },
-        },
-        isLastMessage
-      ),
+      action_card: getActionCardPlugin(onQuickReplySend, isLastMessage),
       ...propsAdditionalMarkdownComponents,
     }),
     [
