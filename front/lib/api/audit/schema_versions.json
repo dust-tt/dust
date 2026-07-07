@@ -53,7 +53,7 @@
   "project.joined": 3,
   "project.left": 3,
   "sandbox_egress_policy.agent_requests_setting_updated": 1,
-  "sandbox_egress_policy.sandbox_updated": 1,
+  "sandbox_egress_policy.sandbox_updated": 2,
   "sandbox_egress_policy.updated": 1,
   "sandbox_env_var.allowed_domains_updated": 1,
   "sandbox_env_var.created": 1,
