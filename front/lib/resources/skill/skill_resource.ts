@@ -1543,43 +1543,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const autoEquippedSkills = autoEquippedSkillRefs.length
       ? await this.fetchBySkillReferences(auth, autoEquippedSkillRefs, {
-        agentLoopData,
-        withInstructions: false,
-        withTools: false,
-      })
+          agentLoopData,
+          withInstructions: false,
+          withTools: false,
+        })
       : [];
 
     const systemSkillsFromAgent = allAgentSkills.filter((s) => s.isSystemSkill);
     const systemSkillIds = new Set(
-      [...systemSkillsFromAgent, ...autoEnabledSkills].map(
-        (skill) => skill.sId
-      )
+      [...systemSkillsFromAgent, ...autoEnabledSkills].map((skill) => skill.sId)
     );
 
     // Active baseline skills for this loop: configured system skills, plus
     // code-defined skills that this context promotes to system prompt content.
     const systemSkills = [
       ...new Map(
-        [...systemSkillsFromAgent, ...autoEnabledSkills].map((s) => [
-          s.sId,
-          s,
-        ])
+        [...systemSkillsFromAgent, ...autoEnabledSkills].map((s) => [s.sId, s])
       ).values(),
     ];
 
     // Equipped skills are the enable-able candidates shown to the model. They
     // come from the agent configuration, context auto-equipping, Pod defaults,
     // and discoverable skills. System prompt skills are never enable-able.
-    const agentEquippedSkills = allAgentSkills.filter(
-      (s) => !systemSkillIds.has(s.sId)
-    );
-
     const equippedSkillsById = new Map<string, SkillResource>();
     for (const skill of [
       ...autoEquippedSkills,
       ...discoverableSkills,
       ...podDefaultSkills,
-      ...agentEquippedSkills,
+      ...allAgentSkills,
     ]) {
       if (
         !systemSkillIds.has(skill.sId) &&
