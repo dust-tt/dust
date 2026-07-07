@@ -1516,17 +1516,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       customSkillId: null;
     }[] = [];
     for (const def of codeDefinedDefs) {
-      const autoMode = def.getAutoModeForAgentLoop?.({
+      const autoEnabledOrEquipped = def.getAutoEnabledOrEquippedForAgentLoop?.({
         agentConfiguration,
         conversation,
       });
 
-      if (!autoMode) {
+      if (!autoEnabledOrEquipped) {
         continue;
       }
 
       const ref = { globalSkillId: def.sId, customSkillId: null };
-      switch (autoMode) {
+      switch (autoEnabledOrEquipped) {
         case "enabled":
           autoEnabledRefs.push(ref);
           break;
@@ -1534,7 +1534,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           autoEquippedCandidateRefs.push(ref);
           break;
         default:
-          assertNever(autoMode);
+          assertNever(autoEnabledOrEquipped);
       }
     }
 

@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/projects/agents_md";
 import type { Authenticator } from "@app/lib/auth";
 import type {
-  AutoSkillModeForAgentLoop,
+  AutoEnabledOrEquippedForAgentLoop,
   GlobalSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -68,9 +68,9 @@ When you need to find information, use this order (skip steps if the relevant to
   version: 3,
   icon: "ActionFolderIcon",
   isRestricted: undefined,
-  getAutoModeForAgentLoop: ({
+  getAutoEnabledOrEquippedForAgentLoop: ({
     conversation,
-  }): AutoSkillModeForAgentLoop | undefined =>
+  }): AutoEnabledOrEquippedForAgentLoop | undefined =>
     isPodConversation(conversation) ? "enabled" : "equipped",
 } as const satisfies GlobalSkillDefinition;
 

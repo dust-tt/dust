@@ -15,16 +15,17 @@ export type MCPServerDefinition = {
   serverNameOverride?: string;
 };
 
-export type AutoSkillModeForAgentLoop = "enabled" | "equipped";
+export type AutoEnabledOrEquippedForAgentLoop = "enabled" | "equipped";
 
-type AutoSkillModeForAgentLoopParams = {
+type AutoEnabledOrEquippedForAgentLoopParams = {
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation: ConversationWithoutContentType;
 };
 
-type AutoSkillModeForAgentLoopCallback<
-  T extends AutoSkillModeForAgentLoop = AutoSkillModeForAgentLoop,
-> = (params: AutoSkillModeForAgentLoopParams) => T | undefined;
+type AutoEnabledOrEquippedForAgentLoopCallback<
+  T extends
+    AutoEnabledOrEquippedForAgentLoop = AutoEnabledOrEquippedForAgentLoop,
+> = (params: AutoEnabledOrEquippedForAgentLoopParams) => T | undefined;
 
 interface BaseSkillDefinition {
   readonly agentFacingDescription: string;
@@ -45,7 +46,7 @@ interface BaseSkillDefinition {
   // Optional callback to auto-enable or auto-equip a code-defined skill for an
   // agent loop (subject to isRestricted), without adding it to the agent
   // configuration. Return undefined to leave the skill unchanged for this loop.
-  readonly getAutoModeForAgentLoop?: AutoSkillModeForAgentLoopCallback;
+  readonly getAutoEnabledOrEquippedForAgentLoop?: AutoEnabledOrEquippedForAgentLoopCallback;
   // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
   readonly isDisabledForAgentLoop?: (
     agentLoopData: AgentLoopExecutionData
@@ -79,7 +80,7 @@ export type GlobalSkillDefinition = SkillDefinition & {
 // System skills have no definition of "equipped". When they are present they are directly part of the system prompt.
 export type SystemSkillDefinition = SkillDefinition & {
   readonly kind: "system";
-  getAutoModeForAgentLoop?: AutoSkillModeForAgentLoopCallback<"enabled">;
+  getAutoEnabledOrEquippedForAgentLoop?: AutoEnabledOrEquippedForAgentLoopCallback<"enabled">;
 };
 
 // Helper function that enforces unique sIds.
