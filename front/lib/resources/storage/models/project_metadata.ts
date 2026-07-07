@@ -6,6 +6,7 @@ import {
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
+import { Op } from "sequelize";
 
 export type ProvisioningSource = "activation";
 
@@ -90,6 +91,11 @@ ProjectMetadataModel.init(
     indexes: [
       { unique: true, fields: ["spaceId"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
+      {
+        fields: ["provisioningSource"],
+        where: { provisioningSource: { [Op.ne]: null } },
+        concurrently: true,
+      },
     ],
   }
 );
