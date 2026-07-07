@@ -362,6 +362,29 @@ describe("getJITServers", () => {
       expect(equippedSkills.some((s) => s.sId === "projects")).toBe(true);
     });
 
+    it("keeps auto-equipped projects available after it is enabled", async () => {
+      const [projectSkill] = await SkillResource.fetchByIds(
+        auth,
+        ["projects"],
+        { onlyActive: true }
+      );
+      expect(projectSkill).toBeDefined();
+      await projectSkill?.enableForAgent(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      const { enabledSkills, systemSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
+
+      expect(systemSkills.some((s) => s.sId === "projects")).toBe(false);
+      expect(enabledSkills.some((s) => s.sId === "projects")).toBe(true);
+      expect(equippedSkills.some((s) => s.sId === "projects")).toBe(true);
+    });
+
     it("includes skill_management so agents can enable the projects skill", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 

@@ -67,7 +67,8 @@ When you need to find information, use this order (skip steps if the relevant to
   isRestricted: undefined,
   getAutoEnabledOrEquippedForAgentLoop: ({
     conversation,
-  }) => isPodConversation(conversation) ? "enabled" : "equipped",
+  }): "enabled" | "equipped" | undefined =>
+    isPodConversation(conversation) ? "enabled" : "equipped",
 } as const satisfies GlobalSkillDefinition;
 
 export async function constructProjectContext(
