@@ -65,10 +65,7 @@ When you need to find information, use this order (skip steps if the relevant to
   version: 3,
   icon: "ActionFolderIcon",
   isRestricted: undefined,
-  getAutoEnabledOrEquippedForAgentLoop: ({
-    conversation,
-  }): "enabled" | "equipped" | undefined =>
-    isPodConversation(conversation) ? "enabled" : "equipped",
+  getAutoEnabledOrEquippedForAgentLoop: ({ conversation }) => isPodConversation(conversation) ? "enabled" : "equipped",
 } as const satisfies GlobalSkillDefinition;
 
 export async function constructProjectContext(
