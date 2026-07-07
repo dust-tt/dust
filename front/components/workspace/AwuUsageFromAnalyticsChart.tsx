@@ -47,7 +47,12 @@ interface AwuUsageFromAnalyticsChartProps {
 }
 
 export type Granularity = "day" | "week" | "month";
-export type AnalyticsGroupBy = "usage_type" | "agent" | "user" | "origin";
+export type AnalyticsGroupBy =
+  | "usage_type"
+  | "agent"
+  | "user"
+  | "origin"
+  | "api_key";
 
 type GroupByOption = { value: AnalyticsGroupBy | undefined; label: string };
 
@@ -57,6 +62,7 @@ const GROUP_BY_OPTIONS: GroupByOption[] = [
   { value: "agent", label: "By Agent" },
   { value: "user", label: "By User" },
   { value: "origin", label: "By Source" },
+  { value: "api_key", label: "By API Key" },
 ];
 
 // "By User" is redundant when the chart is already scoped to a single user.

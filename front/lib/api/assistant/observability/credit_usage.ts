@@ -1,6 +1,10 @@
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
-import { buildCreditsScopeQuery } from "@app/lib/api/assistant/observability/utils";
+import {
+  buildCreditsScopeQuery,
+  NOT_API_GROUP_KEY,
+  NOT_API_GROUP_NAME,
+} from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -15,7 +19,7 @@ import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type CreditBreakdownBy = "agent" | "user" | "origin";
+export type CreditBreakdownBy = "agent" | "user" | "origin" | "api_key";
 
 export type CreditGroupBy = CreditBreakdownBy | "none";
 
@@ -103,7 +107,7 @@ function totalCreditsFromSlice(slice: CreditSlice): number {
 
 function groupFieldFor(
   groupBy: CreditBreakdownBy
-): "agent_id" | "user_id" | "context_origin" {
+): "agent_id" | "user_id" | "context_origin" | "api_key_name" {
   switch (groupBy) {
     case "agent":
       return "agent_id";
@@ -111,9 +115,28 @@ function groupFieldFor(
       return "user_id";
     case "origin":
       return "context_origin";
+    case "api_key":
+      return "api_key_name";
     default:
       return assertNever(groupBy);
   }
+}
+
+// api_key_name is only set on API-key authenticated messages. Instead of
+// dropping the other messages (exists filter), bucket them under a "Not API"
+// group via the terms-agg `missing` value so the series still sums to the
+// total consumption.
+function groupTermsAggFor(
+  groupBy: CreditBreakdownBy
+): estypes.AggregationsTermsAggregation {
+  const terms: estypes.AggregationsTermsAggregation = {
+    field: groupFieldFor(groupBy),
+  };
+  if (groupBy === "api_key") {
+    terms.missing = NOT_API_GROUP_KEY;
+    terms.value_type = "string";
+  }
+  return terms;
 }
 
 function fallbackGroupName(groupBy: CreditBreakdownBy): string {
@@ -124,6 +147,8 @@ function fallbackGroupName(groupBy: CreditBreakdownBy): string {
       return "Programmatic usage";
     case "origin":
       return "Unknown source";
+    case "api_key":
+      return "Unknown API key";
     default:
       return assertNever(groupBy);
   }
@@ -157,6 +182,15 @@ async function resolveGroupNames(
       // Match the chart's user-facing source labels (e.g. web -> Conversation),
       // falling back to the raw origin for anything unlabeled.
       return new Map(ids.map((id) => [id, sourceLabelForOrigin(id) ?? id]));
+    case "api_key":
+      // The group key is already the key's display name; only the sentinel
+      // bucket for non-API messages needs a label.
+      return new Map(
+        ids.map((id) => [
+          id,
+          id === NOT_API_GROUP_KEY ? NOT_API_GROUP_NAME : id,
+        ])
+      );
     default:
       return assertNever(groupBy);
   }
@@ -211,6 +245,7 @@ export async function fetchCreditUsage(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
   }: {
     startDate: string;
     endDate: string;
@@ -219,6 +254,7 @@ export async function fetchCreditUsage(
     contextOrigin?: string | string[];
     agentIds?: string[];
     userIds?: string[];
+    apiKeyNames?: string[];
   }
 ): Promise<Result<CreditUsageResult, ElasticsearchError>> {
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
@@ -226,7 +262,7 @@ export async function fetchCreditUsage(
   if (groupBy !== "none") {
     aggregations.by_group = {
       terms: {
-        field: groupFieldFor(groupBy),
+        ...groupTermsAggFor(groupBy),
         size: limit,
         order: { total_cost: "desc" },
       },
@@ -240,8 +276,13 @@ export async function fetchCreditUsage(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
     extraFilters:
-      groupBy === "none" ? [] : [{ exists: { field: groupFieldFor(groupBy) } }],
+      // api_key buckets missing values under "Not API" instead of dropping
+      // them, so the rows keep summing to the total.
+      groupBy === "none" || groupBy === "api_key"
+        ? []
+        : [{ exists: { field: groupFieldFor(groupBy) } }],
   });
 
   const result = await searchAnalytics<never, CreditUsageAggs>(query, {
@@ -294,6 +335,7 @@ export async function fetchCreditTimeseries(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
     fillWindow,
   }: {
     startDate: string;
@@ -303,6 +345,7 @@ export async function fetchCreditTimeseries(
     contextOrigin?: string | string[];
     agentIds?: string[];
     userIds?: string[];
+    apiKeyNames?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesPoint[], ElasticsearchError>> {
@@ -312,6 +355,7 @@ export async function fetchCreditTimeseries(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
   });
 
   const result = await searchAnalytics<never, CreditTimeseriesAggs>(query, {
@@ -362,6 +406,7 @@ export async function fetchCreditTimeseriesByUsageType(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
     fillWindow,
   }: {
     startDate: string;
@@ -371,6 +416,7 @@ export async function fetchCreditTimeseriesByUsageType(
     contextOrigin?: string | string[];
     agentIds?: string[];
     userIds?: string[];
+    apiKeyNames?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditUsageTypePoint[], ElasticsearchError>> {
@@ -380,6 +426,7 @@ export async function fetchCreditTimeseriesByUsageType(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
   });
 
   const programmaticFilter = getProgrammaticUsageFilterClause();
@@ -443,6 +490,7 @@ export async function fetchCreditTimeseriesBreakdown(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
     fillWindow,
   }: {
     startDate: string;
@@ -454,6 +502,7 @@ export async function fetchCreditTimeseriesBreakdown(
     contextOrigin?: string | string[];
     agentIds?: string[];
     userIds?: string[];
+    apiKeyNames?: string[];
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesBreakdown, ElasticsearchError>> {
@@ -465,6 +514,7 @@ export async function fetchCreditTimeseriesBreakdown(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
   });
   if (ranking.isErr()) {
     return ranking;
@@ -485,6 +535,7 @@ export async function fetchCreditTimeseriesBreakdown(
     contextOrigin,
     agentIds,
     userIds,
+    apiKeyNames,
   });
 
   const result = await searchAnalytics<never, CreditTimeseriesBreakdownAggs>(
@@ -503,7 +554,7 @@ export async function fetchCreditTimeseriesBreakdown(
             ...creditSubAggs,
             by_group: {
               terms: {
-                field: groupFieldFor(breakdownBy),
+                ...groupTermsAggFor(breakdownBy),
                 include: groupKeys,
                 size: groupKeys.length,
               },

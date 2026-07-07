@@ -227,6 +227,9 @@ export async function storeAgentAnalytics(
     : [];
 
   // Resolve API key name from stored ID, falling back to auth context if key was deleted.
+  // System keys are Dust-internal plumbing (Slack bot, connectors, ...), not
+  // workspace API usage: leave api_key_name unset so those messages report as
+  // "Not API" in analytics.
   let apiKeyName: string | undefined;
   const storedKeyId = userMessageModel.userContextApiKeyId;
   if (storedKeyId) {
@@ -234,7 +237,7 @@ export async function storeAgentAnalytics(
       workspace: auth.getNonNullableWorkspace(),
       id: storedKeyId,
     });
-    if (keyResource) {
+    if (keyResource && !keyResource.isSystem) {
       apiKeyName = keyResource.name;
     }
   }

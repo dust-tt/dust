@@ -1,0 +1,11 @@
+POST /front.agent_message_analytics_2/_update_by_query
+{
+  "query": {
+    "term": {
+      "api_key_name": "DustSystemKey"
+    }
+  },
+  "script": {
+    "source": """ctx._source.remove("api_key_name")"""
+  }
+}
