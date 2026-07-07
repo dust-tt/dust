@@ -274,6 +274,9 @@ export const IMAGE_MODEL_IDS = [
 ] as const;
 
 export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];
+
+export const isImageModelId = (modelId: string): modelId is ImageModelIdType =>
+  IMAGE_MODEL_IDS.includes(modelId as ImageModelIdType);
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,

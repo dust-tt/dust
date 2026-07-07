@@ -17,6 +17,7 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
+import { isImageModelId, isModelId } from "@app/types/assistant/models/models";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -223,18 +224,34 @@ export class RunResource extends BaseResource<RunModel> {
       },
     });
 
-    return usages.map((usage) => ({
-      runModelId: usage.runId,
-      runKey: runKeyByModelId.get(usage.runId) ?? null,
-      completionTokens: usage.completionTokens,
-      modelId: usage.modelId as ModelIdType | ImageModelIdType,
-      promptTokens: usage.promptTokens,
-      providerId: usage.providerId as ModelProviderIdType,
-      cachedTokens: usage.cachedTokens,
-      cacheCreationTokens: usage.cacheCreationTokens,
-      costMicroUsd: usage.costMicroUsd,
-      isBatch: usage.isBatch,
-    }));
+    return usages.flatMap((usage) => {
+      const { modelId } = usage;
+      if (!isModelId(modelId) && !isImageModelId(modelId)) {
+        // Write paths validate model IDs (see recordTokenUsage), so this only
+        // happens for historical rows whose model has since been removed from
+        // the configs (e.g. a deleted custom model).
+        logger.warn(
+          { modelId, runId: usage.runId },
+          "Run usage references an unknown model ID, skipping"
+        );
+        return [];
+      }
+
+      return [
+        {
+          runModelId: usage.runId,
+          runKey: runKeyByModelId.get(usage.runId) ?? null,
+          completionTokens: usage.completionTokens,
+          modelId,
+          promptTokens: usage.promptTokens,
+          providerId: usage.providerId as ModelProviderIdType,
+          cachedTokens: usage.cachedTokens,
+          cacheCreationTokens: usage.cacheCreationTokens,
+          costMicroUsd: usage.costMicroUsd,
+          isBatch: usage.isBatch,
+        },
+      ];
+    });
   }
 
   static async fetchByDustRunId(
