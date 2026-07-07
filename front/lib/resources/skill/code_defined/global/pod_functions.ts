@@ -14,8 +14,6 @@ export const podFunctionsSkill = {
     "A pod function is a hosted function that runs on the Pod's own Computer, shared across " +
     "every conversation in the Pod, with the ability to persist data and call other tools. It's " +
     "callable by slug from this conversation or from a Frame's own runtime.",
-  // TODO(POD_FUNCTION: JD/spolu): the SQLite/db() story for "Persisting state across calls"
-  // below still needs to be filled in.
   instructions: `Pod functions are versioned, typed functions published on the Pod's own
 Computer: a persistent environment shared across every conversation in the Pod, not the one
 scoped to this conversation. Each one is a TypeScript module with zod-typed input and output,
@@ -37,7 +35,8 @@ Write the source as a TypeScript file on the Pod file system (the Computer's mou
 \`/files/pod-<podId>\`, or through the \`files\` MCP server under a \`pod-<podId>/<rel>\` path). The module
 must:
 
-- export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
+- export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas (plus a
+  \`databases\` list when the function uses pod databases, see below),
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
   Web Workers handler shape). A bare default-exported function is rejected.
 
@@ -65,10 +64,112 @@ export default {
 You can split the implementation across several files on the Pod and import them with relative paths
 (e.g. \`import { parse } from "./lib/parse.ts"\`). Publishing bundles the entrypoint and all of its
 relative imports into one module. The bundle is a snapshot taken at publish time, so editing an
-imported helper has no effect until you re-publish.
+imported helper (including a database schema file) has no effect until you re-publish.
 
-The only external package you can import is \`zod\`. Other npm packages are not available at build
-time.
+The external packages you can import are \`zod\`, \`drizzle-orm\` and \`@dust/pod\`. Other npm packages
+are not available at build time.
+
+#### Pod databases: durable shared state
+
+Functions of the same Pod can share durable SQLite databases. The contract has three parts:
+
+1. **One schema file per database** at \`databases/{db}.db.ts\`, relative to the function sources.
+   It is the single source of truth: it declares the FULL intended schema of that database with
+   drizzle's \`sqliteTable\` DSL, and every function imports its table objects from it. Never
+   hand-write table objects inside a function file.
+2. **Each function declares the databases it opens** in \`schema.databases: ["chat"]\`. Database
+   names are lowercase \`[a-z][a-z0-9_]*\`.
+3. **At runtime, open a database with \`db(name)\` from \`@dust/pod\`** and query it with the
+   imported table objects.
+
+\`\`\`ts
+// databases/chat.db.ts — the full intended schema of chat.db, shared by every chat function
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const messages = sqliteTable(
+  "messages",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    author: text("author"),
+    body: text("body"),
+    attachments: text("attachments", { mode: "json" }).$type<string[]>(),
+    createdAt: integer("created_at", { mode: "timestamp" }),
+  },
+  (t) => [index("messages_created_idx").on(t.createdAt)]
+);
+\`\`\`
+
+\`\`\`ts
+// post-message.ts
+import { z } from "zod";
+import { db } from "@dust/pod";
+import { messages } from "./databases/chat.db.ts";
+
+export const schema = {
+  description: "Post a message.",
+  databases: ["chat"],
+  input: z.object({ author: z.string(), body: z.string() }),
+  output: z.object({ id: z.number() }),
+};
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { author, body } = await request.json();
+    const row = db("chat")
+      .insert(messages)
+      .values({ author, body, createdAt: new Date() })
+      .returning({ id: messages.id })
+      .get();
+    return Response.json(row);
+  },
+};
+\`\`\`
+
+Column modes (\`{ mode: "timestamp" | "timestamp_ms" | "boolean" | "json" | ... }\`) are the
+row-to-JS (de)serialization contract — they turn SQLite's light storage types into Dates, booleans
+and parsed JSON. Keep them identical across every function of a database by always importing from
+the shared schema file.
+
+#### Get the first schema right — evolution is additive-only
+
+Schema changes can only ADD: new tables, new columns, new indexes. Nothing is ever dropped,
+renamed, or retyped through publish — those changes are rejected to protect data and the other
+published functions. First-publish quality therefore determines how often you hit that wall:
+
+- get table and column NAMES and TYPES right up front (renames are not possible later);
+- make columns nullable by default — add \`.notNull()\` only when certain, and never add a
+  NOT NULL column without a \`.default(...)\` to an existing table;
+- no premature \`UNIQUE\` constraints — a unique index added later makes sibling writes fail;
+- give every table an \`id: integer("id").primaryKey({ autoIncrement: true })\` and a
+  \`createdAt\` timestamp;
+- NO foreign keys (\`.references()\`), CHECK constraints or composite primary keys — they are
+  rejected at build time; enforce relational integrity in function code.
+
+When a shape must change anyway, evolve additively:
+
+- **new column**: add it nullable (or with a default), write it going forward, and read with a
+  fallback: \`row.newColumn ?? deriveFromOldColumn(row)\`;
+- **replacing a column (e.g. rename)**: ADD the new column, keep the old one declared; publish
+  writers that dual-write both, readers that prefer the new and fall back to the old; only then
+  republish the remaining functions;
+- **outgrowing a JSON column**: add a proper table alongside it; new writes go to the table,
+  readers prefer table rows and fall back to the JSON column for history.
+
+#### What publish does with databases
+
+Publishing checks the new schema against every other function of the Pod declaring the same
+database, then applies the additive DDL to the live database:
+
+- "Publish blocked: this schema change would break published functions" — the message lists the
+  (function, table.column) pairs and the additive fix. Do NOT fight it: keep the old columns
+  declared and add alongside.
+- "destructive changes are not allowed through reconcile" — the schema file dropped something
+  that exists in the live database; restore the missing table or column declarations.
+- Mode-drift warnings ("declares integer (no mode); ... declare integer mode=timestamp") mean the
+  publish went through but functions disagree on a column's (de)serialization — align on the
+  shared schema file and republish.
+- Stale-sibling notes mean other functions were published against an older schema; they keep
+  working, republish them when convenient.
 
 A function's \`fetch\` handler runs as the same egress-controlled user as the Computer's bash
 tool, so \`fetch()\` calls from inside it only reach domains on the pod's egress allowlist, and the
