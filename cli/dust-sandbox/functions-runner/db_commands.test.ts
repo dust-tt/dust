@@ -4,7 +4,7 @@ import { existsSync, statSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DbCommandError } from "./db_common.ts";
+import { DbCommandError, type DbErrorKind } from "./db_common.ts";
 import {
   QUERY_PAYLOAD_CAP_BYTES,
   QUERY_ROW_CAP,
@@ -26,7 +26,7 @@ async function withDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 
 async function expectDbError(
   fn: () => Promise<unknown>,
-  kind: string,
+  kind: DbErrorKind,
   messagePattern: RegExp
 ): Promise<void> {
   let caught: unknown;

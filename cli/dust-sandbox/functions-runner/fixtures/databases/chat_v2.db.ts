@@ -7,7 +7,6 @@ import {
   real,
   sqliteTable,
   text,
-  unique,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
@@ -34,12 +33,16 @@ export const users = sqliteTable(
   ]
 );
 
-export const messages = sqliteTable("messages", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  body: text("body").notNull(),
-  authorId: integer("author_id"),
-  slug: text("slug").unique(),
-});
+export const messages = sqliteTable(
+  "messages",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    body: text("body").notNull(),
+    authorId: integer("author_id"),
+    slug: text("slug"),
+  },
+  (t) => [uniqueIndex("messages_slug_idx").on(t.slug)]
+);
 
 export const settings = sqliteTable(
   "settings",
@@ -50,7 +53,7 @@ export const settings = sqliteTable(
   },
   (t) => [
     primaryKey({ columns: [t.key] }),
-    unique("settings_scope_value_unique").on(t.scope, t.value),
+    uniqueIndex("settings_scope_value_idx").on(t.scope, t.value),
   ]
 );
 
