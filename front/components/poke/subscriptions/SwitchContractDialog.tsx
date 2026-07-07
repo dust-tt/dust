@@ -656,7 +656,7 @@ export default function SwitchContractDialog({
         const explicitPrice =
           typeof entry?.commitmentPrice === "number" &&
           Number.isFinite(entry.commitmentPrice) &&
-          entry.commitmentPrice > 0
+          entry.commitmentPrice >= 0
             ? entry.commitmentPrice
             : null;
         const commitmentPrice =

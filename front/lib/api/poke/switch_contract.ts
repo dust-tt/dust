@@ -802,8 +802,7 @@ async function stepContractEdits({
 
     if (
       seat.selected &&
-      seat.commitmentPrice &&
-      seat.commitmentPrice > 0 &&
+      seat.commitmentPrice !== undefined &&
       seat.minSeats > 0 &&
       seat.rate > 0 &&
       resolvedCurrency &&
