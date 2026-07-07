@@ -37,10 +37,7 @@ import {
 } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
-import type {
-  AutoEnabledOrEquippedForAgentLoop,
-  SkillDefinition,
-} from "@app/lib/resources/skill/code_defined/shared";
+import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -1512,7 +1509,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ];
 
     const autoRefsByEnabledOrEquipped: Record<
-      AutoEnabledOrEquippedForAgentLoop,
+      "enabled" | "equipped",
       { globalSkillId: string; customSkillId: null }[]
     > = {
       enabled: [],

@@ -1,10 +1,7 @@
 import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type {
-  AutoEnabledOrEquippedForAgentLoop,
-  GlobalSkillDefinition,
-} from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { isPodConversation } from "@app/types/assistant/conversation";
 
 export const podFunctionsSkill = {
@@ -84,7 +81,5 @@ function's contract before relying on it. See each tool's own description for it
     !agentLoopData.conversation ||
     !isPodConversation(agentLoopData.conversation),
   // Equipped in Pod conversations but not auto-enabled.
-  getAutoEnabledOrEquippedForAgentLoop: ():
-    | AutoEnabledOrEquippedForAgentLoop
-    | undefined => "equipped",
+  getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
 } as const satisfies GlobalSkillDefinition;

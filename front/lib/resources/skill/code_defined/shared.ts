@@ -15,17 +15,12 @@ export type MCPServerDefinition = {
   serverNameOverride?: string;
 };
 
-export type AutoEnabledOrEquippedForAgentLoop = "enabled" | "equipped";
-
-type AutoEnabledOrEquippedForAgentLoopParams = {
+type AutoEnabledOrEquippedForAgentLoopCallback<
+  T extends "enabled" | "equipped" = "enabled" | "equipped",
+> = (params: {
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
   conversation: ConversationWithoutContentType;
-};
-
-type AutoEnabledOrEquippedForAgentLoopCallback<
-  T extends
-    AutoEnabledOrEquippedForAgentLoop = AutoEnabledOrEquippedForAgentLoop,
-> = (params: AutoEnabledOrEquippedForAgentLoopParams) => T | undefined;
+}) => T | undefined;
 
 interface BaseSkillDefinition {
   readonly agentFacingDescription: string;

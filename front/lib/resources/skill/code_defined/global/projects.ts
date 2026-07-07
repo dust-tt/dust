@@ -6,10 +6,7 @@ import {
   readPodAgentsMdContent,
 } from "@app/lib/api/projects/agents_md";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  AutoEnabledOrEquippedForAgentLoop,
-  GlobalSkillDefinition,
-} from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   type ConversationWithoutContentType,
@@ -70,8 +67,7 @@ When you need to find information, use this order (skip steps if the relevant to
   isRestricted: undefined,
   getAutoEnabledOrEquippedForAgentLoop: ({
     conversation,
-  }): AutoEnabledOrEquippedForAgentLoop | undefined =>
-    isPodConversation(conversation) ? "enabled" : "equipped",
+  }) => isPodConversation(conversation) ? "enabled" : "equipped",
 } as const satisfies GlobalSkillDefinition;
 
 export async function constructProjectContext(
