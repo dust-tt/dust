@@ -5,6 +5,8 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const COMMON_UTILITIES_SERVER_NAME = "common_utilities" as const;
+export const SET_CONVERSATION_TITLE_TOOL_NAME =
+  "set_conversation_title" as const;
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
@@ -101,7 +103,7 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     toolCostCategory: "basic",
     freeUsage: true,
   },
-  set_conversation_title: {
+  [SET_CONVERSATION_TITLE_TOOL_NAME]: {
     description:
       "Update the title of the current conversation. Use this to give the conversation a descriptive name that summarizes its topic.",
     schema: {
