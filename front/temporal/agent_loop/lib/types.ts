@@ -41,7 +41,6 @@ export type GetOutputRequestParams = {
     tokensUsed: number;
   }>;
   conversation: ConversationType;
-  hasConditionalJITTools: boolean;
   // When true, the Anthropic client defers non-eager tools behind tool search.
   // Provider-agnostic signal: clients without tool-search support ignore it.
   toolSearchEnabled: boolean;

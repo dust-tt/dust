@@ -109,7 +109,7 @@ export async function createSandboxChildAction(
   // agent-loop path (`tryListMCPTools`): when several configs share a name
   // across spaces, the model-visible name is space-prefixed, and approval keys
   // are derived from it.
-  const { servers: jitServers } = await getJITServers(auth, {
+  const jitServers = await getJITServers(auth, {
     agentConfiguration,
     conversation,
     attachments: [],

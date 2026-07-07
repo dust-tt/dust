@@ -57,7 +57,7 @@ describe("getJITServers", () => {
 
   describe("basic MCP servers", () => {
     it("should return common_utilities MCP server when no attachments", async () => {
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -73,7 +73,7 @@ describe("getJITServers", () => {
     });
 
     it("should always return the ask_user_question MCP server", async () => {
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -117,7 +117,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -148,7 +148,7 @@ describe("getJITServers", () => {
         agentConfigurationId: agentConfig.id,
       });
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -177,7 +177,7 @@ describe("getJITServers", () => {
       it("should not include skill_management server when agent has no skills", async () => {
         await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-        const { servers: jitServers } = await getJITServers(auth, {
+        const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
           conversation,
           attachments: [],
@@ -196,7 +196,7 @@ describe("getJITServers", () => {
           globalSkillId: "discover_tools",
           agentConfigurationId: agentConfig.id,
         });
-        const { servers: jitServers } = await getJITServers(auth, {
+        const jitServers = await getJITServers(auth, {
           agentConfiguration: agentConfig,
           conversation,
           attachments: [],
@@ -285,7 +285,7 @@ describe("getJITServers", () => {
         spaceId: conversationsSpace.sId,
       };
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation: conversationWithSpace,
         attachments: [],
@@ -348,7 +348,7 @@ describe("getJITServers", () => {
     it("includes skill_management so agents can enable the projects skill", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -410,7 +410,7 @@ describe("getJITServers", () => {
     it("includes skill_management so agents can enable the sandbox skill", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -433,7 +433,7 @@ describe("getJITServers", () => {
         workspace.id
       );
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -451,7 +451,7 @@ describe("getJITServers", () => {
     });
 
     it("should not include schedules_management server for non-onboarding conversations", async () => {
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -495,7 +495,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -551,7 +551,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -603,7 +603,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -646,7 +646,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -692,7 +692,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -746,7 +746,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,
@@ -767,7 +767,7 @@ describe("getJITServers", () => {
 
   describe("server structure", () => {
     it("should return servers with correct structure", async () => {
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments: [],
@@ -828,7 +828,7 @@ describe("getJITServers", () => {
         },
       ];
 
-      const { servers: jitServers } = await getJITServers(auth, {
+      const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
         conversation,
         attachments,

@@ -531,7 +531,7 @@ abstract class BaseTransition extends LLM {
   // Builds the provider-agnostic conversation payload (system + messages) shared
   // by both the streaming and batch surfaces.
   protected buildPayload(streamParameters: LLMStreamParameters): Payload {
-    const { conversation, hasConditionalJITTools, prompt } = streamParameters;
+    const { conversation, prompt } = streamParameters;
 
     const baseMessages = conversation.messages.flatMap(toBaseMessages);
 
@@ -555,11 +555,15 @@ abstract class BaseTransition extends LLM {
 
     const instructionsText = instructions.map((s) => s.content).join("\n");
     if (instructionsText) {
+      // The instructions tier only carries content that is stable per agent
+      // version and workspace settings (the tool directives and server listing,
+      // which vary with conversation state, live in the shared-context tier),
+      // so it always takes the long TTL.
       system.push({
         role: "system",
         type: "text",
         content: { value: instructionsText },
-        cache: hasConditionalJITTools ? "short" : "long",
+        cache: "long",
       });
     }
 
