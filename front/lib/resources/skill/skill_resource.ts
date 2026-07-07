@@ -37,7 +37,10 @@ import {
 } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
-import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import type {
+  AutoEnabledOrEquippedForAgentLoop,
+  SkillDefinition,
+} from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -84,7 +87,6 @@ import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -1509,12 +1511,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...(await GlobalSkillsRegistry.findAll(auth)),
     ];
 
-    const autoEnabledRefs: { globalSkillId: string; customSkillId: null }[] =
-      [];
-    const autoEquippedCandidateRefs: {
-      globalSkillId: string;
-      customSkillId: null;
-    }[] = [];
+    const autoRefsByEnabledOrEquipped: Record<
+      AutoEnabledOrEquippedForAgentLoop,
+      { globalSkillId: string; customSkillId: null }[]
+    > = {
+      enabled: [],
+      equipped: [],
+    };
     for (const def of codeDefinedDefs) {
       const autoEnabledOrEquipped = def.getAutoEnabledOrEquippedForAgentLoop?.({
         agentConfiguration,
@@ -1526,18 +1529,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
 
       const ref = { globalSkillId: def.sId, customSkillId: null };
-      switch (autoEnabledOrEquipped) {
-        case "enabled":
-          autoEnabledRefs.push(ref);
-          break;
-        case "equipped":
-          autoEquippedCandidateRefs.push(ref);
-          break;
-        default:
-          assertNever(autoEnabledOrEquipped);
-      }
+      autoRefsByEnabledOrEquipped[autoEnabledOrEquipped].push(ref);
     }
 
+    const autoEnabledRefs = autoRefsByEnabledOrEquipped.enabled;
     const autoEnabledSkills = autoEnabledRefs.length
       ? await this.fetchBySkillReferences(auth, autoEnabledRefs, {
           agentLoopData,
@@ -1547,15 +1542,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       autoEnabledSkills.map((s) => s.sId)
     );
 
-    const equippedGlobalSkillIds = new Set(
+    const activeGlobalSkillIds = new Set(
       removeNulls([
         ...allAgentSkills.map((s) => s.globalSId),
         ...conversationEnabledSkills.map((s) => s.globalSId),
         ...autoEnabledSkills.map((s) => s.globalSId),
       ])
     );
-    const autoEquippedRefs = autoEquippedCandidateRefs.filter(
-      (ref) => !equippedGlobalSkillIds.has(ref.globalSkillId)
+    const autoEquippedRefs = autoRefsByEnabledOrEquipped.equipped.filter(
+      (ref) => !activeGlobalSkillIds.has(ref.globalSkillId)
     );
     const autoEquippedSkills = autoEquippedRefs.length
       ? await this.fetchBySkillReferences(auth, autoEquippedRefs, {
