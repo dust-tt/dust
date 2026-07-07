@@ -15,17 +15,8 @@ export type MCPServerDefinition = {
   serverNameOverride?: string;
 };
 
-type AutoEnabledOrEquippedForAgentLoop = "enabled" | "equipped";
-
-type AutoEnabledOrEquippedForAgentLoopCallback<
-  T extends AutoEnabledOrEquippedForAgentLoop,
-> = (params: {
-  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-  conversation: ConversationWithoutContentType;
-}) => T | undefined;
-
 interface BaseSkillDefinition<
-  TAutoEnabledOrEquipped extends AutoEnabledOrEquippedForAgentLoop,
+  T extends "enabled" | "equipped" = "enabled" | "equipped",
 > {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
@@ -45,23 +36,22 @@ interface BaseSkillDefinition<
   // Optional callback to auto-enable or auto-equip a code-defined skill for an
   // agent loop (subject to isRestricted), without adding it to the agent
   // configuration. Return undefined to leave the skill unchanged for this loop.
-  readonly getAutoEnabledOrEquippedForAgentLoop?: AutoEnabledOrEquippedForAgentLoopCallback<TAutoEnabledOrEquipped>;
+  readonly getAutoEnabledOrEquippedForAgentLoop?: (params: {
+    agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+    conversation: ConversationWithoutContentType;
+  }) => T | undefined;
   // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
   readonly isDisabledForAgentLoop?: (
     agentLoopData: AgentLoopExecutionData
   ) => boolean;
 }
 
-type WithStaticInstructions<
-  T extends BaseSkillDefinition<AutoEnabledOrEquippedForAgentLoop>,
-> = T & {
+type WithStaticInstructions<T extends BaseSkillDefinition> = T & {
   readonly instructions: string;
   readonly fetchInstructions?: never;
 };
 
-type WithDynamicInstructions<
-  T extends BaseSkillDefinition<AutoEnabledOrEquippedForAgentLoop>,
-> = T & {
+type WithDynamicInstructions<T extends BaseSkillDefinition> = T & {
   readonly instructions?: never;
   readonly fetchInstructions: (
     auth: Authenticator,
@@ -73,11 +63,10 @@ type WithDynamicInstructions<
 };
 
 export type SkillDefinition<
-  TAutoEnabledOrEquipped extends
-    AutoEnabledOrEquippedForAgentLoop = AutoEnabledOrEquippedForAgentLoop,
+  T extends "enabled" | "equipped" = "enabled" | "equipped",
 > =
-  | WithStaticInstructions<BaseSkillDefinition<TAutoEnabledOrEquipped>>
-  | WithDynamicInstructions<BaseSkillDefinition<TAutoEnabledOrEquipped>>;
+  | WithStaticInstructions<BaseSkillDefinition<T>>
+  | WithDynamicInstructions<BaseSkillDefinition<T>>;
 
 type ProjectSkillDefinition = SkillDefinition & {
   readonly kind: "global";

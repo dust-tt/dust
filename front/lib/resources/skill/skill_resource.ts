@@ -1501,11 +1501,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // to equipped candidates for the current agent loop. `findAll` already
     // drops restricted skills, so a flag-gated skill only shows up once its
     // feature flag is on.
-    const codeDefinedDefs = [
-      ...(await SystemSkillsRegistry.findAll(auth)),
-      ...(await GlobalSkillsRegistry.findAll(auth)),
-    ];
-
     const autoEnabledSystemSkillRefs: {
       globalSkillId: string;
       customSkillId: null;
@@ -1514,7 +1509,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       globalSkillId: string;
       customSkillId: null;
     }[] = [];
-    for (const def of codeDefinedDefs) {
+    for (const def of [
+      ...(await SystemSkillsRegistry.findAll(auth)),
+      ...(await GlobalSkillsRegistry.findAll(auth)),
+    ]) {
       const autoEnabledOrEquipped = def.getAutoEnabledOrEquippedForAgentLoop?.({
         agentConfiguration,
         conversation,
@@ -1567,10 +1565,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ).values(),
     ];
 
-    const enabledSkills = conversationEnabledSkills
-      .filter((s) => !isSystemSkillForLoop(s))
-      .sort(sortByName);
-
     // Equipped skills are the enable-able candidates shown to the model. They
     // come from the agent configuration, context auto-equipping, Pod defaults,
     // and discoverable skills. System prompt skills are never enable-able.
@@ -1590,43 +1584,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           withTools: false,
         })
       : [];
-    for (const skill of autoEquippedSkills) {
-      equippedSkillIds.add(skill.sId);
+    for (const { sId } of autoEquippedSkills) {
+      equippedSkillIds.add(sId);
     }
 
-    const podEquippedSkills = podDefaultSkills.filter((s) => {
-      if (isSystemSkillForLoop(s)) {
-        return false;
-      }
-
-      return !equippedSkillIds.has(s.sId);
-    });
-    for (const skill of podEquippedSkills) {
-      equippedSkillIds.add(skill.sId);
+    const podEquippedSkills = podDefaultSkills.filter(
+      (s) => !isSystemSkillForLoop(s) && !equippedSkillIds.has(s.sId)
+    );
+    for (const { sId } of podEquippedSkills) {
+      equippedSkillIds.add(sId);
     }
 
-    const discoveredSkills = discoverableSkills.filter((s) => {
-      if (isSystemSkillForLoop(s)) {
-        return false;
-      }
-
-      return !equippedSkillIds.has(s.sId);
-    });
-    for (const skill of discoveredSkills) {
-      equippedSkillIds.add(skill.sId);
+    const discoveredSkills = discoverableSkills.filter(
+      (s) => !isSystemSkillForLoop(s) && !equippedSkillIds.has(s.sId)
+    );
+    for (const { sId } of discoveredSkills) {
+      equippedSkillIds.add(sId);
     }
-
-    const equippedSkills = [
-      ...agentEquippedSkills.sort(sortByName),
-      ...autoEquippedSkills.sort(sortByName),
-      ...podEquippedSkills.sort(sortByName),
-      ...discoveredSkills.sort(sortByName),
-    ];
 
     return {
-      enabledSkills,
+      enabledSkills: conversationEnabledSkills
+        .filter((s) => !isSystemSkillForLoop(s))
+        .sort(sortByName),
       systemSkills: systemSkills.sort(sortByName),
-      equippedSkills,
+      equippedSkills: [
+        ...agentEquippedSkills.sort(sortByName),
+        ...autoEquippedSkills.sort(sortByName),
+        ...podEquippedSkills.sort(sortByName),
+        ...discoveredSkills.sort(sortByName),
+      ],
     };
   }
 
