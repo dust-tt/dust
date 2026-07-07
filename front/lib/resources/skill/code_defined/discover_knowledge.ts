@@ -47,6 +47,10 @@ const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   `- \`${filesystemToolName("cat")}\`: reads the content of a known document ` +
   "or page. It is useful when a search or navigation result points to a " +
   "source you want to inspect directly.\n" +
+  "Use the filesystem tools together when the path is unclear: semantic " +
+  "results can point to folders to browse, browsing can surface names worth " +
+  "finding elsewhere, and reading or locating candidates helps turn discovery " +
+  "hits into grounded sources.\n" +
   "\n" +
   "Data warehouses (tables and schemas):\n" +
   "- Warehouse content is organized as warehouse -> database -> schema -> " +
